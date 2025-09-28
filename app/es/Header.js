@@ -182,9 +182,7 @@ export default function HeaderES() {
             <div className="flex items-center">
               {/* Logo solo icono en móvil - extra grande con más espacio */}
               <div className="lg:hidden py-3">
-                <div className="transform scale-125 origin-left">
-                  <LogoIcon size={100} onClick={handleLinkClick} />
-                </div>
+                  <LogoIcon size={48} onClick={handleLinkClick} />
               </div>
               {/* Logo horizontal solo en desktop */}
               <div className="hidden lg:block">
@@ -214,9 +212,7 @@ export default function HeaderES() {
               <div className="flex items-center">
                 {/* Logo solo icono en móvil - tamaño reducido */}
                 <div className="lg:hidden py-1">
-                  <div className="transform scale-100 origin-left">
-                    <LogoIcon size={80} onClick={handleLinkClick} />
-                  </div>
+                    <LogoIcon size={48} onClick={handleLinkClick} />
                 </div>
                 {/* Logo horizontal solo en desktop - 25% más grande */}
                 <div className="hidden lg:block">

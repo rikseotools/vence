@@ -1,7 +1,7 @@
 # CLAUDE.md - Información del Proyecto
 
 ## Descripción del Proyecto
-**ilovetest** es una aplicación web de preparación para oposiciones, específicamente para Auxiliar Administrativo del Estado. Permite a los usuarios realizar tests personalizados con preguntas de exámenes oficiales y contenido generado por IA.
+**Vence** es una aplicación web de preparación para oposiciones, específicamente para Auxiliar Administrativo del Estado. Permite a los usuarios realizar tests personalizados con preguntas de exámenes oficiales y contenido generado por IA.
 
 ## Arquitectura Principal
 

@@ -2,7 +2,7 @@
 import { getSupabaseClient } from '../lib/supabase.js'
 import { getCanonicalSlug } from '../lib/lawMappingUtils.js'
 
-const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export default async function sitemap() {
   // ✅ TUS URLs ESTÁTICAS PRINCIPALES (solo páginas importantes)

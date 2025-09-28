@@ -467,7 +467,7 @@ export function AuthProvider({ children, initialUser = null }) {
       
       // 5. Redirigir a página de inicio - DETECTAR ENTORNO AUTOMÁTICAMENTE
       if (typeof window !== 'undefined') {
-        const baseUrl = window.location.origin  // http://localhost:3000 o https://www.ilovetest.pro
+        const baseUrl = window.location.origin  // http://localhost:3000 o https://www.vence.es
         const redirectUrl = `${baseUrl}/es/`
         
         console.log('🔄 Redirigiendo a:', redirectUrl)

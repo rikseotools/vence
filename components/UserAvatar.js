@@ -279,7 +279,7 @@ export default function UserAvatar() {
     return (
       <Link 
         href="/es/login"
-        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-medium text-sm"
+        className="bg-gradient-to-r from-green-700 to-green-800 text-white px-4 py-2 rounded-lg hover:from-green-800 hover:to-green-900 transition-all duration-200 font-medium text-sm"
       >
         Iniciar Sesión
       </Link>

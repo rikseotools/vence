@@ -7,7 +7,7 @@ const nextConfig = {
   // ✅ Agregar configuración de SEO
   env: {
     SITE_URL: process.env.NODE_ENV === 'production' 
-      ? 'https://www.ilovetest.pro'  // ✅ Con www en producción
+      ? 'https://www.vence.es'  // ✅ Con www en producción
       : 'http://localhost:3000'
   },
   
@@ -20,10 +20,10 @@ const nextConfig = {
           has: [
             {
               type: 'host',
-              value: 'ilovetest.pro', // Sin www
+              value: 'vence.es', // Sin www
             },
           ],
-          destination: 'https://www.ilovetest.pro/:path*',
+          destination: 'https://www.vence.es/:path*',
           permanent: true,
         },
       ];

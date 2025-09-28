@@ -2,21 +2,21 @@
 import './globals.css'
 import { headers } from 'next/headers'
 
-const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 const GA_MEASUREMENT_ID = 'G-JMT08L6G7D'
 const GOOGLE_ADS_ID = 'AW-10842123204'
 
 export const metadata = {
-  title: 'iLoveTest - Free Legal Practice Tests | US Law & International Law',
+  title: 'Vence - Free Legal Practice Tests | US Law & International Law',
   description: 'Free practice tests for US law, Spanish Constitution, Bar exam prep. Available in multiple languages.',
   keywords: 'legal practice tests, bar exam prep, constitutional law, free law tests',
-  authors: [{ name: 'iLoveTest' }],
+  authors: [{ name: 'Vence' }],
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'iLoveTest - Free Legal Practice Tests',
+    title: 'Vence - Free Legal Practice Tests',
     description: 'Practice tests for legal professionals and students',
     url: SITE_URL,
-    siteName: 'iLoveTest',
+    siteName: 'Vence',
     locale: 'en_US',
     type: 'website',
   },

@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemaps
-Sitemap: https://www.ilovetest.pro/sitemap.xml
+Sitemap: https://www.vence.es/sitemap.xml
 
 # 🚨 BLOQUEAR SOLO PÁGINAS PRIVADAS Y NO INDEXABLES
 # Admin y auth
@@ -57,4 +57,4 @@ Disallow: /loading
 Crawl-delay: 1
 
 # Host - CORREGIDO para usar www
-Host: https://www.ilovetest.pro
+Host: https://www.vence.es

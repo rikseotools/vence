@@ -175,14 +175,13 @@ export default function HeaderEN() {
             {/* Logo with loading - Responsive and bigger */}
             <div className="flex items-center">
               {/* Logo icon only on mobile - extra large with more space */}
-              <div className="lg:hidden py-2">
-                <div className="transform scale-150 origin-left">
-                  <LogoIcon size={80} />
-                </div>
+              <div className="md:hidden py-0 bg-red-500">
+                <LogoIcon size={16} />
+                <span className="text-xs text-white">MOBILE</span>
               </div>
               {/* Horizontal logo only on desktop */}
-              <div className="hidden lg:block">
-                <LogoHorizontal className="scale-125" />
+              <div className="hidden md:block">
+                <LogoHorizontal className="scale-50" />
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -207,14 +206,13 @@ export default function HeaderEN() {
               {/* Responsive logo - bigger on mobile */}
               <div className="flex items-center">
                 {/* Logo icon only on mobile - extra large with more space */}
-                <div className="lg:hidden py-2">
-                  <div className="transform scale-150 origin-left">
-                    <LogoIcon size={80} onClick={handleLinkClick} />
-                  </div>
+                <div className="md:hidden py-0 bg-red-500">
+                  <LogoIcon size={16} onClick={handleLinkClick} />
+                  <span className="text-xs text-white">MOBILE</span>
                 </div>
                 {/* Horizontal logo only on desktop - 25% bigger */}
-                <div className="hidden lg:block">
-                  <LogoHorizontal className="scale-125" onClick={handleLinkClick} />
+                <div className="hidden md:block">
+                  <LogoHorizontal className="scale-50" onClick={handleLinkClick} />
                 </div>
               </div>
             </div>

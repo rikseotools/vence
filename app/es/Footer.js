@@ -49,7 +49,7 @@ export default function FooterES() {
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-6 mb-4 md:mb-0">
                 <p className="text-gray-400 text-sm">
-                  © {currentYear} iLoveTest. Todos los derechos reservados.
+                  © {currentYear} Vence. Todos los derechos reservados.
                 </p>
                 <div className="flex items-center space-x-4 text-sm">
                   <span className="text-gray-500 cursor-not-allowed">Privacidad</span>
@@ -71,7 +71,7 @@ export default function FooterES() {
         <div className="bg-gray-950 py-3">
           <div className="container mx-auto px-4">
             <p className="text-xs text-gray-500 text-center">
-              iLoveTest España es una plataforma educativa independiente. Todos los contenidos son de carácter informativo y educativo.
+              Vence España es una plataforma educativa independiente. Todos los contenidos son de carácter informativo y educativo.
             </p>
           </div>
         </div>
@@ -175,7 +175,7 @@ export default function FooterES() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-6 mb-4 md:mb-0">
               <p className="text-gray-400 text-sm">
-                © {currentYear} iLoveTest España. Todos los derechos reservados.
+                © {currentYear} Vence España. Todos los derechos reservados.
               </p>
               <div className="flex items-center space-x-4 text-sm">
                 <span className="text-gray-500 cursor-not-allowed">Privacidad</span>
@@ -197,7 +197,7 @@ export default function FooterES() {
       <div className="bg-gray-950 py-3">
         <div className="container mx-auto px-4">
           <p className="text-xs text-gray-500 text-center">
-            iLoveTest España es una plataforma educativa independiente. Todos los contenidos son de carácter informativo y educativo.
+            Vence España es una plataforma educativa independiente. Todos los contenidos son de carácter informativo y educativo.
           </p>
         </div>
       </div>

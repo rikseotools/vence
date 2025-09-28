@@ -3,10 +3,10 @@ import Link from 'next/link'
 import Header from './Header'
 import Footer from './Footer'
 
-const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Free Legal Practice Tests Online | iLoveTest - US Law & Spanish Law 2024',
+  title: 'Free Legal Practice Tests Online | Vence - US Law & Spanish Law 2024',
   description: 'Free practice tests for US law, Spanish Constitution, Law 39/2015, Bar Exam prep. +10,000 updated questions for legal professionals and students.',
   keywords: [
     'legal practice tests',

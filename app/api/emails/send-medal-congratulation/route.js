@@ -66,7 +66,7 @@ export async function POST(request) {
 
     // Enviar email con Resend
     const { data: emailResult, error: emailError } = await resend.emails.send({
-      from: 'iLoveTest <noreply@ilovetest.com>',
+      from: 'Vence <noreply@ilovetest.com>',
       to: userEmail,
       subject: emailContent.subject,
       html: emailContent.html
@@ -175,7 +175,7 @@ function generateMedalEmailContent(medal, userName) {
       motivationText = '¡Sigue esforzándote, vas por el buen camino!'
   }
 
-  const subject = `🏆 ${congratsText} - iLoveTest`
+  const subject = `🏆 ${congratsText} - Vence`
 
   const html = `
 <!DOCTYPE html>
@@ -238,11 +238,11 @@ function generateMedalEmailContent(medal, userName) {
         </div>
         
         <div class="footer">
-            <p>Este email se envió porque conseguiste una nueva medalla en iLoveTest.</p>
+            <p>Este email se envió porque conseguiste una nueva medalla en Vence.</p>
             <p>
                 <a href="${baseUrl}/es/perfil?tab=emails" style="color: #64748b;">Gestionar preferencias de email</a>
             </p>
-            <p>© ${new Date().getFullYear()} iLoveTest - Tu plataforma de preparación de oposiciones</p>
+            <p>© ${new Date().getFullYear()} Vence - Tu plataforma de preparación de oposiciones</p>
         </div>
     </div>
 </body>

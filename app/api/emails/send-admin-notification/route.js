@@ -129,7 +129,7 @@ function generateFeedbackEmailHTML(data) {
           </div>
 
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-            <p style="margin: 0;">iLoveTest Pro - Sistema de Notificaciones Admin</p>
+            <p style="margin: 0;">Vence Pro - Sistema de Notificaciones Admin</p>
           </div>
 
         </div>
@@ -202,7 +202,7 @@ function generateDisputeEmailHTML(data) {
           </div>
 
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-            <p style="margin: 0;">iLoveTest Pro - Sistema de Notificaciones Admin</p>
+            <p style="margin: 0;">Vence Pro - Sistema de Notificaciones Admin</p>
           </div>
 
         </div>
@@ -262,7 +262,7 @@ function generateNewUserEmailHTML(data) {
           </div>
 
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-            <p style="margin: 0;">iLoveTest Pro - Sistema de Notificaciones Admin</p>
+            <p style="margin: 0;">Vence Pro - Sistema de Notificaciones Admin</p>
           </div>
 
         </div>
