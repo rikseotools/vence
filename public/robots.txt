@@ -1,0 +1,60 @@
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://www.ilovetest.pro/sitemap.xml
+
+# 🚨 BLOQUEAR SOLO PÁGINAS PRIVADAS Y NO INDEXABLES
+# Admin y auth
+Disallow: /admin/
+Disallow: /es/admin/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /auth/
+
+# Páginas de usuario privadas
+Disallow: /es/login
+Disallow: /es/register
+Disallow: /es/perfil
+Disallow: /es/mis-estadisticas
+Disallow: /es/mis-impugnaciones
+Disallow: /es/notificaciones
+Disallow: /es/configuracion
+
+# Páginas legales (no aportan SEO)
+Disallow: /es/privacidad
+Disallow: /es/terminos
+Disallow: /es/cookies
+Disallow: /es/aviso-legal
+Disallow: /es/politica-privacidad
+Disallow: /*/privacidad
+Disallow: /*/terminos
+Disallow: /*/cookies
+
+# Tests dinámicos (contenido duplicado)
+Disallow: /*/test-rapido
+Disallow: /*/avanzado  
+Disallow: /*/test-personalizado
+Disallow: /*/oficial
+
+# URLs de notificaciones push (no indexables)
+Disallow: /es/test/mantener-racha
+Disallow: /es/test/explorar
+Disallow: /es/test/desafio
+Disallow: /es/test/recuperar-racha
+Disallow: /es/test/*/articulos-dirigido
+
+# URLs con parámetros (evita contenido duplicado)
+Disallow: /*?*
+
+# Estados de error
+Disallow: /404
+Disallow: /500
+Disallow: /error
+Disallow: /loading
+
+# Crawl delay
+Crawl-delay: 1
+
+# Host - CORREGIDO para usar www
+Host: https://www.ilovetest.pro

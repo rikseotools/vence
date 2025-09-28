@@ -1,0 +1,46 @@
+{
+  "name": "ilovetest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:clean": "node scripts/clean-database.js",
+    "db:load-constitucion": "node scripts/load-constitucion.js",
+    "db:load-constitucion-pdf": "node scripts/load-constitucion.js pdfs/constitucion-espanola.pdf"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@stripe/react-stripe-js": "^3.7.0",
+    "@stripe/stripe-js": "^7.4.0",
+    "@supabase/supabase-js": "^2.50.3",
+    "dotenv": "^16.6.1",
+    "next": "^15.3.3",
+    "openai": "^5.0.1",
+    "pdfjs-dist": "^2.16.105",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "recharts": "^3.2.1",
+    "resend": "^4.6.0",
+    "server-only": "^0.0.1",
+    "stripe": "^18.3.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.3",
+    "postcss": "^8.5.4",
+    "tailwindcss": "^4.1.8"
+  },
+  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

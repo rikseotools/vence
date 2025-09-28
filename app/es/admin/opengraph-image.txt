@@ -1,0 +1,3 @@
+# Archivo para prevenir generación automática de Open Graph
+# Las páginas admin no deben tener metadatos sociales
+NOINDEX

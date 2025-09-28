@@ -1,0 +1,21 @@
+{
+  "name": "boe-importer",
+  "version": "1.0.0",
+  "description": "Importador de preguntas BOE",
+  "main": "script_insertar_preguntas.js",
+  "scripts": {
+    "start": "node script_insertar_preguntas.js",
+    "extract": "node script_insertar_preguntas.js --solo-extraer",
+    "gpt-only": "node script_insertar_preguntas.js --sin-gemini"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.1.3",
+    "@supabase/supabase-js": "^2.39.0",
+    "dotenv": "^16.3.1",
+    "openai": "^4.24.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
