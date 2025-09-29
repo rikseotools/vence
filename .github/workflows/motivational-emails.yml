@@ -24,7 +24,7 @@ jobs:
           response=$(curl -L -s -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -H "Content-Type: application/json" \
-            https://vence.es/api/emails/send-motivational-scheduled)
+            https://vence.es/api/debug/cron-auth)
           
           http_code=$(echo "$response" | tail -n1)
           response_body=$(echo "$response" | head -n -1)
