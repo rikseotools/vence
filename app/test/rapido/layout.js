@@ -1,4 +1,4 @@
-const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Test Rápido de Oposiciones | Práctica Express | iLoveTest',

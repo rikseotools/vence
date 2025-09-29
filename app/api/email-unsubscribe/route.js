@@ -232,7 +232,7 @@ function generateUnsubscribeToken(email) {
 export function generateUnsubscribeUrl(email, action = 'unsubscribe') {
   const token = generateUnsubscribeToken(email)
   const baseUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://ilovetest.pro' 
+    ? 'https://vence.es' 
     : 'http://localhost:3002'
   
   return `${baseUrl}/api/email-unsubscribe?token=${token}&email=${encodeURIComponent(email)}&action=${action}`
@@ -246,7 +246,7 @@ function generateUnsubscribeHTML({ success, message, details, email }) {
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${success ? '✅' : '❌'} ${success ? 'Dado de baja correctamente' : 'Error al procesar solicitud'} - ILoveTest</title>
+      <title>${success ? '✅' : '❌'} ${success ? 'Dado de baja correctamente' : 'Error al procesar solicitud'} - Vence</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -360,8 +360,8 @@ function generateUnsubscribeHTML({ success, message, details, email }) {
           <div class="email">📧 ${email}</div>
           
           <div class="actions">
-            <a href="https://ilovetest.pro/auxiliar-administrativo-estado" class="btn btn-primary">
-              🎯 Ir a ILoveTest
+            <a href="https://vence.es/auxiliar-administrativo-estado" class="btn btn-primary">
+              🎯 Ir a Vence
             </a>
             
             ${success && email !== 'desconocido' ? `
@@ -374,11 +374,11 @@ function generateUnsubscribeHTML({ success, message, details, email }) {
         
         <div class="footer">
           <p>
-            <strong>ILoveTest</strong> - Te ayudamos a conseguir tu plaza
+            <strong>Vence</strong> - Te ayudamos a conseguir tu plaza
           </p>
           <p style="margin-top: 5px;">
             Si tienes dudas, contacta con nosotros en 
-            <a href="mailto:soporte@ilovetest.pro" style="color: #667eea;">soporte@ilovetest.pro</a>
+            <a href="mailto:soporte@vence.es" style="color: #667eea;">soporte@vence.es</a>
           </p>
         </div>
       </div>

@@ -679,7 +679,7 @@ function PerfilPageContent() {
           <div className="flex items-center space-x-3 mb-4">
             <span className="text-2xl">📧</span>
             <div>
-              <h4 className="text-lg font-semibold text-gray-800">Emails de ILoveTest</h4>
+              <h4 className="text-lg font-semibold text-gray-800">Emails de Vence</h4>
               <p className="text-sm text-gray-600">Recibe alertas y noticias para tu oposición</p>
             </div>
           </div>
@@ -695,7 +695,7 @@ function PerfilPageContent() {
                   {emailPreferences.receive_emails ? (
                     <>Recibes emails útiles para tu preparación</>
                   ) : (
-                    <>No recibes ningún email de ILoveTest</>
+                    <>No recibes ningún email de Vence</>
                   )}
                 </p>
               </div>

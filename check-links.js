@@ -11,11 +11,11 @@ const linkSources = new Map(); // URL -> Array de páginas que la enlazan
 
 // Configuración
 const isDev = process.argv.includes('--dev') || process.argv.includes('--local');
-const baseUrl = isDev ? 'http://localhost:3000' : 'https://www.ilovetest.pro';
-const startUrl = isDev ? 'http://localhost:3000/es' : 'https://www.ilovetest.pro/es';
+const baseUrl = isDev ? 'http://localhost:3000' : 'https://www.vence.es';
+const startUrl = isDev ? 'http://localhost:3000/es' : 'https://www.vence.es/es';
 
 console.log('🔍 Verificador recursivo de enlaces\n');
-console.log(`🌐 Modo: ${isDev ? 'DESARROLLO (localhost:3000)' : 'PRODUCCIÓN (www.ilovetest.pro)'}`);
+console.log(`🌐 Modo: ${isDev ? 'DESARROLLO (localhost:3000)' : 'PRODUCCIÓN (www.vence.es)'}`);
 console.log(`🚀 Comenzando desde: ${startUrl}\n`);
 
 function isInternalLink(url, baseUrl) {

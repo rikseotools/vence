@@ -259,13 +259,13 @@ export function StructuredBreadcrumbs() {
       "@type": "ListItem",
       "position": 1,
       "name": "Inicio",
-      "item": process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ilovetest.pro'
+      "item": process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'
     })
   }
   
   pathSegments.forEach((segment, index) => {
     const position = pathname.startsWith('/es') ? index + 1 : index + 2
-    const href = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ilovetest.pro') + '/' + pathSegments.slice(0, index + 1).join('/')
+    const href = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es') + '/' + pathSegments.slice(0, index + 1).join('/')
     
     breadcrumbsSchema.itemListElement.push({
       "@type": "ListItem",

@@ -12,7 +12,7 @@ function generateUnsubscribeToken(email) {
 
 function generateUnsubscribeUrl(email, action = 'unsubscribe') {
   const token = generateUnsubscribeToken(email)
-  const baseUrl = 'https://ilovetest.pro'
+  const baseUrl = 'https://vence.es'
   
   return `${baseUrl}/api/email-unsubscribe?token=${token}&email=${encodeURIComponent(email)}&action=${action}`
 }

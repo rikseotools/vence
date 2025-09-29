@@ -23,7 +23,7 @@ const structuredData = {
   "description": "Tema completo sobre el Tribunal Constitucional para oposiciones de Auxiliar Administrativo del Estado",
   "provider": {
     "@type": "Organization",
-    "name": "ILoveTest"
+    "name": "Vence"
   },
   "courseCode": "Tema 2",
   "educationalLevel": "Professional",

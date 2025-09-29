@@ -5,7 +5,7 @@ import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug } from '@/lib/lawMa
 import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
 
-const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 // 🎯 GENERAR METADATA DINÁMICOS CON CANONICAL URL
 export async function generateMetadata({ params }) {

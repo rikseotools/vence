@@ -89,7 +89,7 @@ export async function POST(request) {
     const unsubscribeUrl = generateUnsubscribeUrl(targetEmail)
 
     // Crear el email
-    const emailSubject = `🚀 ¡Hemos mejorado mucho! Nuevos 16 temas completos - ILoveTest`
+    const emailSubject = `🚀 ¡Hemos mejorado mucho! Nuevos 16 temas completos - Vence`
     
     // Generar URLs de tracking
     const trackingParams = new URLSearchParams({
@@ -99,8 +99,8 @@ export async function POST(request) {
       timestamp: Date.now()
     }).toString()
     
-    const trackingPixelUrl = `https://ilovetest.pro/api/email/track-open?${trackingParams}`
-    const trackedMainUrl = `https://ilovetest.pro/api/email/track-click?${trackingParams}&url=${encodeURIComponent('https://ilovetest.pro/auxiliar-administrativo-estado')}&redirect=${encodeURIComponent('https://ilovetest.pro/auxiliar-administrativo-estado')}`
+    const trackingPixelUrl = `https://vence.es/api/email/track-open?${trackingParams}`
+    const trackedMainUrl = `https://vence.es/api/email/track-click?${trackingParams}&url=${encodeURIComponent('https://vence.es/auxiliar-administrativo-estado')}&redirect=${encodeURIComponent('https://vence.es/auxiliar-administrativo-estado')}`
     
     const emailHtml = generateReactivationEmailHTML({
       userEmail: targetEmail,
@@ -123,7 +123,7 @@ export async function POST(request) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'ILoveTest <noreply@ilovetest.pro>',
+        from: 'Vence <noreply@vence.es>',
         to: [targetEmail],
         subject: emailSubject,
         html: emailHtml
@@ -191,7 +191,7 @@ function generateReactivationEmailHTML({
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>¡Vuelve a ILoveTest! Muchas novedades te esperan</title>
+      <title>¡Vuelve a Vence! Muchas novedades te esperan</title>
       <style>
         body { 
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
@@ -385,7 +385,7 @@ function generateReactivationEmailHTML({
         
         <div class="footer">
           <p style="margin: 0; color: #374151; font-weight: bold;">
-            ILoveTest - Te ayudamos a conseguir tu plaza
+            Vence - Te ayudamos a conseguir tu plaza
           </p>
           <div class="unsubscribe">
             Si no quieres recibir más emails como este, 

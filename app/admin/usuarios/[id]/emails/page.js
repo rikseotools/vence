@@ -122,7 +122,7 @@ export default function UserEmailHistoryPage() {
             <div style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); color: #333; text-align: center; padding: 40px 20px;">
               <div style="font-size: 64px; margin-bottom: 20px;">🏆</div>
               <h1 style="margin: 0; font-size: 28px; font-weight: bold;">¡Nueva Medalla Desbloqueada!</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.8; font-size: 16px;">ILoveTest - Auxiliar Administrativo</p>
+              <p style="margin: 10px 0 0 0; opacity: 0.8; font-size: 16px;">Vence - Auxiliar Administrativo</p>
             </div>
             
             <!-- Content -->
@@ -139,7 +139,7 @@ export default function UserEmailHistoryPage() {
               
               <!-- CTA Button -->
               <div style="text-align: center; margin: 35px 0;">
-                <a href="https://www.ilovetest.pro/auxiliar-administrativo-estado/test" 
+                <a href="https://www.vence.es/auxiliar-administrativo-estado/test" 
                    style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px;">
                   🎯 Ver Mis Medallas
                 </a>
@@ -149,7 +149,7 @@ export default function UserEmailHistoryPage() {
             <!-- Footer -->
             <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; font-size: 12px; color: #666;">
-                <a href="https://www.ilovetest.pro/perfil" style="color: #667eea; text-decoration: none;">Gestionar preferencias</a>
+                <a href="https://www.vence.es/perfil" style="color: #667eea; text-decoration: none;">Gestionar preferencias</a>
               </p>
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function UserEmailHistoryPage() {
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 30px 20px;">
               <h1 style="margin: 0; font-size: 24px; font-weight: bold;">${getMotivationIcon()} ${getMotivationTitle()}</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">ILoveTest - Auxiliar Administrativo</p>
+              <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Vence - Auxiliar Administrativo</p>
             </div>
             
             <!-- Content -->
@@ -201,7 +201,7 @@ export default function UserEmailHistoryPage() {
               
               <!-- CTA Button -->
               <div style="text-align: center; margin: 35px 0;">
-                <a href="https://www.ilovetest.pro/auxiliar-administrativo-estado/test" 
+                <a href="https://www.vence.es/auxiliar-administrativo-estado/test" 
                    style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px;">
                   🎯 Hacer Test Ahora
                 </a>
@@ -217,7 +217,7 @@ export default function UserEmailHistoryPage() {
             <!-- Footer -->
             <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; font-size: 12px; color: #666;">
-                <a href="https://www.ilovetest.pro/perfil" style="color: #667eea; text-decoration: none;">Gestionar preferencias de notificaciones</a>
+                <a href="https://www.vence.es/perfil" style="color: #667eea; text-decoration: none;">Gestionar preferencias de notificaciones</a>
               </p>
             </div>
           </div>
@@ -240,7 +240,7 @@ export default function UserEmailHistoryPage() {
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 30px 20px;">
               <h1 style="margin: 0; font-size: 24px; font-weight: bold;">📧 ${subject}</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">ILoveTest - Auxiliar Administrativo</p>
+              <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Vence - Auxiliar Administrativo</p>
             </div>
             
             <!-- Content -->
@@ -252,7 +252,7 @@ export default function UserEmailHistoryPage() {
             <!-- Footer -->
             <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; font-size: 12px; color: #666;">
-                © 2025 ILoveTest. Te ayudamos a conseguir tu plaza.
+                © 2025 Vence. Te ayudamos a conseguir tu plaza.
               </p>
             </div>
           </div>

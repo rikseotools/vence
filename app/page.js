@@ -1,7 +1,7 @@
 // app/page.js
 import Link from 'next/link'
 
-const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Test de Oposiciones y Leyes | iLoveTest',

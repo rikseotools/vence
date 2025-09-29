@@ -1,4 +1,4 @@
-const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
   title: 'Oposiciones Disponibles 2025 | Preparación Online | Vence',

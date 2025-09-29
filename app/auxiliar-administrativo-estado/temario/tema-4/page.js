@@ -5,7 +5,7 @@ import Tema4Interactive from './Tema4Interactive'
 
 // Metadata para SEO
 export const metadata = {
-  title: 'Tema 4: El Poder Judicial - Auxiliar Administrativo Estado | ILoveTest',
+  title: 'Tema 4: El Poder Judicial - Auxiliar Administrativo Estado | Vence',
   description: 'Tema 4 completo del Poder Judicial: Tribunal Supremo, CGPJ, Ministerio Fiscal, organización judicial y Ley Orgánica 1/2025. Temario actualizado Auxiliar Administrativo del Estado.',
   keywords: [
     'Poder Judicial',

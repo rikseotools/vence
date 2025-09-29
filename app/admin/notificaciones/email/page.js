@@ -836,7 +836,7 @@ function generateMedalEmailHTML(medalTitle, email) {
             
             <!-- CTA Button -->
             <div style="text-align: center; margin: 35px 0;">
-              <a href="https://www.ilovetest.pro/auxiliar-administrativo-estado/test" 
+              <a href="https://www.vence.es/auxiliar-administrativo-estado/test" 
                  style="display: inline-block; background: #ffd700; color: #333; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                 🎯 Continuar Estudiando
               </a>
@@ -852,10 +852,10 @@ function generateMedalEmailHTML(medalTitle, email) {
           <!-- Footer -->
           <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
             <p style="margin: 0; font-size: 12px; color: #666;">
-              <a href="https://www.ilovetest.pro/perfil?tab=emails" style="color: #ffd700; text-decoration: none;">Gestionar preferencias de notificaciones</a>
+              <a href="https://www.vence.es/perfil?tab=emails" style="color: #ffd700; text-decoration: none;">Gestionar preferencias de notificaciones</a>
             </p>
             <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">
-              © 2025 ILoveTest. Te ayudamos a conseguir tu plaza.
+              © 2025 Vence. Te ayudamos a conseguir tu plaza.
             </p>
           </div>
         </div>
@@ -882,7 +882,7 @@ function generateStreakRiskEmailHTML(content, email) {
           <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; text-align: center; padding: 30px 20px;">
             <div style="font-size: 48px; margin-bottom: 10px;">🔥</div>
             <h1 style="margin: 0; font-size: 24px; font-weight: bold;">¡Tu racha está en peligro!</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">ILoveTest - Auxiliar Administrativo</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Vence - Auxiliar Administrativo</p>
           </div>
           
           <!-- Content -->
@@ -895,7 +895,7 @@ function generateStreakRiskEmailHTML(content, email) {
             
             <!-- CTA Button -->
             <div style="text-align: center; margin: 35px 0;">
-              <a href="https://www.ilovetest.pro/auxiliar-administrativo-estado/test" 
+              <a href="https://www.vence.es/auxiliar-administrativo-estado/test" 
                  style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px;">
                 🎯 Mantener Mi Racha
               </a>
@@ -911,10 +911,10 @@ function generateStreakRiskEmailHTML(content, email) {
           <!-- Footer -->
           <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
             <p style="margin: 0; font-size: 12px; color: #666;">
-              <a href="https://www.ilovetest.pro/perfil?tab=emails" style="color: #ef4444; text-decoration: none;">Gestionar preferencias de notificaciones</a>
+              <a href="https://www.vence.es/perfil?tab=emails" style="color: #ef4444; text-decoration: none;">Gestionar preferencias de notificaciones</a>
             </p>
             <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">
-              © 2025 ILoveTest. Te ayudamos a conseguir tu plaza.
+              © 2025 Vence. Te ayudamos a conseguir tu plaza.
             </p>
           </div>
         </div>
@@ -940,7 +940,7 @@ function generateComebackEmailHTML(content, email) {
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 30px 20px;">
             <h1 style="margin: 0; font-size: 24px; font-weight: bold;">¡Vuelve a la preparación!</h1>
-            <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">ILoveTest - Auxiliar Administrativo</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Vence - Auxiliar Administrativo</p>
           </div>
           
           <!-- Content -->
@@ -953,7 +953,7 @@ function generateComebackEmailHTML(content, email) {
             
             <!-- CTA Button -->
             <div style="text-align: center; margin: 35px 0;">
-              <a href="https://www.ilovetest.pro/auxiliar-administrativo-estado/test" 
+              <a href="https://www.vence.es/auxiliar-administrativo-estado/test" 
                  style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px;">
                 🎯 Hacer Test Ahora
               </a>
@@ -969,10 +969,10 @@ function generateComebackEmailHTML(content, email) {
           <!-- Footer -->
           <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
             <p style="margin: 0; font-size: 12px; color: #666;">
-              <a href="https://www.ilovetest.pro/perfil?tab=emails" style="color: #667eea; text-decoration: none;">Gestionar preferencias de notificaciones</a>
+              <a href="https://www.vence.es/perfil?tab=emails" style="color: #667eea; text-decoration: none;">Gestionar preferencias de notificaciones</a>
             </p>
             <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">
-              © 2025 ILoveTest. Te ayudamos a conseguir tu plaza.
+              © 2025 Vence. Te ayudamos a conseguir tu plaza.
             </p>
           </div>
         </div>
@@ -990,13 +990,13 @@ function generateGenericEmailHTML(subject, content, email) {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${subject || 'Email de ILoveTest'}</title>
+        <title>${subject || 'Email de Vence'}</title>
       </head>
       <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; background: #ffffff;">
           <!-- Header -->
           <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 30px 20px;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: bold;">${subject || 'ILoveTest'}</h1>
+            <h1 style="margin: 0; font-size: 24px; font-weight: bold;">${subject || 'Vence'}</h1>
             <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Auxiliar Administrativo</p>
           </div>
           
@@ -1010,9 +1010,9 @@ function generateGenericEmailHTML(subject, content, email) {
             
             <!-- CTA Button -->
             <div style="text-align: center; margin: 35px 0;">
-              <a href="https://www.ilovetest.pro/auxiliar-administrativo-estado/test" 
+              <a href="https://www.vence.es/auxiliar-administrativo-estado/test" 
                  style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                🎯 Ir a ILoveTest
+                🎯 Ir a Vence
               </a>
             </div>
           </div>
@@ -1020,10 +1020,10 @@ function generateGenericEmailHTML(subject, content, email) {
           <!-- Footer -->
           <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
             <p style="margin: 0; font-size: 12px; color: #666;">
-              <a href="https://www.ilovetest.pro/perfil?tab=emails" style="color: #667eea; text-decoration: none;">Gestionar preferencias</a>
+              <a href="https://www.vence.es/perfil?tab=emails" style="color: #667eea; text-decoration: none;">Gestionar preferencias</a>
             </p>
             <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">
-              © 2025 ILoveTest
+              © 2025 Vence
             </p>
           </div>
         </div>

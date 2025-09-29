@@ -11,7 +11,7 @@ export const metadata = {
   openGraph: {
     title: 'Tema 7: Ley 19/2013 de Transparencia | Auxiliar Administrativo Estado',
     description: 'Material completo del Tema 7 - Ley de Transparencia para oposiciones de Auxiliar Administrativo del Estado. Artículos clave y contenido actualizado 2025.',
-    url: 'https://www.ilovetest.pro/auxiliar-administrativo-estado/temario/tema-7',
+    url: 'https://www.vence.es/auxiliar-administrativo-estado/temario/tema-7',
     siteName: 'Tests Jurídicos España',
     locale: 'es_ES',
     type: 'article',
@@ -25,7 +25,7 @@ export const metadata = {
     ],
   },
   alternates: {
-    canonical: 'https://www.ilovetest.pro/auxiliar-administrativo-estado/temario/tema-7',
+    canonical: 'https://www.vence.es/auxiliar-administrativo-estado/temario/tema-7',
   },
   robots: {
     index: true,
@@ -60,25 +60,25 @@ const breadcrumbSchema = {
       "@type": "ListItem",
       "position": 1,
       "name": "Inicio",
-      "item": "https://www.ilovetest.pro"
+      "item": "https://www.vence.es"
     },
     {
       "@type": "ListItem",
       "position": 2,
       "name": "Auxiliar Administrativo Estado",
-      "item": "https://www.ilovetest.pro/auxiliar-administrativo-estado"
+      "item": "https://www.vence.es/auxiliar-administrativo-estado"
     },
     {
       "@type": "ListItem",
       "position": 3,
       "name": "Temario",
-      "item": "https://www.ilovetest.pro/auxiliar-administrativo-estado/temario"
+      "item": "https://www.vence.es/auxiliar-administrativo-estado/temario"
     },
     {
       "@type": "ListItem",
       "position": 4,
       "name": "Tema 7: Ley 19/2013 Transparencia",
-      "item": "https://www.ilovetest.pro/auxiliar-administrativo-estado/temario/tema-7"
+      "item": "https://www.vence.es/auxiliar-administrativo-estado/temario/tema-7"
     }
   ]
 };
@@ -101,7 +101,7 @@ const articleSchema = {
   "@type": "EducationalOrganization",
   "name": "Tests Jurídicos España - Tema 7 Ley Transparencia",
   "description": "Material educativo completo del Tema 7 de la Ley 19/2013 de Transparencia para oposiciones de Auxiliar Administrativo del Estado",
-  "url": "https://www.ilovetest.pro/auxiliar-administrativo-estado/temario/tema-7",
+  "url": "https://www.vence.es/auxiliar-administrativo-estado/temario/tema-7",
   "educationalLevel": "Higher Education",
   "teaches": "Ley 19/2013 de transparencia, acceso a la información pública y buen gobierno",
   "audience": {

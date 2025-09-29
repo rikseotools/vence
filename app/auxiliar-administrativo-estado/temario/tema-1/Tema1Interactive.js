@@ -663,11 +663,11 @@ export default function Tema1Interactive() {
         <h1>🏛️ TEMA 1: LA CONSTITUCIÓN ESPAÑOLA DE 1978</h1>
         <p style="text-align: center; color: #6b7280; margin-bottom: 40px;">
           Base fundamental del ordenamiento jurídico español<br>
-          Material oficial actualizado 2025 - ilovetest.pro
+          Material oficial actualizado 2025 - vence.es
         </p>
         ${allContent}
         <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-          <p>© ilovetest.pro - Preparación Inteligente para Oposiciones</p>
+          <p>© vence.es - Preparación Inteligente para Oposiciones</p>
           <p>Tema 1: La Constitución Española de 1978 - Auxiliar Administrativo del Estado</p>
         </div>
       </body>

@@ -5,7 +5,7 @@ import Tema3Interactive from './Tema3Interactive'
 
 // Metadata para SEO
 export const metadata = {
-  title: 'Tema 3: Las Cortes Generales - Auxiliar Administrativo Estado | ILoveTest',
+  title: 'Tema 3: Las Cortes Generales - Auxiliar Administrativo Estado | Vence',
   description: 'Tema 3 completo sobre Las Cortes Generales: composición del Congreso y Senado, atribuciones, funcionamiento y el Defensor del Pueblo. Temario oficial Auxiliar Administrativo del Estado.',
   keywords: [
     'Cortes Generales',

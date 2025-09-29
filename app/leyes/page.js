@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import Link from 'next/link'
 import LeyesServerComponent from '@/components/LeyesServerComponent' 
 
-const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
+const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 // 🚀 ISR: CACHE DE 30 DÍAS - Un usuario regenera para todos
 export const revalidate = 2592000 // 30 días

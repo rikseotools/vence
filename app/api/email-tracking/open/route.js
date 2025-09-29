@@ -22,7 +22,7 @@ export async function GET(request) {
         user_id: userId,
         event_type: 'opened',
         email_type: type,
-        email_address: 'tracking@ilovetest.pro', // Email placeholder para tracking
+        email_address: 'tracking@vence.es', // Email placeholder para tracking
         subject: 'Email Tracking - Opened',
         template_id: 'tracking_open',
         email_content_preview: 'Email opened tracking event',

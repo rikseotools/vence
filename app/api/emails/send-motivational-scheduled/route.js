@@ -580,7 +580,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
             <!-- Header -->
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; padding: 30px 20px;">
               <h1 style="margin: 0; font-size: 24px; font-weight: bold;">${analysis.title}</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">ILoveTest - Auxiliar Administrativo</p>
+              <p style="margin: 10px 0 0 0; opacity: 0.9; font-size: 16px;">Vence - Auxiliar Administrativo</p>
             </div>
             
             <!-- Content -->
@@ -591,7 +591,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
               
               <!-- CTA Button con tracking -->
               <div style="text-align: center; margin: 35px 0;">
-                <a href="https://ilovetest.pro/api/email-tracking/click?email_id=${temporaryEmailId}&user_id=${userId}&action=main_cta&type=motivation&redirect=${encodeURIComponent('https://www.ilovetest.pro/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational')}" 
+                <a href="https://vence.es/api/email-tracking/click?email_id=${temporaryEmailId}&user_id=${userId}&action=main_cta&type=motivation&redirect=${encodeURIComponent('https://www.vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational')}" 
                    style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px;">
                   🎯 Hacer Test Ahora
                 </a>
@@ -607,12 +607,12 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
             <!-- Footer con unsubscribe -->
             <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; font-size: 12px; color: #666;">
-                <a href="https://www.ilovetest.pro/perfil" style="color: #667eea; text-decoration: none;">Gestionar preferencias</a>
+                <a href="https://www.vence.es/perfil" style="color: #667eea; text-decoration: none;">Gestionar preferencias</a>
                 •
                 <a href="${generateUnsubscribeUrl(email)}" style="color: #ef4444; text-decoration: none;">Cancelar suscripción</a>
               </p>
               <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">
-                © 2025 ILoveTest. Te ayudamos a conseguir tu plaza.
+                © 2025 Vence. Te ayudamos a conseguir tu plaza.
               </p>
               <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">
                 Si no quieres recibir más alertas y noticias por email sobre tu oposición, 
@@ -624,7 +624,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
           </div>
           
           <!-- Pixel de tracking para apertura -->
-          <img src="https://ilovetest.pro/api/email-tracking/open?email_id=${temporaryEmailId}&user_id=${userId}&type=motivation" 
+          <img src="https://vence.es/api/email-tracking/open?email_id=${temporaryEmailId}&user_id=${userId}&type=motivation" 
                width="1" height="1" style="display: none;" alt="">
         </body>
       </html>
@@ -632,7 +632,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
 
     // Enviar email con Resend
     const { data, error } = await resend.emails.send({
-      from: 'ILoveTest <noticias@ilovetest.pro>',
+      from: 'Vence <noticias@vence.es>',
       to: [email],
       subject: analysis.subject,
       html: htmlContent,

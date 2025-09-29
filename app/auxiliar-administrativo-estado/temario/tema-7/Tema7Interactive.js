@@ -212,11 +212,11 @@ export default function Tema7Interactive() {
         <h1>📚 TEMA 7: LEY 19/2013 DE TRANSPARENCIA</h1>
         <p style="text-align: center; color: #6b7280; margin-bottom: 40px;">
           Acceso a la información pública y buen gobierno<br>
-          Material oficial actualizado 2025 - ilovetest.pro
+          Material oficial actualizado 2025 - vence.es
         </p>
         ${allContent}
         <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-          <p>© ilovetest.pro - Preparación Inteligente para Oposiciones</p>
+          <p>© vence.es - Preparación Inteligente para Oposiciones</p>
           <p>Tema 7: Ley 19/2013 de Transparencia - Auxiliar Administrativo del Estado</p>
         </div>
       </body>

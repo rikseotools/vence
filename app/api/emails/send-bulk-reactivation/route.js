@@ -71,7 +71,7 @@ export async function POST(request) {
               event_type: 'sent',
               email_type: 'reactivation',
               email_address: user.email,
-              subject: '🚀 ¡Hemos mejorado mucho! Nuevos 16 temas completos - ILoveTest',
+              subject: '🚀 ¡Hemos mejorado mucho! Nuevos 16 temas completos - Vence',
               template_id: 'reactivation_v1',
               email_content_preview: 'Email de reactivación con nuevas funcionalidades y motivación',
               created_at: new Date().toISOString()

@@ -63,7 +63,7 @@ async function testMotivationalEmailFallback() {
         },
         body: JSON.stringify({
           userEmail: TEST_USER_EMAIL,
-          userName: 'Test User (ILoveTest)',
+          userName: 'Test User (Vence)',
           messageType: notification.type,
           title: notification.title,
           body: notification.body,
