@@ -24,6 +24,19 @@ jobs:
           echo "🚀 Iniciando envío de emails motivacionales..."
           echo "⏰ Timestamp: $(date)"
           
+          # DEBUG: Primero probar endpoint de debug
+          echo "🔍 Testing auth with debug endpoint..."
+          debug_response=$(curl -L -s -w "\n%{http_code}" -X POST \
+            https://vence.es/api/debug/cron-auth \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          debug_code=$(echo "$debug_response" | tail -n1)
+          debug_body=$(echo "$debug_response" | head -n -1)
+          
+          echo "🔍 Debug Status: $debug_code"
+          echo "🔍 Debug Response: $debug_body"
+          
           # Llamar al endpoint de emails motivacionales
           response=$(curl -L -s -w "\n%{http_code}" -X POST \
             https://vence.es/api/emails/send-motivational-scheduled \
