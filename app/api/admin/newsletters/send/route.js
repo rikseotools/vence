@@ -4,7 +4,13 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 )
 
 export async function POST(request) {
@@ -169,19 +175,27 @@ export async function POST(request) {
             
             // Registrar en analytics si no es modo test
             if (!testMode) {
-              await supabase.from('email_events').insert({
-                user_id: user.id,
-                email_id: result.id,
-                event_type: 'sent',
-                email_type: 'newsletter',
-                email_address: user.email,
-                subject: subject,
-                template_id: 'newsletter',
-                metadata: {
-                  audience_type: audienceType,
-                  from_name: fromName
+              try {
+                console.log(`📊 Guardando evento para ${user.email}...`)
+                const { data: eventData, error: eventError } = await supabase.from('email_events').insert({
+                  user_id: user.id,
+                  event_type: 'sent',
+                  email_type: 'newsletter',
+                  email_address: user.email,
+                  subject: subject,
+                  template_id: 'newsletter',
+                  campaign_id: `newsletter_${Date.now()}`,
+                  email_content_preview: htmlContent.substring(0, 200)
+                })
+                
+                if (eventError) {
+                  console.error(`❌ Error guardando evento para ${user.email}:`, eventError)
+                } else {
+                  console.log(`✅ Evento guardado para ${user.email}`)
                 }
-              })
+              } catch (eventErr) {
+                console.error(`❌ Excepción guardando evento para ${user.email}:`, eventErr)
+              }
             }
           } else if (response.status === 429) {
             // Rate limit - esperar más tiempo y reintentar

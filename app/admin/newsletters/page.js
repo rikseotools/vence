@@ -2,6 +2,12 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
 
 export default function NewslettersPage() {
   const { user } = useAuth()
@@ -13,7 +19,7 @@ export default function NewslettersPage() {
   const [subject, setSubject] = useState('')
   const [htmlContent, setHtmlContent] = useState('')
   const [selectedAudiences, setSelectedAudiences] = useState(['all'])
-  const [testMode, setTestMode] = useState(true)
+  const [testMode, setTestMode] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   
   // User selection state
@@ -103,6 +109,73 @@ export default function NewslettersPage() {
     setSelectedUsers(new Set())
   }
 
+  const retryFailedEmails = async () => {
+    if (!result || !result.errors || result.errors.length === 0) return
+
+    const failedEmails = result.errors.map(error => error.email)
+    console.log('🔄 Reintentando emails fallidos:', failedEmails)
+
+    const confirmMessage = `¿Reintentar envío a ${failedEmails.length} usuarios que fallaron?`
+    if (!confirm(confirmMessage)) return
+
+    setLoading(true)
+
+    try {
+      // Buscar los IDs de usuarios por email
+      const { data: failedUsers } = await supabase
+        .from('user_profiles')
+        .select('id, email, full_name')
+        .in('email', failedEmails)
+        .not('email', 'is', null)
+
+      if (!failedUsers || failedUsers.length === 0) {
+        alert('No se encontraron usuarios para reenviar')
+        return
+      }
+
+      // Enviar usando el endpoint con usuarios específicos
+      const response = await fetch('/api/admin/newsletters/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          subject,
+          htmlContent,
+          selectedUserIds: failedUsers.map(u => u.id),
+          audienceType: 'retry',
+          testMode: false
+        })
+      })
+
+      const retryResult = await response.json()
+      
+      // Actualizar el resultado combinando con el anterior
+      const updatedResult = {
+        ...result,
+        total: result.total,
+        sent: result.sent + (retryResult.sent || 0),
+        failed: retryResult.failed || 0,
+        errors: retryResult.errors || [],
+        retryAttempted: true,
+        lastRetryResult: retryResult
+      }
+
+      setResult(updatedResult)
+
+      if (retryResult.success) {
+        alert(`✅ Reintento exitoso: ${retryResult.sent} emails enviados, ${retryResult.failed} fallaron`)
+      } else {
+        alert(`⚠️ Reintento parcial: ${retryResult.sent || 0} enviados, ${retryResult.failed || 0} siguen fallando`)
+      }
+
+    } catch (error) {
+      console.error('Error en reintento:', error)
+      alert('Error al reintentar envío')
+    }
+    setLoading(false)
+  }
+
   const toggleAudience = (audienceValue) => {
     setSelectedAudiences(prev => {
       if (prev.includes(audienceValue)) {
@@ -151,16 +224,12 @@ export default function NewslettersPage() {
     
     let confirmMessage
     if (selectionMode === 'individual') {
-      confirmMessage = testMode 
-        ? `¿Enviar newsletter de PRUEBA a máximo 3 usuarios seleccionados?\n\nTotal: ${totalRecipients} usuarios`
-        : `¿Enviar newsletter a ${totalRecipients} usuarios seleccionados?`
+      confirmMessage = `¿Enviar newsletter a ${totalRecipients} usuarios seleccionados?`
     } else {
       const audienceNames = selectedAudiences.map(aud => 
         audienceOptions.find(opt => opt.value === aud)?.label
       ).join(', ')
-      confirmMessage = testMode 
-        ? `¿Enviar newsletter de PRUEBA a máximo 3 usuarios por audiencia?\n\nAudiencias: ${audienceNames}`
-        : `¿Enviar newsletter a ${totalRecipients.toLocaleString()} usuarios?\n\nAudiencias: ${audienceNames}`
+      confirmMessage = `¿Enviar newsletter a ${totalRecipients.toLocaleString()} usuarios?\n\nAudiencias: ${audienceNames}`
     }
 
     if (!confirm(confirmMessage)) return
@@ -303,23 +372,6 @@ export default function NewslettersPage() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow p-6">
               
-              {/* Test Mode Toggle */}
-              <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={testMode}
-                    onChange={(e) => setTestMode(e.target.checked)}
-                    className="mr-3"
-                  />
-                  <span className="font-medium text-yellow-800">
-                    🧪 Modo prueba (máximo 3 emails)
-                  </span>
-                </label>
-                <p className="text-sm text-yellow-700 mt-1">
-                  Recomendado: prueba siempre antes del envío real
-                </p>
-              </div>
 
               {/* Subject */}
               <div className="mb-6">
@@ -643,19 +695,30 @@ export default function NewslettersPage() {
                   (selectionMode === 'audience' && selectedAudiences.length === 0) ||
                   (selectionMode === 'individual' && selectedUsers.size === 0)
                     ? 'bg-gray-400 cursor-not-allowed'
-                    : testMode
-                    ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
                 }`}
               >
                 {loading ? (
                   '⏳ Enviando...'
-                ) : testMode ? (
-                  '🧪 Enviar Prueba'
                 ) : (
                   `📧 Enviar a ${getTotalRecipients().toLocaleString()} usuarios`
                 )}
               </button>
+
+              {/* Retry Failed Button - Solo aparece si hay errores */}
+              {result && result.errors && result.errors.length > 0 && (
+                <button
+                  onClick={retryFailedEmails}
+                  disabled={loading}
+                  className="w-full mt-3 py-3 px-6 rounded-lg font-medium bg-orange-600 hover:bg-orange-700 text-white transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    '⏳ Reenviando...'
+                  ) : (
+                    `🔄 Reintentar ${result.errors.length} emails fallidos`
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
@@ -683,21 +746,33 @@ export default function NewslettersPage() {
                     <div className="text-sm">
                       <span className="font-medium">Audiencias:</span> {result.audiences?.map(a => a.audienceName).join(', ')}
                     </div>
-                    {result.testMode && (
-                      <div className="text-sm text-yellow-600 font-medium">
-                        🧪 Modo prueba activo
+                    
+                    {result.retryAttempted && result.lastRetryResult && (
+                      <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded">
+                        <h5 className="text-sm font-medium text-orange-800 mb-1">🔄 Último reintento:</h5>
+                        <div className="text-xs space-y-1 text-orange-700">
+                          <div>Enviados: +{result.lastRetryResult.sent || 0}</div>
+                          <div>Fallos: {result.lastRetryResult.failed || 0}</div>
+                        </div>
                       </div>
                     )}
                     
                     {result.errors?.length > 0 && (
                       <div className="mt-4">
-                        <h4 className="font-medium text-red-600 mb-2">Errores:</h4>
-                        <div className="text-xs space-y-1">
-                          {result.errors.map((error, i) => (
+                        <h4 className="font-medium text-red-600 mb-2">
+                          Errores restantes ({result.errors.length}):
+                        </h4>
+                        <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                          {result.errors.slice(0, 10).map((error, i) => (
                             <div key={i} className="text-red-600">
                               {error.email}: {error.error}
                             </div>
                           ))}
+                          {result.errors.length > 10 && (
+                            <div className="text-red-500 font-medium">
+                              ... y {result.errors.length - 10} más
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
