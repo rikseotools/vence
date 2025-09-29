@@ -614,12 +614,6 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
               <p style="margin: 5px 0 0 0; font-size: 12px; color: #999;">
                 © 2025 Vence. Te ayudamos a conseguir tu plaza.
               </p>
-              <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">
-                Si no quieres recibir más alertas y noticias por email sobre tu oposición, 
-                <a href="${generateUnsubscribeUrl(email)}" style="color: #ef4444; text-decoration: underline;">
-                  haz clic aquí para darte de baja
-                </a>
-              </p>
             </div>
           </div>
           

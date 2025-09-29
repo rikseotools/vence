@@ -242,12 +242,6 @@ function generateMotivationalEmailHTML({ userName, messageType, title, body, pri
                 Cancelar suscripción
               </a>
             </p>
-            <p style="color: #9ca3af; font-size: 11px; margin: 5px 0 0 0;">
-              Si no quieres recibir más alertas y noticias por email sobre tu oposición, 
-              <a href="${generateUnsubscribeUrl(userEmail)}" style="color: #ef4444; text-decoration: underline;">
-                haz clic aquí para darte de baja
-              </a>
-            </p>
           </div>
         </div>
       </div>
