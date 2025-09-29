@@ -1,79 +1,72 @@
 name: 📧 Motivational Emails Scheduler
-on:
-  schedule:
-    # Ejecutar cada 6 horas (0:00, 6:00, 12:00, 18:00 UTC)
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
-    # Permite ejecutar manualmente desde GitHub
-    inputs:
-      reason:
-        description: 'Razón para ejecutar manualmente'
-        required: false
-        default: 'Manual trigger'
+  on:
+    schedule:
+      # Ejecutar cada 6 horas (0:00, 6:00, 12:00, 18:00 UTC)
+      - cron: '0 */6 * * *'
+    workflow_dispatch:
+      # Permite ejecutar manualmente desde GitHub
+      inputs:
+        reason:
+          description: 'Razón para ejecutar manualmente'
+          required: false
+          default: 'Manual trigger'
 
-jobs:
-  send-motivational-emails:
-    runs-on: ubuntu-latest
-    name: 📧 Enviar emails motivacionales
-    
-    steps:
-      - name: 📧 Send motivational emails
-        env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          echo "🚀 Iniciando envío de emails motivacionales..."
-          echo "⏰ Timestamp: $(date)"
-          
-          # DEBUG: Verificar que el secreto existe y no está vacío
-          echo "🔍 CRON_SECRET length: ${#CRON_SECRET}"
-          if [ -z "$CRON_SECRET" ]; then
-            echo "❌ CRON_SECRET está vacío o no existe en GitHub Actions"
-          else
-            echo "✅ CRON_SECRET existe y tiene contenido"
-          fi
-          
-          # DEBUG: Crear header de autorización manualmente
-          AUTH_HEADER="Bearer $CRON_SECRET"
-          echo "🔍 Auth header length: ${#AUTH_HEADER}"
-          
-          # DEBUG: Primero probar endpoint de debug
-          echo "🔍 Testing auth with debug endpoint..."
-          debug_response=$(curl -L -s -w "\n%{http_code}" -X POST \
-            https://vence.es/api/debug/cron-auth \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json")
-          
-          debug_code=$(echo "$debug_response" | tail -n1)
-          debug_body=$(echo "$debug_response" | head -n -1)
-          
-          echo "🔍 Debug Status: $debug_code"
-          echo "🔍 Debug Response: $debug_body"
-          
-          # Llamar al endpoint de emails motivacionales
-          response=$(curl -L -s -w "\n%{http_code}" -X POST \
-            https://vence.es/api/emails/send-motivational-scheduled \
-            -H "Authorization: Bearer $CRON_SECRET" \
-            -H "Content-Type: application/json")
-          
-          # Separar body y status code
-          http_code=$(echo "$response" | tail -n1)
-          response_body=$(echo "$response" | head -n -1)
-          
-          echo "📊 HTTP Status: $http_code"
-          echo "📄 Response: $response_body"
-          
-          # Verificar si fue exitoso
-          if [ $http_code -eq 200 ]; then
-            echo "✅ Emails motivacionales enviados exitosamente"
-          else
-            echo "❌ Error enviando emails motivacionales"
-            exit 1
-          fi
-      
-      - name: 📊 Log execution details
-        if: always()
-        run: |
-          echo "🏷️ Workflow triggered by: ${{ github.event_name }}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "📝 Manual trigger reason: ${{ github.event.inputs.reason }}"
-          fi
+  jobs:
+    send-motivational-emails:
+      runs-on: ubuntu-latest
+      name: 📧 Enviar emails motivacionales
+
+      steps:
+        - name: 📧 Send motivational emails
+          env:
+            CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          run: |
+            echo "🚀 Iniciando envío de emails motivacionales..."
+            echo "⏰ Timestamp: $(date)"
+
+            # Verificar que el secreto existe
+            if [ -z "$CRON_SECRET" ]; then
+              echo "❌ CRON_SECRET está vacío o no existe"
+              exit 1
+            fi
+            echo "✅ CRON_SECRET configurado (${#CRON_SECRET} chars)"
+
+            # Test directo con verbose para debug
+            echo "🔍 Testing debug endpoint with verbose output..."
+            curl -X POST \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Content-Type: application/json" \
+              -v \
+              https://vence.es/api/debug/cron-auth
+
+            echo ""
+            echo "🚀 Calling main endpoint..."
+            response=$(curl -X POST \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Content-Type: application/json" \
+              -w "\n%{http_code}" \
+              -s \
+              https://vence.es/api/emails/send-motivational-scheduled)
+
+            # Separar body y status code
+            http_code=$(echo "$response" | tail -n1)
+            response_body=$(echo "$response" | head -n -1)
+
+            echo "📊 HTTP Status: $http_code"
+            echo "📄 Response: $response_body"
+
+            # Verificar si fue exitoso
+            if [ $http_code -eq 200 ]; then
+              echo "✅ Emails motivacionales enviados exitosamente"
+            else
+              echo "❌ Error enviando emails motivacionales"
+              exit 1
+            fi
+
+        - name: 📊 Log execution details
+          if: always()
+          run: |
+            echo "🏷️ Workflow triggered by: ${{ github.event_name }}"
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              echo "📝 Manual trigger reason: ${{ github.event.inputs.reason }}"
+            fi
