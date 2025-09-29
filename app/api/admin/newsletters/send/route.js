@@ -129,8 +129,8 @@ export async function POST(request) {
       const user = users[i]
       
       try {
-        // Rate limiting: máximo 10 emails por segundo (Resend limit)
-        if (i > 0 && i % 10 === 0) {
+        // Rate limiting: máximo 1 email por segundo (conservador para Resend)
+        if (i > 0) {
           console.log('⏸️ Pausa de 1 segundo para rate limiting...')
           await new Promise(resolve => setTimeout(resolve, 1000))
         }
@@ -141,48 +141,71 @@ export async function POST(request) {
           user.full_name || user.email.split('@')[0]
         )
 
-        // Enviar con Resend
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            from: `${fromName} <${fromEmail}>`,
-            to: [user.email],
-            subject: subject,
-            html: personalizedHtml
-          })
-        })
-
-        const result = await response.json()
-
-        if (response.ok) {
-          sent++
-          
-          // Registrar en analytics si no es modo test
-          if (!testMode) {
-            await supabase.from('email_events').insert({
-              user_id: user.id,
-              email_id: result.id,
-              event_type: 'sent',
-              email_type: 'newsletter',
-              email_address: user.email,
+        // Enviar con Resend con retry en caso de rate limiting
+        let retries = 0
+        const maxRetries = 3
+        let success = false
+        
+        while (!success && retries < maxRetries) {
+          const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              from: `${fromName} <${fromEmail}>`,
+              to: [user.email],
               subject: subject,
-              template_id: 'newsletter',
-              metadata: {
-                audience_type: audienceType,
-                from_name: fromName
-              }
+              html: personalizedHtml
             })
-          }
-        } else {
-          failed++
-          errors.push({
-            email: user.email,
-            error: result.message || 'Error desconocido'
           })
+
+          const result = await response.json()
+
+          if (response.ok) {
+            sent++
+            success = true
+            
+            // Registrar en analytics si no es modo test
+            if (!testMode) {
+              await supabase.from('email_events').insert({
+                user_id: user.id,
+                email_id: result.id,
+                event_type: 'sent',
+                email_type: 'newsletter',
+                email_address: user.email,
+                subject: subject,
+                template_id: 'newsletter',
+                metadata: {
+                  audience_type: audienceType,
+                  from_name: fromName
+                }
+              })
+            }
+          } else if (response.status === 429) {
+            // Rate limit - esperar más tiempo y reintentar
+            retries++
+            console.log(`⏳ Rate limit hit for ${user.email}, retry ${retries}/${maxRetries}`)
+            
+            if (retries < maxRetries) {
+              await new Promise(resolve => setTimeout(resolve, 3000)) // 3 segundos
+            } else {
+              failed++
+              errors.push({
+                email: user.email,
+                error: `Rate limit excedido después de ${maxRetries} intentos`
+              })
+            }
+          } else {
+            // Otro error - no reintentar
+            failed++
+            errors.push({
+              email: user.email,
+              error: result.message || 'Error desconocido'
+            })
+            break
+          }
         }
 
       } catch (error) {
