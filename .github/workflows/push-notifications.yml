@@ -26,7 +26,7 @@ jobs:
           
           # Llamar al endpoint de notificaciones
           response=$(curl -s -w "\n%{http_code}" -X POST \
-            https://www.ilovetest.pro/api/notifications/send-scheduled \
+            https://vence.es/api/notifications/send-scheduled \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json")
           
