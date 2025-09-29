@@ -1,13 +1,19 @@
 // app/premium-ads-2/page.js - VERSIÓN HONESTA SIN EXAGERACIONES
 'use client'
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const runtime = 'edge'
 
-export default function PremiumAdsLanding() {
+const DynamicPremiumAdsContent = dynamic(() => Promise.resolve(PremiumAdsContent), {
+  ssr: false,
+  loading: () => <div>Cargando...</div>
+})
+
+function PremiumAdsContent() {
+  const { useState, useEffect } = require('react')
+  const { useAuth } = require('@/contexts/AuthContext')
+  const { useSearchParams } = require('next/navigation')
+  
   const { user, supabase, userProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -109,4 +115,8 @@ export default function PremiumAdsLanding() {
 
   // Show content...
   return <div>Landing page content here...</div>
+}
+
+export default function PremiumAdsLanding() {
+  return <DynamicPremiumAdsContent />
 }

@@ -28,11 +28,7 @@ export default function Tema7Interactive() {
     setShowMobileMenu(false)
   }
 
-  // Obtener orden de las secciones
-  const sectionOrder = Object.keys(sections)
-  const currentIndex = sectionOrder.indexOf(activeSection)
-  const previousSection = currentIndex > 0 ? sectionOrder[currentIndex - 1] : null
-  const nextSection = currentIndex < sectionOrder.length - 1 ? sectionOrder[currentIndex + 1] : null
+  // ESTAS LÍNEAS SE MOVIERON DESPUÉS DE LA DECLARACIÓN DE SECTIONS
 
   // Función para imprimir todo el contenido
   const handlePrint = () => {
@@ -530,6 +526,9 @@ export default function Tema7Interactive() {
       )
     }
   }
+
+  // Orden de las secciones
+  const sectionOrder = Object.keys(sections)
 
   return (
     <>
