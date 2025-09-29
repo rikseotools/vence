@@ -17,10 +17,24 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          echo "🚀 Starting..."
-          echo "Secret length: ${#CRON_SECRET}"
-          curl -X POST \
+          echo "🚀 Starting email workflow..."
+          echo "Secret configured: ${#CRON_SECRET} chars"
+          
+          echo "📧 Sending motivational emails..."
+          response=$(curl -L -s -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -H "Content-Type: application/json" \
-            -v \
-            https://vence.es/api/debug/cron-auth
+            https://vence.es/api/emails/send-motivational-scheduled)
+          
+          http_code=$(echo "$response" | tail -n1)
+          response_body=$(echo "$response" | head -n -1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $response_body"
+          
+          if [ $http_code -eq 200 ]; then
+            echo "✅ Emails enviados exitosamente"
+          else
+            echo "❌ Error enviando emails"
+            exit 1
+          fi
