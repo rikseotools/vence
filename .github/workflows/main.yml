@@ -1,0 +1,25 @@
+on:
+    schedule:
+      - cron: '0 */6 * * *'
+    workflow_dispatch:
+      inputs:
+        reason:
+          description: 'Test reason'
+          required: false
+          default: 'Manual trigger'
+
+  jobs:
+    send-emails:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Send emails
+          env:
+            CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          run: |
+            echo "🚀 Starting..."
+            echo "Secret length: ${#CRON_SECRET}"
+            curl -X POST \
+              -H "Authorization: Bearer ${CRON_SECRET}" \
+              -H "Content-Type: application/json" \
+              -v \
+              https://vence.es/api/debug/cron-auth
