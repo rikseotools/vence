@@ -13,23 +13,20 @@ Disallow: /_next/
 Disallow: /auth/
 
 # Páginas de usuario privadas
-Disallow: /es/login
-Disallow: /es/register
-Disallow: /es/perfil
-Disallow: /es/mis-estadisticas
-Disallow: /es/mis-impugnaciones
-Disallow: /es/notificaciones
-Disallow: /es/configuracion
+Disallow: /login
+Disallow: /register
+Disallow: /perfil
+Disallow: /mis-estadisticas
+Disallow: /mis-impugnaciones
+Disallow: /notificaciones
+Disallow: /configuracion
 
 # Páginas legales (no aportan SEO)
-Disallow: /es/privacidad
-Disallow: /es/terminos
-Disallow: /es/cookies
-Disallow: /es/aviso-legal
-Disallow: /es/politica-privacidad
-Disallow: /*/privacidad
-Disallow: /*/terminos
-Disallow: /*/cookies
+Disallow: /privacidad
+Disallow: /terminos
+Disallow: /cookies
+Disallow: /aviso-legal
+Disallow: /politica-privacidad
 
 # Tests dinámicos (contenido duplicado)
 Disallow: /*/test-rapido
@@ -38,11 +35,11 @@ Disallow: /*/test-personalizado
 Disallow: /*/oficial
 
 # URLs de notificaciones push (no indexables)
-Disallow: /es/test/mantener-racha
-Disallow: /es/test/explorar
-Disallow: /es/test/desafio
-Disallow: /es/test/recuperar-racha
-Disallow: /es/test/*/articulos-dirigido
+Disallow: /test/mantener-racha
+Disallow: /test/explorar
+Disallow: /test/desafio
+Disallow: /test/recuperar-racha
+Disallow: /test/*/articulos-dirigido
 
 # URLs con parámetros (evita contenido duplicado)
 Disallow: /*?*

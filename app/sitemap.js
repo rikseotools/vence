@@ -14,12 +14,6 @@ export default async function sitemap() {
       changeFrequency: 'weekly',
       priority: 1.0,
     },
-    {
-      url: `${SITE_URL}/es`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
-    },
     
     // Auxiliar Administrativo - SOLO páginas principales
     {
