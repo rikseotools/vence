@@ -1,32 +1,23 @@
 // app/premium-edu/page.js - LANDING EDUCATIVA ORIENTADA A PAGO
 'use client'
-import dynamic from 'next/dynamic'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
-export const runtime = 'edge'
-
-const DynamicPremiumEduContent = dynamic(() => Promise.resolve(PremiumEducationalContent), {
-  ssr: false,
-  loading: () => <div>Cargando...</div>
-})
+export const dynamic = 'force-dynamic'
 
 function PremiumEducationalContent() {
-  const { useState, useEffect } = require('react')
-  const { useAuth } = require('@/contexts/AuthContext')
-  const { useSearchParams } = require('next/navigation')
-  
   const { user, supabase, userProfile } = useAuth()
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('features')
-  const searchParams = useSearchParams()
-  const campaignId = searchParams.get('campaign') || 'ads-educational'
+  
+  const campaignId = 'ads-educational'
 
-  useEffect(() => {
-    if (user && userProfile && !loading && searchParams.get('start_checkout') === 'true') {
+  /*useEffect(() => {
+    if (user && userProfile && !loading) {
       handleCheckout()
     }
-  }, [user, userProfile, loading])
+  }, [user, userProfile, loading])*/
 
   const handleStartTrial = async () => {
     setLoading(true)
@@ -575,5 +566,5 @@ function PremiumEducationalContent() {
 }
 
 export default function PremiumEducationalLanding() {
-  return <DynamicPremiumEduContent />
+  return <PremiumEducationalContent />
 }

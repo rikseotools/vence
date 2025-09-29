@@ -1,34 +1,27 @@
 // app/premium-ads-2/page.js - VERSIÓN HONESTA SIN EXAGERACIONES
 'use client'
-import dynamic from 'next/dynamic'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
-export const runtime = 'edge'
-
-const DynamicPremiumAdsContent = dynamic(() => Promise.resolve(PremiumAdsContent), {
-  ssr: false,
-  loading: () => <div>Cargando...</div>
-})
+export const dynamic = 'force-dynamic'
 
 function PremiumAdsContent() {
-  const { useState, useEffect } = require('react')
-  const { useAuth } = require('@/contexts/AuthContext')
-  const { useSearchParams } = require('next/navigation')
-  
   const { user, supabase, userProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [checkoutInitiated, setCheckoutInitiated] = useState(false)
-  const searchParams = useSearchParams()
-  const campaignId = searchParams.get('campaign') || 'ads-aggressive'
+  
+  const campaignId = 'ads-aggressive'
 
-  // Auto-iniciar checkout solo cuando el usuario Y su perfil estén listos
-  useEffect(() => {
-    if (user && userProfile && !loading && !checkoutInitiated && searchParams.get('start_checkout') === 'true') {
-      console.log('🚀 Iniciando checkout automático para usuario con perfil completo')
-      setCheckoutInitiated(true)
-      handleCheckout()
-    }
-  }, [user, userProfile, loading, checkoutInitiated])
+  // Auto-iniciar checkout solo cuando el usuario Y su perfil estén listos  
+  // Note: Removed auto-checkout for build stability
+  // useEffect(() => {
+  //   if (user && userProfile && !loading && !checkoutInitiated) {
+  //     console.log('🚀 Iniciando checkout automático para usuario con perfil completo')
+  //     setCheckoutInitiated(true)
+  //     handleCheckout()
+  //   }
+  // }, [user, userProfile, loading, checkoutInitiated])
 
   const handleStartTrial = async () => {
     setLoading(true)
@@ -118,5 +111,5 @@ function PremiumAdsContent() {
 }
 
 export default function PremiumAdsLanding() {
-  return <DynamicPremiumAdsContent />
+  return <PremiumAdsContent />
 }
