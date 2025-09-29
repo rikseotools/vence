@@ -29,10 +29,11 @@ jobs:
           echo "Headers file content:"
           cat /tmp/headers.txt
           
-          response=$(curl -L -s -w "\n%{http_code}" \
+          response=$(curl -s -w "\n%{http_code}" \
             --request POST \
-            --config /tmp/headers.txt \
-            https://vence.es/api/debug/cron-auth)
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            --header "Content-Type: application/json" \
+            https://www.vence.es/api/debug/cron-auth)
           
           http_code=$(echo "$response" | tail -n1)
           response_body=$(echo "$response" | head -n -1)
