@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import AvatarChanger from '../../../components/AvatarChanger'
-import { useAuth } from '../../../contexts/AuthContext'
-import { useUserOposicion } from '../../../components/useUserOposicion'
-import notificationTracker from '../../../lib/services/notificationTracker'
+import AvatarChanger from '@/components/AvatarChanger'
+import { useAuth } from '@/contexts/AuthContext'
+import { useUserOposicion } from '@/components/useUserOposicion'
+import notificationTracker from '@/lib/services/notificationTracker'
 
 export default function PerfilPage() {
   const { user, loading: authLoading, supabase } = useAuth()

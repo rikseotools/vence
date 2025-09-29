@@ -1,7 +1,7 @@
 // app/admin/notificaciones/push/usuarios/page.js - USUARIOS ACTIVOS DE PUSH
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 
 export default function PushUsersPage() {

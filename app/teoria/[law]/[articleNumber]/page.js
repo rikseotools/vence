@@ -1,6 +1,6 @@
 // app/teoria/[law]/[articleNumber]/page.js - SOLUCIÓN SIMPLE PARA NEXT.JS 15
 
-import { fetchArticleContent, fetchRelatedArticles, fetchLawArticles } from '../../../../lib/teoriaFetchers'
+import { fetchArticleContent, fetchRelatedArticles, fetchLawArticles } from '@/lib/teoriaFetchers'
 import Link from 'next/link'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { Suspense } from 'react'

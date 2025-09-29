@@ -1,5 +1,5 @@
 // app/test/rapido/page.js
-import TestPageWrapper from '../../../../components/TestPageWrapper'
+import TestPageWrapper from '@/components/TestPageWrapper'
 
 export default function TestRapidoPage() {
   return (

@@ -1,8 +1,8 @@
 // app/leyes/[law]/test-rapido/page.js - NO INDEXABLE (Solo página principal se indexa)
 import { Suspense } from 'react'
 import Head from 'next/head'
-import LawTestPageWrapper from '../../../../../components/LawTestPageWrapper'
-import { mapLawSlugToShortName, getLawInfo } from '../../../../lib/lawMappingUtils'
+import LawTestPageWrapper from '@/components/LawTestPageWrapper'
+import { mapLawSlugToShortName, getLawInfo } from '@/lib/lawMappingUtils'
 
 // ❌ NO METADATA - Esta página NO se debe indexar
 // Solo la página principal /leyes/[law]/ debe aparecer en buscadores

@@ -1,6 +1,6 @@
 // app/api/email/track-open/route.js - API PARA TRACKING DE APERTURA DE EMAILS
 import { NextResponse } from 'next/server'
-import { getSupabaseClient } from '../../../lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 
 const supabase = getSupabaseClient()
 

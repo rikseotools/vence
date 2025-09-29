@@ -1,7 +1,7 @@
 // app/admin/notificaciones/email/subscripciones/page.js - Página detallada de subscripciones de email
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 

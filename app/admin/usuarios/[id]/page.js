@@ -1,7 +1,7 @@
 // app/admin/usuarios/[id]/page.js - Vista detallada de usuario individual con emails (sin envío manual)
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 

@@ -1,8 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useAuth } from '../../../contexts/AuthContext'
-import { useTopicUnlock } from '../../../../../hooks/useTopicUnlock'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTopicUnlock } from '@/hooks/useTopicUnlock'
 
 export default function Tema6Interactive() {
   const { user } = useAuth()

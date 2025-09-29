@@ -2,7 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useOposicion } from '../../../contexts/OposicionContext'
+import { useOposicion } from '@/contexts/OposicionContext'
 
 export default function OposicionesPage() {
   const { setOposicionActual, oposicionMenu, hasOposicion } = useOposicion()

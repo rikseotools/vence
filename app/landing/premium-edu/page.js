@@ -1,7 +1,7 @@
 // app/premium-edu/page.js - LANDING EDUCATIVA ORIENTADA A PAGO
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 
 export default function PremiumEducationalLanding() {

@@ -1,7 +1,7 @@
 // app/premium-ads/page.js - VERSIÓN HONESTA SIN EXAGERACIONES
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 
 export default function PremiumAdsLanding() {

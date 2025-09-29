@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { detectUnmotivatedUsers } from '../../../lib/emails/emailService.server'
+import { detectUnmotivatedUsers } from '@/lib/emails/emailService.server'
 
 export async function GET() {
   try {

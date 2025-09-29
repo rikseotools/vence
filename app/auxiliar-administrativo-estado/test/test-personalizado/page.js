@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import TestPageWrapper from '../../../../../components/TestPageWrapper'
+import TestPageWrapper from '@/components/TestPageWrapper'
 
 function TestPersonalizadoAleatorioContent() {
   const searchParams = useSearchParams()

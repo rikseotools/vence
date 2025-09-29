@@ -1,5 +1,5 @@
 // app/test/[law]/articulos-dirigido/page.js - CORREGIDO PARA NEXT.JS 15
-import TestPageWrapper from '../../../../../components/TestPageWrapper'
+import TestPageWrapper from '@/components/TestPageWrapper'
 
 // ✅ CAMBIO 1: Hacer la función async
 export default async function TestArticulosDirigidoPage({ params, searchParams }) {

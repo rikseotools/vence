@@ -2,7 +2,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getSupabaseClient } from '../../../lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { useGoogleAds } from '../../../utils/googleAds'
 
 export default function AuthCallback() {

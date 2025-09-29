@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '../../../contexts/AuthContext'
-import { detectCampaignSource, shouldForceCheckout, forceCampaignCheckout } from '../../../lib/campaignTracker'
+import { useAuth } from '@/contexts/AuthContext'
+import { detectCampaignSource, shouldForceCheckout, forceCampaignCheckout } from '@/lib/campaignTracker'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false)

@@ -1,7 +1,7 @@
 // app/leyes/page.js - PÁGINA COMPLETA DE LEYES
 import { Suspense } from 'react'
 import Link from 'next/link'
-import LeyesServerComponent from '../../../components/LeyesServerComponent' 
+import LeyesServerComponent from '@/components/LeyesServerComponent' 
 
 const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'
 

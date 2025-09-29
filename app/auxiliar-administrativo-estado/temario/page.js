@@ -1,9 +1,9 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
-import { useTopicUnlock } from '../../../../hooks/useTopicUnlock'
-import TopicUnlockProgress from '../../../../components/TopicUnlockProgress'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTopicUnlock } from '@/hooks/useTopicUnlock'
+import TopicUnlockProgress from '@/components/TopicUnlockProgress'
 
 export default function TemarioPage() {
   const { user } = useAuth()

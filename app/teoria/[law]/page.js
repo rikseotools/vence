@@ -3,10 +3,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { fetchLawArticles, fetchMultipleArticlesOfficialExamData } from '../../../lib/teoriaFetchers'
-import { useAuth } from '../../../contexts/AuthContext'
+import { fetchLawArticles, fetchMultipleArticlesOfficialExamData } from '@/lib/teoriaFetchers'
+import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
-import ArticleModal from '../../../../components/ArticleModal'
+import ArticleModal from '@/components/ArticleModal'
 import { 
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'

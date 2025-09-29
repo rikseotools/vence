@@ -2,7 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 const DEBUG = process.env.NODE_ENV === 'development'
 

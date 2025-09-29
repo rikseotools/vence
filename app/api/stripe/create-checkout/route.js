@@ -1,6 +1,6 @@
 // app/api/stripe/create-checkout/route.js - CORREGIDO PARA SISTEMA DUAL
 import { NextResponse } from 'next/server'
-import { stripe } from '../../../lib/stripe'
+import { stripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
 
 

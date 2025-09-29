@@ -1,7 +1,7 @@
 // app/admin/usuarios/[id]/emails/page.js - Historial de emails de un usuario específico
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 

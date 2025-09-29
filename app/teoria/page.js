@@ -1,5 +1,5 @@
 // app/teoria/page.js - PÁGINA PRINCIPAL DE TEORÍA
-import { fetchLawsList } from '../../../lib/teoriaFetchers'
+import { fetchLawsList } from '@/lib/teoriaFetchers'
 import Link from 'next/link'
 import { BookOpenIcon, DocumentTextIcon, ScaleIcon } from '@heroicons/react/24/outline'
 

@@ -1,8 +1,8 @@
 // app/leyes/[law]/page.js - PÁGINA PRINCIPAL DE CADA LEY CON META CANONICAL
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug } from '../../../lib/lawMappingUtils'
-import { getLawStats } from '../../../lib/lawFetchers'
+import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug } from '@/lib/lawMappingUtils'
+import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.ilovetest.pro'

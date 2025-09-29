@@ -1,7 +1,7 @@
 // app/landing/layout.js - LAYOUT CON TRACKING AUTOMÁTICO PARA CAMPAÑAS
 'use client'
-import '../../globals.css'
-import { AuthProvider } from '../../../contexts/AuthContext'
+import '@/app/globals.css'
+import { AuthProvider } from '@/contexts/AuthContext'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 

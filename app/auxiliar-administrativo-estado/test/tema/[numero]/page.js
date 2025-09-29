@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '../../../../../lib/supabase'
-import TestConfigurator from '../../../../../components/TestConfigurator'
+import TestConfigurator from '@/components/TestConfigurator'
 
 const supabase = getSupabaseClient()
 

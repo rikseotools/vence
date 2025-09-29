@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { checkAndNotifyNewMedals } from '../../../lib/services/rankingMedals'
+import { checkAndNotifyNewMedals } from '@/lib/services/rankingMedals'
 import { generateUnsubscribeUrl } from '../../email-unsubscribe/route.js'
 
 // 🎨 TEMPLATES VARIABLES: Evitar emails repetitivos

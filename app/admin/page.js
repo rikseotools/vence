@@ -1,10 +1,10 @@
 // app/admin/page.js - Dashboard con cálculos corregidos
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
-import { useAdminNotifications } from '../../hooks/useAdminNotifications'
-import AdminNotificationBadge from '../../components/AdminNotificationBadge'
-import AdminActivityChart from '../../components/AdminActivityChart'
+import { useAuth } from '@/contexts/AuthContext'
+import { useAdminNotifications } from '@/hooks/useAdminNotifications'
+import AdminNotificationBadge from '@/components/AdminNotificationBadge'
+import AdminActivityChart from '@/components/AdminActivityChart'
 
 export default function AdminDashboard() {
   const { supabase } = useAuth()

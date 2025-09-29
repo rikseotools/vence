@@ -1,7 +1,7 @@
 // app/admin/analytics/page.js - Análisis detallado de abandono
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function AnalyticsPage() {
   const { supabase } = useAuth()

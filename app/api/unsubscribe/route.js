@@ -1,6 +1,6 @@
 // app/api/unsubscribe/route.js
 import { NextResponse } from 'next/server'
-import { processUnsubscribeByToken } from '../../../lib/emails/emailService.server'
+import { processUnsubscribeByToken } from '@/lib/emails/emailService.server'
 
 export async function POST(request) {
   try {

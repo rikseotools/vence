@@ -1,6 +1,6 @@
 // app/api/send-unlock-email/route.js - API para enviar emails de desbloqueo de temas
 import { NextResponse } from 'next/server'
-import { getSupabaseClient } from '../../../lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(

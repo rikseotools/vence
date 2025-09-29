@@ -1,7 +1,7 @@
 // app/premium/page.js - FLUJO PROFESIONAL OPCIÓN A
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 
 export default function PremiumPage() {

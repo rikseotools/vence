@@ -1,6 +1,6 @@
 // app/api/teoria/[law]/[articleNumber]/route.js
-import { fetchArticleContent, fetchArticleOfficialExamData } from '../../../../lib/teoriaFetchers'
-import { mapLawSlugToShortName } from '../../../../lib/lawMappingUtils'
+import { fetchArticleContent, fetchArticleOfficialExamData } from '@/lib/teoriaFetchers'
+import { mapLawSlugToShortName } from '@/lib/lawMappingUtils'
 import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request, { params }) {

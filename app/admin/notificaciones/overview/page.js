@@ -1,7 +1,7 @@
 // app/admin/notificaciones/overview/page.js - PÁGINA DETALLADA DE RESUMEN
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 
 export default function OverviewDetailPage() {
