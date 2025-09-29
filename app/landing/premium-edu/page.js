@@ -1,13 +1,19 @@
 // app/premium-edu/page.js - LANDING EDUCATIVA ORIENTADA A PAGO
 'use client'
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+export const runtime = 'edge'
 
-export default function PremiumEducationalLanding() {
+const DynamicPremiumEduContent = dynamic(() => Promise.resolve(PremiumEducationalContent), {
+  ssr: false,
+  loading: () => <div>Cargando...</div>
+})
+
+function PremiumEducationalContent() {
+  const { useState, useEffect } = require('react')
+  const { useAuth } = require('@/contexts/AuthContext')
+  const { useSearchParams } = require('next/navigation')
+  
   const { user, supabase, userProfile } = useAuth()
 
   const [loading, setLoading] = useState(false)
@@ -566,4 +572,8 @@ export default function PremiumEducationalLanding() {
       </div>
     </div>
   )
+}
+
+export default function PremiumEducationalLanding() {
+  return <DynamicPremiumEduContent />
 }

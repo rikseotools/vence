@@ -1,6 +1,8 @@
 // app/test/rapido/page.js
 import TestPageWrapper from '@/components/TestPageWrapper'
 
+export const dynamic = 'force-dynamic'
+
 export default function TestRapidoPage() {
   return (
     <TestPageWrapper
