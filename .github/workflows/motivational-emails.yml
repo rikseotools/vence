@@ -21,10 +21,17 @@ jobs:
           echo "Secret configured: ${#CRON_SECRET} chars"
           
           echo "📧 Testing debug endpoint..."
+          
+          # Create headers file
+          echo "Authorization: Bearer ${CRON_SECRET}" > /tmp/headers.txt
+          echo "Content-Type: application/json" >> /tmp/headers.txt
+          
+          echo "Headers file content:"
+          cat /tmp/headers.txt
+          
           response=$(curl -L -s -w "\n%{http_code}" \
             --request POST \
-            --header "Authorization: Bearer ${CRON_SECRET}" \
-            --header "Content-Type: application/json" \
+            --config /tmp/headers.txt \
             https://vence.es/api/debug/cron-auth)
           
           http_code=$(echo "$response" | tail -n1)
