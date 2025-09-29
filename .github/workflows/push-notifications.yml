@@ -25,7 +25,7 @@ jobs:
           echo "⏰ Timestamp: $(date)"
           
           # Llamar al endpoint de notificaciones
-          response=$(curl -s -w "\n%{http_code}" -X POST \
+          response=$(curl -L -s -w "\n%{http_code}" -X POST \
             https://vence.es/api/notifications/send-scheduled \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json")
