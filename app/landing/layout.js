@@ -2,24 +2,27 @@
 'use client'
 import '@/app/globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useEffect } from 'react'
 
 // Componente que maneja el tracking automático
 function CampaignTracker({ children }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return
+    
     // Extraer información de la landing page actual
     const pathParts = pathname.split('/')
     const landingName = pathParts[pathParts.length - 1] // Ej: 'premium-ads-1'
     
-    // Parámetros adicionales de la URL
-    const utmSource = searchParams.get('utm_source') || 'unknown'
-    const utmCampaign = searchParams.get('utm_campaign') || landingName
-    const fbclid = searchParams.get('fbclid') // Facebook Click ID
-    const gclid = searchParams.get('gclid')   // Google Click ID
+    // Get search params on client side only
+    const urlParams = new URLSearchParams(window.location.search)
+    const utmSource = urlParams.get('utm_source') || 'unknown'
+    const utmCampaign = urlParams.get('utm_campaign') || landingName
+    const fbclid = urlParams.get('fbclid') // Facebook Click ID
+    const gclid = urlParams.get('gclid')   // Google Click ID
     
     // Determinar el source basado en la landing page
     let campaignSource = 'landing'
@@ -76,7 +79,7 @@ function CampaignTracker({ children }) {
       gclid: gclid ? '✓' : '✗'
     })
     
-  }, [pathname, searchParams])
+  }, [pathname])
   
   return children
 }
