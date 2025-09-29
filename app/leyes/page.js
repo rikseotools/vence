@@ -10,23 +10,23 @@ export const revalidate = 2592000 // 30 días
 
 // ✅ MANTENER TODO TU METADATA ACTUAL
 export const metadata = {
-  title: 'Test de Leyes España Online Gratis 2025 | iLoveTest',
-  description: 'Tests gratuitos de las leyes más importantes de España: Constitución Española, Ley 39/2015, Código Civil, Código Penal y más. +3000 preguntas actualizadas en iLoveTest.',
+  title: 'Test de Leyes España Online Gratis 2025 | Vence',
+  description: 'Tests gratuitos de las leyes más importantes de España: Constitución Española, Ley 39/2015, Código Civil, Código Penal y más. +3000 preguntas actualizadas en Vence.',
   keywords: [
     'test de leyes', 'test de leyes españa', 'test constitución española',
     'test ley 39/2015', 'test código civil', 'test código penal',
     'test estatuto trabajadores', 'tests jurídicos online', 'test de leyes gratis',
-    'examen leyes españa', 'preparar oposiciones leyes', 'legislación española test', 'ilovetest'
+    'examen leyes españa', 'preparar oposiciones leyes', 'legislación española test', 'vence'
   ].join(', '),
-  authors: [{ name: 'iLoveTest' }],
-  creator: 'iLoveTest',
-  publisher: 'iLoveTest',
+  authors: [{ name: 'Vence' }],
+  creator: 'Vence',
+  publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Test de Leyes España Online Gratis | iLoveTest',
+    title: 'Test de Leyes España Online Gratis | Vence',
     description: 'Practica con tests gratuitos de las leyes más importantes de España. Constitución, Ley 39/2015, Códigos Civil y Penal. +3000 preguntas actualizadas.',
     url: `${SITE_URL}/leyes`,
-    siteName: 'iLoveTest',
+    siteName: 'Vence',
     locale: 'es_ES',
     type: 'website',
     images: [
@@ -34,13 +34,13 @@ export const metadata = {
         url: '/og-image-es.jpg',
         width: 1200,
         height: 630,
-        alt: 'iLoveTest - Test de Leyes España',
+        alt: 'Vence - Test de Leyes España',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Test de Leyes España Online Gratis | iLoveTest',
+    title: 'Test de Leyes España Online Gratis | Vence',
     description: 'Tests actualizados de Constitución Española, Ley 39/2015, Códigos Civil y Penal. ¡Practica gratis!',
     images: ['/twitter-image-es.jpg'],
   },
@@ -162,10 +162,10 @@ export default function TestLeyesEspana() {
           </div>
           <h1 className="text-5xl font-bold text-gray-800 mb-6">
             Test de Leyes España<br/>
-            <span className="text-blue-600">en iLoveTest 2025</span>
+            <span className="text-blue-600">en Vence 2025</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
-            Practica con los <strong>tests de leyes</strong> más completos de España en <strong>iLoveTest</strong>. 
+            Practica con los <strong>tests de leyes</strong> más completos de España en <strong>Vence</strong>. 
             Prepárate para oposiciones o estudia legislación española con nuestros 
             <strong> tests gratuitos actualizados</strong> de todas las leyes disponibles.
           </p>
@@ -216,7 +216,7 @@ export default function TestLeyesEspana() {
                 estudios de derecho y actualización profesional.
               </p>
               <p className="text-gray-600 mb-4 leading-relaxed">
-                En <strong>iLoveTest</strong> encontrarás tests de las leyes más importantes de España, 
+                En <strong>Vence</strong> encontrarás tests de las leyes más importantes de España, 
                 desde la Constitución hasta códigos especializados, todos actualizados y gratuitos.
               </p>
             </div>
@@ -274,7 +274,7 @@ export default function TestLeyesEspana() {
             <div>
               <h3 className="font-bold text-gray-800 mb-2">¿Los test están actualizados?</h3>
               <p className="text-gray-600 text-sm mb-4">
-                Sí, todos nuestros test de leyes en iLoveTest se actualizan constantemente con las últimas 
+                Sí, todos nuestros test de leyes en Vence se actualizan constantemente con las últimas 
                 modificaciones legislativas y jurisprudencia relevante.
               </p>
             </div>
@@ -288,7 +288,7 @@ export default function TestLeyesEspana() {
             <div>
               <h3 className="font-bold text-gray-800 mb-2">¿Hay límite de uso?</h3>
               <p className="text-gray-600 text-sm mb-4">
-                No, el acceso a todos los test de leyes en iLoveTest es completamente gratuito y sin límites. 
+                No, el acceso a todos los test de leyes en Vence es completamente gratuito y sin límites. 
                 Puedes practicar tantas veces como necesites.
               </p>
             </div>

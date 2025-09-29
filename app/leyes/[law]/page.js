@@ -14,13 +14,13 @@ export async function generateMetadata({ params }) {
   const canonicalSlug = getCanonicalSlug(lawShortName)
   
   return {
-    title: `Test ${lawInfo.name} | iLoveTest`,
+    title: `Test ${lawInfo.name} | Vence`,
     description: `Tests completos de ${lawInfo.name}. Modalidades rápida y avanzada. ${lawInfo.description}`,
     keywords: [
       `test ${lawInfo.name.toLowerCase()}`,
       'test leyes gratis',
       'práctica jurídica online',
-      'ilovetest'
+      'vence'
     ].join(', '),
     
     // 🎯 CANONICAL URL PARA EVITAR CONTENIDO DUPLICADO
@@ -29,10 +29,10 @@ export async function generateMetadata({ params }) {
     },
     
     openGraph: {
-      title: `Test: ${lawInfo.name} | iLoveTest`,
-      description: `Tests completos de ${lawInfo.name} en iLoveTest`,
+      title: `Test: ${lawInfo.name} | Vence`,
+      description: `Tests completos de ${lawInfo.name} en Vence`,
       type: 'website',
-      siteName: 'iLoveTest',
+      siteName: 'Vence',
       url: `${SITE_URL}/leyes/${canonicalSlug}` // También canonical en OG
     },
     
@@ -43,9 +43,9 @@ export async function generateMetadata({ params }) {
     },
     
     // 📊 Información adicional de la ley
-    authors: [{ name: 'iLoveTest' }],
-    creator: 'iLoveTest',
-    publisher: 'iLoveTest'
+    authors: [{ name: 'Vence' }],
+    creator: 'Vence',
+    publisher: 'Vence'
   }
 }
 

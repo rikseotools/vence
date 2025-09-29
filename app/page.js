@@ -4,7 +4,7 @@ import Link from 'next/link'
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Test de Oposiciones y Leyes | iLoveTest',
+  title: 'Test de Oposiciones y Leyes | Vence',
   description: 'Tests gratuitos de leyes españolas y oposiciones. Constitución Española, Ley 39/2015, Guardia Civil, Administrativo. +5000 preguntas actualizadas.',
   keywords: [
     'test de ley',
@@ -37,7 +37,7 @@ export const metadata = {
     }
   },
   openGraph: {
-    title: 'Tests de Oposiciones y Leyes | iLoveTest',
+    title: 'Tests de Oposiciones y Leyes | Vence',
     description: 'Practica con +5000 tests gratuitos de legislación española y prepara tus oposiciones online. Constitución, Ley 39/2015, Guardia Civil y más.',
     url: `${SITE_URL}/es`,
     siteName: 'iLoveTest',
@@ -54,7 +54,7 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Tests de Oposiciones y Leyes| iLoveTest',
+    title: 'Tests de Oposiciones y Leyes| Vence',
     description: 'Prepara tus oposiciones con iLoveTest.',
     images: ['/twitter-image-es.jpg'],
   },

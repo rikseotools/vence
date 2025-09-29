@@ -1,7 +1,7 @@
-// Service Worker para notificaciones push - ilovetest
+// Service Worker para notificaciones push - vence
 // Oposiciones Auxiliar Administrativo del Estado
 
-const CACHE_NAME = 'ilovetest-v1'
+const CACHE_NAME = 'vence-v1'
 const urlsToCache = [
   '/',
   '/es',

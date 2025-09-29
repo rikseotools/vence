@@ -1,7 +1,7 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Test Rápido de Oposiciones | Práctica Express | iLoveTest',
+  title: 'Test Rápido de Oposiciones | Práctica Express | Vence',
   description: 'Test rápido para retomar el estudio y practicar con preguntas aleatorias. Ideal para mantener el ritmo de preparación y reactivar el aprendizaje.',
   keywords: [
     'test rapido oposiciones',
@@ -13,15 +13,15 @@ export const metadata = {
     'practica express',
     'reactivar estudio oposiciones'
   ].join(', '),
-  authors: [{ name: 'iLoveTest' }],
-  creator: 'iLoveTest',
-  publisher: 'iLoveTest',
+  authors: [{ name: 'Vence' }],
+  creator: 'Vence',
+  publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'Test Rápido de Oposiciones | Práctica Express',
     description: 'Retoma tu estudio con un test rápido. Ideal para mantener el ritmo y reactivar tu preparación.',
     url: `${SITE_URL}/test/rapido`,
-    siteName: 'iLoveTest',
+    siteName: 'Vence',
     locale: 'es_ES',
     type: 'website',
     images: [
@@ -29,13 +29,13 @@ export const metadata = {
         url: '/og-image-es.jpg',
         width: 1200,
         height: 630,
-        alt: 'iLoveTest - Test Rápido',
+        alt: 'Vence - Test Rápido',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Test Rápido de Oposiciones | iLoveTest',
+    title: 'Test Rápido de Oposiciones | Vence',
     description: 'Práctica rápida para retomar el ritmo de estudio.',
     images: ['/twitter-image-es.jpg'],
   },

@@ -1,7 +1,7 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Tests Auxiliar Administrativo Estado 2025 | Todos los Temas | iLoveTest',
+  title: 'Tests Auxiliar Administrativo Estado 2025 | Todos los Temas | Vence',
   description: 'Tests de Auxiliar Administrativo del Estado con todos los 16 temas oficiales. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. ¡Gratis!',
   keywords: [
     'test auxiliar administrativo estado',
@@ -15,15 +15,15 @@ export const metadata = {
     'examen auxiliar administrativo',
     'tests gratis auxiliar administrativo'
   ].join(', '),
-  authors: [{ name: 'iLoveTest' }],
-  creator: 'iLoveTest',
-  publisher: 'iLoveTest',
+  authors: [{ name: 'Vence' }],
+  creator: 'Vence',
+  publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Tests Auxiliar Administrativo Estado - 16 Temas Oficiales | iLoveTest',
+    title: 'Tests Auxiliar Administrativo Estado - 16 Temas Oficiales | Vence',
     description: 'Practica con tests de Auxiliar Administrativo del Estado. 16 temas oficiales, estadísticas personalizadas y seguimiento de progreso.',
     url: `${SITE_URL}/auxiliar-administrativo-estado/test`,
-    siteName: 'iLoveTest',
+    siteName: 'Vence',
     locale: 'es_ES',
     type: 'website',
     images: [
@@ -31,13 +31,13 @@ export const metadata = {
         url: '/og-image-es.jpg',
         width: 1200,
         height: 630,
-        alt: 'iLoveTest - Tests Auxiliar Administrativo Estado',
+        alt: 'Vence - Tests Auxiliar Administrativo Estado',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Tests Auxiliar Administrativo Estado | iLoveTest',
+    title: 'Tests Auxiliar Administrativo Estado | Vence',
     description: 'Tests de todos los 16 temas oficiales. Estadísticas por tema y progreso personalizado.',
     images: ['/twitter-image-es.jpg'],
   },

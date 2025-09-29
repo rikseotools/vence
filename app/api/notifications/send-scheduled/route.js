@@ -243,14 +243,14 @@ function calculateDaysUntilExam(examDate) {
 function getNotificationTitle(type, context) {
   const titles = {
     streak_danger: `🚨 ¡Tu racha de ${context.streak} días en peligro!`,
-    daily_motivation: '🎯 ilovetest - Tu oposición te espera',
+    daily_motivation: '🎯 Vence - Tu oposición te espera',
     comeback: `🔄 ¡Te echábamos de menos!`,
     achievement: `🏆 ¡${context.streak} días consecutivos!`,
     emergency_motivation: '🆘 ¡Tu oposición necesita atención!',
     exam_proximity: `⏰ ${context.daysUntilExam} días para tu examen`
   }
 
-  return titles[type] || '📚 ilovetest - Hora de estudiar'
+  return titles[type] || '📚 Vence - Hora de estudiar'
 }
 
 // Obtener URL objetivo según el tipo
