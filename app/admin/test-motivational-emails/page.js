@@ -1,7 +1,7 @@
 // app/admin/test-motivational-emails/page.js - PÁGINA DE PRUEBAS MOTIVACIONALES
 'use client'
 import { useState } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function TestMotivationalEmailsPage() {
   const { user } = useAuth()

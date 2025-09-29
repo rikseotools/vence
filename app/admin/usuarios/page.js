@@ -1,7 +1,7 @@
 // app/admin/usuarios/page.js - Gestión completa de usuarios
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext'
 import Link from 'next/link'
 
 export default function UsuariosManagementPage() {

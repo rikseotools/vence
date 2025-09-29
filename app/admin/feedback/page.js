@@ -1,7 +1,7 @@
 // app/admin/feedback/page.js - Panel de administración de feedback
 'use client'
 import { useState, useEffect } from 'react'
-import { useAuth } from '../../../contexts/AuthContext'
+import { useAuth } from '../../contexts/AuthContext'
 
 const FEEDBACK_TYPES = {
   'bug': { label: '🐛 Bug', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },

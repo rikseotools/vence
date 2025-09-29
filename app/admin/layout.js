@@ -1,7 +1,7 @@
 // app/admin/layout.js - Layout base para área administrativa CORREGIDO
 'use client'
-import ProtectedRoute from '../../../components/Admin/ProtectedRoute'
-import { useAdminNotifications } from '../../../hooks/useAdminNotifications'
+import ProtectedRoute from '../../components/Admin/ProtectedRoute'
+import { useAdminNotifications } from '../../hooks/useAdminNotifications'
 
 // Metadata moved to page components since this is now a client component
 
