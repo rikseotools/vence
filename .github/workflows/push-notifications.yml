@@ -23,12 +23,14 @@ jobs:
         run: |
           echo "🚀 Iniciando envío de notificaciones push..."
           echo "⏰ Timestamp: $(date)"
+          echo "Secret configured: ${#CRON_SECRET} chars"
           
           # Llamar al endpoint de notificaciones
-          response=$(curl -L -s -w "\n%{http_code}" -X POST \
-            https://vence.es/api/notifications/send-scheduled \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json")
+          response=$(curl -s -w "\n%{http_code}" \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            --header "Content-Type: application/json" \
+            https://www.vence.es/api/notifications/send-scheduled)
           
           # Separar body y status code
           http_code=$(echo "$response" | tail -n1)
