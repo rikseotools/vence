@@ -69,8 +69,17 @@ function AuthCallbackContent() {
         console.log('🔍 [CALLBACK] Verificando sesión...')
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
         
+        console.log('🔍 [DEBUG] Resultado de getSession:', {
+          hasSession: !!sessionData?.session,
+          hasUser: !!sessionData?.session?.user,
+          userEmail: sessionData?.session?.user?.email,
+          sessionError: sessionError?.message || null,
+          sessionErrorCode: sessionError?.code || null
+        })
+        
         if (sessionError) {
           console.error('❌ [CALLBACK] Error obteniendo sesión:', sessionError)
+          throw new Error(`Error de sesión: ${sessionError.message}`)
         }
 
         if (sessionData.session && sessionData.session.user) {
@@ -83,6 +92,21 @@ function AuthCallbackContent() {
         if (typeof window !== 'undefined') {
           const urlParams = new URLSearchParams(window.location.search)
           const code = urlParams.get('code')
+          const error_param = urlParams.get('error')
+          const error_description = urlParams.get('error_description')
+          
+          console.log('🔍 [DEBUG] Parámetros de URL:', {
+            hasCode: !!code,
+            codeLength: code?.length || 0,
+            hasError: !!error_param,
+            error: error_param,
+            errorDescription: error_description,
+            fullURL: window.location.href
+          })
+          
+          if (error_param) {
+            throw new Error(`OAuth Error: ${error_param} - ${error_description}`)
+          }
           
           if (code) {
             console.log('🔍 [CALLBACK] Procesando código OAuth...')
@@ -91,19 +115,35 @@ function AuthCallbackContent() {
             try {
               const { data, error } = await supabase.auth.exchangeCodeForSession(code)
               
+              console.log('🔍 [DEBUG] Resultado de exchangeCodeForSession:', {
+                hasData: !!data,
+                hasSession: !!data?.session,
+                hasUser: !!data?.session?.user,
+                userEmail: data?.session?.user?.email,
+                errorMessage: error?.message || null,
+                errorCode: error?.code || null
+              })
+              
               if (error) {
                 console.error('❌ [CALLBACK] Error intercambiando código:', error)
-                throw error
+                throw new Error(`Error intercambiando código: ${error.message}`)
               }
               
               if (data.session && data.session.user) {
                 console.log('✅ [CALLBACK] Sesión establecida desde código OAuth')
                 await processAuthenticatedUser(data.session.user, finalReturnUrl, supabase)
                 return
+              } else {
+                console.error('❌ [CALLBACK] exchangeCodeForSession no devolvió sesión válida')
+                throw new Error('exchangeCodeForSession no devolvió sesión válida')
               }
             } catch (codeError) {
               console.error('❌ [CALLBACK] Error procesando código OAuth:', codeError)
+              throw codeError
             }
+          } else {
+            console.error('❌ [CALLBACK] No se encontró código OAuth en la URL')
+            throw new Error('No se encontró código OAuth en la URL')
           }
         }
         
@@ -114,13 +154,16 @@ function AuthCallbackContent() {
         setStatus('error')
         setMessage(`Error: ${error.message}`)
         
-        const errorReturnUrl = returnUrl || '/auxiliar-administrativo-estado'
-        setTimeout(() => {
-          const separator = errorReturnUrl.includes('?') ? '&' : '?'
-          const errorUrl = `${errorReturnUrl}${separator}auth_error=${encodeURIComponent(error.message)}`
-          console.log('🔄 [CALLBACK] Redirigiendo con error a:', errorUrl)
-          router.push(errorUrl)
-        }, 3000)
+        // NO REDIRECT - Mantener en página para debug
+        console.log('🔍 [DEBUG] Información completa del error:', {
+          errorMessage: error.message,
+          errorStack: error.stack,
+          returnUrl,
+          currentUrl: window.location.href,
+          urlParams: Object.fromEntries(new URLSearchParams(window.location.search)),
+          supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+          hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+        })
       }
     }
     
@@ -371,19 +414,24 @@ function AuthCallbackContent() {
         {/* ERROR STATE */}
         {status === 'error' && (
           <>
-            <div className="text-6xl mb-6">😟</div>
+            <div className="text-6xl mb-6">🔍</div>
             <h2 className="text-2xl font-bold text-red-800 dark:text-red-200 mb-3">
-              Error de Autenticación
+              Debug Mode - Error de Autenticación
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
             <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-4">
               <p className="text-sm text-red-700 dark:text-red-400">
-                Redirigiendo automáticamente en 3 segundos...<br/>
+                🔍 <strong>MODO DEBUG ACTIVADO</strong><br/>
+                ✅ Los logs detallados están en la consola del navegador<br/>
+                📱 Abre las herramientas de desarrollador (F12) y ve a "Console"<br/>
                 {returnUrl && (
-                  <span className="text-xs">
-                    📍 Destino: {returnUrl}
+                  <span className="text-xs block mt-2">
+                    📍 Return URL: {returnUrl}
                   </span>
                 )}
+                <span className="text-xs block mt-2">
+                  🌐 Current URL: {typeof window !== 'undefined' ? window.location.href : 'N/A'}
+                </span>
               </p>
             </div>
           </>
