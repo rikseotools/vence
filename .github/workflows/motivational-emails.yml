@@ -20,20 +20,12 @@ jobs:
           echo "🚀 Starting email workflow..."
           echo "Secret configured: ${#CRON_SECRET} chars"
           
-          echo "📧 Testing debug endpoint..."
-          
-          # Create headers file
-          echo "Authorization: Bearer ${CRON_SECRET}" > /tmp/headers.txt
-          echo "Content-Type: application/json" >> /tmp/headers.txt
-          
-          echo "Headers file content:"
-          cat /tmp/headers.txt
-          
+          echo "📧 Sending motivational emails..."
           response=$(curl -s -w "\n%{http_code}" \
             --request POST \
             --header "Authorization: Bearer ${CRON_SECRET}" \
             --header "Content-Type: application/json" \
-            https://www.vence.es/api/debug/cron-auth)
+            https://www.vence.es/api/emails/send-motivational-scheduled)
           
           http_code=$(echo "$response" | tail -n1)
           response_body=$(echo "$response" | head -n -1)
@@ -42,8 +34,8 @@ jobs:
           echo "Response: $response_body"
           
           if [ $http_code -eq 200 ]; then
-            echo "✅ Debug successful - auth working"
+            echo "✅ Emails motivacionales enviados exitosamente"
           else
-            echo "❌ Debug failed - auth not working"
+            echo "❌ Error enviando emails motivacionales"
             exit 1
           fi
