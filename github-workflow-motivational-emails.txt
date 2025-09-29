@@ -26,6 +26,7 @@ jobs:
             --header "Authorization: Bearer ${CRON_SECRET}" \
             --header "Content-Type: application/json" \
             https://www.vence.es/api/emails/send-motivational-scheduled)
+          
           http_code=$(echo "$response" | tail -n1)
           response_body=$(echo "$response" | head -n -1)
           

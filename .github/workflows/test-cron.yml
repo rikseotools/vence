@@ -1,0 +1,35 @@
+name: 🧪 Test CRON Simple
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Tipo de test'
+        required: false
+        default: 'basic'
+
+jobs:
+  test-cron:
+    runs-on: ubuntu-latest
+    name: 🔧 Test CRON Authentication
+    
+    steps:
+      - name: Test CRON Secret
+        run: |
+          echo "🧪 Testing CRON secret configuration..."
+          echo "Secret length: ${#CRON_SECRET}"
+          
+          if [ -z "$CRON_SECRET" ]; then
+            echo "❌ CRON_SECRET is empty or missing"
+            exit 1
+          fi
+          
+          echo "✅ CRON_SECRET is configured"
+          
+          # Test simple API call
+          curl -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            -v \
+            https://vence.es/api/debug/cron-auth
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

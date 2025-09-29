@@ -19,7 +19,7 @@ export default function AdminLayout({ children }) {
               
               {/* Logo y título - Responsive */}
               <div className="flex items-center space-x-3 min-w-0">
-                <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-800 to-blue-900 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
                   👨‍💼
                 </div>
                 <div className="min-w-0">
@@ -27,7 +27,7 @@ export default function AdminLayout({ children }) {
                     Panel de Administración
                   </h1>
                   <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
-                    Gestión y analytics de iLoveTest
+                    Gestión y analytics de Vence
                   </p>
                 </div>
               </div>
@@ -104,6 +104,13 @@ export default function AdminLayout({ children }) {
                     </span>
                   )}
                 </a>
+                <a 
+                  href="/admin/newsletters" 
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
+                >
+                  <span className="text-base">📧</span>
+                  <span className="hidden sm:inline">Newsletters</span>
+                </a>
               </nav>
             </div>
           </div>
@@ -121,7 +128,7 @@ export default function AdminLayout({ children }) {
               <div className="flex items-center space-x-2 sm:space-x-4">
                 <span className="flex items-center space-x-1">
                   <span>👨‍💼</span>
-                  <span>Panel Administrativo iLoveTest</span>
+                  <span>Panel Administrativo Vence</span>
                 </span>
                 <span className="hidden sm:inline">•</span>
                 <span className="hidden sm:inline">

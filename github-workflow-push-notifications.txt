@@ -1,0 +1,56 @@
+name: 📱 Push Notifications Scheduler
+on:
+  schedule:
+    # Ejecutar cada 4 horas (6:00, 10:00, 14:00, 18:00, 22:00, 2:00 UTC)
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    # Permite ejecutar manualmente desde GitHub
+    inputs:
+      reason:
+        description: 'Razón para ejecutar manualmente'
+        required: false
+        default: 'Manual trigger'
+
+jobs:
+  send-push-notifications:
+    runs-on: ubuntu-latest
+    name: 🔔 Enviar notificaciones push
+    
+    steps:
+      - name: 📤 Send push notifications
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "🚀 Iniciando envío de notificaciones push..."
+          echo "⏰ Timestamp: $(date)"
+          echo "Secret configured: ${#CRON_SECRET} chars"
+          
+          # Llamar al endpoint de notificaciones
+          response=$(curl -s -w "\n%{http_code}" \
+            --request POST \
+            --header "Authorization: Bearer ${CRON_SECRET}" \
+            --header "Content-Type: application/json" \
+            https://www.vence.es/api/notifications/send-scheduled)
+          
+          # Separar body y status code
+          http_code=$(echo "$response" | tail -n1)
+          response_body=$(echo "$response" | head -n -1)
+          
+          echo "📊 HTTP Status: $http_code"
+          echo "📄 Response: $response_body"
+          
+          # Verificar si fue exitoso
+          if [ $http_code -eq 200 ]; then
+            echo "✅ Notificaciones enviadas exitosamente"
+          else
+            echo "❌ Error enviando notificaciones"
+            exit 1
+          fi
+      
+      - name: 📊 Log execution details
+        if: always()
+        run: |
+          echo "🏷️ Workflow triggered by: ${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "📝 Manual trigger reason: ${{ github.event.inputs.reason }}"
+          fi
