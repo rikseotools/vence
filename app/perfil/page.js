@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useUserOposicion } from '@/components/useUserOposicion'
 import notificationTracker from '@/lib/services/notificationTracker'
 
-export default function PerfilPage() {
+function PerfilPageContent() {
   const { user, loading: authLoading, supabase } = useAuth()
   const { userOposicion, loading: oposicionLoading } = useUserOposicion()
   const searchParams = useSearchParams()
@@ -1277,5 +1277,23 @@ export default function PerfilPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+
+export default function PerfilPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-6"></div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
+            🔄 Cargando página...
+          </h2>
+        </div>
+      </div>
+    }>
+      <PerfilPageContent />
+    </Suspense>
   )
 }

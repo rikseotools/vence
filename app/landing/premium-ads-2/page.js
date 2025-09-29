@@ -1,10 +1,10 @@
 // app/premium-ads-2/page.js - VERSIÓN HONESTA SIN EXAGERACIONES
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 
-export default function PremiumAdsLanding() {
+function PremiumAdsLandingContent() {
   const { user, supabase, userProfile } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -339,5 +339,22 @@ export default function PremiumAdsLanding() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PremiumAdsLanding() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-red-600 border-t-transparent mx-auto mb-6"></div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
+            🔥 Cargando oferta especial...
+          </h2>
+        </div>
+      </div>
+    }>
+      <PremiumAdsLandingContent />
+    </Suspense>
   )
 }

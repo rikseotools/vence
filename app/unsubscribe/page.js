@@ -1,11 +1,11 @@
 // app/unsubscribe/page.js - Página pública de unsubscribe sin login requerido
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function UnsubscribePage() {
+function UnsubscribePageContent() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState('loading') // loading, success, error, invalid
   const [message, setMessage] = useState('')
@@ -288,5 +288,22 @@ export default function UnsubscribePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function UnsubscribePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-6"></div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
+            🔄 Cargando página...
+          </h2>
+        </div>
+      </div>
+    }>
+      <UnsubscribePageContent />
+    </Suspense>
   )
 }

@@ -1,10 +1,10 @@
 // app/premium/page.js - FLUJO PROFESIONAL OPCIÓN A
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 
-export default function PremiumPage() {
+function PremiumPageContent() {
   const { user, loading: authLoading, supabase } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -323,5 +323,22 @@ export default function PremiumPage() {
 
       </div>
     </div>
+  )
+}
+
+export default function PremiumPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-6"></div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">
+            🔄 Cargando página...
+          </h2>
+        </div>
+      </div>
+    }>
+      <PremiumPageContent />
+    </Suspense>
   )
 }
