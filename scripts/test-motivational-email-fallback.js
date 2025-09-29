@@ -91,7 +91,7 @@ async function testMotivationalEmailFallback() {
     }
   }
 
-  console.log('\n🏁 Test completado. Revisa el admin panel en /es/admin/notificaciones/email para ver los resultados.')
+  console.log('\n🏁 Test completado. Revisa el admin panel en /admin/notificaciones/email para ver los resultados.')
 }
 
 // Función para crear datos de test del usuario si no existen

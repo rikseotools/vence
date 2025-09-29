@@ -187,10 +187,10 @@ export default function NotificationBell() {
             baseParams.append('mode', 'intensive')
             baseParams.append('n', Math.min(notification.articlesCount * 2, 10).toString())
             
-            return `/es/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
+            return `/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)
-            return `/es/teoria/${lawSlug}?${baseParams.toString()}`
+            return `/teoria/${lawSlug}?${baseParams.toString()}`
           }
           break
           
@@ -200,10 +200,10 @@ export default function NotificationBell() {
             baseParams.append('mode', 'recovery')
             baseParams.append('n', '15')
             
-            return `/es/test/${encodeURIComponent(lawSlug)}/test-rapido?${baseParams.toString()}`
+            return `/test/${encodeURIComponent(lawSlug)}/test-rapido?${baseParams.toString()}`
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)
-            return `/es/teoria/${lawSlug}?${baseParams.toString()}`
+            return `/teoria/${lawSlug}?${baseParams.toString()}`
           }
           break
           
@@ -212,9 +212,9 @@ export default function NotificationBell() {
             baseParams.append('mode', 'streak')
             baseParams.append('n', '5')
             
-            return `/es/test/mantener-racha?${baseParams.toString()}`
+            return `/test/mantener-racha?${baseParams.toString()}`
           } else if (actionType === 'view_streak_stats') {
-            return `/es/mis-estadisticas?${baseParams.toString()}`
+            return `/mis-estadisticas?${baseParams.toString()}`
           }
           break
           
@@ -224,9 +224,9 @@ export default function NotificationBell() {
             baseParams.append('mode', 'celebration')
             baseParams.append('n', '8')
             
-            return `/es/test/rapido?${baseParams.toString()}`
+            return `/test/rapido?${baseParams.toString()}`
           } else if (actionType === 'view_achievements' || actionType === 'view_progress') {
-            return `/es/mis-estadisticas?${baseParams.toString()}`
+            return `/mis-estadisticas?${baseParams.toString()}`
           }
           break
           
@@ -235,43 +235,43 @@ export default function NotificationBell() {
             baseParams.append('mode', 'recovery')
             baseParams.append('n', '5')
             
-            return `/es/test/rapido?${baseParams.toString()}`
+            return `/test/rapido?${baseParams.toString()}`
           } else if (actionType === 'view_stats') {
-            return `/es/mis-estadisticas?${baseParams.toString()}`
+            return `/mis-estadisticas?${baseParams.toString()}`
           }
           break
           
         case 'progress_update':
           if (actionType === 'advanced_test') {
-            return `/es/test/rapido?${baseParams.toString()}`
+            return `/test/rapido?${baseParams.toString()}`
           } else if (actionType === 'view_details') {
-            return `/es/mis-estadisticas?${baseParams.toString()}`
+            return `/mis-estadisticas?${baseParams.toString()}`
           }
           break
           
         case 'dispute_update':
           if (actionType === 'view_corrected_question') {
             const questionId = notification.question_id
-            return `/es/pregunta/${questionId}?${baseParams.toString()}`
+            return `/pregunta/${questionId}?${baseParams.toString()}`
           } else if (actionType === 'view_disputes') {
-            return `/es/mis-impugnaciones?${baseParams.toString()}`
+            return `/mis-impugnaciones?${baseParams.toString()}`
           }
           break
 
         case 'feedback_response':
           if (actionType === 'open_chat') {
-            return `/es/feedback/chat?conversation_id=${notification.data?.conversation_id}`
+            return `/feedback/chat?conversation_id=${notification.data?.conversation_id}`
           }
           break
           
         default:
-          return `/es/test/rapido?${baseParams.toString()}`
+          return `/test/rapido?${baseParams.toString()}`
       }
     } catch (error) {
-      return `/es/test/rapido?${baseParams.toString()}`
+      return `/test/rapido?${baseParams.toString()}`
     }
     
-    return `/es/test/rapido?${baseParams.toString()}`
+    return `/test/rapido?${baseParams.toString()}`
   }
 
   // 🆕 GENERAR SLUG DE LEY (copiada del hook)
@@ -785,7 +785,7 @@ export default function NotificationBell() {
                   <button
                     onClick={() => {
                       setIsOpen(false)
-                      window.location.href = '/es/mis-estadisticas'
+                      window.location.href = '/mis-estadisticas'
                     }}
                     className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium py-1 px-3 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
                   >

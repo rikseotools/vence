@@ -55,7 +55,7 @@ export default function AuthCallback() {
             console.warn('⚠️ [CALLBACK] Error accediendo localStorage:', e)
           }
           
-          const defaultUrl = '/es/auxiliar-administrativo-estado'
+          const defaultUrl = '/auxiliar-administrativo-estado'
           console.log('📍 [CALLBACK] Usando URL por defecto:', defaultUrl)
           return defaultUrl
         }
@@ -114,7 +114,7 @@ export default function AuthCallback() {
         setStatus('error')
         setMessage(`Error: ${error.message}`)
         
-        const errorReturnUrl = returnUrl || '/es/auxiliar-administrativo-estado'
+        const errorReturnUrl = returnUrl || '/auxiliar-administrativo-estado'
         setTimeout(() => {
           const separator = errorReturnUrl.includes('?') ? '&' : '?'
           const errorUrl = `${errorReturnUrl}${separator}auth_error=${encodeURIComponent(error.message)}`
@@ -393,7 +393,7 @@ export default function AuthCallback() {
         <div className="mt-6">
           <button
             onClick={() => {
-              const finalUrl = returnUrl || '/es/auxiliar-administrativo-estado'
+              const finalUrl = returnUrl || '/auxiliar-administrativo-estado'
               console.log('🔄 [MANUAL] Redirección manual a:', finalUrl)
               router.push(finalUrl)
             }}

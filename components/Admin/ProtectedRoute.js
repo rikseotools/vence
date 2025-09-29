@@ -98,7 +98,7 @@ export default function ProtectedRoute({ children, requireRole = 'admin' }) {
             Necesitas iniciar sesión para acceder al área administrativa.
           </p>
           <Link 
-            href="/es/login"
+            href="/login"
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
             🔑 Iniciar Sesión
@@ -148,13 +148,13 @@ export default function ProtectedRoute({ children, requireRole = 'admin' }) {
           </p>
           <div className="space-y-3">
             <Link 
-              href="/es/auxiliar-administrativo-estado"
+              href="/auxiliar-administrativo-estado"
               className="block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
               🏠 Volver al Inicio
             </Link>
             <Link 
-              href="/es/mis-estadisticas"
+              href="/mis-estadisticas"
               className="block bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
             >
               📊 Mis Estadísticas

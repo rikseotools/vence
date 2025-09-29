@@ -970,7 +970,7 @@ export default function TestLayout({
                   </span>
                   {!isTestCompleted && (
                     <button
-                      onClick={() => window.location.href = '/es/auxiliar-administrativo-estado/test'}
+                      onClick={() => window.location.href = '/auxiliar-administrativo-estado/test'}
                       className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
                     >
                       <span>←</span>
@@ -1373,7 +1373,7 @@ export default function TestLayout({
                                 {/* Fallback para tema = 0 sin customNavigationLinks */}
                                 {tema === 0 && !config.customNavigationLinks?.backToLaw && (
                                   <Link
-                                    href="/es/auxiliar-administrativo-estado/test"
+                                    href="/auxiliar-administrativo-estado/test"
                                     className={`px-8 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color || 'from-blue-500 to-cyan-600'} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3`}
                                   >
                                     <span>📚</span>
@@ -1386,7 +1386,7 @@ export default function TestLayout({
                               <>
                                 {/* Botón principal: Volver al Tema */}
                                 <Link
-                                  href={`/es/auxiliar-administrativo-estado/test/tema/${tema}`}
+                                  href={`/auxiliar-administrativo-estado/test/tema/${tema}`}
                                   className={`px-8 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3`}
                                 >
                                   <span>📚</span>
@@ -1395,7 +1395,7 @@ export default function TestLayout({
                                 
                                 {/* Botón secundario: Ir a Otros Temas */}
                                 <Link
-                                  href="/es/auxiliar-administrativo-estado/test"
+                                  href="/auxiliar-administrativo-estado/test"
                                   className="px-8 py-4 rounded-lg font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3"
                                 >
                                   <span>🗂️</span>

@@ -1,6 +1,6 @@
 // app/api/email/track-click/route.js - API PARA TRACKING DE CLICKS EN EMAILS
 import { NextResponse } from 'next/server'
-import { getSupabaseClient } from '../../../../lib/supabase'
+import { getSupabaseClient } from '../../../lib/supabase'
 
 const supabase = getSupabaseClient()
 

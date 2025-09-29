@@ -164,7 +164,7 @@ export default function TopicUnlockProgress({ currentTopic, showAll = false }) {
           <div className="mt-4">
             {requirements.isNextUnlocked && (
               <Link
-                href={`/es/auxiliar-administrativo-estado/temario/tema-${nextTopic}`}
+                href={`/auxiliar-administrativo-estado/temario/tema-${nextTopic}`}
                 className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <span className="mr-2">🎉</span>
@@ -173,7 +173,7 @@ export default function TopicUnlockProgress({ currentTopic, showAll = false }) {
             )}
             {!requirements.isNextUnlocked && requirements.isCurrentUnlocked && (
               <Link
-                href={`/es/auxiliar-administrativo-estado/test/tema/${currentTopic}`}
+                href={`/auxiliar-administrativo-estado/test/tema/${currentTopic}`}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <span className="mr-2">🎯</span>

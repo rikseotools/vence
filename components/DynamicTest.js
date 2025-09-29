@@ -290,7 +290,7 @@ export default function DynamicTest({ titulo, dificultad }) {
       <div className="bg-white shadow-sm border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/es/constitucion-espanola/titulo-preliminar" className="text-blue-600 hover:text-blue-800 font-medium">
+            <Link href="/constitucion-espanola/titulo-preliminar" className="text-blue-600 hover:text-blue-800 font-medium">
               ← Volver a Tests
             </Link>
             <div className="flex items-center space-x-4">
@@ -523,13 +523,13 @@ export default function DynamicTest({ titulo, dificultad }) {
                   🔍 Ver Fallos ({answeredQuestions.filter(q => !q.correct).length})
                 </button>
                 <Link
-                  href="/es/constitucion-espanola/titulo-preliminar"
+                  href="/constitucion-espanola/titulo-preliminar"
                   className="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold block text-center"
                 >
                   📊 Otros Tests
                 </Link>
                 <Link
-                  href="/es/constitucion-espanola"
+                  href="/constitucion-espanola"
                   className="bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold block text-center"
                 >
                   📚 Otros Títulos

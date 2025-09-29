@@ -468,7 +468,7 @@ export function AuthProvider({ children, initialUser = null }) {
       // 5. Redirigir a página de inicio - DETECTAR ENTORNO AUTOMÁTICAMENTE
       if (typeof window !== 'undefined') {
         const baseUrl = window.location.origin  // http://localhost:3000 o https://www.vence.es
-        const redirectUrl = `${baseUrl}/es/`
+        const redirectUrl = `${baseUrl}/`
         
         console.log('🔄 Redirigiendo a:', redirectUrl)
         window.location.href = redirectUrl
@@ -485,7 +485,7 @@ export function AuthProvider({ children, initialUser = null }) {
       // Redirigir aunque haya fallado el logout remoto
       if (typeof window !== 'undefined') {
         const baseUrl = window.location.origin
-        const redirectUrl = `${baseUrl}/es/`
+        const redirectUrl = `${baseUrl}/`
         
         console.log('🔄 Forzando redirección a:', redirectUrl)
         window.location.href = redirectUrl
@@ -570,7 +570,7 @@ export function withAuth(Component) {
           <div className="text-center">
             <h2 className="text-xl font-bold mb-4">Acceso Requerido</h2>
             <p className="mb-4">Necesitas iniciar sesión para acceder a esta página</p>
-            <a href="/es/login" className="bg-blue-600 text-white px-4 py-2 rounded">
+            <a href="/login" className="bg-blue-600 text-white px-4 py-2 rounded">
               Iniciar Sesión
             </a>
           </div>
@@ -622,7 +622,7 @@ export function withPremium(Component) {
           <div className="text-center">
             <h2 className="text-xl font-bold mb-4">Registro Requerido</h2>
             <p className="mb-4">Necesitas una cuenta para acceder</p>
-            <a href="/es/login" className="bg-blue-600 text-white px-4 py-2 rounded">
+            <a href="/login" className="bg-blue-600 text-white px-4 py-2 rounded">
               Crear Cuenta
             </a>
           </div>
@@ -632,7 +632,7 @@ export function withPremium(Component) {
     
     if (!canAccess) {
       // Mostrar paywall - redirigir a premium
-      window.location.href = '/es/premium'
+      window.location.href = '/premium'
       return null
     }
     

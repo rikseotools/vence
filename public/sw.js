@@ -198,7 +198,7 @@ self.addEventListener('notificationclick', (event) => {
   switch (event.action) {
     case 'study':
     case 'study_urgent':
-      targetUrl = '/es/test/rapido'
+      targetUrl = '/test/rapido'
       trackNotificationAction('study_clicked', notificationData)
       break
     case 'later':
@@ -206,7 +206,7 @@ self.addEventListener('notificationclick', (event) => {
       trackNotificationAction('postponed', notificationData)
       return
     case 'continue':
-      targetUrl = '/es/test/aleatorio'
+      targetUrl = '/test/aleatorio'
       trackNotificationAction('continue_clicked', notificationData)
       break
     case 'share':

@@ -243,14 +243,14 @@ export default function LawTestPageWrapper({
               </div>
               
               <a 
-                href="/es/leyes"
+                href="/leyes"
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
               >
                 📚 Ver Todas las Leyes
               </a>
               
               <a 
-                href="/es/auxiliar-administrativo-estado/test"
+                href="/auxiliar-administrativo-estado/test"
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm inline-block w-full text-center underline"
               >
                 🏠 Volver a Tests por Tema
@@ -293,12 +293,12 @@ export default function LawTestPageWrapper({
           lawShortName: lawShortName,
           customNavigationLinks: {
             backToLaw: {
-              href: `/es/leyes`,
+              href: `/leyes`,
               label: `📚 Ver Todas las Leyes`,
               isPrimary: true
             },
             backToTests: {
-              href: `/es/auxiliar-administrativo-estado/test`,
+              href: `/auxiliar-administrativo-estado/test`,
               label: `🗂️ Tests por Tema`,
               isPrimary: false
             }

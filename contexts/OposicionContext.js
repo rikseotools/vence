@@ -18,10 +18,10 @@ const OPOSICION_MENUS = {
     icon: '🏛️',
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
-      { href: '/es/auxiliar-administrativo-estado', label: 'Mi Oposición', icon: '🏛️', featured: true },
-      { href: '/es/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
-      { href: '/es/auxiliar-administrativo-estado/test', label: 'Tests', icon: '🎯' },
-      { href: '/es/auxiliar-administrativo-estado/simulacros', label: 'Simulacros', icon: '🏆' }
+      { href: '/auxiliar-administrativo-estado', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-estado/test', label: 'Tests', icon: '🎯' },
+      { href: '/auxiliar-administrativo-estado/simulacros', label: 'Simulacros', icon: '🏆' }
     ]
   },
   administrativo_estado: {
@@ -32,9 +32,9 @@ const OPOSICION_MENUS = {
     icon: '🏢',
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
-      { href: '/es/administrativo-estado', label: 'Mi Oposición', icon: '🏢', featured: true },
-      { href: '/es/administrativo-estado/temario', label: 'Temario', icon: '📚' },
-      { href: '/es/administrativo-estado/test', label: 'Tests', icon: '🎯' }
+      { href: '/administrativo-estado', label: 'Mi Oposición', icon: '🏢', featured: true },
+      { href: '/administrativo-estado/temario', label: 'Temario', icon: '📚' },
+      { href: '/administrativo-estado/test', label: 'Tests', icon: '🎯' }
     ]
   },
   gestion_procesal: {
@@ -45,9 +45,9 @@ const OPOSICION_MENUS = {
     icon: '⚖️',
     navLinks: [
       { href: '/es', label: 'Inicio', icon: '🏠' },
-      { href: '/es/gestion-procesal', label: 'Mi Oposición', icon: '⚖️', featured: true },
-      { href: '/es/gestion-procesal/temario', label: 'Temario', icon: '📚' },
-      { href: '/es/gestion-procesal/test', label: 'Tests', icon: '🎯' }
+      { href: '/gestion-procesal', label: 'Mi Oposición', icon: '⚖️', featured: true },
+      { href: '/gestion-procesal/temario', label: 'Temario', icon: '📚' },
+      { href: '/gestion-procesal/test', label: 'Tests', icon: '🎯' }
     ]
   }
 }
@@ -61,10 +61,10 @@ const DEFAULT_MENU = {
   icon: '🔍',
   navLinks: [
     { href: '/es', label: 'Inicio', icon: '🏠' },
-    { href: '/es/auxiliar-administrativo-estado', label: 'Auxiliar Administrativo', icon: '🏛️', featured: true },
-    { href: '/es/leyes', label: 'Leyes', icon: '📚' },
-    { href: '/es/guardia-civil', label: 'Guardia Civil', icon: '🚔' },
-    { href: '/es/policia-nacional', label: 'Policía Nacional', icon: '👮‍♂️' }
+    { href: '/auxiliar-administrativo-estado', label: 'Auxiliar Administrativo', icon: '🏛️', featured: true },
+    { href: '/leyes', label: 'Leyes', icon: '📚' },
+    { href: '/guardia-civil', label: 'Guardia Civil', icon: '🚔' },
+    { href: '/policia-nacional', label: 'Policía Nacional', icon: '👮‍♂️' }
   ]
 }
 

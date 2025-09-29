@@ -4,8 +4,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
-import { UserPatternAnalyzer } from '../../../../lib/notifications/userPatternAnalyzer'
-import { selectContextualMessage, calculateMessageUrgency } from '../../../../lib/notifications/oposicionMessages'
+import { UserPatternAnalyzer } from '../../../lib/notifications/userPatternAnalyzer'
+import { selectContextualMessage, calculateMessageUrgency } from '../../../lib/notifications/oposicionMessages'
 
 // Configurar web-push
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -256,12 +256,12 @@ function getNotificationTitle(type, context) {
 // Obtener URL objetivo según el tipo
 function getTargetUrl(type) {
   const urls = {
-    streak_danger: '/es/test/rapido?from=streak_danger',
-    daily_motivation: '/es/test/aleatorio?from=daily_motivation',
+    streak_danger: '/test/rapido?from=streak_danger',
+    daily_motivation: '/test/aleatorio?from=daily_motivation',
     comeback: '/es?from=comeback',
-    achievement: '/es/mis-estadisticas?from=achievement',
-    emergency_motivation: '/es/test/rapido?from=emergency',
-    exam_proximity: '/es/test/aleatorio?from=exam_prep'
+    achievement: '/mis-estadisticas?from=achievement',
+    emergency_motivation: '/test/rapido?from=emergency',
+    exam_proximity: '/test/aleatorio?from=exam_prep'
   }
 
   return urls[type] || '/es?from=notification'

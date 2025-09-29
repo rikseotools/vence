@@ -19,13 +19,13 @@ async function createTestFeedback() {
         {
           type: 'suggestion',
           message: 'PRUEBA: Esta es una prueba de feedback para verificar notificaciones admin - debe parpadear',
-          url: '/es/admin/dashboard',
+          url: '/admin/dashboard',
           status: 'pending'
         },
         {
           type: 'bug', 
           message: 'PRUEBA: Segundo feedback de prueba para testing - debe parpadear también',
-          url: '/es/admin/dashboard',
+          url: '/admin/dashboard',
           status: 'pending'
         }
       ])

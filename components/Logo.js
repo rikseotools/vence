@@ -71,7 +71,7 @@ export default function Logo({ size = 'medium', showText = true, className = '',
   )
 
   return (
-    <Link href="/es" className="hover:opacity-80 transition-opacity" onClick={onClick}>
+    <Link href="/" className="hover:opacity-80 transition-opacity" onClick={onClick}>
       {logoContent}
     </Link>
   )
@@ -80,7 +80,7 @@ export default function Logo({ size = 'medium', showText = true, className = '',
 // Variante solo icono (para espacios reducidos)
 export function LogoIcon({ size = 32, className = '' }) {
   return (
-    <Link href="/es" className={`hover:opacity-80 transition-opacity ${className}`}>
+    <Link href="/" className={`hover:opacity-80 transition-opacity ${className}`}>
       <div className="relative">
         <div className={`bg-gradient-to-r from-blue-800 to-blue-950 text-white font-bold rounded-lg flex flex-col items-center justify-center shadow-md`}
              style={{
@@ -159,7 +159,7 @@ export function LogoFooter({ className = '' }) {
 // Variante horizontal para header principal
 export function LogoHorizontal({ className = '' }) {
   return (
-    <Link href="/es" className={`flex items-center space-x-3 hover:opacity-80 transition-opacity ${className}`}>
+    <Link href="/" className={`flex items-center space-x-3 hover:opacity-80 transition-opacity ${className}`}>
       <div className={`bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold rounded-lg flex flex-col items-center justify-center shadow-md`}
            style={{
              width: 48,
@@ -212,7 +212,7 @@ export function LogoHorizontal({ className = '' }) {
 // Versión grande para páginas principales
 export function LogoHero({ className = '' }) {
   return (
-    <Link href="/es" className={`flex flex-col items-center space-y-4 hover:opacity-80 transition-opacity ${className}`}>
+    <Link href="/" className={`flex flex-col items-center space-y-4 hover:opacity-80 transition-opacity ${className}`}>
       <div className={`bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold rounded-xl flex flex-col items-center justify-center shadow-lg`}
            style={{
              width: 80,

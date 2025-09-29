@@ -539,7 +539,7 @@ export function useIntelligentNotifications() {
             baseParams.append('n', Math.min(notification.articlesCount * 2, 10).toString())
             
             console.log(`🔗 URL generada con sistema centralizado: ${notification.law_short_name} → ${lawSlug}`)
-            return `/es/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
+            return `/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)
             // 🆕 INCLUIR ARTÍCULOS ESPECÍFICOS EN LA URL DE TEORÍA
@@ -549,7 +549,7 @@ export function useIntelligentNotifications() {
             if (articles) {
               baseParams.append('articles', articles)
             }
-            const finalUrl = `/es/teoria/${lawSlug}?${baseParams.toString()}`
+            const finalUrl = `/teoria/${lawSlug}?${baseParams.toString()}`
             console.log('🌐 URL final:', finalUrl)
             return finalUrl
           }
@@ -560,7 +560,7 @@ export function useIntelligentNotifications() {
             const lawSlug = generateLawSlug(notification.law_short_name)
             baseParams.append('mode', 'recovery')
             baseParams.append('n', '15')
-            return `/es/test/${encodeURIComponent(lawSlug)}/test-rapido?${baseParams.toString()}`
+            return `/test/${encodeURIComponent(lawSlug)}/test-rapido?${baseParams.toString()}`
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)
             // 🆕 INCLUIR ARTÍCULOS ESPECÍFICOS EN LA URL DE TEORÍA
@@ -570,7 +570,7 @@ export function useIntelligentNotifications() {
             if (articles) {
               baseParams.append('articles', articles)
             }
-            const finalUrl = `/es/teoria/${lawSlug}?${baseParams.toString()}`
+            const finalUrl = `/teoria/${lawSlug}?${baseParams.toString()}`
             console.log('🌐 URL final:', finalUrl)
             return finalUrl
           }
@@ -580,9 +580,9 @@ export function useIntelligentNotifications() {
           if (actionType === 'maintain_streak') {
             baseParams.append('mode', 'streak')
             baseParams.append('n', '5')
-            return `/es/test/mantener-racha?${baseParams.toString()}`
+            return `/test/mantener-racha?${baseParams.toString()}`
           } else if (actionType === 'view_streak_stats') {
-            return `/es/mis-estadisticas?${baseParams.toString()}`
+            return `/mis-estadisticas?${baseParams.toString()}`
           }
           break
           
@@ -591,9 +591,9 @@ export function useIntelligentNotifications() {
           if (actionType === 'next_challenge' || actionType === 'consolidate_improvement') {
             baseParams.append('mode', 'celebration')
             baseParams.append('n', '8')
-            return `/es/test/rapido?${baseParams.toString()}`
+            return `/test/rapido?${baseParams.toString()}`
           } else if (actionType === 'view_achievements' || actionType === 'view_progress') {
-            return `/es/mis-estadisticas?${baseParams.toString()}`
+            return `/mis-estadisticas?${baseParams.toString()}`
           }
           break
           
@@ -601,48 +601,48 @@ export function useIntelligentNotifications() {
           if (actionType === 'quick_test') {
             baseParams.append('mode', 'recovery')
             baseParams.append('n', '5')
-            return `/es/test/rapido?${baseParams.toString()}`
+            return `/test/rapido?${baseParams.toString()}`
           } else if (actionType === 'view_stats') {
-            return `/es/mis-estadisticas?${baseParams.toString()}`
+            return `/mis-estadisticas?${baseParams.toString()}`
           }
           break
           
         case 'progress_update':
           if (actionType === 'advanced_test') {
-            return `/es/test/rapido?${baseParams.toString()}`
+            return `/test/rapido?${baseParams.toString()}`
           } else if (actionType === 'view_details') {
-            return `/es/mis-estadisticas?${baseParams.toString()}`
+            return `/mis-estadisticas?${baseParams.toString()}`
           }
           break
           
         case 'dispute_update':
           if (actionType === 'view_corrected_question') {
             const questionId = notification.question_id
-            return `/es/pregunta/${questionId}?${baseParams.toString()}`
+            return `/pregunta/${questionId}?${baseParams.toString()}`
           } else if (actionType === 'view_disputes') {
-            return `/es/mis-impugnaciones?${baseParams.toString()}`
+            return `/mis-impugnaciones?${baseParams.toString()}`
           }
           break
 
         case 'feedback_response':
           if (actionType === 'open_chat') {
-            return `/es/feedback/chat?conversation_id=${notification.data?.conversation_id}`
+            return `/feedback/chat?conversation_id=${notification.data?.conversation_id}`
           } else if (actionType === 'view_feedback') {
-            return `/es/feedback?${baseParams.toString()}`
+            return `/feedback?${baseParams.toString()}`
           }
           break
           
         default:
           console.warn('Tipo de notificación no reconocido:', notification.type)
-          return `/es/test/rapido?${baseParams.toString()}`
+          return `/test/rapido?${baseParams.toString()}`
       }
     } catch (error) {
       console.error('Error generando URL de acción:', error)
-      return `/es/test/rapido?${baseParams.toString()}`
+      return `/test/rapido?${baseParams.toString()}`
     }
     
     // Fallback por defecto
-    return `/es/test/rapido?${baseParams.toString()}`
+    return `/test/rapido?${baseParams.toString()}`
   }
 
   // 🆕 FUNCIÓN PARA EJECUTAR ACCIÓN - ACTUALIZADA CON PERSISTENCIA

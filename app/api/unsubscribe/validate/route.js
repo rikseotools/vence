@@ -1,6 +1,6 @@
 // app/api/unsubscribe/validate/route.js
 import { NextResponse } from 'next/server'
-import { validateUnsubscribeToken } from '../../../../lib/emails/emailService.server'
+import { validateUnsubscribeToken } from '../../../lib/emails/emailService.server'
 
 // 🆕 AGREGADO: Maneja POST requests desde la página de unsubscribe
 export async function POST(request) {

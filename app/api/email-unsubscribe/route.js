@@ -360,7 +360,7 @@ function generateUnsubscribeHTML({ success, message, details, email }) {
           <div class="email">📧 ${email}</div>
           
           <div class="actions">
-            <a href="https://ilovetest.pro/es/auxiliar-administrativo-estado" class="btn btn-primary">
+            <a href="https://ilovetest.pro/auxiliar-administrativo-estado" class="btn btn-primary">
               🎯 Ir a ILoveTest
             </a>
             

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { sendWelcomeEmailImmediate } from '../../../../lib/emails/emailService.server'
+import { sendWelcomeEmailImmediate } from '../../../lib/emails/emailService.server'
 
 export async function POST(request) {
   try {

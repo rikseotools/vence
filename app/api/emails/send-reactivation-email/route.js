@@ -100,7 +100,7 @@ export async function POST(request) {
     }).toString()
     
     const trackingPixelUrl = `https://ilovetest.pro/api/email/track-open?${trackingParams}`
-    const trackedMainUrl = `https://ilovetest.pro/api/email/track-click?${trackingParams}&url=${encodeURIComponent('https://ilovetest.pro/es/auxiliar-administrativo-estado')}&redirect=${encodeURIComponent('https://ilovetest.pro/es/auxiliar-administrativo-estado')}`
+    const trackedMainUrl = `https://ilovetest.pro/api/email/track-click?${trackingParams}&url=${encodeURIComponent('https://ilovetest.pro/auxiliar-administrativo-estado')}&redirect=${encodeURIComponent('https://ilovetest.pro/auxiliar-administrativo-estado')}`
     
     const emailHtml = generateReactivationEmailHTML({
       userEmail: targetEmail,

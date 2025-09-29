@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { runEmailCampaign } from '../../../../lib/emails/emailService.server'
+import { runEmailCampaign } from '../../../lib/emails/emailService.server'
 
 export async function POST() {
   try {

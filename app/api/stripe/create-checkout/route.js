@@ -1,6 +1,6 @@
 // app/api/stripe/create-checkout/route.js - CORREGIDO PARA SISTEMA DUAL
 import { NextResponse } from 'next/server'
-import { stripe } from '../../../../lib/stripe'
+import { stripe } from '../../../lib/stripe'
 import { createClient } from '@supabase/supabase-js'
 
 
@@ -142,8 +142,8 @@ export async function POST(request) {
             plan_type: user.plan_type
           }
         },
-        success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/es/premium/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/es/premium?cancelled=true`,
+        success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/premium/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/premium?cancelled=true`,
         automatic_tax: { enabled: false },
         customer_update: {
           address: 'auto',

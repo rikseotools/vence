@@ -15,7 +15,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
         <h3 className="text-xl font-bold text-gray-700 mb-2">Predicción no disponible</h3>
         <p className="text-gray-600 mb-4">Necesitas más datos para generar una predicción precisa</p>
         <Link 
-          href="/es/auxiliar-administrativo-estado/test"
+          href="/auxiliar-administrativo-estado/test"
           className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity"
         >
           🚀 Hacer Más Tests

@@ -278,7 +278,7 @@ export default function UserAvatar() {
   if (!user) {
     return (
       <Link 
-        href="/es/login"
+        href="/login"
         className="bg-gradient-to-r from-green-700 to-green-800 text-white px-4 py-2 rounded-lg hover:from-green-800 hover:to-green-900 transition-all duration-200 font-medium text-sm"
       >
         Iniciar Sesión
@@ -406,7 +406,7 @@ export default function UserAvatar() {
             {/* Menu options */}
             <div className="p-2">
               <Link
-                href="/es/perfil"
+                href="/perfil"
                 onClick={handleLinkClick}
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center space-x-3 block"
               >
@@ -416,7 +416,7 @@ export default function UserAvatar() {
               </Link>
               
               <Link
-                href="/es/mis-estadisticas"
+                href="/mis-estadisticas"
                 onClick={handleLinkClick}
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center space-x-3 block"
               >

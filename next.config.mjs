@@ -11,7 +11,7 @@ const nextConfig = {
       : 'http://localhost:3000'
   },
   
-  // ✅ Redirigir automáticamente sin www a con www
+  // ✅ Redirigir automáticamente sin www a con www (solo en producción)
   async redirects() {
     if (process.env.NODE_ENV === 'production') {
       return [

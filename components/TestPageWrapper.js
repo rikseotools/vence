@@ -358,13 +358,13 @@ export default function TestPageWrapper({
               {testType === 'articulos-dirigido' && lawName && (
                 <>
                   <a 
-                    href={`/es/test/${encodeURIComponent(lawName)}/test-rapido?n=10`}
+                    href={`/test/${encodeURIComponent(lawName)}/test-rapido?n=10`}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm inline-block w-full text-center"
                   >
                     ⚡ Test rápido de {lawName}
                   </a>
                   <a 
-                    href={`/es/teoria/${lawName.toLowerCase().replace(/\s+/g, '-')}`}
+                    href={`/teoria/${lawName.toLowerCase().replace(/\s+/g, '-')}`}
                     className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
                   >
                     📖 Ver teoría de {lawName}
@@ -374,7 +374,7 @@ export default function TestPageWrapper({
               
               {testType === 'personalizado' && (
                 <a 
-                  href={`/es/auxiliar-administrativo-estado/test/tema-${tema}`}
+                  href={`/auxiliar-administrativo-estado/test/tema-${tema}`}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm inline-block w-full text-center"
                 >
                   🎛️ Cambiar configuración
@@ -382,14 +382,14 @@ export default function TestPageWrapper({
               )}
               
               <a 
-                href="/es/test/rapido"
+                href="/test/rapido"
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
               >
                 🎲 Test rápido general
               </a>
               
               <a 
-                href="/es/auxiliar-administrativo-estado/test"
+                href="/auxiliar-administrativo-estado/test"
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm inline-block w-full text-center underline"
               >
                 🏠 Volver a Tests

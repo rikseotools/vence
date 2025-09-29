@@ -216,7 +216,7 @@ export default function MotivationalEmailTester() {
               🗑️ Limpiar Resultados
             </button>
             <a
-              href="/es/admin/notificaciones/email"
+              href="/admin/notificaciones/email"
               target="_blank"
               className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
             >
@@ -299,7 +299,7 @@ export default function MotivationalEmailTester() {
             <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
               <li>Haz clic en "Enviar Todos los Tests" para probar todos los tipos de email</li>
               <li>O usa los botones individuales para probar tipos específicos</li>
-              <li>Ve al Admin Panel (/es/admin/notificaciones/email) para ver los analytics</li>
+              <li>Ve al Admin Panel (/admin/notificaciones/email) para ver los analytics</li>
               <li>Revisa tu email ({user?.email}) para ver los emails recibidos</li>
               <li>Verifica que los emails se muestran correctamente en diferentes clientes</li>
             </ol>

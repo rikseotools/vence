@@ -1,8 +1,8 @@
 // app/api/stripe/webhook/route.js - ACTUALIZADO PARA MODO DIRECTO
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import { stripe } from '../../../../lib/stripe'
-import { getSupabaseClient } from '../../../../lib/supabase'
+import { stripe } from '../../../lib/stripe'
+import { getSupabaseClient } from '../../../lib/supabase'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 

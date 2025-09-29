@@ -234,7 +234,7 @@ function generateMotivationalEmailHTML({ userName, messageType, title, body, pri
               Sigue preparándote para tu oposición con <strong>ILoveTest</strong>
             </p>
             <p style="color: #9ca3af; font-size: 12px; margin: 10px 0 0 0;">
-              <a href="https://ilovetest.pro/es/perfil?tab=notificaciones" style="color: #6b7280; text-decoration: underline;">
+              <a href="https://ilovetest.pro/perfil?tab=notificaciones" style="color: #6b7280; text-decoration: underline;">
                 Gestionar preferencias
               </a>
               •
@@ -277,32 +277,32 @@ function generateActionUrl(actionType, messageType, userId = null) {
     case 'next_challenge':
     case 'maintain_streak':
     case 'quick_test':
-      return 'https://ilovetest.pro/es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
+      return 'https://ilovetest.pro/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
     
     // Acciones de estadísticas y progreso
     case 'view_achievements':
     case 'view_progress':
     case 'view_streak_stats':
     case 'view_details':
-      return 'https://ilovetest.pro/es/mis-estadisticas?utm_source=email&utm_campaign=motivational'
+      return 'https://ilovetest.pro/mis-estadisticas?utm_source=email&utm_campaign=motivational'
     
     // Acciones de teoría y repaso
     case 'view_theory':
     case 'directed_review':
     case 'view_weak_areas':
-      return 'https://ilovetest.pro/es/auxiliar-administrativo-estado/temario?utm_source=email&utm_campaign=motivational'
+      return 'https://ilovetest.pro/auxiliar-administrativo-estado/temario?utm_source=email&utm_campaign=motivational'
     
     // Acciones de mejora y consolidación
     case 'consolidate_improvement':
     case 'advanced_test':
-      return 'https://ilovetest.pro/es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational&mode=advanced'
+      return 'https://ilovetest.pro/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational&mode=advanced'
     
     // Test de acciones por defecto
     case 'test_action':
-      return 'https://ilovetest.pro/es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=test'
+      return 'https://ilovetest.pro/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=test'
     
     // Por defecto
     default:
-      return 'https://ilovetest.pro/es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
+      return 'https://ilovetest.pro/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
   }
 }

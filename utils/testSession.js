@@ -67,7 +67,7 @@ export const getDeviceInfo = () => {
     viewport_size: `${window.innerWidth}x${window.innerHeight}`,
     device_model: /Mobile|Android|iPhone|iPad/.test(userAgent) ? 'mobile' : 
             /Tablet|iPad/.test(userAgent) ? 'tablet' : 'desktop',
-    browser_language: navigator.language,
+    browser_language: 'es',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     color_depth: screen.colorDepth,
     pixel_ratio: window.devicePixelRatio,

@@ -117,7 +117,7 @@ export default async function LeyesServerComponent() {
             return (
               <Link
                 key={law.id}
-                href={`/es/leyes/${canonicalSlug}`}
+                href={`/leyes/${canonicalSlug}`}
                 className="group block"
               >
                 <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border hover:border-blue-200">
@@ -163,13 +163,13 @@ export default async function LeyesServerComponent() {
                       {/* Botones principales de test */}
                       <div className="flex gap-2">
                         <Link
-                          href={`/es/leyes/${canonicalSlug}/test-rapido?n=10`}
+                          href={`/leyes/${canonicalSlug}/test-rapido?n=10`}
                           className="flex-1 bg-green-50 text-green-700 text-center py-2 px-3 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors"
                         >
                           ⚡ Test Rápido
                         </Link>
                         <Link
-                          href={`/es/leyes/${canonicalSlug}/avanzado?n=25`}
+                          href={`/leyes/${canonicalSlug}/avanzado?n=25`}
                           className="flex-1 bg-blue-50 text-blue-700 text-center py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
                         >
                           🎯 Avanzado
@@ -178,7 +178,7 @@ export default async function LeyesServerComponent() {
                       
                       {/* Enlace a teoría - SEO importante */}
                       <Link
-                        href={`/es/teoria/${canonicalSlug}`}
+                        href={`/teoria/${canonicalSlug}`}
                         className="block bg-gray-50 text-gray-700 text-center py-2 px-3 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
                       >
                         📖 Ver Teoría y Artículos

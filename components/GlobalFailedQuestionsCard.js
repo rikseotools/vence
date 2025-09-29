@@ -278,13 +278,13 @@ export function TemaFailedQuestionsCard({ tema, temaName }) {
         
         <div className="flex gap-2">
           <Link
-            href={`/es/auxiliar-administrativo-estado/test/tema-${tema}`}
+            href={`/auxiliar-administrativo-estado/test/tema-${tema}`}
             className="bg-orange-500 text-white px-4 py-2 rounded text-xs font-medium hover:bg-orange-600 transition-colors flex-1 text-center"
           >
             🔄 Repetir Tests
           </Link>
           <Link
-            href={`/es/auxiliar-administrativo-estado/temario/tema-${tema}`}
+            href={`/auxiliar-administrativo-estado/temario/tema-${tema}`}
             className="bg-blue-500 text-white px-4 py-2 rounded text-xs font-medium hover:bg-blue-600 transition-colors flex-1 text-center"
           >
             📖 Estudiar Tema

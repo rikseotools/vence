@@ -1,24 +1,34 @@
-// app/Header.js - CORREGIDO - Enlaces funcionales sin errores 404
+// app/Header.js - VERSIÓN CON ENLACE DE ADMIN Y LOGO SEPARADO EN MÓVIL
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import UserAvatar from '@/components/UserAvatar'
 import NotificationBell from '@/components/NotificationBell'
+import RankingModal from '@/components/RankingModal'
+import FeedbackButton from '@/components/FeedbackButton'
+import FeedbackModal from '@/components/FeedbackModal'
+import QuestionDispute from '@/components/QuestionDispute'
+import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
+import '@/lib/debug/medalDebug' // Cargar funciones de debug
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function HeaderEN() {
+export default function HeaderES() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
+  const [showRankingModal, setShowRankingModal] = useState(false)
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [showQuestionDispute, setShowQuestionDispute] = useState(false)
+  const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
   
   const { user, loading: authLoading, supabase } = useAuth()
   const oposicionContext = useOposicion()
   
-  // Safe default values
+  // Valores por defecto seguros
   const oposicionMenu = oposicionContext?.oposicionMenu || {
     color: 'blue',
     navLinks: []
@@ -30,7 +40,7 @@ export default function HeaderEN() {
   const notificationData = oposicionContext?.notificationData || null
   const dismissNotification = oposicionContext?.dismissNotification || (() => {})
 
-  // 🆕 CHECK ADMIN STATUS
+  // 🆕 VERIFICAR SI ES ADMIN
   useEffect(() => {
     async function checkAdminStatus() {
       if (!user || !supabase) {
@@ -43,13 +53,13 @@ export default function HeaderEN() {
         const { data, error } = await supabase.rpc('is_current_user_admin')
         
         if (error) {
-          console.error('Error checking admin status:', error)
+          console.error('Error verificando admin status:', error)
           setIsAdmin(false)
         } else {
           setIsAdmin(data === true)
         }
       } catch (err) {
-        console.error('Error in admin verification:', err)
+        console.error('Error en verificación de admin:', err)
         setIsAdmin(false)
       } finally {
         setAdminLoading(false)
@@ -61,64 +71,60 @@ export default function HeaderEN() {
     }
   }, [user, supabase, authLoading])
 
-  // 🔧 CORREGIDO: Detectar si estamos en página española y ajustar rutas
-  const isSpanishContext = pathname.startsWith('/es')
-  const langPrefix = isSpanishContext ? '' : '/es'
-
-  // Simplified navigation links for logged in users
+  // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = () => {
     if (!hasOposicion || loading) {
       return [
-        { href: `${langPrefix}/auxiliar-administrativo-estado/test`, label: 'Tests', icon: '🎯' },
-        { href: `${langPrefix}/auxiliar-administrativo-estado/temario`, label: 'Syllabus', icon: '📚' },
-        { href: `${langPrefix}/auxiliar-administrativo-estado`, label: 'Exams', icon: '🔄' }  // ✅ Cambiado de /oposiciones
+        { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
+        { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+        { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
     }
 
     try {
       const featuredLink = oposicionMenu?.navLinks?.find(link => link?.featured)
-      const basePath = featuredLink?.href || `${langPrefix}/auxiliar-administrativo-estado`
+      const basePath = featuredLink?.href || '/auxiliar-administrativo-estado'
       
       return [
-        { href: `${basePath}/test`, label: 'Tests', icon: '🎯' },
-        { href: `${basePath}/temario`, label: 'Syllabus', icon: '📚' },
-        { href: `${langPrefix}/auxiliar-administrativo-estado`, label: 'Exams', icon: '🔄' }  // ✅ Cambiado
+        { href: `${basePath}/test`, label: 'Test', icon: '🎯' },
+        { href: `${basePath}/temario`, label: 'Temario', icon: '📚' },
+        { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
     } catch (error) {
-      console.warn('Error generating links:', error)
+      console.warn('Error generando enlaces:', error)
       return [
-        { href: `${langPrefix}/auxiliar-administrativo-estado/test`, label: 'Tests', icon: '🎯' },
-        { href: `${langPrefix}/auxiliar-administrativo-estado/temario`, label: 'Syllabus', icon: '📚' },
-        { href: `${langPrefix}/auxiliar-administrativo-estado`, label: 'Exams', icon: '🔄' }  // ✅ Cambiado
+        { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
+        { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+        { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
     }
   }
 
-  // 🔧 CORREGIDO: Navigation links for non-logged users con prefix correcto
+  // Enlaces para usuarios NO logueados
   const getGuestNavLinks = () => {
     return [
-      { href: `${langPrefix}/auxiliar-administrativo-estado/test`, label: 'Tests', icon: '🎯' },     // ✅ Agregado langPrefix
-      { href: `${langPrefix}/auxiliar-administrativo-estado/temario`, label: 'Syllabus', icon: '📚' }, // ✅ Agregado langPrefix
-      { href: `${langPrefix}/auxiliar-administrativo-estado`, label: 'Exams', icon: '🔄' }          // ✅ Cambiado de /oposiciones
+      { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
+      { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+      { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
     ]
   }
 
-  // 🆕 MOBILE NAVIGATION LINKS (includes Admin if admin)
+  // 🆕 ENLACES PARA MÓVIL (incluye Admin si es admin)
   const getMobileNavLinks = () => {
     const baseLinks = user ? getLoggedInNavLinks() : getGuestNavLinks()
     
-    // Add Admin link if admin (always use /es/admin for consistency)
+    // Agregar enlace de Admin si es admin
     if (user && isAdmin && !adminLoading) {
       return [
         ...baseLinks,
-        { href: '/es/admin', label: 'Admin Panel', icon: '👨‍💼', isAdmin: true }  // ✅ Siempre /es/admin
+        { href: '/admin', label: 'Panel Admin', icon: '👨‍💼', isAdmin: true }
       ]
     }
     
     return baseLinks
   }
 
-  // Close menu when route changes
+  // Cerrar menú cuando cambie la ruta
   useEffect(() => {
     setIsMobileMenuOpen(false)
   }, [pathname])
@@ -133,20 +139,20 @@ export default function HeaderEN() {
     setIsMobileMenuOpen(!isMobileMenuOpen)
   }
 
-  // 🔧 CORREGIDO: Function to get tests link for the oposicion con prefix correcto
+  // Función para obtener el enlace a tests de la oposición
   const getTestsLink = () => {
-    if (!user || !hasOposicion || loading) return `${langPrefix}/auxiliar-administrativo-estado/test`
+    if (!user || !hasOposicion || loading) return '/auxiliar-administrativo-estado/test'
     
     try {
       const featuredLink = oposicionMenu?.navLinks?.find(link => link?.featured)
-      const basePath = featuredLink?.href || `${langPrefix}/auxiliar-administrativo-estado`
+      const basePath = featuredLink?.href || '/auxiliar-administrativo-estado'
       return `${basePath}/test`
     } catch (error) {
-      return `${langPrefix}/auxiliar-administrativo-estado/test`
+      return '/auxiliar-administrativo-estado/test'
     }
   }
 
-  // Get dynamic color classes
+  // Obtener color dinámico
   const getColorClasses = (isActive) => {
     const baseColor = oposicionMenu?.color || 'blue'
     
@@ -166,22 +172,21 @@ export default function HeaderEN() {
     return 'text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 hover:text-blue-600 dark:hover:text-blue-400 hover:shadow-sm'
   }
 
-  // Show loading while verifying auth
+  // Mostrar loading mientras se verifica auth
   if (authLoading) {
     return (
       <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-            {/* Logo with loading - Responsive and bigger */}
+            {/* Logo con loading - Responsive y más grande */}
             <div className="flex items-center">
-              {/* Logo icon only on mobile - extra large with more space */}
-              <div className="md:hidden py-0 bg-red-500">
-                <LogoIcon size={16} />
-                <span className="text-xs text-white">MOBILE</span>
+              {/* Logo solo icono en móvil - extra grande con más espacio */}
+              <div className="lg:hidden py-3">
+                  <LogoIcon size={48} onClick={handleLinkClick} />
               </div>
-              {/* Horizontal logo only on desktop */}
-              <div className="hidden md:block">
-                <LogoHorizontal className="scale-50" />
+              {/* Logo horizontal solo en desktop */}
+              <div className="hidden lg:block">
+                <LogoHorizontal className="scale-125" />
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -201,23 +206,22 @@ export default function HeaderEN() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             
-            {/* LEFT: Bigger logo */}
-            <div className="flex items-center">
-              {/* Responsive logo - bigger on mobile */}
+            {/* IZQUIERDA: Logo más pequeño en móvil */}
+            <div className="flex items-center flex-shrink-0">
+              {/* Logo responsive - más pequeño en móvil */}
               <div className="flex items-center">
-                {/* Logo icon only on mobile - extra large with more space */}
-                <div className="md:hidden py-0 bg-red-500">
-                  <LogoIcon size={16} onClick={handleLinkClick} />
-                  <span className="text-xs text-white">MOBILE</span>
+                {/* Logo solo icono en móvil - tamaño reducido */}
+                <div className="lg:hidden py-1">
+                    <LogoIcon size={48} onClick={handleLinkClick} />
                 </div>
-                {/* Horizontal logo only on desktop - 25% bigger */}
-                <div className="hidden md:block">
-                  <LogoHorizontal className="scale-50" onClick={handleLinkClick} />
+                {/* Logo horizontal solo en desktop - 25% más grande */}
+                <div className="hidden lg:block">
+                  <LogoHorizontal className="scale-125" onClick={handleLinkClick} />
                 </div>
               </div>
             </div>
             
-            {/* COMPLETE NAVIGATION DESKTOP */}
+            {/* NAVEGACIÓN COMPLETA DESKTOP */}
             <nav className="hidden lg:flex items-center justify-center flex-1 mx-8">
               <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-800 rounded-full p-1">
                 {(user ? getLoggedInNavLinks() : getGuestNavLinks()).map((link) => (
@@ -235,51 +239,115 @@ export default function HeaderEN() {
               </div>
             </nav>
 
-            {/* RIGHT: Admin + Notifications + Hamburger menu + User avatar */}
-            <div className="flex items-center space-x-4">
-              {/* 🔧 CORREGIDO: ADMIN LINK con ruta fija a /es/admin */}
+            {/* DERECHA: Admin + Notificaciones + Menú hamburguesa + Avatar del usuario */}
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              {/* 🆕 ENLACE DE ADMIN (solo desktop y solo si es admin) */}
               {user && isAdmin && !adminLoading && (
                 <Link 
-                  href="/es/admin"
+                  href="/admin"
                   className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 transition-colors text-red-700 hover:text-red-800"
-                  title="Administration Panel"
+                  title="Panel de Administración"
                 >
                   <span className="text-sm">👨‍💼</span>
                   <span className="text-sm font-medium">Admin</span>
                 </Link>
               )}
 
-              {/* Notification bell (logged users only) */}
+              {/* 💬 BOTÓN DE FEEDBACK - Solo en desktop */}
+              <button
+                onClick={() => setShowFeedbackModal(true)}
+                className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
+                title="Enviar feedback"
+              >
+                <span className="text-sm">💬</span>
+                <span className="text-sm font-medium">Feedback</span>
+              </button>
+
+              {/* Icono de ranking/liga (solo usuarios logueados) */}
+              {user && (
+                <>
+                  {hasNewMedals ? (
+                    // Botón con trofeo parpadeante cuando hay medallas nuevas
+                    <button
+                      onClick={async () => {
+                        setShowRankingModal(true)
+                        await markMedalsAsViewed()
+                      }}
+                      className="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                      aria-label="Ver ranking de usuarios"
+                      title={`Ranking y Liga - ${newMedalsCount} medalla(s) nueva(s)`}
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                      
+                      {/* Trofeo parpadeante como antes */}
+                      <span className="absolute -top-1 -right-1 bg-yellow-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                        🏆
+                      </span>
+                    </button>
+                  ) : (
+                    // Botón normal sin trofeo cuando no hay medallas nuevas
+                    <button
+                      onClick={() => setShowRankingModal(true)}
+                      className="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                      aria-label="Ver ranking de usuarios"
+                      title="Ranking y Liga"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                      </svg>
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* 🎯 ICONO DE DIANA PARA TESTS - Solo en móvil */}
+              {user && (
+                <Link
+                  href="/auxiliar-administrativo-estado/test"
+                  className="lg:hidden p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  aria-label="Ir a Tests"
+                  title="Tests de Práctica"
+                >
+                  <span className="text-2xl">🎯</span>
+                </Link>
+              )}
+              
+              {/* Campana de notificaciones (solo usuarios logueados) */}
               {user && <NotificationBell />}
               
-              {/* Hamburger menu button with "Menu" text */}
+              {/* Botón menú hamburguesa con texto "Menú" */}
               <button
                 type="button"
                 onClick={toggleMobileMenu}
-                className="lg:hidden flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 mr-2"
-                aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+                className="lg:hidden flex items-center space-x-1 px-2 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
                 aria-expanded={isMobileMenuOpen}
               >
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Menu</span>
-                <div className="relative w-4 h-4 text-gray-700 dark:text-gray-300">
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Menú</span>
+                <div className="relative w-3 h-3 text-gray-700 dark:text-gray-300">
                   {isMobileMenuOpen ? (
-                    <svg className="w-4 h-4 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                   ) : (
-                    <svg className="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
                     </svg>
                   )}
                 </div>
               </button>
 
-              {/* User avatar */}
+              {/* Avatar del usuario */}
               <UserAvatar />
             </div>
           </div>
 
-          {/* MOBILE MENU */}
+
+          {/* MENÚ MÓVIL */}
           <div className={`lg:hidden absolute left-0 right-0 top-full bg-white dark:bg-gray-900 shadow-lg border-t border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 ease-in-out ${
             isMobileMenuOpen 
               ? 'opacity-100 visible' 
@@ -287,22 +355,22 @@ export default function HeaderEN() {
           }`}>
             <nav className="bg-white dark:bg-gray-900 p-4">
               
-              {/* Mobile oposicion indicator (only if user logged in) */}
+              {/* Indicador de oposición móvil (solo si usuario logueado) */}
               {user && hasOposicion && !loading && oposicionMenu?.name && (
                 <div className="mb-4 p-3 bg-gradient-to-r from-emerald-50 to-cyan-50 dark:from-emerald-900/50 dark:to-cyan-900/50 rounded-lg border border-emerald-200 dark:border-emerald-800">
                   <div className="flex items-center space-x-3">
                     <span className="text-2xl">{oposicionMenu?.icon || '📚'}</span>
                     <div>
-                      <div className="font-bold text-emerald-800 dark:text-emerald-200">Studying: {oposicionMenu?.name}</div>
+                      <div className="font-bold text-emerald-800 dark:text-emerald-200">Estudiando: {oposicionMenu?.name}</div>
                       <div className="text-sm text-emerald-600 dark:text-emerald-400">
-                        {oposicionMenu?.badge && `Category ${oposicionMenu?.badge} • `}Quick access
+                        {oposicionMenu?.badge && `Categoría ${oposicionMenu?.badge} • `}Acceso rápido
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Mobile navigation links */}
+              {/* Enlaces de navegación móvil */}
               <div className="grid grid-cols-1 gap-2">
                 {getMobileNavLinks().map((link) => (
                   <Link 
@@ -324,10 +392,10 @@ export default function HeaderEN() {
                     <div className="flex-1">
                       <span className="text-lg font-medium">{link.label}</span>
                       {link.isAdmin && (
-                        <div className="text-xs text-red-600 dark:text-red-400">Administration Panel</div>
+                        <div className="text-xs text-red-600 dark:text-red-400">Panel de Administración</div>
                       )}
                     </div>
-                    {(pathname === link.href || (link.isAdmin && pathname.startsWith('/es/admin'))) && (
+                    {(pathname === link.href || (link.isAdmin && pathname.startsWith('/admin'))) && (
                       <span className={
                         link.isAdmin ? 'text-red-500' :
                         oposicionMenu?.color === 'emerald' ? 'text-emerald-500' :
@@ -339,11 +407,12 @@ export default function HeaderEN() {
                   </Link>
                 ))}
               </div>
+
             </nav>
           </div>
         </div>
         
-        {/* Overlay to close mobile menu */}
+        {/* Overlay para cerrar menú móvil */}
         {isMobileMenuOpen && (
           <div 
             className="lg:hidden fixed inset-0 bg-black/20 dark:bg-black/40 z-40" 
@@ -352,15 +421,15 @@ export default function HeaderEN() {
         )}
       </header>
 
-      {/* Welcome notification */}
+      {/* Notificación de bienvenida */}
       {showNotification && notificationData?.name && (
         <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white px-4 py-3 text-center relative">
           <div className="flex items-center justify-center space-x-2">
             <span className="text-xl">🎉</span>
             <span className="font-medium">
-              Perfect! Now you&apos;re studying: <strong>{notificationData.name}</strong>
+              ¡Perfecto! Ahora estudias: <strong>{notificationData.name}</strong>
             </span>
-            <span className="text-sm opacity-90">• Quick access activated</span>
+            <span className="text-sm opacity-90">• Acceso rápido activado</span>
           </div>
           <button 
             onClick={dismissNotification}
@@ -370,6 +439,33 @@ export default function HeaderEN() {
           </button>
         </div>
       )}
+      
+      {/* Modal de ranking */}
+      <RankingModal 
+        isOpen={showRankingModal} 
+        onClose={() => setShowRankingModal(false)} 
+      />
+
+      {/* 💬 BOTÓN DE FEEDBACK FLOTANTE */}
+      <FeedbackButton />
+
+      {/* 💬 MODAL DE FEEDBACK */}
+      <FeedbackModal 
+        isOpen={showFeedbackModal} 
+        onClose={() => setShowFeedbackModal(false)}
+        onOpenQuestionDispute={() => {
+          setShowQuestionDispute(true)
+        }}
+      />
+      
+      {/* Modal de QuestionDispute */}
+      <QuestionDispute 
+        questionId={null} // No tenemos questionId específico desde header
+        user={user}
+        supabase={supabase}
+        isOpen={showQuestionDispute}
+        onClose={() => setShowQuestionDispute(false)}
+      />
     </>
   )
 }

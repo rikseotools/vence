@@ -141,7 +141,7 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
           user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
           screen_resolution: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : 'unknown',
           device_type: deviceInfo?.device_type || deviceInfo?.type || deviceInfo?.model || 'unknown',
-          browser_language: typeof navigator !== 'undefined' ? navigator.language : 'es',
+          browser_language: 'es',
           timezone: typeof Intl !== 'undefined' ? 
             Intl.DateTimeFormat().resolvedOptions().timeZone : 'Europe/Madrid',
           

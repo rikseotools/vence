@@ -37,7 +37,7 @@ export default function AIRecommendations({ recommendations }) {
           </div>
         </div>
         <Link 
-          href="/es/auxiliar-administrativo-estado/test"
+          href="/auxiliar-administrativo-estado/test"
           className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity inline-block"
         >
           🚀 Alimentar la IA con Más Datos

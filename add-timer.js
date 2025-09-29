@@ -96,7 +96,7 @@ function addTimerToFile(filePath) {
 
 // Ejecutar el script
 function main() {
-  const projectRoot = './app/es/auxiliar-administrativo-estado/test';
+  const projectRoot = './app/auxiliar-administrativo-estado/test';
   
   if (!fs.existsSync(projectRoot)) {
     console.error('❌ No se encontró el directorio de tests');

@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { checkAndNotifyNewMedals } from '../../../../lib/services/rankingMedals'
+import { checkAndNotifyNewMedals } from '../../../lib/services/rankingMedals'
 import { generateUnsubscribeUrl } from '../../email-unsubscribe/route.js'
 
 // 🎨 TEMPLATES VARIABLES: Evitar emails repetitivos
@@ -591,7 +591,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
               
               <!-- CTA Button con tracking -->
               <div style="text-align: center; margin: 35px 0;">
-                <a href="https://ilovetest.pro/api/email-tracking/click?email_id=${temporaryEmailId}&user_id=${userId}&action=main_cta&type=motivation&redirect=${encodeURIComponent('https://www.ilovetest.pro/es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational')}" 
+                <a href="https://ilovetest.pro/api/email-tracking/click?email_id=${temporaryEmailId}&user_id=${userId}&action=main_cta&type=motivation&redirect=${encodeURIComponent('https://www.ilovetest.pro/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational')}" 
                    style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px;">
                   🎯 Hacer Test Ahora
                 </a>
@@ -607,7 +607,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
             <!-- Footer con unsubscribe -->
             <div style="background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0; font-size: 12px; color: #666;">
-                <a href="https://www.ilovetest.pro/es/perfil" style="color: #667eea; text-decoration: none;">Gestionar preferencias</a>
+                <a href="https://www.ilovetest.pro/perfil" style="color: #667eea; text-decoration: none;">Gestionar preferencias</a>
                 •
                 <a href="${generateUnsubscribeUrl(email)}" style="color: #ef4444; text-decoration: none;">Cancelar suscripción</a>
               </p>

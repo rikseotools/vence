@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { testServerConnection } from '../../../../lib/emails/emailService.server'
+import { testServerConnection } from '../../../lib/emails/emailService.server'
 
 export async function GET() {
   try {

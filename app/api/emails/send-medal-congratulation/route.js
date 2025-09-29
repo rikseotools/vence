@@ -225,13 +225,13 @@ function generateMedalEmailContent(medal, userName) {
             <p>¡Sigue practicando y conseguirás más medallas! Cada pregunta que respondes te acerca más al éxito en tu oposición.</p>
             
             <div style="text-align: center;">
-                <a href="${baseUrl}/es/auxiliar-administrativo-estado/test" class="button">
+                <a href="${baseUrl}/auxiliar-administrativo-estado/test" class="button">
                     🎯 Seguir Practicando
                 </a>
             </div>
             
             <div style="text-align: center; margin-top: 20px;">
-                <a href="${baseUrl}/es/mis-estadisticas" style="color: #667eea; text-decoration: none;">
+                <a href="${baseUrl}/mis-estadisticas" style="color: #667eea; text-decoration: none;">
                     📊 Ver todas mis medallas
                 </a>
             </div>
@@ -240,7 +240,7 @@ function generateMedalEmailContent(medal, userName) {
         <div class="footer">
             <p>Este email se envió porque conseguiste una nueva medalla en Vence.</p>
             <p>
-                <a href="${baseUrl}/es/perfil?tab=emails" style="color: #64748b;">Gestionar preferencias de email</a>
+                <a href="${baseUrl}/perfil?tab=emails" style="color: #64748b;">Gestionar preferencias de email</a>
             </p>
             <p>© ${new Date().getFullYear()} Vence - Tu plataforma de preparación de oposiciones</p>
         </div>

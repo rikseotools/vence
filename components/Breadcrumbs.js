@@ -83,19 +83,19 @@ export default function Breadcrumbs({ customLabels = {}, className = "" }) {
               // Inicio de la oposición
               if (isAuxiliarAdmin) {
                 oppositionBreadcrumbs.push({
-                  href: '/es/auxiliar-administrativo-estado',
+                  href: '/auxiliar-administrativo-estado',
                   label: '👨‍💼 Auxiliar Administrativo Estado',
                   isLast: false
                 })
               } else if (isGuardiaCivil) {
                 oppositionBreadcrumbs.push({
-                  href: '/es/guardia-civil',
+                  href: '/guardia-civil',
                   label: '🚔 Guardia Civil',
                   isLast: false
                 })
               } else if (isPolicia) {
                 oppositionBreadcrumbs.push({
-                  href: '/es/policia-nacional',
+                  href: '/policia-nacional',
                   label: '👮‍♂️ Policía Nacional',
                   isLast: false
                 })

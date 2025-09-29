@@ -15,7 +15,7 @@ export default function ExamReadiness({ examReadiness }) {
           <h4 className="text-xl font-bold text-gray-700 mb-2">Datos Insuficientes</h4>
           <p className="text-gray-600 mb-4">{examReadiness.message}</p>
           <Link 
-            href="/es/auxiliar-administrativo-estado/test"
+            href="/auxiliar-administrativo-estado/test"
             className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity"
           >
             🚀 Hacer Más Tests

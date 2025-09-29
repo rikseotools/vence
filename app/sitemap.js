@@ -23,19 +23,19 @@ export default async function sitemap() {
     
     // Auxiliar Administrativo - SOLO páginas principales
     {
-      url: `${SITE_URL}/es/auxiliar-administrativo-estado`,
+      url: `${SITE_URL}/auxiliar-administrativo-estado`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${SITE_URL}/es/auxiliar-administrativo-estado/test`,
+      url: `${SITE_URL}/auxiliar-administrativo-estado/test`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/es/auxiliar-administrativo-estado/temario`,
+      url: `${SITE_URL}/auxiliar-administrativo-estado/temario`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.7,
@@ -43,13 +43,13 @@ export default async function sitemap() {
     
     // ✅ SOLO Tema 7 - página principal (no test-personalizado ni otros)
     {
-      url: `${SITE_URL}/es/auxiliar-administrativo-estado/temario/tema-7`,
+      url: `${SITE_URL}/auxiliar-administrativo-estado/temario/tema-7`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/es/auxiliar-administrativo-estado/test/tema/7`,
+      url: `${SITE_URL}/auxiliar-administrativo-estado/test/tema/7`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
@@ -57,13 +57,13 @@ export default async function sitemap() {
     
     // ✅ PÁGINAS PRINCIPALES DE CONTENIDO - NO TESTS
     {
-      url: `${SITE_URL}/es/leyes`,
+      url: `${SITE_URL}/leyes`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,
     },
     {
-      url: `${SITE_URL}/es/teoria`,
+      url: `${SITE_URL}/teoria`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.6,
@@ -71,7 +71,7 @@ export default async function sitemap() {
     
     // Test rápido general - ÚNICA URL de test en sitemap
     {
-      url: `${SITE_URL}/es/test/rapido`,
+      url: `${SITE_URL}/test/rapido`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
@@ -79,7 +79,7 @@ export default async function sitemap() {
     
     // Página de unsubscribe
     {
-      url: `${SITE_URL}/es/unsubscribe`,
+      url: `${SITE_URL}/unsubscribe`,
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.3,
@@ -88,11 +88,11 @@ export default async function sitemap() {
 
   // 🚫 URLs QUE NO QUIERES INDEXAR (todas las páginas de test)
   const excludedUrls = [
-    '/es/login',
-    '/es/perfil', 
-    '/es/mis-estadisticas',
-    '/es/mis-impugnaciones',
-    '/es/admin',
+    '/login',
+    '/perfil', 
+    '/mis-estadisticas',
+    '/mis-impugnaciones',
+    '/admin',
     '/auth/callback',
     
     // ❌ TODAS LAS URLs DE TEST - NO INCLUIR EN SITEMAP
@@ -102,10 +102,10 @@ export default async function sitemap() {
     '/oficial',
     
     // ❌ URLs DE NOTIFICACIONES - NO INCLUIR
-    '/es/test/mantener-racha',
-    '/es/test/explorar', 
-    '/es/test/desafio',
-    '/es/test/recuperar-racha',
+    '/test/mantener-racha',
+    '/test/explorar', 
+    '/test/desafio',
+    '/test/recuperar-racha',
     '/articulos-dirigido',
   ]
 
@@ -148,7 +148,7 @@ export default async function sitemap() {
 
           // ✅ SOLO PÁGINA PRINCIPAL DE LA LEY - NO TESTS
           const lawUrl = {
-            url: `${SITE_URL}/es/leyes/${canonicalSlug}`,
+            url: `${SITE_URL}/leyes/${canonicalSlug}`,
             lastModified,
             changeFrequency: 'weekly',
             priority: 0.8,

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { detectInactiveUsers } from '../../../../lib/emails/emailService.server'
+import { detectInactiveUsers } from '../../../lib/emails/emailService.server'
 
 export async function GET() {
   try {
