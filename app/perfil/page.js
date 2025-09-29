@@ -1,6 +1,6 @@
 // app/perfil/page.js - CON PESTAÑAS Y EMAIL PREFERENCES
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AvatarChanger from '@/components/AvatarChanger'
