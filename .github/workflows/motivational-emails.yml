@@ -24,6 +24,14 @@ jobs:
           echo "🚀 Iniciando envío de emails motivacionales..."
           echo "⏰ Timestamp: $(date)"
           
+          # DEBUG: Verificar que el secreto existe y no está vacío
+          echo "🔍 CRON_SECRET length: ${#CRON_SECRET}"
+          if [ -z "$CRON_SECRET" ]; then
+            echo "❌ CRON_SECRET está vacío o no existe en GitHub Actions"
+          else
+            echo "✅ CRON_SECRET existe y tiene contenido"
+          fi
+          
           # DEBUG: Primero probar endpoint de debug
           echo "🔍 Testing auth with debug endpoint..."
           debug_response=$(curl -L -s -w "\n%{http_code}" -X POST \
