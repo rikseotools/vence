@@ -33,14 +33,14 @@ jobs:
           fi
           
           # DEBUG: Crear header de autorización manualmente
-          AUTH_HEADER="Bearer ${{ secrets.CRON_SECRET }}"
+          AUTH_HEADER="Bearer $CRON_SECRET"
           echo "🔍 Auth header length: ${#AUTH_HEADER}"
           
           # DEBUG: Primero probar endpoint de debug
           echo "🔍 Testing auth with debug endpoint..."
           debug_response=$(curl -L -s -w "\n%{http_code}" -X POST \
             https://vence.es/api/debug/cron-auth \
-            -H "Authorization: $AUTH_HEADER" \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json")
           
           debug_code=$(echo "$debug_response" | tail -n1)
@@ -52,7 +52,7 @@ jobs:
           # Llamar al endpoint de emails motivacionales
           response=$(curl -L -s -w "\n%{http_code}" -X POST \
             https://vence.es/api/emails/send-motivational-scheduled \
-            -H "Authorization: $AUTH_HEADER" \
+            -H "Authorization: Bearer $CRON_SECRET" \
             -H "Content-Type: application/json")
           
           # Separar body y status code
