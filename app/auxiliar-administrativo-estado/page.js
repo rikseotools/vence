@@ -39,10 +39,10 @@ export const metadata = {
 
 export default function AuxiliarAdministrativoEstado() {
   const estadisticas = [
-    { numero: "28", texto: "Temas oficiales", color: "text-blue-600" },
+    { numero: "1.700", texto: "Plazas 2025", color: "text-blue-600" },
     { numero: "125", texto: "Preguntas test", color: "text-green-600" },
-    { numero: "2", texto: "Temas disponibles", color: "text-purple-600" },
-    { numero: "100%", texto: "Actualizado 2025", color: "text-orange-600" }
+    { numero: "90", texto: "Minutos examen", color: "text-purple-600" },
+    { numero: "ESO", texto: "Solo necesitas", color: "text-orange-600" }
   ]
 
   const serviciosPrincipales = [
@@ -128,8 +128,8 @@ export default function AuxiliarAdministrativoEstado() {
             </h1>
             
             <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
-              Prepárate con tests gratuitos, temarios descargables y exámenes oficiales. 
-              <strong> 28 temas oficiales</strong> según el BOE 2024.
+              La oposición más accesible del Estado con <strong>1.700 plazas convocadas</strong> para 2025. 
+              Prepárate con nuestro sistema completo de tests y temarios.
             </p>
             
             {/* Estadísticas compactas */}
@@ -178,25 +178,35 @@ export default function AuxiliarAdministrativoEstado() {
             </div>
           </section>
 
-          {/* Información de la Convocatoria */}
-          <div className="bg-blue-600 rounded-lg shadow-lg p-6 text-white mb-10">
-            <h2 className="text-2xl font-bold mb-3">🎯 Convocatoria 2024</h2>
-            <div className="grid grid-cols-3 gap-4 mb-4">
+          {/* Información de la Convocatoria 2025 */}
+          <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg shadow-lg p-6 text-white mb-10">
+            <h2 className="text-2xl font-bold mb-3">🚀 Convocatoria 2025 - ¡Ya Aprobada!</h2>
+            <div className="grid grid-cols-4 gap-4 mb-4">
               <div className="text-center">
-                <div className="text-2xl font-bold">2.450</div>
-                <div className="text-blue-100 text-sm">Plazas</div>
+                <div className="text-2xl font-bold">1.700</div>
+                <div className="text-green-100 text-sm">Plazas</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">14 Dic</div>
-                <div className="text-blue-100 text-sm">Examen 2024</div>
+                <div className="text-2xl font-bold">+20%</div>
+                <div className="text-green-100 text-sm">vs 2024</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">90 min</div>
-                <div className="text-blue-100 text-sm">Duración</div>
+                <div className="text-2xl font-bold">Sep</div>
+                <div className="text-green-100 text-sm">Convocatoria</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">110</div>
+                <div className="text-green-100 text-sm">Preguntas</div>
               </div>
             </div>
-            <p className="text-blue-100 text-sm">
-              La convocatoria 2024 ya se celebró. <strong>¡Prepárate para 2025!</strong>
+            <div className="bg-white bg-opacity-20 rounded-lg p-4 mb-4">
+              <h3 className="font-bold mb-2">✨ Buenas noticias: El examen se ha simplificado</h3>
+              <p className="text-green-100 text-sm">
+                Ya no hay prueba práctica de Office en ordenador. Todo el examen es tipo test en una sola sesión de 90 minutos.
+              </p>
+            </div>
+            <p className="text-green-100 text-sm">
+              <strong>¡Es el momento perfecto para empezar!</strong> La convocatoria se publicará aproximadamente en septiembre de 2025.
             </p>
           </div>
 
