@@ -4,6 +4,11 @@ const nextConfig = {
     ignoreDuringBuilds: true, // ✅ Tu configuración existente
   },
   
+  // ⚡ Solo optimizar CSS crítico
+  experimental: {
+    optimizeCss: true,
+  },
+  
   // ✅ Agregar configuración de SEO
   env: {
     SITE_URL: process.env.NODE_ENV === 'production' 
