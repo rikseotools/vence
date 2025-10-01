@@ -6,6 +6,7 @@ import FooterES from './Footer'
 import Breadcrumbs from '../components/Breadcrumbs'
 import PushNotificationManager from '../components/PushNotificationManager'
 import NotificationDebugInfo from '../components/NotificationDebugInfo'
+import GoogleAnalytics from '../components/GoogleAnalytics'
 import { AuthProvider, useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 
@@ -96,6 +97,9 @@ function LayoutContent({ children }) {
 export default function SpanishLayout({ children }) {
   return (
     <html lang="es">
+      <head>
+        <GoogleAnalytics />
+      </head>
       <body>
         <AuthProvider initialUser={null}>
           <LayoutContent>
