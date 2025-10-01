@@ -97,15 +97,14 @@ function LayoutContent({ children }) {
 export default function SpanishLayout({ children }) {
   return (
     <html lang="es">
-      <head>
-        <GoogleAnalytics />
-      </head>
       <body>
         <AuthProvider initialUser={null}>
           <LayoutContent>
             {children}
           </LayoutContent>
         </AuthProvider>
+        {/* Google Analytics al final para no bloquear render */}
+        <GoogleAnalytics />
       </body>
     </html>
   )
