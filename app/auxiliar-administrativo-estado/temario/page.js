@@ -106,28 +106,31 @@ export default function TemarioPage() {
                         <h3 className="text-white font-bold text-sm sm:text-base">
                           Tema {tema.numero}
                         </h3>
-                        <div className="text-xs text-white/90 font-medium">
-                          {!isUnlocked ? '🔒 BLOQUEADO' :
+                        <div className="text-xs text-white/90 font-medium flex items-center gap-1">
+                          {!isUnlocked ? (
+                            <span className="flex items-center gap-1">
+                              🔒 BLOQUEADO
+                              <button
+                                onClick={() => openModal(tema)}
+                                className="bg-blue-500 hover:bg-blue-600 text-white w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold border border-white/30 transition-colors cursor-pointer"
+                                title="Ver información para desbloquear"
+                              >
+                                i
+                              </button>
+                            </span>
+                          ) :
                            progress.accuracy >= 70 ? '✅ DOMINADO' :
                            progress.accuracy > 0 ? '🎯 EN PROGRESO' : '🆕 DISPONIBLE'}
                         </div>
                       </div>
                     </div>
                     
-                    {/* Mostrar progreso o botón info */}
+                    {/* Mostrar progreso */}
                     {user && isUnlocked && progress.questionsAnswered > 0 ? (
                       <div className="text-right">
                         <div className="text-white font-bold text-lg">{progress.accuracy}%</div>
                         <div className="text-xs text-white/90">{progress.questionsAnswered} preguntas</div>
                       </div>
-                    ) : !isUnlocked ? (
-                      <button
-                        onClick={() => openModal(tema)}
-                        className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
-                        title="Ver información para desbloquear"
-                      >
-                        <span className="text-white font-bold text-sm">i</span>
-                      </button>
                     ) : null}
                   </div>
                 </div>
