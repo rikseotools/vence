@@ -10,6 +10,7 @@ function UnsubscribePageContent() {
   const [status, setStatus] = useState('loading') // loading, success, error, invalid
   const [message, setMessage] = useState('')
   const [email, setEmail] = useState('')
+  const [showConfirmation, setShowConfirmation] = useState(false)
   
   // Obtener parámetros de la URL
   const token = searchParams.get('token')
@@ -51,8 +52,13 @@ function UnsubscribePageContent() {
     }
   }
 
-  const handleUnsubscribe = async () => {
+  const handleUnsubscribeClick = () => {
+    setShowConfirmation(true)
+  }
+
+  const handleConfirmUnsubscribe = async () => {
     setStatus('loading')
+    setShowConfirmation(false)
 
     try {
       const response = await fetch('/api/unsubscribe', {
@@ -79,6 +85,10 @@ function UnsubscribePageContent() {
       setStatus('error')
       setMessage('Error procesando la solicitud')
     }
+  }
+
+  const handleCancelUnsubscribe = () => {
+    setShowConfirmation(false)
   }
 
   if (status === 'loading') {
@@ -187,7 +197,7 @@ function UnsubscribePageContent() {
           <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
             <h3 className="font-semibold text-yellow-800 mb-4">¿Quieres dejar de recibir emails?</h3>
             <button
-              onClick={handleUnsubscribe}
+              onClick={handleUnsubscribeClick}
               className="w-full bg-red-600 text-white px-6 py-4 rounded-lg hover:bg-red-700 transition-colors font-semibold text-lg"
             >
               🚫 Desactivar TODOS los emails
@@ -197,6 +207,43 @@ function UnsubscribePageContent() {
             </p>
           </div>
         </div>
+
+        {/* Modal de confirmación */}
+        {showConfirmation && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">¿Estás seguro?</h3>
+                <p className="text-gray-600 mb-4">
+                  ¿Realmente quieres dejar de recibir <strong>todos los emails</strong>, incluidas alertas y noticias importantes para tu oposición?
+                </p>
+                <p className="text-sm text-orange-600 font-medium">
+                  Te perderás novedades, alertas y noticias que pueden ser clave para tu preparación.
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={handleConfirmUnsubscribe}
+                  className="w-full bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                >
+                  Sí, perderme novedades, alertas y noticias de mi oposición
+                </button>
+                <button
+                  onClick={handleCancelUnsubscribe}
+                  className="w-full bg-gray-200 text-gray-800 px-4 py-3 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+                >
+                  No, quiero seguir recibiendo emails importantes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="text-center text-sm text-gray-500">
           <p>Siempre puedes cambiar tus preferencias desde tu perfil.</p>
