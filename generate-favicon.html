@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generador de Favicon Vence</title>
+</head>
+<body>
+    <h1>Generador de Favicon Vence</h1>
+    <canvas id="canvas" width="32" height="32" style="border: 1px solid #000; image-rendering: pixelated; width: 160px; height: 160px;"></canvas>
+    <br><br>
+    <button onclick="generateFavicon()">Generar Favicon</button>
+    <br><br>
+    <a id="downloadLink" style="display: none;">Descargar favicon.ico</a>
+    
+    <script>
+        function generateFavicon() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, 32, 32);
+            
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, 32, 0);
+            gradient.addColorStop(0, '#1e40af');
+            gradient.addColorStop(1, '#1e3a8a');
+            
+            // Draw rounded rectangle background
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(1, 1, 30, 30, 4);
+            ctx.fill();
+            
+            // Draw large V
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('V', 16, 14);
+            
+            // Draw small VENCE
+            ctx.fillStyle = '#f9fafb';
+            ctx.font = 'bold 4px Arial';
+            ctx.letterSpacing = '0.5px';
+            ctx.fillText('VENCE', 16, 25);
+            
+            // Convert to blob and create download link
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.getElementById('downloadLink');
+                link.href = url;
+                link.download = 'favicon.png';
+                link.style.display = 'block';
+                link.textContent = 'Descargar favicon.png';
+            });
+        }
+        
+        // Add roundRect polyfill for older browsers
+        if (!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x, y, width, height, radius) {
+                this.beginPath();
+                this.moveTo(x + radius, y);
+                this.lineTo(x + width - radius, y);
+                this.quadraticCurveTo(x + width, y, x + width, y + radius);
+                this.lineTo(x + width, y + height - radius);
+                this.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                this.lineTo(x + radius, y + height);
+                this.quadraticCurveTo(x, y + height, x, y + height - radius);
+                this.lineTo(x, y + radius);
+                this.quadraticCurveTo(x, y, x + radius, y);
+                this.closePath();
+            };
+        }
+        
+        // Auto-generate on page load
+        window.onload = generateFavicon;
+    </script>
+</body>
+</html>
