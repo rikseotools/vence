@@ -265,13 +265,17 @@ function PerfilPageContent() {
     try {
       setEmailPrefSaving(true)
       
-      // Convertir nuestra opción simple al formato de BD existente
+      // Convertir nuestra opción simple al formato de BD existente (TODOS los tipos)
+      const receiveEmails = newPreferences.receive_emails
       const updateData = {
         user_id: user.id,
-        unsubscribed_all: !newPreferences.receive_emails,
-        email_reactivacion: newPreferences.receive_emails,
-        email_urgente: newPreferences.receive_emails,
-        email_bienvenida_motivacional: newPreferences.receive_emails,
+        unsubscribed_all: !receiveEmails,
+        email_reactivacion: receiveEmails,
+        email_urgente: receiveEmails,
+        email_bienvenida_motivacional: receiveEmails,
+        email_bienvenida_inmediato: receiveEmails,
+        email_resumen_semanal: receiveEmails,
+        unsubscribed_at: receiveEmails ? null : new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
 
@@ -689,13 +693,13 @@ function PerfilPageContent() {
             <div className="flex items-center justify-between">
               <div>
                 <h5 className="font-medium text-gray-800">
-                  Recibir emails, incluidas alertas y noticias para tu oposición
+                  Emails de Vence
                 </h5>
                 <p className="text-sm text-gray-600">
                   {emailPreferences.receive_emails ? (
-                    <>Recibes emails útiles para tu preparación</>
+                    <>Recibes todos los tipos: bienvenida, reactivación, urgentes, resumenes semanales y noticias</>
                   ) : (
-                    <>No recibes ningún email de Vence</>
+                    <>No recibes ningún email de Vence (todos los tipos desactivados)</>
                   )}
                 </p>
               </div>
