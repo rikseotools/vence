@@ -160,7 +160,7 @@ export function LogoFooter({ className = '' }) {
 export function LogoHorizontal({ className = '' }) {
   return (
     <Link href="/" className={`flex items-center space-x-3 hover:opacity-80 transition-opacity ${className}`}>
-      <div className={`bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold rounded-lg flex flex-col items-center justify-center shadow-md`}
+      <div className={`bg-gradient-to-r from-blue-800 to-blue-950 text-white font-bold rounded-lg flex flex-col items-center justify-center shadow-md`}
            style={{
              width: 48,
              height: 48,
