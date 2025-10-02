@@ -389,7 +389,6 @@ export default function AdminDashboard() {
   function getEmailTypeName(type) {
     const names = {
       'bienvenida_inmediato': 'Bienvenida',
-      'welcome': 'Bienvenida', // ⚠️ Legacy - se está corrigiendo para evitar duplicados
       'reactivacion': 'Reactivación',
       'urgente': 'Urgente',
       'bienvenida_motivacional': 'Motivacional'
