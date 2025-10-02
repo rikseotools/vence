@@ -10,8 +10,6 @@ function UnsubscribePageContent() {
   const [status, setStatus] = useState('loading') // loading, success, error, invalid
   const [message, setMessage] = useState('')
   const [email, setEmail] = useState('')
-  const [selectedTypes, setSelectedTypes] = useState([])
-  const [showOptions, setShowOptions] = useState(false)
   
   // Obtener parámetros de la URL
   const token = searchParams.get('token')
@@ -53,7 +51,7 @@ function UnsubscribePageContent() {
     }
   }
 
-  const handleUnsubscribe = async (unsubscribeAll = false) => {
+  const handleUnsubscribe = async () => {
     setStatus('loading')
 
     try {
@@ -62,8 +60,8 @@ function UnsubscribePageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           token,
-          unsubscribeAll,
-          specificTypes: unsubscribeAll ? null : selectedTypes
+          unsubscribeAll: true,
+          specificTypes: null
         })
       })
 
@@ -71,11 +69,7 @@ function UnsubscribePageContent() {
 
       if (result.success) {
         setStatus('success')
-        if (unsubscribeAll) {
-          setMessage('✅ Te has dado de baja de TODOS los emails correctamente. No recibirás más emails automáticos.')
-        } else {
-          setMessage(`✅ Has desactivado los emails seleccionados correctamente.`)
-        }
+        setMessage('✅ Te has dado de baja de TODOS los emails correctamente. No recibirás más emails automáticos.')
       } else {
         setStatus('error')
         setMessage(result.error || 'Error procesando la baja de emails')
@@ -85,14 +79,6 @@ function UnsubscribePageContent() {
       setStatus('error')
       setMessage('Error procesando la solicitud')
     }
-  }
-
-  const toggleEmailType = (type) => {
-    setSelectedTypes(prev => 
-      prev.includes(type) 
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
-    )
   }
 
   if (status === 'loading') {
@@ -198,83 +184,18 @@ function UnsubscribePageContent() {
         </div>
 
         <div className="space-y-4 mb-6">
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h3 className="font-semibold text-yellow-800 mb-2">¿Qué quieres hacer?</h3>
-            <div className="space-y-3">
-              <button
-                onClick={() => handleUnsubscribe(true)}
-                className="w-full bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold"
-              >
-                🚫 Desactivar TODOS los emails
-              </button>
-              
-              <button
-                onClick={() => setShowOptions(!showOptions)}
-                className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                ⚙️ Elegir qué tipos desactivar
-              </button>
-            </div>
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+            <h3 className="font-semibold text-yellow-800 mb-4">¿Quieres dejar de recibir emails?</h3>
+            <button
+              onClick={handleUnsubscribe}
+              className="w-full bg-red-600 text-white px-6 py-4 rounded-lg hover:bg-red-700 transition-colors font-semibold text-lg"
+            >
+              🚫 Desactivar TODOS los emails
+            </button>
+            <p className="text-sm text-yellow-700 mt-3">
+              No recibirás más emails automáticos de Vence.es
+            </p>
           </div>
-
-          {showOptions && (
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <h4 className="font-semibold text-gray-800 mb-3">Selecciona los tipos de email a desactivar:</h4>
-              
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedTypes.includes('reactivacion')}
-                    onChange={() => toggleEmailType('reactivacion')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">Emails de Reactivación</div>
-                    <div className="text-sm text-gray-600">Cuando llevas 7-13 días sin estudiar</div>
-                  </div>
-                </label>
-
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedTypes.includes('urgente')}
-                    onChange={() => toggleEmailType('urgente')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">Emails Urgentes</div>
-                    <div className="text-sm text-gray-600">Cuando llevas 14+ días sin estudiar</div>
-                  </div>
-                </label>
-
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedTypes.includes('bienvenida_motivacional')}
-                    onChange={() => toggleEmailType('bienvenida_motivacional')}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <div>
-                    <div className="font-medium text-gray-900">Emails de Bienvenida</div>
-                    <div className="text-sm text-gray-600">Para usuarios nuevos que no han empezado</div>
-                  </div>
-                </label>
-              </div>
-
-              <button
-                onClick={() => handleUnsubscribe(false)}
-                disabled={selectedTypes.length === 0}
-                className={`w-full mt-4 px-4 py-3 rounded-lg transition-colors font-semibold ${
-                  selectedTypes.length === 0
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-orange-600 text-white hover:bg-orange-700'
-                }`}
-              >
-                Desactivar Tipos Seleccionados ({selectedTypes.length})
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="text-center text-sm text-gray-500">

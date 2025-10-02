@@ -29,7 +29,7 @@ export async function POST(request) {
     
     console.log('🚫 API Unsubscribe: Llamando processUnsubscribeByToken...')
     
-    const result = await processUnsubscribeByToken(token, specificTypes)
+    const result = await processUnsubscribeByToken(token, specificTypes, unsubscribeAll)
     
     console.log('🚫 API Unsubscribe: Resultado de processUnsubscribeByToken:', result)
     
