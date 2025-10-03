@@ -32,6 +32,13 @@ const TestConfigurator = ({
   // 🆕 Estados para filtro de leyes
   const [selectedLaws, setSelectedLaws] = useState(new Set());
   const [showLawsFilter, setShowLawsFilter] = useState(false);
+  
+  // 🆕 Estados para filtro de artículos
+  const [selectedArticlesByLaw, setSelectedArticlesByLaw] = useState(new Map());
+  const [showArticleModal, setShowArticleModal] = useState(false);
+  const [currentLawForArticles, setCurrentLawForArticles] = useState(null);
+  const [availableArticlesByLaw, setAvailableArticlesByLaw] = useState(new Map());
+  const [loadingArticles, setLoadingArticles] = useState(false);
 
 
   // Estados para preguntas oficiales
@@ -309,27 +316,44 @@ const TestConfigurator = ({
     return typeof totalQuestions === 'number' ? totalQuestions : 0;
   }, [focusEssentialArticles, essentialQuestionsCount, essentialQuestionsByDifficulty, difficultyMode, onlyOfficialQuestions, officialQuestionsCount, totalQuestions]);
 
-  // 🆕 Calcular preguntas disponibles considerando leyes seleccionadas
+  // 🆕 Calcular preguntas disponibles considerando leyes y artículos seleccionados
   const availableQuestions = useMemo(() => {
-    // Si no hay datos de leyes o están todas seleccionadas, usar el cálculo base
-    if (!lawsData || lawsData.length === 0 || selectedLaws.size === lawsData.length) {
+    // Si no hay datos de leyes, usar el cálculo base
+    if (!lawsData || lawsData.length === 0) {
       return baseQuestionCount;
     }
     
-    // Si hay leyes específicas seleccionadas, calcular proporcionalmente
-    if (selectedLaws.size > 0) {
-      // Calcular el porcentaje de artículos de las leyes seleccionadas
-      const totalArticles = lawsData.reduce((sum, law) => sum + law.articles_with_questions, 0);
-      const selectedArticles = lawsData
-        .filter(law => selectedLaws.has(law.law_short_name))
-        .reduce((sum, law) => sum + law.articles_with_questions, 0);
-      
-      const proportion = selectedArticles / totalArticles;
-      return Math.floor(baseQuestionCount * proportion);
+    // Si no hay leyes seleccionadas, retornar 0
+    if (selectedLaws.size === 0) {
+      return 0;
     }
     
-    return 0; // Si no hay leyes seleccionadas
-  }, [baseQuestionCount, lawsData, selectedLaws]);
+    // Calcular preguntas basándose en artículos específicos seleccionados
+    let totalQuestions = 0;
+    
+    for (const law of lawsData) {
+      if (!selectedLaws.has(law.law_short_name)) continue;
+      
+      const articlesForLaw = availableArticlesByLaw.get(law.law_short_name);
+      const selectedArticlesForLaw = selectedArticlesByLaw.get(law.law_short_name);
+      
+      if (articlesForLaw && selectedArticlesForLaw) {
+        // Contar preguntas de artículos específicos seleccionados
+        const questionsFromSelectedArticles = articlesForLaw
+          .filter(article => selectedArticlesForLaw.has(article.article_number))
+          .reduce((sum, article) => sum + article.question_count, 0);
+        
+        totalQuestions += questionsFromSelectedArticles;
+      } else {
+        // Si no hay filtro de artículos específico, usar proporción por ley
+        const totalArticles = lawsData.reduce((sum, law) => sum + law.articles_with_questions, 0);
+        const proportion = law.articles_with_questions / totalArticles;
+        totalQuestions += Math.floor(baseQuestionCount * proportion);
+      }
+    }
+    
+    return totalQuestions;
+  }, [baseQuestionCount, lawsData, selectedLaws, availableArticlesByLaw, selectedArticlesByLaw]);
 
   const maxQuestions = useMemo(() => {
     return Math.min(selectedQuestions, availableQuestions);
@@ -378,6 +402,121 @@ const TestConfigurator = ({
     setSelectedLaws(new Set());
   };
 
+  // 🆕 Función para cargar artículos disponibles por ley
+  const loadArticlesForLaw = async (lawShortName) => {
+    if (!supabase || !tema) return [];
+    
+    setLoadingArticles(true);
+    try {
+      console.log(`📋 Cargando artículos para ley ${lawShortName} del tema ${tema}...`);
+      
+      // Obtener mapeo del tema desde topic_scope
+      const { data: mappings, error: mappingError } = await supabase
+        .from('topic_scope')
+        .select(`
+          article_numbers,
+          laws!inner(short_name, id),
+          topics!inner(topic_number, position_type)
+        `)
+        .eq('topics.topic_number', tema)
+        .eq('topics.position_type', 'auxiliar_administrativo')
+        .eq('laws.short_name', lawShortName);
+
+      if (mappingError || !mappings || mappings.length === 0) {
+        console.warn('⚠️ No se encontraron mappings para la ley:', lawShortName);
+        return [];
+      }
+
+      const mapping = mappings[0];
+      
+      // Obtener artículos con preguntas para esta ley
+      const { data: articlesData, error } = await supabase
+        .from('questions')
+        .select(`
+          articles!inner(
+            article_number,
+            laws!inner(short_name)
+          )
+        `)
+        .eq('is_active', true)
+        .eq('articles.laws.short_name', lawShortName)
+        .in('articles.article_number', mapping.article_numbers);
+
+      if (error) {
+        console.error('❌ Error cargando artículos:', error);
+        return [];
+      }
+
+      // Obtener artículos únicos y conteo de preguntas
+      const articleCounts = {};
+      articlesData.forEach(q => {
+        const artNum = q.articles.article_number;
+        articleCounts[artNum] = (articleCounts[artNum] || 0) + 1;
+      });
+
+      const articles = Object.entries(articleCounts).map(([articleNumber, questionCount]) => ({
+        article_number: parseInt(articleNumber),
+        question_count: questionCount
+      })).sort((a, b) => a.article_number - b.article_number);
+
+      console.log(`✅ Cargados ${articles.length} artículos para ${lawShortName}`);
+      return articles;
+      
+    } catch (error) {
+      console.error('❌ Error cargando artículos:', error);
+      return [];
+    } finally {
+      setLoadingArticles(false);
+    }
+  };
+
+  // 🆕 Funciones para manejar filtro de artículos
+  const openArticleModal = async (lawShortName) => {
+    setCurrentLawForArticles(lawShortName);
+    setShowArticleModal(true);
+    
+    // Cargar artículos si no están en cache
+    if (!availableArticlesByLaw.has(lawShortName)) {
+      const articles = await loadArticlesForLaw(lawShortName);
+      setAvailableArticlesByLaw(prev => new Map(prev.set(lawShortName, articles)));
+      
+      // Inicializar todos los artículos como seleccionados
+      const articleNumbers = new Set(articles.map(art => art.article_number));
+      setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, articleNumbers)));
+    }
+  };
+
+  const closeArticleModal = () => {
+    setShowArticleModal(false);
+    setCurrentLawForArticles(null);
+  };
+
+  const toggleArticleSelection = (lawShortName, articleNumber) => {
+    setSelectedArticlesByLaw(prev => {
+      const newMap = new Map(prev);
+      const currentArticles = newMap.get(lawShortName) || new Set();
+      const newArticles = new Set(currentArticles);
+      
+      if (newArticles.has(articleNumber)) {
+        newArticles.delete(articleNumber);
+      } else {
+        newArticles.add(articleNumber);
+      }
+      
+      return newMap.set(lawShortName, newArticles);
+    });
+  };
+
+  const selectAllArticlesForLaw = (lawShortName) => {
+    const articles = availableArticlesByLaw.get(lawShortName) || [];
+    const allArticles = new Set(articles.map(art => art.article_number));
+    setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, allArticles)));
+  };
+
+  const deselectAllArticlesForLaw = (lawShortName) => {
+    setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, new Set())));
+  };
+
   const handleStartTest = () => {
     // Validación básica antes de continuar
     if (maxQuestions <= 0) {
@@ -411,6 +550,13 @@ const TestConfigurator = ({
       adaptiveMode: adaptiveMode, // ✨ Incluir modo adaptativo
       // 🆕 FILTRO DE LEYES
       selectedLaws: Array.from(selectedLaws), // Convertir Set a Array
+      // 🆕 FILTRO DE ARTÍCULOS POR LEY
+      selectedArticlesByLaw: Object.fromEntries(
+        Array.from(selectedArticlesByLaw.entries()).map(([lawId, articlesSet]) => [
+          lawId, 
+          Array.from(articlesSet)
+        ])
+      ), // Convertir Map<string, Set> a Object<string, Array>
       // 🆕 INCLUIR METADATOS ADICIONALES
       timeLimit: null, // Por si se añade límite de tiempo en el futuro
       configSource: 'test_configurator',
@@ -423,6 +569,20 @@ const TestConfigurator = ({
     if (focusEssentialArticles) {
       console.log('⭐ Artículos imprescindibles incluidos en configuración')
     }
+
+    // 🔧 Log artículos seleccionados si existen
+    if (selectedArticlesByLaw.size > 0) {
+      selectedArticlesByLaw.forEach((articles, lawId) => {
+        console.log(`🔧 Ley ${lawId}: ${articles.size} artículos seleccionados:`, Array.from(articles))
+      })
+    }
+    
+    // 🔍 DEBUG: Mostrar configuración final detallada
+    console.log('🔍 DEBUG CONFIG FINAL COMPLETA:', {
+      selectedLaws: config.selectedLaws,
+      selectedArticlesByLaw: config.selectedArticlesByLaw,
+      tema: config.tema
+    })
 
     if (onlyOfficialQuestions && officialQuestionsCount === 0) {
       console.warn('⚠️ Solo preguntas oficiales activado pero no hay preguntas oficiales disponibles')
@@ -602,25 +762,36 @@ const TestConfigurator = ({
                   
                   <div className="grid grid-cols-1 gap-2">
                     {lawsData.map((law) => (
-                      <label
+                      <div
                         key={law.law_short_name}
-                        className="flex items-center space-x-2 p-2 bg-white rounded border hover:bg-blue-50 cursor-pointer"
+                        className="p-2 bg-white rounded border hover:bg-blue-50"
                       >
-                        <input
-                          type="checkbox"
-                          checked={selectedLaws.has(law.law_short_name)}
-                          onChange={() => toggleLawSelection(law.law_short_name)}
-                          className="text-blue-600 focus:ring-blue-500"
-                        />
-                        <div className="flex-1">
-                          <div className="font-medium text-sm text-gray-900">
-                            {law.law_short_name}
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedLaws.has(law.law_short_name)}
+                            onChange={() => toggleLawSelection(law.law_short_name)}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-sm text-gray-900">
+                              {law.law_short_name}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {law.articles_with_questions} artículo{law.articles_with_questions > 1 ? 's' : ''} disponible{law.articles_with_questions > 1 ? 's' : ''}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-600">
-                            {law.articles_with_questions} artículo{law.articles_with_questions > 1 ? 's' : ''} disponible{law.articles_with_questions > 1 ? 's' : ''}
-                          </div>
+                          {selectedLaws.has(law.law_short_name) && (
+                            <button
+                              onClick={() => openArticleModal(law.law_short_name)}
+                              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 flex items-center space-x-1"
+                            >
+                              <span>🔧</span>
+                              <span>Filtrar artículos</span>
+                            </button>
+                          )}
                         </div>
-                      </label>
+                      </div>
                     ))}
                   </div>
                   
@@ -1479,6 +1650,112 @@ const TestConfigurator = ({
                 className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
               >
                 ✅ Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 Modal de Filtro de Artículos */}
+      {showArticleModal && currentLawForArticles && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            {/* Header */}
+            <div className="bg-blue-600 text-white px-6 py-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold">📋 Filtrar Artículos - {currentLawForArticles}</h3>
+                <button
+                  onClick={closeArticleModal}
+                  className="text-white hover:text-gray-300 text-xl font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {loadingArticles ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Cargando artículos...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Controles */}
+                  <div className="flex gap-2 mb-4">
+                    <button
+                      onClick={() => selectAllArticlesForLaw(currentLawForArticles)}
+                      className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200"
+                    >
+                      ☑️ Seleccionar todos
+                    </button>
+                    <button
+                      onClick={() => deselectAllArticlesForLaw(currentLawForArticles)}
+                      className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200"
+                    >
+                      ❌ Deseleccionar todos
+                    </button>
+                  </div>
+
+                  {/* Lista de artículos */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                    {(availableArticlesByLaw.get(currentLawForArticles) || []).map((article) => {
+                      const isSelected = selectedArticlesByLaw.get(currentLawForArticles)?.has(article.article_number) || false;
+                      return (
+                        <label
+                          key={article.article_number}
+                          className={`flex items-center space-x-2 p-2 rounded border cursor-pointer transition-colors ${
+                            isSelected ? 'bg-blue-50 border-blue-200' : 'bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleArticleSelection(currentLawForArticles, article.article_number)}
+                            className="text-blue-600 focus:ring-blue-500"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-sm text-gray-900">
+                              Artículo {article.article_number}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              {article.question_count} pregunta{article.question_count > 1 ? 's' : ''}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  {/* Resumen */}
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                    <div className="text-sm text-blue-800">
+                      ✓ {selectedArticlesByLaw.get(currentLawForArticles)?.size || 0} de {availableArticlesByLaw.get(currentLawForArticles)?.length || 0} artículos seleccionados
+                    </div>
+                    <div className="text-xs text-blue-600 mt-1">
+                      Preguntas estimadas: {(availableArticlesByLaw.get(currentLawForArticles) || [])
+                        .filter(art => selectedArticlesByLaw.get(currentLawForArticles)?.has(art.article_number))
+                        .reduce((sum, art) => sum + art.question_count, 0)}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
+              <button
+                onClick={closeArticleModal}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={closeArticleModal}
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+              >
+                Aplicar filtro
               </button>
             </div>
           </div>

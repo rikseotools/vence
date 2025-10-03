@@ -749,6 +749,15 @@ export default function TemaPage({ params }) {
         ...(config.adaptiveMode && { adaptive: 'true' }), // ✨ Agregar modo adaptativo
         ...(config.timeLimit && { time_limit: config.timeLimit.toString() })
       })
+      
+      // 🆕 AGREGAR FILTROS DE LEYES Y ARTÍCULOS
+      if (config.selectedLaws && config.selectedLaws.length > 0) {
+        params.set('selected_laws', JSON.stringify(config.selectedLaws))
+      }
+      
+      if (config.selectedArticlesByLaw && Object.keys(config.selectedArticlesByLaw).length > 0) {
+        params.set('selected_articles_by_law', JSON.stringify(config.selectedArticlesByLaw))
+      }
 
       // Redirigir al test personalizado del tema dinámico
       const testUrl = `/auxiliar-administrativo-estado/test/tema/${temaNumber}/test-personalizado?${params.toString()}`
