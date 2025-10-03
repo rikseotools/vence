@@ -870,6 +870,7 @@ export default function TemaPage({ params }) {
             userStats={userRecentStats}
             loading={testLoading}
             currentUser={currentUser}
+            lawsData={articlesCountByLaw}
           />
         </section>
 

@@ -896,3 +896,6 @@ VALUES (article_id, 'pregunta', 'A', 'B', 'C', 'D', 0, 'explicación', 'medium',
 
 ---
 
+los articulos nuevos que haya que crear, tu me los debs pedir  y yo te los doy del boe
+
+las preguntas debes darmelas todas juntas en el mismo artefacto

@@ -9,7 +9,8 @@ const TestConfigurator = ({
   onStartTest,
   userStats = null,
   loading = false,
-  currentUser = null
+  currentUser = null,
+  lawsData = []
 }) => {
   const supabase = getSupabaseClient();
 
@@ -27,6 +28,10 @@ const TestConfigurator = ({
   const [onlyOfficialQuestions, setOnlyOfficialQuestions] = useState(false);
   const [focusEssentialArticles, setFocusEssentialArticles] = useState(false);
   const [adaptiveMode, setAdaptiveMode] = useState(true); // ✨ Activado por defecto
+  
+  // 🆕 Estados para filtro de leyes
+  const [selectedLaws, setSelectedLaws] = useState(new Set());
+  const [showLawsFilter, setShowLawsFilter] = useState(false);
 
 
   // Estados para preguntas oficiales
@@ -304,9 +309,27 @@ const TestConfigurator = ({
     return typeof totalQuestions === 'number' ? totalQuestions : 0;
   }, [focusEssentialArticles, essentialQuestionsCount, essentialQuestionsByDifficulty, difficultyMode, onlyOfficialQuestions, officialQuestionsCount, totalQuestions]);
 
+  // 🆕 Calcular preguntas disponibles considerando leyes seleccionadas
   const availableQuestions = useMemo(() => {
-    return baseQuestionCount;
-  }, [baseQuestionCount]);
+    // Si no hay datos de leyes o están todas seleccionadas, usar el cálculo base
+    if (!lawsData || lawsData.length === 0 || selectedLaws.size === lawsData.length) {
+      return baseQuestionCount;
+    }
+    
+    // Si hay leyes específicas seleccionadas, calcular proporcionalmente
+    if (selectedLaws.size > 0) {
+      // Calcular el porcentaje de artículos de las leyes seleccionadas
+      const totalArticles = lawsData.reduce((sum, law) => sum + law.articles_with_questions, 0);
+      const selectedArticles = lawsData
+        .filter(law => selectedLaws.has(law.law_short_name))
+        .reduce((sum, law) => sum + law.articles_with_questions, 0);
+      
+      const proportion = selectedArticles / totalArticles;
+      return Math.floor(baseQuestionCount * proportion);
+    }
+    
+    return 0; // Si no hay leyes seleccionadas
+  }, [baseQuestionCount, lawsData, selectedLaws]);
 
   const maxQuestions = useMemo(() => {
     return Math.min(selectedQuestions, availableQuestions);
@@ -327,10 +350,44 @@ const TestConfigurator = ({
     }
   }, [onlyOfficialQuestions, officialQuestionsCount, selectedQuestions]);
 
+  // 🆕 Inicializar leyes seleccionadas cuando cambian lawsData
+  useEffect(() => {
+    if (lawsData && lawsData.length > 0) {
+      const initialSelectedLaws = new Set(lawsData.map(law => law.law_short_name));
+      setSelectedLaws(initialSelectedLaws);
+    }
+  }, [lawsData]);
+
+  // 🆕 Funciones para manejar filtro de leyes
+  const toggleLawSelection = (lawShortName) => {
+    const newSelectedLaws = new Set(selectedLaws);
+    if (newSelectedLaws.has(lawShortName)) {
+      newSelectedLaws.delete(lawShortName);
+    } else {
+      newSelectedLaws.add(lawShortName);
+    }
+    setSelectedLaws(newSelectedLaws);
+  };
+
+  const selectAllLaws = () => {
+    const allLaws = new Set(lawsData.map(law => law.law_short_name));
+    setSelectedLaws(allLaws);
+  };
+
+  const deselectAllLaws = () => {
+    setSelectedLaws(new Set());
+  };
+
   const handleStartTest = () => {
     // Validación básica antes de continuar
     if (maxQuestions <= 0) {
       console.error('❌ No hay preguntas disponibles para el test')
+      return
+    }
+
+    // 🆕 Validación de leyes seleccionadas
+    if (lawsData.length > 0 && selectedLaws.size === 0) {
+      alert('⚠️ Debes seleccionar al menos una ley para hacer el test')
       return
     }
 
@@ -352,6 +409,8 @@ const TestConfigurator = ({
       recentDays: 30, // Valor por defecto para días recientes
       focusWeakAreas: false, // Por defecto no enfocar en áreas débiles
       adaptiveMode: adaptiveMode, // ✨ Incluir modo adaptativo
+      // 🆕 FILTRO DE LEYES
+      selectedLaws: Array.from(selectedLaws), // Convertir Set a Array
       // 🆕 INCLUIR METADATOS ADICIONALES
       timeLimit: null, // Por si se añade límite de tiempo en el futuro
       configSource: 'test_configurator',
@@ -510,7 +569,71 @@ const TestConfigurator = ({
 
         </div>
 
-        {/* 3. Configuraciones Avanzadas */}
+        {/* 🆕 3. Filtro de Leyes */}
+        {lawsData && lawsData.length > 1 && (
+          <div className="mb-6">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-blue-900">📖 Filtrar por Leyes</h3>
+                <button
+                  onClick={() => setShowLawsFilter(!showLawsFilter)}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  {showLawsFilter ? 'Ocultar' : 'Mostrar'}
+                </button>
+              </div>
+              
+              {showLawsFilter && (
+                <div className="space-y-3">
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={selectAllLaws}
+                      className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                    >
+                      Seleccionar todas
+                    </button>
+                    <button
+                      onClick={deselectAllLaws}
+                      className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
+                    >
+                      Deseleccionar todas
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-2">
+                    {lawsData.map((law) => (
+                      <label
+                        key={law.law_short_name}
+                        className="flex items-center space-x-2 p-2 bg-white rounded border hover:bg-blue-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedLaws.has(law.law_short_name)}
+                          onChange={() => toggleLawSelection(law.law_short_name)}
+                          className="text-blue-600 focus:ring-blue-500"
+                        />
+                        <div className="flex-1">
+                          <div className="font-medium text-sm text-gray-900">
+                            {law.law_short_name}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {law.articles_with_questions} artículo{law.articles_with_questions > 1 ? 's' : ''} disponible{law.articles_with_questions > 1 ? 's' : ''}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  
+                  <div className="text-xs text-blue-700 mt-2">
+                    ✓ {selectedLaws.size} de {lawsData.length} leyes seleccionadas
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Configuraciones Avanzadas */}
         <div className="mb-6">
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
             
@@ -836,6 +959,12 @@ const TestConfigurator = ({
             focusEssentialArticles ? 'de artículos imprescindibles' :
             onlyOfficialQuestions ? 'oficiales' : ''
           } disponibles con tu configuración
+          {/* 🆕 Indicador de leyes seleccionadas */}
+          {lawsData.length > 0 && selectedLaws.size < lawsData.length && (
+            <span className="block text-blue-600 mt-1">
+              📖 Filtro activo: {selectedLaws.size} de {lawsData.length} leyes seleccionadas
+            </span>
+          )}
           <span className="block text-green-600">
             ✨ Con priorización inteligente de preguntas
           </span>
