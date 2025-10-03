@@ -31,19 +31,12 @@ function TestPersonalizadoContent({ params }) {
   const selectedLawsParam = searchParams.get('selected_laws')
   const selectedArticlesByLawParam = searchParams.get('selected_articles_by_law')
   
-  console.log('🔍 DEBUG URL PARAMS:')
-  console.log('  - selected_laws (raw):', selectedLawsParam)
-  console.log('  - selected_articles_by_law (raw):', selectedArticlesByLawParam)
-  
   let selectedLaws = []
   let selectedArticlesByLaw = {}
   
   try {
     selectedLaws = selectedLawsParam ? JSON.parse(selectedLawsParam) : []
     selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
-    console.log('🔍 DEBUG PARSED:')
-    console.log('  - selectedLaws:', selectedLaws)
-    console.log('  - selectedArticlesByLaw:', selectedArticlesByLaw)
   } catch (error) {
     console.error('❌ Error parsing URL params:', error)
     console.error('  - selectedLawsParam:', selectedLawsParam)
@@ -65,7 +58,6 @@ function TestPersonalizadoContent({ params }) {
     selectedArticlesByLaw
   }
   
-  console.log('🔍 DEBUG testConfig FINAL:', testConfig)
 
   // ✅ LOADING STATE
   if (!temaNumber) {

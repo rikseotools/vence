@@ -226,9 +226,6 @@ export default function TestPageWrapper({
           const selectedLawsParam = finalSearchParams?.get?.('selected_laws')
           const selectedArticlesByLawParam = finalSearchParams?.get?.('selected_articles_by_law')
           
-          console.log('🔍 DEBUG TestPageWrapper - Extrayendo filtros de URL:')
-          console.log('  - selected_laws (raw):', selectedLawsParam)
-          console.log('  - selected_articles_by_law (raw):', selectedArticlesByLawParam)
           
           let selectedLaws = []
           let selectedArticlesByLaw = {}
@@ -237,10 +234,6 @@ export default function TestPageWrapper({
             selectedLaws = selectedLawsParam ? JSON.parse(selectedLawsParam) : []
             selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
             
-            console.log('🔍 DEBUG TestPageWrapper - Filtros parseados:')
-            console.log('  - selectedLaws:', selectedLaws)
-            console.log('  - selectedArticlesByLaw:', selectedArticlesByLaw)
-            
             // Agregar filtros al config que se pasa al fetcher
             finalTestConfig = {
               ...testConfig,
@@ -248,7 +241,9 @@ export default function TestPageWrapper({
               selectedArticlesByLaw
             }
             
-            console.log('🔍 DEBUG TestPageWrapper - Config final con filtros:', finalTestConfig)
+            if (selectedLaws.length > 0) {
+              console.log('🔧 Filtros aplicados:', selectedLaws.length, 'leyes,', Object.keys(selectedArticlesByLaw).length, 'grupos de artículos')
+            }
           } catch (error) {
             console.error('❌ Error parsing filtros en TestPageWrapper:', error)
           }

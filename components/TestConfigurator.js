@@ -577,12 +577,6 @@ const TestConfigurator = ({
       })
     }
     
-    // 🔍 DEBUG: Mostrar configuración final detallada
-    console.log('🔍 DEBUG CONFIG FINAL COMPLETA:', {
-      selectedLaws: config.selectedLaws,
-      selectedArticlesByLaw: config.selectedArticlesByLaw,
-      tema: config.tema
-    })
 
     if (onlyOfficialQuestions && officialQuestionsCount === 0) {
       console.warn('⚠️ Solo preguntas oficiales activado pero no hay preguntas oficiales disponibles')
