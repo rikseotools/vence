@@ -252,12 +252,22 @@ export default function TestPageWrapper({
         questions = await fetcher(tema, finalSearchParams, finalTestConfig)
       }
 
-      if (!questions || questions.length === 0) {
-        throw new Error('No se encontraron preguntas con la configuración actual')
+      // 🧠 Verificar si es modo adaptativo o normal
+      if (questions && questions.isAdaptive) {
+        // Modo adaptativo - verificar estructura
+        if (!questions.activeQuestions || questions.activeQuestions.length === 0) {
+          throw new Error('No se encontraron preguntas activas para modo adaptativo')
+        }
+        setQuestions(questions) // Pasar toda la estructura adaptativa
+        console.log('✅ TestPageWrapper: Modo adaptativo cargado:', questions.activeQuestions.length, 'activas,', questions.questionPool.length, 'en pool')
+      } else {
+        // Modo normal - verificar array
+        if (!questions || questions.length === 0) {
+          throw new Error('No se encontraron preguntas con la configuración actual')
+        }
+        setQuestions(questions)
+        console.log('✅ TestPageWrapper: Test cargado exitosamente:', questions.length, 'preguntas')
       }
-
-      setQuestions(questions)
-      console.log('✅ TestPageWrapper: Test cargado exitosamente:', questions.length, 'preguntas')
       console.log('✅ Config final aplicado:', testConfig)
 
     } catch (err) {

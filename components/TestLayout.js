@@ -112,9 +112,9 @@ export default function TestLayout({
 
     // 🧠 Inicializar modo adaptativo si detectado
     if (questions.isAdaptive) {
-      console.log('🧠 Iniciando modo adaptativo')
+      console.log('🧠 Modo adaptativo disponible (pool cargado)')
       setAdaptiveMode(true)
-      setIsAdaptiveMode(true) // 🔥 ACTIVAR INDICADOR VISUAL
+      setIsAdaptiveMode(false) // 🔥 NO MOSTRAR INDICADOR AL INICIO
       setActiveQuestions(questions.activeQuestions)
       setQuestionPool(questions.questionPool)
       setCurrentDifficulty('medium') // Empezar en nivel medio
@@ -122,7 +122,7 @@ export default function TestLayout({
     } else {
       // Modo normal
       setAdaptiveMode(false)
-      setIsAdaptiveMode(false) // 🔥 DESACTIVAR INDICADOR VISUAL
+      setIsAdaptiveMode(false)
       setActiveQuestions(questions)
       setQuestionPool([])
     }
@@ -136,15 +136,19 @@ export default function TestLayout({
       const correctAnswers = answeredQuestions.filter(q => q.correct).length
       const accuracy = correctAnswers / answeredQuestions.length
       
-      // Si el porcentaje de aciertos es menor al 60%, activar modo adaptativo
-      if (accuracy < 0.6 && !isAdaptiveMode) {
-        console.log(`🧠 Detectado rendimiento bajo (${Math.round(accuracy * 100)}%), activando modo adaptativo automáticamente`)
-        setIsAdaptiveMode(true)
+      // 🧠 SMART LOGIC: Activar indicador cuando detecta bajo rendimiento
+      if (accuracy < 0.6 && !isAdaptiveMode && answeredQuestions.length >= 2) {
+        console.log(`🧠 Detectado rendimiento bajo (${Math.round(accuracy * 100)}%), ACTIVANDO indicador adaptativo`)
+        setIsAdaptiveMode(true) // 🔥 MOSTRAR: Necesita adaptación
         
         // Mostrar mensaje temporal
         setSuccessMessage(`✨ Adaptando las preguntas a tu nivel (${Math.round(accuracy * 100)}% aciertos)`)
         setShowSuccessMessage(true)
         setTimeout(() => setShowSuccessMessage(false), 4000)
+      } else if (accuracy >= 0.65 && isAdaptiveMode && answeredQuestions.length >= 3) {
+        // 🎯 OCULTAR: Si accuracy mejora significativamente
+        console.log(`🎯 Accuracy mejorada a ${Math.round(accuracy * 100)}%, ocultando indicador adaptativo`)
+        setIsAdaptiveMode(false) // 🔥 OCULTAR: Ya no necesita adaptación
       }
     }
   }, [answeredQuestions, adaptiveMode, user, isAdaptiveMode])
@@ -409,14 +413,19 @@ export default function TestLayout({
           
           console.log(`🧠 Accuracy actual: ${currentAccuracy.toFixed(1)}% (${totalCorrect}/${totalAnswered})`)
           
-          // Si accuracy < 60% → adaptar a más fácil
-          // Si accuracy > 70% → volver a dificultad original  
+          // 🧠 SMART LOGIC: Mostrar indicador solo cuando está adaptando activamente
           if (currentAccuracy < 60 && totalAnswered >= 3) { // Mínimo 3 respuestas para evaluar
             console.log('🧠 Accuracy < 60%, adaptando a preguntas más fáciles...')
+            setIsAdaptiveMode(true) // 🔥 MOSTRAR: Se está adaptando
             adaptDifficulty('easier')
           } else if (currentAccuracy > 70 && totalAnswered >= 5) { // Mínimo 5 respuestas
             console.log('🧠 Accuracy > 70%, volviendo a dificultad normal...')
+            setIsAdaptiveMode(true) // 🔥 MOSTRAR: Se está adaptando
             adaptDifficulty('harder')
+          } else if (currentAccuracy >= 65 && totalAnswered >= 3 && isAdaptiveMode) {
+            // 🎯 OCULTAR: Si accuracy se estabiliza en buen nivel (65%+)
+            console.log(`🎯 Accuracy estable en ${currentAccuracy.toFixed(1)}%, ocultando indicador adaptativo`)
+            setIsAdaptiveMode(false) // 🔥 OCULTAR: Ya no necesita adaptación
           }
         }
         
@@ -443,7 +452,7 @@ export default function TestLayout({
               sessionCreationRef.current.add(sessionKey)
               
               try {
-                session = await createDetailedTestSession(user.id, tema, testNumber, questions, config, startTime, pageLoadTime.current)
+                session = await createDetailedTestSession(user.id, tema, testNumber, effectiveQuestions, config, startTime, pageLoadTime.current)
                 if (session) {
                   setCurrentTestSession(session)
                   console.log('✅ Nueva sesión PROTEGIDA creada:', session.id)
@@ -498,7 +507,7 @@ export default function TestLayout({
         }
         
         // Lógica de finalización existente...
-        if (currentQuestion === questions.length - 1) {
+        if (currentQuestion === effectiveQuestions.length - 1) {
           console.log('🏁 Última pregunta completada')
           setIsExplicitlyCompleted(true)
           
@@ -519,11 +528,11 @@ export default function TestLayout({
             
             // 🔓 NOTIFICAR COMPLETION PARA SISTEMA DE DESBLOQUEO
             if (result.status === 'success' && tema && typeof tema === 'number') {
-              const accuracy = Math.round((newScore / questions.length) * 100)
+              const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
               console.log(`🔄 Notificando completion para desbloqueo: Tema ${tema}, ${accuracy}% accuracy`)
               
               try {
-                await notifyTestCompletion(tema, accuracy, questions.length)
+                await notifyTestCompletion(tema, accuracy, effectiveQuestions.length)
                 console.log('✅ Sistema de desbloqueo notificado correctamente')
               } catch (unlockError) {
                 console.error('❌ Error notificando sistema de desbloqueo:', unlockError)
@@ -532,7 +541,7 @@ export default function TestLayout({
           }
         }
 
-        if (currentQuestion >= questions.length - 1) {
+        if (currentQuestion >= effectiveQuestions.length - 1) {
           console.log('🚨 FORZANDO FINALIZACIÓN - Detectado índice fuera de rango')
           setIsExplicitlyCompleted(true)
         }
@@ -564,13 +573,13 @@ export default function TestLayout({
       return
     }
     
-    if (currentQuestion < questions.length - 1) {
+    if (currentQuestion < effectiveQuestions.length - 1) {
       testTracker.trackInteraction('next_question', { 
         completed_question: currentQuestion + 1,
-        was_correct: selectedAnswer === questions[currentQuestion].correct
+        was_correct: selectedAnswer === effectiveQuestions[currentQuestion].correct
       }, currentQuestion)
       
-      console.log('📍 Navegando a pregunta:', currentQuestion + 2, '/', questions.length)
+      console.log('📍 Navegando a pregunta:', currentQuestion + 2, '/', effectiveQuestions.length)
       
       setCurrentQuestion(currentQuestion + 1)
       setSelectedAnswer(null)
@@ -612,8 +621,8 @@ export default function TestLayout({
   // Función para calcular estadísticas compactas
   const calculateCompactStats = () => {
     const totalTime = Math.floor((Date.now() - startTime) / 1000)
-    const avgTimePerQuestion = Math.round(totalTime / questions.length)
-    const percentage = Math.round((score / questions.length) * 100)
+    const avgTimePerQuestion = Math.round(totalTime / effectiveQuestions.length)
+    const percentage = Math.round((score / effectiveQuestions.length) * 100)
     
     // Tiempo por pregunta
     const timeStats = detailedAnswers.map(a => a.timeSpent || 0)
@@ -905,7 +914,7 @@ export default function TestLayout({
       tema={tema}
       testNumber={testNumber}
       currentQuestion={currentQuestion}
-      totalQuestions={questions.length}
+      totalQuestions={effectiveQuestions.length}
       answeredQuestions={answeredQuestions}
       showResult={showResult}
       score={score}
@@ -951,7 +960,7 @@ export default function TestLayout({
             <div className="mb-8">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Pregunta {currentQuestion + 1} de {questions.length}
+                  Pregunta {currentQuestion + 1} de {effectiveQuestions.length}
                   {user && currentTestSession && (
                     <span className="ml-2 text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
                       ✅ Guardado completo
@@ -966,7 +975,7 @@ export default function TestLayout({
                 </span>
                 <div className="flex items-center space-x-3">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {Math.round(((currentQuestion + (showResult ? 1 : 0)) / questions.length) * 100)}%
+                    {Math.round(((currentQuestion + (showResult ? 1 : 0)) / effectiveQuestions.length) * 100)}%
                   </span>
                   {!isTestCompleted && (
                     <button
@@ -982,7 +991,7 @@ export default function TestLayout({
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                 <div 
                   className={`bg-gradient-to-r ${config.color} h-3 rounded-full transition-all duration-500`}
-                  style={{ width: `${((currentQuestion + (showResult ? 1 : 0)) / questions.length) * 100}%` }}
+                  style={{ width: `${((currentQuestion + (showResult ? 1 : 0)) / effectiveQuestions.length) * 100}%` }}
                 ></div>
               </div>
             </div>
@@ -1231,12 +1240,12 @@ export default function TestLayout({
                         </div>
                         
                         {/* Condición mejorada: Solo mostrar botón si NO es la última pregunta */}
-                        {!isExplicitlyCompleted && currentQuestion < questions.length - 1 ? (
+                        {!isExplicitlyCompleted && currentQuestion < effectiveQuestions.length - 1 ? (
                           <button
                           onClick={handleNextQuestion}
                           className={`w-full px-6 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl text-lg`}
                         >
-                          Siguiente Pregunta → ({currentQuestion + 2}/{questions.length})
+                          Siguiente Pregunta → ({currentQuestion + 2}/{effectiveQuestions.length})
                         </button>
                       ) : (
                         /* Pantalla de finalización con estadísticas compactas */
@@ -1249,12 +1258,12 @@ export default function TestLayout({
                           
                           {/* Puntuación destacada */}
                           <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                            {score}/{questions.length}
+                            {score}/{effectiveQuestions.length}
                           </div>
                           
                           {/* Porcentaje principal */}
                           <div className="text-xl text-gray-600 dark:text-gray-400 mb-4">
-                            {Math.round((score / questions.length) * 100)}% de aciertos
+                            {Math.round((score / effectiveQuestions.length) * 100)}% de aciertos
                           </div>
 
                           {/* Estadísticas compactas y de valor */}
@@ -1330,11 +1339,11 @@ export default function TestLayout({
                           
                           {/* Mensaje motivacional basado en puntuación */}
                           <div className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                            {score === questions.length ? (
+                            {score === effectiveQuestions.length ? (
                               "🎉 ¡Perfecto! Dominas este tema completamente"
-                            ) : score >= Math.ceil(questions.length * 0.8) ? (
+                            ) : score >= Math.ceil(effectiveQuestions.length * 0.8) ? (
                               "🎯 ¡Excelente! Muy buen dominio del tema"
-                            ) : score >= Math.ceil(questions.length * 0.6) ? (
+                            ) : score >= Math.ceil(effectiveQuestions.length * 0.6) ? (
                               "👍 ¡Bien! Sigue practicando para mejorar"
                             ) : (
                               "📚 Repasa el temario y vuelve a intentarlo"

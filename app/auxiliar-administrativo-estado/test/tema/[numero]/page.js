@@ -522,7 +522,7 @@ export default function TemaPage({ params }) {
         
       console.log(`✅ RPC ejecutado: ${recentAnswers?.length || 0} respuestas encontradas`)
       
-      if (error && error.code === '42883') {
+      if (error && (error.code === '42883' || error.code === 'PGRST202')) {
         // Si RPC no existe, usar enfoque simplificado sin relaciones complejas
         console.log(`⚠️ RPC no disponible, usando consulta directa simplificada`)
         

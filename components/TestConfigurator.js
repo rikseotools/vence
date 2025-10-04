@@ -1094,7 +1094,7 @@ const TestConfigurator = ({
             <button
               onClick={handleStartTest}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-6 rounded-xl text-lg font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-6 rounded-xl text-lg font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 leading-relaxed"
             >
               {loading ? (
                 <div className="flex items-center justify-center space-x-2">
@@ -1102,13 +1102,10 @@ const TestConfigurator = ({
                   <span>Preparando Test...</span>
                 </div>
               ) : (
-                <>
-                  🚀 Empezar Test Personalizado ({maxQuestions} preguntas
-                  {onlyOfficialQuestions ? ' oficiales' : ''}
-                  {focusEssentialArticles && ' + artículos clave'}
-                  {adaptiveMode && ' ✨'}
-                  )
-                </>
+                <div className="text-center">
+                  🚀 Empezar Test Personalizado<br />
+                  ({maxQuestions} preguntas{onlyOfficialQuestions ? ' oficiales' : ''}{focusEssentialArticles ? ' + artículos clave' : ''}{adaptiveMode ? ' ✨' : ''})
+                </div>
               )}
             </button>
           ) : (

@@ -224,6 +224,12 @@ export const createDetailedTestSession = async (userId, tema, testNumber, questi
 
     const safeTitle = `Test Tema ${tema || 'X'} - ${testNumber || '1'}`.substring(0, 100)
     
+    // Validar que questions sea un array
+    if (!Array.isArray(questions)) {
+      console.error('❌ ERROR: questions no es un array:', typeof questions, questions)
+      throw new Error(`Questions debe ser un array, recibido: ${typeof questions}`)
+    }
+    
     const questionsMetadata = {
       question_ids: questions.map(q => q.metadata?.id || `temp_${Date.now()}_${Math.random()}`),
       article_ids: questions.map(q => q.article?.id || null),
