@@ -510,50 +510,20 @@ export default function TemaPage({ params }) {
     if (!userId) return null
 
     try {
-      // ✅ ENFOQUE SIMPLIFICADO: Usar RPC function que ya está funcionando bien
       console.log(`🔍 Obteniendo preguntas recientes para tema ${temaNumber} (último 30 días)`)
       
-      const { data: recentAnswers, error } = await supabase
-        .rpc('get_recent_answers_by_tema', {
-          p_user_id: userId,
-          p_tema_number: temaNumber,
-          p_days_back: 30
-        })
+      // ✅ USAR DIRECTAMENTE CONSULTA QUE YA FUNCIONA
+      const { data: allUserAnswers, error } = await supabase
+        .from('test_questions')
+        .select('question_id, created_at, tests!inner(user_id)')
+        .eq('tests.user_id', userId)
+        .eq('tema_number', temaNumber)
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false })
         
-      console.log(`✅ RPC ejecutado: ${recentAnswers?.length || 0} respuestas encontradas`)
+      if (error) throw error
       
-      if (error && (error.code === '42883' || error.code === 'PGRST202')) {
-        // Si RPC no existe, usar enfoque simplificado sin relaciones complejas
-        console.log(`⚠️ RPC no disponible, usando consulta directa simplificada`)
-        
-        const { data: allUserAnswers, error: fallbackError } = await supabase
-          .from('test_questions')
-          .select('question_id, created_at, tests!inner(user_id)')
-          .eq('tests.user_id', userId)
-          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-          .order('created_at', { ascending: false })
-          
-        if (fallbackError) throw fallbackError
-        
-        // Por ahora, usar todas las respuestas (esto es lo que causaba el problema original)
-        // TODO: Implementar filtro por tema correctamente
-        console.log(`⚠️ TEMPORAL: Usando todas las respuestas del usuario (${allUserAnswers?.length || 0})`)
-        
-        var finalRecentAnswers = allUserAnswers || []
-        var finalError = null
-      } else {
-        var finalRecentAnswers = recentAnswers || []
-        var finalError = error
-      }
-
-      if (finalError) {
-        console.error(`❌ Error en consulta preguntas recientes para tema ${temaNumber}:`, finalError)
-        setUserRecentStats({ 
-          getExcludedCount: () => 0,
-          recentlyAnswered: 0 
-        })
-        return
-      }
+      const finalRecentAnswers = allUserAnswers || []
 
       console.log(`✅ Preguntas recientes cargadas para tema ${temaNumber}:`, {
         totalAnswers: finalRecentAnswers?.length || 0,
