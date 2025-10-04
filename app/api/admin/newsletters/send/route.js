@@ -162,6 +162,29 @@ export async function POST(request) {
           )
         }
 
+        // Generar token de desuscripción obligatorio (siempre, incluso en testMode)
+        const { generateUnsubscribeToken } = await import('@/lib/emails/emailService.server')
+        const unsubscribeToken = await generateUnsubscribeToken(user.id, user.email, 'newsletter')
+        
+        const unsubscribeLink = unsubscribeToken 
+          ? `https://www.vence.es/unsubscribe?token=${unsubscribeToken}`
+          : `https://www.vence.es/perfil?tab=emails` // Fallback si falla la generación del token
+        
+        const unsubscribeFooter = `
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px;">
+            <p style="margin: 0;">
+              Si no quieres recibir más newsletters, puedes 
+              <a href="${unsubscribeLink}" style="color: #666; text-decoration: underline;">darte de baja aquí</a>.
+            </p>
+            <p style="margin: 5px 0 0 0;">
+              Vence.es - ${user.email} - Newsletter
+            </p>
+          </div>
+        `
+        
+        // Insertar footer de desuscripción antes del tracking pixel y </body>
+        personalizedHtml = personalizedHtml.replace('</body>', `${unsubscribeFooter}</body>`)
+
         // Enviar con Resend con retry en caso de rate limiting
         let retries = 0
         const maxRetries = 3
