@@ -10,7 +10,7 @@ export default function TestAleatorioPage() {
   const [userStats, setUserStats] = useState({})
   const [statsLoading, setStatsLoading] = useState(false)
   const [selectedThemes, setSelectedThemes] = useState([])
-  const [numQuestions, setNumQuestions] = useState(20)
+  const [numQuestions, setNumQuestions] = useState(25)
   const [difficulty, setDifficulty] = useState('mixed')
   const [generating, setGenerating] = useState(false)
   const [onlyOfficialQuestions, setOnlyOfficialQuestions] = useState(false)

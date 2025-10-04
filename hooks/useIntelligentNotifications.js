@@ -1434,10 +1434,10 @@ export function useIntelligentNotifications() {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       
       const { data: notifications, error } = await supabase
-        .from('notifications')
+        .from('notification_logs')
         .select('*')
         .eq('user_id', user.id)
-        .eq('is_read', false)
+        .is('opened_at', null)
         .gte('created_at', thirtyDaysAgo)
         .order('created_at', { ascending: false })
 
@@ -1604,8 +1604,8 @@ export function useIntelligentNotifications() {
         // Para notificaciones del sistema: marcar en BD
         const systemNotifId = notificationId.replace('system-', '');
         const { error } = await supabase
-          .from('notifications')
-          .update({ is_read: true })
+          .from('notification_logs')
+          .update({ opened_at: new Date().toISOString() })
           .eq('id', systemNotifId)
           .eq('user_id', user.id);
 

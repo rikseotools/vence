@@ -9,13 +9,6 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
   const isOpen = externalIsOpen !== null ? externalIsOpen : internalIsOpen
   const setIsOpen = onClose ? onClose : setInternalIsOpen
   
-  // Debug logs
-  console.log('🐛 [QUESTION-DISPUTE] Props recibidas:', { 
-    externalIsOpen, 
-    hasOnClose: !!onClose, 
-    isOpen, 
-    questionId 
-  })
   const [disputeType, setDisputeType] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -142,7 +135,6 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
                 
                 {/* Contenido del modal */}
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-                  {console.log('🎯 [QUESTION-DISPUTE] Renderizando modal externo, isOpen:', isOpen)}
                   
                   {/* Estado de enviado */}
                   {submitted ? (
@@ -290,7 +282,6 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
       {/* Contenido desplegable */}
       {isOpen && (
         <div className="mt-3 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-          {console.log('🎯 [QUESTION-DISPUTE] Renderizando contenido modal, isOpen:', isOpen)}
           
           {/* Estado de enviado - ✅ MARCADOR PARA SCROLL */}
           {submitted ? (

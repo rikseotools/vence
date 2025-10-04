@@ -149,17 +149,17 @@ export default function AdminFeedbackPage() {
       if (conversation.data?.user_id) {
         console.log('💬 Creando notificación de feedback response para user:', conversation.data.user_id)
         const { data: notifResult, error: notifError } = await supabase
-          .from('notifications')
+          .from('notification_logs')
           .insert({
             user_id: conversation.data.user_id,
-            type: 'feedback_response',
-            title: 'Respuesta a tu feedback',
-            message: 'El equipo de iLoveTest te ha respondido',
-            data: { 
+            message_sent: 'El equipo de iLoveTest te ha respondido',
+            delivery_status: 'sent',
+            context_data: { 
+              type: 'feedback_response',
+              title: 'Respuesta a tu feedback',
               conversation_id: conversationId,
               feedback_id: conversation.data.feedback_id
-            },
-            is_read: false
+            }
           })
           .select()
 

@@ -30,10 +30,31 @@ export default function NewslettersPage() {
   const [userPage, setUserPage] = useState(1)
   const [userPagination, setUserPagination] = useState(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
+  
+  // Template management state
+  const [savedTemplates, setSavedTemplates] = useState([])
+  const [templateName, setTemplateName] = useState('')
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState(null)
+  const [editingTemplateName, setEditingTemplateName] = useState('')
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const [loadedCustomTemplate, setLoadedCustomTemplate] = useState(null)
 
   // Cargar estadísticas de audiencia al montar
   useEffect(() => {
     loadAudienceStats()
+  }, [])
+
+  // Cargar plantillas guardadas desde localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('newsletter-templates')
+      if (saved) {
+        setSavedTemplates(JSON.parse(saved))
+      }
+    } catch (error) {
+      console.error('Error cargando plantillas:', error)
+    }
   }, [])
 
   // Cargar usuarios cuando cambie el modo o la búsqueda
@@ -107,6 +128,91 @@ export default function NewslettersPage() {
 
   const clearAllUsers = () => {
     setSelectedUsers(new Set())
+  }
+
+  // Template management functions
+  const saveTemplate = () => {
+    if (!subject.trim() || !htmlContent.trim()) {
+      alert('Por favor, completa el asunto y contenido antes de guardar')
+      return
+    }
+
+    const name = templateName.trim() || `Plantilla ${new Date().toLocaleDateString('es-ES')}`
+
+    const newTemplate = {
+      id: Date.now().toString(),
+      name: name,
+      subject: subject,
+      content: htmlContent,
+      createdAt: new Date().toISOString()
+    }
+
+    const updatedTemplates = [...savedTemplates, newTemplate]
+    setSavedTemplates(updatedTemplates)
+    localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+    
+    setTemplateName('')
+    setShowSaveTemplate(false)
+    alert('Plantilla guardada exitosamente!')
+  }
+
+  const loadTemplate = (template) => {
+    setSubject(template.subject)
+    setHtmlContent(template.content)
+    setSelectedTemplate(null) // Limpiar plantilla predefinida
+    setLoadedCustomTemplate(template) // Establecer plantilla personalizada cargada
+    setShowPreview(true) // Mostrar en modo preview
+    alert('Plantilla cargada exitosamente!')
+  }
+
+  const duplicateTemplate = (template) => {
+    const newTemplate = {
+      ...template,
+      id: Date.now().toString(),
+      name: `${template.name} (Copia)`,
+      createdAt: new Date().toISOString()
+    }
+    
+    const updatedTemplates = [...savedTemplates, newTemplate]
+    setSavedTemplates(updatedTemplates)
+    localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+    alert('Plantilla duplicada exitosamente!')
+  }
+
+  const deleteTemplate = (templateId) => {
+    if (confirm('¿Estás seguro de que quieres eliminar esta plantilla?')) {
+      const updatedTemplates = savedTemplates.filter(t => t.id !== templateId)
+      setSavedTemplates(updatedTemplates)
+      localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+      alert('Plantilla eliminada exitosamente!')
+    }
+  }
+
+  const startEditingTemplateName = (template) => {
+    setEditingTemplate(template.id)
+    setEditingTemplateName(template.name)
+  }
+
+  const saveTemplateName = (templateId) => {
+    if (!editingTemplateName.trim()) {
+      alert('El nombre no puede estar vacío')
+      return
+    }
+
+    const updatedTemplates = savedTemplates.map(t => 
+      t.id === templateId 
+        ? { ...t, name: editingTemplateName.trim() }
+        : t
+    )
+    setSavedTemplates(updatedTemplates)
+    localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+    setEditingTemplate(null)
+    setEditingTemplateName('')
+  }
+
+  const cancelEditingTemplateName = () => {
+    setEditingTemplate(null)
+    setEditingTemplateName('')
   }
 
   const retryFailedEmails = async () => {
@@ -306,6 +412,8 @@ export default function NewslettersPage() {
 
         if (consolidatedResult.success && !testMode) {
           // Limpiar formulario después de envío exitoso en modo real
+          setSelectedTemplate(null)
+          setLoadedCustomTemplate(null)
           setSubject('')
           setHtmlContent('')
           setSelectedAudiences(['all'])
@@ -314,6 +422,8 @@ export default function NewslettersPage() {
 
       // Limpiar formulario para modo individual
       if (selectionMode === 'individual' && result?.success && !testMode) {
+        setSelectedTemplate(null)
+        setLoadedCustomTemplate(null)
         setSubject('')
         setHtmlContent('')
         setSelectedUsers(new Set())
@@ -657,12 +767,56 @@ export default function NewslettersPage() {
                   <label className="block text-sm font-medium text-gray-700">
                     Contenido HTML
                   </label>
-                  <button
-                    onClick={() => setShowPreview(!showPreview)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                  >
-                    {showPreview ? '📝 Editar' : '👁️ Preview'}
-                  </button>
+                  <div className="flex space-x-2">
+                    {(selectedTemplate || loadedCustomTemplate) && (
+                      <button
+                        onClick={() => {
+                          if (loadedCustomTemplate) {
+                            // Editar plantilla personalizada directamente
+                            const updatedTemplates = savedTemplates.map(t => 
+                              t.id === loadedCustomTemplate.id 
+                                ? { ...t, subject: subject, content: htmlContent }
+                                : t
+                            )
+                            setSavedTemplates(updatedTemplates)
+                            localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                            setLoadedCustomTemplate({ ...loadedCustomTemplate, subject: subject, content: htmlContent })
+                            alert('✅ Cambios guardados en la plantilla!')
+                          } else if (selectedTemplate) {
+                            // Plantillas predefinidas - guardar como nueva
+                            const defaultName = selectedTemplate === 'rebranding' 
+                              ? '🚀 Rebranding → Vence (Editada)'
+                              : '🎯 Filtrado por Leyes (Editada)'
+                            
+                            const templateName = prompt('Guardar como nueva plantilla:', defaultName)
+                            if (templateName) {
+                              const template = {
+                                id: 'custom-' + Date.now(),
+                                name: templateName,
+                                subject: subject,
+                                content: htmlContent,
+                                createdAt: new Date().toISOString()
+                              }
+                              const updatedTemplates = [...savedTemplates, template]
+                              setSavedTemplates(updatedTemplates)
+                              localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                              alert('✅ Plantilla guardada como nueva!')
+                            }
+                          }
+                        }}
+                        className="px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        title={loadedCustomTemplate ? "Guardar cambios en esta plantilla" : "Guardar como nueva plantilla"}
+                      >
+                        💾 {loadedCustomTemplate ? 'Guardar Cambios' : 'Guardar Como Nueva'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowPreview(!showPreview)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      {showPreview ? '📝 Editar' : '👁️ Preview'}
+                    </button>
+                  </div>
                 </div>
                 
                 {!showPreview ? (
@@ -788,58 +942,737 @@ export default function NewslettersPage() {
               </div>
             )}
 
-            {/* Quick Templates */}
+            {/* Templates Sidebar */}
             <div className="bg-white rounded-lg shadow p-6 mt-6">
-              <h3 className="text-lg font-semibold mb-4">📝 Templates Rápidos</h3>
-              <div className="space-y-2">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  📋 Plantillas
+                </h3>
                 <button
-                  onClick={() => {
-                    setSubject('🚀 ILoveTest es ahora Vence - ¡Misma calidad, nueva marca!')
-                    setHtmlContent(`<!DOCTYPE html>
+                  onClick={() => setShowSaveTemplate(!showSaveTemplate)}
+                  className="px-3 py-1 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  💾 Guardar Actual
+                </button>
+              </div>
+
+              {/* Save Template Form */}
+              {showSaveTemplate && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+                  <input
+                    type="text"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="Nombre de la plantilla"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg mb-2"
+                  />
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={saveTemplate}
+                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      ✅ Guardar
+                    </button>
+                    <button
+                      onClick={() => setShowSaveTemplate(false)}
+                      className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+                    >
+                      ❌ Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Plantillas guardadas */}
+              {savedTemplates.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Mis Plantillas</h4>
+                  <div className="space-y-2">
+                    {savedTemplates.map((template) => (
+                      <div key={template.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                        {editingTemplate === template.id ? (
+                          <div className="space-y-2">
+                            <input
+                              type="text"
+                              value={editingTemplateName}
+                              onChange={(e) => setEditingTemplateName(e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                            />
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => saveTemplateName(template.id)}
+                                className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                              >
+                                ✅
+                              </button>
+                              <button
+                                onClick={cancelEditingTemplateName}
+                                className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                              >
+                                ❌
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="mb-2">
+                              <h5 className="font-medium text-gray-800 text-sm">
+                                {template.name}
+                              </h5>
+                            </div>
+                            <p className="text-xs text-gray-600 truncate mb-3">
+                              {template.subject}
+                            </p>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => loadTemplate(template)}
+                                className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm font-medium flex-1"
+                                title="Cargar esta plantilla en el editor"
+                              >
+                                📥 Usar
+                              </button>
+                              <button
+                                onClick={() => startEditingTemplateName(template)}
+                                className="px-3 py-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 shadow-sm font-medium"
+                                title="Cambiar el nombre de la plantilla"
+                              >
+                                ✏️ Renombrar
+                              </button>
+                              <button
+                                onClick={() => duplicateTemplate(template)}
+                                className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm font-medium"
+                                title="Crear una copia de esta plantilla"
+                              >
+                                📋 Duplicar
+                              </button>
+                              <button
+                                onClick={() => deleteTemplate(template.id)}
+                                className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm font-medium"
+                                title="Eliminar esta plantilla permanentemente"
+                              >
+                                🗑️ Eliminar
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Plantillas rápidas predeterminadas */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Plantillas Rápidas</h4>
+                <div className="space-y-2">
+                  {/* Template 1: Rebranding */}
+                  <div 
+                    className={`border rounded-lg p-3 cursor-pointer transition-all ${ 
+                      selectedTemplate === 'rebranding' 
+                        ? 'border-blue-500 bg-blue-50 shadow-md' 
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    }`}
+                    onClick={() => {
+                      setSelectedTemplate('rebranding')
+                      setSubject('🚀 ILoveTest es ahora Vence - ¡Misma calidad, nueva marca!')
+                      setHtmlContent(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>ILoveTest es ahora Vence</title>
 </head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <h1 style="color: #667eea;">🚀 ¡Hola {user_name}!</h1>
-    <h2 style="color: #1e3a8a; text-align: center; margin: 30px 0 20px 0;">ILoveTest es ahora <strong>Vence</strong></h2>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+    <h1 style="margin: 0; font-size: 28px;">🚀 ¡Gran Noticia!</h1>
+    <p style="margin: 10px 0 0; font-size: 18px;">ILoveTest es ahora <strong>Vence</strong></p>
+  </div>
+  
+  <div style="padding: 30px 0;">
+    <p>Hola <strong>{user_name}</strong>,</p>
     
-    <p>Te escribimos para comunicarte un cambio importante: <strong>ILoveTest ahora se llama Vence</strong>.</p>
+    <p>Nos complace anunciarte que <strong>ILoveTest ha evolucionado</strong> y ahora se llama <strong>Vence</strong>.</p>
     
-    <h3 style="color: #1e3a8a;">¿Qué cambia para ti?</h3>
+    <h2 style="color: #1e40af;">🎯 ¿Qué significa esto para ti?</h2>
     <ul>
-      <li>✅ <strong>Nada</strong> - El mismo equipo de siempre</li>
-      <li>✅ <strong>Nada</strong> - La misma calidad en contenidos</li>
-      <li>✅ <strong>Nada</strong> - Las mismas funcionalidades</li>
-      <li>✅ <strong>Nada</strong> - Tu progreso se mantiene intacto</li>
+      <li>✅ La misma calidad de preguntas de siempre</li>
+      <li>✅ Las mismas funcionalidades que ya conoces</li>
+      <li>✅ Tu progreso y estadísticas se mantienen intactos</li>
+      <li>✅ Nuevas mejoras y funcionalidades en camino</li>
     </ul>
     
-    <p>Solo cambia nuestro nombre: una marca más <strong>corta</strong>, <strong>moderna</strong> y <strong>fácil de recordar</strong>.</p>
-    
-    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0; color: #1e40af;"><strong>📅 ¡Tenemos novedades!</strong><br>
-      La próxima semana lanzamos nuevas funcionalidades que te van a encantar. Estate atento a tu email.</p>
+    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; color: #1e40af; font-weight: bold;">🔗 Sigue practicando en: <a href="https://www.vence.es/auxiliar-administrativo-estado/test" style="color: #1e40af; text-decoration: none; border-bottom: 2px solid #3b82f6;">www.vence.es/auxiliar-administrativo-estado/test</a></p>
     </div>
     
-    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
-      <p style="margin: 0; color: #856404;"><strong>💡 Ayúdanos a mejorar</strong><br>
-      Entra en <strong>vence.es</strong>, logéate y haznos alguna sugerencia. Trataremos de implementarla para hacer Vence aún mejor para ti.</p>
-    </div>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="https://vence.es" style="background: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">🎯 Visitar Vence</a>
-    </div>
-    <p>Gracias por acompañarnos en esta evolución.</p>
-    <p>El equipo de Vence</p>
+    <p style="margin-top: 30px;">
+      El equipo de <strong>Vence</strong><br>
+      <em>Preparando tu futuro, pregunta a pregunta</em>
+    </p>
   </div>
 </body>
 </html>`)
-                  }}
-                  className="w-full text-left px-3 py-2 text-sm bg-blue-50 hover:bg-blue-100 rounded border"
-                >
-                  🚀 Rebranding ILoveTest → Vence
-                </button>
+                      setShowPreview(true)
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h5 className="font-medium text-gray-800 text-sm">
+                            🚀 Rebranding → Vence
+                          </h5>
+                          {selectedTemplate === 'rebranding' && (
+                            <span className="px-2 py-1 text-xs bg-blue-600 text-white rounded-full">
+                              ✓ Seleccionada
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 truncate">
+                          ILoveTest es ahora Vence - ¡Misma calidad, nueva marca!
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Botones de acción para plantilla seleccionada */}
+                    {selectedTemplate === 'rebranding' && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const templateName = prompt('Nombre para guardar:', '🚀 Rebranding → Vence')
+                              if (templateName) {
+                                const template = {
+                                  id: 'rebranding-saved-' + Date.now(),
+                                  name: templateName,
+                                  subject: '🚀 ILoveTest es ahora Vence - ¡Misma calidad, nueva marca!',
+                                  content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ILoveTest es ahora Vence</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+    <h1 style="margin: 0; font-size: 28px;">🚀 ¡Gran Noticia!</h1>
+    <p style="margin: 10px 0 0; font-size: 18px;">ILoveTest es ahora <strong>Vence</strong></p>
+  </div>
+  
+  <div style="padding: 30px 0;">
+    <p>Hola <strong>{user_name}</strong>,</p>
+    
+    <p>Nos complace anunciarte que <strong>ILoveTest ha evolucionado</strong> y ahora se llama <strong>Vence</strong>.</p>
+    
+    <h2 style="color: #1e40af;">🎯 ¿Qué significa esto para ti?</h2>
+    <ul>
+      <li>✅ La misma calidad de preguntas de siempre</li>
+      <li>✅ Las mismas funcionalidades que ya conoces</li>
+      <li>✅ Tu progreso y estadísticas se mantienen intactos</li>
+      <li>✅ Nuevas mejoras y funcionalidades en camino</li>
+    </ul>
+    
+    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; color: #1e40af; font-weight: bold;">🔗 Sigue practicando en: <a href="https://www.vence.es/auxiliar-administrativo-estado/test" style="color: #1e40af; text-decoration: none; border-bottom: 2px solid #3b82f6;">www.vence.es/auxiliar-administrativo-estado/test</a></p>
+    </div>
+    
+    <p style="margin-top: 30px;">
+      El equipo de <strong>Vence</strong><br>
+      <em>Preparando tu futuro, pregunta a pregunta</em>
+    </p>
+  </div>
+</body>
+</html>`,
+                                  createdAt: new Date().toISOString()
+                                }
+                                const updatedTemplates = [...savedTemplates, template]
+                                setSavedTemplates(updatedTemplates)
+                                localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                                alert('Plantilla guardada!')
+                              }
+                            }}
+                            className="px-3 py-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 shadow-sm font-medium"
+                            title="Guardar esta plantilla con un nombre personalizado"
+                          >
+                            ✏️ Renombrar
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const template = {
+                                id: 'rebranding-duplicated-' + Date.now(),
+                                name: '🚀 Rebranding → Vence (Copia)',
+                                subject: '🚀 ILoveTest es ahora Vence - ¡Misma calidad, nueva marca!',
+                                content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ILoveTest es ahora Vence</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+    <h1 style="margin: 0; font-size: 28px;">🚀 ¡Gran Noticia!</h1>
+    <p style="margin: 10px 0 0; font-size: 18px;">ILoveTest es ahora <strong>Vence</strong></p>
+  </div>
+  
+  <div style="padding: 30px 0;">
+    <p>Hola <strong>{user_name}</strong>,</p>
+    
+    <p>Nos complace anunciarte que <strong>ILoveTest ha evolucionado</strong> y ahora se llama <strong>Vence</strong>.</p>
+    
+    <h2 style="color: #1e40af;">🎯 ¿Qué significa esto para ti?</h2>
+    <ul>
+      <li>✅ La misma calidad de preguntas de siempre</li>
+      <li>✅ Las mismas funcionalidades que ya conoces</li>
+      <li>✅ Tu progreso y estadísticas se mantienen intactos</li>
+      <li>✅ Nuevas mejoras y funcionalidades en camino</li>
+    </ul>
+    
+    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0;">
+      <p style="margin: 0; color: #1e40af; font-weight: bold;">🔗 Sigue practicando en: <a href="https://www.vence.es/auxiliar-administrativo-estado/test" style="color: #1e40af; text-decoration: none; border-bottom: 2px solid #3b82f6;">www.vence.es/auxiliar-administrativo-estado/test</a></p>
+    </div>
+    
+    <p style="margin-top: 30px;">
+      El equipo de <strong>Vence</strong><br>
+      <em>Preparando tu futuro, pregunta a pregunta</em>
+    </p>
+  </div>
+</body>
+</html>`,
+                                createdAt: new Date().toISOString()
+                              }
+                              duplicateTemplate(template)
+                            }}
+                            className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm font-medium"
+                            title="Duplicar esta plantilla y guardarla"
+                          >
+                            📋 Duplicar
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm('¿Estás seguro de que quieres quitar esta plantilla de la selección?')) {
+                                setSelectedTemplate(null)
+                                setLoadedCustomTemplate(null)
+                                setSubject('')
+                                setHtmlContent('')
+                                setShowPreview(false)
+                              }
+                            }}
+                            className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm font-medium"
+                            title="Deseleccionar plantilla"
+                          >
+                            🗑️ Quitar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Template 2: Filtrado por Leyes */}
+                  <div 
+                    className={`border rounded-lg p-3 cursor-pointer transition-all ${ 
+                      selectedTemplate === 'filtrado' 
+                        ? 'border-blue-500 bg-blue-50 shadow-md' 
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    }`}
+                    onClick={() => {
+                      setSelectedTemplate('filtrado')
+                      setSubject('🎯 Nueva funcionalidad: Filtrado por Leyes')
+                      setHtmlContent(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Nueva funcionalidad: Filtrado por Leyes</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+    <h1 style="margin: 0; font-size: 28px;">🎯 Nueva Funcionalidad</h1>
+    <p style="margin: 10px 0 0; font-size: 18px;">Filtrado por Leyes y Artículos específicos</p>
+  </div>
+  
+  <div style="padding: 30px 0;">
+    <p>Hola <strong>{user_name}</strong>,</p>
+    
+    <p>Nos complace anunciarte que hemos lanzado una <strong>nueva funcionalidad revolucionaria</strong> que transformará tu forma de estudiar para las oposiciones.</p>
+    
+    <h2 style="color: #1e40af; margin-top: 30px;">🎯 Filtrado Inteligente por Leyes</h2>
+    <p>Ahora puedes <strong>filtrar preguntas por leyes específicas e incluso por artículos concretos</strong>, dándote un control total sobre tu preparación.</p>
+    
+    <div style="background: #e0f2fe; border: 1px solid #0277bd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h4 style="color: #01579b; margin: 0 0 10px 0;">📍 ¿Dónde encuentras esta función?</h4>
+      <p style="margin: 0; color: #0277bd;">
+        <strong>1.</strong> Ve a cualquier <strong>tema</strong> en Vence<br>
+        <strong>2.</strong> Haz clic en <strong>"Opciones de personalización"</strong><br>
+        <strong>3.</strong> Selecciona <strong>"Filtrar por leyes"</strong><br>
+        <strong>4.</strong> ¡Elige las leyes y artículos específicos que quieres practicar!
+      </p>
+    </div>
+    
+    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 25px 0; border-radius: 0 8px 8px 0;">
+      <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 18px;">✨ ¿Qué puedes hacer ahora?</h3>
+      <ul style="margin: 0; padding-left: 20px;">
+        <li><strong>📖 Estudiar ley por ley:</strong> Enfócate en una sola normativa hasta dominarla completamente</li>
+        <li><strong>🔍 Artículos específicos:</strong> Practica solo los artículos que más te cuestan</li>
+        <li><strong>🎯 Estrategia dirigida:</strong> Identifica tus puntos débiles y trabájalos específicamente</li>
+        <li><strong>📈 Progreso gradual:</strong> Avanza paso a paso, ley a ley, artículo a artículo</li>
+      </ul>
+    </div>
+    
+    <h2 style="color: #1e40af; margin-top: 30px;">🚀 Beneficios para tu Oposición</h2>
+    
+    <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #059669; margin: 0 0 10px 0;">💡 Estrategia de Estudio Inteligente</h4>
+      <p style="margin: 0;">Estudia primero la teoría de una ley específica y luego practica SOLO preguntas de esa ley. ¡Consolidación garantizada!</p>
+    </div>
+    
+    <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #d97706; margin: 0 0 10px 0;">🎯 Enfoque en Debilidades</h4>
+      <p style="margin: 0;">¿Te cuesta el Título III de la Ley 39/2015? Filtra solo esos artículos y conviértelos en tu fortaleza.</p>
+    </div>
+    
+    <div style="background: #ede9fe; border: 1px solid #8b5cf6; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #7c3aed; margin: 0 0 10px 0;">📊 Preparación Sistemática</h4>
+      <p style="margin: 0;">Organiza tu estudio por bloques temáticos. Domina la Constitución, luego pasa a la LPAC, después a la LRJSP...</p>
+    </div>
+    
+    <h3 style="color: #1e40af; margin-top: 30px;">📋 Leyes Disponibles:</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0;">
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🏛️ Constitución Española</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>📄 Ley 39/2015 (LPAC)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🏢 Ley 40/2015 (LRJSP)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🇪🇺 TUE y TFUE</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>⚖️ LO 6/1985 (Poder Judicial)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>📊 Y muchas más...</strong>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="https://www.vence.es/auxiliar-administrativo-estado/test" style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 18px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);">🚀 Comenzar Estudio Dirigido</a>
+    </div>
+    
+    <div style="background: #f1f5f9; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
+      <h4 style="color: #334155; margin: 0 0 10px 0;">💪 Tu éxito está en los detalles</h4>
+      <p style="margin: 0; color: #64748b; font-style: italic;">"No estudies todo a la vez. Domina ley por ley, artículo por artículo. La precisión es clave en las oposiciones."</p>
+    </div>
+    
+    <div style="background: #fff7ed; border: 2px solid #fb923c; border-radius: 10px; padding: 25px; margin: 30px 0; text-align: center;">
+      <h3 style="color: #ea580c; margin: 0 0 15px 0; font-size: 20px;">💬 ¡Tu opinión nos importa!</h3>
+      <p style="margin: 0 0 15px 0; color: #9a3412; font-size: 16px;">¿Qué te parece esta nueva funcionalidad? ¿Hay algo más que te gustaría ver en Vence?</p>
+      <p style="margin: 0; color: #7c2d12; font-weight: bold;">
+        <strong>📧 Responde a este correo</strong> con tus sugerencias, ideas o cualquier feedback.<br>
+        Leemos cada mensaje y nos ayuda a hacer Vence aún mejor para ti.
+      </p>
+    </div>
+    
+    <p style="margin-top: 30px;">
+      El equipo de <strong>Vence</strong><br>
+      <em>Preparando tu futuro, pregunta a pregunta</em>
+    </p>
+  </div>
+</body>
+</html>`)
+                      setShowPreview(true)
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h5 className="font-medium text-gray-800 text-sm">
+                            🎯 Filtrado por Leyes
+                          </h5>
+                          {selectedTemplate === 'filtrado' && (
+                            <span className="px-2 py-1 text-xs bg-blue-600 text-white rounded-full">
+                              ✓ Seleccionada
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 truncate">
+                          Nueva funcionalidad: Filtrado por Leyes
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Botones de acción para plantilla filtrado seleccionada */}
+                    {selectedTemplate === 'filtrado' && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const templateName = prompt('Nombre para guardar:', '🎯 Filtrado por Leyes')
+                              if (templateName) {
+                                const template = {
+                                  id: 'filtrado-saved-' + Date.now(),
+                                  name: templateName,
+                                  subject: '🎯 Nueva funcionalidad: Filtrado por Leyes',
+                                  content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Nueva funcionalidad: Filtrado por Leyes</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+    <h1 style="margin: 0; font-size: 28px;">🎯 Nueva Funcionalidad</h1>
+    <p style="margin: 10px 0 0; font-size: 18px;">Filtrado por Leyes y Artículos específicos</p>
+  </div>
+  
+  <div style="padding: 30px 0;">
+    <p>Hola <strong>{user_name}</strong>,</p>
+    
+    <p>Nos complace anunciarte que hemos lanzado una <strong>nueva funcionalidad revolucionaria</strong> que transformará tu forma de estudiar para las oposiciones.</p>
+    
+    <h2 style="color: #1e40af; margin-top: 30px;">🎯 Filtrado Inteligente por Leyes</h2>
+    <p>Ahora puedes <strong>filtrar preguntas por leyes específicas e incluso por artículos concretos</strong>, dándote un control total sobre tu preparación.</p>
+    
+    <div style="background: #e0f2fe; border: 1px solid #0277bd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h4 style="color: #01579b; margin: 0 0 10px 0;">📍 ¿Dónde encuentras esta función?</h4>
+      <p style="margin: 0; color: #0277bd;">
+        <strong>1.</strong> Ve a cualquier <strong>tema</strong> en Vence<br>
+        <strong>2.</strong> Haz clic en <strong>"Opciones de personalización"</strong><br>
+        <strong>3.</strong> Selecciona <strong>"Filtrar por leyes"</strong><br>
+        <strong>4.</strong> ¡Elige las leyes y artículos específicos que quieres practicar!
+      </p>
+    </div>
+    
+    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 25px 0; border-radius: 0 8px 8px 0;">
+      <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 18px;">✨ ¿Qué puedes hacer ahora?</h3>
+      <ul style="margin: 0; padding-left: 20px;">
+        <li><strong>📖 Estudiar ley por ley:</strong> Enfócate en una sola normativa hasta dominarla completamente</li>
+        <li><strong>🔍 Artículos específicos:</strong> Practica solo los artículos que más te cuestan</li>
+        <li><strong>🎯 Estrategia dirigida:</strong> Identifica tus puntos débiles y trabájalos específicamente</li>
+        <li><strong>📈 Progreso gradual:</strong> Avanza paso a paso, ley a ley, artículo a artículo</li>
+      </ul>
+    </div>
+    
+    <h2 style="color: #1e40af; margin-top: 30px;">🚀 Beneficios para tu Oposición</h2>
+    
+    <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #059669; margin: 0 0 10px 0;">💡 Estrategia de Estudio Inteligente</h4>
+      <p style="margin: 0;">Estudia primero la teoría de una ley específica y luego practica SOLO preguntas de esa ley. ¡Consolidación garantizada!</p>
+    </div>
+    
+    <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #d97706; margin: 0 0 10px 0;">🎯 Enfoque en Debilidades</h4>
+      <p style="margin: 0;">¿Te cuesta el Título III de la Ley 39/2015? Filtra solo esos artículos y conviértelos en tu fortaleza.</p>
+    </div>
+    
+    <div style="background: #ede9fe; border: 1px solid #8b5cf6; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #7c3aed; margin: 0 0 10px 0;">📊 Preparación Sistemática</h4>
+      <p style="margin: 0;">Organiza tu estudio por bloques temáticos. Domina la Constitución, luego pasa a la LPAC, después a la LRJSP...</p>
+    </div>
+    
+    <h3 style="color: #1e40af; margin-top: 30px;">📋 Leyes Disponibles:</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0;">
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🏛️ Constitución Española</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>📄 Ley 39/2015 (LPAC)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🏢 Ley 40/2015 (LRJSP)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🇪🇺 TUE y TFUE</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>⚖️ LO 6/1985 (Poder Judicial)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>📊 Y muchas más...</strong>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="https://www.vence.es/auxiliar-administrativo-estado/test" style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 18px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);">🚀 Comenzar Estudio Dirigido</a>
+    </div>
+    
+    <div style="background: #f1f5f9; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
+      <h4 style="color: #334155; margin: 0 0 10px 0;">💪 Tu éxito está en los detalles</h4>
+      <p style="margin: 0; color: #64748b; font-style: italic;">"No estudies todo a la vez. Domina ley por ley, artículo por artículo. La precisión es clave en las oposiciones."</p>
+    </div>
+    
+    <div style="background: #fff7ed; border: 2px solid #fb923c; border-radius: 10px; padding: 25px; margin: 30px 0; text-align: center;">
+      <h3 style="color: #ea580c; margin: 0 0 15px 0; font-size: 20px;">💬 ¡Tu opinión nos importa!</h3>
+      <p style="margin: 0 0 15px 0; color: #9a3412; font-size: 16px;">¿Qué te parece esta nueva funcionalidad? ¿Hay algo más que te gustaría ver en Vence?</p>
+      <p style="margin: 0; color: #7c2d12; font-weight: bold;">
+        <strong>📧 Responde a este correo</strong> con tus sugerencias, ideas o cualquier feedback.<br>
+        Leemos cada mensaje y nos ayuda a hacer Vence aún mejor para ti.
+      </p>
+    </div>
+    
+    <p style="margin-top: 30px;">
+      El equipo de <strong>Vence</strong><br>
+      <em>Preparando tu futuro, pregunta a pregunta</em>
+    </p>
+  </div>
+</body>
+</html>`,
+                                  createdAt: new Date().toISOString()
+                                }
+                                const updatedTemplates = [...savedTemplates, template]
+                                setSavedTemplates(updatedTemplates)
+                                localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                                alert('Plantilla guardada!')
+                              }
+                            }}
+                            className="px-3 py-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 shadow-sm font-medium"
+                            title="Guardar esta plantilla con un nombre personalizado"
+                          >
+                            ✏️ Renombrar
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const template = {
+                                id: 'filtrado-duplicated-' + Date.now(),
+                                name: '🎯 Filtrado por Leyes (Copia)',
+                                subject: '🎯 Nueva funcionalidad: Filtrado por Leyes',
+                                content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Nueva funcionalidad: Filtrado por Leyes</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+    <h1 style="margin: 0; font-size: 28px;">🎯 Nueva Funcionalidad</h1>
+    <p style="margin: 10px 0 0; font-size: 18px;">Filtrado por Leyes y Artículos específicos</p>
+  </div>
+  
+  <div style="padding: 30px 0;">
+    <p>Hola <strong>{user_name}</strong>,</p>
+    
+    <p>Nos complace anunciarte que hemos lanzado una <strong>nueva funcionalidad revolucionaria</strong> que transformará tu forma de estudiar para las oposiciones.</p>
+    
+    <h2 style="color: #1e40af; margin-top: 30px;">🎯 Filtrado Inteligente por Leyes</h2>
+    <p>Ahora puedes <strong>filtrar preguntas por leyes específicas e incluso por artículos concretos</strong>, dándote un control total sobre tu preparación.</p>
+    
+    <div style="background: #e0f2fe; border: 1px solid #0277bd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h4 style="color: #01579b; margin: 0 0 10px 0;">📍 ¿Dónde encuentras esta función?</h4>
+      <p style="margin: 0; color: #0277bd;">
+        <strong>1.</strong> Ve a cualquier <strong>tema</strong> en Vence<br>
+        <strong>2.</strong> Haz clic en <strong>"Opciones de personalización"</strong><br>
+        <strong>3.</strong> Selecciona <strong>"Filtrar por leyes"</strong><br>
+        <strong>4.</strong> ¡Elige las leyes y artículos específicos que quieres practicar!
+      </p>
+    </div>
+    
+    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 25px 0; border-radius: 0 8px 8px 0;">
+      <h3 style="color: #1e40af; margin: 0 0 15px 0; font-size: 18px;">✨ ¿Qué puedes hacer ahora?</h3>
+      <ul style="margin: 0; padding-left: 20px;">
+        <li><strong>📖 Estudiar ley por ley:</strong> Enfócate en una sola normativa hasta dominarla completamente</li>
+        <li><strong>🔍 Artículos específicos:</strong> Practica solo los artículos que más te cuestan</li>
+        <li><strong>🎯 Estrategia dirigida:</strong> Identifica tus puntos débiles y trabájalos específicamente</li>
+        <li><strong>📈 Progreso gradual:</strong> Avanza paso a paso, ley a ley, artículo a artículo</li>
+      </ul>
+    </div>
+    
+    <h2 style="color: #1e40af; margin-top: 30px;">🚀 Beneficios para tu Oposición</h2>
+    
+    <div style="background: #ecfdf5; border: 1px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #059669; margin: 0 0 10px 0;">💡 Estrategia de Estudio Inteligente</h4>
+      <p style="margin: 0;">Estudia primero la teoría de una ley específica y luego practica SOLO preguntas de esa ley. ¡Consolidación garantizada!</p>
+    </div>
+    
+    <div style="background: #fef3c7; border: 1px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #d97706; margin: 0 0 10px 0;">🎯 Enfoque en Debilidades</h4>
+      <p style="margin: 0;">¿Te cuesta el Título III de la Ley 39/2015? Filtra solo esos artículos y conviértelos en tu fortaleza.</p>
+    </div>
+    
+    <div style="background: #ede9fe; border: 1px solid #8b5cf6; padding: 20px; margin: 20px 0; border-radius: 8px;">
+      <h4 style="color: #7c3aed; margin: 0 0 10px 0;">📊 Preparación Sistemática</h4>
+      <p style="margin: 0;">Organiza tu estudio por bloques temáticos. Domina la Constitución, luego pasa a la LPAC, después a la LRJSP...</p>
+    </div>
+    
+    <h3 style="color: #1e40af; margin-top: 30px;">📋 Leyes Disponibles:</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0;">
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🏛️ Constitución Española</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>📄 Ley 39/2015 (LPAC)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🏢 Ley 40/2015 (LRJSP)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>🇪🇺 TUE y TFUE</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>⚖️ LO 6/1985 (Poder Judicial)</strong>
+      </div>
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center; font-size: 14px;">
+        <strong>📊 Y muchas más...</strong>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="https://www.vence.es/auxiliar-administrativo-estado/test" style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 18px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);">🚀 Comenzar Estudio Dirigido</a>
+    </div>
+    
+    <div style="background: #f1f5f9; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
+      <h4 style="color: #334155; margin: 0 0 10px 0;">💪 Tu éxito está en los detalles</h4>
+      <p style="margin: 0; color: #64748b; font-style: italic;">"No estudies todo a la vez. Domina ley por ley, artículo por artículo. La precisión es clave en las oposiciones."</p>
+    </div>
+    
+    <div style="background: #fff7ed; border: 2px solid #fb923c; border-radius: 10px; padding: 25px; margin: 30px 0; text-align: center;">
+      <h3 style="color: #ea580c; margin: 0 0 15px 0; font-size: 20px;">💬 ¡Tu opinión nos importa!</h3>
+      <p style="margin: 0 0 15px 0; color: #9a3412; font-size: 16px;">¿Qué te parece esta nueva funcionalidad? ¿Hay algo más que te gustaría ver en Vence?</p>
+      <p style="margin: 0; color: #7c2d12; font-weight: bold;">
+        <strong>📧 Responde a este correo</strong> con tus sugerencias, ideas o cualquier feedback.<br>
+        Leemos cada mensaje y nos ayuda a hacer Vence aún mejor para ti.
+      </p>
+    </div>
+    
+    <p style="margin-top: 30px;">
+      El equipo de <strong>Vence</strong><br>
+      <em>Preparando tu futuro, pregunta a pregunta</em>
+    </p>
+  </div>
+</body>
+</html>`,
+                                createdAt: new Date().toISOString()
+                              }
+                              duplicateTemplate(template)
+                            }}
+                            className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm font-medium"
+                            title="Duplicar esta plantilla y guardarla"
+                          >
+                            📋 Duplicar
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm('¿Estás seguro de que quieres quitar esta plantilla de la selección?')) {
+                                setSelectedTemplate(null)
+                                setLoadedCustomTemplate(null)
+                                setSubject('')
+                                setHtmlContent('')
+                                setShowPreview(false)
+                              }
+                            }}
+                            className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm font-medium"
+                            title="Deseleccionar plantilla"
+                          >
+                            🗑️ Quitar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -850,7 +850,6 @@ export default function TestLayout({
 
   // Componente de notificación hot article
   const HotArticleNotification = () => {
-    console.log('🔥 [RENDER] HotArticleNotification:', showHotAlert, !!hotArticleInfo)
 
     if (!showHotAlert || !hotArticleInfo) return null
 
