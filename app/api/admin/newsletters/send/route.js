@@ -142,10 +142,25 @@ export async function POST(request) {
         }
 
         // Personalizar HTML con nombre del usuario
-        const personalizedHtml = htmlContent.replace(
+        let personalizedHtml = htmlContent.replace(
           /\{user_name\}/g, 
           user.full_name || user.email.split('@')[0]
         )
+
+        // Añadir tracking pixel para detectar aperturas (solo en modo real)
+        if (!testMode) {
+          const trackingPixel = `<img src="https://www.vence.es/api/email-tracking/open?user_id=${user.id}&email_id=newsletter_${Date.now()}&type=newsletter" width="1" height="1" style="display:none;" alt="">`
+          personalizedHtml = personalizedHtml.replace('</body>', `${trackingPixel}</body>`)
+        }
+
+        // Añadir tracking a enlaces (solo en modo real)
+        if (!testMode) {
+          // Reemplazar enlaces que apuntan a vence.es con tracking
+          personalizedHtml = personalizedHtml.replace(
+            /href="(https?:\/\/(?:www\.)?vence\.es[^"]*)"/g,
+            `href="https://www.vence.es/api/email-tracking/click?user_id=${user.id}&type=newsletter&action=newsletter_link&redirect=$1"`
+          )
+        }
 
         // Enviar con Resend con retry en caso de rate limiting
         let retries = 0

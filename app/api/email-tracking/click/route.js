@@ -20,14 +20,21 @@ export async function GET(request) {
 
     // Registrar evento de click con campos requeridos
     if (userId) {
+      // Obtener información del usuario para el tracking
+      const { data: userProfile } = await supabase
+        .from('user_profiles')
+        .select('email')
+        .eq('id', userId)
+        .single()
+
       await supabase.from('email_events').insert({
         user_id: userId,
         event_type: 'clicked',
         email_type: type,
-        email_address: 'tracking@vence.es', // Email placeholder para tracking
-        subject: 'Email Tracking - Clicked',
-        template_id: 'tracking_click',
-        email_content_preview: `Email button clicked: ${action}`,
+        email_address: userProfile?.email || 'unknown@tracking.vence.es',
+        subject: type === 'newsletter' ? 'Newsletter Link Clicked' : 'Email Tracking - Clicked',
+        template_id: type === 'newsletter' ? 'newsletter' : 'tracking_click',
+        email_content_preview: `${type} email link clicked: ${action} -> ${redirect}`,
         created_at: new Date().toISOString()
       })
     }
