@@ -134,18 +134,22 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
         priority: 'medium'
       }
 
-      // Solo agregar question_id si existe
-      if (detectedContext.questionId) {
+      // Solo agregar question_id para impugnaciones/disputas de preguntas
+      if (detectedContext.questionId && feedbackType === 'disputa') {
         feedbackData.question_id = detectedContext.questionId
+        feedbackData.dispute_type = 'error_question' // o el tipo específico
       }
 
-      // Solo agregar theme_context si hay información de tema
+      // Solo agregar theme_context si hay información de tema Y la columna existe
+      // TODO: Descomentar cuando se añada columna theme_context a user_feedback
+      /*
       if (detectedContext.themeNumber) {
         feedbackData.theme_context = {
           theme_number: detectedContext.themeNumber,
           theme_name: detectedContext.themeName
         }
       }
+      */
 
       const { data: feedbackResult, error: submitError } = await supabase
         .from('user_feedback')
