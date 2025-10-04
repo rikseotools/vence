@@ -123,7 +123,7 @@ export async function POST(request) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Vence <noreply@vence.es>',
+        from: 'Vence <info@vence.es>',
         to: [targetEmail],
         subject: emailSubject,
         html: emailHtml

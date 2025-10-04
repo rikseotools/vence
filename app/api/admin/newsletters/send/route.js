@@ -24,7 +24,7 @@ export async function POST(request) {
       audienceType,
       selectedUserIds, // Array de IDs de usuarios específicos
       fromName = 'Vence',
-      fromEmail = 'noreply@vence.es',
+      fromEmail = 'info@vence.es',
       testMode = false
     } = body
 
