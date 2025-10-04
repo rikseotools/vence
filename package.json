@@ -25,7 +25,6 @@
     "pdfjs-dist": "^2.16.105",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-quill": "^2.0.0",
     "recharts": "^3.2.1",
     "resend": "^4.6.0",
     "server-only": "^0.0.1",
