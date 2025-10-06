@@ -11,6 +11,100 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const [statsLoading, setStatsLoading] = useState(false)
   const [sortBy, setSortBy] = useState('tema') // 'tema', 'accuracy_asc', 'accuracy_desc', 'last_study_new', 'last_study_old'
   const [showStatsInfo, setShowStatsInfo] = useState(false)
+  const [activeTab, setActiveTab] = useState('materias') // 'materias', 'psicotecnicos'
+  const [selectedBlock, setSelectedBlock] = useState(null) // Para mostrar secciones de un bloque específico
+  const [selectedSections, setSelectedSections] = useState({}) // Para trackear qué secciones están seleccionadas
+  const [showModal, setShowModal] = useState(false) // Para mostrar el modal de configuración
+  const [modalBlock, setModalBlock] = useState(null) // Bloque actual del modal
+
+  // Definir las secciones por bloque
+  const blockSections = {
+    'capacidad-administrativa': [
+      { id: 'tablas', name: 'Tablas' },
+      { id: 'graficos', name: 'Gráficos' }, 
+      { id: 'clasificacion', name: 'Pruebas de clasificación' },
+      { id: 'atencion-percepcion', name: 'Pruebas de atención-percepción' }
+    ],
+    'capacidad-ortografica': [
+      { id: 'basico', name: 'Sección básica' },
+      { id: 'avanzado', name: 'Sección avanzada' }
+    ],
+    'pruebas-instrucciones': [
+      { id: 'basico', name: 'Sección básica' },
+      { id: 'avanzado', name: 'Sección avanzada' }
+    ],
+    'razonamiento-numerico': [
+      { id: 'seccion-1', name: 'Sección 1' },
+      { id: 'seccion-2', name: 'Sección 2' },
+      { id: 'seccion-3', name: 'Sección 3' },
+      { id: 'seccion-4', name: 'Sección 4' },
+      { id: 'seccion-5', name: 'Sección 5' },
+      { id: 'seccion-6', name: 'Sección 6' },
+      { id: 'seccion-7', name: 'Sección 7' },
+      { id: 'seccion-8', name: 'Sección 8' },
+      { id: 'seccion-9', name: 'Sección 9' },
+      { id: 'seccion-10', name: 'Sección 10' },
+      { id: 'seccion-11', name: 'Sección 11' },
+      { id: 'seccion-12', name: 'Sección 12' },
+      { id: 'seccion-13', name: 'Sección 13' }
+    ],
+    'razonamiento-verbal': [
+      { id: 'seccion-1', name: 'Sección 1' },
+      { id: 'seccion-2', name: 'Sección 2' },
+      { id: 'seccion-3', name: 'Sección 3' },
+      { id: 'seccion-4', name: 'Sección 4' }
+    ],
+    'series-alfanumericas': [
+      { id: 'basico', name: 'Sección básica' },
+      { id: 'avanzado', name: 'Sección avanzada' }
+    ],
+    'series-letras': [
+      { id: 'basico', name: 'Sección básica' },
+      { id: 'avanzado', name: 'Sección avanzada' }
+    ],
+    'series-numericas': [
+      { id: 'basico', name: 'Sección básica' },
+      { id: 'avanzado', name: 'Sección avanzada' }
+    ]
+  }
+
+  // Función para manejar la selección de un bloque
+  const handleBlockClick = (blockId) => {
+    console.log('handleBlockClick called with:', blockId)
+    if (blockId === 'capacidad-administrativa') {
+      console.log('Setting modal for capacidad-administrativa')
+      setModalBlock(blockId)
+      setShowModal(true)
+    } else {
+      setSelectedBlock(blockId)
+    }
+  }
+
+  // Función para volver al listado principal
+  const handleBackToList = () => {
+    setSelectedBlock(null)
+  }
+
+  // Función para alternar selección de sección
+  const toggleSectionSelection = (sectionId) => {
+    setSelectedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }))
+  }
+
+  // Funciones para manejar el modal
+  const closeModal = () => {
+    setShowModal(false)
+    setModalBlock(null)
+  }
+
+  const handleModalSectionToggle = (sectionId) => {
+    setSelectedSections(prev => ({
+      ...prev,
+      [sectionId]: !prev[sectionId]
+    }))
+  }
 
   // Cargar estadísticas del usuario cada vez que se carga la página
   useEffect(() => {
@@ -193,137 +287,390 @@ export default function TestsAuxiliarAdministrativoEstado() {
                   <span className="mr-2">📝</span>
                   Tests
                 </div>
-                <div className="inline-flex items-center bg-gradient-to-r from-gray-700 to-gray-900 text-white px-6 py-2 rounded-full text-sm font-medium">
+                <div className="inline-flex items-center bg-gradient-to-r from-gray-700 to-gray-900 text-white px-6 py-2 rounded-full text-sm font-medium mb-6">
                   <span className="mr-2">🏛️</span>
                   Auxiliar Administrativo del Estado
                 </div>
-              </div>
-              
-              <p className="text-gray-600 mb-6">
-                Los colores indican tu rendimiento: 🟢 Excelente → 🔴 Necesita práctica
-              </p>
 
-
-              {/* ✅ LEYENDA DE COLORES */}
-              <div className="mb-6">
-                <div className="bg-white rounded-lg shadow-md p-4">
-                  <div className="text-sm font-medium text-gray-700 mb-3">Leyenda de colores por % de aciertos:</div>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    <div className="flex items-center px-3 py-1 bg-green-100 rounded-lg">
-                      <span className="w-3 h-3 bg-green-600 rounded-full mr-2"></span>
-                      <span className="text-xs font-medium text-green-800">90-100%: Excelente</span>
-                    </div>
-                    <div className="flex items-center px-3 py-1 bg-emerald-100 rounded-lg">
-                      <span className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></span>
-                      <span className="text-xs font-medium text-emerald-800">75-89%: Muy bueno</span>
-                    </div>
-                    <div className="flex items-center px-3 py-1 bg-yellow-100 rounded-lg">
-                      <span className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></span>
-                      <span className="text-xs font-medium text-yellow-800">60-74%: Bueno</span>
-                    </div>
-                    <div className="flex items-center px-3 py-1 bg-orange-100 rounded-lg">
-                      <span className="w-3 h-3 bg-orange-600 rounded-full mr-2"></span>
-                      <span className="text-xs font-medium text-orange-800">40-59%: Mejorable</span>
-                    </div>
-                    <div className="flex items-center px-3 py-1 bg-red-100 rounded-lg">
-                      <span className="w-3 h-3 bg-red-600 rounded-full mr-2"></span>
-                      <span className="text-xs font-medium text-red-800">0-39%: Necesita práctica</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Opciones de ordenación */}
-              <div className="mb-6">
-                <div className="bg-white rounded-lg shadow-md p-4">
-                  <div className="text-sm font-medium text-gray-700 mb-3">Ordenar por:</div>
-                  <div className="flex flex-wrap gap-2 justify-center">
-                    {[
-                      { id: 'tema', label: 'Por Tema', icon: '🔢' },
-                      { id: 'accuracy_asc', label: '% Más Bajo', icon: '📉' },
-                      { id: 'accuracy_desc', label: '% Más Alto', icon: '📈' },
-                      { id: 'last_study_new', label: 'Más Reciente', icon: '🕐' },
-                      { id: 'last_study_old', label: 'Más Antiguo', icon: '🕰️' }
-                    ].map((option) => (
-                      <button
-                        key={option.id}
-                        onClick={() => setSortBy(option.id)}
-                        className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                          sortBy === option.id
-                            ? 'bg-blue-500 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        <span className="mr-1">{option.icon}</span>
-                        {option.label}
-                      </button>
-                    ))}
+                {/* Navegación por tabs - Optimizado para mobile */}
+                <div className="flex justify-center mb-6 px-4">
+                  <div className="bg-white rounded-lg shadow-md p-1 flex w-full max-w-md">
+                    <button
+                      onClick={() => setActiveTab('materias')}
+                      className={`flex-1 px-3 py-3 rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base ${
+                        activeTab === 'materias'
+                          ? 'bg-blue-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                      }`}
+                    >
+                      <span className="mr-1 sm:mr-2">🏛️</span>
+                      <span className="hidden sm:inline">Organización Pública</span>
+                      <span className="sm:hidden">Org. Pública</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('psicotecnicos')}
+                      className={`flex-1 px-3 py-3 rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base ${
+                        activeTab === 'psicotecnicos'
+                          ? 'bg-blue-600 text-white shadow-lg'
+                          : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                      }`}
+                    >
+                      <span className="mr-1 sm:mr-2">🀲</span>
+                      Psicotécnicos
+                    </button>
                   </div>
                 </div>
               </div>
               
-              {/* ✅ BOTONES DINÁMICOS CON COLORES POR ACCURACY */}
-              <div className="space-y-4">
-                {/* Test Aleatorio */}
-                <Link
-                  href="/auxiliar-administrativo-estado/test/aleatorio"
-                  className="block bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 focus:ring-purple-300 group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <span className="mr-3 text-2xl group-hover:animate-bounce">🎲</span>
-                      <span>Test Aleatorio: Mezcla preguntas de varios temas</span>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                        Personalizable
-                      </span>
-                    </div>
-                  </div>
-                </Link>
+              {/* Contenido condicional según tab activo */}
+              {activeTab === 'materias' && (
+                <>
+                  <p className="text-gray-600 mb-6">
+                    Los colores indican tu rendimiento: 🟢 Excelente → 🔴 Necesita práctica
+                  </p>
 
-                {getSortedThemes().map((theme) => (
-                  <Link
-                    key={theme.id}
-                    href={theme.href}
-                    className={`block ${getColorClasses(theme.color)} text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 group`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>Tests Tema {theme.id}: {theme.title}</span>
-                      <div className="flex items-center space-x-3">
-                        {userStats[theme.id] && (
-                          <>
-                            <div className="flex items-center space-x-1">
-                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
-                                {userStats[theme.id].accuracy}% ({userStats[theme.id].correct}/{userStats[theme.id].total})
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  setShowStatsInfo(true)
-                                }}
-                                className="text-white/70 hover:text-white transition-colors p-1"
-                                title="¿Qué significa este porcentaje?"
-                              >
-                                ℹ️
-                              </button>
-                            </div>
-                            <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
-                              Último estudio: {userStats[theme.id].lastStudyFormatted}
-                            </span>
-                          </>
-                        )}
-                        {!userStats[theme.id] && (
-                          <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                            Sin datos
-                          </span>
-                        )}
+                  {/* ✅ LEYENDA DE COLORES */}
+                  <div className="mb-6">
+                    <div className="bg-white rounded-lg shadow-md p-4">
+                      <div className="text-sm font-medium text-gray-700 mb-3">Leyenda de colores por % de aciertos:</div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <div className="flex items-center px-3 py-1 bg-green-100 rounded-lg">
+                          <span className="w-3 h-3 bg-green-600 rounded-full mr-2"></span>
+                          <span className="text-xs font-medium text-green-800">90-100%: Excelente</span>
+                        </div>
+                        <div className="flex items-center px-3 py-1 bg-emerald-100 rounded-lg">
+                          <span className="w-3 h-3 bg-emerald-600 rounded-full mr-2"></span>
+                          <span className="text-xs font-medium text-emerald-800">75-89%: Muy bueno</span>
+                        </div>
+                        <div className="flex items-center px-3 py-1 bg-yellow-100 rounded-lg">
+                          <span className="w-3 h-3 bg-yellow-600 rounded-full mr-2"></span>
+                          <span className="text-xs font-medium text-yellow-800">60-74%: Bueno</span>
+                        </div>
+                        <div className="flex items-center px-3 py-1 bg-orange-100 rounded-lg">
+                          <span className="w-3 h-3 bg-orange-600 rounded-full mr-2"></span>
+                          <span className="text-xs font-medium text-orange-800">40-59%: Mejorable</span>
+                        </div>
+                        <div className="flex items-center px-3 py-1 bg-red-100 rounded-lg">
+                          <span className="w-3 h-3 bg-red-600 rounded-full mr-2"></span>
+                          <span className="text-xs font-medium text-red-800">0-39%: Necesita práctica</span>
+                        </div>
                       </div>
                     </div>
-                  </Link>
-                ))}
-              </div>
+                  </div>
+
+                  {/* Opciones de ordenación */}
+                  <div className="mb-6">
+                    <div className="bg-white rounded-lg shadow-md p-4">
+                      <div className="text-sm font-medium text-gray-700 mb-3">Ordenar por:</div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {[
+                          { id: 'tema', label: 'Por Tema', icon: '🔢' },
+                          { id: 'accuracy_asc', label: '% Más Bajo', icon: '📉' },
+                          { id: 'accuracy_desc', label: '% Más Alto', icon: '📈' },
+                          { id: 'last_study_new', label: 'Más Reciente', icon: '🕐' },
+                          { id: 'last_study_old', label: 'Más Antiguo', icon: '🕰️' }
+                        ].map((option) => (
+                          <button
+                            key={option.id}
+                            onClick={() => setSortBy(option.id)}
+                            className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                              sortBy === option.id
+                                ? 'bg-blue-500 text-white shadow-lg'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            <span className="mr-1">{option.icon}</span>
+                            {option.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* ✅ BOTONES DINÁMICOS CON COLORES POR ACCURACY */}
+                  <div className="space-y-4">
+                    {/* Test Aleatorio */}
+                    <Link
+                      href="/auxiliar-administrativo-estado/test/aleatorio"
+                      className="block bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 focus:ring-purple-300 group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <span className="mr-3 text-2xl group-hover:animate-bounce">🎲</span>
+                          <span>Test Aleatorio: Mezcla preguntas de varios temas</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                            Personalizable
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+
+                    {getSortedThemes().map((theme) => (
+                      <Link
+                        key={theme.id}
+                        href={theme.href}
+                        className={`block ${getColorClasses(theme.color)} text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 group`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>Tests Tema {theme.id}: {theme.title}</span>
+                          <div className="flex items-center space-x-3">
+                            {userStats[theme.id] && (
+                              <>
+                                <div className="flex items-center space-x-1">
+                                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                    {userStats[theme.id].accuracy}% ({userStats[theme.id].correct}/{userStats[theme.id].total})
+                                  </span>
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      setShowStatsInfo(true)
+                                    }}
+                                    className="text-white/70 hover:text-white transition-colors p-1"
+                                    title="¿Qué significa este porcentaje?"
+                                  >
+                                    ℹ️
+                                  </button>
+                                </div>
+                                <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
+                                  Último estudio: {userStats[theme.id].lastStudyFormatted}
+                                </span>
+                              </>
+                            )}
+                            {!userStats[theme.id] && (
+                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                                Sin datos
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Contenido de Psicotécnicos */}
+              {activeTab === 'psicotecnicos' && (
+                <>
+                  {!selectedBlock && (
+                    <>
+                      <p className="text-gray-600 mb-6">
+                        Tests psicotécnicos para evaluar aptitudes cognitivas y habilidades específicas
+                      </p>
+
+                      {/* Lista estilo checklist simple - Optimizado para mobile */}
+                      <div className="max-w-2xl mx-auto px-4">
+                        <div className="space-y-3 sm:space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => handleBlockClick('capacidad-administrativa')}>
+                            <div className="flex items-center mb-2 sm:mb-0">
+                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-3 sm:mr-4 flex-shrink-0"></div>
+                              <div className="flex flex-col sm:flex-row sm:items-center">
+                                <span className="text-base sm:text-lg font-medium text-gray-700">Capacidad administrativa</span>
+                                    </div>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
+                              <span className="text-sm text-gray-500 mr-2 sm:mr-4">0/4 secciones</span>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleBlockClick('capacidad-administrativa')
+                                }}
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded flex-shrink-0"
+                              >
+                                <span className="hidden sm:inline">Configurar secciones</span>
+                                <span className="sm:hidden">Configurar</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <span className="text-lg font-medium text-gray-700">Capacidad ortográfica</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <span className="text-lg font-medium text-gray-700">Pruebas de instrucciones</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => handleBlockClick('razonamiento-numerico')}>
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="text-sm text-gray-500 mr-4">0/13 secciones</span>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleBlockClick('razonamiento-numerico')
+                                }}
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                              >
+                                Configurar secciones
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => handleBlockClick('razonamiento-verbal')}>
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="text-sm text-gray-500 mr-4">0/4 secciones</span>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleBlockClick('razonamiento-verbal')
+                                }}
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                              >
+                                Configurar secciones
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <span className="text-lg font-medium text-gray-700">Series alfanuméricas</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <span className="text-lg font-medium text-gray-700">Series de letras</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <span className="text-lg font-medium text-gray-700">Series numéricas</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Vista de secciones de un bloque específico */}
+                  {selectedBlock && (
+                    <div className="max-w-2xl mx-auto">
+                      {/* Breadcrumb navigation - Optimizado para mobile */}
+                      <div className="mb-6 px-4">
+                        <div className="flex items-center text-xs sm:text-sm text-gray-500 flex-wrap">
+                          <button 
+                            onClick={() => setActiveTab('materias')} 
+                            className="hover:text-gray-700 transition-colors"
+                          >
+                            Materias
+                          </button>
+                          <span className="mx-1 sm:mx-2">&gt;</span>
+                          <button 
+                            onClick={handleBackToList} 
+                            className="hover:text-gray-700 transition-colors"
+                          >
+                            Psicotécnicos
+                          </button>
+                          <span className="mx-1 sm:mx-2">&gt;</span>
+                          <span className="text-gray-700 font-medium break-words">
+                            {selectedBlock === 'capacidad-administrativa' && (
+                              <>
+                                <span className="hidden sm:inline">Capacidad administrativa</span>
+                                <span className="sm:hidden">Cap. administrativa</span>
+                              </>
+                            )}
+                            {selectedBlock === 'capacidad-ortografica' && (
+                              <>
+                                <span className="hidden sm:inline">Capacidad ortográfica</span>
+                                <span className="sm:hidden">Cap. ortográfica</span>
+                              </>
+                            )}
+                            {selectedBlock === 'pruebas-instrucciones' && (
+                              <>
+                                <span className="hidden sm:inline">Pruebas de instrucciones</span>
+                                <span className="sm:hidden">Pruebas instruc.</span>
+                              </>
+                            )}
+                            {selectedBlock === 'razonamiento-numerico' && (
+                              <>
+                                <span className="hidden sm:inline">Razonamiento numérico</span>
+                                <span className="sm:hidden">Razon. numérico</span>
+                              </>
+                            )}
+                            {selectedBlock === 'razonamiento-verbal' && (
+                              <>
+                                <span className="hidden sm:inline">Razonamiento verbal</span>
+                                <span className="sm:hidden">Razon. verbal</span>
+                              </>
+                            )}
+                            {selectedBlock === 'series-alfanumericas' && (
+                              <>
+                                <span className="hidden sm:inline">Series alfanuméricas</span>
+                                <span className="sm:hidden">Series alfanum.</span>
+                              </>
+                            )}
+                            {selectedBlock === 'series-letras' && (
+                              <>
+                                <span className="hidden sm:inline">Series de letras</span>
+                                <span className="sm:hidden">Series letras</span>
+                              </>
+                            )}
+                            {selectedBlock === 'series-numericas' && (
+                              <>
+                                <span className="hidden sm:inline">Series numéricas</span>
+                                <span className="sm:hidden">Series núm.</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Lista de secciones del bloque seleccionado - Optimizado para mobile */}
+                      <div className="space-y-3 sm:space-y-4 px-4">
+                        {blockSections[selectedBlock]?.map((section) => (
+                          <div key={section.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+                            <div className="flex items-center mb-2 sm:mb-0">
+                              <div 
+                                className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 cursor-pointer transition-colors flex-shrink-0 ${
+                                  selectedSections[section.id] 
+                                    ? 'bg-blue-600 border-blue-600' 
+                                    : 'border-gray-300 hover:border-gray-400'
+                                }`}
+                                onClick={() => toggleSectionSelection(section.id)}
+                              >
+                                {selectedSections[section.id] && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className="text-base sm:text-lg font-medium text-gray-700">{section.name}</span>
+                            </div>
+                            <div className="flex items-center justify-between sm:justify-end">
+                              <span className="text-sm text-gray-500 mr-3 sm:mr-4">0/1 secciones</span>
+                              <button className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded">
+                                <span className="hidden sm:inline">Configurar secciones</span>
+                                <span className="sm:hidden">Configurar</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
@@ -340,23 +687,56 @@ export default function TestsAuxiliarAdministrativoEstado() {
                 Practica con tests mejorados con análisis y métricas con IA
               </p>
 
-              {/* Estadísticas ACTUALIZADAS CON TODOS LOS TEMAS */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-xl mx-auto">
-                <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                  <div className="text-2xl font-bold text-blue-600 mb-1">16</div>
-                  <div className="text-sm text-gray-600">Temas disponibles</div>
-                </div>
-                <div className="bg-white rounded-lg shadow-md p-4 text-center">
-                  <div className="text-2xl font-bold text-green-600 mb-1">Tests</div>
-                  <div className="text-sm text-gray-600">Personalizables</div>
+              {/* Navegación por tabs para usuarios no logueados - Optimizado para mobile */}
+              <div className="flex justify-center mb-6 px-4">
+                <div className="bg-white rounded-lg shadow-md p-1 flex w-full max-w-md">
+                  <button
+                    onClick={() => setActiveTab('materias')}
+                    className={`flex-1 px-3 py-3 rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base ${
+                      activeTab === 'materias'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    <span className="mr-1 sm:mr-2">🏛️</span>
+                    <span className="hidden sm:inline">Organización Pública</span>
+                    <span className="sm:hidden">Org. Pública</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('psicotecnicos')}
+                    className={`flex-1 px-3 py-3 rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base ${
+                      activeTab === 'psicotecnicos'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    <span className="mr-1 sm:mr-2">🀲</span>
+                    Psicotécnicos
+                  </button>
                 </div>
               </div>
+
             </div>
 
-            {/* Tests por Tema - TODOS LOS LINKS DINÁMICOS ACTUALIZADOS */}
-            <section className="mb-12">
+            {/* Contenido condicional según tab activo para usuarios no logueados */}
+            {activeTab === 'materias' && (
+              <>
+                {/* Estadísticas ACTUALIZADAS CON TODOS LOS TEMAS */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-xl mx-auto mb-8">
+                  <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                    <div className="text-2xl font-bold text-blue-600 mb-1">16</div>
+                    <div className="text-sm text-gray-600">Temas disponibles</div>
+                  </div>
+                  <div className="bg-white rounded-lg shadow-md p-4 text-center">
+                    <div className="text-2xl font-bold text-green-600 mb-1">Tests</div>
+                    <div className="text-sm text-gray-600">Personalizables</div>
+                  </div>
+                </div>
+
+                {/* Tests por Tema - TODOS LOS LINKS DINÁMICOS ACTUALIZADOS */}
+                <section className="mb-12">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                📚 Tests Disponibles
+                🏛️ Tests de Organización Pública
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
@@ -1007,6 +1387,104 @@ export default function TestsAuxiliarAdministrativoEstado() {
                 </div>
               </div>
             </section>
+              </>
+            )}
+
+            {/* Contenido de Psicotécnicos para usuarios no logueados */}
+            {activeTab === 'psicotecnicos' && (
+              <>
+                {/* Lista estilo checklist simple para usuarios no logueados - Optimizado para mobile */}
+                <div className="max-w-2xl mx-auto mb-8 px-4">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 text-center">
+                    🀲 Tests Psicotécnicos Disponibles
+                  </h2>
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => handleBlockClick('capacidad-administrativa')}>
+                      <div className="flex items-center mb-2 sm:mb-0">
+                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-3 sm:mr-4 flex-shrink-0"></div>
+                        <div className="flex flex-col sm:flex-row sm:items-center">
+                          <span className="text-base sm:text-lg font-medium text-gray-700">Capacidad administrativa</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
+                        <span className="text-sm text-gray-500 mr-2 sm:mr-4">0/4 secciones</span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleBlockClick('capacidad-administrativa')
+                          }}
+                          className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded flex-shrink-0"
+                        >
+                          <span className="hidden sm:inline">Configurar secciones</span>
+                          <span className="sm:hidden">Configurar</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                        <span className="text-lg font-medium text-gray-700">Capacidad ortográfica</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                        <span className="text-lg font-medium text-gray-700">Pruebas de instrucciones</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                        <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-sm text-gray-500 mr-4">0/13 secciones</span>
+                        <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                          Configurar secciones
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                        <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-sm text-gray-500 mr-4">0/4 secciones</span>
+                        <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                          Configurar secciones
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                        <span className="text-lg font-medium text-gray-700">Series alfanuméricas</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                        <span className="text-lg font-medium text-gray-700">Series de letras</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center">
+                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                        <span className="text-lg font-medium text-gray-700">Series numéricas</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Call to Action para usuarios no logueados */}
             <section className="mb-12">
@@ -1097,6 +1575,74 @@ export default function TestsAuxiliarAdministrativoEstado() {
         )}
 
       </div>
+
+      {/* Modal de Configuración de Secciones */}
+      {console.log('Modal render check:', { showModal, modalBlock })}
+      {showModal && modalBlock && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">
+                  Configurar Secciones - Capacidad Administrativa
+                </h3>
+                <button 
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+
+              <p className="text-gray-600 mb-4 text-sm">
+                Selecciona las secciones que quieres incluir en tu test:
+              </p>
+
+              <div className="space-y-3">
+                {blockSections[modalBlock]?.map((section) => (
+                  <div 
+                    key={section.id}
+                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                    onClick={() => handleModalSectionToggle(section.id)}
+                  >
+                    <div className={`w-5 h-5 border-2 rounded mr-3 flex-shrink-0 flex items-center justify-center ${
+                      selectedSections[section.id] 
+                        ? 'bg-blue-600 border-blue-600' 
+                        : 'border-gray-300'
+                    }`}>
+                      {selectedSections[section.id] && (
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-gray-700 font-medium">{section.name}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    // Aquí puedes añadir lógica para guardar la selección
+                    closeModal()
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
