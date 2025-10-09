@@ -50,8 +50,12 @@ export function AuthProvider({ children, initialUser = null }) {
     // 2. Detectar por parámetros UTM
     const utmSource = searchParams.get('utm_source')
     const utmMedium = searchParams.get('utm_medium') 
+    const utmCampaign = searchParams.get('utm_campaign')
     const campaign = searchParams.get('campaign')
     const fbclid = searchParams.get('fbclid') // Facebook Click ID
+    
+    console.log('🏷️ DETECCIÓN DE FUENTE:', { utmSource, utmMedium, utmCampaign, campaign, fbclid })
+    console.log('🌍 URL completa:', window.location.href)
     
     // Google Ads
     if (utmSource === 'google' && utmMedium === 'cpc') {
@@ -59,11 +63,19 @@ export function AuthProvider({ children, initialUser = null }) {
       return 'google_ads'
     }
     
-    // Meta/Facebook Ads
-    if (fbclid || utmSource === 'facebook' || utmSource === 'instagram' || 
+    // Meta/Facebook Ads - Detección ampliada
+    if (fbclid || 
+        utmSource === 'facebook' || 
+        utmSource === 'instagram' || 
+        utmSource === 'meta' ||
         (utmSource && utmSource.includes('fb')) || 
-        (utmMedium && utmMedium.includes('facebook'))) {
-      console.log('🎯 Detectado: Usuario viene de Meta/Facebook Ads')
+        (utmSource && utmSource.includes('meta')) ||
+        (utmMedium && utmMedium.includes('facebook')) ||
+        (utmMedium && utmMedium.includes('meta')) ||
+        (utmMedium && utmMedium.includes('social')) ||
+        (campaign && campaign.includes('meta')) ||
+        (campaign && campaign.includes('facebook'))) {
+      console.log('🎯 Detectado: Usuario viene de Meta/Facebook Ads', { utmSource, utmMedium, campaign })
       return 'meta_ads'
     }
     

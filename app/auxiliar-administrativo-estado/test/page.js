@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function TestsAuxiliarAdministrativoEstado() {
-  const { user, loading } = useAuth()
+  const { user, loading, supabase } = useAuth()
   const [userStats, setUserStats] = useState({})
   const [statsLoading, setStatsLoading] = useState(false)
   const [sortBy, setSortBy] = useState('tema') // 'tema', 'accuracy_asc', 'accuracy_desc', 'last_study_new', 'last_study_old'
@@ -16,6 +16,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const [selectedSections, setSelectedSections] = useState({}) // Para trackear qué secciones están seleccionadas
   const [showModal, setShowModal] = useState(false) // Para mostrar el modal de configuración
   const [modalBlock, setModalBlock] = useState(null) // Bloque actual del modal
+  const [questionCounts, setQuestionCounts] = useState({}) // Conteo de preguntas por sección
 
   // Definir las secciones por bloque
   const blockSections = {
@@ -75,6 +76,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
       console.log('Setting modal for capacidad-administrativa')
       setModalBlock(blockId)
       setShowModal(true)
+      // Cargar conteos de preguntas al abrir el modal
+      loadPsychometricQuestionCounts('capacidad-administrativa')
     } else {
       setSelectedBlock(blockId)
     }
@@ -104,6 +107,42 @@ export default function TestsAuxiliarAdministrativoEstado() {
       ...prev,
       [sectionId]: !prev[sectionId]
     }))
+  }
+
+  // Función para cargar conteo de preguntas psicotécnicas
+  const loadPsychometricQuestionCounts = async (categoryKey) => {
+    if (!supabase) return
+
+    try {
+      console.log('📊 Cargando conteo de preguntas para:', categoryKey)
+      
+      const { data, error } = await supabase
+        .from('psychometric_questions')
+        .select(`
+          psychometric_sections!inner(section_key, display_name),
+          psychometric_categories!inner(category_key)
+        `)
+        .eq('psychometric_categories.category_key', categoryKey)
+        .eq('is_active', true)
+
+      if (error) {
+        console.error('❌ Error cargando conteos:', error)
+        return
+      }
+
+      // Contar preguntas por sección
+      const counts = {}
+      data.forEach(q => {
+        const sectionKey = q.psychometric_sections.section_key
+        counts[sectionKey] = (counts[sectionKey] || 0) + 1
+      })
+
+      console.log('✅ Conteos cargados:', counts)
+      setQuestionCounts(counts)
+
+    } catch (error) {
+      console.error('❌ Error inesperado:', error)
+    }
   }
 
   // Cargar estadísticas del usuario cada vez que se carga la página
@@ -1616,7 +1655,12 @@ export default function TestsAuxiliarAdministrativoEstado() {
                         </svg>
                       )}
                     </div>
-                    <span className="text-gray-700 font-medium">{section.name}</span>
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-gray-700 font-medium">{section.name}</span>
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        {questionCounts[section.id] || 0} preguntas
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1630,12 +1674,28 @@ export default function TestsAuxiliarAdministrativoEstado() {
                 </button>
                 <button
                   onClick={() => {
-                    // Aquí puedes añadir lógica para guardar la selección
+                    // Lógica para redirigir a tests psicotécnicos
+                    const selectedSectionsList = Object.keys(selectedSections).filter(key => selectedSections[key])
+                    
+                    if (selectedSectionsList.length > 0) {
+                      // Si seleccionó "graficos", ir a test psicotécnico  
+                      if (selectedSectionsList.includes('graficos')) {
+                        window.location.href = '/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa'
+                      }
+                      // Para otras secciones, puedes añadir más lógica aquí
+                      else {
+                        console.log('Secciones seleccionadas:', selectedSectionsList)
+                        alert('Esta funcionalidad estará disponible próximamente')
+                      }
+                    } else {
+                      alert('Por favor, selecciona al menos una sección')
+                    }
+                    
                     closeModal()
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                 >
-                  Guardar
+                  Empezar Test
                 </button>
               </div>
             </div>
