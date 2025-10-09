@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
+import ArticleModal from '@/components/ArticleModal'
 
 const supabase = getSupabaseClient()
 
@@ -26,6 +27,10 @@ export default function TemaPage({ params }) {
   const [testLoading, setTestLoading] = useState(false)
   const [userRecentStats, setUserRecentStats] = useState(null)
   const [userAnswers, setUserAnswers] = useState([])
+  
+  // ✅ ESTADOS PARA MODAL DE ARTÍCULO
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
 
   // 🔄 REFRESH STATS WHEN PAGE BECOMES VISIBLE (user returns from completed test)
   useEffect(() => {
@@ -701,6 +706,20 @@ export default function TemaPage({ params }) {
     setUserStats(userStatsData)
   }
 
+  // ✅ FUNCIÓN: Abrir modal de artículo
+  function openArticleModal(articleNumber, lawName) {
+    // Convertir nombre de ley a slug
+    const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-') || 'ley-desconocida'
+    setSelectedArticle({ number: articleNumber, lawSlug })
+    setModalOpen(true)
+  }
+
+  // ✅ FUNCIÓN: Cerrar modal de artículo
+  function closeArticleModal() {
+    setModalOpen(false)
+    setSelectedArticle({ number: null, lawSlug: null })
+  }
+
   // ✅ FUNCIÓN: Manejar configuración del test personalizado
   async function handleStartCustomTest(config) {
     setTestLoading(true)
@@ -963,6 +982,7 @@ export default function TemaPage({ params }) {
                   userId={currentUser.id}
                   tema={temaNumber}
                   totalRespuestas={userStats.totalAnswers}
+                  openArticleModal={openArticleModal}
                 />
               </div>
             </div>
@@ -1042,12 +1062,20 @@ export default function TemaPage({ params }) {
         </div>
 
       </div>
+      
+      {/* ✅ MODAL DE ARTÍCULO */}
+      <ArticleModal 
+        isOpen={modalOpen}
+        onClose={closeArticleModal}
+        articleNumber={selectedArticle.number}
+        lawSlug={selectedArticle.lawSlug}
+      />
     </div>
   )
 }
 
 // ✅ COMPONENTE: Artículos de Estudio Prioritario DINÁMICO
-function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas }) {
+function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticleModal }) {
   const [articulosFallados, setArticulosFallados] = useState([])
   const [loading, setLoading] = useState(true)
   const [recomendaciones, setRecomendaciones] = useState([])
@@ -1302,7 +1330,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas }) {
         <div>
           <div className="space-y-3">
             {recomendaciones.map((rec, index) => (
-              <RecomendacionCard key={index} recomendacion={rec} />
+              <RecomendacionCard key={index} recomendacion={rec} openArticleModal={openArticleModal} />
             ))}
           </div>
         </div>
@@ -1354,6 +1382,17 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas }) {
                     </div>
                   )}
                 </div>
+                
+                {/* Botones de acción */}
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  {/* Botón Ver Artículo - Abre modal */}
+                  <button
+                    onClick={() => openArticleModal(articulo.article_number, articulo.law_name)}
+                    className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-md font-medium transition-colors flex items-center"
+                  >
+                    📖 Ver artículo {articulo.article_number} de {articulo.law_name}
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1372,7 +1411,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas }) {
 }
 
 // 🎨 COMPONENTE: Card de Recomendación
-function RecomendacionCard({ recomendacion }) {
+function RecomendacionCard({ recomendacion, openArticleModal }) {
   const estilosColor = {
     blue: {
       bg: 'bg-blue-50',

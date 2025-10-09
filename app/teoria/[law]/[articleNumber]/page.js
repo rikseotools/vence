@@ -272,16 +272,6 @@ export default async function ArticleIndividualPage({ params }) {
           </Link>
         </div>
 
-        {/* Información de debug (solo en desarrollo) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg text-xs text-gray-600">
-            <strong>Debug info:</strong> 
-            Artículos disponibles: [{lawArticles.join(', ')}] | 
-            Actual: {currentNum} (posición {currentIndex + 1}/{lawArticles.length}) | 
-            Anterior: {previousArticle || 'ninguno'} | 
-            Siguiente: {nextArticle || 'ninguno'}
-          </div>
-        )}
       </div>
     </div>
   )
