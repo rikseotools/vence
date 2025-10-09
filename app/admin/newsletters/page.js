@@ -1082,7 +1082,7 @@ export default function NewslettersPage() {
   <title>ILoveTest es ahora Vence</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+  <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
     <h1 style="margin: 0; font-size: 28px;">🚀 ¡Gran Noticia!</h1>
     <p style="margin: 10px 0 0; font-size: 18px;">ILoveTest es ahora <strong>Vence</strong></p>
   </div>
@@ -1152,7 +1152,7 @@ export default function NewslettersPage() {
   <title>ILoveTest es ahora Vence</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+  <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
     <h1 style="margin: 0; font-size: 28px;">🚀 ¡Gran Noticia!</h1>
     <p style="margin: 10px 0 0; font-size: 18px;">ILoveTest es ahora <strong>Vence</strong></p>
   </div>
@@ -1208,7 +1208,7 @@ export default function NewslettersPage() {
   <title>ILoveTest es ahora Vence</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
+  <div style="background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 30px; text-align: center; border-radius: 8px;">
     <h1 style="margin: 0; font-size: 28px;">🚀 ¡Gran Noticia!</h1>
     <p style="margin: 10px 0 0; font-size: 18px;">ILoveTest es ahora <strong>Vence</strong></p>
   </div>
@@ -1641,6 +1641,377 @@ export default function NewslettersPage() {
       <em>Preparando tu futuro, pregunta a pregunta</em>
     </p>
   </div>
+</body>
+</html>`,
+                                createdAt: new Date().toISOString()
+                              }
+                              duplicateTemplate(template)
+                            }}
+                            className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm font-medium"
+                            title="Duplicar esta plantilla y guardarla"
+                          >
+                            📋 Duplicar
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm('¿Estás seguro de que quieres quitar esta plantilla de la selección?')) {
+                                setSelectedTemplate(null)
+                                setLoadedCustomTemplate(null)
+                                setSubject('')
+                                setHtmlContent('')
+                                setShowPreview(false)
+                              }
+                            }}
+                            className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm font-medium"
+                            title="Deseleccionar plantilla"
+                          >
+                            🗑️ Quitar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Template 3: Modal Artículos Problemáticos */}
+                  <div 
+                    className={`border rounded-lg p-3 cursor-pointer transition-all ${ 
+                      selectedTemplate === 'modal_articulos' 
+                        ? 'border-blue-500 bg-blue-50 shadow-md' 
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    }`}
+                    onClick={() => {
+                      setSelectedTemplate('modal_articulos')
+                      setSubject('🎯 Ya no tienes que apuntarte qué artículos fallas - Vence los detecta automáticamente')
+                      setHtmlContent(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Artículos problemáticos detectados automáticamente</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px; background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); padding: 25px; border-radius: 12px;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">🎯 Vence Mejora</h1>
+    <p style="color: #bfdbfe; margin: 8px 0; font-size: 16px;">Detección automática de artículos problemáticos</p>
+  </div>
+  
+  <h2 style="color: #2563eb; font-size: 22px;">¡Hola {user_name}! 👋</h2>
+  <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+    <strong style="color: #dc2626;">¿Te cansas de apuntarte qué artículos fallas más?</strong> ¿Te olvidas de revisar esos artículos complicados en el BOE o en tus apuntes?
+  </p>
+  <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+    Hemos implementado una <strong>mejora</strong> que detecta automáticamente los artículos que más te cuestan y te facilita acceso instantáneo al texto completo.
+  </p>
+  
+  <div style="background: #eff6ff; border-left: 4px solid #2563eb; padding: 25px; margin: 25px 0; border-radius: 6px;">
+    <h3 style="color: #1e40af; margin-top: 0; font-size: 18px;">🎯 Detección automática de artículos problemáticos</h3>
+    <p style="margin-bottom: 15px; color: #1e40af; font-size: 15px; line-height: 1.6;">
+      <strong>Vence analiza automáticamente tus respuestas</strong> e identifica los artículos que fallas más a menudo. 
+      Ya no tienes que llevar la cuenta manualmente.
+    </p>
+    <h4 style="color: #1e40af; margin: 15px 0 10px 0; font-size: 16px;">📍 ¿Dónde lo encuentras?</h4>
+    <div style="background: #dbeafe; padding: 15px; border-radius: 6px; margin: 10px 0;">
+      <p style="margin: 0; color: #1e40af; font-size: 14px; font-weight: bold;">
+        🔹 Ve a cualquier <strong>"Tema"</strong> en Vence<br>
+        🔹 Baja hasta la sección <strong>"Análisis Inteligente de Estudio"</strong><br>
+        🔹 Verás automáticamente los artículos que más fallas<br>
+        🔹 Haz clic en <strong>"📖 Ver artículo"</strong> en cualquiera de ellos
+      </p>
+    </div>
+  </div>
+  
+  <div style="background: #f0f9ff; border: 2px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 8px;">
+    <h4 style="color: #1e40af; margin-top: 0; font-size: 16px; text-align: center;">📱 Simulación de lo que verás:</h4>
+    <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin: 10px 0; font-family: monospace;">
+      <div style="border: 2px solid #fbbf24; background: #fef3c7; border-radius: 6px; padding: 12px; margin: 8px 0;">
+        <div style="font-weight: bold; color: #92400e; font-size: 14px;">📊 Art. 47 - Ley 39/2015 (LPAC)</div>
+        <div style="color: #7c2d12; font-size: 12px; margin: 5px 0;">❌ 32% de aciertos • ⏱️ 45s promedio</div>
+        <button style="background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+          📖 Ver artículo 47 de Ley 39/2015 (LPAC)
+        </button>
+      </div>
+    </div>
+    <p style="margin: 10px 0 0 0; color: #1e40af; font-size: 13px; text-align: center; font-style: italic;">
+      ↑ Ejemplo de cómo aparecen los artículos problemáticos detectados automáticamente
+    </p>
+  </div>
+  
+  <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 6px;">
+    <h4 style="color: #7f1d1d; margin-top: 0; font-size: 16px;">😤 Lo que tenías que hacer antes (¡qué rollo!):</h4>
+    <ul style="color: #7f1d1d; font-size: 14px; margin: 10px 0; padding-left: 20px;">
+      <li><strong>Apuntarte manualmente</strong> qué artículos fallas</li>
+      <li><strong>Recordar</strong> revisar esos artículos después</li>
+      <li><strong>Buscar en el BOE</strong> o en tus apuntes el texto</li>
+      <li><strong>Navegar fuera de Vence</strong> y perder el contexto</li>
+      <li><strong>Volver</strong> y recordar dónde estabas</li>
+    </ul>
+  </div>
+  
+  <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 6px;">
+    <h4 style="color: #047857; margin-top: 0; font-size: 16px;">✨ Lo que ocurre ahora automáticamente:</h4>
+    <ul style="color: #047857; font-size: 14px; margin: 10px 0; padding-left: 20px;">
+      <li><strong>Vence detecta automáticamente</strong> qué artículos fallas más</li>
+      <li><strong>Te los muestra organizados</strong> en "Análisis Inteligente de Estudio"</li>
+      <li><strong>Haces 1 clic</strong> y se abre una ventana flotante</li>
+      <li><strong>Lees el texto completo del artículo</strong> sin salir de Vence</li>
+      <li><strong>Ves si ha aparecido en exámenes oficiales</strong> y con qué frecuencia</li>
+      <li><strong>Cierras la ventana</strong> y sigues exactamente donde estabas</li>
+    </ul>
+  </div>
+  
+  <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <h4 style="color: #92400e; margin-top: 0; font-size: 16px; text-align: center;">💝 Agradecimiento especial</h4>
+    <p style="margin: 0; color: #92400e; font-size: 14px; text-align: center;">
+      <strong>Gracias a Nila</strong>, una opositora como tú, por darnos esta idea y su feedback. 
+      Las mejores funcionalidades nacen de quienes realmente preparan oposiciones. 🙏
+    </p>
+  </div>
+  
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="https://www.vence.es/auxiliar-administrativo-estado/test" style="display: inline-block; background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%); color: white; padding: 18px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);">
+      🎯 Probar la Nueva Función
+    </a>
+  </div>
+  
+  
+  <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p style="margin: 0; color: #92400e; font-size: 14px; text-align: center;">
+      <strong>💡 ¿Detectas algún problema o tienes ideas?</strong><br>
+      Responde a este email o usa el <strong>botón de feedback</strong> en la aplicación. ¡Tu opinión nos ayuda a mejorar!
+    </p>
+  </div>
+  
+  <p style="margin-top: 30px;">
+    <strong>Manuel</strong><br>
+    <strong>Vence.es</strong><br>
+    <em>Preparando tu futuro, pregunta a pregunta</em>
+  </p>
+</body>
+</html>`)
+                      setShowPreview(true)
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h5 className="font-medium text-gray-800 text-sm">
+                            🎯 Modal Artículos Problemáticos
+                          </h5>
+                          {selectedTemplate === 'modal_articulos' && (
+                            <span className="px-2 py-1 text-xs bg-blue-600 text-white rounded-full">
+                              ✓ Seleccionada
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 truncate">
+                          Detección automática + acceso inmediato al BOE
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Botones de acción para plantilla modal seleccionada */}
+                    {selectedTemplate === 'modal_articulos' && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const templateName = prompt('Nombre para guardar:', '🎯 Detección Automática Artículos Problemáticos')
+                              if (templateName) {
+                                const template = {
+                                  id: 'modal-articulos-saved-' + Date.now(),
+                                  name: templateName,
+                                  subject: '🎯 Ya no tienes que apuntarte qué artículos fallas - Vence los detecta automáticamente',
+                                  content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Modal inteligente para artículos problemáticos</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 25px; border-radius: 12px;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">🎯 Vence Mejora</h1>
+    <p style="color: #a7f3d0; margin: 8px 0; font-size: 16px;">Flujo de estudio optimizado</p>
+  </div>
+  
+  <h2 style="color: #059669; font-size: 22px;">¡Hola {user_name}! 👋</h2>
+  <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+    ¿Te pasaba que cuando querías consultar un artículo problemático <strong style="color: #dc2626;">perdías el hilo de tu análisis</strong>? 
+    Hemos solucionado este problema con una mejora que te va a encantar.
+  </p>
+  
+  <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 25px; margin: 25px 0; border-radius: 6px;">
+    <h3 style="color: #065f46; margin-top: 0; font-size: 18px;">🎯 Modal inteligente para artículos problemáticos</h3>
+    <p style="margin-bottom: 0; color: #065f46; font-size: 15px; line-height: 1.6;">
+      Ahora puedes consultar la teoría de cualquier artículo problemático sin salir de tu página de análisis. 
+      Una ventana flotante te muestra toda la información que necesitas.
+    </p>
+  </div>
+  
+  <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 6px;">
+    <h4 style="color: #7f1d1d; margin-top: 0; font-size: 16px;">😤 El problema que tenías antes:</h4>
+    <p style="margin-bottom: 0; color: #7f1d1d; font-size: 14px;">
+      Cuando aparecía un artículo problemático, tenías que hacer clic, ir a otra página, leer el artículo, 
+      volver atrás, y recordar dónde estabas en tu análisis. <strong>Interrumpía tu concentración</strong> 
+      y hacía que perdieras tiempo valioso.
+    </p>
+  </div>
+  
+  <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 6px;">
+    <h4 style="color: #1e3a8a; margin-top: 0; font-size: 16px;">✨ La solución que hemos implementado:</h4>
+    <p style="margin-bottom: 0; color: #1e3a8a; font-size: 14px;">
+      Modal (ventana flotante) que se abre sobre tu página actual. Lees el artículo completo, 
+      ves si ha aparecido en exámenes oficiales, y cierras la ventana para continuar exactamente donde lo dejaste. 
+      <strong>Sin navegación, sin pérdida de contexto.</strong>
+    </p>
+  </div>
+  
+  <div style="background: white; border: 2px solid #10b981; border-radius: 12px; padding: 25px; margin: 25px 0;">
+    <h3 style="color: #059669; margin-top: 0; font-size: 18px; text-align: center;">🎉 Beneficios para ti como opositor:</h3>
+    <ul style="list-style: none; padding: 0; margin: 15px 0;">
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>⚡ Acceso instantáneo a la teoría: consulta cualquier artículo en 1 click</strong>
+      </li>
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>🎯 Sin pérdida de contexto: mantén visible tu análisis de rendimiento</strong>
+      </li>
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>📚 Información completa: contenido del artículo + datos de exámenes oficiales</strong>
+      </li>
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>🚀 Flujo de estudio optimizado: estudia de forma más eficiente y fluida</strong>
+      </li>
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>📱 Funciona en móvil y ordenador: la misma experiencia en todos tus dispositivos</strong>
+      </li>
+    </ul>
+  </div>
+  
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="https://www.vence.es/auxiliar-administrativo-estado/test/tema/1" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 18px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);">
+      🎯 Probar la Nueva Función
+    </a>
+  </div>
+  
+  
+  <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p style="margin: 0; color: #92400e; font-size: 14px; text-align: center;">
+      <strong>💡 ¿Detectas algún problema o tienes ideas?</strong><br>
+      Responde a este email o usa el <strong>botón de feedback</strong> en la aplicación. ¡Tu opinión nos ayuda a mejorar!
+    </p>
+  </div>
+  
+  <p style="margin-top: 30px;">
+    <strong>Manuel</strong><br>
+    <strong>Vence.es</strong><br>
+    <em>Preparando tu futuro, pregunta a pregunta</em>
+  </p>
+</body>
+</html>`,
+                                  createdAt: new Date().toISOString()
+                                }
+                                const updatedTemplates = [...savedTemplates, template]
+                                setSavedTemplates(updatedTemplates)
+                                localStorage.setItem('newsletter-templates', JSON.stringify(updatedTemplates))
+                                alert('Plantilla guardada!')
+                              }
+                            }}
+                            className="px-3 py-2 text-sm bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 shadow-sm font-medium"
+                            title="Guardar esta plantilla con un nombre personalizado"
+                          >
+                            ✏️ Renombrar
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const template = {
+                                id: 'modal-articulos-duplicated-' + Date.now(),
+                                name: '🎯 Modal Artículos Problemáticos (Copia)',
+                                subject: '🚀 Nueva mejora: consulta artículos sin perder tu progreso',
+                                content: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Modal inteligente para artículos problemáticos</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 25px; border-radius: 12px;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">🎯 Vence Mejora</h1>
+    <p style="color: #a7f3d0; margin: 8px 0; font-size: 16px;">Flujo de estudio optimizado</p>
+  </div>
+  
+  <h2 style="color: #059669; font-size: 22px;">¡Hola {user_name}! 👋</h2>
+  <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+    ¿Te pasaba que cuando querías consultar un artículo problemático <strong style="color: #dc2626;">perdías el hilo de tu análisis</strong>? 
+    Hemos solucionado este problema con una mejora que te va a encantar.
+  </p>
+  
+  <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 25px; margin: 25px 0; border-radius: 6px;">
+    <h3 style="color: #065f46; margin-top: 0; font-size: 18px;">🎯 Modal inteligente para artículos problemáticos</h3>
+    <p style="margin-bottom: 0; color: #065f46; font-size: 15px; line-height: 1.6;">
+      Ahora puedes consultar la teoría de cualquier artículo problemático sin salir de tu página de análisis. 
+      Una ventana flotante te muestra toda la información que necesitas.
+    </p>
+  </div>
+  
+  <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 20px 0; border-radius: 6px;">
+    <h4 style="color: #7f1d1d; margin-top: 0; font-size: 16px;">😤 El problema que tenías antes:</h4>
+    <p style="margin-bottom: 0; color: #7f1d1d; font-size: 14px;">
+      Cuando aparecía un artículo problemático, tenías que hacer clic, ir a otra página, leer el artículo, 
+      volver atrás, y recordar dónde estabas en tu análisis. <strong>Interrumpía tu concentración</strong> 
+      y hacía que perdieras tiempo valioso.
+    </p>
+  </div>
+  
+  <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 6px;">
+    <h4 style="color: #1e3a8a; margin-top: 0; font-size: 16px;">✨ La solución que hemos implementado:</h4>
+    <p style="margin-bottom: 0; color: #1e3a8a; font-size: 14px;">
+      Modal (ventana flotante) que se abre sobre tu página actual. Lees el artículo completo, 
+      ves si ha aparecido en exámenes oficiales, y cierras la ventana para continuar exactamente donde lo dejaste. 
+      <strong>Sin navegación, sin pérdida de contexto.</strong>
+    </p>
+  </div>
+  
+  <div style="background: white; border: 2px solid #10b981; border-radius: 12px; padding: 25px; margin: 25px 0;">
+    <h3 style="color: #059669; margin-top: 0; font-size: 18px; text-align: center;">🎉 Beneficios para ti como opositor:</h3>
+    <ul style="list-style: none; padding: 0; margin: 15px 0;">
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>⚡ Acceso instantáneo a la teoría: consulta cualquier artículo en 1 click</strong>
+      </li>
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>🎯 Sin pérdida de contexto: mantén visible tu análisis de rendimiento</strong>
+      </li>
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>📚 Información completa: contenido del artículo + datos de exámenes oficiales</strong>
+      </li>
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>🚀 Flujo de estudio optimizado: estudia de forma más eficiente y fluida</strong>
+      </li>
+      <li style="margin: 8px 0; color: #059669; font-size: 15px;">
+        <strong>📱 Funciona en móvil y ordenador: la misma experiencia en todos tus dispositivos</strong>
+      </li>
+    </ul>
+  </div>
+  
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="https://www.vence.es/auxiliar-administrativo-estado/test/tema/1" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 18px 35px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);">
+      🎯 Probar la Nueva Función
+    </a>
+  </div>
+  
+  
+  <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <p style="margin: 0; color: #92400e; font-size: 14px; text-align: center;">
+      <strong>💡 ¿Detectas algún problema o tienes ideas?</strong><br>
+      Responde a este email o usa el <strong>botón de feedback</strong> en la aplicación. ¡Tu opinión nos ayuda a mejorar!
+    </p>
+  </div>
+  
+  <p style="margin-top: 30px;">
+    <strong>Manuel</strong><br>
+    <strong>Vence.es</strong><br>
+    <em>Preparando tu futuro, pregunta a pregunta</em>
+  </p>
 </body>
 </html>`,
                                 createdAt: new Date().toISOString()
