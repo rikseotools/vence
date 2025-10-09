@@ -14,9 +14,23 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const [activeTab, setActiveTab] = useState('materias') // 'materias', 'psicotecnicos'
   const [selectedBlock, setSelectedBlock] = useState(null) // Para mostrar secciones de un bloque específico
   const [selectedSections, setSelectedSections] = useState({}) // Para trackear qué secciones están seleccionadas
+  const [selectedCategories, setSelectedCategories] = useState({}) // Para trackear qué categorías principales están seleccionadas
   const [showModal, setShowModal] = useState(false) // Para mostrar el modal de configuración
   const [modalBlock, setModalBlock] = useState(null) // Bloque actual del modal
   const [questionCounts, setQuestionCounts] = useState({}) // Conteo de preguntas por sección
+  const [categoryQuestionCounts, setCategoryQuestionCounts] = useState({}) // Conteo de preguntas por categoría principal
+
+  // Lista de categorías principales
+  const mainCategories = [
+    'capacidad-administrativa',
+    'capacidad-ortografica', 
+    'pruebas-instrucciones',
+    'razonamiento-numerico',
+    'razonamiento-verbal',
+    'series-alfanumericas',
+    'series-letras',
+    'series-numericas'
+  ]
 
   // Definir las secciones por bloque
   const blockSections = {
@@ -76,6 +90,20 @@ export default function TestsAuxiliarAdministrativoEstado() {
       console.log('Setting modal for capacidad-administrativa')
       setModalBlock(blockId)
       setShowModal(true)
+      
+      // Marcar todas las secciones por defecto al abrir el modal
+      if (blockSections[blockId]) {
+        const allSections = blockSections[blockId].reduce((acc, section) => ({
+          ...acc,
+          [section.id]: true
+        }), {})
+        
+        setSelectedSections(prev => ({
+          ...prev,
+          ...allSections
+        }))
+      }
+      
       // Cargar conteos de preguntas al abrir el modal
       loadPsychometricQuestionCounts('capacidad-administrativa')
     } else {
@@ -96,10 +124,45 @@ export default function TestsAuxiliarAdministrativoEstado() {
     }))
   }
 
+  // Función para alternar selección de categoría principal
+  const toggleCategorySelection = (categoryId) => {
+    setSelectedCategories(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }))
+    console.log('🔄 Toggled category:', categoryId, 'New state:', !selectedCategories[categoryId])
+  }
+
+  // Función para calcular el total de preguntas seleccionadas
+  const getTotalSelectedQuestions = () => {
+    const selectedCats = Object.keys(selectedCategories).filter(key => selectedCategories[key])
+    let totalQuestions = 0
+    
+    selectedCats.forEach(categoryKey => {
+      totalQuestions += categoryQuestionCounts[categoryKey] || 0
+    })
+    
+    return totalQuestions
+  }
+
+  // Función para formatear el texto del contador
+  const getSelectionText = () => {
+    const categoriesCount = Object.values(selectedCategories).filter(Boolean).length
+    const questionsCount = getTotalSelectedQuestions()
+    
+    if (categoriesCount === 0) {
+      return 'Ninguna categoría seleccionada'
+    }
+    
+    return `${categoriesCount} categoría${categoriesCount !== 1 ? 's' : ''} • ${questionsCount} pregunta${questionsCount !== 1 ? 's' : ''}`
+  }
+
   // Funciones para manejar el modal
   const closeModal = () => {
     setShowModal(false)
     setModalBlock(null)
+    // Limpiar las selecciones al cerrar el modal
+    setSelectedSections({})
   }
 
   const handleModalSectionToggle = (sectionId) => {
@@ -107,6 +170,49 @@ export default function TestsAuxiliarAdministrativoEstado() {
       ...prev,
       [sectionId]: !prev[sectionId]
     }))
+  }
+
+  // Funciones para marcar/desmarcar todo
+  const selectAllSections = () => {
+    // Si estamos en un modal, solo afectar las secciones de ese bloque
+    if (modalBlock && blockSections[modalBlock]) {
+      const allSections = blockSections[modalBlock].reduce((acc, section) => ({
+        ...acc,
+        [section.id]: true
+      }), {})
+      
+      setSelectedSections(prev => ({
+        ...prev,
+        ...allSections
+      }))
+    } else {
+      // Si estamos en la página principal, marcar todas las categorías principales
+      const allCategories = {}
+      mainCategories.forEach(category => {
+        allCategories[category] = true
+      })
+      setSelectedCategories(allCategories)
+      console.log('✅ Marcadas todas las categorías:', Object.keys(allCategories))
+    }
+  }
+
+  const deselectAllSections = () => {
+    // Si estamos en un modal, solo afectar las secciones de ese bloque
+    if (modalBlock && blockSections[modalBlock]) {
+      const allSections = blockSections[modalBlock].reduce((acc, section) => ({
+        ...acc,
+        [section.id]: false
+      }), {})
+      
+      setSelectedSections(prev => ({
+        ...prev,
+        ...allSections
+      }))
+    } else {
+      // Si estamos en la página principal, desmarcar todas las categorías
+      setSelectedCategories({})
+      console.log('❌ Desmarcadas todas las categorías')
+    }
   }
 
   // Función para cargar conteo de preguntas psicotécnicas
@@ -144,6 +250,67 @@ export default function TestsAuxiliarAdministrativoEstado() {
       console.error('❌ Error inesperado:', error)
     }
   }
+
+  // Función para cargar conteos de todas las categorías principales
+  const loadAllCategoryQuestionCounts = async () => {
+    if (!supabase) {
+      console.log('❌ No hay conexión a Supabase disponible')
+      return
+    }
+
+    try {
+      console.log('📊 Cargando conteos de todas las categorías psicotécnicas')
+      
+      const { data, error } = await supabase
+        .from('psychometric_questions')
+        .select(`
+          id,
+          psychometric_categories!inner(category_key, display_name)
+        `)
+        .eq('is_active', true)
+
+      console.log('🔍 Respuesta de BD:', { data, error, count: data?.length })
+
+      if (error) {
+        console.error('❌ Error cargando conteos de categorías:', error)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        console.log('⚠️ No se encontraron preguntas psicotécnicas activas')
+        return
+      }
+
+      // Contar preguntas por categoría
+      const counts = {}
+      data.forEach(q => {
+        const categoryKey = q.psychometric_categories?.category_key
+        if (categoryKey) {
+          counts[categoryKey] = (counts[categoryKey] || 0) + 1
+        }
+      })
+
+      console.log('✅ Conteos de categorías cargados:', counts)
+      console.log('📊 Total de preguntas encontradas:', Object.values(counts).reduce((a, b) => a + b, 0))
+      setCategoryQuestionCounts(counts)
+
+    } catch (error) {
+      console.error('❌ Error inesperado cargando categorías:', error)
+    }
+  }
+
+  // Marcar todas las categorías por defecto y cargar conteos al cargar la página
+  useEffect(() => {
+    const defaultCategories = {}
+    mainCategories.forEach(category => {
+      defaultCategories[category] = true
+    })
+    setSelectedCategories(defaultCategories)
+    console.log('✅ Categorías marcadas por defecto:', Object.keys(defaultCategories))
+    
+    // Cargar conteos de preguntas por categoría
+    loadAllCategoryQuestionCounts()
+  }, [])
 
   // Cargar estadísticas del usuario cada vez que se carga la página
   useEffect(() => {
@@ -491,14 +658,32 @@ export default function TestsAuxiliarAdministrativoEstado() {
                 </>
               )}
 
-              {/* Contenido de Psicotécnicos */}
+              {/* Contenido de Psicotécnicos - Unificado para todos los usuarios */}
               {activeTab === 'psicotecnicos' && (
                 <>
                   {!selectedBlock && (
                     <>
-                      <p className="text-gray-600 mb-6">
-                        Tests psicotécnicos para evaluar aptitudes cognitivas y habilidades específicas
-                      </p>
+                      <div className="text-center mb-8">
+                        <p className="text-gray-600 mb-6">
+                          Tests psicotécnicos para evaluar aptitudes cognitivas y habilidades específicas
+                        </p>
+
+                        {/* Botones de Marcar/Desmarcar Todo en la página principal */}
+                        <div className="flex gap-2 justify-center mb-6">
+                          <button
+                            onClick={selectAllSections}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            ✅ Marcar todo
+                          </button>
+                          <button
+                            onClick={deselectAllSections}
+                            className="bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            ❌ Desmarcar todo
+                          </button>
+                        </div>
+                      </div>
 
                       {/* Lista estilo checklist simple - Optimizado para mobile */}
                       <div className="max-w-2xl mx-auto px-4">
@@ -596,6 +781,38 @@ export default function TestsAuxiliarAdministrativoEstado() {
                               <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
                               <span className="text-lg font-medium text-gray-700">Series numéricas</span>
                             </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botón Empezar Test para Psicotécnicos */}
+                      <div className="mt-8 text-center">
+                        <div className="max-w-2xl mx-auto px-4">
+                          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-6 text-white text-center">
+                            <p className="mb-4 text-sm opacity-90">
+                              {getSelectionText()}
+                            </p>
+                            <button
+                              onClick={() => {
+                                const selectedCats = Object.keys(selectedCategories).filter(key => selectedCategories[key])
+                                const totalQuestions = getTotalSelectedQuestions()
+                                
+                                if (selectedCats.length === 0) {
+                                  alert('Por favor, selecciona al menos una categoría')
+                                  return
+                                }
+                                
+                                console.log(`🚀 Empezando test con ${selectedCats.length} categorías y ${totalQuestions} preguntas:`, selectedCats)
+                                // Aquí puedes redirigir a la página de test con los parámetros seleccionados
+                                window.location.href = `/auxiliar-administrativo-estado/test/psicotecnicos?categories=${selectedCats.join(',')}`
+                              }}
+                              className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
+                            >
+                              <span className="inline-flex items-center justify-center">
+                                <span className="mr-2 group-hover:animate-bounce">🚀</span>
+                                Empezar Test
+                              </span>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1432,134 +1649,351 @@ export default function TestsAuxiliarAdministrativoEstado() {
             {/* Contenido de Psicotécnicos para usuarios no logueados */}
             {activeTab === 'psicotecnicos' && (
               <>
-                {/* Lista estilo checklist simple para usuarios no logueados - Optimizado para mobile */}
-                <div className="max-w-2xl mx-auto mb-8 px-4">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 text-center">
-                    🀲 Tests Psicotécnicos Disponibles
-                  </h2>
-                  <div className="space-y-3 sm:space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => handleBlockClick('capacidad-administrativa')}>
-                      <div className="flex items-center mb-2 sm:mb-0">
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-3 sm:mr-4 flex-shrink-0"></div>
-                        <div className="flex flex-col sm:flex-row sm:items-center">
-                          <span className="text-base sm:text-lg font-medium text-gray-700">Capacidad administrativa</span>
+                {!selectedBlock && (
+                  <>
+                    <div className="text-center mb-8">
+                      <p className="text-gray-600 mb-6">
+                        Tests psicotécnicos para evaluar aptitudes cognitivas y habilidades específicas
+                      </p>
+
+                      {/* Botones de Marcar/Desmarcar Todo en la página principal */}
+                      <div className="flex gap-2 justify-center mb-6">
+                        <button
+                          onClick={selectAllSections}
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          ✅ Marcar todo
+                        </button>
+                        <button
+                          onClick={deselectAllSections}
+                          className="bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          ❌ Desmarcar todo
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Lista estilo checklist simple - Optimizado para mobile */}
+                    <div className="max-w-2xl mx-auto px-4">
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+                          <div className="flex items-center mb-2 sm:mb-0">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 cursor-pointer transition-colors ${
+                                selectedCategories['capacidad-administrativa'] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleCategorySelection('capacidad-administrativa')}
+                            >
+                              {selectedCategories['capacidad-administrativa'] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center">
+                              <span className="text-base sm:text-lg font-medium text-gray-700">Capacidad administrativa</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
+                            <span className="text-sm text-gray-500 mr-2 sm:mr-4">0/4 secciones</span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleBlockClick('capacidad-administrativa')
+                              }}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded flex-shrink-0"
+                            >
+                              <span className="hidden sm:inline">Configurar secciones</span>
+                              <span className="sm:hidden">Configurar</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-4 cursor-pointer transition-colors ${
+                                selectedCategories['capacidad-ortografica'] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleCategorySelection('capacidad-ortografica')}
+                            >
+                              {selectedCategories['capacidad-ortografica'] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-lg font-medium text-gray-700">Capacidad ortográfica</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-4 cursor-pointer transition-colors ${
+                                selectedCategories['pruebas-instrucciones'] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleCategorySelection('pruebas-instrucciones')}
+                            >
+                              {selectedCategories['pruebas-instrucciones'] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-lg font-medium text-gray-700">Pruebas de instrucciones</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+                          <div className="flex items-center">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-4 cursor-pointer transition-colors ${
+                                selectedCategories['razonamiento-numerico'] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleCategorySelection('razonamiento-numerico')}
+                            >
+                              {selectedCategories['razonamiento-numerico'] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-sm text-gray-500 mr-4">0/13 secciones</span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleBlockClick('razonamiento-numerico')
+                              }}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            >
+                              Configurar secciones
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+                          <div className="flex items-center">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-4 cursor-pointer transition-colors ${
+                                selectedCategories['razonamiento-verbal'] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleCategorySelection('razonamiento-verbal')}
+                            >
+                              {selectedCategories['razonamiento-verbal'] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="text-sm text-gray-500 mr-4">0/4 secciones</span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleBlockClick('razonamiento-verbal')
+                              }}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            >
+                              Configurar secciones
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-4 cursor-pointer transition-colors ${
+                                selectedCategories['series-alfanumericas'] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleCategorySelection('series-alfanumericas')}
+                            >
+                              {selectedCategories['series-alfanumericas'] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-lg font-medium text-gray-700">Series alfanuméricas</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-4 cursor-pointer transition-colors ${
+                                selectedCategories['series-letras'] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleCategorySelection('series-letras')}
+                            >
+                              {selectedCategories['series-letras'] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-lg font-medium text-gray-700">Series de letras</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-4 cursor-pointer transition-colors ${
+                                selectedCategories['series-numericas'] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleCategorySelection('series-numericas')}
+                            >
+                              {selectedCategories['series-numericas'] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-lg font-medium text-gray-700">Series numéricas</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
-                        <span className="text-sm text-gray-500 mr-2 sm:mr-4">0/4 secciones</span>
+                    </div>
+
+                    {/* Botón Empezar Test para Psicotécnicos */}
+                    <div className="mt-8 text-center">
+                      <div className="max-w-2xl mx-auto px-4">
+                        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-6 text-white text-center">
+                          <p className="mb-4 text-sm opacity-90">
+                            {getSelectionText()}
+                          </p>
+                          <button
+                            onClick={() => {
+                              const selectedCats = Object.keys(selectedCategories).filter(key => selectedCategories[key])
+                              const totalQuestions = getTotalSelectedQuestions()
+                              
+                              if (selectedCats.length === 0) {
+                                alert('Por favor, selecciona al menos una categoría')
+                                return
+                              }
+                              
+                              console.log(`🚀 Empezando test con ${selectedCats.length} categorías y ${totalQuestions} preguntas:`, selectedCats)
+                              // Aquí puedes redirigir a la página de test con los parámetros seleccionados
+                              window.location.href = `/auxiliar-administrativo-estado/test/psicotecnicos?categories=${selectedCats.join(',')}`
+                            }}
+                            className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
+                          >
+                            <span className="inline-flex items-center justify-center">
+                              <span className="mr-2 group-hover:animate-bounce">🚀</span>
+                              Empezar Test
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Vista de secciones de un bloque específico para usuarios no logueados */}
+                {selectedBlock && (
+                  <div className="max-w-2xl mx-auto">
+                    {/* Breadcrumb navigation - Optimizado para mobile */}
+                    <div className="mb-6 px-4">
+                      <div className="flex items-center text-xs sm:text-sm text-gray-500 flex-wrap">
                         <button 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleBlockClick('capacidad-administrativa')
-                          }}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded flex-shrink-0"
+                          onClick={() => setActiveTab('materias')} 
+                          className="hover:text-gray-700 transition-colors"
                         >
-                          <span className="hidden sm:inline">Configurar secciones</span>
-                          <span className="sm:hidden">Configurar</span>
+                          Materias
                         </button>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
-                      <div className="flex items-center">
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                        <span className="text-lg font-medium text-gray-700">Capacidad ortográfica</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
-                      <div className="flex items-center">
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                        <span className="text-lg font-medium text-gray-700">Pruebas de instrucciones</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
-                      <div className="flex items-center">
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                        <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-sm text-gray-500 mr-4">0/13 secciones</span>
-                        <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                          Configurar secciones
+                        <span className="mx-1 sm:mx-2">&gt;</span>
+                        <button 
+                          onClick={handleBackToList} 
+                          className="hover:text-gray-700 transition-colors"
+                        >
+                          Psicotécnicos
                         </button>
+                        <span className="mx-1 sm:mx-2">&gt;</span>
+                        <span className="text-gray-700 font-medium break-words">
+                          {selectedBlock === 'capacidad-administrativa' && (
+                            <>
+                              <span className="hidden sm:inline">Capacidad administrativa</span>
+                              <span className="sm:hidden">Cap. administrativa</span>
+                            </>
+                          )}
+                          {selectedBlock === 'razonamiento-numerico' && (
+                            <>
+                              <span className="hidden sm:inline">Razonamiento numérico</span>
+                              <span className="sm:hidden">Razon. numérico</span>
+                            </>
+                          )}
+                          {selectedBlock === 'razonamiento-verbal' && (
+                            <>
+                              <span className="hidden sm:inline">Razonamiento verbal</span>
+                              <span className="sm:hidden">Razon. verbal</span>
+                            </>
+                          )}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
-                      <div className="flex items-center">
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                        <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-sm text-gray-500 mr-4">0/4 secciones</span>
-                        <button className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                          Configurar secciones
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
-                      <div className="flex items-center">
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                        <span className="text-lg font-medium text-gray-700">Series alfanuméricas</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
-                      <div className="flex items-center">
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                        <span className="text-lg font-medium text-gray-700">Series de letras</span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
-                      <div className="flex items-center">
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                        <span className="text-lg font-medium text-gray-700">Series numéricas</span>
-                      </div>
+                    {/* Lista de secciones del bloque seleccionado para usuarios no logueados */}
+                    <div className="space-y-3 sm:space-y-4 px-4">
+                      {blockSections[selectedBlock]?.map((section) => (
+                        <div key={section.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+                          <div className="flex items-center mb-2 sm:mb-0">
+                            <div 
+                              className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 cursor-pointer transition-colors flex-shrink-0 ${
+                                selectedSections[section.id] 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                              onClick={() => toggleSectionSelection(section.id)}
+                            >
+                              {selectedSections[section.id] && (
+                                <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-base sm:text-lg font-medium text-gray-700">{section.name}</span>
+                          </div>
+                          <div className="flex items-center justify-between sm:justify-end">
+                            <span className="text-sm text-gray-500 mr-3 sm:mr-4">0/1 secciones</span>
+                            <button className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded">
+                              <span className="hidden sm:inline">Configurar secciones</span>
+                              <span className="sm:hidden">Configurar</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
+                )}
               </>
             )}
-
-            {/* Call to Action para usuarios no logueados */}
-            <section className="mb-12">
-              <div className="max-w-2xl mx-auto bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-6 text-white text-center">
-                <h2 className="text-2xl font-bold mb-4">🔓 Desbloquea tu Progreso</h2>
-                <p className="mb-6 opacity-90">
-                  Regístrate gratis para guardar tu progreso, ver estadísticas detalladas y acceder a funciones exclusivas
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link
-                    href="/login"
-                    className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
-                  >
-                    <span className="inline-flex items-center justify-center">
-                      <span className="mr-2 group-hover:animate-bounce">📝</span>
-                      Registrarse Gratis
-                    </span>
-                  </Link>
-                  <Link
-                    href="/login"
-                    className="bg-blue-700 hover:bg-blue-800 text-white px-6 py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-400/50 group"
-                  >
-                    <span className="inline-flex items-center justify-center">
-                      <span className="mr-2 group-hover:animate-pulse">🔑</span>
-                      Iniciar Sesión
-                    </span>
-                  </Link>
-                </div>
-              </div>
-            </section>
           </>
         )}
 
-        {/* Modal informativo sobre estadísticas históricas */}
-        {showStatsInfo && (
+        {/* Modal de información de estadísticas - Solo para usuarios logueados */}
+        {showStatsInfo && user && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <div className="flex items-center justify-between mb-4">
@@ -1637,6 +2071,22 @@ export default function TestsAuxiliarAdministrativoEstado() {
                 Selecciona las secciones que quieres incluir en tu test:
               </p>
 
+              {/* Botones de Marcar/Desmarcar Todo */}
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={selectAllSections}
+                  className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors"
+                >
+                  ✅ Marcar todo
+                </button>
+                <button
+                  onClick={deselectAllSections}
+                  className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 px-3 rounded-lg text-sm font-medium transition-colors"
+                >
+                  ❌ Desmarcar todo
+                </button>
+              </div>
+
               <div className="space-y-3">
                 {blockSections[modalBlock]?.map((section) => (
                   <div 
@@ -1701,7 +2151,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                 >
-                  Empezar Test
+                  Aceptar
                 </button>
               </div>
             </div>

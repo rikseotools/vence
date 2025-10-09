@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import PieChartQuestion from './PieChartQuestion'
 import DataTableQuestion from './DataTableQuestion'
+import PsychometricRegistrationManager from './PsychometricRegistrationManager'
+import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 
 export default function PsychometricTestLayout({
   categoria,
@@ -21,6 +23,14 @@ export default function PsychometricTestLayout({
   const [startTime, setStartTime] = useState(Date.now())
   const [testSession, setTestSession] = useState(null)
   const [isAnswering, setIsAnswering] = useState(false)
+  
+  // Estados para usuarios no logueados (igual que TestLayout)
+  const [detailedAnswers, setDetailedAnswers] = useState([])
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now())
+  
+  // Estados para dificultad adaptativa
+  const [difficultyInfo, setDifficultyInfo] = useState(null)
+  const [isFirstTime, setIsFirstTime] = useState(true)
 
   // Anti-duplicados
   const answeringTimeouts = useRef(new Map())
@@ -29,10 +39,13 @@ export default function PsychometricTestLayout({
   const currentQ = questions[currentQuestion]
   const totalQuestions = questions.length
 
-  // Crear sesión de test al iniciar
+  // Crear sesión de test al iniciar (solo para usuarios logueados)
   useEffect(() => {
     async function createTestSession() {
-      if (!user || !questions.length) return
+      if (!user || !questions.length) {
+        console.log('📊 No user logged in, running in guest mode')
+        return
+      }
 
       const sessionData = {
         user_id: user.id,
@@ -58,6 +71,32 @@ export default function PsychometricTestLayout({
     createTestSession()
   }, [user, questions, supabase])
 
+  // Cargar información de dificultad cuando cambie la pregunta
+  useEffect(() => {
+    async function loadDifficultyInfo() {
+      if (!currentQ || !user || !supabase) return
+
+      try {
+        console.log('🎯 Loading difficulty info for question:', currentQ.id)
+        
+        // Cargar información de dificultad
+        const diffInfo = await getDifficultyInfo(supabase, currentQ.id, user.id)
+        setDifficultyInfo(diffInfo)
+        
+        // Verificar si es primera vez para este usuario
+        const firstTime = await isFirstAttempt(supabase, user.id, currentQ.id)
+        setIsFirstTime(firstTime)
+        
+        console.log('✅ Difficulty info loaded:', diffInfo)
+        console.log('🆕 Is first time:', firstTime)
+      } catch (error) {
+        console.error('❌ Error loading difficulty info:', error)
+      }
+    }
+
+    loadDifficultyInfo()
+  }, [currentQuestion, currentQ, user, supabase])
+
   const handleAnswer = async (optionIndex) => {
     if (!currentQ || isAnswering || answeredQuestionsGlobal.current.has(currentQ.id)) {
       console.log('🚫 Answer blocked - already answered or processing')
@@ -82,14 +121,27 @@ export default function PsychometricTestLayout({
 
     try {
       const isCorrect = optionIndex === currentQ.correct_option
-      const timeTaken = Math.floor((Date.now() - startTime) / 1000)
+      const questionTime = Date.now() - questionStartTime
+      const timeTakenSeconds = Math.floor(questionTime / 1000)
 
       // Actualizar score
       if (isCorrect) {
         setScore(prev => prev + 1)
       }
 
-      // Guardar respuesta en base de datos
+      // Crear objeto de respuesta detallada (para usuarios logueados y no logueados)
+      const detailedAnswer = {
+        questionId: currentQ.id,
+        questionText: currentQ.question_text,
+        userAnswer: optionIndex,
+        correctAnswer: currentQ.correct_option,
+        isCorrect,
+        timeSpent: timeTakenSeconds,
+        timestamp: new Date().toISOString(),
+        questionOrder: currentQuestion + 1
+      }
+
+      // Guardar respuesta en base de datos (solo para usuarios logueados)
       if (testSession && user) {
         const answerData = {
           session_id: testSession.id,
@@ -97,7 +149,7 @@ export default function PsychometricTestLayout({
           user_id: user.id,
           user_answer: optionIndex,
           is_correct: isCorrect,
-          time_taken_seconds: timeTaken,
+          time_taken_seconds: timeTakenSeconds,
           question_order: currentQuestion + 1,
           answered_at: new Date().toISOString()
         }
@@ -108,19 +160,16 @@ export default function PsychometricTestLayout({
 
         if (error) {
           console.error('❌ Error saving answer:', error)
+        } else {
+          console.log('✅ Answer saved to database')
         }
+      } else {
+        console.log('📊 Guest mode: answer saved locally')
       }
 
-      // Actualizar estado de preguntas respondidas
-      setAnsweredQuestions(prev => [
-        ...prev,
-        {
-          questionId: currentQ.id,
-          userAnswer: optionIndex,
-          isCorrect,
-          timeTaken
-        }
-      ])
+      // Actualizar estado de preguntas respondidas (ambos tipos de usuario)
+      setAnsweredQuestions(prev => [...prev, detailedAnswer])
+      setDetailedAnswers(prev => [...prev, detailedAnswer])
 
       setShowResult(true)
 
@@ -137,6 +186,10 @@ export default function PsychometricTestLayout({
       setSelectedAnswer(null)
       setShowResult(false)
       setStartTime(Date.now())
+      setQuestionStartTime(Date.now()) // Reset timer para nueva pregunta
+      // Limpiar estados de dificultad para la nueva pregunta
+      setDifficultyInfo(null)
+      setIsFirstTime(true)
     } else {
       // Test completado
       completeTest()
@@ -144,7 +197,8 @@ export default function PsychometricTestLayout({
   }
 
   const completeTest = async () => {
-    if (testSession) {
+    if (testSession && user) {
+      // Usuario logueado - guardar sesión completada
       await supabase
         .from('psychometric_test_sessions')
         .update({
@@ -153,10 +207,15 @@ export default function PsychometricTestLayout({
           end_time: new Date().toISOString()
         })
         .eq('id', testSession.id)
+      
+      console.log('✅ Test session completed and saved')
+      // Redirigir a resultados o página principal
+      window.location.href = '/auxiliar-administrativo-estado/test'
+    } else {
+      // Usuario no logueado - el PsychometricRegistrationManager se encarga del modal
+      console.log('📊 Guest user completed test, registration manager will handle prompt')
+      // No hacer nada específico, el manager detectará isTestCompleted
     }
-
-    // Redirigir a resultados o página principal
-    window.location.href = '/auxiliar-administrativo-estado/test'
   }
 
   const renderQuestion = () => {
@@ -206,7 +265,18 @@ export default function PsychometricTestLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <PsychometricRegistrationManager
+      categoria={categoria}
+      currentQuestion={currentQuestion}
+      totalQuestions={totalQuestions}
+      answeredQuestions={answeredQuestions}
+      showResult={showResult}
+      score={score}
+      startTime={startTime}
+      isTestCompleted={currentQuestion === totalQuestions - 1 && showResult}
+      enabled={true}
+    >
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -246,6 +316,42 @@ export default function PsychometricTestLayout({
         </div>
       </div>
 
+      {/* Difficulty Info */}
+      {difficultyInfo && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+          <div className="max-w-4xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">{formatDifficultyDisplay(difficultyInfo).icon}</span>
+                <div>
+                  <span className={`font-medium ${formatDifficultyDisplay(difficultyInfo).color}`}>
+                    {formatDifficultyDisplay(difficultyInfo).displayText}
+                  </span>
+                  {formatDifficultyDisplay(difficultyInfo).showAdaptiveBadge && (
+                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      🧠 Adaptativa
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {isFirstTime && (
+                <div className="flex items-center space-x-2 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+                  <span>🆕</span>
+                  <span className="font-medium">Primera vez</span>
+                </div>
+              )}
+            </div>
+            
+            {formatDifficultyDisplay(difficultyInfo).tooltip && (
+              <div className="mt-2 text-sm text-gray-600">
+                💡 {formatDifficultyDisplay(difficultyInfo).tooltip}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Question Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {renderQuestion()}
@@ -283,6 +389,8 @@ export default function PsychometricTestLayout({
       
       {/* Espaciado inferior para evitar problemas con footer */}
       <div className="h-16"></div>
-    </div>
+      
+      </div>
+    </PsychometricRegistrationManager>
   )
 }

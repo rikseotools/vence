@@ -334,6 +334,172 @@ Este sistema psicotécnico está diseñado para funcionar junto al sistema exist
 - Compatibilidad con sistema de autenticación existente
 - Reutilización de patrones de tracking y analytics
 
+## 🧠 Sistema de Dificultad Adaptativa (NUEVO)
+
+### Características Revolucionarias
+
+El sistema psicotécnico implementa **dificultad adaptativa inteligente** que evita el problema de contaminación por aprendizaje repetido:
+
+#### 🎯 **Problema Solucionado:**
+- **Antes**: Usuario ve pregunta 5 veces → la aprende de memoria → responde rápido → contamina dificultad para otros
+- **Ahora**: Solo **primera respuesta** cuenta para dificultad global → datos limpios
+
+#### 📊 **Dos Tipos de Dificultad:**
+
+1. **Dificultad Global** (para todos los usuarios)
+   - Solo considera **primeras respuestas** de cada usuario
+   - Requiere mínimo 10 respuestas para ser confiable
+   - Se actualiza automáticamente con cada nueva primera respuesta
+   - Algoritmo: Precisión (70%) + Tiempo promedio (30%)
+
+2. **Dificultad Personal** (para cada usuario individual)
+   - Considera **todas las respuestas** del usuario específico
+   - Se adapta al rendimiento individual
+   - Incluye análisis de tendencia (mejorando/empeorando)
+   - Penalización por múltiples intentos fallidos
+
+#### 🔧 **Implementación Técnica:**
+
+**Tablas Creadas:**
+```sql
+-- Tracking de primeras respuestas únicamente
+psychometric_first_attempts (
+  user_id, question_id, is_correct, time_taken_seconds,
+  interaction_data, created_at
+  PRIMARY KEY (user_id, question_id) -- Garantiza una sola entrada por usuario/pregunta
+)
+
+-- Campos agregados a psychometric_questions
+global_difficulty NUMERIC,           -- Dificultad calculada automáticamente
+difficulty_sample_size INTEGER,      -- Número de primeras respuestas
+last_difficulty_update TIMESTAMP    -- Cuándo se actualizó por última vez
+```
+
+**Funciones SQL:**
+- `calculate_global_psychometric_difficulty(question_id)` - Solo primeras respuestas
+- `calculate_personal_psychometric_difficulty(user_id, question_id)` - Todas las respuestas del usuario
+- `get_effective_psychometric_difficulty(question_id, user_id)` - Prioriza personal > global > base
+- `update_global_psychometric_difficulty(question_id)` - Trigger automático
+
+**Frontend Integration:**
+```javascript
+import { getDifficultyInfo, formatDifficultyDisplay } from '../lib/psychometricDifficulty'
+
+// Obtener información completa de dificultad
+const diffInfo = await getDifficultyInfo(supabase, questionId, userId)
+
+// Formatear para mostrar al usuario
+const display = formatDifficultyDisplay(diffInfo)
+// display.displayText: "Medio (50/100) • Adaptativa (15 respuestas)"
+// display.color: "text-yellow-600"
+// display.icon: "🟡"
+// display.tooltip: "La dificultad parece apropiada para tu nivel."
+```
+
+#### 🎨 **UI/UX Features:**
+
+**Indicadores Visuales:**
+- 🟢 Fácil (0-30): Verde
+- 🟡 Medio-Fácil (30-50): Lima  
+- 🟠 Medio (50-70): Amarillo
+- 🔴 Difícil (70-85): Naranja
+- 🟣 Muy Difícil (85+): Rojo
+
+**Badges Informativos:**
+- 🧠 "Adaptativa" - Cuando tiene dificultad calculada automáticamente
+- 🆕 "Primera vez" - Cuando el usuario no ha visto la pregunta antes
+- 📊 "15 respuestas" - Tamaño de muestra estadística
+
+**Tooltips Educativos:**
+- Explica si la pregunta es apropiada para el nivel del usuario
+- Indica cuándo se necesitan más datos
+- Sugiere si el usuario podría beneficiarse de preguntas más fáciles/difíciles
+
+#### ⚙️ **Algoritmo de Dificultad Global:**
+
+```javascript
+// Factores de dificultad (0-100)
+difficulty_score = 0
+
+// Factor 1: Precisión (70% del peso)
+difficulty_score += (1.0 - accuracy) * 70
+
+// Factor 2: Tiempo promedio (30% del peso)  
+time_ratio = avg_time_taken / estimated_time
+if (time_ratio > 1.0) {
+  difficulty_score += min(30, (time_ratio - 1.0) * 15)
+}
+
+// Resultado final normalizado 0-100
+return max(0, min(100, difficulty_score))
+```
+
+**Ejemplos:**
+- 90% acierto, tiempo normal → Dificultad: 7/100 (Muy Fácil)
+- 50% acierto, tiempo normal → Dificultad: 35/100 (Medio-Fácil)  
+- 30% acierto, tiempo 2x → Dificultad: 64/100 (Medio-Difícil)
+- 10% acierto, tiempo 3x → Dificultad: 93/100 (Muy Difícil)
+
+#### 🔒 **Garantías Anti-Contaminación:**
+
+1. **Primary Key Constraint**: `(user_id, question_id)` en `psychometric_first_attempts`
+2. **ON CONFLICT DO NOTHING**: Respuestas repetidas se ignoran para dificultad global
+3. **Separate Tracking**: Historial personal independiente de cálculo global
+4. **Minimum Sample Size**: Requiere 10+ primeras respuestas antes de activar dificultad adaptativa
+
+#### 📈 **Beneficios del Sistema:**
+
+✅ **Datos Limpios**: Dificultad global no contaminada por repetición  
+✅ **Personalización**: Cada usuario ve dificultad adaptada a su nivel  
+✅ **Escalabilidad**: Funciona con millones de usuarios sin degradación  
+✅ **Confiabilidad**: Estadísticamente significativo (mínimo 10 respuestas)  
+✅ **Automático**: Triggers de base de datos actualizan sin intervención manual  
+✅ **Retrocompatible**: Preguntas existentes mantienen dificultad base hasta tener datos
+
+#### 🚀 **Instalación del Sistema:**
+
+1. **Migración SQL Principal:**
+   ```sql
+   -- Ejecutar en Supabase Dashboard
+   database/migrations/psychometric_adaptive_difficulty.sql
+   ```
+
+2. **Migración Complementaria:**
+   ```sql
+   -- Si faltan campos o tablas
+   database/migrations/complete_psychometric_system.sql
+   ```
+
+3. **Verificación:**
+   ```bash
+   node scripts/test-adaptive-difficulty.js
+   ```
+
+4. **Frontend ya integrado** en `PsychometricTestLayout.js`
+
+#### 🔍 **Monitoring y Analytics:**
+
+**Función de Estadísticas:**
+```sql
+SELECT get_psychometric_system_stats();
+-- Retorna:
+{
+  "total_questions": 45,
+  "total_first_attempts": 234, 
+  "questions_with_adaptive_difficulty": 12,
+  "avg_global_difficulty": 52.3,
+  "questions_needing_more_data": 8
+}
+```
+
+**Función de Debugging:**
+```sql
+SELECT * FROM debug_psychometric_system();
+-- Muestra estructura completa de todas las tablas psicotécnicas
+```
+
+Este sistema representa una evolución significativa que soluciona uno de los problemas fundamentales de los sistemas de e-learning tradicionales: la contaminación de métricas por uso repetido.
+
 ## Guía de Implementación de Nuevas Preguntas
 
 ### Proceso Estándar para Crear Preguntas Psicotécnicas
