@@ -1678,9 +1678,15 @@ export default function TestsAuxiliarAdministrativoEstado() {
                     const selectedSectionsList = Object.keys(selectedSections).filter(key => selectedSections[key])
                     
                     if (selectedSectionsList.length > 0) {
-                      // Si seleccionó "graficos", ir a test psicotécnico  
-                      if (selectedSectionsList.includes('graficos')) {
-                        window.location.href = '/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa'
+                      // Si seleccionó "graficos" o "tablas", ir a test psicotécnico específico
+                      if (selectedSectionsList.includes('graficos') && selectedSectionsList.length === 1) {
+                        window.location.href = '/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=graficos'
+                      } else if (selectedSectionsList.includes('tablas') && selectedSectionsList.length === 1) {
+                        window.location.href = '/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=tablas'
+                      } else if (selectedSectionsList.includes('graficos') || selectedSectionsList.includes('tablas')) {
+                        // Si seleccionó múltiples secciones incluyendo gráficos/tablas
+                        const sections = selectedSectionsList.filter(s => s === 'graficos' || s === 'tablas').join(',')
+                        window.location.href = `/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=${sections}`
                       }
                       // Para otras secciones, puedes añadir más lógica aquí
                       else {

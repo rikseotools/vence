@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import PsychometricTestLayout from '@/components/PsychometricTestLayout'
 
 export default function PsychometricTestPage() {
   const { categoria } = useParams()
+  const searchParams = useSearchParams()
   const { user, supabase } = useAuth()
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -15,10 +16,14 @@ export default function PsychometricTestPage() {
   useEffect(() => {
     async function loadPsychometricQuestions() {
       try {
-        console.log('🔍 Loading psychometric questions for category:', categoria)
+        const sectionsParam = searchParams.get('sections')
+        const selectedSections = sectionsParam ? sectionsParam.split(',') : null
         
-        // Query psychometric questions by category
-        const { data, error } = await supabase
+        console.log('🔍 Loading psychometric questions for category:', categoria)
+        console.log('🎯 Selected sections:', selectedSections)
+        
+        // Build query with section filtering if specified
+        let query = supabase
           .from('psychometric_questions')
           .select(`
             *,
@@ -27,7 +32,13 @@ export default function PsychometricTestPage() {
           `)
           .eq('psychometric_categories.category_key', categoria)
           .eq('is_active', true)
-          .order('created_at', { ascending: false })
+        
+        // Add section filter if specific sections are selected
+        if (selectedSections && selectedSections.length > 0) {
+          query = query.in('psychometric_sections.section_key', selectedSections)
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false })
 
         if (error) {
           console.error('❌ Error loading psychometric questions:', error)
@@ -55,7 +66,7 @@ export default function PsychometricTestPage() {
     if (supabase && categoria) {
       loadPsychometricQuestions()
     }
-  }, [categoria, supabase])
+  }, [categoria, supabase, searchParams])
 
   if (loading) {
     return (

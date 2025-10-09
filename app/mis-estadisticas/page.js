@@ -1239,6 +1239,17 @@ export default function EstadisticasRevolucionarias() {
             <p className="text-gray-600 text-xs hidden md:block">
               Navega entre las diferentes métricas mientras haces scroll
             </p>
+            {/* Enlace a estadísticas psicotécnicas */}
+            <div className="mt-2">
+              <Link 
+                href="/mis-estadisticas/psicotecnicos"
+                className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-md text-sm"
+              >
+                <span>🧠</span>
+                <span>Ver Estadísticas Psicotécnicas</span>
+                <span>→</span>
+              </Link>
+            </div>
           </div>
 
           {/* Tabs horizontales compactos y sticky */}

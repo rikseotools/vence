@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import PieChartQuestion from './PieChartQuestion'
+import DataTableQuestion from './DataTableQuestion'
 
 export default function PsychometricTestLayout({
   categoria,
@@ -174,6 +175,17 @@ export default function PsychometricTestLayout({
           />
         )
       
+      case 'data_tables':
+        return (
+          <DataTableQuestion
+            question={currentQ}
+            onAnswer={handleAnswer}
+            selectedAnswer={selectedAnswer}
+            showResult={showResult}
+            isAnswering={isAnswering}
+          />
+        )
+      
       default:
         return (
           <div className="text-center py-8">
@@ -239,19 +251,38 @@ export default function PsychometricTestLayout({
         {renderQuestion()}
       </div>
 
-      {/* Next Button */}
+      {/* Next Button - Separado del contenido de la pregunta */}
       {showResult && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <button
-              onClick={nextQuestion}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              {currentQuestion < totalQuestions - 1 ? 'Siguiente Pregunta' : 'Finalizar Test'}
-            </button>
+        <div className="bg-gray-50 border-t border-gray-200 py-6">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+              <button
+                onClick={nextQuestion}
+                className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg flex items-center justify-center gap-2"
+              >
+                {currentQuestion < totalQuestions - 1 ? (
+                  <>
+                    Siguiente Pregunta 
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </>
+                ) : (
+                  <>
+                    Finalizar Test 
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
+      
+      {/* Espaciado inferior para evitar problemas con footer */}
+      <div className="h-16"></div>
     </div>
   )
 }

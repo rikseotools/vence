@@ -1,5 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
+import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 
 export default function PieChartQuestion({ 
   question, 
@@ -8,6 +10,7 @@ export default function PieChartQuestion({
   showResult, 
   isAnswering 
 }) {
+  const { user } = useAuth()
   const [chartSvg, setChartSvg] = useState('')
 
   useEffect(() => {
@@ -167,10 +170,10 @@ export default function PieChartQuestion({
   }
 
   const options = [
-    { key: 'A', value: question.option_a },
-    { key: 'B', value: question.option_b },
-    { key: 'C', value: question.option_c },
-    { key: 'D', value: question.option_d }
+    { value: question.option_a },
+    { value: question.option_b },
+    { value: question.option_c },
+    { value: question.option_d }
   ]
 
   const correctOptionKey = ['A', 'B', 'C', 'D'][question.correct_option]
@@ -240,7 +243,7 @@ export default function PieChartQuestion({
               className={buttonClass}
             >
               <span className="font-bold text-lg min-w-[24px]">
-                {option.key}
+                {String.fromCharCode(65 + index)}
               </span>
               <span className="text-lg">
                 {option.value}
@@ -270,7 +273,7 @@ export default function PieChartQuestion({
                   : 'bg-white border-2 border-blue-600 text-blue-600 hover:bg-blue-50'
               }`}
             >
-              {option.key}
+              {String.fromCharCode(65 + index)}
             </button>
           ))}
         </div>
@@ -337,12 +340,76 @@ export default function PieChartQuestion({
               </div>
             </div>
 
+            {/* Técnicas de descarte rápido */}
+            <div className="mt-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h5 className="font-bold text-yellow-800 mb-3 flex items-center">
+                  ⚡ TÉCNICAS DE DESCARTE RÁPIDO (Sin calculadora)
+                </h5>
+                
+                <div className="space-y-3 text-sm">
+                  <div className="bg-white p-3 rounded border-l-4 border-yellow-500">
+                    <h6 className="font-semibold text-yellow-800 mb-1">🧠 Método 1: Estimación por aproximación</h6>
+                    <p className="text-gray-700">
+                      • <strong>56,3% ≈ 56%</strong> (redondeamos)<br/>
+                      • <strong>56% de 2.350</strong> = <strong>50% + 6%</strong><br/>
+                      • <strong>50% de 2.350</strong> = 1.175<br/>
+                      • <strong>6% de 2.350</strong> ≈ 6 × 23,5 ≈ 140<br/>
+                      • <strong>Total:</strong> 1.175 + 140 = <strong>1.315</strong> ✅ (cercano a 1.323)
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-3 rounded border-l-4 border-orange-500">
+                    <h6 className="font-semibold text-orange-800 mb-1">🔍 Método 2: Descarte por lógica</h6>
+                    <p className="text-gray-700">
+                      • <strong>Más del 50%:</strong> 56,3% &gt; 50%, así que <strong>&gt; 1.175</strong><br/>
+                      • <strong>Menos del 60%:</strong> 56,3% &lt; 60%, así que <strong>&lt; 1.410</strong><br/>
+                      • <strong>Rango válido:</strong> Entre 1.175 y 1.410<br/>
+                      • <strong>Opciones:</strong> A(1543)❌ B(1221)❌ C(1432)❌ D(1323)✅
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-3 rounded border-l-4 border-purple-500">
+                    <h6 className="font-semibold text-purple-800 mb-1">🎯 Método 3: Cálculo mental por partes</h6>
+                    <p className="text-gray-700">
+                      • <strong>50% de 2.350</strong> = 1.175<br/>
+                      • <strong>6% de 2.350</strong> = 6 × 23,5 = 141<br/>
+                      • <strong>0,3% de 2.350</strong> = 3 × 2,35 = 7<br/>
+                      • <strong>Total:</strong> 1.175 + 141 + 7 = <strong>1.323</strong> ✅
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-3 rounded border-l-4 border-red-500">
+                    <h6 className="font-semibold text-red-800 mb-1">❌ Trampas comunes a evitar</h6>
+                    <p className="text-gray-700">
+                      • <strong>No sumar:</strong> 34,5 + 21,8 = 56,3 (¡no 55,3!)<br/>
+                      • <strong>No confundir:</strong> 56,3% ≠ 563 libros<br/>
+                      • <strong>No olvidar:</strong> Es porcentaje DEL TOTAL (2.350)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="mt-4 p-3 bg-green-100 rounded-lg">
               <p className="text-green-800 text-sm text-center">
-                <strong>💪 Consejo:</strong> En gráficos circulares, siempre suma primero los porcentajes y luego calcula sobre el total.
+                <strong>💪 Consejo de oposición:</strong> Domina el cálculo del 50%, 25%, 10% y 1% de cualquier número. ¡Con eso puedes aproximar todo!
               </p>
             </div>
           </div>
+
+          {/* Estadísticas de evolución de la pregunta */}
+          {user && (
+            <PsychometricQuestionEvolution
+              userId={user.id}
+              questionId={question.id}
+              currentResult={{
+                isCorrect: selectedAnswer === question.correct_option,
+                timeSpent: 0, // Se podría calcular si se necesita
+                answer: selectedAnswer
+              }}
+            />
+          )}
         </div>
       )}
     </div>
