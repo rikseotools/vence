@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import PsychometricTestLayout from '@/components/PsychometricTestLayout'
 import { selectAdaptiveQuestions, analyzeCurrentPerformance } from '@/lib/adaptiveQuestionSelection'
 
-export default function MultipleCategoriesPsychometricTestPage() {
+function MultipleCategoriesPsychometricTestContent() {
   const searchParams = useSearchParams()
   const { user, supabase, loading: authLoading } = useAuth()
   const [questions, setQuestions] = useState([])
