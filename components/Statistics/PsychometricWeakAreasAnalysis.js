@@ -59,10 +59,10 @@ export default function PsychometricWeakAreasAnalysis({ userId }) {
         .eq('user_id', userId)
 
       if (dateFilter) {
-        query = query.gte('answered_at', dateFilter)
+        query = query.gte('created_at', dateFilter)
       }
 
-      const { data: answers, error } = await query.order('answered_at', { ascending: false })
+      const { data: answers, error } = await query.order('created_at', { ascending: false })
 
       if (error) {
         console.error('Error fetching psychometric answers:', error)
@@ -127,7 +127,7 @@ export default function PsychometricWeakAreasAnalysis({ userId }) {
         // Track recent answers for trend analysis
         stats.recentAnswers.push({
           is_correct: answer.is_correct,
-          answered_at: answer.answered_at,
+          answered_at: answer.created_at,
           time_taken: answer.time_taken_seconds
         })
         

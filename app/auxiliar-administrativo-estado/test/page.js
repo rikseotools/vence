@@ -11,10 +11,27 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const [statsLoading, setStatsLoading] = useState(false)
   const [sortBy, setSortBy] = useState('tema') // 'tema', 'accuracy_asc', 'accuracy_desc', 'last_study_new', 'last_study_old'
   const [showStatsInfo, setShowStatsInfo] = useState(false)
-  const [activeTab, setActiveTab] = useState('materias') // 'materias', 'psicotecnicos'
+  const [activeTab, setActiveTab] = useState('psicotecnicos') // 'materias', 'psicotecnicos' - Por defecto psicotécnicos
   const [selectedBlock, setSelectedBlock] = useState(null) // Para mostrar secciones de un bloque específico
   const [selectedSections, setSelectedSections] = useState({}) // Para trackear qué secciones están seleccionadas
-  const [selectedCategories, setSelectedCategories] = useState({}) // Para trackear qué categorías principales están seleccionadas
+  const [selectedCategories, setSelectedCategories] = useState(() => {
+    // Inicializar con todas las categorías marcadas por defecto
+    const initialSelection = {}
+    const allCategories = [
+      'capacidad-administrativa',
+      'capacidad-ortografica', 
+      'pruebas-instrucciones',
+      'razonamiento-numerico',
+      'razonamiento-verbal',
+      'series-alfanumericas',
+      'series-letras',
+      'series-numericas'
+    ]
+    allCategories.forEach(cat => {
+      initialSelection[cat] = true
+    })
+    return initialSelection
+  }) // Para trackear qué categorías principales están seleccionadas
   const [showModal, setShowModal] = useState(false) // Para mostrar el modal de configuración
   const [modalBlock, setModalBlock] = useState(null) // Bloque actual del modal
   const [questionCounts, setQuestionCounts] = useState({}) // Conteo de preguntas por sección
@@ -32,54 +49,54 @@ export default function TestsAuxiliarAdministrativoEstado() {
     'series-numericas'
   ]
 
-  // Definir las secciones por bloque
+  // Definir las secciones por bloque (IDs únicos para evitar conflictos)
   const blockSections = {
     'capacidad-administrativa': [
-      { id: 'tablas', name: 'Tablas' },
-      { id: 'graficos', name: 'Gráficos' }, 
-      { id: 'clasificacion', name: 'Pruebas de clasificación' },
-      { id: 'atencion-percepcion', name: 'Pruebas de atención-percepción' }
+      { id: 'cap-admin-tablas', name: 'Tablas' },
+      { id: 'cap-admin-graficos', name: 'Gráficos' }, 
+      { id: 'cap-admin-clasificacion', name: 'Pruebas de clasificación' },
+      { id: 'cap-admin-atencion-percepcion', name: 'Pruebas de atención-percepción' }
     ],
     'capacidad-ortografica': [
-      { id: 'basico', name: 'Sección básica' },
-      { id: 'avanzado', name: 'Sección avanzada' }
+      { id: 'cap-orto-basico', name: 'Sección básica' },
+      { id: 'cap-orto-avanzado', name: 'Sección avanzada' }
     ],
     'pruebas-instrucciones': [
-      { id: 'basico', name: 'Sección básica' },
-      { id: 'avanzado', name: 'Sección avanzada' }
+      { id: 'pruebas-inst-basico', name: 'Sección básica' },
+      { id: 'pruebas-inst-avanzado', name: 'Sección avanzada' }
     ],
     'razonamiento-numerico': [
-      { id: 'seccion-1', name: 'Sección 1' },
-      { id: 'seccion-2', name: 'Sección 2' },
-      { id: 'seccion-3', name: 'Sección 3' },
-      { id: 'seccion-4', name: 'Sección 4' },
-      { id: 'seccion-5', name: 'Sección 5' },
-      { id: 'seccion-6', name: 'Sección 6' },
-      { id: 'seccion-7', name: 'Sección 7' },
-      { id: 'seccion-8', name: 'Sección 8' },
-      { id: 'seccion-9', name: 'Sección 9' },
-      { id: 'seccion-10', name: 'Sección 10' },
-      { id: 'seccion-11', name: 'Sección 11' },
-      { id: 'seccion-12', name: 'Sección 12' },
-      { id: 'seccion-13', name: 'Sección 13' }
+      { id: 'razo-num-seccion-1', name: 'Sección 1' },
+      { id: 'razo-num-seccion-2', name: 'Sección 2' },
+      { id: 'razo-num-seccion-3', name: 'Sección 3' },
+      { id: 'razo-num-seccion-4', name: 'Sección 4' },
+      { id: 'razo-num-seccion-5', name: 'Sección 5' },
+      { id: 'razo-num-seccion-6', name: 'Sección 6' },
+      { id: 'razo-num-seccion-7', name: 'Sección 7' },
+      { id: 'razo-num-seccion-8', name: 'Sección 8' },
+      { id: 'razo-num-seccion-9', name: 'Sección 9' },
+      { id: 'razo-num-seccion-10', name: 'Sección 10' },
+      { id: 'razo-num-seccion-11', name: 'Sección 11' },
+      { id: 'razo-num-seccion-12', name: 'Sección 12' },
+      { id: 'razo-num-seccion-13', name: 'Sección 13' }
     ],
     'razonamiento-verbal': [
-      { id: 'seccion-1', name: 'Sección 1' },
-      { id: 'seccion-2', name: 'Sección 2' },
-      { id: 'seccion-3', name: 'Sección 3' },
-      { id: 'seccion-4', name: 'Sección 4' }
+      { id: 'razo-verb-seccion-1', name: 'Sección 1' },
+      { id: 'razo-verb-seccion-2', name: 'Sección 2' },
+      { id: 'razo-verb-seccion-3', name: 'Sección 3' },
+      { id: 'razo-verb-seccion-4', name: 'Sección 4' }
     ],
     'series-alfanumericas': [
-      { id: 'basico', name: 'Sección básica' },
-      { id: 'avanzado', name: 'Sección avanzada' }
+      { id: 'series-alfanum-basico', name: 'Sección básica' },
+      { id: 'series-alfanum-avanzado', name: 'Sección avanzada' }
     ],
     'series-letras': [
-      { id: 'basico', name: 'Sección básica' },
-      { id: 'avanzado', name: 'Sección avanzada' }
+      { id: 'series-letras-basico', name: 'Sección básica' },
+      { id: 'series-letras-avanzado', name: 'Sección avanzada' }
     ],
     'series-numericas': [
-      { id: 'basico', name: 'Sección básica' },
-      { id: 'avanzado', name: 'Sección avanzada' }
+      { id: 'series-num-basico', name: 'Sección básica' },
+      { id: 'series-num-avanzado', name: 'Sección avanzada' }
     ]
   }
 
@@ -170,6 +187,12 @@ export default function TestsAuxiliarAdministrativoEstado() {
       ...prev,
       [sectionId]: !prev[sectionId]
     }))
+  }
+
+  // Función helper para contar secciones seleccionadas por bloque
+  const getSelectedSectionsCount = (blockId) => {
+    if (!blockSections[blockId]) return 0
+    return blockSections[blockId].filter(section => selectedSections[section.id]).length
   }
 
   // Funciones para marcar/desmarcar todo
@@ -299,7 +322,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
     }
   }
 
-  // Marcar todas las categorías por defecto y cargar conteos al cargar la página
+  // Marcar todas las categorías y secciones por defecto y cargar conteos al cargar la página
   useEffect(() => {
     const defaultCategories = {}
     mainCategories.forEach(category => {
@@ -307,6 +330,16 @@ export default function TestsAuxiliarAdministrativoEstado() {
     })
     setSelectedCategories(defaultCategories)
     console.log('✅ Categorías marcadas por defecto:', Object.keys(defaultCategories))
+
+    // También marcar todas las secciones por defecto
+    const defaultSections = {}
+    Object.values(blockSections).forEach(sections => {
+      sections.forEach(section => {
+        defaultSections[section.id] = true
+      })
+    })
+    setSelectedSections(defaultSections)
+    console.log('✅ Secciones marcadas por defecto:', Object.keys(defaultSections))
     
     // Cargar conteos de preguntas por categoría
     loadAllCategoryQuestionCounts()
@@ -696,7 +729,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                     </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
-                              <span className="text-sm text-gray-500 mr-2 sm:mr-4">0/4 secciones</span>
+                              <span className="text-sm text-gray-500 mr-2 sm:mr-4">{getSelectedSectionsCount('capacidad-administrativa')}/4 secciones</span>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -730,7 +763,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                               <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
                             </div>
                             <div className="flex items-center">
-                              <span className="text-sm text-gray-500 mr-4">0/13 secciones</span>
+                              <span className="text-sm text-gray-500 mr-4">{getSelectedSectionsCount('razonamiento-numerico')}/13 secciones</span>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -749,7 +782,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                               <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
                             </div>
                             <div className="flex items-center">
-                              <span className="text-sm text-gray-500 mr-4">0/4 secciones</span>
+                              <span className="text-sm text-gray-500 mr-4">{getSelectedSectionsCount('razonamiento-verbal')}/4 secciones</span>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -802,15 +835,15 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   return
                                 }
                                 
-                                console.log(`🚀 Empezando test con ${selectedCats.length} categorías y ${totalQuestions} preguntas:`, selectedCats)
-                                // Aquí puedes redirigir a la página de test con los parámetros seleccionados
-                                window.location.href = `/auxiliar-administrativo-estado/test/psicotecnicos?categories=${selectedCats.join(',')}`
+                                console.log(`✅ Configuración guardada: ${selectedCats.length} categorías y ${totalQuestions} preguntas:`, selectedCats)
+                                // Solo cerrar el modal/configuración - NO redirigir automáticamente
+                                alert(`Configuración guardada: ${selectedCats.length} categorías seleccionadas con ${totalQuestions} preguntas`)
                               }}
                               className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
                             >
                               <span className="inline-flex items-center justify-center">
-                                <span className="mr-2 group-hover:animate-bounce">🚀</span>
-                                Empezar Test
+                                <span className="mr-2 group-hover:animate-bounce">✅</span>
+                                Aceptar Configuración
                               </span>
                             </button>
                           </div>
@@ -1697,7 +1730,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                           </div>
                           <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
-                            <span className="text-sm text-gray-500 mr-2 sm:mr-4">0/4 secciones</span>
+                            <span className="text-sm text-gray-500 mr-2 sm:mr-4">{getSelectedSectionsCount('capacidad-administrativa')}/4 secciones</span>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -1770,7 +1803,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
                           </div>
                           <div className="flex items-center">
-                            <span className="text-sm text-gray-500 mr-4">0/13 secciones</span>
+                            <span className="text-sm text-gray-500 mr-4">{getSelectedSectionsCount('razonamiento-numerico')}/13 secciones</span>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -1802,7 +1835,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
                           </div>
                           <div className="flex items-center">
-                            <span className="text-sm text-gray-500 mr-4">0/4 secciones</span>
+                            <span className="text-sm text-gray-500 mr-4">{getSelectedSectionsCount('razonamiento-verbal')}/4 secciones</span>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation()
@@ -1894,15 +1927,15 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 return
                               }
                               
-                              console.log(`🚀 Empezando test con ${selectedCats.length} categorías y ${totalQuestions} preguntas:`, selectedCats)
-                              // Aquí puedes redirigir a la página de test con los parámetros seleccionados
-                              window.location.href = `/auxiliar-administrativo-estado/test/psicotecnicos?categories=${selectedCats.join(',')}`
+                              console.log(`✅ Configuración guardada: ${selectedCats.length} categorías y ${totalQuestions} preguntas:`, selectedCats)
+                              // Solo cerrar el modal/configuración - NO redirigir automáticamente
+                              alert(`Configuración guardada: ${selectedCats.length} categorías seleccionadas con ${totalQuestions} preguntas`)
                             }}
                             className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
                           >
                             <span className="inline-flex items-center justify-center">
-                              <span className="mr-2 group-hover:animate-bounce">🚀</span>
-                              Empezar Test
+                              <span className="mr-2 group-hover:animate-bounce">✅</span>
+                              Aceptar Configuración
                             </span>
                           </button>
                         </div>
@@ -2129,14 +2162,16 @@ export default function TestsAuxiliarAdministrativoEstado() {
                     
                     if (selectedSectionsList.length > 0) {
                       // Si seleccionó "graficos" o "tablas", ir a test psicotécnico específico
-                      if (selectedSectionsList.includes('graficos') && selectedSectionsList.length === 1) {
+                      if (selectedSectionsList.includes('cap-admin-graficos') && selectedSectionsList.length === 1) {
                         window.location.href = '/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=graficos'
-                      } else if (selectedSectionsList.includes('tablas') && selectedSectionsList.length === 1) {
+                      } else if (selectedSectionsList.includes('cap-admin-tablas') && selectedSectionsList.length === 1) {
                         window.location.href = '/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=tablas'
-                      } else if (selectedSectionsList.includes('graficos') || selectedSectionsList.includes('tablas')) {
+                      } else if (selectedSectionsList.includes('cap-admin-graficos') || selectedSectionsList.includes('cap-admin-tablas')) {
                         // Si seleccionó múltiples secciones incluyendo gráficos/tablas
-                        const sections = selectedSectionsList.filter(s => s === 'graficos' || s === 'tablas').join(',')
-                        window.location.href = `/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=${sections}`
+                        const sections = []
+                        if (selectedSectionsList.includes('cap-admin-graficos')) sections.push('graficos')
+                        if (selectedSectionsList.includes('cap-admin-tablas')) sections.push('tablas')
+                        window.location.href = `/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=${sections.join(',')}`
                       }
                       // Para otras secciones, puedes añadir más lógica aquí
                       else {

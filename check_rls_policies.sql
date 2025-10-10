@@ -1,4 +1,4 @@
--- Check RLS policies on email_events table
+-- Check existing RLS policies for psychometric tables
 SELECT 
     schemaname,
     tablename,
@@ -9,18 +9,12 @@ SELECT
     qual,
     with_check
 FROM pg_policies 
-WHERE tablename = 'email_events';
+WHERE tablename IN ('psychometric_first_attempts', 'psychometric_test_sessions')
+ORDER BY tablename, policyname;
 
 -- Check if RLS is enabled
 SELECT 
-    schemaname,
     tablename,
     rowsecurity
 FROM pg_tables 
-WHERE tablename = 'email_events';
-
--- Check current role
-SELECT current_user, current_setting('role');
-
--- Check if user has service_role access
-SELECT rolname FROM pg_roles WHERE rolname IN ('service_role', 'authenticated', 'anon');
+WHERE tablename IN ('psychometric_first_attempts', 'psychometric_test_sessions');

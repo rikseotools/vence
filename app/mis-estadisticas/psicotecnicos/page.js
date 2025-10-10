@@ -30,10 +30,10 @@ export default function PsychometricStatistics() {
       
       if (selectedPeriod === 'week') {
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-        dateFilter = { answered_at: { gte: weekAgo.toISOString() } }
+        dateFilter = { created_at: { gte: weekAgo.toISOString() } }
       } else if (selectedPeriod === 'month') {
         const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-        dateFilter = { answered_at: { gte: monthAgo.toISOString() } }
+        dateFilter = { created_at: { gte: monthAgo.toISOString() } }
       }
 
       // Query principal para respuestas psicotécnicas
@@ -63,8 +63,8 @@ export default function PsychometricStatistics() {
         .eq('user_id', user.id)
 
       // Aplicar filtro de fecha si es necesario
-      if (dateFilter.answered_at) {
-        query = query.gte('answered_at', dateFilter.answered_at.gte)
+      if (dateFilter.created_at) {
+        query = query.gte('created_at', dateFilter.created_at.gte)
       }
 
       // Aplicar filtro de categoría si es necesario
@@ -72,7 +72,7 @@ export default function PsychometricStatistics() {
         query = query.eq('psychometric_questions.psychometric_sections.psychometric_categories.category_key', selectedCategory)
       }
 
-      const { data: answers, error } = await query.order('answered_at', { ascending: false })
+      const { data: answers, error } = await query.order('created_at', { ascending: false })
 
       if (error) {
         console.error('Error loading psychometric stats:', error)
@@ -197,7 +197,7 @@ export default function PsychometricStatistics() {
     // Patrones de tiempo (por hora del día)
     const timePatterns = {}
     answers.forEach(answer => {
-      const hour = new Date(answer.answered_at).getHours()
+      const hour = new Date(answer.created_at).getHours()
       if (!timePatterns[hour]) {
         timePatterns[hour] = { total: 0, correct: 0, accuracy: 0 }
       }
@@ -242,7 +242,7 @@ export default function PsychometricStatistics() {
       question_text: answer.psychometric_questions?.question_text?.substring(0, 100) + '...',
       is_correct: answer.is_correct,
       time_taken: answer.time_taken_seconds,
-      answered_at: answer.answered_at,
+      answered_at: answer.created_at,
       category: answer.psychometric_questions?.psychometric_sections?.psychometric_categories?.display_name,
       section: answer.psychometric_questions?.psychometric_sections?.display_name
     }))

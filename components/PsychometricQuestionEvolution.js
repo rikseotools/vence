@@ -49,27 +49,19 @@ export default function PsychometricQuestionEvolution({
             id,
             user_answer,
             is_correct,
-            time_taken_seconds,
-            answered_at,
-            session_id,
+            time_spent_seconds,
+            created_at,
+            test_session_id,
             question_order,
-            interaction_data,
             psychometric_test_sessions!inner(
               id,
               session_type,
-              total_questions,
-              score,
-              start_time,
-              end_time,
-              psychometric_categories!inner(
-                category_key,
-                display_name
-              )
+              total_questions
             )
           `)
           .eq('question_id', questionId)
           .eq('user_id', userId)
-          .order('answered_at', { ascending: true })
+          .order('created_at', { ascending: true })
 
         if (error) {
           console.error('Error fetching psychometric question history:', error)
@@ -185,12 +177,12 @@ export default function PsychometricQuestionEvolution({
     
     const ultimoIntento = history[history.length - 1]
     const intentosAnteriores = history.slice(0, -1)
-    const tiemposAnteriores = intentosAnteriores.map(h => h.time_taken_seconds).filter(t => t > 0)
+    const tiemposAnteriores = intentosAnteriores.map(h => h.time_spent_seconds).filter(t => t > 0)
     
     if (tiemposAnteriores.length === 0) return null
     
     const promedioAnterior = tiemposAnteriores.reduce((a, b) => a + b, 0) / tiemposAnteriores.length
-    const tiempoActual = ultimoIntento.time_taken_seconds || 0
+    const tiempoActual = ultimoIntento.time_spent_seconds || 0
     const diferencia = promedioAnterior - tiempoActual
     
     if (Math.abs(diferencia) < 5) return null // Mayor tolerancia para psicotécnicos
@@ -240,12 +232,12 @@ export default function PsychometricQuestionEvolution({
   const calcularAnalisisTemporal = (history) => {
     if (history.length === 0) return null
 
-    const fechas = history.map(h => new Date(h.answered_at))
+    const fechas = history.map(h => new Date(h.created_at))
     const primerIntento = fechas[0]
     const ultimoIntento = fechas[fechas.length - 1]
     
     // Días únicos de estudio
-    const diasUnicos = [...new Set(history.map(h => h.answered_at.split('T')[0]))]
+    const diasUnicos = [...new Set(history.map(h => h.created_at.split('T')[0]))]
     
     // Calcular intervalos entre intentos
     const intervalos = []
@@ -285,7 +277,7 @@ export default function PsychometricQuestionEvolution({
     const rendimientoPorIntento = history.map((h, index) => ({
       intento: index + 1,
       correcto: h.is_correct,
-      tiempo: h.time_taken_seconds,
+      tiempo: h.time_spent_seconds,
       sessionType: h.psychometric_test_sessions?.session_type
     }))
 
@@ -300,9 +292,9 @@ export default function PsychometricQuestionEvolution({
     }
 
     // Análisis de velocidad específico para psicotécnicos
-    const tiempos = history.map(h => h.time_taken_seconds).filter(t => t > 0)
+    const tiempos = history.map(h => h.time_spent_seconds).filter(t => t > 0)
     const tiempoPromedio = tiempos.length > 0 ? tiempos.reduce((a, b) => a + b) / tiempos.length : 0
-    const ultimoTiempo = history[history.length - 1]?.time_taken_seconds || 0
+    const ultimoTiempo = history[history.length - 1]?.time_spent_seconds || 0
     
     // Para psicotécnicos, velocidad óptima es importante pero no debe ser demasiado rápida
     let velocidadActual = 'normal'
@@ -339,7 +331,7 @@ export default function PsychometricQuestionEvolution({
     })
 
     // Sesiones únicas
-    const sesionesUnicas = [...new Set(history.map(h => h.session_id))].length
+    const sesionesUnicas = [...new Set(history.map(h => h.test_session_id))].length
 
     // Categorías trabajadas
     const categorias = [...new Set(history.map(h => 
@@ -592,7 +584,7 @@ export default function PsychometricQuestionEvolution({
                     ? 'bg-green-500 text-white'
                     : 'bg-red-500 text-white'
                 }`}
-                title={`Intento ${index + 1}: ${intento.is_correct ? 'Correcto' : 'Incorrecto'} - ${new Date(intento.answered_at).toLocaleDateString('es-ES')}`}
+                title={`Intento ${index + 1}: ${intento.is_correct ? 'Correcto' : 'Incorrecto'} - ${new Date(intento.created_at).toLocaleDateString('es-ES')}`}
               >
                 {intento.is_correct ? '✓' : '✗'}
               </div>
@@ -659,7 +651,7 @@ export default function PsychometricQuestionEvolution({
                     <div>
                       <div className="font-medium">Intento {index + 1}</div>
                       <div className="opacity-75 text-xs">
-                        {intento.time_taken_seconds ? `${intento.time_taken_seconds}s` : ''} 
+                        {intento.time_spent_seconds ? `${intento.time_spent_seconds}s` : ''} 
                         {intento.psychometric_test_sessions?.session_type ? 
                           ` • ${traducirTipoSesion(intento.psychometric_test_sessions.session_type)}` : ''}
                       </div>
@@ -668,7 +660,7 @@ export default function PsychometricQuestionEvolution({
                   
                   <div className="text-right">
                     <div className="opacity-75">
-                      {new Date(intento.answered_at).toLocaleDateString('es-ES', { 
+                      {new Date(intento.created_at).toLocaleDateString('es-ES', { 
                         day: '2-digit', 
                         month: '2-digit', 
                         year: '2-digit',

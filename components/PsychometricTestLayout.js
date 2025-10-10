@@ -23,6 +23,7 @@ export default function PsychometricTestLayout({
   const [startTime, setStartTime] = useState(Date.now())
   const [testSession, setTestSession] = useState(null)
   const [isAnswering, setIsAnswering] = useState(false)
+  const [isTestCompleted, setIsTestCompleted] = useState(false)
   
   // Estados para usuarios no logueados (igual que TestLayout)
   const [detailedAnswers, setDetailedAnswers] = useState([])
@@ -53,7 +54,7 @@ export default function PsychometricTestLayout({
         session_type: 'psychometric',
         total_questions: questions.length,
         questions_data: { question_ids: questions.map(q => q.id) },
-        start_time: new Date().toISOString()
+        started_at: new Date().toISOString()
       }
 
       const { data, error } = await supabase
@@ -144,14 +145,15 @@ export default function PsychometricTestLayout({
       // Guardar respuesta en base de datos (solo para usuarios logueados)
       if (testSession && user) {
         const answerData = {
-          session_id: testSession.id,
-          question_id: currentQ.id,
+          test_session_id: testSession.id,
           user_id: user.id,
+          question_id: currentQ.id,
+          question_order: currentQuestion + 1,
           user_answer: optionIndex,
           is_correct: isCorrect,
-          time_taken_seconds: timeTakenSeconds,
-          question_order: currentQuestion + 1,
-          answered_at: new Date().toISOString()
+          time_spent_seconds: timeTakenSeconds,
+          question_subtype: currentQ.question_subtype || null,
+          created_at: new Date().toISOString()
         }
 
         const { error } = await supabase
@@ -199,23 +201,27 @@ export default function PsychometricTestLayout({
   const completeTest = async () => {
     if (testSession && user) {
       // Usuario logueado - guardar sesión completada
-      await supabase
+      const { error } = await supabase
         .from('psychometric_test_sessions')
         .update({
           is_completed: true,
-          score: score,
-          end_time: new Date().toISOString()
+          correct_answers: score,
+          accuracy_percentage: Math.round((score / totalQuestions) * 100),
+          completed_at: new Date().toISOString()
         })
         .eq('id', testSession.id)
       
+      if (error) {
+        console.error('❌ Error completing test session:', error)
+      }
+      
       console.log('✅ Test session completed and saved')
-      // Redirigir a resultados o página principal
-      window.location.href = '/auxiliar-administrativo-estado/test'
     } else {
-      // Usuario no logueado - el PsychometricRegistrationManager se encarga del modal
-      console.log('📊 Guest user completed test, registration manager will handle prompt')
-      // No hacer nada específico, el manager detectará isTestCompleted
+      console.log('📊 Guest user completed test, showing results')
     }
+    
+    // Mostrar pantalla de resultados en lugar de redirigir
+    setIsTestCompleted(true)
   }
 
   const renderQuestion = () => {
@@ -264,6 +270,70 @@ export default function PsychometricTestLayout({
     )
   }
 
+  // Pantalla de resultados
+  if (isTestCompleted) {
+    const accuracy = Math.round((score / totalQuestions) * 100)
+    const testDuration = Math.round((Date.now() - startTime) / 1000)
+    
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <h1 className="text-xl font-bold text-gray-900">
+              Test Psicotécnico Completado - {categoria.replace('-', ' ')}
+            </h1>
+          </div>
+        </div>
+
+        {/* Resultados */}
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-xl shadow-lg p-8 mb-8 text-center">
+            <div className="mb-6">
+              <div className="text-6xl mb-4">
+                {accuracy >= 80 ? '🎉' : accuracy >= 60 ? '👍' : '📚'}
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                ¡Test Completado!
+              </h2>
+              <p className="text-lg text-gray-600">
+                {accuracy >= 80 ? '¡Excelente resultado!' : 
+                 accuracy >= 60 ? '¡Buen trabajo!' : 
+                 'Sigue practicando'}
+              </p>
+            </div>
+
+            {/* Estadísticas principales */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="text-2xl font-bold text-blue-600">{score}/{totalQuestions}</div>
+                <div className="text-sm text-gray-600">Preguntas Correctas</div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="text-2xl font-bold text-green-600">{accuracy}%</div>
+                <div className="text-sm text-gray-600">Precisión</div>
+              </div>
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="text-2xl font-bold text-purple-600">{Math.floor(testDuration/60)}:{String(testDuration%60).padStart(2, '0')}</div>
+                <div className="text-sm text-gray-600">Tiempo Total</div>
+              </div>
+            </div>
+
+            {/* Botones de navegación */}
+            <div className="flex justify-center">
+              <Link
+                href="/auxiliar-administrativo-estado/test"
+                className="px-8 py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              >
+                🏠 Volver a Tests
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <PsychometricRegistrationManager
       categoria={categoria}
@@ -273,7 +343,7 @@ export default function PsychometricTestLayout({
       showResult={showResult}
       score={score}
       startTime={startTime}
-      isTestCompleted={currentQuestion === totalQuestions - 1 && showResult}
+      isTestCompleted={isTestCompleted}
       enabled={true}
     >
       <div className="min-h-screen bg-gray-50">

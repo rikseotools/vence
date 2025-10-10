@@ -110,7 +110,23 @@ export default function EmailDetailPage() {
       })
 
       const allEvents = apiData.events || []
-      const events = allEvents.slice(0, eventsLimit * 2) // Limit for table display
+      
+      // Aplicar filtros antes del slice
+      let filteredEvents = allEvents
+      
+      if (emailTypeFilter !== 'all') {
+        filteredEvents = filteredEvents.filter(e => e.email_type === emailTypeFilter)
+      }
+      
+      if (templateFilter !== 'all') {
+        filteredEvents = filteredEvents.filter(e => e.template_id === templateFilter)
+      }
+      
+      if (campaignFilter !== 'all') {
+        filteredEvents = filteredEvents.filter(e => e.campaign_id === campaignFilter)
+      }
+      
+      const events = filteredEvents.slice(0, eventsLimit * 2) // Limit for table display
       
       // Procesar estadísticas detalladas
       const stats = {
@@ -122,6 +138,8 @@ export default function EmailDetailPage() {
         clientTypes: {},
         subscriptionStatus: { subscribed: 0, unsubscribed: 0 },
         hourlyDistribution: Array.from({ length: 24 }, () => 0),
+        hourlySent: Array.from({ length: 24 }, () => 0), // Envíos por hora  
+        hourlyOpens: Array.from({ length: 24 }, () => 0), // Aperturas por hora
         dailyTrends: {},
         openRates: {},
         clickRates: {},
@@ -223,6 +241,13 @@ export default function EmailDetailPage() {
         // Distribución por hora
         const hour = new Date(event.created_at).getHours()
         stats.hourlyDistribution[hour]++
+        
+        // Distribución específica por tipo de evento
+        if (event.event_type === 'sent') {
+          stats.hourlySent[hour]++
+        } else if (event.event_type === 'opened') {
+          stats.hourlyOpens[hour]++
+        }
 
         // Tendencias diarias - usar Sets para conteo único por usuario/email
         const date = new Date(event.created_at).toISOString().split('T')[0]
@@ -415,9 +440,9 @@ export default function EmailDetailPage() {
         groupedCampaigns,
         totalEvents: events.length,
         totalPages: Math.ceil(events.length / eventsLimit),
-        availableEmailTypes: [...new Set(events.map(e => e.email_type).filter(Boolean))],
-        availableTemplates: [...new Set(events.map(e => e.template_id).filter(Boolean))],
-        availableCampaigns: [...new Set(events.map(e => e.campaign_id).filter(Boolean))]
+        availableEmailTypes: [...new Set(allEvents.map(e => e.email_type).filter(Boolean))],
+        availableTemplates: [...new Set(allEvents.map(e => e.template_id).filter(Boolean))],
+        availableCampaigns: [...new Set(allEvents.map(e => e.campaign_id).filter(Boolean))]
       })
 
     } catch (error) {
@@ -609,32 +634,109 @@ export default function EmailDetailPage() {
               <StatCard title="Bounce Rate" value={`${data.stats.overallStats.bounceRate}%`} icon="⚠️" color="red" />
             </div>
 
-            {/* Gráfico de Actividad por Hora */}
+            {/* Gráfico de Actividad por Hora - Envíos vs Aperturas */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">📈 Actividad por Hora del Día</h3>
-              <div className="overflow-x-auto">
-                <div className="grid grid-cols-12 gap-1 sm:gap-2 min-w-[600px]">
-                  {data.stats.hourlyDistribution.map((count, hour) => (
-                    <div key={hour} className="text-center">
-                      <div className="text-xs text-gray-500 mb-1">{hour}h</div>
-                      <div className="bg-gray-100 rounded-sm h-16 sm:h-20 flex items-end">
-                        {count > 0 && (
-                          <div 
-                            className="w-full bg-purple-500 rounded-sm" 
-                            style={{ 
-                              height: `${Math.max(8, (count / Math.max(...data.stats.hourlyDistribution)) * 100)}%` 
-                            }}
-                          ></div>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-600 mt-1">{count || ''}</div>
-                    </div>
-                  ))}
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">📈 Envíos vs Aperturas por Hora</h3>
+              
+              {/* Leyenda */}
+              <div className="mb-4 flex justify-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                  <span className="text-sm text-gray-600">📧 Envíos</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded"></div>
+                  <span className="text-sm text-gray-600">📖 Aperturas</span>
                 </div>
               </div>
+              
+              <div className="overflow-x-auto">
+                <div className="grid grid-cols-12 gap-1 sm:gap-2 min-w-[800px]">
+                  {Array.from({ length: 24 }, (_, hour) => {
+                    const sentCount = data.stats.hourlySent[hour] || 0;
+                    const openCount = data.stats.hourlyOpens[hour] || 0;
+                    const maxSent = Math.max(...data.stats.hourlySent);
+                    const maxOpen = Math.max(...data.stats.hourlyOpens);
+                    const maxValue = Math.max(maxSent, maxOpen, 1); // Evitar división por 0
+                    
+                    return (
+                      <div key={hour} className="text-center">
+                        <div className="text-xs text-gray-500 mb-1">{hour}h</div>
+                        <div className="bg-gray-100 rounded-sm h-20 sm:h-24 p-1 relative">
+                          <div className="flex h-full gap-0.5">
+                            {/* Barra de Envíos (azul) */}
+                            <div className="flex-1 bg-gray-200 rounded-sm relative border border-gray-300">
+                              {sentCount > 0 && (
+                                <div 
+                                  className="absolute bottom-0 left-0 right-0 bg-blue-500 rounded-sm" 
+                                  style={{ 
+                                    height: `${Math.max(10, (sentCount / maxValue) * 100)}%`
+                                  }}
+                                  title={`${sentCount} envíos a las ${hour}:00h`}
+                                ></div>
+                              )}
+                            </div>
+                            {/* Barra de Aperturas (verde) */}
+                            <div className="flex-1 bg-gray-200 rounded-sm relative border border-gray-300">
+                              {openCount > 0 && (
+                                <div 
+                                  className="absolute bottom-0 left-0 right-0 bg-green-500 rounded-sm" 
+                                  style={{ 
+                                    height: `${Math.max(10, (openCount / maxValue) * 100)}%`
+                                  }}
+                                  title={`${openCount} aperturas a las ${hour}:00h`}
+                                ></div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Números pequeños */}
+                        <div className="text-xs text-gray-600 mt-1 flex justify-center gap-1">
+                          {sentCount > 0 && <span className="text-blue-600">{sentCount}</span>}
+                          {openCount > 0 && <span className="text-green-600">{openCount}</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              
               <p className="text-xs text-gray-500 mt-3 text-center">
-                💡 Solo se muestran horas con actividad de email. Horas vacías no tienen barra.
+                💡 Compara cuándo envías emails (azul) vs cuándo los abren (verde) para optimizar timing
               </p>
+              
+              {/* Insights automáticos */}
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Mejor hora para enviar */}
+                {data.stats.hourlyOpens.some(count => count > 0) && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-sm font-medium text-green-800 mb-1">
+                      🏆 Mejor hora para enviar
+                    </div>
+                    <div className="text-sm text-green-700">
+                      {data.stats.hourlyOpens.indexOf(Math.max(...data.stats.hourlyOpens))}:00h
+                      <span className="text-xs ml-1">
+                        ({Math.max(...data.stats.hourlyOpens)} aperturas)
+                      </span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Hora con más envíos */}
+                {data.stats.hourlySent.some(count => count > 0) && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="text-sm font-medium text-blue-800 mb-1">
+                      📧 Hora de más envíos
+                    </div>
+                    <div className="text-sm text-blue-700">
+                      {data.stats.hourlySent.indexOf(Math.max(...data.stats.hourlySent))}:00h
+                      <span className="text-xs ml-1">
+                        ({Math.max(...data.stats.hourlySent)} enviados)
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
