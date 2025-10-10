@@ -16,8 +16,8 @@ export default function EmailDetailPage() {
   const [emailTypeFilter, setEmailTypeFilter] = useState('all')
   const [templateFilter, setTemplateFilter] = useState('all')
   const [campaignFilter, setCampaignFilter] = useState('all')
-  const [viewMode, setViewMode] = useState('individual') // 'individual' | 'grouped'
-  const [eventsLimit, setEventsLimit] = useState(50)
+  const [viewMode, setViewMode] = useState('grouped') // 'individual' | 'grouped' - Admin debe ver todo agrupado
+  const [eventsLimit, setEventsLimit] = useState(500) // Aumentar para ver más eventos
   const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
@@ -75,59 +75,47 @@ export default function EmailDetailPage() {
   }
 
   const loadEmailData = async () => {
+    console.log('🚀 INICIANDO loadEmailData con API admin (service_role)')
+    console.log('🔍 FILTROS ACTIVOS:', {
+      emailTypeFilter,
+      templateFilter, 
+      campaignFilter,
+      timeRange
+    })
+    
     try {
-      const daysAgo = new Date(Date.now() - parseInt(timeRange) * 24 * 60 * 60 * 1000).toISOString()
-
-      // Construir query con filtros
-      let query = supabase
-        .from('email_events')
-        .select(`
-          *,
-          user_profiles(email, created_at, plan_type)
-        `)
-        .gte('created_at', daysAgo)
+      // Call admin API with service_role access
+      const response = await fetch(`/api/admin/email-events?timeRange=${timeRange}`)
       
-      // Aplicar filtros
-      if (emailTypeFilter !== 'all') {
-        query = query.eq('email_type', emailTypeFilter)
-      }
-      if (templateFilter !== 'all') {
-        query = query.eq('template_id', templateFilter)
-      }
-      if (campaignFilter !== 'all') {
-        query = query.eq('campaign_id', campaignFilter)
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
       }
       
-      // Obtener todos los eventos de email con filtros aplicados
-      const { data: emailEvents, error: emailError } = await query
-        .order('created_at', { ascending: false })
-        .limit(eventsLimit * 2) // Obtener más datos para paginación
-
-      // Obtener preferencias de email de todos los usuarios únicos
-      const uniqueUserIds = [...new Set((emailEvents || []).map(e => e.user_id))]
-      const { data: emailPreferences, error: prefError } = await supabase
-        .from('email_preferences')
-        .select('user_id, unsubscribed_all')
-        .in('user_id', uniqueUserIds)
-
-      if (emailError) {
-        console.error('❌ Error consultando email_events:', emailError)
-        return
-      }
-
-      const events = emailEvents || []
-      const preferences = emailPreferences || []
+      const apiData = await response.json()
+      console.log(`✅ Admin API returned ${apiData.totalEvents} events from service_role`)
       
-      // Crear mapa de preferencias para acceso rápido
-      const preferencesMap = new Map()
-      preferences.forEach(pref => {
-        preferencesMap.set(pref.user_id, pref)
+      // Debug today's events specifically
+      const today = new Date().toISOString().split('T')[0]
+      const todayEvents = apiData.events.filter(e => 
+        e.created_at >= `${today}T00:00:00.000Z` && 
+        e.created_at <= `${today}T23:59:59.999Z`
+      )
+      
+      console.log(`🗓️ EVENTOS DE HOY (${today}) con service_role:`, {
+        count: todayEvents.length,
+        tipoEventos: todayEvents.reduce((acc, e) => {
+          acc[e.event_type] = (acc[e.event_type] || 0) + 1
+          return acc
+        }, {})
       })
+
+      const allEvents = apiData.events || []
+      const events = allEvents.slice(0, eventsLimit * 2) // Limit for table display
       
       // Procesar estadísticas detalladas
       const stats = {
-        totalEvents: events.length,
-        uniqueUsers: new Set(events.map(e => e.user_id)).size,
+        totalEvents: allEvents.length,
+        uniqueUsers: new Set(allEvents.map(e => e.user_id)).size,
         eventTypes: {},
         emailTypes: {},
         deviceTypes: {},
@@ -141,31 +129,28 @@ export default function EmailDetailPage() {
         campaignPerformance: {}
       }
 
-      // Calcular usuarios subscritos vs no subscritos con SQL simple
-      console.log('🔍 Calculando estado de suscripción de usuarios...')
+      // Usar datos de suscripción desde la API
+      console.log('🔍 Usando datos de suscripción desde API...')
+      const subscriptionData = apiData.subscriptionCount
       
-      // Obtener conteo de suscripciones con función RPC
-      const { data: subscriptionCount, error: rpcError } = await supabase
-        .rpc('get_subscription_count')
-      
-      if (!rpcError && subscriptionCount && subscriptionCount.length > 0) {
-        const counts = subscriptionCount[0]
-        stats.subscriptionStatus.subscribed = counts.suscritos
-        stats.subscriptionStatus.unsubscribed = counts.no_suscritos
-        console.log(`✅ Conteo via RPC: ${counts.suscritos} suscritos, ${counts.no_suscritos} no suscritos de ${counts.total} usuarios totales`)
+      if (subscriptionData) {
+        stats.subscriptionStatus.subscribed = subscriptionData.suscritos
+        stats.subscriptionStatus.unsubscribed = subscriptionData.no_suscritos
+        console.log(`✅ Conteo desde API: ${subscriptionData.suscritos} suscritos, ${subscriptionData.no_suscritos} no suscritos de ${subscriptionData.total} usuarios totales`)
       } else {
-        console.error('❌ Error obteniendo conteo RPC:', rpcError)
+        console.warn('⚠️ No se obtuvieron datos de suscripción desde API')
       }
 
       // Agregar debug para detectar problemas
-      console.log(`📊 Procesando ${events.length} eventos de email`)
+      console.log(`📊 Procesando ${allEvents.length} eventos de email (todos los datos)`)
+      console.log(`📊 Eventos limitados para tabla: ${events.length}`)
       
-      // Detectar eventos duplicados potenciales
-      const eventsByUserAndType = new Map()
-      const duplicateDetection = new Map()
+      // Crear estructuras para conteo correcto por día
+      const dailyEventTracker = new Map() // date -> { sent: Set, opened: Set, clicked: Set }
+      const rawEventCounts = new Map() // Para comparar eventos brutos vs únicos
       
-      // Procesar cada evento
-      events.forEach((event, index) => {
+      // Procesar cada evento (USAR TODOS LOS EVENTOS PARA ESTADÍSTICAS)
+      allEvents.forEach((event, index) => {
         // Tipos de evento
         stats.eventTypes[event.event_type] = (stats.eventTypes[event.event_type] || 0) + 1
 
@@ -239,48 +224,57 @@ export default function EmailDetailPage() {
         const hour = new Date(event.created_at).getHours()
         stats.hourlyDistribution[hour]++
 
-        // Tendencias diarias - mapear correctamente los tipos de eventos
+        // Tendencias diarias - usar Sets para conteo único por usuario/email
         const date = new Date(event.created_at).toISOString().split('T')[0]
-        if (!stats.dailyTrends[date]) {
-          stats.dailyTrends[date] = { sent: 0, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0 }
+        if (!dailyEventTracker.has(date)) {
+          dailyEventTracker.set(date, {
+            sent: new Set(),
+            opened: new Set(),
+            clicked: new Set(),
+            bounced: new Set(),
+            unsubscribed: new Set()
+          })
         }
         
-        // Mapear event_type de BD a propiedades del objeto
+        const dayEvents = dailyEventTracker.get(date)
+        // Para newsletters masivos, cada evento es único - usar timestamp + user_id
+        const uniqueKey = `${event.user_id}_${event.email_address}_${event.created_at}`
+        
+        // Contar eventos brutos para debug
+        if (!rawEventCounts.has(date)) {
+          rawEventCounts.set(date, { sent: 0, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0 })
+        }
+        const rawCounts = rawEventCounts.get(date)
+        
+        // Agregar a Sets para evitar duplicados por usuario/email
         switch(event.event_type) {
           case 'sent':
           case 'delivered': // Ambos cuentan como enviados
-            stats.dailyTrends[date].sent++
+            dayEvents.sent.add(uniqueKey)
+            rawCounts.sent++
             break
           case 'opened':
-            stats.dailyTrends[date].opened++
+            dayEvents.opened.add(uniqueKey)
+            rawCounts.opened++
             break
           case 'clicked':
-            stats.dailyTrends[date].clicked++
+            dayEvents.clicked.add(uniqueKey)
+            rawCounts.clicked++
             break
           case 'bounced':
-            stats.dailyTrends[date].bounced++
+            dayEvents.bounced.add(uniqueKey)
+            rawCounts.bounced++
             break
           case 'unsubscribed':
-            stats.dailyTrends[date].unsubscribed++
+            dayEvents.unsubscribed.add(uniqueKey)
+            rawCounts.unsubscribed++
             break
           case 'complained':
-            // Los complaints se pueden contar como bounced o crear categoría separada
-            stats.dailyTrends[date].bounced++
+            dayEvents.bounced.add(uniqueKey)
+            rawCounts.bounced++
             break
           default:
             console.warn(`⚠️ Tipo de evento desconocido: ${event.event_type}`)
-        }
-        
-        // Debug: detectar eventos sospechosos
-        const eventKey = `${event.user_id}_${event.email_address}_${event.event_type}_${date}`
-        if (duplicateDetection.has(eventKey)) {
-          console.warn(`⚠️ Posible evento duplicado detectado:`, {
-            eventKey,
-            current: event,
-            previous: duplicateDetection.get(eventKey)
-          })
-        } else {
-          duplicateDetection.set(eventKey, event)
         }
 
         // Dominios de email
@@ -300,6 +294,26 @@ export default function EmailDetailPage() {
             stats.campaignPerformance[event.campaign_id][event.event_type]++
           }
         }
+      })
+      
+      // Convertir Sets a conteos finales en stats.dailyTrends
+      for (const [date, dayEvents] of dailyEventTracker.entries()) {
+        stats.dailyTrends[date] = {
+          sent: dayEvents.sent.size,
+          opened: dayEvents.opened.size,
+          clicked: dayEvents.clicked.size,
+          bounced: dayEvents.bounced.size,
+          unsubscribed: dayEvents.unsubscribed.size
+        }
+      }
+      
+      // Debug: comparar eventos brutos vs únicos
+      console.log('📊 Comparación eventos brutos vs únicos (últimos 5 días):')
+      const sortedDates = Array.from(dailyEventTracker.keys()).sort().reverse().slice(0, 5)
+      sortedDates.forEach(date => {
+        const unique = stats.dailyTrends[date]
+        const raw = rawEventCounts.get(date)
+        console.log(`${date}: Enviados ${raw.sent} → ${unique.sent} únicos, Abiertos ${raw.opened} → ${unique.opened} únicos`)
       })
       
       // Debug: mostrar resumen de tendencias diarias
@@ -351,8 +365,8 @@ export default function EmailDetailPage() {
       let processedEvents = events
       let groupedCampaigns = null
       
-      if (viewMode === 'grouped' && events.length > 0) {
-        // Agrupar por campaign_id para newsletters
+      // Siempre agrupar por campaign_id para newsletters
+      if (events.length > 0) {
         const campaignGroups = new Map()
         events.forEach(event => {
           const campaignKey = event.campaign_id || `${event.email_type}_${event.template_id}`
@@ -439,7 +453,7 @@ export default function EmailDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         
         {/* Header */}
         <div className="mb-8">
@@ -457,26 +471,27 @@ export default function EmailDetailPage() {
                 Estadísticas completas de emails, open rates, click rates y engagement
               </p>
             </div>
-            <div className="flex flex-col lg:flex-row lg:items-center space-y-4 lg:space-y-0 lg:space-x-4">
-              {/* Filtros principales */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Filtros móvil-friendly */}
+            <div className="space-y-4">
+              {/* Primera fila: Filtros principales */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <select
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm w-full"
                 >
-                  <option value="7">Últimos 7 días</option>
-                  <option value="30">Últimos 30 días</option>
-                  <option value="90">Últimos 90 días</option>
-                  <option value="365">Último año</option>
+                  <option value="7">📅 Últimos 7 días</option>
+                  <option value="30">📅 Últimos 30 días</option>
+                  <option value="90">📅 Últimos 90 días</option>
+                  <option value="365">📅 Último año</option>
                 </select>
                 
                 <select
                   value={emailTypeFilter}
                   onChange={(e) => handleFilterChange('emailType', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm w-full"
                 >
-                  <option value="all">Todos los tipos</option>
+                  <option value="all">📧 Todos los tipos</option>
                   {data?.availableEmailTypes?.map(type => (
                     <option key={type} value={type}>
                       {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -487,9 +502,9 @@ export default function EmailDetailPage() {
                 <select
                   value={templateFilter}
                   onChange={(e) => handleFilterChange('template', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm w-full"
                 >
-                  <option value="all">Todas las plantillas</option>
+                  <option value="all">📄 Todas las plantillas</option>
                   {data?.availableTemplates?.map(template => (
                     <option key={template} value={template}>
                       {template}
@@ -500,9 +515,9 @@ export default function EmailDetailPage() {
                 <select
                   value={campaignFilter}
                   onChange={(e) => handleFilterChange('campaign', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm w-full"
                 >
-                  <option value="all">Todas las campañas</option>
+                  <option value="all">🎯 Todas las campañas</option>
                   {data?.availableCampaigns?.map(campaign => (
                     <option key={campaign} value={campaign}>
                       {campaign}
@@ -511,63 +526,42 @@ export default function EmailDetailPage() {
                 </select>
               </div>
               
-              {/* Controles de vista y límites */}
-              <div className="flex items-center space-x-3">
-                <div className="flex bg-gray-100 rounded-lg p-1">
-                  <button
-                    onClick={() => setViewMode('individual')}
-                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                      viewMode === 'individual' 
-                        ? 'bg-white text-purple-600 shadow-sm' 
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    Individual
-                  </button>
-                  <button
-                    onClick={() => setViewMode('grouped')}
-                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                      viewMode === 'grouped' 
-                        ? 'bg-white text-purple-600 shadow-sm' 
-                        : 'text-gray-600 hover:text-gray-800'
-                    }`}
-                  >
-                    Agrupado
-                  </button>
-                </div>
-                
+              {/* Segunda fila: Controles de límites y acciones */}
+              <div className="flex flex-col sm:flex-row gap-3">
                 <select
                   value={eventsLimit}
                   onChange={(e) => handleFilterChange('limit', e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm flex-1"
                 >
-                  <option value={50}>50 eventos</option>
-                  <option value={100}>100 eventos</option>
-                  <option value={250}>250 eventos</option>
-                  <option value={500}>500 eventos</option>
-                  <option value={1000}>1000 eventos</option>
+                  <option value={50}>📊 50 eventos</option>
+                  <option value={100}>📊 100 eventos</option>
+                  <option value={250}>📊 250 eventos</option>
+                  <option value={500}>📊 500 eventos</option>
+                  <option value={1000}>📊 1000 eventos</option>
                 </select>
                 
-                <button
-                  onClick={() => {
-                    setEmailTypeFilter('all')
-                    setTemplateFilter('all')
-                    setCampaignFilter('all')
-                    setCurrentPage(1)
-                  }}
-                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
-                >
-                  <span>🧹</span>
-                  <span>Limpiar</span>
-                </button>
-                
-                <button
-                  onClick={loadEmailData}
-                  className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center space-x-2"
-                >
-                  <span>🔄</span>
-                  <span>Actualizar</span>
-                </button>
+                <div className="flex gap-2 sm:gap-3">
+                  <button
+                    onClick={() => {
+                      setEmailTypeFilter('all')
+                      setTemplateFilter('all')
+                      setCampaignFilter('all')
+                      setCurrentPage(1)
+                    }}
+                    className="bg-gray-500 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-1 sm:gap-2 text-sm"
+                  >
+                    <span>🧹</span>
+                    <span className="hidden sm:inline">Limpiar</span>
+                  </button>
+                  
+                  <button
+                    onClick={loadEmailData}
+                    className="bg-purple-500 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-1 sm:gap-2 text-sm"
+                  >
+                    <span>🔄</span>
+                    <span className="hidden sm:inline">Actualizar</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -582,7 +576,7 @@ export default function EmailDetailPage() {
           <div className="space-y-8">
             
             {/* Métricas Principales */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
               {/* Tasa de Suscripción - Nueva tarjeta principal */}
               <Link href="/admin/notificaciones/email/subscripciones" className="block group">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 h-full transition-all duration-200 group-hover:shadow-md group-hover:scale-105 group-hover:border-blue-300">
@@ -613,35 +607,37 @@ export default function EmailDetailPage() {
             </div>
 
             {/* Gráfico de Actividad por Hora */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">📈 Actividad por Hora del Día</h3>
-              <div className="grid grid-cols-12 gap-2">
-                {data.stats.hourlyDistribution.map((count, hour) => (
-                  <div key={hour} className="text-center">
-                    <div className="text-xs text-gray-500 mb-1">{hour}h</div>
-                    <div className="bg-gray-100 rounded-sm h-20 flex items-end">
-                      {count > 0 && (
-                        <div 
-                          className="w-full bg-purple-500 rounded-sm" 
-                          style={{ 
-                            height: `${Math.max(8, (count / Math.max(...data.stats.hourlyDistribution)) * 100)}%` 
-                          }}
-                        ></div>
-                      )}
+              <div className="overflow-x-auto">
+                <div className="grid grid-cols-12 gap-1 sm:gap-2 min-w-[600px]">
+                  {data.stats.hourlyDistribution.map((count, hour) => (
+                    <div key={hour} className="text-center">
+                      <div className="text-xs text-gray-500 mb-1">{hour}h</div>
+                      <div className="bg-gray-100 rounded-sm h-16 sm:h-20 flex items-end">
+                        {count > 0 && (
+                          <div 
+                            className="w-full bg-purple-500 rounded-sm" 
+                            style={{ 
+                              height: `${Math.max(8, (count / Math.max(...data.stats.hourlyDistribution)) * 100)}%` 
+                            }}
+                          ></div>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-600 mt-1">{count || ''}</div>
                     </div>
-                    <div className="text-xs text-gray-600 mt-1">{count || ''}</div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
               <p className="text-xs text-gray-500 mt-3 text-center">
                 💡 Solo se muestran horas con actividad de email. Horas vacías no tienen barra.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
               
               {/* Performance por Tipo de Email */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">📧 Performance por Tipo de Email</h3>
                 <div className="space-y-4">
                   {Object.entries(data.stats.emailTypes)
@@ -668,7 +664,7 @@ export default function EmailDetailPage() {
               </div>
 
               {/* Estado de Suscripción */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">📧 Estado de Suscripción</h3>
                   <Link 
@@ -732,7 +728,7 @@ export default function EmailDetailPage() {
               </div>
 
               {/* Dispositivos */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">📱 Dispositivos</h3>
                 <div className="space-y-3">
                   {Object.entries(data.stats.deviceTypes)
@@ -784,7 +780,7 @@ export default function EmailDetailPage() {
               </div>
 
               {/* Clientes de Email */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">📧 Clientes de Email</h3>
                 <div className="space-y-3">
                   {Object.entries(data.stats.clientTypes)
@@ -815,7 +811,7 @@ export default function EmailDetailPage() {
               </div>
 
               {/* Top Dominios */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">🌐 Top Dominios de Email</h3>
                 <div className="space-y-3">
                   {Object.entries(data.stats.topDomains)
@@ -838,9 +834,46 @@ export default function EmailDetailPage() {
             </div>
 
             {/* Tendencias Diarias */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Tendencias Diarias</h3>
-              <div className="overflow-x-auto">
+              
+              {/* Vista móvil: Cards */}
+              <div className="block lg:hidden space-y-3">
+                {Object.entries(data.stats.dailyTrends)
+                  .sort(([a], [b]) => b.localeCompare(a))
+                  .slice(0, 10)
+                  .map(([date, stats]) => (
+                  <div key={date} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-gray-900">{date}</h4>
+                      <div className="text-sm text-gray-500">
+                        {stats.sent > 0 ? ((stats.opened / stats.sent) * 100).toFixed(1) : 0}% open
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-600">📤 Enviados:</span>
+                        <span className="ml-1 font-semibold">{stats.sent || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">📖 Abiertos:</span>
+                        <span className="ml-1 font-semibold text-blue-600">{stats.opened || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">👆 Clicks:</span>
+                        <span className="ml-1 font-semibold text-green-600">{stats.clicked || 0}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">⚠️ Rebotes:</span>
+                        <span className="ml-1 font-semibold text-red-600">{stats.bounced || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Vista desktop: Tabla */}
+              <div className="hidden lg:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -878,13 +911,60 @@ export default function EmailDetailPage() {
             </div>
 
             {/* Vista de Campañas Agrupadas */}
-            {viewMode === 'grouped' && data?.groupedCampaigns && (
+            {data?.groupedCampaigns && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200">
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-800">📧 Campañas de Email</h3>
                   <p className="text-sm text-gray-600">{data.groupedCampaigns.length} campañas encontradas</p>
                 </div>
-                <div className="overflow-x-auto">
+                
+                {/* Vista móvil: Cards */}
+                <div className="block lg:hidden p-4 space-y-4">
+                  {data.groupedCampaigns.slice(0, 5).map((campaign, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-medium text-gray-900 text-sm mb-1">
+                            {campaign.campaign_id || 'N/A'}
+                          </h4>
+                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                            campaign.email_type === 'newsletter' ? 'bg-blue-50 text-blue-700' :
+                            campaign.email_type === 'motivation' ? 'bg-green-50 text-green-700' :
+                            campaign.email_type === 'achievement' ? 'bg-yellow-50 text-yellow-700' :
+                            'bg-gray-50 text-gray-700'
+                          }`}>
+                            {campaign.email_type || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold text-green-600">{campaign.open_rate}%</div>
+                          <div className="text-xs text-gray-500">open rate</div>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3 truncate">{campaign.subject || 'N/A'}</p>
+                      <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div className="text-center">
+                          <div className="font-semibold text-gray-900">{campaign.total_sent}</div>
+                          <div className="text-xs text-gray-500">Enviados</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold text-blue-600">{campaign.total_opened}</div>
+                          <div className="text-xs text-gray-500">Abiertos</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold text-green-600">{campaign.total_clicked}</div>
+                          <div className="text-xs text-gray-500">Clicks</div>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        {new Date(campaign.created_at).toLocaleDateString('es-ES')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Vista desktop: Tabla */}
+                <div className="hidden lg:block overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -961,41 +1041,97 @@ export default function EmailDetailPage() {
             )}
 
             {/* Eventos Recientes */}
-            {viewMode === 'individual' && (
+            {data?.events && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-800">🕐 Eventos Recientes</h3>
-                    <p className="text-sm text-gray-600">
-                      {data?.events?.length || 0} eventos de {data?.totalEvents || 0} totales
-                      {emailTypeFilter !== 'all' && ` - Filtrado por: ${emailTypeFilter}`}
-                    </p>
-                  </div>
-                  
-                  {/* Controles de paginación */}
-                  {data?.totalPages > 1 && (
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                      >
-                        Anterior
-                      </button>
-                      <span className="text-sm text-gray-600">
-                        Página {currentPage} de {data.totalPages}
-                      </span>
-                      <button
-                        onClick={() => setCurrentPage(Math.min(data.totalPages, currentPage + 1))}
-                        disabled={currentPage === data.totalPages}
-                        className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                      >
-                        Siguiente
-                      </button>
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800">🕐 Eventos Recientes</h3>
+                      <p className="text-sm text-gray-600">
+                        {data?.events?.length || 0} eventos de {data?.totalEvents || 0} totales
+                        {emailTypeFilter !== 'all' && ` - Filtrado por: ${emailTypeFilter}`}
+                      </p>
                     </div>
-                  )}
+                    
+                    {/* Controles de paginación */}
+                    {data?.totalPages > 1 && (
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          disabled={currentPage === 1}
+                          className="px-2 sm:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          ←
+                          <span className="hidden sm:inline ml-1">Anterior</span>
+                        </button>
+                        <span className="text-xs sm:text-sm text-gray-600">
+                          {currentPage}/{data.totalPages}
+                        </span>
+                        <button
+                          onClick={() => setCurrentPage(Math.min(data.totalPages, currentPage + 1))}
+                          disabled={currentPage === data.totalPages}
+                          className="px-2 sm:px-3 py-1 text-xs sm:text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        >
+                          <span className="hidden sm:inline mr-1">Siguiente</span>
+                          →
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="overflow-x-auto">
+                
+                {/* Vista móvil: Cards */}
+                <div className="block lg:hidden p-4 space-y-3">
+                  {data.events.slice(0, 10).map((event, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              event.event_type === 'opened' ? 'bg-blue-100 text-blue-800' :
+                              event.event_type === 'clicked' ? 'bg-green-100 text-green-800' :
+                              event.event_type === 'sent' ? 'bg-gray-100 text-gray-800' :
+                              event.event_type === 'bounced' ? 'bg-red-100 text-red-800' :
+                              event.event_type === 'unsubscribed' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              {event.event_type}
+                            </span>
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                              event.email_type === 'newsletter' ? 'bg-blue-50 text-blue-700' :
+                              event.email_type === 'motivation' ? 'bg-green-50 text-green-700' :
+                              event.email_type === 'achievement' ? 'bg-yellow-50 text-yellow-700' :
+                              'bg-gray-50 text-gray-700'
+                            }`}>
+                              {event.email_type || 'N/A'}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-900 font-medium truncate">
+                            {event.email_address || event.user_profiles?.email || 'N/A'}
+                          </p>
+                          <p className="text-xs text-gray-600 truncate mt-1">
+                            {event.subject || 'N/A'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(event.created_at).toLocaleString('es-ES')}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedEmail(event)
+                            setShowEmailModal(true)
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs transition-colors ml-2"
+                        >
+                          Ver
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Vista desktop: Tabla */}
+                <div className="hidden lg:block overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
