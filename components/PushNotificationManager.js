@@ -106,7 +106,7 @@ export default function PushNotificationManager() {
         setNotificationState(prev => ({
           ...prev,
           settings,
-          showPrompt: !settings.push_enabled && prev.permission === 'default'
+          showPrompt: !settings.push_enabled && prev.permission === 'default' && prev.supported
         }))
       }
     } catch (error) {
@@ -183,7 +183,7 @@ export default function PushNotificationManager() {
           }
 
           // Guardar configuración en base de datos
-          await saveNotificationSettings(subscription, permission)
+          const newSettings = await saveNotificationSettings(subscription, permission)
           
           // Mostrar notificación de bienvenida
           // Mostrar notificación de bienvenida y trackear el resultado
@@ -217,10 +217,12 @@ export default function PushNotificationManager() {
             })
           }
           
+          // Actualizar estado con nueva configuración
           setNotificationState(prev => ({
             ...prev,
             permission,
             subscription,
+            settings: newSettings, // Importante: actualizar settings inmediatamente
             showPrompt: false
           }))
 
@@ -246,10 +248,11 @@ export default function PushNotificationManager() {
         // 📊 TRACKING: Permisos denegados
         await notificationTracker.trackPermissionDenied(user)
         
-        await saveNotificationSettings(null, permission)
+        const newSettings = await saveNotificationSettings(null, permission)
         setNotificationState(prev => ({
           ...prev,
           permission,
+          settings: newSettings, // Actualizar settings también cuando se deniega
           showPrompt: false
         }))
       }
@@ -288,7 +291,7 @@ export default function PushNotificationManager() {
   }
 
   const saveNotificationSettings = async (subscription, permission) => {
-    if (!user || !supabase) return
+    if (!user || !supabase) return null
 
     const settingsData = {
       user_id: user.id,
@@ -308,6 +311,7 @@ export default function PushNotificationManager() {
 
     if (error) {
       console.error('Error saving notification settings:', error)
+      return null
     }
 
     // Inicializar smart scheduling
@@ -320,6 +324,9 @@ export default function PushNotificationManager() {
         streak_status: 0,
         risk_level: 'low'
       }, { onConflict: 'user_id' })
+    
+    // Retornar la configuración guardada para actualizar el estado
+    return settingsData
   }
 
   const showWelcomeNotification = async () => {
@@ -371,18 +378,22 @@ export default function PushNotificationManager() {
     try {
       // Actualizar configuración en BD
       if (user && supabase) {
-        await supabase
+        const { error } = await supabase
           .from('user_notification_settings')
           .upsert({
             user_id: user.id,
             push_enabled: false
           }, { onConflict: 'user_id' })
+        
+        if (error) {
+          console.error('Error disabling notifications:', error)
+        }
       }
 
       setNotificationState(prev => ({
         ...prev,
         settings: { ...prev.settings, push_enabled: false },
-        showPrompt: prev.permission === 'default' // Mostrar prompt si el permiso del navegador lo permite
+        showPrompt: prev.permission === 'default' && prev.supported // Mostrar prompt si el permiso del navegador lo permite y es compatible
       }))
     } catch (error) {
       console.error('Error disabling notifications:', error)
@@ -391,16 +402,28 @@ export default function PushNotificationManager() {
     }
   }
 
+  // Debug info
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔔 PushNotificationManager state:', {
+      hasUser: !!user,
+      supported: notificationState.supported,
+      permission: notificationState.permission,
+      hasSettings: !!notificationState.settings,
+      pushEnabled: notificationState.settings?.push_enabled,
+      showPrompt: notificationState.showPrompt
+    })
+  }
+
   // No mostrar nada si no hay usuario o no es compatible
   if (!user || !notificationState.supported) return null
 
   // Si ya tiene configuración y están activadas, no mostrar nada (solo en perfil)
-  if (notificationState.settings && notificationState.settings.push_enabled && !notificationState.showPrompt) {
+  if (notificationState.settings && notificationState.settings.push_enabled) {
     return null
   }
 
   // Si están desactivadas, mostrar solo botón de reactivación compacto
-  if (notificationState.settings && !notificationState.settings.push_enabled && !notificationState.showPrompt) {
+  if (notificationState.settings && !notificationState.settings.push_enabled && notificationState.permission !== 'default') {
     return (
       <div className="bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 rounded-lg p-3 mb-4">
         <div className="flex items-center justify-between">
@@ -423,7 +446,7 @@ export default function PushNotificationManager() {
   }
 
   // Mostrar prompt para activar notificaciones
-  if (notificationState.showPrompt) {
+  if (notificationState.showPrompt && (!notificationState.settings || !notificationState.settings.push_enabled)) {
     return (
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 mb-6 shadow-sm">
         <div className="flex items-start space-x-4">
