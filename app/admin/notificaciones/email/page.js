@@ -237,8 +237,8 @@ export default function EmailDetailPage() {
         }
         
         const dayEvents = dailyEventTracker.get(date)
-        // Para newsletters masivos, cada evento es único - usar timestamp + user_id
-        const uniqueKey = `${event.user_id}_${event.email_address}_${event.created_at}`
+        // Para usuarios únicos, solo usar user_id (sin timestamp para evitar falsos únicos)
+        const uniqueKey = event.user_id
         
         // Contar eventos brutos para debug
         if (!rawEventCounts.has(date)) {
@@ -331,32 +331,32 @@ export default function EmailDetailPage() {
           }
         })
 
-      // Calcular rates por tipo de email
+      // Calcular rates por tipo de email usando usuarios únicos
       Object.keys(stats.emailTypes).forEach(type => {
         const typeEvents = events.filter(e => e.email_type === type)
         const sent = typeEvents.filter(e => e.event_type === 'sent').length
-        const opened = typeEvents.filter(e => e.event_type === 'opened').length
-        const clicked = typeEvents.filter(e => e.event_type === 'clicked').length
+        const uniqueOpened = new Set(typeEvents.filter(e => e.event_type === 'opened').map(e => e.user_id)).size
+        const uniqueClicked = new Set(typeEvents.filter(e => e.event_type === 'clicked').map(e => e.user_id)).size
         
-        stats.openRates[type] = sent > 0 ? ((opened / sent) * 100).toFixed(2) : 0
-        stats.clickRates[type] = sent > 0 ? ((clicked / sent) * 100).toFixed(2) : 0
+        stats.openRates[type] = sent > 0 ? ((uniqueOpened / sent) * 100).toFixed(2) : 0
+        stats.clickRates[type] = sent > 0 ? ((uniqueClicked / sent) * 100).toFixed(2) : 0
       })
 
-      // Calcular rates generales
+      // Calcular rates generales usando usuarios únicos
       const totalSent = events.filter(e => e.event_type === 'sent').length
-      const totalOpened = events.filter(e => e.event_type === 'opened').length
-      const totalClicked = events.filter(e => e.event_type === 'clicked').length
+      const uniqueOpened = new Set(events.filter(e => e.event_type === 'opened').map(e => e.user_id)).size
+      const uniqueClicked = new Set(events.filter(e => e.event_type === 'clicked').map(e => e.user_id)).size
       const totalBounced = events.filter(e => e.event_type === 'bounced').length
       const totalUnsubscribed = events.filter(e => e.event_type === 'unsubscribed').length
 
       stats.overallStats = {
         sent: totalSent,
-        opened: totalOpened,
-        clicked: totalClicked,
+        opened: uniqueOpened,
+        clicked: uniqueClicked,
         bounced: totalBounced,
         unsubscribed: totalUnsubscribed,
-        openRate: totalSent > 0 ? ((totalOpened / totalSent) * 100).toFixed(2) : 0,
-        clickRate: totalSent > 0 ? ((totalClicked / totalSent) * 100).toFixed(2) : 0,
+        openRate: totalSent > 0 ? ((uniqueOpened / totalSent) * 100).toFixed(2) : 0,
+        clickRate: totalSent > 0 ? ((uniqueClicked / totalSent) * 100).toFixed(2) : 0,
         bounceRate: totalSent > 0 ? ((totalBounced / totalSent) * 100).toFixed(2) : 0,
         unsubscribeRate: totalSent > 0 ? ((totalUnsubscribed / totalSent) * 100).toFixed(2) : 0
       }
@@ -384,19 +384,22 @@ export default function EmailDetailPage() {
         })
         
         groupedCampaigns = Array.from(campaignGroups.values())
-          .map(group => ({
-            ...group,
-            total_sent: group.events.filter(e => e.event_type === 'sent').length,
-            total_opened: group.events.filter(e => e.event_type === 'opened').length,
-            total_clicked: group.events.filter(e => e.event_type === 'clicked').length,
-            total_bounced: group.events.filter(e => e.event_type === 'bounced').length,
-            open_rate: group.events.filter(e => e.event_type === 'sent').length > 0 
-              ? ((group.events.filter(e => e.event_type === 'opened').length / group.events.filter(e => e.event_type === 'sent').length) * 100).toFixed(2)
-              : 0,
-            click_rate: group.events.filter(e => e.event_type === 'sent').length > 0
-              ? ((group.events.filter(e => e.event_type === 'clicked').length / group.events.filter(e => e.event_type === 'sent').length) * 100).toFixed(2)
-              : 0
-          }))
+          .map(group => {
+            const totalSent = group.events.filter(e => e.event_type === 'sent').length
+            const uniqueOpened = new Set(group.events.filter(e => e.event_type === 'opened').map(e => e.user_id)).size
+            const uniqueClicked = new Set(group.events.filter(e => e.event_type === 'clicked').map(e => e.user_id)).size
+            const totalBounced = group.events.filter(e => e.event_type === 'bounced').length
+            
+            return {
+              ...group,
+              total_sent: totalSent,
+              total_opened: uniqueOpened,
+              total_clicked: uniqueClicked,
+              total_bounced: totalBounced,
+              open_rate: totalSent > 0 ? ((uniqueOpened / totalSent) * 100).toFixed(2) : 0,
+              click_rate: totalSent > 0 ? ((uniqueClicked / totalSent) * 100).toFixed(2) : 0
+            }
+          })
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       }
       
