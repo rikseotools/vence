@@ -13,6 +13,12 @@ export default function EmailDetailPage() {
   const [timeRange, setTimeRange] = useState('30')
   const [selectedEmail, setSelectedEmail] = useState(null)
   const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailTypeFilter, setEmailTypeFilter] = useState('all')
+  const [templateFilter, setTemplateFilter] = useState('all')
+  const [campaignFilter, setCampaignFilter] = useState('all')
+  const [viewMode, setViewMode] = useState('individual') // 'individual' | 'grouped'
+  const [eventsLimit, setEventsLimit] = useState(50)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     async function checkAdminAccess() {
@@ -46,21 +52,56 @@ export default function EmailDetailPage() {
     }
 
     checkAdminAccess()
-  }, [user, authLoading, supabase, timeRange])
+  }, [user, authLoading, supabase, timeRange, emailTypeFilter, templateFilter, campaignFilter, eventsLimit, currentPage])
+
+  // Función para reiniciar página cuando cambien filtros
+  const handleFilterChange = (filterType, value) => {
+    setCurrentPage(1) // Reiniciar a la primera página
+    
+    switch(filterType) {
+      case 'emailType':
+        setEmailTypeFilter(value)
+        break
+      case 'template':
+        setTemplateFilter(value)
+        break
+      case 'campaign':
+        setCampaignFilter(value)
+        break
+      case 'limit':
+        setEventsLimit(parseInt(value))
+        break
+    }
+  }
 
   const loadEmailData = async () => {
     try {
       const daysAgo = new Date(Date.now() - parseInt(timeRange) * 24 * 60 * 60 * 1000).toISOString()
 
-      // Obtener todos los eventos de email con detalles del usuario y preferencias
-      const { data: emailEvents, error: emailError } = await supabase
+      // Construir query con filtros
+      let query = supabase
         .from('email_events')
         .select(`
           *,
           user_profiles(email, created_at, plan_type)
         `)
         .gte('created_at', daysAgo)
+      
+      // Aplicar filtros
+      if (emailTypeFilter !== 'all') {
+        query = query.eq('email_type', emailTypeFilter)
+      }
+      if (templateFilter !== 'all') {
+        query = query.eq('template_id', templateFilter)
+      }
+      if (campaignFilter !== 'all') {
+        query = query.eq('campaign_id', campaignFilter)
+      }
+      
+      // Obtener todos los eventos de email con filtros aplicados
+      const { data: emailEvents, error: emailError } = await query
         .order('created_at', { ascending: false })
+        .limit(eventsLimit * 2) // Obtener más datos para paginación
 
       // Obtener preferencias de email de todos los usuarios únicos
       const uniqueUserIds = [...new Set((emailEvents || []).map(e => e.user_id))]
@@ -249,10 +290,60 @@ export default function EmailDetailPage() {
         unsubscribeRate: totalSent > 0 ? ((totalUnsubscribed / totalSent) * 100).toFixed(2) : 0
       }
 
+      // Procesar datos según el modo de vista
+      let processedEvents = events
+      let groupedCampaigns = null
+      
+      if (viewMode === 'grouped' && events.length > 0) {
+        // Agrupar por campaign_id para newsletters
+        const campaignGroups = new Map()
+        events.forEach(event => {
+          const campaignKey = event.campaign_id || `${event.email_type}_${event.template_id}`
+          if (!campaignGroups.has(campaignKey)) {
+            campaignGroups.set(campaignKey, {
+              campaign_id: event.campaign_id,
+              email_type: event.email_type,
+              template_id: event.template_id,
+              subject: event.subject,
+              created_at: event.created_at,
+              events: []
+            })
+          }
+          campaignGroups.get(campaignKey).events.push(event)
+        })
+        
+        groupedCampaigns = Array.from(campaignGroups.values())
+          .map(group => ({
+            ...group,
+            total_sent: group.events.filter(e => e.event_type === 'sent').length,
+            total_opened: group.events.filter(e => e.event_type === 'opened').length,
+            total_clicked: group.events.filter(e => e.event_type === 'clicked').length,
+            total_bounced: group.events.filter(e => e.event_type === 'bounced').length,
+            open_rate: group.events.filter(e => e.event_type === 'sent').length > 0 
+              ? ((group.events.filter(e => e.event_type === 'opened').length / group.events.filter(e => e.event_type === 'sent').length) * 100).toFixed(2)
+              : 0,
+            click_rate: group.events.filter(e => e.event_type === 'sent').length > 0
+              ? ((group.events.filter(e => e.event_type === 'clicked').length / group.events.filter(e => e.event_type === 'sent').length) * 100).toFixed(2)
+              : 0
+          }))
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      }
+      
+      // Paginación para vista individual
+      const startIndex = (currentPage - 1) * eventsLimit
+      const endIndex = startIndex + eventsLimit
+      const paginatedEvents = processedEvents.slice(startIndex, endIndex)
+      
       setData({
-        events: events.slice(0, 50), // Solo los últimos 50 para la tabla
+        events: paginatedEvents,
         stats,
-        allEvents: events
+        allEvents: events,
+        groupedCampaigns,
+        totalEvents: events.length,
+        totalPages: Math.ceil(events.length / eventsLimit),
+        availableEmailTypes: [...new Set(events.map(e => e.email_type).filter(Boolean))],
+        availableTemplates: [...new Set(events.map(e => e.template_id).filter(Boolean))],
+        availableCampaigns: [...new Set(events.map(e => e.campaign_id).filter(Boolean))]
       })
 
     } catch (error) {
@@ -309,24 +400,118 @@ export default function EmailDetailPage() {
                 Estadísticas completas de emails, open rates, click rates y engagement
               </p>
             </div>
-            <div className="flex items-center space-x-4">
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-              >
-                <option value="7">Últimos 7 días</option>
-                <option value="30">Últimos 30 días</option>
-                <option value="90">Últimos 90 días</option>
-                <option value="365">Último año</option>
-              </select>
-              <button
-                onClick={loadEmailData}
-                className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center space-x-2"
-              >
-                <span>🔄</span>
-                <span>Actualizar</span>
-              </button>
+            <div className="flex flex-col lg:flex-row lg:items-center space-y-4 lg:space-y-0 lg:space-x-4">
+              {/* Filtros principales */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <select
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value="7">Últimos 7 días</option>
+                  <option value="30">Últimos 30 días</option>
+                  <option value="90">Últimos 90 días</option>
+                  <option value="365">Último año</option>
+                </select>
+                
+                <select
+                  value={emailTypeFilter}
+                  onChange={(e) => handleFilterChange('emailType', e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value="all">Todos los tipos</option>
+                  {data?.availableEmailTypes?.map(type => (
+                    <option key={type} value={type}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                
+                <select
+                  value={templateFilter}
+                  onChange={(e) => handleFilterChange('template', e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value="all">Todas las plantillas</option>
+                  {data?.availableTemplates?.map(template => (
+                    <option key={template} value={template}>
+                      {template}
+                    </option>
+                  ))}
+                </select>
+                
+                <select
+                  value={campaignFilter}
+                  onChange={(e) => handleFilterChange('campaign', e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value="all">Todas las campañas</option>
+                  {data?.availableCampaigns?.map(campaign => (
+                    <option key={campaign} value={campaign}>
+                      {campaign}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Controles de vista y límites */}
+              <div className="flex items-center space-x-3">
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('individual')}
+                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                      viewMode === 'individual' 
+                        ? 'bg-white text-purple-600 shadow-sm' 
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Individual
+                  </button>
+                  <button
+                    onClick={() => setViewMode('grouped')}
+                    className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                      viewMode === 'grouped' 
+                        ? 'bg-white text-purple-600 shadow-sm' 
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    Agrupado
+                  </button>
+                </div>
+                
+                <select
+                  value={eventsLimit}
+                  onChange={(e) => handleFilterChange('limit', e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+                >
+                  <option value={50}>50 eventos</option>
+                  <option value={100}>100 eventos</option>
+                  <option value={250}>250 eventos</option>
+                  <option value={500}>500 eventos</option>
+                  <option value={1000}>1000 eventos</option>
+                </select>
+                
+                <button
+                  onClick={() => {
+                    setEmailTypeFilter('all')
+                    setTemplateFilter('all')
+                    setCampaignFilter('all')
+                    setCurrentPage(1)
+                  }}
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2"
+                >
+                  <span>🧹</span>
+                  <span>Limpiar</span>
+                </button>
+                
+                <button
+                  onClick={loadEmailData}
+                  className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition-colors flex items-center space-x-2"
+                >
+                  <span>🔄</span>
+                  <span>Actualizar</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -635,85 +820,204 @@ export default function EmailDetailPage() {
               </div>
             </div>
 
-            {/* Eventos Recientes */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800">🕐 Eventos Recientes</h3>
-                <p className="text-sm text-gray-600">Últimos 50 eventos de email</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Template</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asunto</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {data.events.map((event, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {new Date(event.created_at).toLocaleString('es-ES')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {event.email_address || event.user_profiles?.email || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            event.event_type === 'opened' ? 'bg-blue-100 text-blue-800' :
-                            event.event_type === 'clicked' ? 'bg-green-100 text-green-800' :
-                            event.event_type === 'sent' ? 'bg-gray-100 text-gray-800' :
-                            event.event_type === 'bounced' ? 'bg-red-100 text-red-800' :
-                            event.event_type === 'unsubscribed' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-purple-100 text-purple-800'
-                          }`}>
-                            {event.event_type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
-                            event.email_type === 'motivation' ? 'bg-blue-50 text-blue-700' :
-                            event.email_type === 'achievement' ? 'bg-yellow-50 text-yellow-700' :
-                            'bg-gray-50 text-gray-700'
-                          }`}>
-                            {event.email_type || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
-                            event.template_id === 'comeback' ? 'bg-orange-50 text-orange-700' :
-                            event.template_id === 'streak_risk' ? 'bg-red-50 text-red-700' :
-                            event.template_id === 'medal_congratulation' ? 'bg-yellow-50 text-yellow-700' :
-                            'bg-gray-50 text-gray-700'
-                          }`}>
-                            {event.template_id || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                          {event.subject || 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => {
-                              setSelectedEmail(event)
-                              setShowEmailModal(true)
-                            }}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs transition-colors"
-                          >
-                            Ver Email
-                          </button>
-                        </td>
+            {/* Vista de Campañas Agrupadas */}
+            {viewMode === 'grouped' && data?.groupedCampaigns && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-800">📧 Campañas de Email</h3>
+                  <p className="text-sm text-gray-600">{data.groupedCampaigns.length} campañas encontradas</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaña</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plantilla</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asunto</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enviados</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Abiertos</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clicks</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Open Rate</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CTR</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {data.groupedCampaigns.map((campaign, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {campaign.campaign_id || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                              campaign.email_type === 'newsletter' ? 'bg-blue-50 text-blue-700' :
+                              campaign.email_type === 'motivation' ? 'bg-green-50 text-green-700' :
+                              campaign.email_type === 'achievement' ? 'bg-yellow-50 text-yellow-700' :
+                              'bg-gray-50 text-gray-700'
+                            }`}>
+                              {campaign.email_type || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {campaign.template_id || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                            {campaign.subject || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <span className="font-semibold">{campaign.total_sent}</span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
+                            {campaign.total_opened}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                            {campaign.total_clicked}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={`font-semibold ${
+                              parseFloat(campaign.open_rate) > 20 ? 'text-green-600' :
+                              parseFloat(campaign.open_rate) > 10 ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`}>
+                              {campaign.open_rate}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <span className={`font-semibold ${
+                              parseFloat(campaign.click_rate) > 5 ? 'text-green-600' :
+                              parseFloat(campaign.click_rate) > 2 ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`}>
+                              {campaign.click_rate}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {new Date(campaign.created_at).toLocaleDateString('es-ES')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Eventos Recientes */}
+            {viewMode === 'individual' && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800">🕐 Eventos Recientes</h3>
+                    <p className="text-sm text-gray-600">
+                      {data?.events?.length || 0} eventos de {data?.totalEvents || 0} totales
+                      {emailTypeFilter !== 'all' && ` - Filtrado por: ${emailTypeFilter}`}
+                    </p>
+                  </div>
+                  
+                  {/* Controles de paginación */}
+                  {data?.totalPages > 1 && (
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      >
+                        Anterior
+                      </button>
+                      <span className="text-sm text-gray-600">
+                        Página {currentPage} de {data.totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(Math.min(data.totalPages, currentPage + 1))}
+                        disabled={currentPage === data.totalPages}
+                        className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      >
+                        Siguiente
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiempo</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Evento</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Template</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Campaña</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asunto</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {data.events.map((event, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {new Date(event.created_at).toLocaleString('es-ES')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {event.email_address || event.user_profiles?.email || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              event.event_type === 'opened' ? 'bg-blue-100 text-blue-800' :
+                              event.event_type === 'clicked' ? 'bg-green-100 text-green-800' :
+                              event.event_type === 'sent' ? 'bg-gray-100 text-gray-800' :
+                              event.event_type === 'bounced' ? 'bg-red-100 text-red-800' :
+                              event.event_type === 'unsubscribed' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-purple-100 text-purple-800'
+                            }`}>
+                              {event.event_type}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                              event.email_type === 'newsletter' ? 'bg-blue-50 text-blue-700' :
+                              event.email_type === 'motivation' ? 'bg-green-50 text-green-700' :
+                              event.email_type === 'achievement' ? 'bg-yellow-50 text-yellow-700' :
+                              'bg-gray-50 text-gray-700'
+                            }`}>
+                              {event.email_type || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                              event.template_id === 'newsletter' ? 'bg-blue-50 text-blue-700' :
+                              event.template_id === 'comeback' ? 'bg-orange-50 text-orange-700' :
+                              event.template_id === 'streak_risk' ? 'bg-red-50 text-red-700' :
+                              event.template_id === 'medal_congratulation' ? 'bg-yellow-50 text-yellow-700' :
+                              'bg-gray-50 text-gray-700'
+                            }`}>
+                              {event.template_id || 'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                            {event.campaign_id || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                            {event.subject || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => {
+                                setSelectedEmail(event)
+                                setShowEmailModal(true)
+                              }}
+                              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs transition-colors"
+                            >
+                              Ver Email
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
           </div>
         )}
