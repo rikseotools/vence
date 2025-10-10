@@ -22,19 +22,17 @@ export default function PushDetailPage() {
       }
 
       try {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('plan_type, email')
-          .eq('id', user.id)
-          .single()
-
-        const adminAccess = profile?.plan_type === 'admin' || 
-                           profile?.email === 'ilovetestpro@gmail.com' ||
-                           profile?.email === 'rikseotools@gmail.com'
+        // 🔧 FIX: Use same admin verification as Header  
+        const { data: isAdminResult, error } = await supabase.rpc('is_current_user_admin')
         
-        setIsAdmin(adminAccess)
+        if (error) {
+          console.error('Error verificando admin status:', error)
+          setIsAdmin(false)
+        } else {
+          setIsAdmin(isAdminResult === true)
+        }
         
-        if (adminAccess) {
+        if (isAdminResult === true) {
           loadPushData()
         }
       } catch (error) {
