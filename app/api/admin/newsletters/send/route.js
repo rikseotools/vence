@@ -25,8 +25,10 @@ export async function POST(request) {
       selectedUserIds, // Array de IDs de usuarios específicos
       fromName = 'Vence',
       fromEmail = 'info@vence.es',
-      testMode = false
+      testMode = false,
+      templateId = null // ID de la plantilla específica
     } = body
+    
 
     // Validar datos requeridos
     if (!subject || !htmlContent) {
@@ -149,7 +151,7 @@ export async function POST(request) {
 
         // Añadir tracking pixel para detectar aperturas (solo en modo real)
         if (!testMode) {
-          const trackingPixel = `<img src="https://www.vence.es/api/email-tracking/open?user_id=${user.id}&email_id=newsletter_${Date.now()}&type=newsletter" width="1" height="1" style="display:none;" alt="">`
+          const trackingPixel = `<img src="https://www.vence.es/api/email-tracking/open?user_id=${user.id}&email_id=newsletter_${Date.now()}&type=newsletter&template_id=${templateId || 'newsletter'}" width="1" height="1" style="display:none;" alt="">`
           personalizedHtml = personalizedHtml.replace('</body>', `${trackingPixel}</body>`)
         }
 
@@ -158,7 +160,7 @@ export async function POST(request) {
           // Reemplazar enlaces que apuntan a vence.es con tracking
           personalizedHtml = personalizedHtml.replace(
             /href="(https?:\/\/(?:www\.)?vence\.es[^"]*)"/g,
-            `href="https://www.vence.es/api/email-tracking/click?user_id=${user.id}&type=newsletter&action=newsletter_link&redirect=$1"`
+            `href="https://www.vence.es/api/email-tracking/click?user_id=${user.id}&type=newsletter&action=newsletter_link&template_id=${templateId || 'newsletter'}&redirect=$1"`
           )
         }
 
@@ -218,11 +220,11 @@ export async function POST(request) {
                 const { data: eventData, error: eventError } = await supabase.from('email_events').insert({
                   user_id: user.id,
                   event_type: 'sent',
-                  email_type: 'newsletter',
+                  email_type: 'newsletter', // Siempre usar 'newsletter' para este tipo de envío
                   email_address: user.email,
                   subject: subject,
-                  template_id: 'newsletter',
-                  campaign_id: `newsletter_${Date.now()}`,
+                  template_id: templateId || 'newsletter',
+                  campaign_id: `${templateId || 'newsletter'}_${Date.now()}`,
                   email_content_preview: htmlContent.substring(0, 200)
                 })
                 

@@ -22,6 +22,10 @@ export default function NewslettersPage() {
   const [testMode, setTestMode] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   
+  // Email statistics state
+  const [templateStats, setTemplateStats] = useState({})
+  const [loadingStats, setLoadingStats] = useState(false)
+  
   // User selection state
   const [selectionMode, setSelectionMode] = useState('audience') // 'audience' | 'individual'
   const [users, setUsers] = useState([])
@@ -43,7 +47,22 @@ export default function NewslettersPage() {
   // Cargar estadísticas de audiencia al montar
   useEffect(() => {
     loadAudienceStats()
+    loadTemplateStats()
   }, [])
+
+  // Debug cuando cambian las template stats
+  useEffect(() => {
+    if (Object.keys(templateStats).length > 0) {
+      console.log('📊 Template stats cargadas:', Object.keys(templateStats).length)
+    }
+  }, [templateStats])
+
+  // Cargar usuarios cuando cambia el modo de selección
+  useEffect(() => {
+    if (selectionMode === 'individual') {
+      loadUsers()
+    }
+  }, [selectionMode, selectedAudiences, userSearch, userPage])
 
   // Cargar plantillas guardadas desde localStorage
   useEffect(() => {
@@ -57,20 +76,6 @@ export default function NewslettersPage() {
     }
   }, [])
 
-  // Cargar usuarios cuando cambie el modo o la búsqueda
-  useEffect(() => {
-    if (selectionMode === 'individual') {
-      loadUsers()
-    }
-  }, [selectionMode, userSearch, userPage])
-
-  // Cargar usuarios individuales cuando se seleccione una audiencia
-  useEffect(() => {
-    if (selectionMode === 'individual' && selectedAudiences.length === 1) {
-      loadUsers()
-    }
-  }, [selectedAudiences, selectionMode])
-
   const loadAudienceStats = async () => {
     try {
       const response = await fetch('/api/admin/newsletters/audience')
@@ -81,6 +86,28 @@ export default function NewslettersPage() {
     } catch (error) {
       console.error('Error cargando estadísticas:', error)
     }
+  }
+
+  const loadTemplateStats = async () => {
+    setLoadingStats(true)
+    try {
+      const response = await fetch('/api/admin/newsletters/template-stats')
+      const data = await response.json()
+      
+      if (data.success) {
+        setTemplateStats(data.templateStats)
+      } else {
+        console.error('❌ Error cargando template stats:', data.error)
+      }
+    } catch (error) {
+      console.error('❌ Error cargando estadísticas de plantillas:', error)
+    }
+    setLoadingStats(false)
+  }
+
+  // Helper para obtener estadísticas de una plantilla específica
+  const getTemplateStats = (templateId) => {
+    return templateStats[templateId] || null
   }
 
   const loadUsers = async () => {
@@ -103,10 +130,10 @@ export default function NewslettersPage() {
         setUsers(data.users)
         setUserPagination(data.pagination)
       } else {
-        console.error('Error cargando usuarios:', data.error)
+        console.error('❌ Error cargando usuarios:', data.error)
       }
     } catch (error) {
-      console.error('Error cargando usuarios:', error)
+      console.error('❌ Error cargando usuarios:', error)
     }
     setLoadingUsers(false)
   }
@@ -343,6 +370,7 @@ export default function NewslettersPage() {
     setLoading(true)
     setResult(null)
     
+    
     try {
       if (selectionMode === 'individual') {
         // Envío a usuarios específicos
@@ -356,7 +384,8 @@ export default function NewslettersPage() {
             htmlContent,
             selectedUserIds: Array.from(selectedUsers),
             audienceType: 'custom',
-            testMode
+            testMode,
+            templateId: selectedTemplate // Añadir el ID de la plantilla seleccionada
           })
         })
 
@@ -380,7 +409,8 @@ export default function NewslettersPage() {
               subject,
               htmlContent,
               audienceType,
-              testMode
+              testMode,
+              templateId: selectedTemplate // Añadir el ID de la plantilla seleccionada
             })
           })
 
@@ -1063,7 +1093,36 @@ export default function NewslettersPage() {
 
               {/* Plantillas rápidas predeterminadas */}
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Plantillas Rápidas</h4>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-sm font-medium text-gray-700">Plantillas Rápidas</h4>
+                  <button
+                    onClick={loadTemplateStats}
+                    disabled={loadingStats}
+                    className="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                  >
+                    {loadingStats ? '⏳' : '🔄'} Stats
+                  </button>
+                </div>
+                
+                {/* Emails activos en el sistema */}
+                {Object.keys(templateStats).length > 0 && (
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <h5 className="text-sm font-medium text-green-800 mb-2">📊 Emails enviados en el sistema (datos reales):</h5>
+                    {Object.values(templateStats)
+                      .filter(stats => stats.totalSent > 0)
+                      .sort((a, b) => b.totalSent - a.totalSent)
+                      .map(stats => (
+                        <div key={stats.templateId} className="text-xs text-green-700 mb-1">
+                          <strong>{stats.templateId}</strong>: {stats.totalSent} enviados, {stats.openRate.toFixed(1)}% open rate
+                          {stats.lastSent && ` (último: ${new Date(stats.lastSent).toLocaleDateString('es-ES')})`}
+                        </div>
+                      ))
+                    }
+                    {Object.values(templateStats).filter(stats => stats.totalSent > 0).length === 0 && (
+                      <div className="text-xs text-green-700">No hay emails enviados en los últimos 90 días</div>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-2">
                   {/* Template 1: Rebranding */}
                   <div 
@@ -1129,6 +1188,41 @@ export default function NewslettersPage() {
                         <p className="text-xs text-gray-600 truncate">
                           ILoveTest es ahora Vence - ¡Misma calidad, nueva marca!
                         </p>
+                        
+                        {/* Estadísticas del template */}
+                        {(() => {
+                          const stats = getTemplateStats('rebranding')
+                          return stats ? (
+                            <div className="mt-3 grid grid-cols-4 gap-2">
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-blue-600">{stats.totalSent}</div>
+                                <div className="text-xs text-gray-500">📧 Enviados</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-green-600">{stats.openRate.toFixed(1)}%</div>
+                                <div className="text-xs text-gray-500">📖 Aperturas</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-purple-600">{stats.clickRate.toFixed(1)}%</div>
+                                <div className="text-xs text-gray-500">👆 Clicks</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-orange-600">
+                                  {stats.lastSent ? new Date(stats.lastSent).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'N/A'}
+                                </div>
+                                <div className="text-xs text-gray-500">📅 Último</div>
+                              </div>
+                            </div>
+                          ) : loadingStats ? (
+                            <div className="mt-3 text-center">
+                              <div className="text-xs text-gray-500">⏳ Cargando stats...</div>
+                            </div>
+                          ) : (
+                            <div className="mt-3 text-center">
+                              <div className="text-xs text-gray-500">📭 Sin envíos aún</div>
+                            </div>
+                          )
+                        })()}
                       </div>
                     </div>
                     
@@ -1399,6 +1493,41 @@ export default function NewslettersPage() {
                         <p className="text-xs text-gray-600 truncate">
                           Nueva funcionalidad: Filtrado por Leyes
                         </p>
+                        
+                        {/* Estadísticas del template */}
+                        {(() => {
+                          const stats = getTemplateStats('filtrado_leyes')
+                          return stats ? (
+                            <div className="mt-3 grid grid-cols-4 gap-2">
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-blue-600">{stats.totalSent}</div>
+                                <div className="text-xs text-gray-500">📧 Enviados</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-green-600">{stats.openRate.toFixed(1)}%</div>
+                                <div className="text-xs text-gray-500">📖 Aperturas</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-purple-600">{stats.clickRate.toFixed(1)}%</div>
+                                <div className="text-xs text-gray-500">👆 Clicks</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-orange-600">
+                                  {stats.lastSent ? new Date(stats.lastSent).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'N/A'}
+                                </div>
+                                <div className="text-xs text-gray-500">📅 Último</div>
+                              </div>
+                            </div>
+                          ) : loadingStats ? (
+                            <div className="mt-3 text-center">
+                              <div className="text-xs text-gray-500">⏳ Cargando stats...</div>
+                            </div>
+                          ) : (
+                            <div className="mt-3 text-center">
+                              <div className="text-xs text-gray-500">📭 Sin envíos aún</div>
+                            </div>
+                          )
+                        })()}
                       </div>
                     </div>
                     
@@ -1806,6 +1935,41 @@ export default function NewslettersPage() {
                         <p className="text-xs text-gray-600 truncate">
                           Detección automática + acceso inmediato al BOE
                         </p>
+                        
+                        {/* Estadísticas del template */}
+                        {(() => {
+                          const stats = getTemplateStats('modal_articulos')
+                          return stats ? (
+                            <div className="mt-3 grid grid-cols-4 gap-2">
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-blue-600">{stats.totalSent}</div>
+                                <div className="text-xs text-gray-500">📧 Enviados</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-green-600">{stats.uniqueOpeners} ({stats.openRate.toFixed(1)}%)</div>
+                                <div className="text-xs text-gray-500">📖 Aperturas</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-purple-600">{stats.uniqueClickers} ({stats.clickRate.toFixed(1)}%)</div>
+                                <div className="text-xs text-gray-500">👆 Clicks</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-orange-600">
+                                  {stats.lastSent ? new Date(stats.lastSent).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'N/A'}
+                                </div>
+                                <div className="text-xs text-gray-500">📅 Último</div>
+                              </div>
+                            </div>
+                          ) : loadingStats ? (
+                            <div className="mt-3 text-center">
+                              <div className="text-xs text-gray-500">⏳ Cargando stats...</div>
+                            </div>
+                          ) : (
+                            <div className="mt-3 text-center">
+                              <div className="text-xs text-gray-500">📭 Sin envíos aún</div>
+                            </div>
+                          )
+                        })()}
                       </div>
                     </div>
                     
@@ -2045,6 +2209,7 @@ export default function NewslettersPage() {
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
         </div>

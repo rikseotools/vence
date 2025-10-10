@@ -13,8 +13,9 @@ export async function GET(request) {
     const emailId = searchParams.get('email_id')
     const userId = searchParams.get('user_id')
     const type = searchParams.get('type') || 'motivation'
+    const templateId = searchParams.get('template_id')
     
-    console.log('📧 Email abierto:', { emailId, userId, type })
+    console.log('📧 Email abierto:', { emailId, userId, type, templateId })
 
     // Registrar evento de apertura con campos requeridos
     if (userId) {
@@ -28,10 +29,10 @@ export async function GET(request) {
       await supabase.from('email_events').insert({
         user_id: userId,
         event_type: 'opened',
-        email_type: type,
+        email_type: 'newsletter',
         email_address: userProfile?.email || 'unknown@tracking.vence.es',
         subject: type === 'newsletter' ? 'Newsletter Opened' : 'Email Tracking - Opened',
-        template_id: type === 'newsletter' ? 'newsletter' : 'tracking_open',
+        template_id: templateId || 'newsletter',
         email_content_preview: `${type} email opened - tracking event`,
         created_at: new Date().toISOString()
       })

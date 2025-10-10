@@ -14,9 +14,10 @@ export async function GET(request) {
     const userId = searchParams.get('user_id')
     const action = searchParams.get('action') || 'unknown'
     const type = searchParams.get('type') || 'motivation'
+    const templateId = searchParams.get('template_id')
     const redirect = searchParams.get('redirect')
     
-    console.log('🖱️ Email click:', { emailId, userId, action, type, redirect })
+    console.log('🖱️ Email click:', { emailId, userId, action, type, templateId, redirect })
 
     // Registrar evento de click con campos requeridos
     if (userId) {
@@ -30,10 +31,10 @@ export async function GET(request) {
       await supabase.from('email_events').insert({
         user_id: userId,
         event_type: 'clicked',
-        email_type: type,
+        email_type: 'newsletter',
         email_address: userProfile?.email || 'unknown@tracking.vence.es',
         subject: type === 'newsletter' ? 'Newsletter Link Clicked' : 'Email Tracking - Clicked',
-        template_id: type === 'newsletter' ? 'newsletter' : 'tracking_click',
+        template_id: templateId || 'newsletter',
         email_content_preview: `${type} email link clicked: ${action} -> ${redirect}`,
         created_at: new Date().toISOString()
       })
