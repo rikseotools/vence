@@ -1318,7 +1318,7 @@ export function useIntelligentNotifications() {
           const cooldownDays = isUrgent ? 3 : 2
           const isInCooldown = daysSinceLastRead < cooldownDays
           
-          const notificationId = `${baseNotificationId}-${Math.floor(daysSinceLastTest / cooldownDays)}`
+          const notificationId = baseNotificationId // Usar ID base consistente
           const isAlreadyRead = !!readNotifications[notificationId]
           
           if (!dismissedNotifications.has(notificationId) && !isAlreadyRead && !isInCooldown) {
@@ -1630,10 +1630,10 @@ export function useIntelligentNotifications() {
         }
         
         // ✅ FIX: Para notificaciones de racha rota/inactividad, guardar cooldown
-        if (notificationId.includes('reminder-streak-broken') || notificationId.includes('reminder-inactive')) {
-          const baseKey = notificationId.includes('streak-broken') ? 'reminder-streak-broken-last-read' : 'reminder-inactive-last-read'
-          readNotifications[baseKey] = new Date().toISOString()
-          console.log(`💾 Cooldown iniciado para ${baseKey}`)
+        if (notificationId === 'reminder-streak-broken' || notificationId === 'reminder-inactive') {
+          const cooldownKey = `${notificationId}-last-read`
+          readNotifications[cooldownKey] = new Date().toISOString()
+          console.log(`💾 Cooldown iniciado para ${cooldownKey}`)
         }
         
         // Guardar en localStorage

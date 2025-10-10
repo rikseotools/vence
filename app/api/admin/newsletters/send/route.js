@@ -151,6 +151,7 @@ export async function POST(request) {
 
         // Añadir tracking pixel para detectar aperturas (solo en modo real)
         if (!testMode) {
+          console.log(`🔍 Generando tracking para ${user.email} con templateId:`, templateId)
           const trackingPixel = `<img src="https://www.vence.es/api/email-tracking/open?user_id=${user.id}&email_id=newsletter_${Date.now()}&type=newsletter&template_id=${templateId || 'newsletter'}" width="1" height="1" style="display:none;" alt="">`
           personalizedHtml = personalizedHtml.replace('</body>', `${trackingPixel}</body>`)
         }
