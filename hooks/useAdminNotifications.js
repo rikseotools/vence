@@ -15,9 +15,9 @@ export function useAdminNotifications() {
     if (supabase) {
       loadPendingCounts()
       
-      // Recargar más frecuentemente si hay elementos pendientes
+      // Recargar menos frecuentemente para evitar problemas de conexión
       const hasAnyPending = notifications.feedback > 0 || notifications.impugnaciones > 0
-      const intervalTime = hasAnyPending ? 15000 : 30000 // 15s si hay pendientes, 30s si no
+      const intervalTime = hasAnyPending ? 30000 : 60000 // 30s si hay pendientes, 60s si no
       
       const interval = setInterval(loadPendingCounts, intervalTime)
       return () => clearInterval(interval)
@@ -25,38 +25,64 @@ export function useAdminNotifications() {
   }, [supabase, notifications.feedback, notifications.impugnaciones])
 
   const loadPendingCounts = async () => {
+    if (!supabase) {
+      console.warn('⚠️ Supabase client no disponible')
+      return
+    }
+
     try {
       console.log('🔔 Cargando notificaciones admin...')
 
-      // Contar feedback pendiente - simplificado
-      const { count: pendingFeedback, error: feedbackError } = await supabase
-        .from('user_feedback')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
+      // Usar Promise.allSettled para manejar errores independientemente
+      const results = await Promise.allSettled([
+        // Contar feedback pendiente con timeout
+        Promise.race([
+          supabase
+            .from('user_feedback')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 10000)
+          )
+        ]),
+        // Contar impugnaciones pendientes con timeout
+        Promise.race([
+          supabase
+            .from('question_disputes')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 10000)
+          )
+        ])
+      ])
 
-      if (feedbackError) {
-        console.warn('Error cargando feedback pendiente:', feedbackError)
+      const [feedbackResult, impugnacionesResult] = results
+
+      let pendingFeedback = 0
+      let pendingImpugnaciones = 0
+
+      if (feedbackResult.status === 'fulfilled') {
+        pendingFeedback = feedbackResult.value.count || 0
+      } else {
+        console.warn('Error cargando feedback pendiente:', feedbackResult.reason?.message)
       }
 
-      // Contar impugnaciones pendientes
-      const { count: pendingImpugnaciones, error: impugnacionesError } = await supabase
-        .from('question_disputes')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
-
-      if (impugnacionesError) {
-        console.warn('Error cargando impugnaciones pendientes:', impugnacionesError)
+      if (impugnacionesResult.status === 'fulfilled') {
+        pendingImpugnaciones = impugnacionesResult.value.count || 0
+      } else {
+        console.warn('Error cargando impugnaciones pendientes:', impugnacionesResult.reason?.message)
       }
 
       setNotifications({
-        feedback: pendingFeedback || 0,
-        impugnaciones: pendingImpugnaciones || 0,
+        feedback: pendingFeedback,
+        impugnaciones: pendingImpugnaciones,
         loading: false
       })
 
       console.log('✅ Notificaciones actualizadas:', {
-        feedback: pendingFeedback || 0,
-        impugnaciones: pendingImpugnaciones || 0
+        feedback: pendingFeedback,
+        impugnaciones: pendingImpugnaciones
       })
 
     } catch (error) {

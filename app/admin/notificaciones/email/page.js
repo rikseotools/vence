@@ -157,8 +157,15 @@ export default function EmailDetailPage() {
         console.error('❌ Error obteniendo conteo RPC:', rpcError)
       }
 
+      // Agregar debug para detectar problemas
+      console.log(`📊 Procesando ${events.length} eventos de email`)
+      
+      // Detectar eventos duplicados potenciales
+      const eventsByUserAndType = new Map()
+      const duplicateDetection = new Map()
+      
       // Procesar cada evento
-      events.forEach(event => {
+      events.forEach((event, index) => {
         // Tipos de evento
         stats.eventTypes[event.event_type] = (stats.eventTypes[event.event_type] || 0) + 1
 
@@ -232,13 +239,48 @@ export default function EmailDetailPage() {
         const hour = new Date(event.created_at).getHours()
         stats.hourlyDistribution[hour]++
 
-        // Tendencias diarias
+        // Tendencias diarias - mapear correctamente los tipos de eventos
         const date = new Date(event.created_at).toISOString().split('T')[0]
         if (!stats.dailyTrends[date]) {
           stats.dailyTrends[date] = { sent: 0, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0 }
         }
-        if (stats.dailyTrends[date][event.event_type] !== undefined) {
-          stats.dailyTrends[date][event.event_type]++
+        
+        // Mapear event_type de BD a propiedades del objeto
+        switch(event.event_type) {
+          case 'sent':
+          case 'delivered': // Ambos cuentan como enviados
+            stats.dailyTrends[date].sent++
+            break
+          case 'opened':
+            stats.dailyTrends[date].opened++
+            break
+          case 'clicked':
+            stats.dailyTrends[date].clicked++
+            break
+          case 'bounced':
+            stats.dailyTrends[date].bounced++
+            break
+          case 'unsubscribed':
+            stats.dailyTrends[date].unsubscribed++
+            break
+          case 'complained':
+            // Los complaints se pueden contar como bounced o crear categoría separada
+            stats.dailyTrends[date].bounced++
+            break
+          default:
+            console.warn(`⚠️ Tipo de evento desconocido: ${event.event_type}`)
+        }
+        
+        // Debug: detectar eventos sospechosos
+        const eventKey = `${event.user_id}_${event.email_address}_${event.event_type}_${date}`
+        if (duplicateDetection.has(eventKey)) {
+          console.warn(`⚠️ Posible evento duplicado detectado:`, {
+            eventKey,
+            current: event,
+            previous: duplicateDetection.get(eventKey)
+          })
+        } else {
+          duplicateDetection.set(eventKey, event)
         }
 
         // Dominios de email
@@ -259,6 +301,21 @@ export default function EmailDetailPage() {
           }
         }
       })
+      
+      // Debug: mostrar resumen de tendencias diarias
+      console.log('📊 Resumen de tendencias diarias procesadas:')
+      Object.entries(stats.dailyTrends)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .slice(0, 5)
+        .forEach(([date, dayStats]) => {
+          const openRate = dayStats.sent > 0 ? ((dayStats.opened / dayStats.sent) * 100).toFixed(1) : 0
+          const clickRate = dayStats.sent > 0 ? ((dayStats.clicked / dayStats.sent) * 100).toFixed(1) : 0
+          console.log(`  ${date}: ${dayStats.sent} enviados, ${dayStats.opened} abiertos (${openRate}%), ${dayStats.clicked} clicks (${clickRate}%)`)
+          
+          if (dayStats.opened > dayStats.sent || dayStats.clicked > dayStats.sent) {
+            console.error(`  ❌ ¡DATOS INCORRECTOS! ${date}: más abiertos/clicks que enviados`)
+          }
+        })
 
       // Calcular rates por tipo de email
       Object.keys(stats.emailTypes).forEach(type => {
