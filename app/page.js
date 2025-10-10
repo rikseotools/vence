@@ -72,7 +72,7 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
@@ -108,12 +108,12 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-12 max-w-5xl">
         
         {/* Oposición Destacada */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 mb-8">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-blue-900 mb-4">
+            <h2 className="text-3xl font-bold text-blue-900 dark:text-blue-300 mb-4">
               🎯 Oposición Destacada
             </h2>
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
               Auxiliar Administrativo del Estado
             </h3>
             <div className="flex flex-wrap justify-center gap-4 text-lg font-semibold mb-6">
@@ -127,7 +127,7 @@ export default function HomePage() {
                 💰 18.000€+/año
               </span>
             </div>
-            <p className="text-gray-600 text-lg mb-6">
+            <p className="text-gray-600 dark:text-gray-300 text-lg mb-6">
               La oposición más accesible con gran número de plazas convocadas
             </p>
             <div className="flex flex-wrap justify-center gap-4">
@@ -148,8 +148,8 @@ export default function HomePage() {
         </div>
 
         {/* Características de la plataforma */}
-        <section className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          <h2 className="text-2xl font-bold text-blue-900 mb-6 text-center">
+        <section className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-bold text-blue-900 dark:text-blue-300 mb-6 text-center">
             ✨ ¿Por qué elegir Vence?
           </h2>
           <div className="grid md:grid-cols-3 gap-6">
@@ -157,53 +157,53 @@ export default function HomePage() {
               <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">📚</span>
               </div>
-              <h3 className="font-semibold mb-2">Contenido Actualizado</h3>
-              <p className="text-gray-600 text-sm">Más de 5.000 preguntas actualizadas con las últimas modificaciones normativas</p>
+              <h3 className="font-semibold mb-2 dark:text-gray-200">Contenido Actualizado</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-sm">Más de 5.000 preguntas actualizadas con las últimas modificaciones normativas</p>
             </div>
             <div className="text-center">
               <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">🎯</span>
               </div>
-              <h3 className="font-semibold mb-2">Tests Inteligentes</h3>
-              <p className="text-gray-600 text-sm">Sistema adaptativo que se enfoca en tus áreas de mejora</p>
+              <h3 className="font-semibold mb-2 dark:text-gray-200">Tests Inteligentes</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-sm">Sistema adaptativo que se enfoca en tus áreas de mejora</p>
             </div>
             <div className="text-center">
               <div className="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-2xl">📊</span>
               </div>
-              <h3 className="font-semibold mb-2">Seguimiento Completo</h3>
-              <p className="text-gray-600 text-sm">Estadísticas detalladas de tu progreso y rendimiento</p>
+              <h3 className="font-semibold mb-2 dark:text-gray-200">Seguimiento Completo</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-sm">Estadísticas detalladas de tu progreso y rendimiento</p>
             </div>
           </div>
         </section>
 
         {/* Estructura del Examen 2025 */}
-        <section className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          <h2 className="text-2xl font-bold text-blue-900 mb-6 text-center">
+        <section className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 mb-8">
+          <h2 className="text-2xl font-bold text-blue-900 dark:text-blue-300 mb-6 text-center">
             📝 Examen Auxiliar Administrativo del Estado 2025
           </h2>
-          <div className="bg-green-50 border-l-4 border-green-400 p-6 mb-6">
-            <h3 className="text-lg font-bold text-green-800 mb-2">
+          <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-400 p-6 mb-6">
+            <h3 className="text-lg font-bold text-green-800 dark:text-green-300 mb-2">
               ¡Buenas noticias! El examen se ha simplificado
             </h3>
-            <p className="text-green-700">
+            <p className="text-green-700 dark:text-green-300">
               Ahora es <strong>un solo examen en un único día</strong>, máximo 90 minutos. 
               Ya no hay prueba práctica de Office en ordenador.
             </p>
           </div>
           
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-blue-50 p-6 rounded-lg">
-              <h3 className="font-bold text-blue-800 mb-3">
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg">
+              <h3 className="font-bold text-blue-800 dark:text-blue-300 mb-3">
                 📚 Primer Ejercicio: Teoría + Psicotécnicas
               </h3>
               <div className="space-y-3 text-sm">
-                <div className="bg-white p-3 rounded">
+                <div className="bg-white dark:bg-gray-700 p-3 rounded">
                   <strong>60 preguntas tipo test:</strong>
                   <br />• 30 preguntas del Bloque I (teoría)
                   <br />• 30 preguntas psicotécnicas
                 </div>
-                <div className="text-gray-700">
+                <div className="text-gray-700 dark:text-gray-300">
                   <strong>Puntuación:</strong>
                   <br />• Acertadas: +1 punto
                   <br />• Falladas: -1/3 punto
@@ -212,17 +212,17 @@ export default function HomePage() {
               </div>
             </div>
             
-            <div className="bg-purple-50 p-6 rounded-lg">
-              <h3 className="font-bold text-purple-800 mb-3">
+            <div className="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-lg">
+              <h3 className="font-bold text-purple-800 dark:text-purple-300 mb-3">
                 💻 Segundo Ejercicio: Ofimática
               </h3>
               <div className="space-y-3 text-sm">
-                <div className="bg-white p-3 rounded">
+                <div className="bg-white dark:bg-gray-700 p-3 rounded">
                   <strong>50 preguntas tipo test:</strong>
                   <br />• Sobre el Bloque II (ofimática)
                   <br />• Windows 10 y Office 365
                 </div>
-                <div className="text-gray-700">
+                <div className="text-gray-700 dark:text-gray-300">
                   <strong>Puntuación:</strong>
                   <br />• Acertadas: +1 punto
                   <br />• Falladas: -1/3 punto
@@ -232,22 +232,22 @@ export default function HomePage() {
             </div>
           </div>
           
-          <div className="bg-gray-50 p-6 rounded-lg mt-6 text-center">
+          <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg mt-6 text-center">
             <div className="grid md:grid-cols-3 gap-4">
               <div>
                 <div className="text-3xl font-bold text-blue-600 mb-2">110</div>
-                <p className="font-semibold">Preguntas totales</p>
-                <p className="text-sm text-gray-600">60 + 50 preguntas</p>
+                <p className="font-semibold dark:text-gray-200">Preguntas totales</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">60 + 50 preguntas</p>
               </div>
               <div>
                 <div className="text-3xl font-bold text-green-600 mb-2">90</div>
-                <p className="font-semibold">Minutos máximo</p>
-                <p className="text-sm text-gray-600">En un solo día</p>
+                <p className="font-semibold dark:text-gray-200">Minutos máximo</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">En un solo día</p>
               </div>
               <div>
                 <div className="text-3xl font-bold text-red-600 mb-2">-1/3</div>
-                <p className="font-semibold">Penalización</p>
-                <p className="text-sm text-gray-600">Por respuesta incorrecta</p>
+                <p className="font-semibold dark:text-gray-200">Penalización</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Por respuesta incorrecta</p>
               </div>
             </div>
           </div>
@@ -276,7 +276,7 @@ export default function HomePage() {
         </section>
 
         {/* Footer */}
-        <div className="text-center text-gray-600 text-sm mt-8">
+        <div className="text-center text-gray-600 dark:text-gray-400 text-sm mt-8">
           <p>Vence • Plataforma de preparación de oposiciones • +5.000 preguntas actualizadas</p>
         </div>
         
