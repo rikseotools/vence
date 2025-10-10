@@ -43,6 +43,15 @@ export default function NewslettersPage() {
   const [editingTemplateName, setEditingTemplateName] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [loadedCustomTemplate, setLoadedCustomTemplate] = useState(null)
+  
+  // 📧 Progress state for sending newsletters
+  const [sendingProgress, setSendingProgress] = useState({
+    total: 0,
+    sent: 0,
+    current: '',
+    phase: '',
+    isActive: false
+  })
 
   // Cargar estadísticas de audiencia al montar
   useEffect(() => {
@@ -370,10 +379,25 @@ export default function NewslettersPage() {
     setLoading(true)
     setResult(null)
     
+    // 📧 Initialize progress tracking
+    const totalAudiences = selectionMode === 'individual' ? 1 : selectedAudiences.length
+    setSendingProgress({
+      total: totalAudiences,
+      sent: 0,
+      current: '',
+      phase: 'Iniciando envío...',
+      isActive: true
+    })
     
     try {
       if (selectionMode === 'individual') {
         // Envío a usuarios específicos
+        setSendingProgress(prev => ({
+          ...prev,
+          current: 'Usuarios seleccionados',
+          phase: `Enviando a ${selectedUsers.size} usuarios seleccionados...`
+        }))
+        
         const response = await fetch('/api/admin/newsletters/send', {
           method: 'POST',
           headers: {
@@ -390,6 +414,13 @@ export default function NewslettersPage() {
         })
 
         const data = await response.json()
+        
+        setSendingProgress(prev => ({
+          ...prev,
+          sent: 1,
+          phase: 'Completado!'
+        }))
+        
         setResult({
           ...data,
           audienceType: 'usuarios seleccionados',
@@ -399,7 +430,18 @@ export default function NewslettersPage() {
         // Enviar a cada audiencia por separado
         const results = []
         
-        for (const audienceType of selectedAudiences) {
+        for (let i = 0; i < selectedAudiences.length; i++) {
+          const audienceType = selectedAudiences[i]
+          const audienceName = audienceOptions.find(opt => opt.value === audienceType)?.label || audienceType
+          const audienceCount = audienceStats[audienceType] || 0
+          
+          // Update progress for current audience
+          setSendingProgress(prev => ({
+            ...prev,
+            current: audienceName,
+            phase: `Enviando a ${audienceName} (${audienceCount.toLocaleString()} usuarios)...`,
+            sent: i
+          }))
           const response = await fetch('/api/admin/newsletters/send', {
             method: 'POST',
             headers: {
@@ -420,6 +462,15 @@ export default function NewslettersPage() {
             audienceType,
             audienceName: audienceOptions.find(opt => opt.value === audienceType)?.label
           })
+
+          // Update progress after sending to this audience
+          setSendingProgress(prev => ({
+            ...prev,
+            sent: i + 1,
+            phase: i === selectedAudiences.length - 1 
+              ? 'Completado!' 
+              : `${i + 1}/${selectedAudiences.length} audiencias enviadas. Continuando...`
+          }))
 
           // Pequeña pausa entre audiencias para no saturar
           if (selectedAudiences.length > 1) {
@@ -460,12 +511,21 @@ export default function NewslettersPage() {
       }
     } catch (error) {
       console.error('Error enviando newsletter:', error)
+      setSendingProgress(prev => ({
+        ...prev,
+        phase: 'Error durante el envío',
+        isActive: false
+      }))
       setResult({
         success: false,
         error: 'Error de conexión'
       })
     }
     setLoading(false)
+    // Keep progress visible for a moment after completion
+    setTimeout(() => {
+      setSendingProgress(prev => ({ ...prev, isActive: false }))
+    }, 2000)
   }
 
   const audienceOptions = [
@@ -2215,5 +2275,83 @@ export default function NewslettersPage() {
         </div>
       </div>
     </div>
+
+    {/* 📧 Progress Modal */}
+    {sendingProgress.isActive && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+            📧 Enviando Newsletter
+          </h3>
+          
+          <div className="mb-4">
+            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+              <span>{sendingProgress.phase}</span>
+              <span>{sendingProgress.sent}/{sendingProgress.total}</span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{
+                  width: `${sendingProgress.total > 0 ? (sendingProgress.sent / sendingProgress.total) * 100 : 0}%`
+                }}
+              />
+            </div>
+          </div>
+          
+          {sendingProgress.current && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                📤 {sendingProgress.current}
+              </p>
+            </div>
+          )}
+          
+          <div className="flex justify-center">
+            {sendingProgress.phase.includes('Completado') || sendingProgress.phase.includes('Error') ? (
+              <div className="flex items-center space-x-2">
+                {sendingProgress.phase.includes('Completado') ? (
+                  <>
+                    <div className="w-6 h-6 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                      <span className="text-green-600 dark:text-green-400 text-sm">✓</span>
+                    </div>
+                    <span className="text-green-600 dark:text-green-400 font-medium">
+                      {sendingProgress.phase}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-6 h-6 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                      <span className="text-red-600 dark:text-red-400 text-sm">✗</span>
+                    </div>
+                    <span className="text-red-600 dark:text-red-400 font-medium">
+                      {sendingProgress.phase}
+                    </span>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                <span className="text-gray-600 dark:text-gray-400 text-sm">
+                  Procesando...
+                </span>
+              </div>
+            )}
+          </div>
+
+          {(sendingProgress.phase.includes('Completado') || sendingProgress.phase.includes('Error')) && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => setSendingProgress(prev => ({ ...prev, isActive: false }))}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
   )
 }
