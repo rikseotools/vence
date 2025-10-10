@@ -115,34 +115,52 @@ export default function PushNotificationManager() {
   }
 
   const requestNotificationPermission = async () => {
+    console.log('🚀 Iniciando requestNotificationPermission, loading actual:', loading)
+    
+    // Prevenir doble click
+    if (loading) {
+      console.log('⚠️ Ya está en proceso, ignorando click')
+      return
+    }
+    
     const startTime = Date.now()
     
-    // 📊 TRACKING: Usuario hizo click en activar notificaciones (usando permission_requested con contexto)
-    await notificationTracker.trackPushEvent('permission_requested', user, {
-      deviceType: notificationTracker.getDeviceType(),
-      supported: notificationState.supported,
-      currentPermission: notificationState.permission,
-      customData: {
-        action: 'activation_button_clicked',
-        trigger: 'user_initiated'
-      }
-    })
+    try {
+      // 📊 TRACKING: Usuario hizo click en activar notificaciones (usando permission_requested con contexto)
+      await notificationTracker.trackPushEvent('permission_requested', user, {
+        deviceType: notificationTracker.getDeviceType(),
+        supported: notificationState.supported,
+        currentPermission: notificationState.permission,
+        customData: {
+          action: 'activation_button_clicked',
+          trigger: 'user_initiated'
+        }
+      })
+    } catch (trackingError) {
+      console.error('⚠️ Error en tracking inicial:', trackingError)
+      // Continuar aunque falle el tracking
+    }
     
     if (!notificationState.supported) {
       const error = 'Browser not supported'
-      console.error('Browser not supported for push notifications')
+      console.error('❌ Browser not supported for push notifications')
       
-      // 📊 TRACKING: Error de soporte del navegador - usar tipo existente
-      await notificationTracker.trackPushEvent('permission_denied', user, {
-        error,
-        deviceType: notificationTracker.getDeviceType(),
-        userAgent: navigator.userAgent
-      })
+      try {
+        // 📊 TRACKING: Error de soporte del navegador - usar tipo existente
+        await notificationTracker.trackPushEvent('permission_denied', user, {
+          error,
+          deviceType: notificationTracker.getDeviceType(),
+          userAgent: navigator.userAgent
+        })
+      } catch (trackingError) {
+        console.error('⚠️ Error en tracking de browser not supported:', trackingError)
+      }
       
       alert('Tu navegador no soporta notificaciones push')
       return
     }
 
+    console.log('🔄 Estableciendo loading = true')
     setLoading(true)
     
     try {
@@ -154,20 +172,30 @@ export default function PushNotificationManager() {
       const responseTime = Date.now() - startTime
       
       if (permission === 'granted') {
-        // 📊 TRACKING: Permisos otorgados
-        await notificationTracker.trackPermissionGranted(user)
+        try {
+          // 📊 TRACKING: Permisos otorgados
+          await notificationTracker.trackPermissionGranted(user)
+        } catch (trackingError) {
+          console.error('⚠️ Error en tracking de permisos otorgados:', trackingError)
+        }
         
         try {
+          console.log('🔧 Registrando service worker...')
           // Registrar service worker si no existe
           const registration = await navigator.serviceWorker.register('/sw.js')
+          console.log('✅ Service worker registrado, esperando ready...')
           await navigator.serviceWorker.ready
+          console.log('✅ Service worker ready')
 
           // Obtener o crear suscripción push
+          console.log('🔍 Verificando suscripción existente...')
           let subscription = await registration.pushManager.getSubscription()
           
           if (!subscription) {
+            console.log('🆕 Creando nueva suscripción...')
             // Crear nueva suscripción
             const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+            console.log('🔑 VAPID key disponible:', !!vapidPublicKey)
             
             if (!vapidPublicKey) {
               throw new Error('VAPID public key not configured')
@@ -177,13 +205,22 @@ export default function PushNotificationManager() {
               userVisibleOnly: true,
               applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
             })
+            console.log('✅ Suscripción creada exitosamente')
             
-            // 📊 TRACKING: Suscripción creada exitosamente
-            await notificationTracker.trackSubscriptionCreated(user, subscription)
+            try {
+              // 📊 TRACKING: Suscripción creada exitosamente
+              await notificationTracker.trackSubscriptionCreated(user, subscription)
+            } catch (trackingError) {
+              console.error('⚠️ Error en tracking de suscripción:', trackingError)
+            }
+          } else {
+            console.log('✅ Usando suscripción existente')
           }
 
           // Guardar configuración en base de datos
+          console.log('💾 Guardando configuración en base de datos...')
           const newSettings = await saveNotificationSettings(subscription, permission)
+          console.log('✅ Configuración guardada:', !!newSettings)
           
           // Mostrar notificación de bienvenida
           // Mostrar notificación de bienvenida y trackear el resultado
@@ -227,26 +264,34 @@ export default function PushNotificationManager() {
           }))
 
         } catch (subscriptionError) {
-          console.error('Error creating subscription:', subscriptionError)
+          console.error('❌ Error creating subscription:', subscriptionError)
           
-          // 📊 TRACKING: Error creando suscripción - usar tipo existente
-          await notificationTracker.trackPushEvent('notification_failed', user, {
-            error: subscriptionError.message,
-            errorStack: subscriptionError.stack,
-            responseTime,
-            deviceType: notificationTracker.getDeviceType(),
-            vapidAvailable: !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-          })
+          try {
+            // 📊 TRACKING: Error creando suscripción - usar tipo existente
+            await notificationTracker.trackPushEvent('notification_failed', user, {
+              error: subscriptionError.message,
+              errorStack: subscriptionError.stack,
+              responseTime,
+              deviceType: notificationTracker.getDeviceType(),
+              vapidAvailable: !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+            })
+          } catch (trackingError) {
+            console.error('⚠️ Error en tracking de subscription error:', trackingError)
+          }
           
           throw subscriptionError
         }
 
       } else {
         // Usuario rechazó permisos
-        console.log('User denied notification permission:', permission)
+        console.log('❌ User denied notification permission:', permission)
         
-        // 📊 TRACKING: Permisos denegados
-        await notificationTracker.trackPermissionDenied(user)
+        try {
+          // 📊 TRACKING: Permisos denegados
+          await notificationTracker.trackPermissionDenied(user)
+        } catch (trackingError) {
+          console.error('⚠️ Error en tracking de permisos denegados:', trackingError)
+        }
         
         const newSettings = await saveNotificationSettings(null, permission)
         setNotificationState(prev => ({
@@ -258,19 +303,23 @@ export default function PushNotificationManager() {
       }
     } catch (error) {
       const responseTime = Date.now() - startTime
-      console.error('Error requesting notification permission:', error)
+      console.error('❌ Error requesting notification permission:', error)
       
-      // 📊 TRACKING: Error general en el proceso - usar tipo existente
-      await notificationTracker.trackPushEvent('notification_failed', user, {
-        error: error.message,
-        errorName: error.name,
-        errorStack: error.stack,
-        responseTime,
-        deviceType: notificationTracker.getDeviceType(),
-        currentPermission: Notification.permission,
-        serviceWorkerSupported: 'serviceWorker' in navigator,
-        pushManagerSupported: 'PushManager' in window
-      })
+      try {
+        // 📊 TRACKING: Error general en el proceso - usar tipo existente
+        await notificationTracker.trackPushEvent('notification_failed', user, {
+          error: error.message,
+          errorName: error.name,
+          errorStack: error.stack,
+          responseTime,
+          deviceType: notificationTracker.getDeviceType(),
+          currentPermission: Notification.permission,
+          serviceWorkerSupported: 'serviceWorker' in navigator,
+          pushManagerSupported: 'PushManager' in window
+        })
+      } catch (trackingError) {
+        console.error('⚠️ Error en tracking de error general:', trackingError)
+      }
       
       // Mostrar error específico según el tipo
       let errorMessage = 'Error al configurar notificaciones. '
@@ -286,6 +335,7 @@ export default function PushNotificationManager() {
       
       alert(errorMessage)
     } finally {
+      console.log('🏁 Finalizando requestNotificationPermission, estableciendo loading = false')
       setLoading(false)
     }
   }
@@ -410,7 +460,9 @@ export default function PushNotificationManager() {
       permission: notificationState.permission,
       hasSettings: !!notificationState.settings,
       pushEnabled: notificationState.settings?.push_enabled,
-      showPrompt: notificationState.showPrompt
+      showPrompt: notificationState.showPrompt,
+      loading: loading,
+      subscription: !!notificationState.subscription
     })
   }
 
@@ -468,7 +520,7 @@ export default function PushNotificationManager() {
                 {loading ? (
                   <>
                     <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    <span>Configurando...</span>
+                    <span>Configurando... (ver consola para debug)</span>
                   </>
                 ) : (
                   <>

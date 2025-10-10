@@ -4,7 +4,6 @@
 const CACHE_NAME = 'vence-v1'
 const urlsToCache = [
   '/',
-  '/es',
   '/icon-192.png',
   '/badge-72.png'
 ]
@@ -14,7 +13,17 @@ self.addEventListener('install', (event) => {
   console.log('🔧 Service Worker instalado')
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(urlsToCache))
+      .then((cache) => {
+        console.log('💾 Agregando URLs al cache:', urlsToCache)
+        return cache.addAll(urlsToCache)
+      })
+      .then(() => {
+        console.log('✅ Cache inicializado exitosamente')
+      })
+      .catch((error) => {
+        console.error('❌ Error inicializando cache:', error)
+        // No fallar el service worker por errores de cache
+      })
   )
   self.skipWaiting()
 })
@@ -319,16 +328,25 @@ self.addEventListener('error', (event) => {
 self.addEventListener('unhandledrejection', (event) => {
   console.error('❌ Service Worker unhandled rejection:', event.reason)
   
-  // Trackear promise rejections del service worker
-  trackNotificationEvent('notification_failed', {
-    title: 'Service Worker Promise Rejection',
-    data: {
-      category: 'service_worker_promise_rejection',
-      errorMessage: event.reason?.message || event.reason?.toString() || 'Unknown promise rejection',
-      errorStack: event.reason?.stack,
-      userAgent: navigator.userAgent
-    }
-  })
+  // Solo trackear si es realmente un error de notificaciones, no de cache
+  const isNotificationError = event.reason?.message?.includes('notification') || 
+                              event.reason?.message?.includes('push') ||
+                              event.reason?.message?.includes('subscription')
+  
+  if (isNotificationError) {
+    // Trackear promise rejections del service worker
+    trackNotificationEvent('notification_failed', {
+      title: 'Service Worker Promise Rejection',
+      data: {
+        category: 'service_worker_promise_rejection',
+        errorMessage: event.reason?.message || event.reason?.toString() || 'Unknown promise rejection',
+        errorStack: event.reason?.stack,
+        userAgent: navigator.userAgent
+      }
+    })
+  } else {
+    console.log('⚠️ Error de SW no relacionado con notificaciones, no tracking')
+  }
 })
 
 // Función para tracking de eventos de notificaciones
