@@ -624,19 +624,269 @@ const questionData = {
 - [ ] **Pregunta insertada** en base de datos con content_data correcto
 - [ ] **Componente creado/actualizado** para el tipo específico
 - [ ] **Renderizado visual** funciona correctamente sin cutoffs
-- [ ] **Explicaciones didácticas** incluyen métodos sin calculadora
+- [ ] **Explicaciones estratégicas** optimizadas para oposiciones (sin calculadora)
 - [ ] **UI responsiva** funciona en móvil y desktop
 - [ ] **Flujo de navegación** correcto (siguiente pregunta, finalizar test)
 - [ ] **Verificación final** con script de testing
 - [ ] **Compilación exitosa** sin errores de sintaxis
 
-#### 8. Próximos Tipos de Pregunta Previstos
+#### 📝 Guías de Explicaciones para Oposiciones
 
-- **data_tables**: Tablas de cross-reference con filtros múltiples
+**✅ FORMATO ESTÁNDAR REQUERIDO (Basado en TABLAS):**
+
+```
+💡 ¿Qué evalúa este ejercicio?
+[Breve descripción de la habilidad evaluada]
+
+📊 ANÁLISIS PASO A PASO:
+
+📋 [Sección 1]: [Descripción]
+[Datos específicos con emojis ✅ ❌]
+
+📋 [Sección 2]: [Descripción]  
+[Datos específicos con emojis ✅ ❌]
+
+⚡ TÉCNICAS DE ANÁLISIS RÁPIDO (Para oposiciones)
+
+🔍 Método 1: [Nombre del método]
+• [Paso específico]
+• [Paso específico]
+• [Resultado]
+
+📊 Método 2: [Observación visual/patrón]
+• [Técnica visual]
+• [Atajo mental]
+• [Verificación]
+
+💰 Método 3: [Descarte de opciones]
+• Opción A: [Por qué es incorrecta]
+• Opción B: ✅ [Por qué es correcta]
+• Opción C: [Por qué es incorrecta]
+• Opción D: [Por qué es incorrecta]
+
+❌ Errores comunes a evitar
+• [Error típico 1]
+• [Error típico 2]
+• [Error típico 3]
+• [Error típico 4]
+
+💪 Consejo de oposición: [Estrategia específica para examen real]
+```
+
+**🎯 ELEMENTOS OBLIGATORIOS:**
+
+1. **💡 Evaluación del ejercicio** - Qué habilidad mide
+2. **📊 Análisis visual paso a paso** - Con emojis y colores
+3. **⚡ Técnicas rápidas numeradas** - Mínimo 3 métodos
+4. **❌ Errores comunes** - 4 puntos específicos  
+5. **💪 Consejo final** - Estrategia de examen
+
+**❌ Explicaciones Malas (Evitar):**
+- Sin estructura visual (emojis, colores)
+- Cálculos largos dependientes de calculadora
+- Académicas sin técnicas de oposición
+- Sin sección de errores comunes
+- Falta de descarte de opciones
+
+**🔥 CARACTERÍSTICAS VISUALES:**
+- **Emojis obligatorios**: 💡📊📋⚡🔍💰❌💪✅❌
+- **Códigos de color**: Verde (✅ correcto), Rojo (❌ incorrecto)  
+- **Estructura clara**: Secciones bien delimitadas
+- **Técnicas numeradas**: Método 1, 2, 3...
+- **Puntos con viñetas**: • Para sub-elementos
+
+### 🏗️ ARQUITECTURA DE GRÁFICOS IMPLEMENTADA
+
+#### Estructura de Componentes
+
+```
+ChartQuestion.js (componente base universal)
+├── Funcionalidades comunes compartidas
+├── Estructura de explicaciones unificada  
+├── Sistema de respuestas y botones rápidos
+├── Formato visual rico (emojis, colores, secciones)
+└── Integración con estadísticas de usuario
+
+Componentes especializados que extienden la base:
+├── BarChartQuestion.js ✅ (gráficos de barras)
+├── PieChartQuestion.js (gráficos circulares)
+├── DataTableQuestion.js (tablas de datos)
+└── [FutureChartQuestion.js] (nuevos tipos)
+```
+
+#### Beneficios de la Arquitectura
+
+✅ **Escalabilidad**: Miles de preguntas reutilizan código base  
+✅ **Consistencia**: Mismo formato visual en todos los gráficos  
+✅ **Mantenibilidad**: Cambios globales en un solo lugar  
+✅ **Eficiencia**: Sin duplicación de código  
+✅ **Calidad**: Formato rico estandarizado automáticamente
+
+### 📋 MANUAL PARA AÑADIR NUEVAS PREGUNTAS
+
+#### Paso 1: Identificar Tipo de Pregunta
+
+**Tipos soportados actualmente:**
+- `pie_chart` → Gráficos circulares (PieChartQuestion.js)
+- `bar_chart` → Gráficos de barras (BarChartQuestion.js)  
+- `data_tables` → Tablas de datos (DataTableQuestion.js)
+
+**Si es tipo existente** → Usar componente existente  
+**Si es tipo nuevo** → Crear componente especializado
+
+#### Paso 2: Preparar Datos de la Pregunta
+
+**Estructura estándar en content_data:**
+```javascript
+{
+  chart_type: 'bar_chart', // Tipo específico
+  chart_title: 'Título del gráfico',
+  y_axis_label: 'Etiqueta eje Y',
+  x_axis_label: 'Etiqueta eje X',
+  evaluation_description: 'Qué evalúa este ejercicio',
+  chart_data: [
+    // Datos específicos del gráfico
+  ],
+  quick_method_1: 'Técnica rápida 1 para oposiciones',
+  quick_method_2: 'Técnica rápida 2 para oposiciones', 
+  quick_method_3: 'Técnica rápida 3 para oposiciones',
+  common_errors: 'Errores comunes a evitar',
+  exam_tip: 'Consejo específico de oposición',
+  question_context: 'Contexto de la pregunta'
+}
+```
+
+#### Paso 3: Crear Script de Inserción
+
+**Template de script (ejemplo: scripts/create-[tipo]-question.js):**
+```javascript
+const questionData = {
+  category_id: categoryId,
+  section_id: sectionId,
+  question_text: 'Texto de la pregunta',
+  question_subtype: 'bar_chart', // Tipo del componente
+  content_data: { /* datos estructurados */ },
+  option_a: 'Opción A',
+  option_b: 'Opción B', 
+  option_c: 'Opción C',
+  option_d: 'Opción D',
+  correct_option: 1, // 0=A, 1=B, 2=C, 3=D
+  explanation: null, // Se maneja en componente
+  is_active: true
+}
+```
+
+#### Paso 4: Verificar/Crear Componente
+
+**Si usa tipo existente:**
+- ✅ BarChartQuestion.js → listo para gráficos de barras
+- ✅ PieChartQuestion.js → listo para gráficos circulares
+- ✅ DataTableQuestion.js → listo para tablas
+
+**Si necesita nuevo componente:**
+1. Crear `[Tipo]ChartQuestion.js`
+2. Importar y usar `ChartQuestion` como base
+3. Implementar renderizado específico
+4. Definir `explanationSections` personalizadas
+5. Actualizar `PsychometricTestLayout.js` switch
+
+#### Paso 5: Ejecutar y Verificar
+
+```bash
+# Ejecutar script de inserción
+node scripts/create-[tipo]-question.js
+
+# Verificar en aplicación
+# /psicotecnicos/[categoria]/[seccion]
+```
+
+#### Template para Nuevo Componente
+
+```javascript
+// components/[Tipo]ChartQuestion.js
+'use client'
+import { useState, useEffect } from 'react'
+import ChartQuestion from './ChartQuestion'
+
+export default function [Tipo]ChartQuestion({ 
+  question, onAnswer, selectedAnswer, showResult, isAnswering 
+}) {
+  const [chartSvg, setChartSvg] = useState('')
+
+  useEffect(() => {
+    generate[Tipo]Chart()
+  }, [question])
+
+  const generate[Tipo]Chart = () => {
+    // Implementar renderizado específico del gráfico
+    const data = question.content_data.chart_data
+    // ... lógica de renderizado SVG ...
+    setChartSvg(/* JSX del gráfico */)
+  }
+
+  // Secciones específicas de explicación
+  const explanationSections = (
+    <>
+      <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
+        <h5 className="font-semibold text-green-800 mb-2">📊 Análisis:</h5>
+        <p className="text-gray-700 text-sm">
+          {/* Contenido específico del análisis */}
+        </p>
+      </div>
+    </>
+  )
+
+  return (
+    <ChartQuestion
+      question={question}
+      onAnswer={onAnswer}
+      selectedAnswer={selectedAnswer}
+      showResult={showResult}
+      isAnswering={isAnswering}
+      chartComponent={chartSvg}
+      explanationSections={explanationSections}
+    />
+  )
+}
+```
+
+#### Checklist de Implementación
+
+**Antes de empezar:**
+- [ ] Identificar tipo de gráfico (existente vs nuevo)
+- [ ] Preparar datos estructurados de la pregunta
+- [ ] Verificar categoría y sección en BD
+
+**Durante implementación:**
+- [ ] Crear script de inserción con datos correctos
+- [ ] Si es nuevo tipo: crear componente especializado
+- [ ] Si es nuevo tipo: actualizar PsychometricTestLayout.js
+- [ ] Verificar márgenes y espaciado en SVG
+
+**Después de implementación:**
+- [ ] Ejecutar script y verificar inserción
+- [ ] Probar pregunta en aplicación
+- [ ] Verificar formato de explicación rica
+- [ ] Comprobar responsive y accesibilidad
+
+#### Próximos Tipos de Pregunta Previstos
+
+- **line_chart**: Gráficos de líneas con tendencias temporales
+- **scatter_plot**: Gráficos de dispersión con correlaciones
+- **histogram**: Histogramas con distribuciones de frecuencia
 - **sequence_numeric**: Series numéricas con patrones aritméticos/geométricos
 - **sequence_alphabetic**: Series de letras con patrones del alfabeto
 - **error_detection**: Comparación texto original vs. modificado
 - **classification**: Agrupación de elementos según criterios
+
+### 🚀 Escalabilidad
+
+**Con esta arquitectura:**
+- ✅ Cada nueva pregunta toma **~5 minutos** en lugar de horas
+- ✅ **Formato rico automático** en todas las preguntas
+- ✅ **Consistencia visual** garantizada
+- ✅ **Mantenimiento centralizado** en ChartQuestion.js
+- ✅ **Código reutilizable** para miles de preguntas
 
 ### Notas para Futuras Implementaciones
 

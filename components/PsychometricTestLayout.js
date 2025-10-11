@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import PieChartQuestion from './PieChartQuestion'
 import DataTableQuestion from './DataTableQuestion'
+import BarChartQuestion from './BarChartQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 
@@ -232,6 +233,17 @@ export default function PsychometricTestLayout({
       case 'pie_chart':
         return (
           <PieChartQuestion
+            question={currentQ}
+            onAnswer={handleAnswer}
+            selectedAnswer={selectedAnswer}
+            showResult={showResult}
+            isAnswering={isAnswering}
+          />
+        )
+      
+      case 'bar_chart':
+        return (
+          <BarChartQuestion
             question={currentQ}
             onAnswer={handleAnswer}
             selectedAnswer={selectedAnswer}
