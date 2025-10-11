@@ -15,6 +15,8 @@ export default function PsychometricTestPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [adaptiveConfig, setAdaptiveConfig] = useState(null)
+  const [showStats, setShowStats] = useState(true)
+  const [categoryStats, setCategoryStats] = useState(null)
 
   useEffect(() => {
     async function loadPsychometricQuestions() {
@@ -56,6 +58,33 @@ export default function PsychometricTestPage() {
         }
 
         console.log('✅ Loaded psychometric questions:', data.length)
+        
+        // Calcular estadísticas de la categoría
+        const totalQuestions = data.length
+        const officialQuestions = data.filter(q => q.is_official_exam).length
+        
+        // Obtener estadísticas del usuario si está autenticado
+        let userAnsweredCount = 0
+        if (user) {
+          const { data: userAnswers } = await supabase
+            .from('psychometric_test_answers')
+            .select('question_id')
+            .eq('user_id', user.id)
+            .in('question_id', data.map(q => q.id))
+          
+          userAnsweredCount = new Set(userAnswers?.map(a => a.question_id) || []).size
+        }
+        
+        setCategoryStats({
+          total: totalQuestions,
+          official: officialQuestions,
+          userAnswered: userAnsweredCount,
+          sections: data.reduce((acc, q) => {
+            const sectionKey = q.psychometric_sections.section_key
+            acc[sectionKey] = (acc[sectionKey] || 0) + 1
+            return acc
+          }, {})
+        })
         
         // Aplicar selección adaptativa si el usuario está autenticado
         if (user) {
@@ -159,6 +188,114 @@ export default function PsychometricTestPage() {
           >
             Volver
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Mostrar pantalla de estadísticas antes del test
+  if (showStats && categoryStats) {
+    const categoryDisplayNames = {
+      'capacidad-administrativa': 'Capacidad Administrativa',
+      'capacidad-ortografica': 'Capacidad Ortográfica',
+      'pruebas-instrucciones': 'Pruebas de Instrucciones',
+      'razonamiento-numerico': 'Razonamiento Numérico',
+      'razonamiento-verbal': 'Razonamiento Verbal',
+      'series-alfanumericas': 'Series Alfanuméricas',
+      'series-letras': 'Series de Letras',
+      'series-numericas': 'Series Numéricas'
+    }
+
+    const sectionDisplayNames = {
+      'tablas': 'Tablas',
+      'graficos': 'Gráficos', 
+      'clasificacion': 'Pruebas de clasificación',
+      'atencion-percepcion': 'Pruebas de atención-percepción'
+    }
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                {categoryDisplayNames[categoria] || categoria}
+              </h1>
+              <p className="text-gray-600 text-lg">
+                Test psicotécnico personalizado
+              </p>
+            </div>
+
+            {/* Estadísticas principales */}
+            <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
+              <div className="space-y-4">
+                <p className="text-gray-700 text-lg">
+                  📊 {categoryStats.total} preguntas disponibles para esta categoría
+                </p>
+                
+                {categoryStats.official > 0 && (
+                  <p className="text-purple-600 font-medium text-lg">
+                    🏛️ {categoryStats.official} preguntas de exámenes oficiales disponibles
+                  </p>
+                )}
+
+                {user && categoryStats.userAnswered > 0 && (
+                  <p className="text-green-600 font-medium text-lg">
+                    ✅ Has respondido {categoryStats.userAnswered} de {categoryStats.total} preguntas
+                  </p>
+                )}
+
+                {/* Desglose por secciones */}
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">📋 Secciones disponibles:</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {Object.entries(categoryStats.sections).map(([sectionKey, count]) => (
+                      <div key={sectionKey} className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-gray-700">
+                            {sectionDisplayNames[sectionKey] || sectionKey}
+                          </span>
+                          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                            {count} preguntas
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Botones de acción */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => setShowStats(false)}
+                className="bg-purple-600 text-white px-8 py-4 rounded-lg hover:bg-purple-700 transition-colors font-medium text-lg"
+              >
+                🎯 Empezar Test
+              </button>
+              
+              <Link
+                href="/auxiliar-administrativo-estado/test"
+                className="bg-gray-600 text-white px-8 py-4 rounded-lg hover:bg-gray-700 transition-colors font-medium text-lg text-center"
+              >
+                ← Volver al menú
+              </Link>
+            </div>
+
+            {/* Información adicional */}
+            {adaptiveConfig?.isAdaptive && (
+              <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h3 className="font-semibold text-blue-800 mb-2">🧠 Sistema Adaptativo Activado</h3>
+                <p className="text-blue-700">
+                  Las preguntas se ordenarán priorizando aquellas que no has visto antes, 
+                  seguidas de las que respondiste hace más tiempo.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )

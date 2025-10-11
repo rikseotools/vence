@@ -98,24 +98,22 @@ function MultipleCategoriesPsychometricTestContent() {
             
             console.log(`✅ Adaptive selection applied: ${adaptiveQuestions.length} questions ordered from ${categories.length} categories`)
             
-            // Mezclar preguntas de diferentes categorías de forma aleatoria
-            const shuffledQuestions = [...adaptiveQuestions].sort(() => Math.random() - 0.5)
-            setQuestions(shuffledQuestions)
+            // MANTENER EL ORDEN de priorización (no vistas primero, luego más antiguas)
+            setQuestions(adaptiveQuestions)
             
             setAdaptiveConfig({
               isAdaptive: true,
               filterApplied: 'none',
               originalCount: data.length,
-              selectedCount: shuffledQuestions.length,
+              selectedCount: adaptiveQuestions.length,
               categoriesCount: categories.length,
               categories: categories
             })
             
           } catch (adaptiveError) {
             console.error('❌ Error in adaptive selection, using original order:', adaptiveError)
-            // Mezclar preguntas de forma aleatoria como fallback
-            const shuffledQuestions = [...data].sort(() => Math.random() - 0.5)
-            setQuestions(shuffledQuestions)
+            // Usar orden original sin mezclar como fallback  
+            setQuestions(data)
             setAdaptiveConfig({
               isAdaptive: false,
               error: adaptiveError.message,
