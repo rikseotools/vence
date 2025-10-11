@@ -328,7 +328,7 @@ export default function BarChartQuestion({
         onTouchStart={isMobile ? handleTouchStart : undefined}
         onTouchMove={isMobile ? handleTouchMove : undefined}
         onTouchEnd={isMobile ? handleTouchEnd : undefined}
-        style={{ touchAction: isMobile ? 'pan-y pinch-zoom' : 'auto' }}
+        style={{ touchAction: isMobile ? 'pan-x pan-y pinch-zoom' : 'auto' }}
       >
         <svg 
           width={chartWidth} 
