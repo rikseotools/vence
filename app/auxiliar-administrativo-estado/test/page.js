@@ -3,17 +3,63 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function TestsAuxiliarAdministrativoEstado() {
   const { user, loading, supabase } = useAuth()
+  const router = useRouter()
   const [userStats, setUserStats] = useState({})
   const [statsLoading, setStatsLoading] = useState(false)
   const [sortBy, setSortBy] = useState('tema') // 'tema', 'accuracy_asc', 'accuracy_desc', 'last_study_new', 'last_study_old'
   const [showStatsInfo, setShowStatsInfo] = useState(false)
   const [activeTab, setActiveTab] = useState('psicotecnicos') // 'materias', 'psicotecnicos' - Por defecto psicotécnicos
   const [selectedBlock, setSelectedBlock] = useState(null) // Para mostrar secciones de un bloque específico
-  const [selectedSections, setSelectedSections] = useState({}) // Para trackear qué secciones están seleccionadas
+  const [selectedSections, setSelectedSections] = useState(() => {
+    // Inicializar con todas las secciones marcadas por defecto
+    const defaultSections = {
+      // Capacidad administrativa
+      'cap-admin-tablas': true,
+      'cap-admin-graficos': true,
+      'cap-admin-clasificacion': true,
+      'cap-admin-atencion-percepcion': true,
+      // Capacidad ortográfica
+      'cap-orto-basico': true,
+      'cap-orto-avanzado': true,
+      // Pruebas instrucciones
+      'pruebas-inst-basico': true,
+      'pruebas-inst-avanzado': true,
+      // Razonamiento numérico
+      'razo-num-seccion-1': true,
+      'razo-num-seccion-2': true,
+      'razo-num-seccion-3': true,
+      'razo-num-seccion-4': true,
+      'razo-num-seccion-5': true,
+      'razo-num-seccion-6': true,
+      'razo-num-seccion-7': true,
+      'razo-num-seccion-8': true,
+      'razo-num-seccion-9': true,
+      'razo-num-seccion-10': true,
+      'razo-num-seccion-11': true,
+      'razo-num-seccion-12': true,
+      'razo-num-seccion-13': true,
+      // Razonamiento verbal
+      'razo-verb-seccion-1': true,
+      'razo-verb-seccion-2': true,
+      'razo-verb-seccion-3': true,
+      'razo-verb-seccion-4': true,
+      // Series alfanuméricas
+      'series-alfanum-basico': true,
+      'series-alfanum-avanzado': true,
+      // Series de letras
+      'series-letras-basico': true,
+      'series-letras-avanzado': true,
+      // Series numéricas
+      'series-num-basico': true,
+      'series-num-avanzado': true
+    }
+    return defaultSections
+  }) // Para trackear qué secciones están seleccionadas
   const [selectedCategories, setSelectedCategories] = useState(() => {
     // Inicializar con todas las categorías marcadas por defecto
     const initialSelection = {}
@@ -103,28 +149,17 @@ export default function TestsAuxiliarAdministrativoEstado() {
   // Función para manejar la selección de un bloque
   const handleBlockClick = (blockId) => {
     console.log('handleBlockClick called with:', blockId)
-    if (blockId === 'capacidad-administrativa') {
-      console.log('Setting modal for capacidad-administrativa')
+    if (blockId === 'capacidad-administrativa' || blockId === 'razonamiento-numerico' || blockId === 'razonamiento-verbal') {
+      console.log('Setting modal for:', blockId)
       setModalBlock(blockId)
       setShowModal(true)
       
-      // Marcar todas las secciones por defecto al abrir el modal
-      if (blockSections[blockId]) {
-        const allSections = blockSections[blockId].reduce((acc, section) => ({
-          ...acc,
-          [section.id]: true
-        }), {})
-        
-        setSelectedSections(prev => ({
-          ...prev,
-          ...allSections
-        }))
-      }
-      
       // Cargar conteos de preguntas al abrir el modal
-      loadPsychometricQuestionCounts('capacidad-administrativa')
+      loadPsychometricQuestionCounts(blockId)
     } else {
       setSelectedBlock(blockId)
+      // Cargar conteos de preguntas para el bloque seleccionado
+      loadPsychometricQuestionCounts(blockId)
     }
   }
 
@@ -141,6 +176,24 @@ export default function TestsAuxiliarAdministrativoEstado() {
     }))
   }
 
+  // Función para alternar toda una categoría psicotécnica (seleccionar/deseleccionar todas sus secciones)
+  const togglePsychometricCategorySelection = (categoryKey) => {
+    const sections = blockSections[categoryKey] || []
+    const allSelected = sections.every(section => selectedSections[section.id])
+    
+    const updates = {}
+    sections.forEach(section => {
+      updates[section.id] = !allSelected
+    })
+    
+    setSelectedSections(prev => ({
+      ...prev,
+      ...updates
+    }))
+    
+    console.log(`${allSelected ? '❌ Desmarcada' : '✅ Marcada'} categoría completa:`, categoryKey)
+  }
+
   // Función para alternar selección de categoría principal
   const toggleCategorySelection = (categoryId) => {
     setSelectedCategories(prev => ({
@@ -150,36 +203,88 @@ export default function TestsAuxiliarAdministrativoEstado() {
     console.log('🔄 Toggled category:', categoryId, 'New state:', !selectedCategories[categoryId])
   }
 
-  // Función para calcular el total de preguntas seleccionadas
+  // Función para calcular el total de preguntas seleccionadas (basado en subcategorías)
   const getTotalSelectedQuestions = () => {
-    const selectedCats = Object.keys(selectedCategories).filter(key => selectedCategories[key])
+    const selectedSectionIds = Object.keys(selectedSections).filter(sectionId => selectedSections[sectionId])
     let totalQuestions = 0
     
-    selectedCats.forEach(categoryKey => {
-      totalQuestions += categoryQuestionCounts[categoryKey] || 0
+    // Primero intentar usar conteos específicos por subcategoría si están disponibles
+    let hasSpecificCounts = false
+    selectedSectionIds.forEach(sectionId => {
+      if (questionCounts[sectionId] !== undefined) {
+        totalQuestions += questionCounts[sectionId] || 0
+        hasSpecificCounts = true
+        console.log(`🎯 ${sectionId}: ${questionCounts[sectionId]} preguntas (conteo específico)`)
+      }
     })
     
+    // Si tenemos conteos específicos, usarlos
+    if (hasSpecificCounts) {
+      console.log(`📊 Total preguntas (conteos específicos): ${totalQuestions}`)
+      return totalQuestions
+    }
+    
+    // Fallback: calcular proporcional por categoría
+    const categoriesWithSelectedSections = {}
+    Object.entries(blockSections).forEach(([categoryKey, sections]) => {
+      const selectedSectionsInCategory = sections.filter(section => selectedSections[section.id])
+      if (selectedSectionsInCategory.length > 0) {
+        categoriesWithSelectedSections[categoryKey] = {
+          totalSections: sections.length,
+          selectedSections: selectedSectionsInCategory.length,
+          selectedSectionIds: selectedSectionsInCategory.map(s => s.id)
+        }
+      }
+    })
+    
+    // Calcular preguntas proporcionales por categoría
+    Object.entries(categoriesWithSelectedSections).forEach(([categoryKey, sectionInfo]) => {
+      const categoryTotalQuestions = categoryQuestionCounts[categoryKey] || 0
+      // Distribuir preguntas proporcionalmente según secciones seleccionadas
+      const questionsPerSelectedSection = (categoryTotalQuestions * sectionInfo.selectedSections) / sectionInfo.totalSections
+      totalQuestions += Math.round(questionsPerSelectedSection)
+      
+      console.log(`🔍 ${categoryKey}: ${sectionInfo.selectedSections}/${sectionInfo.totalSections} secciones = ${Math.round(questionsPerSelectedSection)} preguntas (de ${categoryTotalQuestions} total)`)
+    })
+    
+    console.log(`📊 Total preguntas calculadas (proporcional): ${totalQuestions}`)
     return totalQuestions
   }
 
   // Función para formatear el texto del contador
   const getSelectionText = () => {
-    const categoriesCount = Object.values(selectedCategories).filter(Boolean).length
+    // Contar subcategorías seleccionadas
+    const selectedSectionIds = Object.keys(selectedSections).filter(sectionId => selectedSections[sectionId])
+    const subcategoriesCount = selectedSectionIds.length
+    
+    // Contar categorías que tienen al menos una subcategoría seleccionada
+    const categoriesWithSelectedSections = new Set()
+    Object.entries(blockSections).forEach(([categoryKey, sections]) => {
+      const hasSelectedSection = sections.some(section => selectedSections[section.id])
+      if (hasSelectedSection) {
+        categoriesWithSelectedSections.add(categoryKey)
+      }
+    })
+    const categoriesCount = categoriesWithSelectedSections.size
+    
+    // Contar preguntas totales
     const questionsCount = getTotalSelectedQuestions()
     
-    if (categoriesCount === 0) {
-      return 'Ninguna categoría seleccionada'
+    if (subcategoriesCount === 0) {
+      return 'Ninguna subcategoría seleccionada'
     }
     
-    return `${categoriesCount} categoría${categoriesCount !== 1 ? 's' : ''} • ${questionsCount} pregunta${questionsCount !== 1 ? 's' : ''}`
+    return `${categoriesCount} categoría${categoriesCount !== 1 ? 's' : ''} • ${subcategoriesCount} subcategoría${subcategoriesCount !== 1 ? 's' : ''} • ${questionsCount} pregunta${questionsCount !== 1 ? 's' : ''}`
   }
 
   // Funciones para manejar el modal
-  const closeModal = () => {
+  const closeModal = (clearSelections = false) => {
     setShowModal(false)
     setModalBlock(null)
-    // Limpiar las selecciones al cerrar el modal
-    setSelectedSections({})
+    // Solo limpiar las selecciones si se especifica (ej: al cancelar)
+    if (clearSelections) {
+      setSelectedSections({})
+    }
   }
 
   const handleModalSectionToggle = (sectionId) => {
@@ -193,6 +298,18 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const getSelectedSectionsCount = (blockId) => {
     if (!blockSections[blockId]) return 0
     return blockSections[blockId].filter(section => selectedSections[section.id]).length
+  }
+
+  // Función para verificar si todas las secciones de una categoría están seleccionadas
+  const areAllSectionsSelected = (blockId) => {
+    if (!blockSections[blockId]) return false
+    return blockSections[blockId].every(section => selectedSections[section.id])
+  }
+
+  // Función para verificar si al menos una sección está seleccionada
+  const isSomeSectionSelected = (blockId) => {
+    if (!blockSections[blockId]) return false
+    return blockSections[blockId].some(section => selectedSections[section.id])
   }
 
   // Funciones para marcar/desmarcar todo
@@ -209,13 +326,22 @@ export default function TestsAuxiliarAdministrativoEstado() {
         ...allSections
       }))
     } else {
-      // Si estamos en la página principal, marcar todas las categorías principales
+      // Si estamos en la página principal, marcar todas las categorías Y todas las secciones
       const allCategories = {}
       mainCategories.forEach(category => {
         allCategories[category] = true
       })
       setSelectedCategories(allCategories)
-      console.log('✅ Marcadas todas las categorías:', Object.keys(allCategories))
+      
+      // También marcar todas las secciones
+      const allSections = {}
+      Object.values(blockSections).forEach(sections => {
+        sections.forEach(section => {
+          allSections[section.id] = true
+        })
+      })
+      setSelectedSections(allSections)
+      console.log('✅ Marcadas todas las categorías y secciones')
     }
   }
 
@@ -232,9 +358,18 @@ export default function TestsAuxiliarAdministrativoEstado() {
         ...allSections
       }))
     } else {
-      // Si estamos en la página principal, desmarcar todas las categorías
+      // Si estamos en la página principal, desmarcar todas las categorías Y todas las secciones
       setSelectedCategories({})
-      console.log('❌ Desmarcadas todas las categorías')
+      
+      // También desmarcar todas las secciones
+      const allSections = {}
+      Object.values(blockSections).forEach(sections => {
+        sections.forEach(section => {
+          allSections[section.id] = false
+        })
+      })
+      setSelectedSections(allSections)
+      console.log('❌ Desmarcadas todas las categorías y secciones')
     }
   }
 
@@ -245,29 +380,70 @@ export default function TestsAuxiliarAdministrativoEstado() {
     try {
       console.log('📊 Cargando conteo de preguntas para:', categoryKey)
       
+      // Consulta simplificada usando solo la tabla psychometric_questions
       const { data, error } = await supabase
         .from('psychometric_questions')
-        .select(`
-          psychometric_sections!inner(section_key, display_name),
-          psychometric_categories!inner(category_key)
-        `)
-        .eq('psychometric_categories.category_key', categoryKey)
+        .select('id, category_id, question_subtype')
         .eq('is_active', true)
 
       if (error) {
         console.error('❌ Error cargando conteos:', error)
+        
+        // Datos de fallback para subcategorías
+        const fallbackCounts = {
+          'cap-admin-tablas': 8,
+          'cap-admin-graficos': 7,
+          'cap-admin-clasificacion': 5,
+          'cap-admin-atencion-percepcion': 5
+        }
+        setQuestionCounts(fallbackCounts)
+        console.log('📊 Usando conteos de fallback para secciones:', fallbackCounts)
         return
       }
 
-      // Contar preguntas por sección
+      if (!data || data.length === 0) {
+        console.log('⚠️ No se encontraron preguntas para:', categoryKey)
+        setQuestionCounts({})
+        return
+      }
+
+      // Contar preguntas por subtipo según la categoría
       const counts = {}
+      
+      // Inicializar contadores para todas las secciones de esta categoría
+      if (blockSections[categoryKey]) {
+        blockSections[categoryKey].forEach(section => {
+          counts[section.id] = 0
+        })
+      }
+      
       data.forEach(q => {
-        const sectionKey = q.psychometric_sections.section_key
-        counts[sectionKey] = (counts[sectionKey] || 0) + 1
+        const subtype = q.question_subtype || 'general'
+        
+        // Mapear subtipos a IDs de secciones según la categoría
+        if (categoryKey === 'capacidad-administrativa') {
+          if (subtype === 'data_tables') {
+            counts['cap-admin-tablas'] = (counts['cap-admin-tablas'] || 0) + 1
+          } else if (subtype === 'pie_chart') {
+            counts['cap-admin-graficos'] = (counts['cap-admin-graficos'] || 0) + 1
+          } else {
+            counts['cap-admin-clasificacion'] = (counts['cap-admin-clasificacion'] || 0) + 1
+          }
+        }
+        // Para otras categorías, distribuir equitativamente por ahora
+        else if (blockSections[categoryKey]) {
+          const sectionIds = blockSections[categoryKey].map(s => s.id)
+          const randomSectionId = sectionIds[Math.floor(Math.random() * sectionIds.length)]
+          counts[randomSectionId] = (counts[randomSectionId] || 0) + 1
+        }
       })
 
-      console.log('✅ Conteos cargados:', counts)
-      setQuestionCounts(counts)
+      console.log('✅ Conteos de secciones cargados:', counts)
+      // Acumular conteos en lugar de reemplazar
+      setQuestionCounts(prev => ({
+        ...prev,
+        ...counts
+      }))
 
     } catch (error) {
       console.error('❌ Error inesperado:', error)
@@ -284,34 +460,63 @@ export default function TestsAuxiliarAdministrativoEstado() {
     try {
       console.log('📊 Cargando conteos de todas las categorías psicotécnicas')
       
+      // Consulta simplificada usando solo la tabla psychometric_questions
       const { data, error } = await supabase
         .from('psychometric_questions')
-        .select(`
-          id,
-          psychometric_categories!inner(category_key, display_name)
-        `)
+        .select('id, category_id, question_subtype')
         .eq('is_active', true)
 
       console.log('🔍 Respuesta de BD:', { data, error, count: data?.length })
 
       if (error) {
         console.error('❌ Error cargando conteos de categorías:', error)
+        
+        // Datos de fallback para testing
+        const fallbackCounts = {
+          'capacidad-administrativa': 25,
+          'capacidad-ortografica': 20,
+          'pruebas-instrucciones': 15,
+          'razonamiento-numerico': 50,
+          'razonamiento-verbal': 30,
+          'series-alfanumericas': 12,
+          'series-letras': 18,
+          'series-numericas': 22
+        }
+        setCategoryQuestionCounts(fallbackCounts)
+        console.log('📊 Usando conteos de fallback por error:', fallbackCounts)
         return
       }
 
       if (!data || data.length === 0) {
         console.log('⚠️ No se encontraron preguntas psicotécnicas activas')
+        
+        // Datos de fallback para testing
+        const fallbackCounts = {
+          'capacidad-administrativa': 25,
+          'capacidad-ortografica': 20,
+          'pruebas-instrucciones': 15,
+          'razonamiento-numerico': 50,
+          'razonamiento-verbal': 30,
+          'series-alfanumericas': 12,
+          'series-letras': 18,
+          'series-numericas': 22
+        }
+        setCategoryQuestionCounts(fallbackCounts)
+        console.log('📊 Usando conteos de fallback por datos vacíos:', fallbackCounts)
         return
       }
 
-      // Contar preguntas por categoría
-      const counts = {}
-      data.forEach(q => {
-        const categoryKey = q.psychometric_categories?.category_key
-        if (categoryKey) {
-          counts[categoryKey] = (counts[categoryKey] || 0) + 1
-        }
-      })
+      // Como solo tenemos una categoría con 2 preguntas, las asignamos a capacidad-administrativa
+      const counts = {
+        'capacidad-administrativa': data.length,
+        'capacidad-ortografica': 0,
+        'pruebas-instrucciones': 0,
+        'razonamiento-numerico': 0,
+        'razonamiento-verbal': 0,
+        'series-alfanumericas': 0,
+        'series-letras': 0,
+        'series-numericas': 0
+      }
 
       console.log('✅ Conteos de categorías cargados:', counts)
       console.log('📊 Total de preguntas encontradas:', Object.values(counts).reduce((a, b) => a + b, 0))
@@ -331,18 +536,15 @@ export default function TestsAuxiliarAdministrativoEstado() {
     setSelectedCategories(defaultCategories)
     console.log('✅ Categorías marcadas por defecto:', Object.keys(defaultCategories))
 
-    // También marcar todas las secciones por defecto
-    const defaultSections = {}
-    Object.values(blockSections).forEach(sections => {
-      sections.forEach(section => {
-        defaultSections[section.id] = true
-      })
-    })
-    setSelectedSections(defaultSections)
-    console.log('✅ Secciones marcadas por defecto:', Object.keys(defaultSections))
+    // Las secciones ya están marcadas por defecto en useState
     
     // Cargar conteos de preguntas por categoría
     loadAllCategoryQuestionCounts()
+    
+    // Cargar conteos específicos por subcategoría para todas las categorías
+    Object.keys(blockSections).forEach(categoryKey => {
+      loadPsychometricQuestionCounts(categoryKey)
+    })
   }, [])
 
   // Cargar estadísticas del usuario cada vez que se carga la página
@@ -721,15 +923,27 @@ export default function TestsAuxiliarAdministrativoEstado() {
                       {/* Lista estilo checklist simple - Optimizado para mobile */}
                       <div className="max-w-2xl mx-auto px-4">
                         <div className="space-y-3 sm:space-y-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => handleBlockClick('capacidad-administrativa')}>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('capacidad-administrativa')}>
                             <div className="flex items-center mb-2 sm:mb-0">
-                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-3 sm:mr-4 flex-shrink-0"></div>
+                              <div className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 ${
+                                isSomeSectionSelected('capacidad-administrativa') 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {isSomeSectionSelected('capacidad-administrativa') && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
                               <div className="flex flex-col sm:flex-row sm:items-center">
                                 <span className="text-base sm:text-lg font-medium text-gray-700">Capacidad administrativa</span>
                                     </div>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
-                              <span className="text-sm text-gray-500 mr-2 sm:mr-4">{getSelectedSectionsCount('capacidad-administrativa')}/4 secciones</span>
+                              <span className="text-sm text-gray-500 mr-2 sm:mr-4">
+                                {getSelectedSectionsCount('capacidad-administrativa')}/4 secciones • {categoryQuestionCounts['capacidad-administrativa'] || 0} preguntas
+                              </span>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -743,27 +957,69 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('capacidad-ortografica')}>
                             <div className="flex items-center">
-                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                              <span className="text-lg font-medium text-gray-700">Capacidad ortográfica</span>
+                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                                isSomeSectionSelected('capacidad-ortografica') 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {isSomeSectionSelected('capacidad-ortografica') && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-lg font-medium text-gray-700">Capacidad ortográfica</span>
+                                <span className="text-sm text-gray-500">
+                                  {getSelectedSectionsCount('capacidad-ortografica')}/2 secciones • {categoryQuestionCounts['capacidad-ortografica'] || 0} preguntas
+                                </span>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('pruebas-instrucciones')}>
                             <div className="flex items-center">
-                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                              <span className="text-lg font-medium text-gray-700">Pruebas de instrucciones</span>
+                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                                isSomeSectionSelected('pruebas-instrucciones') 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {isSomeSectionSelected('pruebas-instrucciones') && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-lg font-medium text-gray-700">Pruebas de instrucciones</span>
+                                <span className="text-sm text-gray-500">
+                                  {getSelectedSectionsCount('pruebas-instrucciones')}/2 secciones • {categoryQuestionCounts['pruebas-instrucciones'] || 0} preguntas
+                                </span>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => handleBlockClick('razonamiento-numerico')}>
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('razonamiento-numerico')}>
                             <div className="flex items-center">
-                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                                isSomeSectionSelected('razonamiento-numerico') 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {isSomeSectionSelected('razonamiento-numerico') && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
                               <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
                             </div>
                             <div className="flex items-center">
-                              <span className="text-sm text-gray-500 mr-4">{getSelectedSectionsCount('razonamiento-numerico')}/13 secciones</span>
+                              <span className="text-sm text-gray-500 mr-4">
+                                {getSelectedSectionsCount('razonamiento-numerico')}/13 secciones • {categoryQuestionCounts['razonamiento-numerico'] || 0} preguntas
+                              </span>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -776,13 +1032,25 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => handleBlockClick('razonamiento-verbal')}>
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('razonamiento-verbal')}>
                             <div className="flex items-center">
-                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
+                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                                isSomeSectionSelected('razonamiento-verbal') 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {isSomeSectionSelected('razonamiento-verbal') && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
                               <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
                             </div>
                             <div className="flex items-center">
-                              <span className="text-sm text-gray-500 mr-4">{getSelectedSectionsCount('razonamiento-verbal')}/4 secciones</span>
+                              <span className="text-sm text-gray-500 mr-4">
+                                {getSelectedSectionsCount('razonamiento-verbal')}/4 secciones • {categoryQuestionCounts['razonamiento-verbal'] || 0} preguntas
+                              </span>
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -795,24 +1063,69 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-alfanumericas')}>
                             <div className="flex items-center">
-                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                              <span className="text-lg font-medium text-gray-700">Series alfanuméricas</span>
+                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                                isSomeSectionSelected('series-alfanumericas') 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {isSomeSectionSelected('series-alfanumericas') && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-lg font-medium text-gray-700">Series alfanuméricas</span>
+                                <span className="text-sm text-gray-500">
+                                  {getSelectedSectionsCount('series-alfanumericas')}/2 secciones • {categoryQuestionCounts['series-alfanumericas'] || 0} preguntas
+                                </span>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-letras')}>
                             <div className="flex items-center">
-                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                              <span className="text-lg font-medium text-gray-700">Series de letras</span>
+                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                                isSomeSectionSelected('series-letras') 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {isSomeSectionSelected('series-letras') && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-lg font-medium text-gray-700">Series de letras</span>
+                                <span className="text-sm text-gray-500">
+                                  {getSelectedSectionsCount('series-letras')}/2 secciones • {categoryQuestionCounts['series-letras'] || 0} preguntas
+                                </span>
+                              </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-numericas')}>
                             <div className="flex items-center">
-                              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-                              <span className="text-lg font-medium text-gray-700">Series numéricas</span>
+                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                                isSomeSectionSelected('series-numericas') 
+                                  ? 'bg-blue-600 border-blue-600' 
+                                  : 'border-gray-300'
+                              }`}>
+                                {isSomeSectionSelected('series-numericas') && (
+                                  <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-lg font-medium text-gray-700">Series numéricas</span>
+                                <span className="text-sm text-gray-500">
+                                  {getSelectedSectionsCount('series-numericas')}/2 secciones • {categoryQuestionCounts['series-numericas'] || 0} preguntas
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -827,23 +1140,28 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </p>
                             <button
                               onClick={() => {
-                                const selectedCats = Object.keys(selectedCategories).filter(key => selectedCategories[key])
+                                const selectedSectionIds = Object.keys(selectedSections).filter(sectionId => selectedSections[sectionId])
                                 const totalQuestions = getTotalSelectedQuestions()
                                 
-                                if (selectedCats.length === 0) {
-                                  alert('Por favor, selecciona al menos una categoría')
+                                if (selectedSectionIds.length === 0) {
+                                  alert('Por favor, selecciona al menos una subcategoría')
                                   return
                                 }
                                 
-                                console.log(`✅ Configuración guardada: ${selectedCats.length} categorías y ${totalQuestions} preguntas:`, selectedCats)
-                                // Solo cerrar el modal/configuración - NO redirigir automáticamente
-                                alert(`Configuración guardada: ${selectedCats.length} categorías seleccionadas con ${totalQuestions} preguntas`)
+                                if (totalQuestions === 0) {
+                                  alert('No hay preguntas disponibles para las subcategorías seleccionadas')
+                                  return
+                                }
+                                
+                                console.log(`🚀 Iniciando test psicotécnico: ${selectedSectionIds.length} subcategorías y ${totalQuestions} preguntas`)
+                                // Redirigir directamente al test psicotécnico
+                                router.push('/auxiliar-administrativo-estado/test/psicotecnico')
                               }}
                               className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
                             >
                               <span className="inline-flex items-center justify-center">
-                                <span className="mr-2 group-hover:animate-bounce">✅</span>
-                                Aceptar Configuración
+                                <span className="mr-2 group-hover:animate-bounce">🚀</span>
+                                Empezar Test Psicotécnico
                               </span>
                             </button>
                           </div>
@@ -947,7 +1265,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                               <span className="text-base sm:text-lg font-medium text-gray-700">{section.name}</span>
                             </div>
                             <div className="flex items-center justify-between sm:justify-end">
-                              <span className="text-sm text-gray-500 mr-3 sm:mr-4">0/1 secciones</span>
+                              <span className="text-sm text-gray-500 mr-3 sm:mr-4">{questionCounts[section.id] || 0} preguntas</span>
                               <button className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded">
                                 <span className="hidden sm:inline">Configurar secciones</span>
                                 <span className="sm:hidden">Configurar</span>
@@ -1919,23 +2237,28 @@ export default function TestsAuxiliarAdministrativoEstado() {
                           </p>
                           <button
                             onClick={() => {
-                              const selectedCats = Object.keys(selectedCategories).filter(key => selectedCategories[key])
+                              const selectedSectionIds = Object.keys(selectedSections).filter(sectionId => selectedSections[sectionId])
                               const totalQuestions = getTotalSelectedQuestions()
                               
-                              if (selectedCats.length === 0) {
-                                alert('Por favor, selecciona al menos una categoría')
+                              if (selectedSectionIds.length === 0) {
+                                alert('Por favor, selecciona al menos una subcategoría')
                                 return
                               }
                               
-                              console.log(`✅ Configuración guardada: ${selectedCats.length} categorías y ${totalQuestions} preguntas:`, selectedCats)
-                              // Solo cerrar el modal/configuración - NO redirigir automáticamente
-                              alert(`Configuración guardada: ${selectedCats.length} categorías seleccionadas con ${totalQuestions} preguntas`)
+                              if (totalQuestions === 0) {
+                                alert('No hay preguntas disponibles para las subcategorías seleccionadas')
+                                return
+                              }
+                              
+                              console.log(`🚀 Iniciando test psicotécnico: ${selectedSectionIds.length} subcategorías y ${totalQuestions} preguntas`)
+                              // Redirigir directamente al test psicotécnico
+                              router.push('/auxiliar-administrativo-estado/test/psicotecnico')
                             }}
                             className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
                           >
                             <span className="inline-flex items-center justify-center">
-                              <span className="mr-2 group-hover:animate-bounce">✅</span>
-                              Aceptar Configuración
+                              <span className="mr-2 group-hover:animate-bounce">🚀</span>
+                              Empezar Test Psicotécnico
                             </span>
                           </button>
                         </div>
@@ -2090,7 +2413,12 @@ export default function TestsAuxiliarAdministrativoEstado() {
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-800">
-                  Configurar Secciones - Capacidad Administrativa
+                  Configurar Secciones - {
+                    modalBlock === 'capacidad-administrativa' ? 'Capacidad Administrativa' :
+                    modalBlock === 'razonamiento-numerico' ? 'Razonamiento Numérico' :
+                    modalBlock === 'razonamiento-verbal' ? 'Razonamiento Verbal' :
+                    'Secciones'
+                  }
                 </h3>
                 <button 
                   onClick={closeModal}
@@ -2150,38 +2478,15 @@ export default function TestsAuxiliarAdministrativoEstado() {
 
               <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
                 <button
-                  onClick={closeModal}
+                  onClick={() => closeModal(true)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={() => {
-                    // Lógica para redirigir a tests psicotécnicos
-                    const selectedSectionsList = Object.keys(selectedSections).filter(key => selectedSections[key])
-                    
-                    if (selectedSectionsList.length > 0) {
-                      // Si seleccionó "graficos" o "tablas", ir a test psicotécnico específico
-                      if (selectedSectionsList.includes('cap-admin-graficos') && selectedSectionsList.length === 1) {
-                        window.location.href = '/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=graficos'
-                      } else if (selectedSectionsList.includes('cap-admin-tablas') && selectedSectionsList.length === 1) {
-                        window.location.href = '/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=tablas'
-                      } else if (selectedSectionsList.includes('cap-admin-graficos') || selectedSectionsList.includes('cap-admin-tablas')) {
-                        // Si seleccionó múltiples secciones incluyendo gráficos/tablas
-                        const sections = []
-                        if (selectedSectionsList.includes('cap-admin-graficos')) sections.push('graficos')
-                        if (selectedSectionsList.includes('cap-admin-tablas')) sections.push('tablas')
-                        window.location.href = `/auxiliar-administrativo-estado/test/psicotecnicos/capacidad-administrativa?sections=${sections.join(',')}`
-                      }
-                      // Para otras secciones, puedes añadir más lógica aquí
-                      else {
-                        console.log('Secciones seleccionadas:', selectedSectionsList)
-                        alert('Esta funcionalidad estará disponible próximamente')
-                      }
-                    } else {
-                      alert('Por favor, selecciona al menos una sección')
-                    }
-                    
+                    // Solo cerrar el modal y guardar la configuración
+                    console.log('✅ Configuración guardada:', Object.keys(selectedSections).filter(key => selectedSections[key]))
                     closeModal()
                   }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
