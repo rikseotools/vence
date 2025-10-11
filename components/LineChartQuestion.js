@@ -10,10 +10,33 @@ export default function LineChartQuestion({
   isAnswering 
 }) {
   const [chartSvg, setChartSvg] = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
   useEffect(() => {
     generateLineChart()
-  }, [question])
+  }, [question, isDarkMode])
+
+  // Detectar dark mode
+  useEffect(() => {
+    const checkDarkMode = () => {
+      if (typeof window !== 'undefined') {
+        setIsDarkMode(document.documentElement.classList.contains('dark'))
+      }
+    }
+    
+    checkDarkMode()
+    
+    // Observer para cambios en dark mode
+    const observer = new MutationObserver(checkDarkMode)
+    if (typeof window !== 'undefined') {
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class']
+      })
+    }
+    
+    return () => observer.disconnect()
+  }, [])
 
   const generateLineChart = () => {
     if (!question.content_data?.age_groups) return
@@ -72,7 +95,7 @@ export default function LineChartQuestion({
             cy={y}
             r="4"
             fill={colors[ageGroup.label]}
-            stroke="white"
+            stroke={isDarkMode ? "#1f2937" : "white"}
             strokeWidth="2"
           />
         )
@@ -85,7 +108,7 @@ export default function LineChartQuestion({
             y={y - 10}
             textAnchor="middle"
             fontSize="10"
-            fill="#333"
+            fill={isDarkMode ? "#f7fafc" : "#333"}
             fontWeight="bold"
           >
             {value}
@@ -117,7 +140,7 @@ export default function LineChartQuestion({
           y={chartHeight - 30}
           textAnchor="middle"
           fontSize="10"
-          fill="#333"
+          fill={isDarkMode ? "#f7fafc" : "#333"}
           fontWeight="bold"
         >
           {category}
@@ -148,7 +171,7 @@ export default function LineChartQuestion({
             x={legendX + 25}
             y={49}
             fontSize="9"
-            fill="#333"
+            fill={isDarkMode ? "#f7fafc" : "#333"}
           >
             {ageGroup.label}
           </text>
@@ -169,7 +192,7 @@ export default function LineChartQuestion({
             y1={y}
             x2={margin.left}
             y2={y}
-            stroke="#666"
+            stroke={isDarkMode ? "#cbd5e0" : "#666"}
             strokeWidth="1"
           />
           <text
@@ -177,7 +200,7 @@ export default function LineChartQuestion({
             y={y + 3}
             textAnchor="end"
             fontSize="9"
-            fill="#666"
+            fill={isDarkMode ? "#cbd5e0" : "#666"}
           >
             {Math.round(value)}
           </text>
@@ -200,7 +223,7 @@ export default function LineChartQuestion({
           textAnchor="middle"
           fontSize="12"
           fontWeight="bold"
-          fill="#333"
+          fill={isDarkMode ? "#f7fafc" : "#333"}
         >
           {question.content_data?.chart_title || 'Gráfico de líneas'}
         </text>
@@ -211,7 +234,7 @@ export default function LineChartQuestion({
           y={35}
           textAnchor="middle"
           fontSize="10"
-          fill="#666"
+          fill={isDarkMode ? "#cbd5e0" : "#666"}
         >
           {question.content_data?.subtitle || '(en miles) al mes'}
         </text>
@@ -222,7 +245,7 @@ export default function LineChartQuestion({
           y1={margin.top}
           x2={margin.left}
           y2={margin.top + plotHeight}
-          stroke="#666"
+          stroke={isDarkMode ? "#cbd5e0" : "#666"}
           strokeWidth="2"
         />
         <line
@@ -230,7 +253,7 @@ export default function LineChartQuestion({
           y1={margin.top + plotHeight}
           x2={margin.left + plotWidth}
           y2={margin.top + plotHeight}
-          stroke="#666"
+          stroke={isDarkMode ? "#cbd5e0" : "#666"}
           strokeWidth="2"
         />
         
@@ -243,7 +266,7 @@ export default function LineChartQuestion({
           y={chartHeight / 2}
           textAnchor="middle"
           fontSize="11"
-          fill="#666"
+          fill={isDarkMode ? "#cbd5e0" : "#666"}
           transform={`rotate(-90, 20, ${chartHeight / 2})`}
         >
           {question.content_data?.y_axis_label || 'Número de personas'}

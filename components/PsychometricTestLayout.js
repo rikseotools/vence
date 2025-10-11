@@ -278,7 +278,7 @@ export default function PsychometricTestLayout({
       default:
         return (
           <div className="text-center py-8">
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Tipo de pregunta no soportado: {currentQ.question_subtype}
             </p>
           </div>
@@ -288,8 +288,8 @@ export default function PsychometricTestLayout({
 
   if (!questions.length) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">No hay preguntas disponibles</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-600 dark:text-gray-400">No hay preguntas disponibles</p>
       </div>
     )
   }
@@ -300,11 +300,11 @@ export default function PsychometricTestLayout({
     const testDuration = Math.round((Date.now() - startTime) / 1000)
     
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         {/* Header */}
-        <div className="bg-white shadow-sm border-b">
+        <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
           <div className="max-w-4xl mx-auto px-4 py-4">
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
               Test Psicotécnico Completado - {categoria.replace('-', ' ')}
             </h1>
           </div>
@@ -312,15 +312,15 @@ export default function PsychometricTestLayout({
 
         {/* Resultados */}
         <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8 text-center">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8 text-center">
             <div className="mb-6">
               <div className="text-6xl mb-4">
                 {accuracy >= 80 ? '🎉' : accuracy >= 60 ? '👍' : '📚'}
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 ¡Test Completado!
               </h2>
-              <p className="text-lg text-gray-600">
+              <p className="text-lg text-gray-600 dark:text-gray-400">
                 {accuracy >= 80 ? '¡Excelente resultado!' : 
                  accuracy >= 60 ? '¡Buen trabajo!' : 
                  'Sigue practicando'}
@@ -329,17 +329,17 @@ export default function PsychometricTestLayout({
 
             {/* Estadísticas principales */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-blue-600">{score}/{totalQuestions}</div>
-                <div className="text-sm text-gray-600">Preguntas Correctas</div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{score}/{totalQuestions}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Preguntas Correctas</div>
               </div>
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-600">{accuracy}%</div>
-                <div className="text-sm text-gray-600">Precisión</div>
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{accuracy}%</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Precisión</div>
               </div>
-              <div className="bg-purple-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-purple-600">{Math.floor(testDuration/60)}:{String(testDuration%60).padStart(2, '0')}</div>
-                <div className="text-sm text-gray-600">Tiempo Total</div>
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{Math.floor(testDuration/60)}:{String(testDuration%60).padStart(2, '0')}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Tiempo Total</div>
               </div>
             </div>
 
@@ -347,7 +347,7 @@ export default function PsychometricTestLayout({
             <div className="flex justify-center">
               <Link
                 href="/auxiliar-administrativo-estado/test"
-                className="px-8 py-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                className="px-8 py-4 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
               >
                 🏠 Volver a Tests
               </Link>
@@ -370,27 +370,27 @@ export default function PsychometricTestLayout({
       isTestCompleted={isTestCompleted}
       enabled={true}
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
               <Link 
                 href="/auxiliar-administrativo-estado/test"
-                className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-2"
               >
                 ← Volver a Tests
               </Link>
-              <h1 className="text-xl font-bold text-gray-900 mt-2">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-2">
                 Test Psicotécnico - {categoria.replace('-', ' ')}
               </h1>
             </div>
             <div className="text-right">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
                 Pregunta {currentQuestion + 1} de {totalQuestions}
               </div>
-              <div className="text-lg font-semibold text-blue-600">
+              <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                 Puntuación: {score}/{totalQuestions}
               </div>
             </div>
@@ -399,11 +399,11 @@ export default function PsychometricTestLayout({
       </div>
 
       {/* Progress Bar */}
-      <div className="bg-white border-b">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 py-2">
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
             <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${((currentQuestion + 1) / totalQuestions) * 100}%` }}
             ></div>
           </div>
@@ -418,12 +418,12 @@ export default function PsychometricTestLayout({
 
       {/* Next Button - Separado del contenido de la pregunta */}
       {showResult && (
-        <div className="bg-gray-50 border-t border-gray-200 py-6">
+        <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-6">
           <div className="max-w-4xl mx-auto px-4">
-            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 rounded-lg shadow-sm p-4">
               <button
                 onClick={nextQuestion}
-                className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 dark:bg-blue-500 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-lg flex items-center justify-center gap-2"
               >
                 {currentQuestion < totalQuestions - 1 ? (
                   <>
