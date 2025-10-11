@@ -751,8 +751,15 @@ export default function TestsAuxiliarAdministrativoEstado() {
                           : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
                       }`}
                     >
-                      <span className="mr-1 sm:mr-2">🀲</span>
-                      Psicotécnicos
+                      <div className="flex items-center justify-center">
+                        <span className="mr-1 sm:mr-2">🀲</span>
+                        <span className="flex flex-col sm:flex-row sm:items-center">
+                          <span>Psicotécnicos</span>
+                          <span className="bg-yellow-500 dark:bg-yellow-600 text-yellow-900 dark:text-yellow-100 text-xs px-2 py-0.5 rounded-full font-bold ml-0 sm:ml-2 mt-1 sm:mt-0">
+                            🚧 En desarrollo
+                          </span>
+                        </span>
+                      </div>
                     </button>
                   </div>
                 </div>
@@ -1339,8 +1346,15 @@ export default function TestsAuxiliarAdministrativoEstado() {
                         : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
                     }`}
                   >
-                    <span className="mr-1 sm:mr-2">🀲</span>
-                    Psicotécnicos
+                    <div className="flex items-center justify-center">
+                      <span className="mr-1 sm:mr-2">🀲</span>
+                      <span className="flex flex-col sm:flex-row sm:items-center">
+                        <span>Psicotécnicos</span>
+                        <span className="bg-yellow-500 dark:bg-yellow-600 text-yellow-900 dark:text-yellow-100 text-xs px-2 py-0.5 rounded-full font-bold ml-0 sm:ml-2 mt-1 sm:mt-0">
+                          🚧 En desarrollo
+                        </span>
+                      </span>
+                    </div>
                   </button>
                 </div>
               </div>
