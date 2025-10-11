@@ -1,7 +1,39 @@
-// app/teoria/page.js - PÁGINA PRINCIPAL DE TEORÍA
+// app/teoria/page.js - PÁGINA PRINCIPAL DE TEORÍA CON SEO
 import { fetchLawsList } from '@/lib/teoriaFetchers'
 import Link from 'next/link'
 import { BookOpenIcon, DocumentTextIcon, ScaleIcon } from '@heroicons/react/24/outline'
+
+export const metadata = {
+  title: 'Teoría Legal - Estudia Legislación Española',
+  description: 'Accede a todos los artículos de las principales leyes españolas. Constitución, Ley 39/2015, Ley 40/2015 y más. Teoría completa para oposiciones.',
+  keywords: 'teoría legal, legislación española, constitución, ley 39/2015, ley 40/2015, artículos, oposiciones, estudio',
+  openGraph: {
+    title: 'Teoría Legal - Estudia Legislación Española',
+    description: 'Accede a todos los artículos de las principales leyes españolas. Constitución, Ley 39/2015, Ley 40/2015 y más. Teoría completa para oposiciones.',
+    url: 'https://vence.es/teoria',
+    type: 'website',
+    siteName: 'Vence - Preparación de Oposiciones'
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Teoría Legal - Estudia Legislación Española',
+    description: 'Accede a todos los artículos de las principales leyes españolas. Teoría completa para oposiciones.'
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: 'https://vence.es/teoria'
+  }
+}
 
 export default async function TeoriaMainPage() {
   let laws = []

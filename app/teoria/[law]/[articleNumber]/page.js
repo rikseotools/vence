@@ -1,9 +1,89 @@
-// app/teoria/[law]/[articleNumber]/page.js - SOLUCIÓN SIMPLE PARA NEXT.JS 15
+// app/teoria/[law]/[articleNumber]/page.js - SOLUCIÓN SIMPLE PARA NEXT.JS 15 CON METADATA SEO
 
 import { fetchArticleContent, fetchRelatedArticles, fetchLawArticles } from '@/lib/teoriaFetchers'
+import { getLawInfo, mapLawSlugToShortName } from '@/lib/lawMappingUtils'
 import Link from 'next/link'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { Suspense } from 'react'
+
+// Generar metadata dinámica para artículos individuales
+export async function generateMetadata({ params }) {
+  try {
+    const resolvedParams = await params
+    const lawSlug = resolvedParams.law
+    const articleParam = resolvedParams.articleNumber
+    
+    // Extraer número de artículo
+    let articleNumber = null
+    if (articleParam) {
+      if (articleParam.startsWith('articulo-')) {
+        articleNumber = articleParam.replace('articulo-', '')
+      } else {
+        articleNumber = articleParam
+      }
+    }
+    
+    // Obtener información de la ley
+    const shortName = mapLawSlugToShortName(lawSlug)
+    const lawInfo = getLawInfo(shortName)
+    
+    // Intentar obtener título del artículo
+    let articleTitle = `Artículo ${articleNumber}`
+    try {
+      const article = await fetchArticleContent(lawSlug, parseInt(articleNumber))
+      if (article?.title) {
+        articleTitle = article.title
+      }
+    } catch (err) {
+      console.log('No se pudo cargar título del artículo para metadata')
+    }
+    
+    const title = lawInfo 
+      ? `Art. ${articleNumber} ${lawInfo.name} - ${articleTitle}`
+      : `Artículo ${articleNumber} - Teoría Legal`
+    
+    const description = lawInfo
+      ? `Estudia el artículo ${articleNumber} de ${lawInfo.name}: ${articleTitle}. ${lawInfo.description}`
+      : `Contenido completo del artículo ${articleNumber}. Teoría legal para oposiciones.`
+    
+    return {
+      title,
+      description,
+      keywords: `artículo ${articleNumber}, ${shortName}, ${lawInfo?.name || 'legislación'}, teoría, oposiciones`,
+      openGraph: {
+        title,
+        description,
+        url: `https://vence.es/teoria/${lawSlug}/${articleParam}`,
+        type: 'article',
+        siteName: 'Vence - Preparación de Oposiciones'
+      },
+      twitter: {
+        card: 'summary',
+        title,
+        description
+      },
+      robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          'max-video-preview': -1,
+          'max-image-preview': 'large',
+          'max-snippet': -1,
+        },
+      },
+      alternates: {
+        canonical: `https://vence.es/teoria/${lawSlug}/${articleParam}`
+      }
+    }
+  } catch (error) {
+    return {
+      title: 'Artículo - Teoría Legal',
+      description: 'Estudio de artículos de legislación española para oposiciones'
+    }
+  }
+}
 
 // 🔥 SOLUCIÓN SIMPLE: NO precompilar rutas automáticamente
 export async function generateStaticParams() {
