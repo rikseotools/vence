@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:system": "node scripts/check-system.js",
+    "test:full": "node scripts/validate-critical-paths.js",
     "db:clean": "node scripts/clean-database.js",
     "db:load-constitucion": "node scripts/load-constitucion.js",
     "db:load-constitucion-pdf": "node scripts/load-constitucion.js pdfs/constitucion-espanola.pdf"

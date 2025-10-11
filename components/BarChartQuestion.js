@@ -258,7 +258,7 @@ export default function BarChartQuestion({
         <g key={`legend-${index}`}>
           <rect
             x={legendX}
-            y={isMobile ? 65 : 65}
+            y={isMobile ? 65 : 85}
             width={20}
             height={20}
             fill={categoryColors[item]}
@@ -269,7 +269,7 @@ export default function BarChartQuestion({
           />
           <text
             x={legendX + 26}
-            y={isMobile ? 77 : 77}
+            y={isMobile ? 77 : 97}
             fontSize="20"
             fill="#444"
             fontWeight="500"
