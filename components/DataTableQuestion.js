@@ -167,9 +167,9 @@ export default function DataTableQuestion({
               
               if (showResult) {
                 if (index === question.correct_option) {
-                  criterionClass = "bg-green-50 border-2 border-green-500 rounded-lg p-4"
+                  criterionClass = "bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-400 rounded-lg p-4"
                 } else if (index === selectedAnswer) {
-                  criterionClass = "bg-red-50 border-2 border-red-500 rounded-lg p-4"
+                  criterionClass = "bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-400 rounded-lg p-4"
                 } else {
                   criterionClass = "bg-gray-50 dark:bg-gray-700 border border-gray-200 rounded-lg p-4"
                 }
@@ -207,9 +207,9 @@ export default function DataTableQuestion({
               
               if (showResult) {
                 if (dIndex === question.correct_option) {
-                  criterionClass = "bg-green-50 border-2 border-green-500 rounded-lg p-4"
+                  criterionClass = "bg-green-50 dark:bg-green-900/20 border-2 border-green-500 dark:border-green-400 rounded-lg p-4"
                 } else if (dIndex === selectedAnswer) {
-                  criterionClass = "bg-red-50 border-2 border-red-500 rounded-lg p-4"
+                  criterionClass = "bg-red-50 dark:bg-red-900/20 border-2 border-red-500 dark:border-red-400 rounded-lg p-4"
                 } else {
                   criterionClass = "bg-gray-50 dark:bg-gray-700 border border-gray-200 rounded-lg p-4"
                 }
@@ -255,7 +255,7 @@ export default function DataTableQuestion({
             } else if (index === selectedAnswer) {
               buttonClass += "bg-red-600 text-white border-2 border-red-600"
             } else {
-              buttonClass += "bg-white dark:bg-gray-800 border-2 border-gray-300 text-gray-600 dark:text-gray-400"
+              buttonClass += "bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400"
             }
           } else if (selectedAnswer !== null && selectedAnswer === index) {
             buttonClass += "bg-blue-600 text-white border-2 border-blue-600"
@@ -324,7 +324,7 @@ export default function DataTableQuestion({
                     {step.analysis.checks.map((check, checkIndex) => (
                       <div key={checkIndex} className="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-700 p-2 rounded">
                         <span className="text-gray-600 dark:text-gray-400">{check.condition}</span>
-                        <span className="text-gray-800 font-medium">{check.actual}</span>
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">{check.actual}</span>
                         <span className={check.result ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                           {check.description}
                         </span>
@@ -333,7 +333,7 @@ export default function DataTableQuestion({
                   </div>
                   
                   <div className={`mt-2 p-2 rounded text-xs font-medium ${
-                    step.matches ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-red-100 text-red-800 dark:text-red-300'
+                    step.matches ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
                   }`}>
                     {step.analysis.summary}
                   </div>
