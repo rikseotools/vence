@@ -1161,8 +1161,23 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 }
                                 
                                 console.log(`🚀 Iniciando test psicotécnico: ${selectedSectionIds.length} subcategorías y ${totalQuestions} preguntas`)
-                                // Redirigir directamente al test psicotécnico
-                                router.push('/auxiliar-administrativo-estado/test/psicotecnico')
+                                
+                                // Construir URL con parámetros de secciones seleccionadas
+                                const selectedCategoryKeys = Object.keys(selectedCategories).filter(catKey => 
+                                  Object.keys(selectedSections).some(sectionId => 
+                                    selectedSections[sectionId] && blockSections[catKey]?.some(section => section.id === sectionId)
+                                  )
+                                )
+                                const urlParams = new URLSearchParams()
+                                if (selectedCategoryKeys.length > 0) {
+                                  urlParams.set('categories', selectedCategoryKeys.join(','))
+                                }
+                                if (selectedSectionIds.length > 0) {
+                                  urlParams.set('sections', selectedSectionIds.join(','))
+                                }
+                                
+                                // Redirigir al test psicotécnico con parámetros
+                                router.push(`/auxiliar-administrativo-estado/test/psicotecnicos?${urlParams.toString()}`)
                               }}
                               className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
                             >
@@ -2260,8 +2275,23 @@ export default function TestsAuxiliarAdministrativoEstado() {
                               }
                               
                               console.log(`🚀 Iniciando test psicotécnico: ${selectedSectionIds.length} subcategorías y ${totalQuestions} preguntas`)
-                              // Redirigir directamente al test psicotécnico
-                              router.push('/auxiliar-administrativo-estado/test/psicotecnico')
+                              
+                              // Construir URL con parámetros de secciones seleccionadas
+                              const selectedCategoryKeys = Object.keys(selectedCategories).filter(catKey => 
+                                Object.keys(selectedSections).some(sectionId => 
+                                  selectedSections[sectionId] && blockSections[catKey]?.some(section => section.id === sectionId)
+                                )
+                              )
+                              const urlParams = new URLSearchParams()
+                              if (selectedCategoryKeys.length > 0) {
+                                urlParams.set('categories', selectedCategoryKeys.join(','))
+                              }
+                              if (selectedSectionIds.length > 0) {
+                                urlParams.set('sections', selectedSectionIds.join(','))
+                              }
+                              
+                              // Redirigir al test psicotécnico con parámetros
+                              router.push(`/auxiliar-administrativo-estado/test/psicotecnicos?${urlParams.toString()}`)
                             }}
                             className="bg-white text-blue-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 focus:ring-white/50 group"
                           >
