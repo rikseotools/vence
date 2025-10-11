@@ -135,7 +135,7 @@ export default function PieChartQuestion({
           {/* Línea conectora mejorada */}
           <polyline
             points={`${connectorStartX},${connectorStartY} ${connectorMidX},${connectorMidY} ${textX},${textY}`}
-            stroke="#666"
+            stroke={isDarkMode ? "#cbd5e0" : "#666"}
             strokeWidth="1"
             fill="none"
           />
@@ -146,7 +146,7 @@ export default function PieChartQuestion({
             width={item.label.length * 7 + 4}
             height="30"
             fill={isDarkMode ? "rgba(31, 41, 55, 0.9)" : "rgba(255, 255, 255, 0.9)"}
-            stroke="rgba(0, 0, 0, 0.1)"
+            stroke={isDarkMode ? "rgba(229,231,235,0.2)" : "rgba(0, 0, 0, 0.1)"}
             strokeWidth="1"
             rx="3"
           />

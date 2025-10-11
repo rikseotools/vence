@@ -222,7 +222,7 @@ export default function BarChartQuestion({
             height={barHeight}
             fill={`url(#gradient-${yearIndex}-${catIndex})`}
             filter={`url(#shadow-${yearIndex}-${catIndex})`}
-            stroke="rgba(255,255,255,0.5)"
+            stroke={isDarkMode ? "rgba(31,41,55,0.5)" : "rgba(255,255,255,0.5)"}
             strokeWidth="1"
             rx="3"
             ry="3"
@@ -287,7 +287,7 @@ export default function BarChartQuestion({
             fill={categoryColors[item]}
             rx="2"
             ry="2"
-            stroke="rgba(0,0,0,0.1)"
+            stroke={isDarkMode ? "rgba(229,231,235,0.2)" : "rgba(0,0,0,0.1)"}
             strokeWidth="1"
           />
           <text
@@ -318,7 +318,7 @@ export default function BarChartQuestion({
             y1={y}
             x2={margin.left + plotWidth}
             y2={y}
-            stroke="rgba(0,0,0,0.1)"
+            stroke={isDarkMode ? "rgba(229,231,235,0.2)" : "rgba(0,0,0,0.1)"}
             strokeWidth="1"
             strokeDasharray={i === 0 ? "none" : "2,2"}
           />
