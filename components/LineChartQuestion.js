@@ -69,7 +69,7 @@ export default function LineChartQuestion({
     const colors = {
       '0-1 años': '#4CAF50',     // Verde
       '15-26 años': '#FF9800',   // Naranja  
-      '27-59 años': '#424242',   // Negro/Gris oscuro
+      '27-59 años': isDarkMode ? '#E5E7EB' : '#424242',   // Gris claro en dark mode, oscuro en light mode
       '60+ años': '#E91E63'      // Rosa/Magenta
     }
 

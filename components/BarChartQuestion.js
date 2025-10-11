@@ -185,7 +185,7 @@ export default function BarChartQuestion({
       } else {
         categoryColors = {
           'Frutas': '#e91e63',
-          'Pescado': '#424242', 
+          'Pescado': isDarkMode ? '#E5E7EB' : '#424242', 
           'Verdura': '#ff9800'
         }
       }
@@ -253,7 +253,7 @@ export default function BarChartQuestion({
           y={margin.top + plotHeight + 25}
           textAnchor="middle"
           fontSize="16"
-          fill="#444"
+          fill={isDarkMode ? "#e2e8f0" : "#444"}
           fontWeight="600"
         >
           {yearData.year}
