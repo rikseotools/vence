@@ -207,27 +207,23 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const getTotalSelectedQuestions = () => {
     const selectedSectionIds = Object.keys(selectedSections).filter(sectionId => selectedSections[sectionId])
     let totalQuestions = 0
+    const processedSections = new Set()
     
-    // Primero intentar usar conteos específicos por subcategoría si están disponibles
-    let hasSpecificCounts = false
+    // Primero procesar secciones con conteos específicos
     selectedSectionIds.forEach(sectionId => {
       if (questionCounts[sectionId] !== undefined) {
-        totalQuestions += questionCounts[sectionId] || 0
-        hasSpecificCounts = true
-        console.log(`🎯 ${sectionId}: ${questionCounts[sectionId]} preguntas (conteo específico)`)
+        const count = questionCounts[sectionId] || 0
+        totalQuestions += count
+        processedSections.add(sectionId)
       }
     })
     
-    // Si tenemos conteos específicos, usarlos
-    if (hasSpecificCounts) {
-      console.log(`📊 Total preguntas (conteos específicos): ${totalQuestions}`)
-      return totalQuestions
-    }
-    
-    // Fallback: calcular proporcional por categoría
+    // Luego procesar categorías donde no tenemos conteos específicos para todas las secciones
     const categoriesWithSelectedSections = {}
     Object.entries(blockSections).forEach(([categoryKey, sections]) => {
-      const selectedSectionsInCategory = sections.filter(section => selectedSections[section.id])
+      const selectedSectionsInCategory = sections.filter(section => 
+        selectedSections[section.id] && !processedSections.has(section.id)
+      )
       if (selectedSectionsInCategory.length > 0) {
         categoriesWithSelectedSections[categoryKey] = {
           totalSections: sections.length,
@@ -237,17 +233,21 @@ export default function TestsAuxiliarAdministrativoEstado() {
       }
     })
     
-    // Calcular preguntas proporcionales por categoría
+    // Calcular preguntas proporcionales para categorías sin conteos específicos
     Object.entries(categoriesWithSelectedSections).forEach(([categoryKey, sectionInfo]) => {
       const categoryTotalQuestions = categoryQuestionCounts[categoryKey] || 0
-      // Distribuir preguntas proporcionalmente según secciones seleccionadas
-      const questionsPerSelectedSection = (categoryTotalQuestions * sectionInfo.selectedSections) / sectionInfo.totalSections
-      totalQuestions += Math.round(questionsPerSelectedSection)
       
-      console.log(`🔍 ${categoryKey}: ${sectionInfo.selectedSections}/${sectionInfo.totalSections} secciones = ${Math.round(questionsPerSelectedSection)} preguntas (de ${categoryTotalQuestions} total)`)
+      // Solo sumar preguntas si la categoría realmente tiene preguntas
+      if (categoryTotalQuestions > 0) {
+        const questionsPerSelectedSection = (categoryTotalQuestions * sectionInfo.selectedSections) / sectionInfo.totalSections
+        const roundedQuestions = Math.round(questionsPerSelectedSection)
+        totalQuestions += roundedQuestions
+      }
+      
+      // Marcar estas secciones como procesadas
+      sectionInfo.selectedSectionIds.forEach(id => processedSections.add(id))
     })
     
-    console.log(`📊 Total preguntas calculadas (proporcional): ${totalQuestions}`)
     return totalQuestions
   }
 
@@ -389,15 +389,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
       if (error) {
         console.error('❌ Error cargando conteos:', error)
         
-        // Datos de fallback para subcategorías
-        const fallbackCounts = {
-          'cap-admin-tablas': 8,
-          'cap-admin-graficos': 7,
-          'cap-admin-clasificacion': 5,
-          'cap-admin-atencion-percepcion': 5
-        }
-        setQuestionCounts(fallbackCounts)
-        console.log('📊 Usando conteos de fallback para secciones:', fallbackCounts)
+        // No usar fallbacks ficticios
+        console.log('📊 Error al cargar secciones, saltando')
         return
       }
 
@@ -430,20 +423,18 @@ export default function TestsAuxiliarAdministrativoEstado() {
             counts['cap-admin-clasificacion'] = (counts['cap-admin-clasificacion'] || 0) + 1
           }
         }
-        // Para otras categorías, distribuir equitativamente por ahora
-        else if (blockSections[categoryKey]) {
-          const sectionIds = blockSections[categoryKey].map(s => s.id)
-          const randomSectionId = sectionIds[Math.floor(Math.random() * sectionIds.length)]
-          counts[randomSectionId] = (counts[randomSectionId] || 0) + 1
-        }
+        // Para otras categorías que no tengan preguntas reales, no agregar nada
+        // (eliminado el mapeo aleatorio que creaba preguntas ficticias)
       })
 
-      console.log('✅ Conteos de secciones cargados:', counts)
-      // Acumular conteos en lugar de reemplazar
-      setQuestionCounts(prev => ({
-        ...prev,
-        ...counts
-      }))
+      console.log('✅ Conteos de secciones cargados para', categoryKey, ':', counts)
+      // Solo actualizar si hay conteos reales para esta categoría
+      if (Object.values(counts).some(count => count > 0)) {
+        setQuestionCounts(prev => ({
+          ...prev,
+          ...counts
+        }))
+      }
 
     } catch (error) {
       console.error('❌ Error inesperado:', error)
@@ -471,38 +462,38 @@ export default function TestsAuxiliarAdministrativoEstado() {
       if (error) {
         console.error('❌ Error cargando conteos de categorías:', error)
         
-        // Datos de fallback para testing
-        const fallbackCounts = {
-          'capacidad-administrativa': 25,
-          'capacidad-ortografica': 20,
-          'pruebas-instrucciones': 15,
-          'razonamiento-numerico': 50,
-          'razonamiento-verbal': 30,
-          'series-alfanumericas': 12,
-          'series-letras': 18,
-          'series-numericas': 22
+        // No usar fallbacks ficticios, usar conteos reales de 0
+        const emptyCounts = {
+          'capacidad-administrativa': 0,
+          'capacidad-ortografica': 0,
+          'pruebas-instrucciones': 0,
+          'razonamiento-numerico': 0,
+          'razonamiento-verbal': 0,
+          'series-alfanumericas': 0,
+          'series-letras': 0,
+          'series-numericas': 0
         }
-        setCategoryQuestionCounts(fallbackCounts)
-        console.log('📊 Usando conteos de fallback por error:', fallbackCounts)
+        setCategoryQuestionCounts(emptyCounts)
+        console.log('📊 Error en BD: usando conteos en 0')
         return
       }
 
       if (!data || data.length === 0) {
         console.log('⚠️ No se encontraron preguntas psicotécnicas activas')
         
-        // Datos de fallback para testing
-        const fallbackCounts = {
-          'capacidad-administrativa': 25,
-          'capacidad-ortografica': 20,
-          'pruebas-instrucciones': 15,
-          'razonamiento-numerico': 50,
-          'razonamiento-verbal': 30,
-          'series-alfanumericas': 12,
-          'series-letras': 18,
-          'series-numericas': 22
+        // No usar fallbacks ficticios, usar conteos reales de 0
+        const emptyCounts = {
+          'capacidad-administrativa': 0,
+          'capacidad-ortografica': 0,
+          'pruebas-instrucciones': 0,
+          'razonamiento-numerico': 0,
+          'razonamiento-verbal': 0,
+          'series-alfanumericas': 0,
+          'series-letras': 0,
+          'series-numericas': 0
         }
-        setCategoryQuestionCounts(fallbackCounts)
-        console.log('📊 Usando conteos de fallback por datos vacíos:', fallbackCounts)
+        setCategoryQuestionCounts(emptyCounts)
+        console.log('📊 Sin datos: usando conteos en 0')
         return
       }
 
@@ -520,6 +511,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
 
       console.log('✅ Conteos de categorías cargados:', counts)
       console.log('📊 Total de preguntas encontradas:', Object.values(counts).reduce((a, b) => a + b, 0))
+      console.log('📊 Datos reales de BD - count:', data?.length, 'data:', data)
       setCategoryQuestionCounts(counts)
 
     } catch (error) {
@@ -540,6 +532,9 @@ export default function TestsAuxiliarAdministrativoEstado() {
     
     // Cargar conteos de preguntas por categoría
     loadAllCategoryQuestionCounts()
+    
+    // Limpiar conteos ficticios anteriores
+    setQuestionCounts({})
     
     // Cargar conteos específicos por subcategoría para todas las categorías
     Object.keys(blockSections).forEach(categoryKey => {
@@ -940,8 +935,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 <span className="text-base sm:text-lg font-medium text-gray-700">Capacidad administrativa</span>
                                     </div>
                             </div>
-                            <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
-                              <span className="text-sm text-gray-500 mr-2 sm:mr-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
+                              <span className="text-sm text-gray-500 order-2 sm:order-1">
                                 {getSelectedSectionsCount('capacidad-administrativa')}/4 secciones • {categoryQuestionCounts['capacidad-administrativa'] || 0} preguntas
                               </span>
                               <button 
@@ -949,10 +944,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   e.stopPropagation()
                                   handleBlockClick('capacidad-administrativa')
                                 }}
-                                className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded flex-shrink-0"
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors order-1 sm:order-2 w-full sm:w-auto"
                               >
                                 <span className="hidden sm:inline">Configurar secciones</span>
-                                <span className="sm:hidden">Configurar</span>
+                                <span className="sm:hidden">⚙️ Configurar</span>
                               </button>
                             </div>
                           </div>
@@ -1001,9 +996,9 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('razonamiento-numerico')}>
-                            <div className="flex items-center">
-                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('razonamiento-numerico')}>
+                            <div className="flex items-center mb-2 sm:mb-0">
+                              <div className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 ${
                                 isSomeSectionSelected('razonamiento-numerico') 
                                   ? 'bg-blue-600 border-blue-600' 
                                   : 'border-gray-300'
@@ -1014,10 +1009,12 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   </svg>
                                 )}
                               </div>
-                              <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
+                              <div className="flex flex-col sm:flex-row sm:items-center">
+                                <span className="text-base sm:text-lg font-medium text-gray-700">Razonamiento numérico</span>
+                              </div>
                             </div>
-                            <div className="flex items-center">
-                              <span className="text-sm text-gray-500 mr-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
+                              <span className="text-sm text-gray-500 order-2 sm:order-1">
                                 {getSelectedSectionsCount('razonamiento-numerico')}/13 secciones • {categoryQuestionCounts['razonamiento-numerico'] || 0} preguntas
                               </span>
                               <button 
@@ -1025,16 +1022,17 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   e.stopPropagation()
                                   handleBlockClick('razonamiento-numerico')
                                 }}
-                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors order-1 sm:order-2 w-full sm:w-auto"
                               >
-                                Configurar secciones
+                                <span className="hidden sm:inline">Configurar secciones</span>
+                                <span className="sm:hidden">⚙️ Configurar</span>
                               </button>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('razonamiento-verbal')}>
-                            <div className="flex items-center">
-                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('razonamiento-verbal')}>
+                            <div className="flex items-center mb-2 sm:mb-0">
+                              <div className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 ${
                                 isSomeSectionSelected('razonamiento-verbal') 
                                   ? 'bg-blue-600 border-blue-600' 
                                   : 'border-gray-300'
@@ -1045,10 +1043,12 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   </svg>
                                 )}
                               </div>
-                              <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
+                              <div className="flex flex-col sm:flex-row sm:items-center">
+                                <span className="text-base sm:text-lg font-medium text-gray-700">Razonamiento verbal</span>
+                              </div>
                             </div>
-                            <div className="flex items-center">
-                              <span className="text-sm text-gray-500 mr-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
+                              <span className="text-sm text-gray-500 order-2 sm:order-1">
                                 {getSelectedSectionsCount('razonamiento-verbal')}/4 secciones • {categoryQuestionCounts['razonamiento-verbal'] || 0} preguntas
                               </span>
                               <button 
@@ -1056,16 +1056,17 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   e.stopPropagation()
                                   handleBlockClick('razonamiento-verbal')
                                 }}
-                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors order-1 sm:order-2 w-full sm:w-auto"
                               >
-                                Configurar secciones
+                                <span className="hidden sm:inline">Configurar secciones</span>
+                                <span className="sm:hidden">⚙️ Configurar</span>
                               </button>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-alfanumericas')}>
-                            <div className="flex items-center">
-                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-alfanumericas')}>
+                            <div className="flex items-center mb-2 sm:mb-0">
+                              <div className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 ${
                                 isSomeSectionSelected('series-alfanumericas') 
                                   ? 'bg-blue-600 border-blue-600' 
                                   : 'border-gray-300'
@@ -1076,18 +1077,20 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   </svg>
                                 )}
                               </div>
-                              <div className="flex flex-col">
-                                <span className="text-lg font-medium text-gray-700">Series alfanuméricas</span>
-                                <span className="text-sm text-gray-500">
-                                  {getSelectedSectionsCount('series-alfanumericas')}/2 secciones • {categoryQuestionCounts['series-alfanumericas'] || 0} preguntas
-                                </span>
+                              <div className="flex flex-col sm:flex-row sm:items-center">
+                                <span className="text-base sm:text-lg font-medium text-gray-700">Series alfanuméricas</span>
                               </div>
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
+                              <span className="text-sm text-gray-500 order-2 sm:order-1">
+                                {getSelectedSectionsCount('series-alfanumericas')}/2 secciones • {categoryQuestionCounts['series-alfanumericas'] || 0} preguntas
+                              </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-letras')}>
-                            <div className="flex items-center">
-                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-letras')}>
+                            <div className="flex items-center mb-2 sm:mb-0">
+                              <div className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 ${
                                 isSomeSectionSelected('series-letras') 
                                   ? 'bg-blue-600 border-blue-600' 
                                   : 'border-gray-300'
@@ -1098,18 +1101,20 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   </svg>
                                 )}
                               </div>
-                              <div className="flex flex-col">
-                                <span className="text-lg font-medium text-gray-700">Series de letras</span>
-                                <span className="text-sm text-gray-500">
-                                  {getSelectedSectionsCount('series-letras')}/2 secciones • {categoryQuestionCounts['series-letras'] || 0} preguntas
-                                </span>
+                              <div className="flex flex-col sm:flex-row sm:items-center">
+                                <span className="text-base sm:text-lg font-medium text-gray-700">Series de letras</span>
                               </div>
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
+                              <span className="text-sm text-gray-500 order-2 sm:order-1">
+                                {getSelectedSectionsCount('series-letras')}/2 secciones • {categoryQuestionCounts['series-letras'] || 0} preguntas
+                              </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-numericas')}>
-                            <div className="flex items-center">
-                              <div className={`w-5 h-5 border-2 rounded mr-4 ${
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" onClick={() => togglePsychometricCategorySelection('series-numericas')}>
+                            <div className="flex items-center mb-2 sm:mb-0">
+                              <div className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 ${
                                 isSomeSectionSelected('series-numericas') 
                                   ? 'bg-blue-600 border-blue-600' 
                                   : 'border-gray-300'
@@ -1120,12 +1125,14 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   </svg>
                                 )}
                               </div>
-                              <div className="flex flex-col">
-                                <span className="text-lg font-medium text-gray-700">Series numéricas</span>
-                                <span className="text-sm text-gray-500">
-                                  {getSelectedSectionsCount('series-numericas')}/2 secciones • {categoryQuestionCounts['series-numericas'] || 0} preguntas
-                                </span>
+                              <div className="flex flex-col sm:flex-row sm:items-center">
+                                <span className="text-base sm:text-lg font-medium text-gray-700">Series numéricas</span>
                               </div>
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
+                              <span className="text-sm text-gray-500 order-2 sm:order-1">
+                                {getSelectedSectionsCount('series-numericas')}/2 secciones • {categoryQuestionCounts['series-numericas'] || 0} preguntas
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -2047,17 +2054,17 @@ export default function TestsAuxiliarAdministrativoEstado() {
                               <span className="text-base sm:text-lg font-medium text-gray-700">Capacidad administrativa</span>
                             </div>
                           </div>
-                          <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto">
-                            <span className="text-sm text-gray-500 mr-2 sm:mr-4">{getSelectedSectionsCount('capacidad-administrativa')}/4 secciones</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
+                            <span className="text-sm text-gray-500 order-2 sm:order-1">{getSelectedSectionsCount('capacidad-administrativa')}/4 secciones</span>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleBlockClick('capacidad-administrativa')
                               }}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm px-2 py-1 rounded flex-shrink-0"
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors order-1 sm:order-2 w-full sm:w-auto"
                             >
                               <span className="hidden sm:inline">Configurar secciones</span>
-                              <span className="sm:hidden">Configurar</span>
+                              <span className="sm:hidden">⚙️ Configurar</span>
                             </button>
                           </div>
                         </div>
@@ -2120,16 +2127,17 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                             <span className="text-lg font-medium text-gray-700">Razonamiento numérico</span>
                           </div>
-                          <div className="flex items-center">
-                            <span className="text-sm text-gray-500 mr-4">{getSelectedSectionsCount('razonamiento-numerico')}/13 secciones</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                            <span className="text-sm text-gray-500 order-2 sm:order-1">{getSelectedSectionsCount('razonamiento-numerico')}/13 secciones</span>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleBlockClick('razonamiento-numerico')
                               }}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors order-1 sm:order-2 w-full sm:w-auto"
                             >
-                              Configurar secciones
+                              <span className="hidden sm:inline">Configurar secciones</span>
+                              <span className="sm:hidden">⚙️ Configurar</span>
                             </button>
                           </div>
                         </div>
@@ -2152,16 +2160,17 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                             <span className="text-lg font-medium text-gray-700">Razonamiento verbal</span>
                           </div>
-                          <div className="flex items-center">
-                            <span className="text-sm text-gray-500 mr-4">{getSelectedSectionsCount('razonamiento-verbal')}/4 secciones</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                            <span className="text-sm text-gray-500 order-2 sm:order-1">{getSelectedSectionsCount('razonamiento-verbal')}/4 secciones</span>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleBlockClick('razonamiento-verbal')
                               }}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm px-3 py-2 rounded bg-blue-50 hover:bg-blue-100 transition-colors order-1 sm:order-2 w-full sm:w-auto"
                             >
-                              Configurar secciones
+                              <span className="hidden sm:inline">Configurar secciones</span>
+                              <span className="sm:hidden">⚙️ Configurar</span>
                             </button>
                           </div>
                         </div>
