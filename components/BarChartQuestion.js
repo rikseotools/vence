@@ -18,7 +18,28 @@ export default function BarChartQuestion({
   const generateBarChart = () => {
     if (!question.content_data?.chart_data) return
 
-    const data = question.content_data.chart_data
+    const rawData = question.content_data.chart_data
+    let data = []
+    
+    // Detectar estructura y normalizar datos
+    if (rawData.quarters && Array.isArray(rawData.quarters)) {
+      // Nueva estructura (coches): { quarters: [{ name, modelA, modelB }] }
+      data = rawData.quarters.map(quarter => ({
+        year: quarter.name,
+        categories: [
+          { name: rawData.legend?.modelA || 'Modelo A', value: quarter.modelA },
+          { name: rawData.legend?.modelB || 'Modelo B', value: quarter.modelB }
+        ]
+      }))
+    } else if (Array.isArray(rawData) || (typeof rawData === 'object' && Object.keys(rawData).every(k => !isNaN(k)))) {
+      // Estructura antigua (frutas): array o objeto con índices numéricos
+      const dataArray = Array.isArray(rawData) ? rawData : Object.values(rawData)
+      data = dataArray
+    } else {
+      console.error('❌ Estructura de datos no reconocida:', rawData)
+      return
+    }
+
     const chartWidth = 400
     const chartHeight = 350
     const margin = { top: 60, right: 30, bottom: 60, left: 60 }
@@ -28,9 +49,11 @@ export default function BarChartQuestion({
     // Encontrar valores máximos para escalado
     let maxValue = 0
     data.forEach(yearData => {
-      yearData.categories.forEach(category => {
-        maxValue = Math.max(maxValue, category.value)
-      })
+      if (yearData.categories && Array.isArray(yearData.categories)) {
+        yearData.categories.forEach(category => {
+          maxValue = Math.max(maxValue, category.value)
+        })
+      }
     })
 
     const barWidth = plotWidth / (data.length * 3 + 1) // 3 categorías por año + espacio
@@ -173,7 +196,7 @@ export default function BarChartQuestion({
           fontWeight="bold"
           fill="#333"
         >
-          {question.content_data?.y_axis_label || 'Kg/mes'}
+          {rawData.title || question.content_data?.y_axis_label || 'Gráfico de Barras'}
         </text>
         
         {/* Leyenda */}
