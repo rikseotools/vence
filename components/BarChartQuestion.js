@@ -23,12 +23,18 @@ export default function BarChartQuestion({
     
     // Detectar estructura y normalizar datos
     if (rawData.quarters && Array.isArray(rawData.quarters)) {
-      // Nueva estructura (coches): { quarters: [{ name, modelA, modelB }] }
+      // Nueva estructura (coches): { quarters: [{ name, cocheA, cocheB }] o { name, modelA, modelB }] }
       data = rawData.quarters.map(quarter => ({
         year: quarter.name,
         categories: [
-          { name: rawData.legend?.modelA || 'Modelo A', value: quarter.modelA },
-          { name: rawData.legend?.modelB || 'Modelo B', value: quarter.modelB }
+          { 
+            name: rawData.legend?.cocheA || rawData.legend?.modelA || 'Coche A', 
+            value: quarter.cocheA || quarter.modelA || 0 
+          },
+          { 
+            name: rawData.legend?.cocheB || rawData.legend?.modelB || 'Coche B', 
+            value: quarter.cocheB || quarter.modelB || 0 
+          }
         ]
       }))
     } else if (Array.isArray(rawData) || (typeof rawData === 'object' && Object.keys(rawData).every(k => !isNaN(k)))) {
@@ -40,9 +46,9 @@ export default function BarChartQuestion({
       return
     }
 
-    const chartWidth = 400
+    const chartWidth = 600  // Más ancho para el Trimestre 4 completo
     const chartHeight = 350
-    const margin = { top: 60, right: 30, bottom: 60, left: 60 }
+    const margin = { top: 60, right: 50, bottom: 60, left: 60 }  // Más margen derecho
     const plotWidth = chartWidth - margin.left - margin.right
     const plotHeight = chartHeight - margin.top - margin.bottom
 
@@ -56,18 +62,31 @@ export default function BarChartQuestion({
       }
     })
 
-    const barWidth = plotWidth / (data.length * 3 + 1) // 3 categorías por año + espacio
-    const groupWidth = barWidth * 3
+    const barWidth = plotWidth / (data.length * 3 + 2) // Más espacio entre grupos
+    const groupWidth = barWidth * 2.5  // Menos ancho de grupo para más espacio
 
     let bars = []
     let labels = []
     let legend = []
 
-    // Colores para las categorías
-    const categoryColors = {
-      'Frutas': '#e91e63',
-      'Pescado': '#424242', 
-      'Verdura': '#ff9800'
+    // Colores dinámicos según tipo de gráfico
+    let categoryColors = {}
+    
+    if (rawData.type === 'bar_chart' && rawData.title?.includes('COCHES')) {
+      // Gráfico de coches - colores bien diferenciados
+      categoryColors = {
+        'Coche A': '#ff9800',   // Naranja 
+        'Coche B': '#2196f3',   // Azul (bien diferenciado)
+        'Modelo A': '#ff9800',  // Fallback para compatibilidad
+        'Modelo B': '#2196f3'   // Fallback para compatibilidad
+      }
+    } else {
+      // Gráfico de frutas - colores originales
+      categoryColors = {
+        'Frutas': '#e91e63',
+        'Pescado': '#424242', 
+        'Verdura': '#ff9800'
+      }
     }
 
     // Generar barras
@@ -86,7 +105,7 @@ export default function BarChartQuestion({
             y={barY}
             width={barWidth - 2}
             height={barHeight}
-            fill={categoryColors[category.label]}
+            fill={categoryColors[category.name] || '#333333'}
             stroke="white"
             strokeWidth="1"
           />
@@ -124,8 +143,15 @@ export default function BarChartQuestion({
       )
     })
 
-    // Leyenda - posicionada más abajo para evitar solapamiento
-    const legendItems = Object.keys(categoryColors)
+    // Leyenda - solo mostrar categorías que realmente aparecen en los datos
+    const usedCategories = new Set()
+    data.forEach(yearData => {
+      if (yearData.categories) {
+        yearData.categories.forEach(cat => usedCategories.add(cat.name))
+      }
+    })
+    const legendItems = Array.from(usedCategories)
+    
     legendItems.forEach((item, index) => {
       const legendX = margin.left + (index * 80)
       legend.push(
@@ -243,38 +269,26 @@ export default function BarChartQuestion({
     )
   }
 
-  // Secciones específicas de explicación para gráficos de barras
-  const explanationSections = (
+  // Usar las explicaciones de la base de datos en lugar de hardcodeadas
+  const explanationSections = question.content_data?.explanation_sections ? (
     <>
-      <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-        <h5 className="font-semibold text-green-800 mb-2">📊 Datos de Frutas:</h5>
-        <p className="text-gray-700 text-sm">
-          2019: 15 kg/mes<br/>
-          2020: 20 kg/mes<br/>
-          2021: 10 kg/mes<br/>
-          2022: 5 kg/mes<br/>
-          <strong>Total: 50 kg/mes ✅</strong>
-        </p>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg border-l-4 border-yellow-500">
-        <h5 className="font-semibold text-yellow-800 mb-2">📊 Datos de Verduras:</h5>
-        <p className="text-gray-700 text-sm">
-          2019: 20 kg/mes<br/>
-          2020: 20 kg/mes<br/>
-          2021: 15 kg/mes<br/>
-          2022: 10 kg/mes<br/>
-          <strong>Total: 65 kg/mes ✅</strong>
-        </p>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
-        <h5 className="font-semibold text-purple-800 mb-2">🧮 Diferencia:</h5>
-        <p className="text-gray-700 text-sm">
-          <strong>Verduras - Frutas = 65 - 50 = 15 kg/mes ✅</strong>
-        </p>
-      </div>
+      {question.content_data.explanation_sections.map((section, index) => (
+        <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-blue-500 mb-4">
+          <h5 className="font-semibold text-blue-800 mb-2">{section.title}</h5>
+          <div className="text-gray-700 text-sm whitespace-pre-line">
+            {section.content}
+          </div>
+        </div>
+      ))}
     </>
+  ) : (
+    // Fallback para preguntas sin explanation_sections
+    <div className="bg-white p-4 rounded-lg border-l-4 border-gray-500">
+      <h5 className="font-semibold text-gray-800 mb-2">📊 Análisis del Gráfico</h5>
+      <p className="text-gray-700 text-sm">
+        Analiza los datos presentados en el gráfico para responder la pregunta.
+      </p>
+    </div>
   )
 
   return (

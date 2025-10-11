@@ -64,7 +64,7 @@ export default function ChartQuestion({
           let buttonClass = "w-full p-4 text-left border-2 rounded-lg transition-all duration-200 flex items-center gap-3"
           
           if (showResult) {
-            if (index === question.correct_option) {
+            if (index === question.correct_option - 1) {
               // Respuesta correcta
               buttonClass += " border-green-500 bg-green-50 text-green-800"
             } else if (index === selectedAnswer) {
@@ -93,10 +93,10 @@ export default function ChartQuestion({
               <span className="text-lg">
                 {option.value}
               </span>
-              {showResult && index === question.correct_option && (
+              {showResult && index === question.correct_option - 1 && (
                 <span className="ml-auto text-green-600">✓</span>
               )}
-              {showResult && index === selectedAnswer && index !== question.correct_option && (
+              {showResult && index === selectedAnswer && index !== question.correct_option - 1 && (
                 <span className="ml-auto text-red-600">✗</span>
               )}
             </button>
@@ -206,7 +206,7 @@ export default function ChartQuestion({
               userId={user.id}
               questionId={question.id}
               currentResult={{
-                isCorrect: selectedAnswer === question.correct_option,
+                isCorrect: selectedAnswer === question.correct_option - 1,
                 timeSpent: 0, // Se podría calcular si se necesita
                 answer: selectedAnswer
               }}
