@@ -11,10 +11,10 @@ export default function FooterES() {
   const enlaces = {
     leyes: [
       { nombre: 'Constitución Española', href: '/leyes/constitucion-espanola', disponible: true },
-      { nombre: 'Ley 39/2015', href: '/leyes/ley-39-2015', disponible: false },
-      { nombre: 'Ley 40/2015', href: '/leyes/ley-40-2015', disponible: false },
-      { nombre: 'Código Civil', href: '/leyes/codigo-civil', disponible: false },
-      { nombre: 'Código Penal', href: '/leyes/codigo-penal', disponible: false }
+      { nombre: 'Ley 39/2015', href: '/leyes/ley-39-2015', disponible: true },
+      { nombre: 'Ley 40/2015', href: '/leyes/ley-40-2015', disponible: true },
+      { nombre: 'Ley 19/2013', href: '/leyes/ley-19-2013', disponible: true },
+      { nombre: 'Ley 7/1985', href: '/leyes/ley-7-1985', disponible: true }
     ],
     oposiciones: [
       { nombre: 'Auxiliar Administrativo Estado', href: '/auxiliar-administrativo-estado', disponible: true },
@@ -26,7 +26,7 @@ export default function FooterES() {
     recursos: [
       { nombre: 'Temarios Gratis', href: '/auxiliar-administrativo-estado/temario', disponible: true },
       { nombre: 'Tests Online', href: '/auxiliar-administrativo-estado/test', disponible: true },
-      { nombre: 'Simulacros de Examen', href: '/simulacros', disponible: false },
+      { nombre: 'Psicotécnicos', href: '/psicotecnicos', disponible: true },
       { nombre: 'Guías de Estudio', href: '/guias', disponible: false },
       { nombre: 'Blog Jurídico', href: '/blog', disponible: false }
     ],
