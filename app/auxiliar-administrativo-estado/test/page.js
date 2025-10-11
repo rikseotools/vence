@@ -417,7 +417,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
         if (categoryKey === 'capacidad-administrativa') {
           if (subtype === 'data_tables') {
             counts['cap-admin-tablas'] = (counts['cap-admin-tablas'] || 0) + 1
-          } else if (subtype === 'pie_chart') {
+          } else if (subtype === 'pie_chart' || subtype === 'bar_chart' || subtype === 'line_chart') {
             counts['cap-admin-graficos'] = (counts['cap-admin-graficos'] || 0) + 1
           } else {
             counts['cap-admin-clasificacion'] = (counts['cap-admin-clasificacion'] || 0) + 1
