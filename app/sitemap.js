@@ -148,20 +148,34 @@ export default async function sitemap() {
           const canonicalSlug = getCanonicalSlug(law.short_name)
           const lastModified = law.updated_at ? new Date(law.updated_at) : new Date()
 
-          // ✅ SOLO PÁGINA PRINCIPAL DE LA LEY - NO TESTS
-          const lawUrl = {
+          // ✅ PÁGINAS PRINCIPALES DE LEYES - TESTS Y TEORÍA
+          const lawTestUrl = {
             url: `${SITE_URL}/leyes/${canonicalSlug}`,
             lastModified,
             changeFrequency: 'weekly',
             priority: 0.8,
           }
+          
+          const lawTeoriaUrl = {
+            url: `${SITE_URL}/teoria/${canonicalSlug}`,
+            lastModified,
+            changeFrequency: 'weekly',
+            priority: 0.7,
+          }
 
           // 🎯 CONTROL: Solo añadir si no está en la lista de exclusión
-          const path = lawUrl.url.replace(SITE_URL, '')
-          if (!excludedUrls.some(excluded => path.includes(excluded))) {
-            lawUrls.push(lawUrl)
-            console.log(`✅ ${law.short_name}: ${count} preguntas → URL principal: ${canonicalSlug}`)
+          const testPath = lawTestUrl.url.replace(SITE_URL, '')
+          const teoriaPath = lawTeoriaUrl.url.replace(SITE_URL, '')
+          
+          if (!excludedUrls.some(excluded => testPath.includes(excluded))) {
+            lawUrls.push(lawTestUrl)
           }
+          
+          if (!excludedUrls.some(excluded => teoriaPath.includes(excluded))) {
+            lawUrls.push(lawTeoriaUrl)
+          }
+          
+          console.log(`✅ ${law.short_name}: ${count} preguntas → URLs: /leyes/${canonicalSlug} + /teoria/${canonicalSlug}`)
         } else {
           console.log(`❌ ${law.short_name}: ${count} preguntas → EXCLUIDA (insuficientes)`)
         }
@@ -174,9 +188,9 @@ export default async function sitemap() {
     const totalUrls = staticUrls.length + lawUrls.length
     console.log(`✅ Sitemap LIMPIO generado:`)
     console.log(`   📄 ${staticUrls.length} URLs estáticas`)
-    console.log(`   🏛️ ${lawUrls.length} páginas principales de leyes`)
+    console.log(`   🏛️ ${lawUrls.length} páginas de leyes (tests + teoría)`)
     console.log(`   📊 ${totalUrls} URLs totales`)
-    console.log(`🎯 SOLO páginas principales - SIN tests individuales`)
+    console.log(`🎯 Páginas principales de leyes + teoría - SIN artículos individuales`)
     
     return [...staticUrls, ...lawUrls]
 
