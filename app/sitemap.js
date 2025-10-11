@@ -78,6 +78,14 @@ export default async function sitemap() {
       changeFrequency: 'yearly',
       priority: 0.3,
     },
+    
+    // Tests Psicotécnicos
+    {
+      url: `${SITE_URL}/psicotecnicos`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
   ]
 
   // 🚫 URLs QUE NO QUIERES INDEXAR (todas las páginas de test)
