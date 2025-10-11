@@ -33,7 +33,7 @@ export default function ChartQuestion({
       </div>
 
       {/* Pregunta */}
-      <div className="mb-6">
+      <div className="mb-6 sm:mb-6 mb-3">
         <h2 className="text-xl font-bold text-gray-900 mb-3">
           {question.question_text}
         </h2>
@@ -47,15 +47,8 @@ export default function ChartQuestion({
       </div>
 
       {/* Gráfico - Componente específico */}
-      <div className="mb-8">
-        <h3 className="text-center font-bold text-gray-900 mb-4">
-          {question.content_data?.chart_title || 'Gráfico'}
-        </h3>
-        <div className="flex justify-center px-4">
-          <div className="max-w-md w-full">
-            {chartComponent}
-          </div>
-        </div>
+      <div className="mb-4 -mx-6 -my-2 sm:-mt-2 -mt-8">
+        {chartComponent}
       </div>
 
       {/* Opciones de respuesta */}

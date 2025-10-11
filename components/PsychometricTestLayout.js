@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import PieChartQuestion from './PieChartQuestion'
 import DataTableQuestion from './DataTableQuestion'
 import BarChartQuestion from './BarChartQuestion'
+import LineChartQuestion from './LineChartQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 
@@ -252,6 +253,17 @@ export default function PsychometricTestLayout({
           />
         )
       
+      case 'line_chart':
+        return (
+          <LineChartQuestion
+            question={currentQ}
+            onAnswer={handleAnswer}
+            selectedAnswer={selectedAnswer}
+            showResult={showResult}
+            isAnswering={isAnswering}
+          />
+        )
+      
       case 'data_tables':
         return (
           <DataTableQuestion
@@ -398,41 +410,6 @@ export default function PsychometricTestLayout({
         </div>
       </div>
 
-      {/* Difficulty Info */}
-      {difficultyInfo && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
-          <div className="max-w-4xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{formatDifficultyDisplay(difficultyInfo).icon}</span>
-                <div>
-                  <span className={`font-medium ${formatDifficultyDisplay(difficultyInfo).color}`}>
-                    {formatDifficultyDisplay(difficultyInfo).displayText}
-                  </span>
-                  {formatDifficultyDisplay(difficultyInfo).showAdaptiveBadge && (
-                    <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      🧠 Adaptativa
-                    </span>
-                  )}
-                </div>
-              </div>
-              
-              {isFirstTime && (
-                <div className="flex items-center space-x-2 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
-                  <span>🆕</span>
-                  <span className="font-medium">Primera vez</span>
-                </div>
-              )}
-            </div>
-            
-            {formatDifficultyDisplay(difficultyInfo).tooltip && (
-              <div className="mt-2 text-sm text-gray-600">
-                💡 {formatDifficultyDisplay(difficultyInfo).tooltip}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Question Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
