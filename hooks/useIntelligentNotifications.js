@@ -13,21 +13,39 @@ async function sendMotivationalEmail(user, notification) {
   try {
     console.log('📧 Enviando email motivacional fallback:', notification.type)
     
+    // Validar datos antes de enviar
+    if (!user?.email) {
+      throw new Error('User email is missing')
+    }
+    if (!notification?.type) {
+      throw new Error('Notification type is missing')
+    }
+    if (!notification?.title) {
+      throw new Error('Notification title is missing')
+    }
+    if (!notification?.body) {
+      throw new Error('Notification body is missing')
+    }
+    
+    const payload = {
+      userEmail: user.email,
+      userName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
+      messageType: notification.type,
+      title: notification.title,
+      body: notification.body,
+      primaryAction: notification.primaryAction,
+      secondaryAction: notification.secondaryAction,
+      userId: user.id
+    }
+    
+    console.log('📧 Payload a enviar:', JSON.stringify(payload, null, 2))
+    
     const response = await fetch('/api/send-motivational-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        userEmail: user.email,
-        userName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
-        messageType: notification.type,
-        title: notification.title,
-        body: notification.body,
-        primaryAction: notification.primaryAction,
-        secondaryAction: notification.secondaryAction,
-        userId: user.id
-      })
+      body: JSON.stringify(payload)
     })
 
     if (!response.ok) {

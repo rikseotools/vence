@@ -13,7 +13,7 @@ export async function POST(request) {
     console.log('🎯 API send-motivational-email iniciada')
     
     const body = await request.json()
-    console.log('📧 Datos recibidos:', body)
+    console.log('📧 Datos recibidos:', JSON.stringify(body, null, 2))
     
     const { 
       userEmail, 
@@ -26,11 +26,32 @@ export async function POST(request) {
       userId 
     } = body
 
-    // Validar datos requeridos
-    if (!userEmail || !userName || !messageType || !title || !messageBody) {
-      console.log('❌ Faltan datos requeridos')
+    // Validar datos requeridos con logs detallados
+    const missingFields = []
+    if (!userEmail) missingFields.push('userEmail')
+    if (!userName) missingFields.push('userName')
+    if (!messageType) missingFields.push('messageType')
+    if (!title) missingFields.push('title')
+    if (!messageBody) missingFields.push('body')
+
+    if (missingFields.length > 0) {
+      console.log('❌ Faltan datos requeridos:', missingFields)
+      console.log('📋 Estructura recibida:', {
+        userEmail: !!userEmail,
+        userName: !!userName,
+        messageType: !!messageType,
+        title: !!title,
+        body: !!messageBody,
+        primaryAction: !!primaryAction,
+        secondaryAction: !!secondaryAction,
+        userId: !!userId
+      })
       return NextResponse.json(
-        { error: 'Faltan datos requeridos para email motivacional' }, 
+        { 
+          error: 'Faltan datos requeridos para email motivacional',
+          missingFields,
+          receivedFields: Object.keys(body)
+        }, 
         { status: 400 }
       )
     }
