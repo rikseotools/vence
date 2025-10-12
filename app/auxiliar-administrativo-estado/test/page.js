@@ -13,7 +13,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const [statsLoading, setStatsLoading] = useState(false)
   const [sortBy, setSortBy] = useState('tema') // 'tema', 'accuracy_asc', 'accuracy_desc', 'last_study_new', 'last_study_old'
   const [showStatsInfo, setShowStatsInfo] = useState(false)
-  const [activeTab, setActiveTab] = useState('psicotecnicos') // 'materias', 'psicotecnicos' - Por defecto psicotécnicos
+  const [activeTab, setActiveTab] = useState('materias') // 'materias', 'psicotecnicos' - Por defecto organización pública
   const [selectedBlock, setSelectedBlock] = useState(null) // Para mostrar secciones de un bloque específico
   const [selectedSections, setSelectedSections] = useState(() => {
     // Inicializar con todas las secciones marcadas por defecto
@@ -719,10 +719,6 @@ export default function TestsAuxiliarAdministrativoEstado() {
             <div className="text-center max-w-4xl w-full">
               {/* Header mejorado */}
               <div className="mb-8">
-                <div className="inline-flex items-center bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-full text-lg font-bold mb-4">
-                  <span className="mr-2">📝</span>
-                  Tests
-                </div>
                 <div className="inline-flex items-center bg-gradient-to-r from-gray-700 to-gray-900 text-white px-6 py-2 rounded-full text-sm font-medium mb-6">
                   <span className="mr-2">🏛️</span>
                   Auxiliar Administrativo del Estado
@@ -768,9 +764,6 @@ export default function TestsAuxiliarAdministrativoEstado() {
               {/* Contenido condicional según tab activo */}
               {activeTab === 'materias' && (
                 <>
-                  <p className="text-gray-600 mb-6">
-                    Los colores indican tu rendimiento: 🟢 Excelente → 🔴 Necesita práctica
-                  </p>
 
                   {/* ✅ LEYENDA DE COLORES */}
                   <div className="mb-6">
