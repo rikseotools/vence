@@ -4,9 +4,9 @@ import Script from 'next/script'
 export default function GoogleAnalytics() {
   return (
     <>
-      {/* Google Analytics - Carga lazy para máxima performance */}
+      {/* Google Analytics - Nueva cuenta limpia para evitar mezcla con otros dominios */}
       <Script
-        src="https://www.googletagmanager.com/gtag/js?id=G-MCKS9RWYNL"
+        src="https://www.googletagmanager.com/gtag/js?id=G-WXQ069CRY9"
         strategy="lazyOnload"
       />
       <Script id="google-analytics" strategy="lazyOnload">
@@ -14,7 +14,7 @@ export default function GoogleAnalytics() {
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', 'G-MCKS9RWYNL');
+          gtag('config', 'G-WXQ069CRY9');
         `}
       </Script>
     </>
