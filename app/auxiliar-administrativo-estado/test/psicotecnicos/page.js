@@ -32,12 +32,14 @@ function MultipleCategoriesPsychometricTestContent() {
     async function loadMultipleCategoriesQuestions() {
       try {
         const categoriesParam = searchParams.get('categories')
+        const numQuestionsParam = searchParams.get('numQuestions')
         if (!categoriesParam) {
           setError('No se especificaron categorías')
           return
         }
 
         const categories = categoriesParam.split(',').filter(Boolean)
+        const numQuestions = numQuestionsParam ? parseInt(numQuestionsParam, 10) : 25
         setSelectedCategories(categories)
         
         console.log('🔍 Loading psychometric questions for multiple categories:', categories)
@@ -98,22 +100,28 @@ function MultipleCategoriesPsychometricTestContent() {
             
             console.log(`✅ Adaptive selection applied: ${adaptiveQuestions.length} questions ordered from ${categories.length} categories`)
             
+            // Aplicar límite de número de preguntas
+            const limitedAdaptiveQuestions = adaptiveQuestions.slice(0, numQuestions)
+            console.log(`🔢 Limiting to ${numQuestions} questions: ${limitedAdaptiveQuestions.length} selected`)
+            
             // MANTENER EL ORDEN de priorización (no vistas primero, luego más antiguas)
-            setQuestions(adaptiveQuestions)
+            setQuestions(limitedAdaptiveQuestions)
             
             setAdaptiveConfig({
               isAdaptive: true,
               filterApplied: 'none',
               originalCount: data.length,
-              selectedCount: adaptiveQuestions.length,
+              selectedCount: limitedAdaptiveQuestions.length,
               categoriesCount: categories.length,
               categories: categories
             })
             
           } catch (adaptiveError) {
             console.error('❌ Error in adaptive selection, using original order:', adaptiveError)
-            // Usar orden original sin mezclar como fallback  
-            setQuestions(data)
+            // Usar orden original sin mezclar como fallback y aplicar límite
+            const limitedData = data.slice(0, numQuestions)
+            console.log(`🔢 Fallback limiting to ${numQuestions} questions: ${limitedData.length} selected`)
+            setQuestions(limitedData)
             setAdaptiveConfig({
               isAdaptive: false,
               error: adaptiveError.message,
@@ -123,9 +131,11 @@ function MultipleCategoriesPsychometricTestContent() {
           }
         } else {
           console.log('📊 No user authenticated, using shuffled question order')
-          // Mezclar preguntas de forma aleatoria para usuarios no autenticados
+          // Mezclar preguntas de forma aleatoria para usuarios no autenticados y aplicar límite
           const shuffledQuestions = [...data].sort(() => Math.random() - 0.5)
-          setQuestions(shuffledQuestions)
+          const limitedShuffledQuestions = shuffledQuestions.slice(0, numQuestions)
+          console.log(`🔢 No-user limiting to ${numQuestions} questions: ${limitedShuffledQuestions.length} selected`)
+          setQuestions(limitedShuffledQuestions)
           setAdaptiveConfig({
             isAdaptive: false,
             reason: 'no_user',

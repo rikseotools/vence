@@ -82,6 +82,21 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const [modalBlock, setModalBlock] = useState(null) // Bloque actual del modal
   const [questionCounts, setQuestionCounts] = useState({}) // Conteo de preguntas por sección
   const [categoryQuestionCounts, setCategoryQuestionCounts] = useState({}) // Conteo de preguntas por categoría principal
+  const [numQuestionsPsico, setNumQuestionsPsico] = useState(25) // Número de preguntas para tests psicotécnicos
+
+  // UseEffect para ajustar automáticamente el número de preguntas si es mayor que las disponibles
+  useEffect(() => {
+    const totalAvailable = getTotalSelectedQuestions()
+    if (totalAvailable > 0 && numQuestionsPsico > totalAvailable) {
+      // Encontrar la opción más grande que sea <= totalAvailable
+      const validOptions = [10, 25, 50, 100].filter(num => num <= totalAvailable)
+      if (validOptions.length > 0) {
+        const newSelection = Math.max(...validOptions)
+        console.log(`🔢 Ajustando automáticamente de ${numQuestionsPsico} a ${newSelection} preguntas (disponibles: ${totalAvailable})`)
+        setNumQuestionsPsico(newSelection)
+      }
+    }
+  }, [selectedSections, selectedCategories, questionCounts, categoryQuestionCounts])
 
   // Lista de categorías principales
   const mainCategories = [
@@ -1138,9 +1153,73 @@ export default function TestsAuxiliarAdministrativoEstado() {
                         </div>
                       </div>
 
-                      {/* Botón Empezar Test para Psicotécnicos */}
+                      {/* Selector de Número de Preguntas para Psicotécnicos */}
                       <div className="mt-8 text-center">
                         <div className="max-w-2xl mx-auto px-4">
+                          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 mb-6">
+                            {/* Desktop layout */}
+                            <div className="hidden sm:flex items-center justify-center gap-4">
+                              <div className="flex items-center">
+                                <span className="text-lg font-medium text-gray-700 mr-3">📝 Número de preguntas:</span>
+                                <span className="text-2xl font-bold text-blue-600">{numQuestionsPsico}</span>
+                              </div>
+                              <div className="flex gap-2">
+                                {[10, 25, 50, 100].map((num) => {
+                                  const totalAvailable = getTotalSelectedQuestions()
+                                  const isDisabled = totalAvailable < num
+                                  return (
+                                    <button
+                                      key={num}
+                                      onClick={() => !isDisabled && setNumQuestionsPsico(num)}
+                                      disabled={isDisabled}
+                                      className={`px-4 py-2 rounded-lg font-bold transition-all ${
+                                        numQuestionsPsico === num
+                                          ? 'bg-blue-600 text-white'
+                                          : isDisabled
+                                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                      }`}
+                                      title={isDisabled ? `Solo hay ${totalAvailable} preguntas disponibles` : ''}
+                                    >
+                                      {num}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                            
+                            {/* Mobile layout */}
+                            <div className="sm:hidden text-center">
+                              <div className="mb-3">
+                                <span className="text-sm font-medium text-gray-700">📝 Selecciona el número de preguntas</span>
+                              </div>
+                              <div className="flex gap-2 justify-center">
+                                {[10, 25, 50, 100].map((num) => {
+                                  const totalAvailable = getTotalSelectedQuestions()
+                                  const isDisabled = totalAvailable < num
+                                  return (
+                                    <button
+                                      key={num}
+                                      onClick={() => !isDisabled && setNumQuestionsPsico(num)}
+                                      disabled={isDisabled}
+                                      className={`px-3 py-2 rounded text-sm font-bold transition-all ${
+                                        numQuestionsPsico === num
+                                          ? 'bg-blue-600 text-white'
+                                          : isDisabled
+                                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                      }`}
+                                      title={isDisabled ? `Solo hay ${totalAvailable} preguntas disponibles` : ''}
+                                    >
+                                      {num}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Botón Empezar Test para Psicotécnicos */}
                           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-6 text-white text-center">
                             <p className="mb-4 text-sm opacity-90">
                               {getSelectionText()}
@@ -1175,6 +1254,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 if (selectedSectionIds.length > 0) {
                                   urlParams.set('sections', selectedSectionIds.join(','))
                                 }
+                                // Añadir parámetro de número de preguntas
+                                urlParams.set('numQuestions', numQuestionsPsico.toString())
                                 
                                 // Redirigir al test psicotécnico con parámetros
                                 router.push(`/auxiliar-administrativo-estado/test/psicotecnicos?${urlParams.toString()}`)
