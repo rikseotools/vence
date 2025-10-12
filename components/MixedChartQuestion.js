@@ -163,7 +163,7 @@ export default function MixedChartQuestion({
     return { bars: [...bars, ...legendItems], labels }
   }
 
-  const generatePieChart = (data, centerX, centerY, radius) => {
+  const generatePieChart = (data, centerX, centerY, radius, chartIndex = 0) => {
     const total = data.sectors.reduce((sum, sector) => sum + sector.value, 0)
     let currentAngle = -Math.PI / 2 // Empezar arriba
     let sectors = []
@@ -190,7 +190,7 @@ export default function MixedChartQuestion({
 
       sectors.push(
         <path
-          key={`sector-${index}`}
+          key={`sector-${chartIndex}-${index}`}
           d={pathData}
           fill={sector.color}
           stroke="#fff"
@@ -206,7 +206,7 @@ export default function MixedChartQuestion({
 
       labels.push(
         <text
-          key={`label-${index}`}
+          key={`label-${chartIndex}-${index}`}
           x={labelX}
           y={labelY}
           textAnchor="middle"
@@ -275,7 +275,7 @@ export default function MixedChartQuestion({
         const pieY = 550
         const pieRadius = 80
 
-        const pieChart = generatePieChart(pieData, pieX, pieY, pieRadius)
+        const pieChart = generatePieChart(pieData, pieX, pieY, pieRadius, index)
         elements.push(...pieChart.sectors)
         elements.push(...pieChart.labels)
 
@@ -348,7 +348,7 @@ export default function MixedChartQuestion({
         <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-blue-500 mb-4">
           <h5 className="font-semibold text-blue-800 mb-2">{section.title}</h5>
           <div className="text-gray-700 text-sm whitespace-pre-line">
-            {section.content}
+            {section.content.replace(/\\n/g, '\n')}
           </div>
         </div>
       ))}

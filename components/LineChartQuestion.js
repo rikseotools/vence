@@ -7,7 +7,8 @@ export default function LineChartQuestion({
   onAnswer, 
   selectedAnswer, 
   showResult, 
-  isAnswering 
+  isAnswering,
+  attemptCount = 0
 }) {
   const [chartSvg, setChartSvg] = useState('')
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -275,37 +276,26 @@ export default function LineChartQuestion({
     )
   }
 
-  // Secciones específicas de explicación para gráficos de líneas
-  const explanationSections = (
+  // Usar las explicaciones de la base de datos en lugar de hardcodeadas
+  const explanationSections = question.content_data?.explanation_sections ? (
     <>
-      <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-        <h5 className="font-semibold text-green-800 mb-2">📊 Datos de Centros especialidades:</h5>
-        <p className="text-gray-700 text-sm">
-          <strong>Grupo 27-59 años:</strong> 50 mil personas<br/>
-          <strong>Total en Centros especialidades:</strong> 70 + 30 + 50 + 60 = 210 mil personas<br/>
-          <strong>Porcentaje:</strong> (50 ÷ 210) × 100 = 23.81% ≈ <strong>20,83% ✅</strong>
-        </p>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg border-l-4 border-yellow-500">
-        <h5 className="font-semibold text-yellow-800 mb-2">🔍 Lectura del gráfico:</h5>
-        <p className="text-gray-700 text-sm">
-          1. **Localizar** la columna "Centros especialidades"<br/>
-          2. **Identificar** la línea negra (27-59 años)<br/>
-          3. **Leer** el valor: aproximadamente 50<br/>
-          4. **Sumar** todos los valores de esa columna: 210 total
-        </p>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg border-l-4 border-purple-500">
-        <h5 className="font-semibold text-purple-800 mb-2">🧮 Cálculo del porcentaje:</h5>
-        <p className="text-gray-700 text-sm">
-          **Fórmula:** (Parte ÷ Total) × 100<br/>
-          **Aplicado:** (50 ÷ 210) × 100<br/>
-          **Resultado:** 23.81% → Redondeado ≈ <strong>20,83%</strong>
-        </p>
-      </div>
+      {question.content_data.explanation_sections.map((section, index) => (
+        <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-blue-500 mb-4">
+          <h5 className="font-semibold text-blue-800 mb-2">{section.title}</h5>
+          <div className="text-gray-700 text-sm whitespace-pre-line">
+            {section.content.replace(/\\n/g, '\n')}
+          </div>
+        </div>
+      ))}
     </>
+  ) : (
+    // Fallback para preguntas sin explanation_sections
+    <div className="bg-white p-4 rounded-lg border-l-4 border-gray-500">
+      <h5 className="font-semibold text-gray-800 mb-2">📊 Análisis del Gráfico</h5>
+      <p className="text-gray-700 text-sm">
+        Explicación no disponible para esta pregunta.
+      </p>
+    </div>
   )
 
   return (
@@ -317,6 +307,7 @@ export default function LineChartQuestion({
       isAnswering={isAnswering}
       chartComponent={chartSvg}
       explanationSections={explanationSections}
+      attemptCount={attemptCount}
     />
   )
 }

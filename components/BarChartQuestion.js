@@ -462,7 +462,7 @@ export default function BarChartQuestion({
         <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-blue-500 mb-4">
           <h5 className="font-semibold text-blue-800 mb-2">{section.title}</h5>
           <div className="text-gray-700 text-sm whitespace-pre-line">
-            {section.content}
+            {section.content.replace(/\\n/g, '\n')}
           </div>
         </div>
       ))}

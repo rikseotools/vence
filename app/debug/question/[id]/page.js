@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import BarChartQuestion from '../../../../components/BarChartQuestion'
 import PieChartQuestion from '../../../../components/PieChartQuestion'
 import DataTableQuestion from '../../../../components/DataTableQuestion'
+import LineChartQuestion from '../../../../components/LineChartQuestion'
 import MixedChartQuestion from '../../../../components/MixedChartQuestion'
 
 export default function QuestionDebugPage() {
@@ -73,6 +74,9 @@ export default function QuestionDebugPage() {
       
       case 'pie_chart':
         return <PieChartQuestion {...questionProps} />
+      
+      case 'line_chart':
+        return <LineChartQuestion {...questionProps} />
       
       case 'data_tables':
         return <DataTableQuestion {...questionProps} />

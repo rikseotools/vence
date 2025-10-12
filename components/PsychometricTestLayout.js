@@ -240,6 +240,7 @@ export default function PsychometricTestLayout({
             selectedAnswer={selectedAnswer}
             showResult={showResult}
             isAnswering={isAnswering}
+            attemptCount={0}
           />
         )
       
@@ -251,6 +252,7 @@ export default function PsychometricTestLayout({
             selectedAnswer={selectedAnswer}
             showResult={showResult}
             isAnswering={isAnswering}
+            attemptCount={0}
           />
         )
       
@@ -262,6 +264,7 @@ export default function PsychometricTestLayout({
             selectedAnswer={selectedAnswer}
             showResult={showResult}
             isAnswering={isAnswering}
+            attemptCount={0}
           />
         )
       
@@ -273,6 +276,7 @@ export default function PsychometricTestLayout({
             selectedAnswer={selectedAnswer}
             showResult={showResult}
             isAnswering={isAnswering}
+            attemptCount={0}
           />
         )
       
@@ -284,6 +288,7 @@ export default function PsychometricTestLayout({
             selectedAnswer={selectedAnswer}
             showResult={showResult}
             isAnswering={isAnswering}
+            attemptCount={0}
           />
         )
       
@@ -401,9 +406,6 @@ export default function PsychometricTestLayout({
             <div className="text-right">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Pregunta {currentQuestion + 1} de {totalQuestions}
-              </div>
-              <div className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-                Puntuación: {score}/{totalQuestions}
               </div>
             </div>
           </div>
