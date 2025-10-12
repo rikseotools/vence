@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import BarChartQuestion from '../../../../components/BarChartQuestion'
 import PieChartQuestion from '../../../../components/PieChartQuestion'
 import DataTableQuestion from '../../../../components/DataTableQuestion'
+import MixedChartQuestion from '../../../../components/MixedChartQuestion'
 
 export default function QuestionDebugPage() {
   const params = useParams()
@@ -12,6 +13,7 @@ export default function QuestionDebugPage() {
   const [error, setError] = useState(null)
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [showResult, setShowResult] = useState(false)
+  const [attemptCount, setAttemptCount] = useState(0)
 
   useEffect(() => {
     if (params.id) {
@@ -40,11 +42,17 @@ export default function QuestionDebugPage() {
   const handleAnswer = (optionIndex) => {
     setSelectedAnswer(optionIndex)
     setShowResult(true)
+    
+    // Si es respuesta incorrecta, incrementar contador de intentos
+    if (optionIndex !== question.correct_option) {
+      setAttemptCount(prev => prev + 1)
+    }
   }
 
   const resetQuestion = () => {
     setSelectedAnswer(null)
     setShowResult(false)
+    // No reiniciar attemptCount para simular múltiples fallos
   }
 
   const renderQuestion = () => {
@@ -55,7 +63,8 @@ export default function QuestionDebugPage() {
       onAnswer: handleAnswer,
       selectedAnswer: selectedAnswer,
       showResult: showResult,
-      isAnswering: false
+      isAnswering: false,
+      attemptCount: attemptCount
     }
 
     switch (question.question_subtype) {
@@ -67,6 +76,9 @@ export default function QuestionDebugPage() {
       
       case 'data_tables':
         return <DataTableQuestion {...questionProps} />
+      
+      case 'mixed_chart':
+        return <MixedChartQuestion {...questionProps} />
       
       default:
         return (
@@ -130,7 +142,16 @@ export default function QuestionDebugPage() {
                 </p>
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex items-center space-x-2">
+              <div className="px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded font-semibold">
+                Intentos: {attemptCount}
+              </div>
+              <button
+                onClick={() => setAttemptCount(0)}
+                className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
+              >
+                🔄 Reset Intentos
+              </button>
               <button
                 onClick={resetQuestion}
                 className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
@@ -148,29 +169,35 @@ export default function QuestionDebugPage() {
         </div>
       </div>
 
-      {/* Información de la pregunta */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <strong>Respuesta correcta:</strong> 
-              <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded">
-                {question?.correct_answer}) {question?.options[question?.correct_answer]}
-              </span>
-            </div>
-            <div>
-              <strong>Estado:</strong> 
-              <span className={`ml-2 px-2 py-1 rounded ${
-                question?.is_active 
+      {/* Información de respuesta (solo después de contestar) */}
+      {showResult && (
+        <div className="bg-white border-b">
+          <div className="max-w-4xl mx-auto px-4 py-4">
+            <div className="text-center">
+              <div className={`inline-flex items-center px-4 py-2 rounded-lg ${
+                Number(selectedAnswer) === Number(question?.correct_option)
                   ? 'bg-green-100 text-green-800' 
                   : 'bg-red-100 text-red-800'
               }`}>
-                {question?.is_active ? 'Activa' : 'Inactiva'}
-              </span>
+                {Number(selectedAnswer) === Number(question?.correct_option) ? (
+                  <>
+                    <span className="text-2xl mr-2">✅</span>
+                    <span className="font-semibold">¡Correcto!</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-2xl mr-2">❌</span>
+                    <span className="font-semibold">
+                      Incorrecto. La respuesta correcta es: 
+                      {question?.correct_answer}) {question?.options[question?.correct_answer]}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Pregunta renderizada */}
       <div className="max-w-4xl mx-auto px-4 py-8">

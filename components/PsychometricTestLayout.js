@@ -6,6 +6,7 @@ import PieChartQuestion from './PieChartQuestion'
 import DataTableQuestion from './DataTableQuestion'
 import BarChartQuestion from './BarChartQuestion'
 import LineChartQuestion from './LineChartQuestion'
+import MixedChartQuestion from './MixedChartQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 
@@ -267,6 +268,17 @@ export default function PsychometricTestLayout({
       case 'data_tables':
         return (
           <DataTableQuestion
+            question={currentQ}
+            onAnswer={handleAnswer}
+            selectedAnswer={selectedAnswer}
+            showResult={showResult}
+            isAnswering={isAnswering}
+          />
+        )
+      
+      case 'mixed_chart':
+        return (
+          <MixedChartQuestion
             question={currentQ}
             onAnswer={handleAnswer}
             selectedAnswer={selectedAnswer}

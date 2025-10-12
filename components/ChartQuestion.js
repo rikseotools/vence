@@ -10,15 +10,79 @@ export default function ChartQuestion({
   showResult, 
   isAnswering,
   chartComponent, // Componente específico de renderizado (SVG)
-  explanationSections // Secciones específicas de explicación
+  explanationSections, // Secciones específicas de explicación
+  attemptCount = 0 // Número de intentos previos de esta pregunta
 }) {
   const { user } = useAuth()
 
+  // Mensajes motivadores basados en el resultado
+  const getMotivationalMessage = () => {
+    const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'Opositor'
+    
+    // Mensajes de felicitación para respuestas correctas
+    if (selectedAnswer === question.correct_option) {
+      const congratsMessages = [
+        {
+          title: `¡Bien, ${userName}! 🎉`,
+          message: "Has acertado. Los psicotécnicos requieren práctica, vas por buen camino.",
+          color: "green"
+        },
+        {
+          title: `¡Perfecto, ${userName}! ⭐`,
+          message: "Lo estás dominando. La constancia es la clave.",
+          color: "green"
+        },
+        {
+          title: `¡Sigue así, ${userName}! 🚀`,
+          message: "",
+          color: "green"
+        },
+        {
+          title: `Muy bien, ${userName}! 👍`,
+          message: "",
+          color: "green"
+        }
+      ]
+      
+      // Usar el mensaje correspondiente al número de acierto
+      return congratsMessages[Math.min(attemptCount, congratsMessages.length - 1)]
+    }
+    
+    switch (attemptCount) {
+      case 0: // Primer fallo
+        return {
+          title: `No te preocupes, ${userName} 💪`,
+          message: "Mucha gente falla esta pregunta. Los psicotécnicos son la parte más difícil, pero sigue practicando - al final todos se repiten y los dominarás.",
+          color: "blue"
+        }
+      case 1: // Segundo fallo
+        return {
+          title: `No te preocupes, ${userName} 🎯`,
+          message: "Estas preguntas requieren paciencia. Cada intento te enseña algo nuevo. Revisa los datos paso a paso, sin prisa.",
+          color: "orange"
+        }
+      case 2: // Tercer fallo
+        return {
+          title: `No te preocupes, ${userName} 🚀`,
+          message: "Los psicotécnicos son complicados para todo el mundo. Lo importante es entender el método. Una vez que lo pilles, el resto será igual.",
+          color: "red"
+        }
+      default: // Más de 3 fallos
+        return {
+          title: `No te preocupes, ${userName}! 👍`,
+          message: "Sigue practicando. La constancia es la clave.",
+          color: "purple"
+        }
+    }
+  }
+
+  const motivationalMessage = getMotivationalMessage()
+
   const options = [
-    { value: question.option_a },
-    { value: question.option_b },
-    { value: question.option_c },
-    { value: question.option_d }
+    { value: question.option_a || question.options?.A },
+    { value: question.option_b || question.options?.B },
+    { value: question.option_c || question.options?.C },
+    { value: question.option_d || question.options?.D }
   ]
 
   const correctOptionKey = ['A', 'B', 'C', 'D'][question.correct_option]
@@ -57,7 +121,7 @@ export default function ChartQuestion({
           let buttonClass = "w-full p-4 text-left border-2 rounded-lg transition-all duration-200 flex items-center gap-3"
           
           if (showResult) {
-            if (index === question.correct_option - 1) {
+            if (index === question.correct_option) {
               // Respuesta correcta
               buttonClass += " border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300"
             } else if (index === selectedAnswer) {
@@ -86,10 +150,10 @@ export default function ChartQuestion({
               <span className="text-lg">
                 {option.value}
               </span>
-              {showResult && index === question.correct_option - 1 && (
+              {showResult && index === question.correct_option && (
                 <span className="ml-auto text-green-600">✓</span>
               )}
-              {showResult && index === selectedAnswer && index !== question.correct_option - 1 && (
+              {showResult && index === selectedAnswer && index !== question.correct_option && (
                 <span className="ml-auto text-red-600">✗</span>
               )}
             </button>
@@ -117,25 +181,53 @@ export default function ChartQuestion({
         </div>
       )}
 
+      {/* Mensaje motivador (solo cuando se falla) */}
+      {showResult && motivationalMessage && (
+        <div className="mt-6 mb-4">
+          <div className={`p-4 rounded-lg border-l-4 ${
+            motivationalMessage.color === 'green' ? 'bg-green-50 dark:bg-green-900/20 border-green-500 dark:border-green-400' :
+            motivationalMessage.color === 'blue' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-400' :
+            motivationalMessage.color === 'orange' ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500 dark:border-orange-400' :
+            motivationalMessage.color === 'red' ? 'bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-400' :
+            'bg-purple-50 dark:bg-purple-900/20 border-purple-500 dark:border-purple-400'
+          }`}>
+            <h4 className={`font-bold mb-2 ${
+              motivationalMessage.color === 'green' ? 'text-green-800 dark:text-green-300' :
+              motivationalMessage.color === 'blue' ? 'text-blue-800 dark:text-blue-300' :
+              motivationalMessage.color === 'orange' ? 'text-orange-800 dark:text-orange-300' :
+              motivationalMessage.color === 'red' ? 'text-red-800 dark:text-red-300' :
+              'text-purple-800 dark:text-purple-300'
+            }`}>
+              {motivationalMessage.title}
+            </h4>
+            <p className={`text-sm ${
+              motivationalMessage.color === 'green' ? 'text-green-700 dark:text-green-200' :
+              motivationalMessage.color === 'blue' ? 'text-blue-700 dark:text-blue-200' :
+              motivationalMessage.color === 'orange' ? 'text-orange-700 dark:text-orange-200' :
+              motivationalMessage.color === 'red' ? 'text-red-700 dark:text-red-200' :
+              'text-purple-700 dark:text-purple-200'
+            }`}>
+              {motivationalMessage.message}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Explicación (solo mostrar después de responder) */}
       {showResult && (
         <div className="border-t pt-6">
           <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg">
             <div className="flex items-center mb-4">
-              <div className="bg-blue-600 dark:bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3">
-                ✓
+              <div className={`text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3 ${
+                selectedAnswer === question.correct_option ? 'bg-green-600 dark:bg-green-500' : 'bg-red-600 dark:bg-red-500'
+              }`}>
+                {selectedAnswer === question.correct_option ? '✓' : '✗'}
               </div>
               <h4 className="font-bold text-blue-900 dark:text-blue-200 text-lg">
                 CAPACIDAD ADMINISTRATIVA: GRÁFICOS
               </h4>
             </div>
             
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg mb-4 border-l-4 border-blue-600">
-              <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                <strong>💡 ¿Qué evalúa este ejercicio?</strong><br/>
-                {question.content_data?.evaluation_description || 'Tu capacidad para interpretar gráficos y realizar cálculos con los datos presentados.'}
-              </p>
-            </div>
 
             <h4 className="font-bold text-blue-900 dark:text-blue-200 mb-3 flex items-center">
               <span className="bg-green-100 text-green-800 dark:text-green-300 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
@@ -147,50 +239,6 @@ export default function ChartQuestion({
               {explanationSections}
             </div>
 
-            {/* Técnicas de descarte rápido */}
-            <div className="mt-6">
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
-                <h5 className="font-bold text-yellow-800 dark:text-yellow-300 mb-3 flex items-center">
-                  ⚡ TÉCNICAS DE ANÁLISIS RÁPIDO (Para oposiciones)
-                </h5>
-                
-                <div className="space-y-3 text-sm">
-                  <div className="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-yellow-500">
-                    <h6 className="font-semibold text-yellow-800 mb-1">🔍 Método 1: Observación visual directa</h6>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {question.content_data?.quick_method_1 || 'Identifica patrones visuales antes de calcular números exactos.'}
-                    </p>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-orange-500">
-                    <h6 className="font-semibold text-orange-800 mb-1">🧮 Método 2: Cálculo mental</h6>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {question.content_data?.quick_method_2 || 'Usa aproximaciones y cálculos simples para estimar la respuesta.'}
-                    </p>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-purple-500">
-                    <h6 className="font-semibold text-purple-800 mb-1">💰 Método 3: Descarte de opciones</h6>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {question.content_data?.quick_method_3 || 'Elimina opciones obviamente incorrectas antes de calcular.'}
-                    </p>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-red-500 dark:border-red-400">
-                    <h6 className="font-semibold text-red-800 dark:text-red-300 mb-1">❌ Errores comunes a evitar</h6>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {question.content_data?.common_errors || 'Verificar unidades, leer correctamente las etiquetas y no confundir conceptos.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
-              <p className="text-green-800 dark:text-green-300 text-sm text-center">
-                <strong>💪 Consejo de oposición:</strong> {question.content_data?.exam_tip || 'Practica la lectura rápida de gráficos y el cálculo mental básico.'}
-              </p>
-            </div>
           </div>
 
           {/* Estadísticas de evolución de la pregunta */}

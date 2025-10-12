@@ -7,7 +7,8 @@ export default function BarChartQuestion({
   onAnswer, 
   selectedAnswer, 
   showResult, 
-  isAnswering 
+  isAnswering,
+  attemptCount = 0
 }) {
   const [chartSvg, setChartSvg] = useState('')
   const [scale, setScale] = useState(1)
@@ -103,19 +104,17 @@ export default function BarChartQuestion({
     
     // Detectar estructura y normalizar datos
     if (rawData.quarters && Array.isArray(rawData.quarters)) {
-      // Nueva estructura (coches): { quarters: [{ name, cocheA, cocheB }] o { name, modelA, modelB }] }
+      // Detectar automáticamente las claves de datos del primer quarter
+      const firstQuarter = rawData.quarters[0]
+      const dataKeys = Object.keys(firstQuarter).filter(key => key !== 'name')
+      
+      // Crear estructura normalizada dinámicamente
       data = rawData.quarters.map(quarter => ({
         year: quarter.name,
-        categories: [
-          { 
-            name: rawData.legend?.cocheA || rawData.legend?.modelA || 'Coche A', 
-            value: quarter.cocheA || quarter.modelA || 0 
-          },
-          { 
-            name: rawData.legend?.cocheB || rawData.legend?.modelB || 'Coche B', 
-            value: quarter.cocheB || quarter.modelB || 0 
-          }
-        ]
+        categories: dataKeys.map(key => ({
+          name: rawData.legend?.[key] || key, // Usar leyenda o clave directamente
+          value: quarter[key] || 0
+        }))
       }))
     } else if (Array.isArray(rawData) || (typeof rawData === 'object' && Object.keys(rawData).every(k => !isNaN(k)))) {
       // Estructura antigua (frutas): array o objeto con índices numéricos
@@ -173,20 +172,33 @@ export default function BarChartQuestion({
       }
     })
     
-    // Fallback para casos sin colores definidos
+    // Fallback para casos sin colores definidos - Sistema de colores adaptativos
     if (Object.keys(categoryColors).length === 0) {
-      if (rawData.type === 'bar_chart' && rawData.title?.includes('COCHES')) {
-        categoryColors = {
-          'Coche A': '#ff9800',
-          'Coche B': '#2196f3',
-          'Modelo A': '#ff9800',
-          'Modelo B': '#2196f3'
+      // Paleta de colores predefinida para gráficos de barras
+      const defaultColors = ['#ff9800', '#2196f3', '#4caf50', '#f44336', '#9c27b0', '#ff5722']
+      
+      // Obtener todas las categorías únicas de los datos
+      const allCategories = new Set()
+      data.forEach(yearData => {
+        if (yearData.categories) {
+          yearData.categories.forEach(cat => allCategories.add(cat.name))
         }
-      } else {
-        categoryColors = {
-          'Frutas': '#e91e63',
-          'Pescado': isDarkMode ? '#E5E7EB' : '#424242', 
-          'Verdura': '#ff9800'
+      })
+      
+      // Asignar colores automáticamente
+      const categoriesArray = Array.from(allCategories)
+      categoriesArray.forEach((category, index) => {
+        categoryColors[category] = defaultColors[index % defaultColors.length]
+      })
+      
+      // Si no hay categorías detectadas, usar fallback específico por título
+      if (categoriesArray.length === 0) {
+        if (rawData.title?.includes('COCHES')) {
+          categoryColors = { 'Modelo A': '#ff9800', 'Modelo B': '#2196f3' }
+        } else if (rawData.title?.includes('CHOCOLATINAS')) {
+          categoryColors = { 'AÑO 2022': '#ff9800', 'AÑO 2023': '#2196f3' }
+        } else {
+          categoryColors = { 'Serie A': '#ff9800', 'Serie B': '#2196f3' }
         }
       }
     }
@@ -474,6 +486,7 @@ export default function BarChartQuestion({
       isAnswering={isAnswering}
       chartComponent={chartSvg}
       explanationSections={explanationSections}
+      attemptCount={attemptCount}
     />
   )
 }

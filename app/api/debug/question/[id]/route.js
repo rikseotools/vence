@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request, { params }) {
   try {
-    const { id } = params
+    const resolvedParams = await params
+    const { id } = resolvedParams
     
     if (!id) {
       return Response.json({ error: 'Question ID required' }, { status: 400 })

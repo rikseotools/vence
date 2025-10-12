@@ -888,6 +888,220 @@ export default function [Tipo]ChartQuestion({
 - ✅ **Mantenimiento centralizado** en ChartQuestion.js
 - ✅ **Código reutilizable** para miles de preguntas
 
+### 🔄 PROCEDIMIENTO RÁPIDO PARA REUTILIZAR COMPONENTES EXISTENTES
+
+#### Caso de Uso: Añadir Pregunta de Gráfico de Barras (BarChartQuestion.js)
+
+**⏱️ Tiempo estimado: 5 minutos**
+
+**Paso 1: Verificar Compatibilidad del Componente (1 min)**
+```bash
+# Leer el componente existente para entender estructuras soportadas
+claude read components/BarChartQuestion.js
+# Buscar en líneas 104-127: Detectar estructura y normalizar datos
+```
+
+**Estructuras soportadas por BarChartQuestion.js:**
+- ✅ `quarters: [{ name, cocheA, cocheB }]` - Coches
+- ✅ `quarters: [{ name, modelA, modelB }]` - Modelos
+- ✅ `quarters: [{ name, año2022, año2023 }]` - Comparación anual (CHOCOLATINAS)
+- ✅ Array simple para frutas/datos básicos
+
+**Paso 2: Crear Script con Estructura Compatible (2 min)**
+```javascript
+// scripts/add-[nombre]-question.js
+
+// Al final del script, añadir:
+console.log('🔗 REVISAR PREGUNTA VISUALMENTE:')
+console.log(`   http://localhost:3000/debug/question/${data[0]?.id}`)
+
+const questionData = {
+  category_id: section.category_id,
+  section_id: section.id,
+  question_text: 'En el año 2022, ¿En qué trimestre se vendieron más chocolatinas?',
+  content_data: {
+    chart_type: 'bar_chart',
+    chart_title: 'CHOCOLATINAS VENDIDAS',
+    x_axis_label: 'Trimestres',
+    y_axis_label: 'Cantidad vendida',
+    chart_data: {
+      type: 'bar_chart',
+      title: 'CHOCOLATINAS VENDIDAS',
+      quarters: [                    // ← Estructura compatible detectada
+        {
+          name: 'PRIMER TRIMESTRE',
+          año2022: 24,              // ← Campos que BarChartQuestion detecta
+          año2023: 89
+        },
+        // ... más trimestres
+      ],
+      legend: {                     // ← Leyenda que el componente mapea automáticamente
+        año2022: 'AÑO 2022',
+        año2023: 'AÑO 2023'
+      }
+    },
+    explanation_sections: [         // ← Formato personalizado para cada pregunta
+      {
+        title: "💡 ¿Qué evalúa este ejercicio?",
+        content: "Capacidad específica que mide esta pregunta concreta"
+      },
+      {
+        title: "📊 ANÁLISIS PASO A PASO:",
+        content: "Datos específicos de ESTA pregunta con valores exactos"
+      },
+      {
+        title: "⚡ TÉCNICAS DE ANÁLISIS RÁPIDO (Para oposiciones)",
+        content: "3 métodos específicos para resolver ESTA pregunta:\n🔍 Método 1: [específico]\n📊 Método 2: [específico]\n💰 Método 3: Descarte de opciones [específico]"
+      },
+      {
+        title: "❌ Errores comunes a evitar",
+        content: "Errores específicos que se cometen en ESTE tipo de pregunta"
+      },
+      {
+        title: "💪 Consejo de oposición",
+        content: "Estrategia específica para preguntas similares a ESTA"
+      }
+    ]
+  },
+  option_a: 'En el cuarto.',
+  option_b: 'En el tercero.',
+  option_c: 'En el primero.',
+  option_d: 'En el segundo.',
+  correct_option: 0,              // A = En el cuarto (38 chocolatinas en 2022)
+  difficulty: 'easy',
+  time_limit_seconds: 90,
+  cognitive_skills: ['chart_reading', 'data_comparison', 'visual_analysis'],
+  question_subtype: 'bar_chart',  // ← Clave: debe coincidir con el switch en PsychometricTestLayout
+  is_active: true,
+  is_verified: true
+}
+```
+
+**Paso 3: Ejecutar y Verificar (2 min)**
+```bash
+# Ejecutar script de inserción
+node scripts/add-chocolatinas-question.js
+
+# Salida esperada:
+# ✅ Pregunta de chocolatinas añadida exitosamente
+# 📝 ID: 187ed4b6-6a65-4d44-ba16-50029b4281f0
+# ✅ Respuesta correcta: En el cuarto (38 chocolatinas en 2022)
+# ♻️  Reutiliza el componente BarChartQuestion existente - no se necesitan cambios
+# 
+# 🔗 REVISAR PREGUNTA VISUALMENTE:
+# http://localhost:3000/debug/question/187ed4b6-6a65-4d44-ba16-50029b4281f0
+```
+
+**🔗 Link Debug Visual para Revisión Inmediata:**
+```
+http://localhost:3000/debug/question/187ed4b6-6a65-4d44-ba16-50029b4281f0
+```
+
+**🔗 Link Debug API (solo datos JSON):**
+```
+http://localhost:3000/api/debug/question/187ed4b6-6a65-4d44-ba16-50029b4281f0
+```
+
+**Template para futuras preguntas:**
+```
+http://localhost:3000/debug/question/[QUESTION_ID]          ← Página visual completa
+http://localhost:3000/api/debug/question/[QUESTION_ID]     ← Solo datos JSON
+```
+
+**Estructura de respuesta de la API debug:**
+```json
+{
+  "success": true,
+  "question": {
+    "id": "187ed4b6-6a65-4d44-ba16-50029b4281f0",
+    "question_text": "En el año 2022, ¿En qué trimestre se vendieron más chocolatinas?",
+    "question_subtype": "bar_chart",
+    "options": {
+      "A": "En el cuarto.",
+      "B": "En el tercero.", 
+      "C": "En el primero.",
+      "D": "En el segundo."
+    },
+    "correct_option": 0,
+    "correct_answer": "A",
+    "content_data": { /* datos del gráfico */ },
+    "category": { "key": "capacidad-administrativa", "name": "Capacidad Administrativa" },
+    "section": { "key": "graficos", "name": "Gráficos" }
+  }
+}
+```
+
+#### Puntos Críticos de Compatibilidad
+
+**❌ Errores Comunes a Evitar:**
+1. **question_subtype incorrecto**: Debe ser exactamente 'bar_chart' para que el switch funcione
+2. **Estructura de datos incompatible**: No seguir el formato `quarters` que el componente espera
+3. **Campos legend incorrectos**: Deben coincidir con las claves en quarters (año2022, año2023)
+4. **category_id faltante**: BarChartQuestion necesita ambos section_id Y category_id
+
+**✅ Verificaciones de Compatibilidad Rápida:**
+```javascript
+// En BarChartQuestion.js líneas 111-117:
+if (rawData.quarters && Array.isArray(rawData.quarters)) {
+  // Nueva estructura (coches): { quarters: [{ name, cocheA, cocheB }] o { name, modelA, modelB }] }
+  data = rawData.quarters.map(quarter => ({
+    year: quarter.name,
+    categories: [
+      { 
+        name: rawData.legend?.cocheA || rawData.legend?.modelA || rawData.legend?.año2022 || 'Coche A', 
+        value: quarter.cocheA || quarter.modelA || quarter.año2022 || 0 
+      }
+    ]
+  }))
+}
+```
+
+#### Mapeo Automático de Estructuras
+
+**El componente BarChartQuestion.js detecta automáticamente:**
+- **Coches**: `{ cocheA, cocheB }` → `{ legend: { cocheA: 'Coche A', cocheB: 'Coche B' }}`
+- **Modelos**: `{ modelA, modelB }` → `{ legend: { modelA: 'Modelo A', modelB: 'Modelo B' }}`
+- **Años**: `{ año2022, año2023 }` → `{ legend: { año2022: 'AÑO 2022', año2023: 'AÑO 2023' }}`
+
+#### Checklist Rápido (30 segundos)
+
+**Antes de crear script:**
+- [ ] ¿El tipo de gráfico ya existe? → BarChart ✅
+- [ ] ¿Los datos siguen el formato `quarters`? → ✅ 
+- [ ] ¿question_subtype = 'bar_chart'? → ✅
+- [ ] ¿explanation_sections definidas? → ✅
+
+**Después de ejecutar:**
+- [ ] ¿Script ejecutó sin errores? → ✅
+- [ ] ¿Mensaje de reutilización aparece? → ✅
+- [ ] ¿ID de pregunta generado? → ✅
+
+#### Ventajas de Este Procedimiento
+
+**🚀 Velocidad**: 5 minutos vs 30+ minutos creando componente nuevo  
+**🔄 Reutilización**: Zero código duplicado  
+**✅ Confiabilidad**: Componente ya testado y funcional  
+**📊 Consistencia**: Mismo formato visual en todas las preguntas  
+**🛠️ Mantenimiento**: Un solo lugar para fixes y mejoras
+
+#### Próximas Preguntas que Pueden Reutilizar BarChartQuestion.js
+
+**Candidatos inmediatos:**
+- Ventas por meses (2023 vs 2024)
+- Productos por categorías (A vs B)
+- Empleados por departamentos
+- Ingresos por trimestres
+- Gastos por conceptos
+
+**Formato requerido:**
+```javascript
+quarters: [
+  { name: 'PERÍODO_1', categoria1: valor1, categoria2: valor2 },
+  { name: 'PERÍODO_2', categoria1: valor3, categoria2: valor4 }
+],
+legend: { categoria1: 'NOMBRE_VISUAL_1', categoria2: 'NOMBRE_VISUAL_2' }
+```
+
 ### Notas para Futuras Implementaciones
 
 1. **Reutilizar patrones**: Seguir la estructura establecida en PieChartQuestion.js
