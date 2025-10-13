@@ -16,7 +16,8 @@ export default function BarChartQuestion({
   const [lastTouchDistance, setLastTouchDistance] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  // Dark mode desactivado para psicotécnicos
+  const isDarkMode = false
   
   // Constantes del gráfico
   const chartWidth = 1200
@@ -24,29 +25,9 @@ export default function BarChartQuestion({
 
   useEffect(() => {
     generateBarChart()
-  }, [question, isDarkMode])
+  }, [question])
 
-  // Detectar dark mode
-  useEffect(() => {
-    const checkDarkMode = () => {
-      if (typeof window !== 'undefined') {
-        setIsDarkMode(document.documentElement.classList.contains('dark'))
-      }
-    }
-    
-    checkDarkMode()
-    
-    // Observer para cambios en dark mode
-    const observer = new MutationObserver(checkDarkMode)
-    if (typeof window !== 'undefined') {
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      })
-    }
-    
-    return () => observer.disconnect()
-  }, [])
+  // Dark mode desactivado para gráficos psicotécnicos
 
   // Funciones para gestos táctiles en el modal
   const getTouchDistance = (touch1, touch2) => {
@@ -234,7 +215,7 @@ export default function BarChartQuestion({
             height={barHeight}
             fill={`url(#gradient-${yearIndex}-${catIndex})`}
             filter={`url(#shadow-${yearIndex}-${catIndex})`}
-            stroke={isDarkMode ? "rgba(31,41,55,0.5)" : "rgba(255,255,255,0.5)"}
+            stroke="rgba(255,255,255,0.5)"
             strokeWidth="1"
             rx="3"
             ry="3"
@@ -249,7 +230,7 @@ export default function BarChartQuestion({
             y={barY - 8}
             textAnchor="middle"
             fontSize="18"
-            fill={isDarkMode ? "#f7fafc" : "#333"}
+            fill="#333"
             fontWeight="600"
           >
             {category.value}
@@ -265,7 +246,7 @@ export default function BarChartQuestion({
           y={margin.top + plotHeight + 25}
           textAnchor="middle"
           fontSize="16"
-          fill={isDarkMode ? "#e2e8f0" : "#444"}
+          fill="#444"
           fontWeight="600"
         >
           {yearData.year}
@@ -299,14 +280,14 @@ export default function BarChartQuestion({
             fill={categoryColors[item]}
             rx="2"
             ry="2"
-            stroke={isDarkMode ? "rgba(229,231,235,0.2)" : "rgba(0,0,0,0.1)"}
+            stroke="rgba(0,0,0,0.1)"
             strokeWidth="1"
           />
           <text
             x={legendX + 26}
             y={isMobile ? 77 : 97}
             fontSize="20"
-            fill={isDarkMode ? "#e2e8f0" : "#444"}
+            fill="#444"
             fontWeight="500"
           >
             {item}
@@ -330,7 +311,7 @@ export default function BarChartQuestion({
             y1={y}
             x2={margin.left + plotWidth}
             y2={y}
-            stroke={isDarkMode ? "rgba(229,231,235,0.2)" : "rgba(0,0,0,0.1)"}
+            stroke="rgba(0,0,0,0.1)"
             strokeWidth="1"
             strokeDasharray={i === 0 ? "none" : "2,2"}
           />
@@ -340,7 +321,7 @@ export default function BarChartQuestion({
             y1={y}
             x2={margin.left}
             y2={y}
-            stroke={isDarkMode ? "#cbd5e0" : "#666"}
+            stroke="#666"
             strokeWidth="1"
           />
           {/* Value label */}
@@ -349,7 +330,7 @@ export default function BarChartQuestion({
             y={y + 4}
             textAnchor="end"
             fontSize="18"
-            fill={isDarkMode ? "#cbd5e0" : "#666"}
+            fill="#666"
           >
             {Math.round(value)}
           </text>
@@ -392,7 +373,7 @@ export default function BarChartQuestion({
             textAnchor="middle"
             fontSize="28"
             fontWeight="600"
-            fill={isDarkMode ? "#f7fafc" : "#2d3748"}
+            fill="#2d3748"
           >
             {rawData.title || question.content_data?.chart_title || 'Gráfico de Barras'}
           </text>
@@ -409,7 +390,7 @@ export default function BarChartQuestion({
             y1={margin.top}
             x2={margin.left}
             y2={margin.top + plotHeight}
-            stroke={isDarkMode ? "#e2e8f0" : "#4a5568"}
+            stroke="#4a5568"
             strokeWidth="2"
           />
           <line
@@ -417,7 +398,7 @@ export default function BarChartQuestion({
             y1={margin.top + plotHeight}
             x2={margin.left + plotWidth}
             y2={margin.top + plotHeight}
-            stroke={isDarkMode ? "#e2e8f0" : "#4a5568"}
+            stroke="#4a5568"
             strokeWidth="2"
           />
           
@@ -433,7 +414,7 @@ export default function BarChartQuestion({
             y={margin.top + plotHeight / 2}
             textAnchor="middle"
             fontSize="20"
-            fill={isDarkMode ? "#cbd5e0" : "#666"}
+            fill="#666"
             transform={`rotate(-90, ${isMobile ? 12 : 30}, ${margin.top + plotHeight / 2})`}
           >
             {question.content_data?.y_axis_label || 'Kg/mes'}
@@ -445,7 +426,7 @@ export default function BarChartQuestion({
             y={chartHeight - (isMobile ? 2 : 20)}
             textAnchor="middle"
             fontSize="20"
-            fill={isDarkMode ? "#cbd5e0" : "#666"}
+            fill="#666"
             fontWeight="500"
           >
             {question.content_data?.x_axis_label || 'Años'}

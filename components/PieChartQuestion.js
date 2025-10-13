@@ -13,33 +13,14 @@ export default function PieChartQuestion({
 }) {
   const { user } = useAuth()
   const [chartSvg, setChartSvg] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  // Dark mode desactivado para psicotécnicos
+  const isDarkMode = false
 
   useEffect(() => {
     generatePieChart()
-  }, [question, isDarkMode])
+  }, [question])
 
-  // Detectar dark mode
-  useEffect(() => {
-    const checkDarkMode = () => {
-      if (typeof window !== 'undefined') {
-        setIsDarkMode(document.documentElement.classList.contains('dark'))
-      }
-    }
-    
-    checkDarkMode()
-    
-    // Observer para cambios en dark mode
-    const observer = new MutationObserver(checkDarkMode)
-    if (typeof window !== 'undefined') {
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      })
-    }
-    
-    return () => observer.disconnect()
-  }, [])
+  // Dark mode desactivado para gráficos psicotécnicos
 
   const generatePieChart = () => {
     if (!question.content_data?.chart_data) return
@@ -146,8 +127,8 @@ export default function PieChartQuestion({
             y={textY - 15}
             width={item.label.length * 7 + 4}
             height="30"
-            fill={isDarkMode ? "rgba(31, 41, 55, 0.9)" : "rgba(255, 255, 255, 0.9)"}
-            stroke={isDarkMode ? "rgba(229,231,235,0.2)" : "rgba(0, 0, 0, 0.1)"}
+            fill="rgba(255, 255, 255, 0.9)"
+            stroke="rgba(0, 0, 0, 0.1)"
             strokeWidth="1"
             rx="3"
           />
@@ -159,7 +140,7 @@ export default function PieChartQuestion({
             dominantBaseline="middle"
             fontSize="11"
             fontWeight="bold"
-            fill={isDarkMode ? "#f7fafc" : "#333"}
+            fill="#333"
           >
             {item.label}
           </text>
@@ -170,7 +151,7 @@ export default function PieChartQuestion({
             textAnchor={textAnchor}
             dominantBaseline="middle"
             fontSize="10"
-            fill={isDarkMode ? "#cbd5e0" : "#666"}
+            fill="#666"
           >
             {item.percentage}%
           </text>
@@ -196,7 +177,7 @@ export default function PieChartQuestion({
   // Crear componente del gráfico para ChartQuestion
   const chartComponent = (
     <div className="mb-8">
-      <h3 className="text-center font-bold text-gray-900 dark:text-white mb-4">
+      <h3 className="text-center font-bold text-gray-900  mb-4">
         {question.content_data?.chart_title || 'LIBROS VENDIDOS EN EL AÑO 2023'}
       </h3>
       <div className="flex justify-center px-4">
@@ -211,9 +192,9 @@ export default function PieChartQuestion({
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
       {question.content_data.explanation_sections.map((section, index) => (
-        <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500 mb-4">
-          <h5 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">{section.title}</h5>
-          <div className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line">
+        <div key={index} className="bg-white  p-4 rounded-lg border-l-4 border-blue-500 mb-4">
+          <h5 className="font-semibold text-blue-800  mb-2">{section.title}</h5>
+          <div className="text-gray-700  text-sm whitespace-pre-line">
             {section.content.replace(/\\n/g, '\n')}
           </div>
         </div>
@@ -222,22 +203,22 @@ export default function PieChartQuestion({
   ) : (
     // Explicación por defecto si no hay en la base de datos
     <>
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg mb-4 border-l-4 border-blue-600">
-        <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+      <div className="bg-white  p-4 rounded-lg mb-4 border-l-4 border-blue-600">
+        <p className="text-gray-700  text-sm leading-relaxed">
           <strong>💡 ¿Qué evalúa este ejercicio?</strong><br/>
           Tu capacidad para interpretar datos de un gráfico circular y realizar cálculos matemáticos básicos con porcentajes.
         </p>
       </div>
 
-      <h4 className="font-bold text-blue-900 dark:text-blue-200 mb-3 flex items-center">
-        <span className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
+      <h4 className="font-bold text-blue-900  mb-3 flex items-center">
+        <span className="bg-green-100  text-green-800  rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
         PASO A PASO - SOLUCIÓN:
       </h4>
       
       <div className="space-y-4">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-green-500">
-          <h5 className="font-semibold text-green-800 dark:text-green-300 mb-2">📊 Paso 1: Identificar los datos</h5>
-          <p className="text-gray-700 dark:text-gray-300 text-sm">
+        <div className="bg-white  p-4 rounded-lg border-l-4 border-green-500">
+          <h5 className="font-semibold text-green-800  mb-2">📊 Paso 1: Identificar los datos</h5>
+          <p className="text-gray-700  text-sm">
             Del gráfico vemos que:<br/>
             • POEMAS = <strong>34,5%</strong><br/>
             • CIENCIA FICCIÓN = <strong>21,8%</strong><br/>
@@ -245,25 +226,25 @@ export default function PieChartQuestion({
           </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-yellow-500">
-          <h5 className="font-semibold text-yellow-800 dark:text-yellow-300 mb-2">➕ Paso 2: Sumar los porcentajes</h5>
-          <p className="text-gray-700 dark:text-gray-300 text-sm">
+        <div className="bg-white  p-4 rounded-lg border-l-4 border-yellow-500">
+          <h5 className="font-semibold text-yellow-800  mb-2">➕ Paso 2: Sumar los porcentajes</h5>
+          <p className="text-gray-700  text-sm">
             Poemas + Ciencia ficción = <strong>34,5% + 21,8% = 56,3%</strong>
           </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-purple-500">
-          <h5 className="font-semibold text-purple-800 dark:text-purple-300 mb-2">🧮 Paso 3: Calcular el 56,3% de 2.350</h5>
-          <p className="text-gray-700 dark:text-gray-300 text-sm">
+        <div className="bg-white  p-4 rounded-lg border-l-4 border-purple-500">
+          <h5 className="font-semibold text-purple-800  mb-2">🧮 Paso 3: Calcular el 56,3% de 2.350</h5>
+          <p className="text-gray-700  text-sm">
             <strong>Método:</strong> (Porcentaje ÷ 100) × Total<br/>
             <strong>Cálculo:</strong> (56,3 ÷ 100) × 2.350<br/>
             <strong>Resultado:</strong> 0,563 × 2.350 = <strong>1.323,05 libros</strong>
           </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500">
-          <h5 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">🎯 Paso 4: Respuesta final</h5>
-          <p className="text-gray-700 dark:text-gray-300 text-sm">
+        <div className="bg-white  p-4 rounded-lg border-l-4 border-blue-500">
+          <h5 className="font-semibold text-blue-800  mb-2">🎯 Paso 4: Respuesta final</h5>
+          <p className="text-gray-700  text-sm">
             Como hablamos de libros (no pueden ser decimales), redondeamos:<br/>
             <strong>1.323,05 ≈ 1.323 libros</strong> ✅
           </p>
@@ -273,14 +254,14 @@ export default function PieChartQuestion({
       {/* Técnicas de descarte rápido */}
       <div className="mt-6">
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
-          <h5 className="font-bold text-yellow-800 dark:text-yellow-300 mb-3 flex items-center">
+          <h5 className="font-bold text-yellow-800  mb-3 flex items-center">
             ⚡ TÉCNICAS DE DESCARTE RÁPIDO (Sin calculadora)
           </h5>
           
           <div className="space-y-3 text-sm">
-            <div className="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-yellow-500">
-              <h6 className="font-semibold text-yellow-800 dark:text-yellow-300 mb-1">🧠 Método 1: Estimación por aproximación</h6>
-              <p className="text-gray-700 dark:text-gray-300">
+            <div className="bg-white  p-3 rounded border-l-4 border-yellow-500">
+              <h6 className="font-semibold text-yellow-800  mb-1">🧠 Método 1: Estimación por aproximación</h6>
+              <p className="text-gray-700 ">
                 • <strong>56,3% ≈ 56%</strong> (redondeamos)<br/>
                 • <strong>56% de 2.350</strong> = <strong>50% + 6%</strong><br/>
                 • <strong>50% de 2.350</strong> = 1.175<br/>
@@ -289,9 +270,9 @@ export default function PieChartQuestion({
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-orange-500">
-              <h6 className="font-semibold text-orange-800 dark:text-orange-300 mb-1">🔍 Método 2: Descarte por lógica</h6>
-              <p className="text-gray-700 dark:text-gray-300">
+            <div className="bg-white  p-3 rounded border-l-4 border-orange-500">
+              <h6 className="font-semibold text-orange-800  mb-1">🔍 Método 2: Descarte por lógica</h6>
+              <p className="text-gray-700 ">
                 • <strong>Más del 50%:</strong> 56,3% &gt; 50%, así que <strong>&gt; 1.175</strong><br/>
                 • <strong>Menos del 60%:</strong> 56,3% &lt; 60%, así que <strong>&lt; 1.410</strong><br/>
                 • <strong>Rango válido:</strong> Entre 1.175 y 1.410<br/>
@@ -299,9 +280,9 @@ export default function PieChartQuestion({
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-purple-500">
-              <h6 className="font-semibold text-purple-800 dark:text-purple-300 mb-1">🎯 Método 3: Cálculo mental por partes</h6>
-              <p className="text-gray-700 dark:text-gray-300">
+            <div className="bg-white  p-3 rounded border-l-4 border-purple-500">
+              <h6 className="font-semibold text-purple-800  mb-1">🎯 Método 3: Cálculo mental por partes</h6>
+              <p className="text-gray-700 ">
                 • <strong>50% de 2.350</strong> = 1.175<br/>
                 • <strong>6% de 2.350</strong> = 6 × 23,5 = 141<br/>
                 • <strong>0,3% de 2.350</strong> = 3 × 2,35 = 7<br/>
@@ -309,9 +290,9 @@ export default function PieChartQuestion({
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-3 rounded border-l-4 border-red-500">
+            <div className="bg-white  p-3 rounded border-l-4 border-red-500">
               <h6 className="font-semibold text-red-800 dark:text-red-300 mb-1">❌ Trampas comunes a evitar</h6>
-              <p className="text-gray-700 dark:text-gray-300">
+              <p className="text-gray-700 ">
                 • <strong>No sumar:</strong> 34,5 + 21,8 = 56,3 (¡no 55,3!)<br/>
                 • <strong>No confundir:</strong> 56,3% ≠ 563 libros<br/>
                 • <strong>No olvidar:</strong> Es porcentaje DEL TOTAL (2.350)
@@ -321,8 +302,8 @@ export default function PieChartQuestion({
         </div>
       </div>
 
-      <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/20 rounded-lg">
-        <p className="text-green-800 dark:text-green-300 text-sm text-center">
+      <div className="mt-4 p-3 bg-green-100  rounded-lg">
+        <p className="text-green-800  text-sm text-center">
           <strong>💪 Consejo de oposición:</strong> Domina el cálculo del 50%, 25%, 10% y 1% de cualquier número. ¡Con eso puedes aproximar todo!
         </p>
       </div>

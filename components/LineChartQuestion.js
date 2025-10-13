@@ -11,33 +11,14 @@ export default function LineChartQuestion({
   attemptCount = 0
 }) {
   const [chartSvg, setChartSvg] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  // Dark mode desactivado para psicotécnicos
+  const isDarkMode = false
 
   useEffect(() => {
     generateLineChart()
-  }, [question, isDarkMode])
+  }, [question])
 
-  // Detectar dark mode
-  useEffect(() => {
-    const checkDarkMode = () => {
-      if (typeof window !== 'undefined') {
-        setIsDarkMode(document.documentElement.classList.contains('dark'))
-      }
-    }
-    
-    checkDarkMode()
-    
-    // Observer para cambios en dark mode
-    const observer = new MutationObserver(checkDarkMode)
-    if (typeof window !== 'undefined') {
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      })
-    }
-    
-    return () => observer.disconnect()
-  }, [])
+  // Dark mode desactivado para gráficos psicotécnicos
 
   const generateLineChart = () => {
     if (!question.content_data?.age_groups) return
@@ -67,7 +48,7 @@ export default function LineChartQuestion({
     let elements = []
 
     // Colores dinámicos para cada grupo de edad
-    const defaultColors = ['#4CAF50', '#FF9800', isDarkMode ? '#E5E7EB' : '#424242', '#E91E63', '#2196F3', '#9C27B0']
+    const defaultColors = ['#4CAF50', '#FF9800', '#424242', '#E91E63', '#2196F3', '#9C27B0']
     const colors = {}
     ageGroups.forEach((ageGroup, index) => {
       colors[ageGroup.label] = defaultColors[index % defaultColors.length]
@@ -100,7 +81,7 @@ export default function LineChartQuestion({
             cy={y}
             r="4"
             fill={colors[ageGroup.label]}
-            stroke={isDarkMode ? "#1f2937" : "white"}
+            stroke="white"
             strokeWidth="2"
           />
         )
@@ -224,7 +205,7 @@ export default function LineChartQuestion({
             x={legendX + 25}
             y={49}
             fontSize="9"
-            fill={isDarkMode ? "#f7fafc" : "#333"}
+            fill="#333"
           >
             {ageGroup.label}
           </text>
@@ -245,7 +226,7 @@ export default function LineChartQuestion({
             y1={y}
             x2={margin.left}
             y2={y}
-            stroke={isDarkMode ? "#cbd5e0" : "#666"}
+            stroke="#666"
             strokeWidth="1"
           />
           <text
@@ -253,7 +234,7 @@ export default function LineChartQuestion({
             y={y + 3}
             textAnchor="end"
             fontSize="9"
-            fill={isDarkMode ? "#cbd5e0" : "#666"}
+            fill="#666"
           >
             {Math.round(value)}
           </text>
@@ -298,7 +279,7 @@ export default function LineChartQuestion({
           y1={margin.top}
           x2={margin.left}
           y2={margin.top + plotHeight}
-          stroke={isDarkMode ? "#cbd5e0" : "#666"}
+          stroke="#666"
           strokeWidth="2"
         />
         <line
@@ -306,7 +287,7 @@ export default function LineChartQuestion({
           y1={margin.top + plotHeight}
           x2={margin.left + plotWidth}
           y2={margin.top + plotHeight}
-          stroke={isDarkMode ? "#cbd5e0" : "#666"}
+          stroke="#666"
           strokeWidth="2"
         />
         

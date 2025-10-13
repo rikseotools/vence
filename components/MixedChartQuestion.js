@@ -11,7 +11,8 @@ export default function MixedChartQuestion({
   attemptCount = 0
 }) {
   const [chartSvg, setChartSvg] = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(false)
+  // Dark mode desactivado para psicotécnicos
+  const isDarkMode = false
   
   // Constantes del gráfico
   const chartWidth = 1200
@@ -19,28 +20,9 @@ export default function MixedChartQuestion({
 
   useEffect(() => {
     generateMixedChart()
-  }, [question, isDarkMode])
+  }, [question])
 
-  // Detectar dark mode
-  useEffect(() => {
-    const checkDarkMode = () => {
-      if (typeof window !== 'undefined') {
-        setIsDarkMode(document.documentElement.classList.contains('dark'))
-      }
-    }
-    
-    checkDarkMode()
-    
-    const observer = new MutationObserver(checkDarkMode)
-    if (typeof window !== 'undefined') {
-      observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class']
-      })
-    }
-    
-    return () => observer.disconnect()
-  }, [])
+  // Dark mode desactivado para gráficos psicotécnicos
 
   const generateBarChart = (data, startX, startY, width, height) => {
     const margin = { top: 50, right: 60, bottom: 60, left: 100 }
@@ -77,7 +59,7 @@ export default function MixedChartQuestion({
               x={startX + margin.left + catIndex * 120 + 20}
               y={startY + 31}
               fontSize="12"
-              fill={isDarkMode ? "#e2e8f0" : "#444"}
+              fill="#444"
             >
               {category.name}
             </text>
@@ -116,7 +98,7 @@ export default function MixedChartQuestion({
             y={barY - 4}
             textAnchor="middle"
             fontSize="11"
-            fill={isDarkMode ? "#f7fafc" : "#333"}
+            fill="#333"
             fontWeight="600"
           >
             {category.value}
@@ -132,7 +114,7 @@ export default function MixedChartQuestion({
           y={startY + height - 15}
           textAnchor="middle"
           fontSize="12"
-          fill={isDarkMode ? "#e2e8f0" : "#444"}
+          fill="#444"
           fontWeight="500"
         >
           {bar.name}
@@ -153,7 +135,7 @@ export default function MixedChartQuestion({
           y={y + 4}
           textAnchor="end"
           fontSize="11"
-          fill={isDarkMode ? "#cbd5e0" : "#666"}
+          fill="#666"
         >
           {Math.round(value)}
         </text>
@@ -240,7 +222,7 @@ export default function MixedChartQuestion({
         textAnchor="middle"
         fontSize="22"
         fontWeight="600"
-        fill={isDarkMode ? "#f7fafc" : "#2d3748"}
+        fill="#2d3748"
       >
         {data.title || 'Ventas de coches'}
       </text>
@@ -261,7 +243,7 @@ export default function MixedChartQuestion({
           textAnchor="middle"
           fontSize="16"
           fontWeight="500"
-          fill={isDarkMode ? "#e2e8f0" : "#444"}
+          fill="#444"
         >
           {data.bar_chart.title}
         </text>
@@ -288,7 +270,7 @@ export default function MixedChartQuestion({
             textAnchor="middle"
             fontSize="13"
             fontWeight="500"
-            fill={isDarkMode ? "#e2e8f0" : "#444"}
+            fill="#444"
           >
             {pieData.title}
           </text>
@@ -310,7 +292,7 @@ export default function MixedChartQuestion({
                 x={pieX - 35}
                 y={legendY + 2}
                 fontSize="11"
-                fill={isDarkMode ? "#e2e8f0" : "#444"}
+                fill="#444"
               >
                 {sector.label}
               </text>
