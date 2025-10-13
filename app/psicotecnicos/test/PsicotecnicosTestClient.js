@@ -374,7 +374,7 @@ export default function PsicotecnicosTestClient() {
             {mainCategories.map((categoryKey) => (
               <div 
                 key={categoryKey}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors cursor-pointer" 
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" 
                 onClick={() => toggleCategory(categoryKey)}
               >
                 <div className="flex items-center mb-2 sm:mb-0">
@@ -422,7 +422,7 @@ export default function PsicotecnicosTestClient() {
         </div>
 
         {/* Configuración del test */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Configuración del test
           </h3>
@@ -518,7 +518,7 @@ export default function PsicotecnicosTestClient() {
       {/* Modal de configuración de subcategorías */}
       {showModal && modalBlock && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
