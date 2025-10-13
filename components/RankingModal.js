@@ -5,15 +5,21 @@ import { useAuth } from '../contexts/AuthContext'
 export default function RankingModal({ isOpen, onClose }) {
   const { user, supabase } = useAuth()
   const [ranking, setRanking] = useState([])
+  const [streakRanking, setStreakRanking] = useState([])
   const [loading, setLoading] = useState(false)
   const [currentUserRank, setCurrentUserRank] = useState(null)
   const [timeFilter, setTimeFilter] = useState('week') // 'yesterday', 'today', 'week', 'month'
+  const [activeTab, setActiveTab] = useState('ranking') // 'ranking', 'rachas'
 
   useEffect(() => {
     if (isOpen && user && supabase) {
-      loadRanking()
+      if (activeTab === 'ranking') {
+        loadRanking()
+      } else if (activeTab === 'rachas') {
+        loadStreakRanking()
+      }
     }
-  }, [isOpen, user, supabase, timeFilter])
+  }, [isOpen, user, supabase, timeFilter, activeTab])
 
   // Prevenir scroll del body cuando el modal está abierto
   useEffect(() => {
@@ -241,6 +247,131 @@ export default function RankingModal({ isOpen, onClose }) {
     }
   }
 
+  const loadStreakRanking = async () => {
+    setLoading(true)
+    try {
+      // Obtener actividad de los últimos 30 días
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      
+      const { data: recentActivity, error } = await supabase
+        .from('test_questions')
+        .select(`
+          tests!inner(user_id),
+          created_at
+        `)
+        .gte('created_at', thirtyDaysAgo)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error loading streak ranking:', error)
+        return
+      }
+
+      // Calcular rachas por usuario
+      const userStreaks = {}
+      
+      recentActivity?.forEach(response => {
+        const userId = response.tests?.user_id
+        if (!userId) return
+        
+        if (!userStreaks[userId]) {
+          userStreaks[userId] = []
+        }
+        userStreaks[userId].push(response.created_at)
+      })
+
+      // Calcular racha para cada usuario
+      const streakData = Object.entries(userStreaks).map(([userId, activities]) => {
+        const streak = calculateStreak(activities.map(date => ({ created_at: date })))
+        return {
+          userId,
+          streak
+        }
+      })
+
+      // Filtrar solo usuarios con racha > 0 y ordenar por racha
+      const filteredStreaks = streakData
+        .filter(user => user.streak > 0)
+        .sort((a, b) => b.streak - a.streak)
+        .slice(0, 20) // Top 20 rachas
+
+      // Obtener nombres de usuarios
+      const userIds = filteredStreaks.map(u => u.userId)
+      
+      // Incluir usuario actual si no está en el ranking
+      if (user && !userIds.includes(user.id)) {
+        userIds.push(user.id)
+      }
+
+      const { data: adminProfiles, error: adminProfilesError } = await supabase
+        .from('admin_users_with_roles')
+        .select('user_id, full_name, email')
+        .in('user_id', userIds)
+
+      if (adminProfilesError) {
+        console.error('Error loading admin user profiles:', adminProfilesError)
+      }
+
+      const { data: customProfiles, error: customProfileError } = await supabase
+        .from('public_user_profiles')
+        .select('id, display_name')
+        .in('id', userIds)
+
+      if (customProfileError) {
+        console.warn('Custom profiles not accessible (RLS):', customProfileError)
+      }
+
+      // Función para obtener nombre a mostrar
+      const getDisplayName = (userId) => {
+        const customProfile = customProfiles?.find(p => p.id === userId)
+        if (customProfile?.display_name) {
+          return customProfile.display_name
+        }
+        
+        const adminProfile = adminProfiles?.find(p => p.user_id === userId)
+        
+        if (userId === user?.id) {
+          if (user?.user_metadata?.full_name) {
+            const firstName = user.user_metadata.full_name.split(' ')[0]
+            if (firstName?.trim()) return firstName.trim()
+          }
+          if (user?.email) {
+            return user.email.split('@')[0]
+          }
+          return 'Tú'
+        }
+        
+        if (adminProfile?.full_name) {
+          const firstName = adminProfile.full_name.split(' ')[0]
+          if (firstName?.trim()) return firstName.trim()
+        }
+        
+        if (adminProfile?.email) {
+          return adminProfile.email.split('@')[0]
+        }
+        
+        return 'Usuario anónimo'
+      }
+
+      // Combinar datos con nombres
+      const finalStreakRanking = filteredStreaks.map((streakUser, index) => {
+        return {
+          ...streakUser,
+          rank: index + 1,
+          name: getDisplayName(streakUser.userId),
+          isCurrentUser: streakUser.userId === user?.id
+        }
+      })
+
+      setStreakRanking(finalStreakRanking)
+      
+    } catch (error) {
+      console.error('Error loading streak ranking:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getRankIcon = (rank) => {
     switch (rank) {
       case 1: return '🥇'
@@ -255,6 +386,39 @@ export default function RankingModal({ isOpen, onClose }) {
     if (rank === 2) return 'text-gray-500'
     if (rank === 3) return 'text-amber-600'
     return 'text-gray-400'
+  }
+
+  // Function to calculate consecutive days streak
+  const calculateStreak = (activities) => {
+    if (!activities || activities.length === 0) return 0
+
+    // Group activities by day
+    const dayGroups = {}
+    activities.forEach(activity => {
+      const day = new Date(activity.created_at).toDateString()
+      dayGroups[day] = true
+    })
+
+    const uniqueDays = Object.keys(dayGroups).sort((a, b) => new Date(b) - new Date(a))
+    
+    let streak = 0
+    let currentDate = new Date()
+    
+    // Check consecutive days from today backwards
+    for (let i = 0; i < 30; i++) {
+      const checkDate = new Date(currentDate)
+      checkDate.setDate(checkDate.getDate() - i)
+      const checkDateString = checkDate.toDateString()
+      
+      if (uniqueDays.includes(checkDateString)) {
+        streak++
+      } else if (i > 0) {
+        // If no activity today, but there was yesterday, start from yesterday
+        break
+      }
+    }
+    
+    return streak
   }
 
   if (!isOpen) return null
@@ -282,8 +446,33 @@ export default function RankingModal({ isOpen, onClose }) {
         </div>
 
         <div className="p-3 sm:p-6 max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          {/* Filtros de tiempo */}
-          <div className="flex justify-center space-x-2 mb-6">
+          {/* Tabs */}
+          <div className="flex justify-center space-x-1 mb-4 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('ranking')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'ranking'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              🏆 Ranking
+            </button>
+            <button
+              onClick={() => setActiveTab('rachas')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'rachas'
+                  ? 'bg-white text-orange-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              🔥 Rachas
+            </button>
+          </div>
+
+          {/* Filtros de tiempo - solo en tab ranking */}
+          {activeTab === 'ranking' && (
+            <div className="flex justify-center space-x-2 mb-6">
             <button
               onClick={() => setTimeFilter('today')}
               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
@@ -325,78 +514,135 @@ export default function RankingModal({ isOpen, onClose }) {
               Este mes
             </button>
           </div>
+          )}
 
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Cargando ranking...</p>
+              <p className="text-gray-600">Cargando {activeTab === 'ranking' ? 'ranking' : 'rachas'}...</p>
             </div>
           ) : (
             <>
-              {/* Tu posición */}
-              {currentUserRank && currentUserRank.rank > 10 && (
-                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">{getRankIcon(currentUserRank.rank)}</span>
-                      <div>
-                        <p className="font-bold text-blue-700">Tu posición: #{currentUserRank.rank}</p>
-                        <p className="text-sm text-blue-600">{currentUserRank.accuracy}% de aciertos</p>
+              {activeTab === 'ranking' ? (
+                <>
+                  {/* Tu posición */}
+                  {currentUserRank && currentUserRank.rank > 10 && (
+                    <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-2xl">{getRankIcon(currentUserRank.rank)}</span>
+                          <div>
+                            <p className="font-bold text-blue-700">Tu posición: #{currentUserRank.rank}</p>
+                            <p className="text-sm text-blue-600">{currentUserRank.accuracy}% de aciertos</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-green-600">{currentUserRank.accuracy}%</div>
+                          <div className="text-xs text-gray-500">{currentUserRank.totalQuestions} preguntas</div>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-green-600">{currentUserRank.accuracy}%</div>
-                      <div className="text-xs text-gray-500">{currentUserRank.totalQuestions} preguntas</div>
-                    </div>
+                  )}
+
+                  {/* Top 10 */}
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-gray-800 mb-4 text-center">
+                      🏆 Top Estudiantes
+                    </h3>
+                    
+                    {ranking.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="text-4xl mb-3">🏆</div>
+                        <p className="text-gray-600">¡Sé el primero en el ranking!</p>
+                        <p className="text-sm text-gray-500">Responde al menos 5 preguntas para aparecer</p>
+                      </div>
+                    ) : (
+                      ranking.map((user) => (
+                        <div
+                          key={user.userId}
+                          className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                            user.isCurrentUser 
+                              ? 'bg-blue-50 border border-blue-200' 
+                              : 'bg-gray-50 hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${getRankColor(user.rank)}`}>
+                              {user.rank <= 3 ? getRankIcon(user.rank) : `#${user.rank}`}
+                            </div>
+                            <div>
+                              <p className={`font-medium ${user.isCurrentUser ? 'text-blue-700' : 'text-gray-800'}`}>
+                                {user.name}
+                                {user.isCurrentUser && <span className="ml-1 text-blue-600 text-sm">(Tú)</span>}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {user.correctAnswers} correctas sobre {user.totalQuestions} totales
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="font-bold text-green-600">{user.accuracy}%</div>
+                            <div className="text-xs text-gray-400">{user.totalQuestions} preguntas</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
+                </>
+              ) : (
+                /* Tab Rachas */
+                <div className="space-y-3">
+                  <h3 className="font-bold text-gray-800 mb-4 text-center">
+                    🔥 Top Rachas (últimos 30 días)
+                  </h3>
+                  
+                  {streakRanking.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-4xl mb-3">🔥</div>
+                      <p className="text-gray-600">¡Nadie tiene racha activa!</p>
+                      <p className="text-sm text-gray-500">Estudia varios días seguidos para aparecer aquí</p>
+                    </div>
+                  ) : (
+                    streakRanking.map((user) => (
+                      <div
+                        key={user.userId}
+                        className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                          user.isCurrentUser 
+                            ? 'bg-orange-50 border border-orange-200' 
+                            : 'bg-gray-50 hover:bg-gray-100'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${
+                            user.rank === 1 ? 'text-yellow-600' : 
+                            user.rank === 2 ? 'text-gray-500' : 
+                            user.rank === 3 ? 'text-amber-600' : 'text-gray-400'
+                          }`}>
+                            {user.rank <= 3 ? getRankIcon(user.rank) : `#${user.rank}`}
+                          </div>
+                          <div>
+                            <p className={`font-medium ${user.isCurrentUser ? 'text-orange-700' : 'text-gray-800'}`}>
+                              {user.name}
+                              {user.isCurrentUser && <span className="ml-1 text-orange-600 text-sm">(Tú)</span>}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Días consecutivos estudiando
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="text-right">
+                          <div className="font-bold text-orange-600 text-xl">
+                            🔥 {user.streak > 30 ? '30+' : user.streak}
+                          </div>
+                          <div className="text-xs text-gray-400">días seguidos</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
-
-              {/* Top 10 */}
-              <div className="space-y-3">
-                <h3 className="font-bold text-gray-800 mb-4 text-center">
-                  🏆 Top Estudiantes
-                </h3>
-                
-                {ranking.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="text-4xl mb-3">🏆</div>
-                    <p className="text-gray-600">¡Sé el primero en el ranking!</p>
-                    <p className="text-sm text-gray-500">Responde al menos 5 preguntas para aparecer</p>
-                  </div>
-                ) : (
-                  ranking.map((user) => (
-                    <div
-                      key={user.userId}
-                      className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                        user.isCurrentUser 
-                          ? 'bg-blue-50 border border-blue-200' 
-                          : 'bg-gray-50 hover:bg-gray-100'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${getRankColor(user.rank)}`}>
-                          {user.rank <= 3 ? getRankIcon(user.rank) : `#${user.rank}`}
-                        </div>
-                        <div>
-                          <p className={`font-medium ${user.isCurrentUser ? 'text-blue-700' : 'text-gray-800'}`}>
-                            {user.name}
-                            {user.isCurrentUser && <span className="ml-1 text-blue-600 text-sm">(Tú)</span>}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {user.correctAnswers} correctas sobre {user.totalQuestions} totales
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <div className="font-bold text-green-600">{user.accuracy}%</div>
-                        <div className="text-xs text-gray-400">{user.totalQuestions} preguntas</div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
             </>
           )}
 
