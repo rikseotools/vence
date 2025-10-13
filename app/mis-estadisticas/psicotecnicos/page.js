@@ -36,31 +36,15 @@ export default function PsychometricStatistics() {
         dateFilter = { created_at: { gte: monthAgo.toISOString() } }
       }
 
-      // Query principal para respuestas psicotécnicas
+      // Usar tabla psychometric_test_sessions que sí existe
+      // IMPORTANTE: Filtrar solo sesiones psicotécnicas, no mezclar con preguntas de ley
+      console.log('🔍 DEBUG: User ID:', user.id, 'Email:', user.email)
+      
       let query = supabase
-        .from('psychometric_test_answers')
-        .select(`
-          *,
-          psychometric_questions!inner(
-            id,
-            question_text,
-            difficulty_level,
-            psychometric_sections!inner(
-              section_key,
-              display_name,
-              psychometric_categories!inner(
-                category_key,
-                display_name
-              )
-            )
-          ),
-          psychometric_test_sessions!inner(
-            session_type,
-            total_questions,
-            score
-          )
-        `)
+        .from('psychometric_test_sessions')
+        .select('*')
         .eq('user_id', user.id)
+        .eq('session_type', 'psychometric')
 
       // Aplicar filtro de fecha si es necesario
       if (dateFilter.created_at) {
@@ -74,6 +58,12 @@ export default function PsychometricStatistics() {
 
       const { data: answers, error } = await query.order('created_at', { ascending: false })
 
+      console.log('🔍 DEBUG: Query result for user', user.email, ':', { 
+        answers: answers?.length || 0, 
+        error: error?.message,
+        firstAnswer: answers?.[0] 
+      })
+
       if (error) {
         console.error('Error loading psychometric stats:', error)
         return
@@ -81,6 +71,11 @@ export default function PsychometricStatistics() {
 
       // Procesar estadísticas
       const processedStats = processPsychometricStats(answers)
+      console.log('🔍 DEBUG: Processed stats:', { 
+        totalAnswers: processedStats.overview.totalAnswers,
+        accuracy: processedStats.overview.accuracy,
+        categories: Object.keys(processedStats.byCategory)
+      })
       setStats(processedStats)
 
     } catch (error) {
@@ -90,8 +85,15 @@ export default function PsychometricStatistics() {
     }
   }
 
-  const processPsychometricStats = (answers) => {
-    if (!answers || answers.length === 0) {
+  const processPsychometricStats = (sessions) => {
+    console.log('🔍 DEBUG: Processing sessions:', sessions?.length || 0)
+    console.log('🔍 DEBUG: First session fields:', Object.keys(sessions?.[0] || {}))
+    console.log('🔍 DEBUG: First session scores:', {
+      score: sessions?.[0]?.score,
+      score_percentage: sessions?.[0]?.score_percentage,
+      total_questions: sessions?.[0]?.total_questions
+    })
+    if (!sessions || sessions.length === 0) {
       return {
         overview: { totalAnswers: 0, accuracy: 0, averageTime: 0, totalSessions: 0 },
         byCategory: {},
@@ -104,163 +106,122 @@ export default function PsychometricStatistics() {
       }
     }
 
-    // Estadísticas generales
-    const totalAnswers = answers.length
-    const correctAnswers = answers.filter(a => a.is_correct).length
-    const accuracy = Math.round((correctAnswers / totalAnswers) * 100)
-    const averageTime = Math.round(
-      answers.reduce((sum, a) => sum + (a.time_taken_seconds || 0), 0) / totalAnswers
-    )
-    const uniqueSessions = [...new Set(answers.map(a => a.session_id))].length
-
-    // Estadísticas por categoría
-    const byCategory = {}
-    answers.forEach(answer => {
-      const category = answer.psychometric_questions?.psychometric_sections?.psychometric_categories
-      if (category) {
-        const key = category.category_key
-        if (!byCategory[key]) {
-          byCategory[key] = {
-            display_name: category.display_name,
-            total: 0,
-            correct: 0,
-            accuracy: 0,
-            averageTime: 0,
-            times: []
-          }
+    // Estadísticas generales basadas en sesiones
+    const totalSessions = sessions.length
+    const completedSessions = sessions.filter(s => s.is_completed === true)
+    const incompleteWithProgress = sessions.filter(s => s.is_completed === false && (s.questions_answered > 0))
+    const totalQuestions = completedSessions.reduce((sum, s) => sum + (s.total_questions || 0), 0)
+    
+    // Calcular accuracy correctamente: promedio de accuracy_percentage de sesiones completadas
+    const accuracy = completedSessions.length > 0 ? 
+      Math.round(completedSessions.reduce((sum, s) => sum + (s.accuracy_percentage || 0), 0) / completedSessions.length) : 0
+    // Calcular tiempo promedio usando started_at y completed_at si total_time_seconds es null
+    const averageTime = completedSessions.length > 0 ? Math.round(
+      completedSessions.reduce((sum, s) => {
+        if (s.total_time_seconds) {
+          return sum + s.total_time_seconds
+        } else if (s.started_at && s.completed_at) {
+          // Calcular diferencia en segundos
+          const startTime = new Date(s.started_at)
+          const endTime = new Date(s.completed_at)
+          return sum + Math.round((endTime - startTime) / 1000)
         }
-        byCategory[key].total++
-        if (answer.is_correct) byCategory[key].correct++
-        if (answer.time_taken_seconds) byCategory[key].times.push(answer.time_taken_seconds)
+        return sum
+      }, 0) / completedSessions.length
+    ) : 0
+
+    // Estadísticas por tipo de sesión (simplificado por ahora)
+    const byCategory = {}
+    completedSessions.forEach(session => {
+      const sessionType = session.session_type || 'psychometric'
+      if (!byCategory[sessionType]) {
+        byCategory[sessionType] = {
+          display_name: sessionType,
+          total: 0,
+          correct: 0,
+          accuracy: 0,
+          averageTime: 0,
+          accuracies: [],
+          sessionTimes: []
+        }
+      }
+      // Sumar total de preguntas (no número de sesiones)
+      byCategory[sessionType].total += (session.total_questions || 0)
+      if (session.accuracy_percentage !== null && session.accuracy_percentage !== undefined) {
+        byCategory[sessionType].accuracies.push(session.accuracy_percentage)
+      }
+      // Sumar respuestas correctas totales
+      byCategory[sessionType].correct += (session.correct_answers || 0)
+      
+      // Calcular tiempo de la sesión para promedio
+      if (session.total_time_seconds) {
+        byCategory[sessionType].sessionTimes.push(session.total_time_seconds)
+      } else if (session.started_at && session.completed_at) {
+        const startTime = new Date(session.started_at)
+        const endTime = new Date(session.completed_at)
+        const sessionTime = Math.round((endTime - startTime) / 1000)
+        byCategory[sessionType].sessionTimes.push(sessionTime)
       }
     })
 
-    // Calcular promedios por categoría
+    // Calcular promedios por tipo de sesión
     Object.keys(byCategory).forEach(key => {
       const cat = byCategory[key]
-      cat.accuracy = Math.round((cat.correct / cat.total) * 100)
-      cat.averageTime = cat.times.length > 0 
-        ? Math.round(cat.times.reduce((a, b) => a + b, 0) / cat.times.length)
+      cat.accuracy = cat.accuracies.length > 0 
+        ? Math.round(cat.accuracies.reduce((a, b) => a + b, 0) / cat.accuracies.length)
         : 0
-      delete cat.times // Limpiar array temporal
-    })
-
-    // Estadísticas por sección
-    const bySection = {}
-    answers.forEach(answer => {
-      const section = answer.psychometric_questions?.psychometric_sections
-      if (section) {
-        const key = section.section_key
-        if (!bySection[key]) {
-          bySection[key] = {
-            display_name: section.display_name,
-            category_name: answer.psychometric_questions?.psychometric_sections?.psychometric_categories?.display_name,
-            total: 0,
-            correct: 0,
-            accuracy: 0,
-            averageTime: 0,
-            times: []
-          }
-        }
-        bySection[key].total++
-        if (answer.is_correct) bySection[key].correct++
-        if (answer.time_taken_seconds) bySection[key].times.push(answer.time_taken_seconds)
-      }
-    })
-
-    // Calcular promedios por sección
-    Object.keys(bySection).forEach(key => {
-      const section = bySection[key]
-      section.accuracy = Math.round((section.correct / section.total) * 100)
-      section.averageTime = section.times.length > 0 
-        ? Math.round(section.times.reduce((a, b) => a + b, 0) / section.times.length)
+      cat.averageTime = cat.sessionTimes.length > 0
+        ? Math.round(cat.sessionTimes.reduce((a, b) => a + b, 0) / cat.sessionTimes.length)
         : 0
-      delete section.times
+      // cat.correct ya tiene el total de respuestas correctas sumadas arriba
+      delete cat.accuracies // Limpiar arrays temporales
+      delete cat.sessionTimes
     })
 
-    // Estadísticas por dificultad
-    const byDifficulty = {}
-    answers.forEach(answer => {
-      const difficulty = answer.psychometric_questions?.difficulty_level || 3
-      if (!byDifficulty[difficulty]) {
-        byDifficulty[difficulty] = { total: 0, correct: 0, accuracy: 0 }
-      }
-      byDifficulty[difficulty].total++
-      if (answer.is_correct) byDifficulty[difficulty].correct++
-    })
+    // Por ahora simplificamos y solo mostramos estadísticas básicas
 
-    Object.keys(byDifficulty).forEach(level => {
-      const diff = byDifficulty[level]
-      diff.accuracy = Math.round((diff.correct / diff.total) * 100)
-    })
-
-    // Patrones de tiempo (por hora del día)
-    const timePatterns = {}
-    answers.forEach(answer => {
-      const hour = new Date(answer.created_at).getHours()
-      if (!timePatterns[hour]) {
-        timePatterns[hour] = { total: 0, correct: 0, accuracy: 0 }
-      }
-      timePatterns[hour].total++
-      if (answer.is_correct) timePatterns[hour].correct++
-    })
-
-    Object.keys(timePatterns).forEach(hour => {
-      const pattern = timePatterns[hour]
-      pattern.accuracy = Math.round((pattern.correct / pattern.total) * 100)
-    })
-
-    // Áreas débiles (secciones con < 70% acierto y al menos 3 intentos)
-    const weakAreas = Object.entries(bySection)
-      .filter(([key, section]) => section.accuracy < 70 && section.total >= 3)
-      .sort(([,a], [,b]) => a.accuracy - b.accuracy)
-      .slice(0, 5)
-      .map(([key, section]) => ({
-        key,
-        name: section.display_name,
-        category: section.category_name,
-        accuracy: section.accuracy,
-        total: section.total
-      }))
-
-    // Fortalezas (secciones con > 85% acierto y al menos 3 intentos)
-    const strengths = Object.entries(bySection)
-      .filter(([key, section]) => section.accuracy > 85 && section.total >= 3)
-      .sort(([,a], [,b]) => b.accuracy - a.accuracy)
-      .slice(0, 5)
-      .map(([key, section]) => ({
-        key,
-        name: section.display_name,
-        category: section.category_name,
-        accuracy: section.accuracy,
-        total: section.total
-      }))
-
-    // Actividad reciente (últimas 10 respuestas)
-    const recentActivity = answers.slice(0, 10).map(answer => ({
-      question_id: answer.question_id,
-      question_text: answer.psychometric_questions?.question_text?.substring(0, 100) + '...',
-      is_correct: answer.is_correct,
-      time_taken: answer.time_taken_seconds,
-      answered_at: answer.created_at,
-      category: answer.psychometric_questions?.psychometric_sections?.psychometric_categories?.display_name,
-      section: answer.psychometric_questions?.psychometric_sections?.display_name
-    }))
+    // Calcular estadísticas de tests incompletos con progreso
+    const incompleteStats = incompleteWithProgress.length > 0 ? {
+      count: incompleteWithProgress.length,
+      averageAccuracy: Math.round(
+        incompleteWithProgress.reduce((sum, s) => sum + (s.accuracy_percentage || 0), 0) / incompleteWithProgress.length
+      ),
+      totalQuestionsAnswered: incompleteWithProgress.reduce((sum, s) => sum + (s.questions_answered || 0), 0),
+      totalCorrectAnswers: incompleteWithProgress.reduce((sum, s) => sum + (s.correct_answers || 0), 0)
+    } : null
 
     return {
       overview: {
-        totalAnswers,
+        totalAnswers: totalQuestions,
         accuracy,
         averageTime,
-        totalSessions: uniqueSessions
+        totalSessions: completedSessions.length,
+        incompleteWithProgressStats: incompleteStats
       },
       byCategory,
-      bySection,
-      byDifficulty,
-      timePatterns,
-      recentActivity,
-      weakAreas,
-      strengths
+      bySection: {}, // Vacío por ahora
+      byDifficulty: {}, // Vacío por ahora
+      timePatterns: {}, // Vacío por ahora
+      recentActivity: [...completedSessions, ...incompleteWithProgress]
+        .sort((a, b) => new Date(b.completed_at || b.created_at) - new Date(a.completed_at || a.created_at))
+        .slice(0, 10)
+        .map(session => ({
+        session_id: session.id,
+        question_text: session.is_completed 
+          ? `Test completado: ${session.correct_answers}/${session.total_questions} aciertos (${Math.round(session.accuracy_percentage)}%)`
+          : `Test incompleto: ${session.questions_answered}/${session.total_questions} preguntas (${session.correct_answers} aciertos, ${Math.round(session.accuracy_percentage)}%)`,
+        category: 'Test Psicotécnico',
+        section: `${session.total_questions} preguntas`,
+        is_correct: session.is_completed, // Verde si completado, rojo si incompleto
+        score: session.accuracy_percentage,
+        correct_answers: session.correct_answers,
+        total_questions: session.total_questions,
+        answered_at: session.completed_at || session.created_at,
+        time_taken: session.total_time_seconds || (session.started_at && session.completed_at ? 
+          Math.round((new Date(session.completed_at) - new Date(session.started_at)) / 1000) : 0)
+      })),
+      weakAreas: [], // Vacío por ahora
+      strengths: [] // Vacío por ahora
     }
   }
 
@@ -439,8 +400,14 @@ export default function PsychometricStatistics() {
                     <span className="text-2xl">📚</span>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Sesiones</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tests Completados</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.overview.totalSessions}</p>
+                    {stats.overview.incompleteWithProgressStats && (
+                      <p className="text-xs text-orange-600 dark:text-orange-400">
+                        📊 {stats.overview.incompleteWithProgressStats.count} tests incompletos con progreso 
+                        ({stats.overview.incompleteWithProgressStats.averageAccuracy}% accuracy promedio)
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -622,8 +589,8 @@ export default function PsychometricStatistics() {
               </div>
             )}
 
-            {/* Weak Areas Analysis */}
-            <PsychometricWeakAreasAnalysis userId={user.id} />
+            {/* Weak Areas Analysis - Temporarily disabled due to missing table columns */}
+            {/* <PsychometricWeakAreasAnalysis userId={user.id} /> */}
           </div>
         )}
       </div>

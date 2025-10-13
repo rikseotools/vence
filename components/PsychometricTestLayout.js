@@ -39,6 +39,7 @@ export default function PsychometricTestLayout({
   // Anti-duplicados
   const answeringTimeouts = useRef(new Map())
   const answeredQuestionsGlobal = useRef(new Set())
+  const sessionCreated = useRef(false)
 
   const currentQ = questions[currentQuestion]
   const totalQuestions = questions.length
@@ -72,8 +73,12 @@ export default function PsychometricTestLayout({
       }
     }
 
-    createTestSession()
-  }, [user, questions, supabase])
+    // Solo crear sesión si no se ha creado ya una
+    if (!sessionCreated.current && user && questions.length > 0) {
+      sessionCreated.current = true
+      createTestSession()
+    }
+  }, [user, questions?.length, supabase]) // Usar questions.length en lugar de questions completo
 
   // Cargar información de dificultad cuando cambie la pregunta
   useEffect(() => {
@@ -167,6 +172,27 @@ export default function PsychometricTestLayout({
           console.error('❌ Error saving answer:', error)
         } else {
           console.log('✅ Answer saved to database')
+          
+          // Actualizar progreso de la sesión después de cada respuesta
+          const newQuestionsAnswered = currentQuestion + 1
+          const currentCorrectCount = answeredQuestions.filter(q => q.isCorrect).length
+          const newCorrectAnswers = isCorrect ? currentCorrectCount + 1 : currentCorrectCount
+          const newAccuracyPercentage = Math.round((newCorrectAnswers / newQuestionsAnswered) * 100)
+          
+          const { error: sessionError } = await supabase
+            .from('psychometric_test_sessions')
+            .update({
+              questions_answered: newQuestionsAnswered,
+              correct_answers: newCorrectAnswers,
+              accuracy_percentage: newAccuracyPercentage
+            })
+            .eq('id', testSession.id)
+          
+          if (sessionError) {
+            console.error('❌ Error updating session progress:', sessionError)
+          } else {
+            console.log(`✅ Session progress updated: ${newCorrectAnswers}/${newQuestionsAnswered} (${newAccuracyPercentage}%)`)
+          }
         }
       } else {
         console.log('📊 Guest mode: answer saved locally')
