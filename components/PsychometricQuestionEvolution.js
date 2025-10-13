@@ -400,10 +400,10 @@ export default function PsychometricQuestionEvolution({
   if (!evolutionData) return null
 
   const colorClasses = {
-    blue: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300',
-    green: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300',
-    orange: 'bg-orange-50 border-orange-200 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300',
-    red: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300'
+    blue: 'bg-blue-50 border-blue-200 text-blue-800',
+    green: 'bg-green-50 border-green-200 text-green-800',
+    orange: 'bg-orange-50 border-orange-200 text-orange-800',
+    red: 'bg-red-50 border-red-200 text-red-800'
   }
 
   return (
@@ -480,7 +480,7 @@ export default function PsychometricQuestionEvolution({
 
       {/* Análisis temporal */}
       {evolutionData.analisisTemporal && (
-        <div className="mb-4 p-3 bg-black/5 dark:bg-black/20 rounded text-xs">
+        <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
           <div className="font-semibold mb-2">📅 Historial de estudio psicotécnico:</div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
             {evolutionData.totalIntentos === 1 ? (
@@ -524,7 +524,7 @@ export default function PsychometricQuestionEvolution({
 
       {/* Patrones de rendimiento específicos de psicotécnicos */}
       {evolutionData.patronesRendimiento && (
-        <div className="mb-4 p-3 bg-black/5 dark:bg-black/20 rounded text-xs">
+        <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
           <div className="font-semibold mb-2">🎯 Análisis de rendimiento psicotécnico:</div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
@@ -593,7 +593,7 @@ export default function PsychometricQuestionEvolution({
 
           {/* Estadísticas avanzadas específicas de psicotécnicos */}
           {evolutionData.estadisticasAvanzadas && (
-            <div className="mb-3 p-2 bg-black/10 dark:bg-black/30 rounded text-xs">
+            <div className="mb-3 p-2 bg-gray-200 rounded text-xs">
               <div className="font-semibold mb-2">📊 Estadísticas psicotécnicas detalladas:</div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
@@ -638,7 +638,7 @@ export default function PsychometricQuestionEvolution({
 
           {/* Fechas detalladas expandibles */}
           {showDateHistory && evolutionData.historialCompleto.length > 1 && (
-            <div className="mt-3 space-y-1 text-xs bg-black/10 dark:bg-black/30 rounded p-3 max-h-40 overflow-y-auto">
+            <div className="mt-3 space-y-1 text-xs bg-gray-200 rounded p-3 max-h-40 overflow-y-auto">
               <div className="font-semibold mb-2 sticky top-0 bg-inherit">📅 Cronología detallada:</div>
               {evolutionData.historialCompleto.map((intento, index) => (
                 <div key={index} className="flex items-center justify-between py-2 border-b border-current border-opacity-10 last:border-b-0">
