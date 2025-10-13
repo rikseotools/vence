@@ -253,36 +253,52 @@ export default function RankingModal({ isOpen, onClose }) {
       // Obtener actividad de los últimos 30 días
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       
+      // Usar la misma tabla que el perfil: tests (no test_questions)
       const { data: recentActivity, error } = await supabase
-        .from('test_questions')
+        .from('tests')
         .select(`
-          tests!inner(user_id),
-          created_at
+          user_id,
+          completed_at
         `)
-        .gte('created_at', thirtyDaysAgo)
-        .order('created_at', { ascending: false })
+        .gte('completed_at', thirtyDaysAgo)
+        .order('completed_at', { ascending: false })
 
       if (error) {
         console.error('Error loading streak ranking:', error)
         return
       }
 
-      // Calcular rachas por usuario
-      const userStreaks = {}
+      console.log('🔍 DEBUG: Datos cargados para streaks:', recentActivity?.length || 0, 'registros')
+
+      // Calcular rachas por usuario (usando tests completados, no respuestas individuales)
+      const userTests = {}
       
-      recentActivity?.forEach(response => {
-        const userId = response.tests?.user_id
+      recentActivity?.forEach(test => {
+        const userId = test.user_id
         if (!userId) return
         
-        if (!userStreaks[userId]) {
-          userStreaks[userId] = []
+        if (!userTests[userId]) {
+          userTests[userId] = []
         }
-        userStreaks[userId].push(response.created_at)
+        userTests[userId].push({ completed_at: test.completed_at })
       })
+      
+      // DEBUG: Mostrar datos de usuarios específicos
+      const debugUsers = Object.entries(userTests)
+        .map(([userId, tests]) => ({
+          userId: userId.slice(0, 8),
+          totalTests: tests.length,
+          uniqueDays: [...new Set(tests.map(test => new Date(test.completed_at).toISOString().split('T')[0]))],
+          firstTest: tests[tests.length - 1]?.completed_at?.slice(0, 10),
+          lastTest: tests[0]?.completed_at?.slice(0, 10)
+        }))
+        .slice(0, 5) // Solo primeros 5 para debug
+        
+      console.log('🔍 DEBUG: Muestra de usuarios con tests:', debugUsers)
 
-      // Calcular racha para cada usuario
-      const streakData = Object.entries(userStreaks).map(([userId, activities]) => {
-        const streak = calculateStreak(activities.map(date => ({ created_at: date })))
+      // Calcular racha para cada usuario usando la misma lógica del perfil
+      const streakData = Object.entries(userTests).map(([userId, tests]) => {
+        const streak = calculateRealStreak(tests)
         return {
           userId,
           streak
@@ -388,36 +404,86 @@ export default function RankingModal({ isOpen, onClose }) {
     return 'text-gray-400'
   }
 
-  // Function to calculate consecutive days streak
-  const calculateStreak = (activities) => {
-    if (!activities || activities.length === 0) return 0
-
-    // Group activities by day
-    const dayGroups = {}
-    activities.forEach(activity => {
-      const day = new Date(activity.created_at).toDateString()
-      dayGroups[day] = true
-    })
-
-    const uniqueDays = Object.keys(dayGroups).sort((a, b) => new Date(b) - new Date(a))
+  // Function to calculate consecutive days streak - COPIADA DESDE PERFIL
+  const calculateRealStreak = (tests) => {
+    if (!tests || tests.length === 0) return 0
     
     let streak = 0
-    let currentDate = new Date()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     
-    // Check consecutive days from today backwards
+    // Verificar los últimos 30 días
     for (let i = 0; i < 30; i++) {
-      const checkDate = new Date(currentDate)
-      checkDate.setDate(checkDate.getDate() - i)
-      const checkDateString = checkDate.toDateString()
+      const checkDate = new Date(today)
+      checkDate.setDate(today.getDate() - i)
       
-      if (uniqueDays.includes(checkDateString)) {
+      const hasTestOnDate = tests.some(test => {
+        const testDate = new Date(test.completed_at)
+        testDate.setHours(0, 0, 0, 0)
+        return testDate.getTime() === checkDate.getTime()
+      })
+      
+      if (hasTestOnDate) {
         streak++
       } else if (i > 0) {
-        // If no activity today, but there was yesterday, start from yesterday
+        // Si no hay test hoy, pero había ayer, empezar desde ayer
         break
       }
     }
     
+    return streak
+  }
+
+  // Function to calculate consecutive days streak - ANTIGUA (ELIMINAR DESPUÉS)
+  const calculateStreak = (activities) => {
+    if (!activities || activities.length === 0) return 0
+
+    // Group activities by day (using UTC to match database)
+    const dayGroups = {}
+    activities.forEach(activity => {
+      const date = new Date(activity.created_at)
+      const day = date.toISOString().split('T')[0] // YYYY-MM-DD format in UTC
+      dayGroups[day] = true
+    })
+
+    const uniqueDays = Object.keys(dayGroups).sort((a, b) => b.localeCompare(a)) // Sort descending
+    
+    if (uniqueDays.length === 0) return 0
+    
+    let streak = 0
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+    const yesterdayStr = new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    
+    // DEBUG: Log for testing
+    console.log('🔍 DEBUG calculateStreak:', { todayStr, yesterdayStr, uniqueDays: uniqueDays.slice(0, 5) })
+    
+    // Find starting point: either today or yesterday
+    let startDate
+    if (uniqueDays.includes(todayStr)) {
+      startDate = todayStr
+    } else if (uniqueDays.includes(yesterdayStr)) {
+      startDate = yesterdayStr
+    } else {
+      console.log('🔍 DEBUG: No recent activity', { todayStr, yesterdayStr, firstActivity: uniqueDays[0] })
+      return 0 // No recent activity
+    }
+    
+    // Count consecutive days backwards from start date
+    let checkDate = new Date(startDate + 'T00:00:00Z')
+    
+    for (let i = 0; i < 30; i++) {
+      const checkDateStr = checkDate.toISOString().split('T')[0]
+      
+      if (uniqueDays.includes(checkDateStr)) {
+        streak++
+        checkDate.setUTCDate(checkDate.getUTCDate() - 1) // Go back one day
+      } else {
+        break // End streak on first missing day
+      }
+    }
+    
+    console.log('🔍 DEBUG final streak:', { startDate, streak, totalDays: uniqueDays.length })
     return streak
   }
 
