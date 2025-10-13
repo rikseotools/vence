@@ -330,8 +330,8 @@ export default function PsicotecnicosTestClient() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Acceso requerido</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Necesitas iniciar sesión para acceder a los tests psicotécnicos</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Acceso requerido</h1>
+          <p className="text-gray-600 mb-6">Necesitas iniciar sesión para acceder a los tests psicotécnicos</p>
           <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg">
             Iniciar sesión
           </Link>
@@ -349,20 +349,20 @@ export default function PsicotecnicosTestClient() {
         
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">
             Tests Psicotécnicos
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-4">
+          <p className="text-gray-600 max-w-2xl mx-auto mb-4">
             Selecciona las categorías que quieres practicar y configura tu test personalizado
           </p>
           {/* Mensaje de desarrollo */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-2xl mx-auto">
-            <div className="flex items-center justify-center space-x-2 text-blue-700 dark:text-blue-300">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center space-x-2 text-blue-700">
               <span className="text-lg">🚀</span>
               <p className="text-sm font-medium">
                 <strong>¡Estamos en desarrollo!</strong> Durante octubre añadiremos preguntas psicotécnicas diariamente.
                 <br />
-                <span className="text-blue-600 dark:text-blue-400">Si haces las preguntas disponibles hoy y vuelves mañana, ¡verás que hay nuevas!</span>
+                <span className="text-blue-600">Si haces las preguntas disponibles hoy y vuelves mañana, ¡verás que hay nuevas!</span>
               </p>
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function PsicotecnicosTestClient() {
                   <div className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 ${
                     selectedCategories[categoryKey] 
                       ? 'bg-blue-600 border-blue-600' 
-                      : 'border-gray-300 dark:border-gray-500'
+                      : 'border-gray-300'
                   }`}>
                     {selectedCategories[categoryKey] && (
                       <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -443,8 +443,8 @@ export default function PsicotecnicosTestClient() {
                         numQuestionsPsico === num
                           ? 'bg-blue-600 text-white'
                           : isDisabled
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                          : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
                       title={isDisabled ? `Solo hay ${totalSelectedQuestions} preguntas disponibles` : ''}
                     >
@@ -460,7 +460,7 @@ export default function PsicotecnicosTestClient() {
               <div className="text-sm font-medium text-gray-900 mb-1">
                 Preguntas disponibles
               </div>
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+              <div className="text-3xl font-bold text-green-600">
                 {totalSelectedQuestions}
               </div>
             </div>
@@ -533,7 +533,7 @@ export default function PsicotecnicosTestClient() {
                 </h3>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  className="text-gray-400 hover:text-gray-600"
                 >
                   ✕
                 </button>
@@ -541,7 +541,7 @@ export default function PsicotecnicosTestClient() {
               
               <div className="space-y-3">
                 {(blockSections[modalBlock] || []).map((section) => (
-                  <label key={section} className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <label key={section} className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-center space-x-3">
                       <input
                         type="checkbox"
