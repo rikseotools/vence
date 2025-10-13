@@ -108,7 +108,7 @@ export default function HeaderES() {
     return [
       { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
       { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
-      { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧠' },
+      { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' },
       { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
     ]
   }
@@ -308,15 +308,27 @@ export default function HeaderES() {
                 </>
               )}
 
-              {/* 🎯 ICONO DE DIANA PARA TESTS - Solo en móvil */}
+              {/* 🎯 ICONO DE TESTS - Solo en móvil */}
               {user && (
                 <Link
-                  href="/auxiliar-administrativo-estado/test"
+                  href={getTestsLink()}
                   className="lg:hidden p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                   aria-label="Ir a Tests"
                   title="Tests de Práctica"
                 >
                   <span className="text-2xl">🎯</span>
+                </Link>
+              )}
+
+              {/* 🧩 ICONO DE PSICOTÉCNICOS - Solo en móvil */}
+              {user && (
+                <Link
+                  href="/psicotecnicos/test"
+                  className="lg:hidden p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  aria-label="Ir a Psicotécnicos"
+                  title="Tests Psicotécnicos"
+                >
+                  <span className="text-2xl">🧩</span>
                 </Link>
               )}
               
