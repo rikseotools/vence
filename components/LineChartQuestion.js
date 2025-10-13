@@ -43,9 +43,9 @@ export default function LineChartQuestion({
     if (!question.content_data?.age_groups) return
 
     const data = question.content_data
-    const chartWidth = 500
-    const chartHeight = 350
-    const margin = { top: 80, right: 30, bottom: 80, left: 60 }
+    const chartWidth = 700
+    const chartHeight = 450
+    const margin = { top: 120, right: 60, bottom: 80, left: 60 }
     const plotWidth = chartWidth - margin.left - margin.right
     const plotHeight = chartHeight - margin.top - margin.bottom
 
@@ -66,21 +66,25 @@ export default function LineChartQuestion({
 
     let elements = []
 
-    // Colores para cada grupo de edad
-    const colors = {
-      '0-1 años': '#4CAF50',     // Verde
-      '15-26 años': '#FF9800',   // Naranja  
-      '27-59 años': isDarkMode ? '#E5E7EB' : '#424242',   // Gris claro en dark mode, oscuro en light mode
-      '60+ años': '#E91E63'      // Rosa/Magenta
-    }
+    // Colores dinámicos para cada grupo de edad
+    const defaultColors = ['#4CAF50', '#FF9800', isDarkMode ? '#E5E7EB' : '#424242', '#E91E63', '#2196F3', '#9C27B0']
+    const colors = {}
+    ageGroups.forEach((ageGroup, index) => {
+      colors[ageGroup.label] = defaultColors[index % defaultColors.length]
+    })
 
-    // Generar líneas para cada grupo de edad
+    // Primero dibujar todas las líneas y puntos
+    const allPoints = []
+    const allTextPositions = []
+    
     ageGroups.forEach((ageGroup, groupIndex) => {
       let pathData = []
 
       ageGroup.values.forEach((value, categoryIndex) => {
         const x = margin.left + (categoryIndex * categorySpacing)
         const y = margin.top + plotHeight - ((value / maxValue) * plotHeight)
+        
+        allPoints.push({ x, y, value, groupIndex, categoryIndex, color: colors[ageGroup.label] })
         
         if (categoryIndex === 0) {
           pathData.push(`M ${x} ${y}`)
@@ -100,21 +104,6 @@ export default function LineChartQuestion({
             strokeWidth="2"
           />
         )
-
-        // Valor sobre el punto
-        elements.push(
-          <text
-            key={`value-${groupIndex}-${categoryIndex}`}
-            x={x}
-            y={y - 10}
-            textAnchor="middle"
-            fontSize="10"
-            fill={isDarkMode ? "#f7fafc" : "#333"}
-            fontWeight="bold"
-          >
-            {value}
-          </text>
-        )
       })
 
       // Línea completa
@@ -128,6 +117,69 @@ export default function LineChartQuestion({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+      )
+    })
+
+    // Función para verificar si una posición está libre
+    const isPositionFree = (x, y, minDistance = 20) => {
+      // Verificar distancia con otros textos
+      for (let pos of allTextPositions) {
+        const distance = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(y - pos.y, 2))
+        if (distance < minDistance) return false
+      }
+      
+      // Verificar distancia con líneas (puntos)
+      for (let point of allPoints) {
+        const distance = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2))
+        if (distance < 15) return false // Más cerca de puntos no está permitido
+      }
+      
+      return true
+    }
+
+    // Función para encontrar la mejor posición para el texto
+    const findBestTextPosition = (pointX, pointY) => {
+      const candidates = [
+        { x: pointX, y: pointY - 15 },     // Arriba
+        { x: pointX + 15, y: pointY - 8 }, // Derecha arriba
+        { x: pointX - 15, y: pointY - 8 }, // Izquierda arriba
+        { x: pointX + 20, y: pointY },     // Derecha
+        { x: pointX - 20, y: pointY },     // Izquierda
+        { x: pointX, y: pointY - 25 },     // Más arriba
+        { x: pointX + 10, y: pointY - 20 }, // Diagonal derecha
+        { x: pointX - 10, y: pointY - 20 }  // Diagonal izquierda
+      ]
+      
+      for (let candidate of candidates) {
+        if (isPositionFree(candidate.x, candidate.y)) {
+          return candidate
+        }
+      }
+      
+      // Si no encuentra posición libre, usar la primera opción
+      return candidates[0]
+    }
+
+    // Ahora colocar los textos en posiciones libres
+    allPoints.forEach((point) => {
+      const bestPos = findBestTextPosition(point.x, point.y)
+      allTextPositions.push(bestPos)
+      
+      elements.push(
+        <text
+          key={`value-${point.groupIndex}-${point.categoryIndex}`}
+          x={bestPos.x}
+          y={bestPos.y}
+          textAnchor="middle"
+          fontSize="10"
+          fill={point.color}
+          fontWeight="bold"
+          stroke="white"
+          strokeWidth="2"
+          paintOrder="stroke"
+        >
+          {point.value}
+        </text>
       )
     })
 
@@ -151,7 +203,7 @@ export default function LineChartQuestion({
 
     // Leyenda
     ageGroups.forEach((ageGroup, index) => {
-      const legendX = 40 + (index * 120)
+      const legendX = 60 + (index * 140)
       elements.push(
         <g key={`legend-${index}`}>
           <line

@@ -77,6 +77,7 @@ export default function HeaderES() {
       return [
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
         { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+        { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
     }
@@ -88,6 +89,7 @@ export default function HeaderES() {
       return [
         { href: `${basePath}/test`, label: 'Test', icon: '🎯' },
         { href: `${basePath}/temario`, label: 'Temario', icon: '📚' },
+        { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
     } catch (error) {
@@ -95,6 +97,7 @@ export default function HeaderES() {
       return [
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
         { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+        { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
     }
@@ -105,6 +108,7 @@ export default function HeaderES() {
     return [
       { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
       { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+      { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧠' },
       { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
     ]
   }

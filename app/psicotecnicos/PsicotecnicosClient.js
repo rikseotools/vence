@@ -171,10 +171,10 @@ export default function PsicotecnicosClient({ psychometricTopics }) {
 
               {/* Start Test Button */}
               <Link 
-                href="/auxiliar-administrativo-estado/test"
+                href="/psicotecnicos/test"
                 className="block w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-center py-4 px-6 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
               >
-                🧠 Hacer Test Psicotécnico
+                🧩 Hacer Test Psicotécnico
               </Link>
               
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-3">

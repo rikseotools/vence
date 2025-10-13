@@ -363,10 +363,10 @@ export default function PsychometricTestLayout({
             {/* Botones de navegación */}
             <div className="flex justify-center">
               <Link
-                href="/auxiliar-administrativo-estado/test"
+                href={(config && config.backUrl) || "/auxiliar-administrativo-estado/test"}
                 className="px-8 py-4 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
               >
-                🏠 Volver a Tests
+                🏠 {(config && config.backText) || "Volver a Tests"}
               </Link>
             </div>
           </div>
@@ -394,10 +394,10 @@ export default function PsychometricTestLayout({
           <div className="flex items-center justify-between">
             <div>
               <Link 
-                href="/auxiliar-administrativo-estado/test"
+                href={(config && config.backUrl) || "/auxiliar-administrativo-estado/test"}
                 className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-2"
               >
-                ← Volver a Tests
+                ← {(config && config.backText) || "Volver a Tests"}
               </Link>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white mt-2">
                 Test Psicotécnico - {categoria.replace('-', ' ')}
