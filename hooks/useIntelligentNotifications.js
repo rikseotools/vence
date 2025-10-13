@@ -27,6 +27,11 @@ async function sendMotivationalEmail(user, notification) {
       throw new Error('Notification body is missing')
     }
     
+    // Validación adicional para campos vacíos
+    if (notification.title.trim() === '' || notification.body.trim() === '') {
+      throw new Error('Notification title or body is empty')
+    }
+    
     const payload = {
       userEmail: user.email,
       userName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
@@ -1524,6 +1529,36 @@ export function useIntelligentNotifications() {
         const hasBeenSent = localStorage.getItem(`sent_notification_${notificationId}`)
         
         if (!hasBeenSent) {
+          // Validar que la notificación tiene todos los campos requeridos
+          if (!notification?.type || !notification?.title || !notification?.body) {
+            const errorData = {
+              type: notification?.type || 'MISSING',
+              title: notification?.title || 'MISSING', 
+              body: notification?.body || 'MISSING',
+              userId: user.id,
+              userEmail: user.email
+            }
+            
+            console.warn('⚠️ Notificación incompleta, saltando:', errorData)
+            
+            // 🚨 ENVIAR LOG DE ERROR A VERCEL para monitoreo
+            try {
+              await fetch('/api/log-notification-error', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  error: 'INCOMPLETE_NOTIFICATION',
+                  details: errorData,
+                  timestamp: new Date().toISOString()
+                })
+              })
+            } catch (logError) {
+              console.error('Error logging to Vercel:', logError)
+            }
+            
+            continue
+          }
+          
           try {
             await sendNotificationWithFallback(user, notification)
             // Marcar como enviada para no repetir

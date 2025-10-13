@@ -36,15 +36,15 @@ export async function POST(request) {
 
     if (missingFields.length > 0) {
       console.log('❌ Faltan datos requeridos:', missingFields)
-      console.log('📋 Estructura recibida:', {
-        userEmail: !!userEmail,
-        userName: !!userName,
-        messageType: !!messageType,
-        title: !!title,
-        body: !!messageBody,
-        primaryAction: !!primaryAction,
-        secondaryAction: !!secondaryAction,
-        userId: !!userId
+      console.log('📋 Valores reales recibidos:', {
+        userEmail: userEmail || 'UNDEFINED',
+        userName: userName || 'UNDEFINED',
+        messageType: messageType || 'UNDEFINED',
+        title: title || 'UNDEFINED',
+        body: messageBody || 'UNDEFINED',
+        primaryAction: primaryAction || 'UNDEFINED',
+        secondaryAction: secondaryAction || 'UNDEFINED',
+        userId: userId || 'UNDEFINED'
       })
       return NextResponse.json(
         { 
