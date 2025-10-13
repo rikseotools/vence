@@ -325,19 +325,19 @@ export default function LeyesDeOposicionesPage() {
 
                 <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <Link
-                    href={`/leyes/${ley.slug}`}
+                    href={`/leyes/${ley.slug}/avanzado?n=25`}
                     className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 transition-all duration-200 flex items-center space-x-2"
-                  >
-                    <span>📖</span>
-                    <span>Ver Ley Completa</span>
-                  </Link>
-                  
-                  <Link
-                    href={`/auxiliar-administrativo-estado/test?law=${ley.slug}`}
-                    className="border-2 border-blue-500 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 flex items-center space-x-2"
                   >
                     <span>🎯</span>
                     <span>Practicar con Tests</span>
+                  </Link>
+                  
+                  <Link
+                    href={`/leyes/${ley.slug}`}
+                    className="border-2 border-gray-300 text-gray-600 dark:text-gray-400 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800/20 transition-all duration-200 flex items-center space-x-2"
+                  >
+                    <span>📖</span>
+                    <span>Ver Ley Completa</span>
                   </Link>
                 </div>
               </div>

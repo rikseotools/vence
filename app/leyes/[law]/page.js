@@ -4,13 +4,15 @@ import Link from 'next/link'
 import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug } from '@/lib/lawMappingUtils'
 import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
+import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 // 🎯 GENERAR METADATA DINÁMICOS CON CANONICAL URL
 export async function generateMetadata({ params }) {
-  const lawInfo = getLawInfo(params.law)
-  const lawShortName = mapLawSlugToShortName(params.law)
+  const resolvedParams = await params
+  const lawInfo = getLawInfo(resolvedParams.law)
+  const lawShortName = mapLawSlugToShortName(resolvedParams.law)
   const canonicalSlug = getCanonicalSlug(lawShortName)
   
   return {
@@ -38,7 +40,7 @@ export async function generateMetadata({ params }) {
     
     // 🔍 ROBOTS: Permitir indexación solo si es URL canonical
     robots: {
-      index: params.law === canonicalSlug,
+      index: resolvedParams.law === canonicalSlug,
       follow: true
     },
     
@@ -123,19 +125,20 @@ async function LawStatsLoader({ lawShortName }) {
   }
 }
 
-export default function LawMainPage({ params, searchParams }) {
-  const lawInfo = getLawInfo(params.law)
-  const lawShortName = mapLawSlugToShortName(params.law)
+export default async function LawMainPage({ params, searchParams }) {
+  const resolvedParams = await params
+  const lawInfo = getLawInfo(resolvedParams.law)
+  const lawShortName = mapLawSlugToShortName(resolvedParams.law)
   const canonicalSlug = getCanonicalSlug(lawShortName)
   
   // Validar que la ley es conocida
   if (!lawShortName) {
-    console.warn('⚠️ Ley no reconocida:', params.law)
+    console.warn('⚠️ Ley no reconocida:', resolvedParams.law)
     notFound()
   }
 
   // 🎯 VERIFICAR SI ES URL CANONICAL
-  const isCanonicalUrl = params.law === canonicalSlug
+  const isCanonicalUrl = resolvedParams.law === canonicalSlug
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -199,25 +202,29 @@ export default function LawMainPage({ params, searchParams }) {
           <LawStatsLoader lawShortName={lawShortName} />
         </Suspense>
 
-        {/* 2 MODALIDADES DE TEST */}
-        <div className="grid md:grid-cols-2 gap-8 mb-12 max-w-4xl mx-auto">
+        {/* 2 MODALIDADES DE TEST - COMPACTO */}
+        <div className="grid md:grid-cols-2 gap-6 mb-12 max-w-3xl mx-auto">
           
           {/* Test Rápido */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-8 text-white">
-              <div className="text-4xl mb-4">⚡</div>
-              <h3 className="text-2xl font-bold mb-2">Test Rápido</h3>
-              <p className="text-green-100">10 preguntas en 5 minutos</p>
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all">
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 text-white">
+              <div className="flex items-center gap-3">
+                <div className="text-2xl">⚡</div>
+                <div>
+                  <h3 className="text-lg font-bold">Test Rápido</h3>
+                  <p className="text-green-100 text-sm">10 preguntas en 5 minutos</p>
+                </div>
+              </div>
             </div>
-            <div className="p-8">
-              <ul className="text-gray-600 mb-6 space-y-2">
-                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Perfecto para repasos diarios</li>
-                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Preguntas variadas y aleatorias</li>
-                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Ideal para mantener conocimientos</li>
+            <div className="p-4">
+              <ul className="text-gray-600 mb-4 space-y-1 text-sm">
+                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Repaso diario</li>
+                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Preguntas aleatorias</li>
+                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Práctica rápida</li>
               </ul>
               <Link
                 href={`/leyes/${canonicalSlug}/test-rapido?n=10`}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 px-6 rounded-lg font-bold text-lg text-center block hover:opacity-90 transition-opacity"
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-4 rounded-lg font-medium text-center block hover:opacity-90 transition-opacity"
               >
                 ⚡ Empezar Test Rápido
               </Link>
@@ -225,21 +232,25 @@ export default function LawMainPage({ params, searchParams }) {
           </div>
 
           {/* Test Avanzado */}
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-8 text-white">
-              <div className="text-4xl mb-4">🎯</div>
-              <h3 className="text-2xl font-bold mb-2">Test Avanzado</h3>
-              <p className="text-blue-100">25 preguntas completas</p>
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 text-white">
+              <div className="flex items-center gap-3">
+                <div className="text-2xl">🎯</div>
+                <div>
+                  <h3 className="text-lg font-bold">Test Avanzado</h3>
+                  <p className="text-blue-100 text-sm">25 preguntas completas</p>
+                </div>
+              </div>
             </div>
-            <div className="p-8">
-              <ul className="text-gray-600 mb-6 space-y-2">
-                <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Evaluación completa y profunda</li>
+            <div className="p-4">
+              <ul className="text-gray-600 mb-4 space-y-1 text-sm">
+                <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Evaluación completa</li>
                 <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Perfecto para exámenes</li>
-                <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Incluye preguntas oficiales</li>
+                <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Preguntas oficiales</li>
               </ul>
               <Link
                 href={`/leyes/${canonicalSlug}/avanzado?n=25`}
-                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-4 px-6 rounded-lg font-bold text-lg text-center block hover:opacity-90 transition-opacity"
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-4 rounded-lg font-medium text-center block hover:opacity-90 transition-opacity"
               >
                 🎯 Empezar Test Avanzado
               </Link>
@@ -320,6 +331,18 @@ export default function LawMainPage({ params, searchParams }) {
               </ul>
             </div>
           </div>
+        </div>
+
+        {/* Contenido completo de la ley */}
+        <div className="mt-12">
+          <Suspense fallback={
+            <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Cargando artículos de la ley...</p>
+            </div>
+          }>
+            <LawArticlesClient params={{law: resolvedParams.law}} searchParams={{}} />
+          </Suspense>
         </div>
       </div>
     </div>
