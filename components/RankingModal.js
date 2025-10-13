@@ -659,9 +659,12 @@ export default function RankingModal({ isOpen, onClose }) {
               ) : (
                 /* Tab Rachas */
                 <div className="space-y-3">
-                  <h3 className="font-bold text-gray-800 mb-4 text-center">
+                  <h3 className="font-bold text-gray-800 mb-2 text-center">
                     🔥 Top Rachas (últimos 30 días)
                   </h3>
+                  <p className="text-xs text-gray-400 text-center mb-4">
+                    * Se permite 1 día de gracia para mantener la racha
+                  </p>
                   
                   {streakRanking.length === 0 ? (
                     <div className="text-center py-8">
