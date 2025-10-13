@@ -404,15 +404,15 @@ export default function RankingModal({ isOpen, onClose }) {
     return 'text-gray-400'
   }
 
-  // Function to calculate consecutive days streak - COPIADA DESDE PERFIL
+  // Function to calculate consecutive days streak - MEJORADO
   const calculateRealStreak = (tests) => {
     if (!tests || tests.length === 0) return 0
     
-    let streak = 0
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    // Verificar los últimos 30 días
+    // Crear array de días con actividad
+    const activeDays = []
     for (let i = 0; i < 30; i++) {
       const checkDate = new Date(today)
       checkDate.setDate(today.getDate() - i)
@@ -423,11 +423,34 @@ export default function RankingModal({ isOpen, onClose }) {
         return testDate.getTime() === checkDate.getTime()
       })
       
-      if (hasTestOnDate) {
+      activeDays.push(hasTestOnDate)
+    }
+    
+    // Encontrar punto de inicio (hoy o ayer)
+    let startIndex = -1
+    if (activeDays[0]) {
+      startIndex = 0 // Empezar desde hoy
+    } else if (activeDays[1]) {
+      startIndex = 1 // Empezar desde ayer
+    } else {
+      return 0 // No hay actividad reciente
+    }
+    
+    // Contar racha permitiendo máximo 1 día consecutivo sin actividad
+    let streak = 0
+    let consecutiveMisses = 0
+    
+    for (let i = startIndex; i < activeDays.length; i++) {
+      if (activeDays[i]) {
         streak++
-      } else if (i > 0) {
-        // Si no hay test hoy, pero había ayer, empezar desde ayer
-        break
+        consecutiveMisses = 0 // Resetear contador de faltas
+      } else {
+        consecutiveMisses++
+        if (consecutiveMisses >= 2) {
+          // Si faltas 2+ días seguidos, se rompe la racha
+          break
+        }
+        // Si es solo 1 día sin actividad, continuar (día de gracia)
       }
     }
     
@@ -663,7 +686,7 @@ export default function RankingModal({ isOpen, onClose }) {
                     🔥 Top Rachas (últimos 30 días)
                   </h3>
                   <p className="text-xs text-gray-400 text-center mb-4">
-                    * Se permite 1 día de gracia para mantener la racha
+                    * Se permite máximo 1 día seguido sin actividad
                   </p>
                   
                   {streakRanking.length === 0 ? (
