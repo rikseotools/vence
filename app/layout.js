@@ -67,11 +67,8 @@ function LayoutContent({ children }) {
     // Si está cargando, NO mostrar breadcrumbs
     if (loading) return false
     
-    // Si el usuario está logueado, NO mostrar breadcrumbs en ninguna página
-    if (user) return false
-    
-    // Solo mostrar breadcrumbs para usuarios NO logueados
-    return true
+    // NUNCA mostrar breadcrumbs - Las migas interactivas se encargan de todo
+    return false
   }
 
   return (

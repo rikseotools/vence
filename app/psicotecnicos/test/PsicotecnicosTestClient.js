@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 export default function PsicotecnicosTestClient() {
   const { user, loading, supabase } = useAuth()
@@ -133,7 +134,8 @@ export default function PsicotecnicosTestClient() {
           q.question_subtype === 'bar_chart' || 
           q.question_subtype === 'pie_chart' || 
           q.question_subtype === 'line_chart' ||
-          q.question_subtype === 'mixed_chart'
+          q.question_subtype === 'mixed_chart' ||
+          q.question_subtype === 'data_tables'
         ).length,
         'capacidad-ortografica': 0,
         'pruebas-instrucciones': 0,
@@ -185,7 +187,7 @@ export default function PsicotecnicosTestClient() {
 
       // Contar preguntas según la categoría y question_subtype
       data.forEach(question => {
-        // SOLO asignar a capacidad-administrativa si realmente es una pregunta de gráficos
+        // SOLO asignar a capacidad-administrativa si realmente es una pregunta de gráficos o tablas
         if (categoryKey === 'capacidad-administrativa') {
           if (question.question_subtype === 'bar_chart' || 
               question.question_subtype === 'pie_chart' || 
@@ -193,6 +195,9 @@ export default function PsicotecnicosTestClient() {
               question.question_subtype === 'mixed_chart') {
             // Todas las preguntas de gráficos van a la subcategoría 'graficos'
             counts['graficos'] = (counts['graficos'] || 0) + 1
+          } else if (question.question_subtype === 'data_tables') {
+            // Las preguntas de tablas van a la subcategoría 'tablas'
+            counts['tablas'] = (counts['tablas'] || 0) + 1
           }
         }
         // Para otras categorías, NO asignar preguntas aleatorias - solo si realmente corresponden
@@ -331,8 +336,12 @@ export default function PsicotecnicosTestClient() {
   const totalSelectedQuestions = getSelectedCategoriesQuestionCount()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      {/* Migas de pan interactivas para usuarios logueados */}
+      <InteractiveBreadcrumbs />
+      
+      <div className="py-8">
+        <div className="max-w-6xl mx-auto px-4">
         
         {/* Header */}
         <div className="text-center mb-8">
@@ -499,6 +508,7 @@ export default function PsicotecnicosTestClient() {
             </div>
           </div>
         </div>
+      </div>
 
       </div>
 

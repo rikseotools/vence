@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 export default function TestsAuxiliarAdministrativoEstado() {
   const { user, loading, supabase } = useAuth()
@@ -193,6 +194,9 @@ export default function TestsAuxiliarAdministrativoEstado() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      {/* Migas de pan interactivas para usuarios logueados */}
+      <InteractiveBreadcrumbs />
+      
       <div className="container mx-auto px-4 py-8">
         
         {/* INTERFAZ DE TESTS - DISPONIBLE PARA TODOS LOS USUARIOS */}

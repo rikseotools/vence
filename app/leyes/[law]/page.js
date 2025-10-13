@@ -5,6 +5,7 @@ import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug } from '@/lib/lawMa
 import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
+import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
@@ -142,6 +143,7 @@ export default async function LawMainPage({ params, searchParams }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      <ClientBreadcrumbsWrapper />
       <div className="container mx-auto px-4 py-12">
         
         {/* 🎯 AVISO DE URL CANONICAL (opcional para UX) */}
@@ -160,18 +162,6 @@ export default async function LawMainPage({ params, searchParams }) {
         )}
 
 
-        {/* 🍞 MIGAS DE PAN */}
-        <div className="mb-8">
-          <nav className="text-sm text-gray-500">
-            <Link href="/leyes" className="hover:text-gray-700 transition-colors">
-              📚 Todas las Leyes
-            </Link>
-            <span className="mx-2">→</span>
-            <span className="text-gray-900 font-medium">
-              {lawInfo.name}
-            </span>
-          </nav>
-        </div>
 
         {/* Header */}
         <div className="text-center mb-12">

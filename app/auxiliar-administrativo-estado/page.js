@@ -1,5 +1,6 @@
 // app/auxiliar-administrativo-estado/page.js
 import Link from 'next/link'
+import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
@@ -16,7 +17,7 @@ export const metadata = {
     'examenes oficiales auxiliar administrativo',
     'preparar auxiliar administrativo gratis',
     '28 temas auxiliar administrativo',
-    'convocatoria auxiliar administrativo 2025'
+    'oferta empleo publico auxiliar administrativo 2025'
   ].join(', '),
   authors: [{ name: 'Tests Jurídicos España' }],
   metadataBase: new URL(SITE_URL),
@@ -69,7 +70,7 @@ export default function AuxiliarAdministrativoEstado() {
   const faqs = [
     {
       pregunta: "¿Cuántas plazas hay para Auxiliar Administrativo del Estado 2025?",
-      respuesta: "La convocatoria 2024 ofertó 2.450 plazas de turno libre más 2.033 de promoción interna. Para 2025 se espera una convocatoria similar en el tercer trimestre del año."
+      respuesta: "La OEP 2024 ofertó 2.450 plazas de turno libre más 2.033 de promoción interna. Para 2025, la OEP ya está aprobada con 1.700 plazas y se espera que la convocatoria se publique en el tercer trimestre del año."
     },
     {
       pregunta: "¿Cuál es el temario oficial de Auxiliar Administrativo del Estado?",
@@ -116,6 +117,7 @@ export default function AuxiliarAdministrativoEstado() {
       />
       
       <div className="min-h-screen bg-gray-50">
+        <ClientBreadcrumbsWrapper />
         <div className="container mx-auto px-4 py-8">
           {/* Hero Section */}
           <div className="text-center mb-8">
@@ -180,7 +182,7 @@ export default function AuxiliarAdministrativoEstado() {
 
           {/* Información de la Convocatoria 2025 */}
           <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg shadow-lg p-6 text-white mb-10">
-            <h2 className="text-2xl font-bold mb-3">🚀 Convocatoria 2025 - ¡Ya Aprobada!</h2>
+            <h2 className="text-2xl font-bold mb-3">🚀 Oferta Empleo Público 2025 - ¡Ya Aprobada!</h2>
             <div className="grid grid-cols-4 gap-4 mb-4">
               <div className="text-center">
                 <div className="text-2xl font-bold">1.700</div>
@@ -192,7 +194,7 @@ export default function AuxiliarAdministrativoEstado() {
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold">Sep</div>
-                <div className="text-green-100 text-sm">Convocatoria</div>
+                <div className="text-green-100 text-sm">Convocatoria*</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold">110</div>
@@ -206,7 +208,7 @@ export default function AuxiliarAdministrativoEstado() {
               </p>
             </div>
             <p className="text-green-100 text-sm">
-              <strong>¡Es el momento perfecto para empezar!</strong> La convocatoria se publicará aproximadamente en septiembre de 2025.
+              <strong>¡Es el momento perfecto para empezar!</strong> La convocatoria específica se publicará aproximadamente en septiembre de 2025.
             </p>
           </div>
 

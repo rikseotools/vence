@@ -35,6 +35,14 @@ export default async function sitemap() {
       priority: 0.7,
     },
     
+    // Administrativo del Estado - SOLO páginas principales
+    {
+      url: `${SITE_URL}/administrativo-estado`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    
     // ✅ SOLO Tema 7 - página principal (no test-personalizado ni otros)
     {
       url: `${SITE_URL}/auxiliar-administrativo-estado/temario/tema-7`,

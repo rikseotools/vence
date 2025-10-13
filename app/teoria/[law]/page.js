@@ -1,6 +1,7 @@
 // app/teoria/[law]/page.js - VERSIÓN CON METADATA DINÁMICA PARA SEO
 import { getLawInfo, mapLawSlugToShortName } from '../../../lib/lawMappingUtils'
 import LawArticlesClient from './LawArticlesClient'
+import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 
 // Generar metadata dinámica para SEO
 export async function generateMetadata({ params }) {
@@ -55,5 +56,10 @@ export async function generateMetadata({ params }) {
 }
 
 export default function LawArticlesPage({ params, searchParams }) {
-  return <LawArticlesClient params={params} searchParams={searchParams} />
+  return (
+    <>
+      <ClientBreadcrumbsWrapper />
+      <LawArticlesClient params={params} searchParams={searchParams} />
+    </>
+  )
 }

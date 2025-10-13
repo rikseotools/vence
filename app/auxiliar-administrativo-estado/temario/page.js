@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
 import TopicUnlockProgress from '@/components/TopicUnlockProgress'
+import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 export default function TemarioPage() {
   const { user } = useAuth()
@@ -45,6 +46,7 @@ export default function TemarioPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <InteractiveBreadcrumbs />
       <div className="container mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
