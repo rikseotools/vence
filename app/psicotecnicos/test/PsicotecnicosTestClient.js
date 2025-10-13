@@ -390,7 +390,7 @@ export default function PsicotecnicosTestClient() {
                     )}
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center">
-                    <span className="text-base sm:text-lg font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-base sm:text-lg font-medium text-gray-900">
                       {categoryKey === 'capacidad-administrativa' ? 'Capacidad administrativa' :
                        categoryKey === 'capacidad-ortografica' ? 'Capacidad ortográfica' :
                        categoryKey === 'pruebas-instrucciones' ? 'Pruebas de instrucciones' :
@@ -403,7 +403,7 @@ export default function PsicotecnicosTestClient() {
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
-                  <span className="text-sm text-gray-500 dark:text-gray-400 order-2 sm:order-1">
+                  <span className="text-sm text-gray-600 order-2 sm:order-1">
                     {getSelectedSectionsCount(categoryKey)}/{(blockSections[categoryKey] || []).length} subcategorías • {categoryQuestionCounts[categoryKey] || 0} preguntas
                   </span>
                   <button 
@@ -423,14 +423,14 @@ export default function PsicotecnicosTestClient() {
 
         {/* Configuración del test */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Configuración del test
           </h3>
           
           <div className="space-y-6">
             {/* Selección de número de preguntas */}
             <div className="text-center">
-              <div className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-4">📝 Número de preguntas</div>
+              <div className="text-lg font-medium text-gray-900 mb-4">📝 Número de preguntas</div>
               <div className="flex gap-2 justify-center">
                 {[10, 25, 50, 100].map((num) => {
                   const isDisabled = totalSelectedQuestions < num
@@ -457,7 +457,7 @@ export default function PsicotecnicosTestClient() {
             
             {/* Información de preguntas disponibles */}
             <div className="text-center">
-              <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <div className="text-sm font-medium text-gray-900 mb-1">
                 Preguntas disponibles
               </div>
               <div className="text-3xl font-bold text-green-600 dark:text-green-400">
@@ -521,7 +521,7 @@ export default function PsicotecnicosTestClient() {
           <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-semibold text-gray-900">
                   {modalBlock === 'capacidad-administrativa' ? 'Capacidad Administrativa' :
                    modalBlock === 'capacidad-ortografica' ? 'Capacidad Ortográfica' :
                    modalBlock === 'pruebas-instrucciones' ? 'Pruebas de Instrucciones' :
@@ -549,11 +549,11 @@ export default function PsicotecnicosTestClient() {
                         onChange={() => toggleSection(section)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-gray-700 dark:text-gray-300 capitalize">
+                      <span className="text-gray-900 capitalize">
                         {section.replace('-', ' ')}
                       </span>
                     </div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded-full">
+                    <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
                       {questionCounts[section] || 0} preguntas
                     </span>
                   </label>
