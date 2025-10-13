@@ -320,7 +320,7 @@ export default function PsicotecnicosTestClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
       </div>
     )
@@ -328,7 +328,7 @@ export default function PsicotecnicosTestClient() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Acceso requerido</h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">Necesitas iniciar sesión para acceder a los tests psicotécnicos</p>
@@ -344,7 +344,7 @@ export default function PsicotecnicosTestClient() {
   const totalSelectedQuestions = getSelectedCategoriesQuestionCount()
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
         
         {/* Header */}

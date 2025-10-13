@@ -305,7 +305,7 @@ export default function PsychometricTestLayout({
 
   if (!questions.length) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-600 dark:text-gray-400">No hay preguntas disponibles</p>
       </div>
     )
@@ -317,7 +317,7 @@ export default function PsychometricTestLayout({
     const testDuration = Math.round((Date.now() - startTime) / 1000)
     
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
           <div className="max-w-4xl mx-auto px-4 py-4">
@@ -329,7 +329,7 @@ export default function PsychometricTestLayout({
 
         {/* Resultados */}
         <div className="max-w-4xl mx-auto px-4 py-8">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 mb-8 text-center">
+          <div className="bg-white rounded-xl shadow-lg p-8 mb-8 text-center">
             <div className="mb-6">
               <div className="text-6xl mb-4">
                 {accuracy >= 80 ? '🎉' : accuracy >= 60 ? '👍' : '📚'}
@@ -387,7 +387,7 @@ export default function PsychometricTestLayout({
       isTestCompleted={isTestCompleted}
       enabled={true}
     >
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -432,9 +432,9 @@ export default function PsychometricTestLayout({
 
       {/* Next Button - Separado del contenido de la pregunta */}
       {showResult && (
-        <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-6">
+        <div className="bg-gray-50 border-t border-gray-200 py-6">
           <div className="max-w-4xl mx-auto px-4">
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 rounded-lg shadow-sm p-4">
+            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
               <button
                 onClick={nextQuestion}
                 className="w-full bg-blue-600 dark:bg-blue-500 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-lg flex items-center justify-center gap-2"
