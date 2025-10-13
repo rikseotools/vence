@@ -244,7 +244,7 @@ export default function HeaderES() {
             </nav>
 
             {/* DERECHA: Admin + Notificaciones + Menú hamburguesa + Avatar del usuario */}
-            <div className="flex items-center space-x-2 flex-shrink-0">
+            <div className="flex items-center space-x-1 flex-shrink-0">
               {/* 🆕 ENLACE DE ADMIN (solo desktop y solo si es admin) */}
               {user && isAdmin && !adminLoading && (
                 <Link 
@@ -312,11 +312,11 @@ export default function HeaderES() {
               {user && (
                 <Link
                   href={getTestsLink()}
-                  className="lg:hidden p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="lg:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                   aria-label="Ir a Tests"
                   title="Tests de Práctica"
                 >
-                  <span className="text-2xl">🎯</span>
+                  <span className="text-xl">🎯</span>
                 </Link>
               )}
 
@@ -324,11 +324,11 @@ export default function HeaderES() {
               {user && (
                 <Link
                   href="/psicotecnicos/test"
-                  className="lg:hidden p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="lg:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                   aria-label="Ir a Psicotécnicos"
                   title="Tests Psicotécnicos"
                 >
-                  <span className="text-2xl">🧩</span>
+                  <span className="text-xl">🧩</span>
                 </Link>
               )}
               
