@@ -686,7 +686,7 @@ export default function RankingModal({ isOpen, onClose }) {
                     🔥 Top Rachas (últimos 30 días)
                   </h3>
                   <p className="text-xs text-gray-400 text-center mb-4">
-                    * Se permite máximo 1 día seguido sin actividad
+                    * Se permite máximo 1 día seguido sin actividad. Al 2º día sin actividad se rompe la racha
                   </p>
                   
                   {streakRanking.length === 0 ? (
