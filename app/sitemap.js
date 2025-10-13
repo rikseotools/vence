@@ -57,6 +57,12 @@ export default async function sitemap() {
       priority: 0.9,
     },
     {
+      url: `${SITE_URL}/leyes-de-oposiciones`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: `${SITE_URL}/teoria`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
