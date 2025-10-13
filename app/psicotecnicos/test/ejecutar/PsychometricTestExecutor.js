@@ -54,7 +54,12 @@ function MultipleCategoriesPsychometricTestContent() {
           .from('psychometric_questions')
           .select('*')
           .eq('is_active', true)
-          .in('question_subtype', ['bar_chart', 'pie_chart', 'line_chart', 'mixed_chart'])
+          // Expandir a más tipos de preguntas disponibles
+          .in('question_subtype', [
+            'bar_chart', 'pie_chart', 'line_chart', 'mixed_chart',
+            'data_table', 'sequence', 'analogy', 'comprehension',
+            'calculation', 'logic', 'pattern', 'attention'
+          ])
 
         if (fetchError) {
           console.error('❌ Error fetching psychometric questions:', fetchError)
@@ -96,7 +101,7 @@ function MultipleCategoriesPsychometricTestContent() {
       }
     }
 
-    if (!authLoading && user && supabase) {
+    if (!authLoading && supabase) {
       loadMultipleCategoriesQuestions()
     }
   }, [searchParams, user, supabase, authLoading])
@@ -112,19 +117,6 @@ function MultipleCategoriesPsychometricTestContent() {
     )
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Acceso requerido</h1>
-          <p className="text-gray-600 mb-6">Necesitas iniciar sesión para realizar tests psicotécnicos</p>
-          <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg">
-            Iniciar sesión
-          </Link>
-        </div>
-      </div>
-    )
-  }
 
   if (error) {
     return (

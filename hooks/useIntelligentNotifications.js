@@ -23,12 +23,14 @@ async function sendMotivationalEmail(user, notification) {
     if (!notification?.title) {
       throw new Error('Notification title is missing')
     }
-    if (!notification?.body) {
-      throw new Error('Notification body is missing')
+    // Las notificaciones usan el campo 'message' no 'body'
+    const notificationBody = notification.body || notification.message
+    if (!notificationBody) {
+      throw new Error('Notification body/message is missing')
     }
     
     // Validación adicional para campos vacíos
-    if (notification.title.trim() === '' || notification.body.trim() === '') {
+    if (notification.title.trim() === '' || notificationBody.trim() === '') {
       throw new Error('Notification title or body is empty')
     }
     
@@ -37,7 +39,7 @@ async function sendMotivationalEmail(user, notification) {
       userName: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
       messageType: notification.type,
       title: notification.title,
-      body: notification.body,
+      body: notificationBody, // Usar el campo correcto
       primaryAction: notification.primaryAction,
       secondaryAction: notification.secondaryAction,
       userId: user.id
@@ -72,8 +74,10 @@ async function sendNotificationWithFallback(user, notification) {
   // Primero intentar notificación push
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
+      // Las notificaciones pueden usar 'message' o 'body'
+      const notificationBody = notification.body || notification.message
       new Notification(notification.title, {
-        body: notification.body,
+        body: notificationBody,
         icon: '/icon-192x192.png',
         badge: '/icon-192x192.png',
         tag: `motivational-${notification.type}`,

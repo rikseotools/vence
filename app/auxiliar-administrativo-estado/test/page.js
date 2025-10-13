@@ -179,13 +179,13 @@ export default function TestsAuxiliarAdministrativoEstado() {
     })
   }
 
-  // Mostrar loading mientras verifica auth
+  // Mostrar loading solo durante la verificación inicial de auth
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando tests...</p>
+          <p className="text-gray-600">Verificando acceso...</p>
         </div>
       </div>
     )
@@ -195,9 +195,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="container mx-auto px-4 py-8">
         
-        {/* USUARIOS LOGUEADOS - BOTONES CON COLORES DINÁMICOS SEGÚN ACCURACY */}
-        {user && (
-          <div className="flex items-center justify-center min-h-[60vh]">
+        {/* INTERFAZ DE TESTS - DISPONIBLE PARA TODOS LOS USUARIOS */}
+        <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center max-w-4xl w-full">
               {/* Header mejorado */}
               <div className="mb-8">
@@ -363,43 +362,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
                 </div>
               )}
             </div>
-          </div>
-        )}
+        </div>
 
-        {/* USUARIOS NO LOGUEADOS */}
-        {!user && (
-          <div className="flex items-center justify-center min-h-[80vh]">
-            <div className="text-center max-w-md">
-              <div className="mb-8">
-                <div className="inline-flex items-center bg-gradient-to-r from-gray-700 to-gray-900 text-white px-6 py-3 rounded-full font-medium mb-6">
-                  <span className="mr-2">🏛️</span>
-                  Auxiliar Administrativo del Estado
-                </div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                  Accede para hacer tests
-                </h1>
-                <p className="text-gray-600 mb-6">
-                  Inicia sesión para acceder a todos los tests de preparación
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <Link
-                  href="/login"
-                  className="block bg-blue-600 hover:bg-blue-700 text-white py-3 px-8 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
-                >
-                  🔑 Iniciar Sesión
-                </Link>
-                <Link
-                  href="/register"
-                  className="block bg-green-600 hover:bg-green-700 text-white py-3 px-8 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105"
-                >
-                  ✍️ Registrarse Gratis
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
