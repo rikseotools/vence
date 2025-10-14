@@ -22,6 +22,7 @@ export default function HeaderES() {
   const [showRankingModal, setShowRankingModal] = useState(false)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
+  const [userStreak, setUserStreak] = useState(0)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
   
@@ -39,6 +40,108 @@ export default function HeaderES() {
   const showNotification = oposicionContext?.showNotification || false
   const notificationData = oposicionContext?.notificationData || null
   const dismissNotification = oposicionContext?.dismissNotification || (() => {})
+
+  // 🆕 CARGAR RACHA DEL USUARIO
+  useEffect(() => {
+    async function loadUserStreak() {
+      if (!user || !supabase) {
+        setUserStreak(0)
+        return
+      }
+
+      try {
+        // Usar exactamente la misma lógica que UserAvatar
+        const { data: userTests, error: userTestsError } = await supabase
+          .from('tests')
+          .select('id')
+          .eq('user_id', user.id)
+
+        if (userTestsError) {
+          console.warn('Error loading user tests for streak:', userTestsError)
+          return
+        }
+
+        const testIds = userTests?.map(t => t.id) || []
+        if (testIds.length === 0) {
+          setUserStreak(0)
+          return
+        }
+
+        const { data: recentActivity, error: activityError } = await supabase
+          .from('test_questions')
+          .select('created_at')
+          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
+          .in('test_id', testIds)
+          .order('created_at', { ascending: false })
+
+        if (activityError) {
+          console.warn('Error loading recent activity:', activityError)
+          return
+        }
+
+        // Calculate consecutive days streak with grace day (same as UserAvatar)
+        const streak = calculateRealStreak(recentActivity || [])
+        setUserStreak(streak)
+      } catch (error) {
+        console.warn('Error calculating user streak:', error)
+      }
+    }
+
+    loadUserStreak()
+  }, [user, supabase])
+
+  // Función para calcular racha con día de gracia
+  const calculateRealStreak = (activities) => {
+    if (!activities || activities.length === 0) return 0
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    
+    // Crear array de días con actividad (últimos 30 días)
+    const activeDays = []
+    for (let i = 0; i < 30; i++) {
+      const checkDate = new Date(today)
+      checkDate.setDate(today.getDate() - i)
+      
+      const hasActivityOnDate = activities.some(activity => {
+        const activityDate = new Date(activity.created_at)
+        activityDate.setHours(0, 0, 0, 0)
+        return activityDate.getTime() === checkDate.getTime()
+      })
+      
+      activeDays.push(hasActivityOnDate)
+    }
+    
+    // Encontrar punto de inicio (hoy o ayer)
+    let startIndex = -1
+    if (activeDays[0]) {
+      startIndex = 0 // Empezar desde hoy
+    } else if (activeDays[1]) {
+      startIndex = 1 // Empezar desde ayer
+    } else {
+      return 0 // No hay actividad reciente
+    }
+    
+    // Contar racha permitiendo máximo 1 día consecutivo sin actividad
+    let streak = 0
+    let consecutiveMisses = 0
+    
+    for (let i = startIndex; i < activeDays.length; i++) {
+      if (activeDays[i]) {
+        streak++
+        consecutiveMisses = 0 // Resetear contador de faltas
+      } else {
+        consecutiveMisses++
+        if (consecutiveMisses >= 2) {
+          // Si faltas 2+ días seguidos, se rompe la racha
+          break
+        }
+        // Si es solo 1 día sin actividad, continuar (día de gracia)
+      }
+    }
+    
+    return streak
+  }
 
   // 🆕 VERIFICAR SI ES ADMIN
   useEffect(() => {
@@ -267,15 +370,23 @@ export default function HeaderES() {
                 <span className="text-sm font-medium">Feedback</span>
               </button>
 
-              {/* Icono de ranking/liga (solo usuarios logueados) */}
+              {/* Icono de ranking/liga y racha (solo usuarios logueados) */}
               {user && (
-                <>
+                <div className="relative">
+                  {/* Botón de medallas alineado con otros iconos */}
                   {hasNewMedals ? (
                     // Botón con trofeo parpadeante cuando hay medallas nuevas
                     <button
                       onClick={async () => {
                         setShowRankingModal(true)
                         await markMedalsAsViewed()
+                        // Establecer tab ranking cuando se abra desde medallas
+                        setTimeout(() => {
+                          const rankingBtnElement = document.querySelector('[data-tab="ranking"]')
+                          if (rankingBtnElement) {
+                            rankingBtnElement.click()
+                          }
+                        }, 100)
                       }}
                       className="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                       aria-label="Ver ranking de usuarios"
@@ -283,7 +394,7 @@ export default function HeaderES() {
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                              d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 713.138-3.138z" />
                       </svg>
                       
                       {/* Trofeo parpadeante como antes */}
@@ -294,7 +405,16 @@ export default function HeaderES() {
                   ) : (
                     // Botón normal sin trofeo cuando no hay medallas nuevas
                     <button
-                      onClick={() => setShowRankingModal(true)}
+                      onClick={() => {
+                        setShowRankingModal(true)
+                        // Establecer tab ranking cuando se abra desde medallas
+                        setTimeout(() => {
+                          const rankingBtnElement = document.querySelector('[data-tab="ranking"]')
+                          if (rankingBtnElement) {
+                            rankingBtnElement.click()
+                          }
+                        }, 100)
+                      }}
                       className="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                       aria-label="Ver ranking de usuarios"
                       title="Ranking y Liga"
@@ -305,7 +425,28 @@ export default function HeaderES() {
                       </svg>
                     </button>
                   )}
-                </>
+                  
+                  {/* 🔥 ICONO DE RACHA - Debajo del botón de medallas, posicionado absolutamente */}
+                  {userStreak > 0 && (
+                    <button
+                      onClick={() => {
+                        setShowRankingModal(true)
+                        // Establecer tab rachas cuando se abra el modal desde la racha
+                        setTimeout(() => {
+                          // Buscar el botón de rachas y hacer click
+                          const rachaBtnElement = document.querySelector('[data-tab="rachas"]')
+                          if (rachaBtnElement) {
+                            rachaBtnElement.click()
+                          }
+                        }, 100)
+                      }}
+                      className="lg:hidden absolute top-full left-1/2 transform -translate-x-1/2 flex items-center justify-center mt-1 hover:opacity-80 transition-opacity"
+                    >
+                      <span className="text-sm">🔥</span>
+                      <span className="text-sm font-bold ml-0.5">{userStreak > 30 ? '30+' : userStreak}</span>
+                    </button>
+                  )}
+                </div>
               )}
 
               {/* 🎯 ICONO DE TESTS - Solo en móvil */}
@@ -331,6 +472,7 @@ export default function HeaderES() {
                   <span className="text-xl">🧩</span>
                 </Link>
               )}
+
               
               {/* Campana de notificaciones (solo usuarios logueados) */}
               {user && <NotificationBell />}

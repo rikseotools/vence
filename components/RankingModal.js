@@ -250,17 +250,13 @@ export default function RankingModal({ isOpen, onClose }) {
   const loadStreakRanking = async () => {
     setLoading(true)
     try {
-      // Obtener actividad de los últimos 30 días
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      
-      // Usar la misma tabla que el perfil: tests (no test_questions)
+      // Obtener toda la actividad de tests completados
       const { data: recentActivity, error } = await supabase
         .from('tests')
         .select(`
           user_id,
           completed_at
         `)
-        .gte('completed_at', thirtyDaysAgo)
         .order('completed_at', { ascending: false })
 
       if (error) {
@@ -305,9 +301,9 @@ export default function RankingModal({ isOpen, onClose }) {
         }
       })
 
-      // Filtrar solo usuarios con racha > 0 y ordenar por racha
+      // Filtrar solo usuarios con racha >= 2 días y ordenar por racha
       const filteredStreaks = streakData
-        .filter(user => user.streak > 0)
+        .filter(user => user.streak >= 2)
         .sort((a, b) => b.streak - a.streak)
         .slice(0, 20) // Top 20 rachas
 
@@ -411,7 +407,7 @@ export default function RankingModal({ isOpen, onClose }) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     
-    // Crear array de días con actividad
+    // Crear array de días con actividad (últimos 30 días)
     const activeDays = []
     for (let i = 0; i < 30; i++) {
       const checkDate = new Date(today)
@@ -539,6 +535,7 @@ export default function RankingModal({ isOpen, onClose }) {
           <div className="flex justify-center space-x-1 mb-4 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setActiveTab('ranking')}
+              data-tab="ranking"
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'ranking'
                   ? 'bg-white text-blue-600 shadow-sm'
@@ -549,6 +546,7 @@ export default function RankingModal({ isOpen, onClose }) {
             </button>
             <button
               onClick={() => setActiveTab('rachas')}
+              data-tab="rachas"
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'rachas'
                   ? 'bg-white text-orange-600 shadow-sm'
@@ -686,7 +684,7 @@ export default function RankingModal({ isOpen, onClose }) {
                     🔥 Top Rachas (últimos 30 días)
                   </h3>
                   <p className="text-xs text-gray-400 text-center mb-4">
-                    * Se permite máximo 1 día seguido sin actividad. Al 2º día sin actividad se rompe la racha
+                    * Permitido 1 día de gracia sin actividad para conservar la racha
                   </p>
                   
                   {streakRanking.length === 0 ? (

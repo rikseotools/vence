@@ -121,8 +121,8 @@ export default function UserAvatar() {
         console.warn('Error loading recent activity:', activityError)
       }
 
-      // Calculate consecutive days streak
-      const streak = calculateStreak(recentActivity || [])
+      // Calculate consecutive days streak with grace day
+      const streak = calculateRealStreak(recentActivity || [])
 
       // ⚡ Calculate accuracy from count queries (OPTIMIZED)
       const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
@@ -149,33 +149,53 @@ export default function UserAvatar() {
     }
   }
 
-  // Function to calculate consecutive days streak
-  const calculateStreak = (activities) => {
+  // Function to calculate consecutive days streak with grace day
+  const calculateRealStreak = (activities) => {
     if (!activities || activities.length === 0) return 0
-
-    // Group activities by day
-    const dayGroups = {}
-    activities.forEach(activity => {
-      const day = new Date(activity.created_at).toDateString()
-      dayGroups[day] = true
-    })
-
-    const uniqueDays = Object.keys(dayGroups).sort((a, b) => new Date(b) - new Date(a))
     
-    let streak = 0
-    let currentDate = new Date()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     
-    // Check consecutive days from today backwards
+    // Crear array de días con actividad (últimos 30 días)
+    const activeDays = []
     for (let i = 0; i < 30; i++) {
-      const checkDate = new Date(currentDate)
-      checkDate.setDate(checkDate.getDate() - i)
-      const checkDateString = checkDate.toDateString()
+      const checkDate = new Date(today)
+      checkDate.setDate(today.getDate() - i)
       
-      if (uniqueDays.includes(checkDateString)) {
+      const hasActivityOnDate = activities.some(activity => {
+        const activityDate = new Date(activity.created_at)
+        activityDate.setHours(0, 0, 0, 0)
+        return activityDate.getTime() === checkDate.getTime()
+      })
+      
+      activeDays.push(hasActivityOnDate)
+    }
+    
+    // Encontrar punto de inicio (hoy o ayer)
+    let startIndex = -1
+    if (activeDays[0]) {
+      startIndex = 0 // Empezar desde hoy
+    } else if (activeDays[1]) {
+      startIndex = 1 // Empezar desde ayer
+    } else {
+      return 0 // No hay actividad reciente
+    }
+    
+    // Contar racha permitiendo máximo 1 día consecutivo sin actividad
+    let streak = 0
+    let consecutiveMisses = 0
+    
+    for (let i = startIndex; i < activeDays.length; i++) {
+      if (activeDays[i]) {
         streak++
-      } else if (i > 0) {
-        // If no activity today, but there was yesterday, start from yesterday
-        break
+        consecutiveMisses = 0 // Resetear contador de faltas
+      } else {
+        consecutiveMisses++
+        if (consecutiveMisses >= 2) {
+          // Si faltas 2+ días seguidos, se rompe la racha
+          break
+        }
+        // Si es solo 1 día sin actividad, continuar (día de gracia)
       }
     }
     
@@ -370,7 +390,7 @@ export default function UserAvatar() {
                 {/* Streak */}
                 <div className="bg-orange-50 p-3 rounded-lg text-center">
                   <div className="text-orange-600 text-xs mb-1">🔥 Racha</div>
-                  <div className="font-bold text-orange-700 text-xl">{userStats.streak}</div>
+                  <div className="font-bold text-orange-700 text-xl">{userStats.streak > 30 ? '30+' : userStats.streak}</div>
                   <div className="text-orange-600 text-xs">días consecutivos</div>
                 </div>
                 
