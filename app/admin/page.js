@@ -535,7 +535,7 @@ export default function AdminDashboard() {
                   </div>
                   {stats.newUsersThisWeek > 0 && (
                     <div className="text-xs text-purple-600 mt-2 font-medium">
-                      📈 Proyección 2026: ~{stats.projectedUsersNextYear.toLocaleString()} usuarios
+                      📈 Proyección a un año: ~{stats.projectedUsersNextYear.toLocaleString()} usuarios
                       <br />
                       <span className="text-xs text-gray-500">
                         ({stats.averageUsersPerDay.toFixed(1)}/día × 365 días)
