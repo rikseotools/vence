@@ -13,6 +13,8 @@ export default function EngagementPage() {
   const [showCohortModal, setShowCohortModal] = useState(false)
   const [showMAUModal, setShowMAUModal] = useState(false)
   const [showRetentionModal, setShowRetentionModal] = useState(false)
+  const [showEngagementModal, setShowEngagementModal] = useState(false)
+  const [showHabitModal, setShowHabitModal] = useState(false)
 
   useEffect(() => {
     async function fetchEngagementStats() {
@@ -262,6 +264,292 @@ export default function EngagementPage() {
           })
         }
 
+        // 📈 ENGAGEMENT DEPTH (calidad vs cantidad)
+        const engagementDepth = {
+          testsPerActiveUser: 0,
+          avgDaysActivePerMonth: 0,
+          avgLongestStreak: 0,
+          distributionDaysActive: {},
+          userEngagementLevels: {
+            casual: 0,    // 1-3 tests/month
+            regular: 0,   // 4-10 tests/month  
+            power: 0      // 11+ tests/month
+          }
+        }
+
+        if (MAU > 0) {
+          // Tests por usuario activo
+          engagementDepth.testsPerActiveUser = Math.round(last30DaysTests.length / MAU * 10) / 10
+
+          // Días activos por mes para cada usuario activo
+          const userDaysActive = {}
+          last30DaysTests.forEach(test => {
+            const testDate = new Date(test.completed_at).toISOString().split('T')[0]
+            if (!userDaysActive[test.user_id]) {
+              userDaysActive[test.user_id] = new Set()
+            }
+            userDaysActive[test.user_id].add(testDate)
+          })
+
+          const daysActiveArray = Object.values(userDaysActive).map(daysSet => daysSet.size)
+          engagementDepth.avgDaysActivePerMonth = daysActiveArray.length > 0 ? 
+            Math.round(daysActiveArray.reduce((sum, days) => sum + days, 0) / daysActiveArray.length * 10) / 10 : 0
+
+          // Distribución de días activos
+          daysActiveArray.forEach(days => {
+            engagementDepth.distributionDaysActive[days] = (engagementDepth.distributionDaysActive[days] || 0) + 1
+          })
+
+          // Calcular longest streak promedio
+          const userStreaks = []
+          Object.keys(userDaysActive).forEach(userId => {
+            const userTests = validCompletedTests
+              .filter(t => t.user_id === userId)
+              .map(t => new Date(t.completed_at))
+              .sort((a, b) => a - b)
+
+            let longestStreak = 0
+            let currentStreak = 1
+            
+            for (let i = 1; i < userTests.length; i++) {
+              const daysDiff = Math.floor((userTests[i] - userTests[i-1]) / (24 * 60 * 60 * 1000))
+              
+              if (daysDiff === 1) {
+                currentStreak++
+              } else if (daysDiff <= 3) {
+                // Permitir hasta 3 días de gap (fines de semana)
+                currentStreak++
+              } else {
+                longestStreak = Math.max(longestStreak, currentStreak)
+                currentStreak = 1
+              }
+            }
+            longestStreak = Math.max(longestStreak, currentStreak)
+            userStreaks.push(longestStreak)
+          })
+
+          engagementDepth.avgLongestStreak = userStreaks.length > 0 ?
+            Math.round(userStreaks.reduce((sum, streak) => sum + streak, 0) / userStreaks.length * 10) / 10 : 0
+
+          // Niveles de engagement por tests/mes
+          const activeUserIds = new Set(last30DaysTests.map(t => t.user_id))
+          activeUserIds.forEach(userId => {
+            const userTestCount = last30DaysTests.filter(t => t.user_id === userId).length
+            
+            if (userTestCount >= 11) {
+              engagementDepth.userEngagementLevels.power++
+            } else if (userTestCount >= 4) {
+              engagementDepth.userEngagementLevels.regular++
+            } else {
+              engagementDepth.userEngagementLevels.casual++
+            }
+          })
+        }
+
+        // 💪 HABIT FORMATION (formación de hábitos)
+        const habitFormation = {
+          powerUsers: 0,           // 3+ días/semana
+          powerUsersPercentage: 0,
+          weeklyActiveUsers: 0,    // 7+ sesiones en 30 días
+          weeklyActivePercentage: 0,
+          habitDistribution: {
+            occasional: 0,         // 1-2 días/semana
+            regular: 0,           // 3-4 días/semana  
+            habitual: 0           // 5+ días/semana
+          },
+          avgSessionsPerWeek: 0
+        }
+
+        if (MAU > 0) {
+          const activeUserIds = new Set(last30DaysTests.map(t => t.user_id))
+          
+          activeUserIds.forEach(userId => {
+            const userTests = last30DaysTests.filter(t => t.user_id === userId)
+            const uniqueDays = new Set(userTests.map(t => new Date(t.completed_at).toISOString().split('T')[0]))
+            
+            const daysActiveInMonth = uniqueDays.size
+            const avgDaysPerWeek = (daysActiveInMonth / 30) * 7
+
+            // Power users (3+ días/semana promedio)
+            if (avgDaysPerWeek >= 3) {
+              habitFormation.powerUsers++
+            }
+
+            // Weekly active users (7+ tests en 30 días)
+            if (userTests.length >= 7) {
+              habitFormation.weeklyActiveUsers++
+            }
+
+            // Distribución de hábitos
+            if (avgDaysPerWeek >= 5) {
+              habitFormation.habitDistribution.habitual++
+            } else if (avgDaysPerWeek >= 3) {
+              habitFormation.habitDistribution.regular++
+            } else {
+              habitFormation.habitDistribution.occasional++
+            }
+          })
+
+          habitFormation.powerUsersPercentage = Math.round((habitFormation.powerUsers / MAU) * 100)
+          habitFormation.weeklyActivePercentage = Math.round((habitFormation.weeklyActiveUsers / MAU) * 100)
+          
+          // Promedio de sesiones por semana
+          const totalSessions = last30DaysTests.length
+          const weeksInMonth = 30 / 7
+          habitFormation.avgSessionsPerWeek = Math.round((totalSessions / weeksInMonth) * 10) / 10
+        }
+
+        // 📈 EVOLUCIÓN ENGAGEMENT DEPTH (últimos 6 meses)
+        const engagementDepthHistory = []
+        for (let monthOffset = 0; monthOffset < 6; monthOffset++) {
+          const monthStart = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)
+          const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 0)
+          
+          // Tests en ese mes
+          const monthTests = validCompletedTests.filter(t => {
+            const testDate = new Date(t.completed_at)
+            return testDate >= monthStart && testDate <= monthEnd
+          })
+          
+          // Usuarios activos en ese mes
+          const monthActiveUsers = new Set(monthTests.map(t => t.user_id)).size
+          
+          // Calcular métricas del mes
+          const testsPerUser = monthActiveUsers > 0 ? Math.round((monthTests.length / monthActiveUsers) * 10) / 10 : 0
+          
+          // Días activos promedio
+          const userDaysActive = {}
+          monthTests.forEach(test => {
+            const testDate = new Date(test.completed_at).toISOString().split('T')[0]
+            if (!userDaysActive[test.user_id]) {
+              userDaysActive[test.user_id] = new Set()
+            }
+            userDaysActive[test.user_id].add(testDate)
+          })
+          
+          const daysActiveArray = Object.values(userDaysActive).map(daysSet => daysSet.size)
+          const avgDaysActive = daysActiveArray.length > 0 ? 
+            Math.round(daysActiveArray.reduce((sum, days) => sum + days, 0) / daysActiveArray.length * 10) / 10 : 0
+          
+          engagementDepthHistory.unshift({
+            month: monthStart.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
+            testsPerUser: testsPerUser,
+            avgDaysActive: avgDaysActive,
+            activeUsers: monthActiveUsers
+          })
+        }
+
+        // 💪 EVOLUCIÓN HABIT FORMATION (últimos 6 meses) 
+        const habitFormationHistory = []
+        for (let monthOffset = 0; monthOffset < 6; monthOffset++) {
+          const monthStart = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)
+          const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 0)
+          
+          // Tests en ese mes
+          const monthTests = validCompletedTests.filter(t => {
+            const testDate = new Date(t.completed_at)
+            return testDate >= monthStart && testDate <= monthEnd
+          })
+          
+          const monthActiveUsers = new Set(monthTests.map(t => t.user_id))
+          let powerUsers = 0
+          let weeklyActiveUsers = 0
+          
+          if (monthActiveUsers.size > 0) {
+            monthActiveUsers.forEach(userId => {
+              const userTests = monthTests.filter(t => t.user_id === userId)
+              const uniqueDays = new Set(userTests.map(t => new Date(t.completed_at).toISOString().split('T')[0]))
+              
+              const daysInMonth = new Date(monthEnd.getFullYear(), monthEnd.getMonth() + 1, 0).getDate()
+              const avgDaysPerWeek = (uniqueDays.size / daysInMonth) * 7
+              
+              if (avgDaysPerWeek >= 3) powerUsers++
+              if (userTests.length >= 7) weeklyActiveUsers++
+            })
+          }
+          
+          const powerUsersPercent = monthActiveUsers.size > 0 ? Math.round((powerUsers / monthActiveUsers.size) * 100) : 0
+          const weeklyActivePercent = monthActiveUsers.size > 0 ? Math.round((weeklyActiveUsers / monthActiveUsers.size) * 100) : 0
+          
+          habitFormationHistory.unshift({
+            month: monthStart.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
+            powerUsersPercent: powerUsersPercent,
+            weeklyActivePercent: weeklyActivePercent,
+            activeUsers: monthActiveUsers.size
+          })
+        }
+
+        // 🎯 EVOLUCIÓN TRUE RETENTION RATE (últimos 8-10 períodos)
+        const retentionRateHistory = []
+        
+        // Analizar por períodos de 2 semanas para tener suficientes datos
+        for (let periodOffset = 1; periodOffset <= 8; periodOffset++) {
+          const periodWeeks = 2 // Períodos de 2 semanas
+          const periodStart = new Date(now.getTime() - (periodOffset + periodWeeks - 1) * 7 * 24 * 60 * 60 * 1000)
+          const periodEnd = new Date(now.getTime() - periodOffset * 7 * 24 * 60 * 60 * 1000)
+          
+          const periodUsers = users.filter(u => {
+            const createdAt = new Date(u.created_at)
+            return createdAt >= periodStart && createdAt < periodEnd
+          })
+          
+          if (periodUsers.length === 0) {
+            retentionRateHistory.unshift({
+              period: `${Math.ceil(periodOffset/2)}`,
+              periodLabel: periodStart.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }),
+              registered: 0,
+              day1Retention: 0,
+              day7Retention: 0,
+              day30Retention: 0
+            })
+            continue
+          }
+          
+          let day1Retained = 0
+          let day7Retained = 0
+          let day30Retained = 0
+          
+          periodUsers.forEach(user => {
+            const registrationDate = new Date(user.created_at)
+            
+            // Day 1: ¿Hizo test entre día 1-2 después del registro?
+            const day1Start = new Date(registrationDate.getTime() + 24 * 60 * 60 * 1000)
+            const day1End = new Date(registrationDate.getTime() + 2 * 24 * 60 * 60 * 1000)
+            const hasDay1Activity = validCompletedTests.some(t => {
+              const testDate = new Date(t.completed_at)
+              return t.user_id === user.id && testDate >= day1Start && testDate <= day1End
+            })
+            if (hasDay1Activity) day1Retained++
+            
+            // Day 7: ¿Hizo test entre día 2-7 después del registro?
+            const day7Start = new Date(registrationDate.getTime() + 2 * 24 * 60 * 60 * 1000)
+            const day7End = new Date(registrationDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+            const hasDay7Activity = validCompletedTests.some(t => {
+              const testDate = new Date(t.completed_at)
+              return t.user_id === user.id && testDate >= day7Start && testDate <= day7End
+            })
+            if (hasDay7Activity) day7Retained++
+            
+            // Day 30: ¿Hizo test entre día 7-30 después del registro?
+            const day30Start = new Date(registrationDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+            const day30End = new Date(registrationDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+            const hasDay30Activity = validCompletedTests.some(t => {
+              const testDate = new Date(t.completed_at)
+              return t.user_id === user.id && testDate >= day30Start && testDate <= day30End
+            })
+            if (hasDay30Activity) day30Retained++
+          })
+          
+          retentionRateHistory.unshift({
+            period: `P${periodOffset}`,
+            periodLabel: periodStart.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }),
+            registered: periodUsers.length,
+            day1Retention: periodUsers.length > 0 ? Math.round((day1Retained / periodUsers.length) * 100) : 0,
+            day7Retention: periodUsers.length > 0 ? Math.round((day7Retained / periodUsers.length) * 100) : 0,
+            day30Retention: periodUsers.length > 0 ? Math.round((day30Retained / periodUsers.length) * 100) : 0
+          })
+        }
+
         // 📊 ANÁLISIS DE COHORTES (usuarios por semanas de registro)
         const cohortAnalysis = []
         for (let weekOffset = 0; weekOffset < 8; weekOffset++) {
@@ -327,7 +615,12 @@ export default function EngagementPage() {
           registeredActiveRatio,
           cohortAnalysis,
           activationHistory,
-          retentionAnalysis
+          retentionAnalysis,
+          engagementDepth,
+          habitFormation,
+          engagementDepthHistory,
+          habitFormationHistory,
+          retentionRateHistory
         })
         
       } catch (err) {
@@ -382,7 +675,7 @@ export default function EngagementPage() {
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Activation Rate
+                  Activation Rate (30d)
                 </p>
                 <button 
                   onClick={() => setShowActivationModal(true)}
@@ -394,7 +687,7 @@ export default function EngagementPage() {
               </div>
               <p className="text-3xl font-bold text-green-600">{stats.registeredActiveRatio}%</p>
               <p className="text-sm text-gray-500 mt-1">
-                {stats.MAU} de {stats.totalUsers} usuarios activos
+                {stats.MAU} de {stats.totalUsers} usuarios activos últimos 30 días
               </p>
               <div className="mt-2">
                 <div className="text-xs text-gray-600">
@@ -478,6 +771,353 @@ export default function EngagementPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Métricas avanzadas: Engagement Depth y Habit Formation */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Engagement Depth */}
+        {stats.engagementDepth && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                📈 Engagement Depth
+              </h3>
+              <button 
+                onClick={() => setShowEngagementModal(true)}
+                className="w-4 h-4 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 rounded-full flex items-center justify-center transition-colors"
+                title="Ver información detallada"
+              >
+                <span className="text-xs text-blue-600 dark:text-blue-400">❓</span>
+              </button>
+            </div>
+            
+            {/* Análisis dinámico de profundidad de engagement */}
+            {(() => {
+              if (!stats.engagementDepth || stats.MAU === 0) {
+                return (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg mb-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      📊 No hay suficientes usuarios activos para análisis de engagement
+                    </p>
+                  </div>
+                )
+              }
+              
+              const { testsPerActiveUser, avgDaysActivePerMonth, avgLongestStreak } = stats.engagementDepth
+              const { casual, regular, power } = stats.engagementDepth.userEngagementLevels
+              
+              let insights = []
+              let recommendations = []
+              let alertLevel = "info"
+              
+              // Análisis global coherente
+              const engagementScore = (testsPerActiveUser/15) + (avgDaysActivePerMonth/10) + (avgLongestStreak/7)
+              const averageScore = engagementScore / 3
+              
+              // Diagnóstico principal basado en el score global
+              if (averageScore >= 0.8) {
+                insights.push("🚀 Engagement excepcional - usuarios muy comprometidos")
+                alertLevel = "success"
+              } else if (averageScore >= 0.6) {
+                insights.push("📈 Engagement sólido con áreas de mejora")
+                alertLevel = "warning"
+              } else if (averageScore >= 0.4) {
+                insights.push("⚠️ Engagement moderado - necesita optimización")
+                alertLevel = "warning"
+              } else {
+                insights.push("❌ CRÍTICO: Engagement superficial")
+                alertLevel = "error"
+              }
+              
+              // Análisis específico de cada dimensión (solo si es significativo)
+              if (testsPerActiveUser >= 10 && avgDaysActivePerMonth < 4) {
+                insights.push("🎯 Paradoja: Usuarios intensos pero esporádicos (sesiones largas pero infrecuentes)")
+              } else if (testsPerActiveUser < 5 && avgDaysActivePerMonth >= 6) {
+                insights.push("🔄 Patrón: Usuarios frecuentes pero superficiales (muchas visitas cortas)")
+              } else if (avgLongestStreak >= 5 && avgDaysActivePerMonth < 4) {
+                insights.push("⚡ Contradicción: Buenos streaks pero baja frecuencia general")
+              }
+              
+              // Identificar el punto débil principal
+              if (testsPerActiveUser < 5) {
+                insights.push("🎯 Punto débil: Intensidad de uso baja")
+              } else if (avgDaysActivePerMonth < 3) {
+                insights.push("🎯 Punto débil: Frecuencia de regreso baja")
+              } else if (avgLongestStreak < 3) {
+                insights.push("🎯 Punto débil: Consistencia baja (no forman hábitos)")
+              }
+              
+              // Análisis distribución de usuarios
+              const totalUsers = casual + regular + power
+              if (totalUsers > 0) {
+                const powerPercent = Math.round((power / totalUsers) * 100)
+                const casualPercent = Math.round((casual / totalUsers) * 100)
+                
+                if (powerPercent >= 30) {
+                  insights.push("🎯 Excelente: muchos power users de alto valor")
+                } else if (casualPercent > 70) {
+                  insights.push("⚠️ Demasiados usuarios casuales - falta profundidad")
+                }
+              }
+              
+              // Recomendaciones coherentes basadas en el diagnóstico principal
+              if (averageScore < 0.4) {
+                recommendations.push("URGENTE: Revisar onboarding completo - engagement crítico")
+                recommendations.push("Entrevistas con usuarios: ¿por qué no usan más Vence?")
+              } else if (averageScore < 0.6) {
+                // Recomendar según el punto débil principal
+                if (testsPerActiveUser < avgDaysActivePerMonth && testsPerActiveUser < avgLongestStreak) {
+                  recommendations.push("Prioridad: Aumentar intensidad - progresión de dificultad")
+                } else if (avgDaysActivePerMonth < testsPerActiveUser && avgDaysActivePerMonth < avgLongestStreak) {
+                  recommendations.push("Prioridad: Aumentar frecuencia - recordatorios inteligentes")
+                } else {
+                  recommendations.push("Prioridad: Mejorar consistencia - gamificación de streaks")
+                }
+              }
+              
+              // Recomendaciones específicas para patrones detectados
+              if (testsPerActiveUser >= 10 && avgDaysActivePerMonth < 4) {
+                recommendations.push("Convertir sesiones intensas en hábito diario")
+              } else if (testsPerActiveUser < 5 && avgDaysActivePerMonth >= 6) {
+                recommendations.push("Aumentar duración de sesiones - contenido más enganchante")
+              }
+              
+              // Solo añadir si hay distribución problemática
+              if (casual > power + regular && totalUsers > 0) {
+                recommendations.push("Demasiados usuarios casuales - mejorar activación inicial")
+              }
+              
+              const bgColor = alertLevel === "error" ? "bg-red-50 dark:bg-red-900/20" :
+                             alertLevel === "warning" ? "bg-yellow-50 dark:bg-yellow-900/20" :
+                             alertLevel === "success" ? "bg-green-50 dark:bg-green-900/20" :
+                             "bg-blue-50 dark:bg-blue-900/20"
+              
+              return (
+                <div className={`p-4 rounded-lg mb-4 ${bgColor}`}>
+                  <p className="font-medium text-sm mb-2">
+                    📈 Análisis para Vence ({testsPerActiveUser} tests/usuario):
+                  </p>
+                  <ul className="text-sm space-y-1 mb-3">
+                    {insights.map((insight, i) => (
+                      <li key={i}>• {insight}</li>
+                    ))}
+                  </ul>
+                  {recommendations.length > 0 && (
+                    <div>
+                      <p className="font-medium text-sm mb-1">🎯 Estrategias para profundizar engagement:</p>
+                      <ul className="text-sm space-y-1">
+                        {recommendations.map((rec, i) => (
+                          <li key={i}>• {rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+            
+            <div className="space-y-4">
+              {/* Tests por usuario activo */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Tests por usuario activo</span>
+                <span className="font-semibold text-lg text-blue-600">{stats.engagementDepth.testsPerActiveUser}</span>
+              </div>
+              
+              {/* Días activos por mes */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Días activos promedio/mes</span>
+                <span className="font-semibold text-lg text-green-600">{stats.engagementDepth.avgDaysActivePerMonth}</span>
+              </div>
+              
+              {/* Streak promedio */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Streak promedio (días)</span>
+                <span className="font-semibold text-lg text-purple-600">{stats.engagementDepth.avgLongestStreak}</span>
+              </div>
+              
+              {/* Distribución de usuarios */}
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-500 mb-2">Distribución por intensidad:</p>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Casual (1-3 tests/mes)</span>
+                    <span className="text-orange-600">{stats.engagementDepth.userEngagementLevels.casual}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Regular (4-10 tests/mes)</span>
+                    <span className="text-blue-600">{stats.engagementDepth.userEngagementLevels.regular}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Power (11+ tests/mes)</span>
+                    <span className="text-green-600">{stats.engagementDepth.userEngagementLevels.power}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Habit Formation */}
+        {stats.habitFormation && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                💪 Habit Formation
+              </h3>
+              <button 
+                onClick={() => setShowHabitModal(true)}
+                className="w-4 h-4 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 rounded-full flex items-center justify-center transition-colors"
+                title="Ver información detallada"
+              >
+                <span className="text-xs text-blue-600 dark:text-blue-400">❓</span>
+              </button>
+            </div>
+            
+            {/* Análisis dinámico de formación de hábitos */}
+            {(() => {
+              if (!stats.habitFormation || stats.MAU === 0) {
+                return (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg mb-4">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      📊 No hay suficientes usuarios activos para análisis de hábitos
+                    </p>
+                  </div>
+                )
+              }
+              
+              const { powerUsersPercentage, weeklyActivePercentage, avgSessionsPerWeek } = stats.habitFormation
+              const { habitual, regular, occasional } = stats.habitFormation.habitDistribution
+              
+              let insights = []
+              let recommendations = []
+              let alertLevel = "info"
+              
+              // Análisis Power Users
+              if (powerUsersPercentage >= 25) {
+                insights.push("🚀 Excelente formación de hábito - muchos usuarios power")
+                alertLevel = "success"
+              } else if (powerUsersPercentage >= 15) {
+                insights.push("📈 Formación de hábito en progreso")
+                alertLevel = "warning"
+              } else {
+                insights.push("❌ CRÍTICO: Muy pocos usuarios forman hábitos fuertes")
+                alertLevel = "error"
+              }
+              
+              // Análisis Weekly Active
+              if (weeklyActivePercentage >= 40) {
+                insights.push("✅ Buen engagement semanal consistente")
+              } else if (weeklyActivePercentage >= 25) {
+                insights.push("⚠️ Engagement semanal mejorable")
+              } else {
+                insights.push("🔴 PROBLEMA: Pocos usuarios usan Vence consistentemente")
+                alertLevel = "error"
+              }
+              
+              // Análisis distribución
+              const totalActive = habitual + regular + occasional
+              if (totalActive > 0) {
+                const habitualPercent = Math.round((habitual / totalActive) * 100)
+                const regularPercent = Math.round((regular / totalActive) * 100)
+                const occasionalPercent = Math.round((occasional / totalActive) * 100)
+                
+                if (occasionalPercent > 60) {
+                  insights.push("⚡ Mayoría son usuarios ocasionales - falta hábito")
+                } else if (regularPercent + habitualPercent > 50) {
+                  insights.push("💪 Buenos hábitos: mayoría usa Vence regularmente")
+                }
+              }
+              
+              // Recomendaciones específicas
+              if (powerUsersPercentage < 20) {
+                recommendations.push("Implementar streaks diarios y gamificación")
+              }
+              if (weeklyActivePercentage < 30) {
+                recommendations.push("Notificaciones inteligentes de recordatorio")
+              }
+              if (avgSessionsPerWeek < 10) {
+                recommendations.push("Objetivos semanales: 'Haz 3 tests esta semana'")
+              }
+              if (habitual < regular) {
+                recommendations.push("Programa de 21 días para formar hábito diario")
+              }
+              
+              const bgColor = alertLevel === "error" ? "bg-red-50 dark:bg-red-900/20" :
+                             alertLevel === "warning" ? "bg-yellow-50 dark:bg-yellow-900/20" :
+                             alertLevel === "success" ? "bg-green-50 dark:bg-green-900/20" :
+                             "bg-blue-50 dark:bg-blue-900/20"
+              
+              return (
+                <div className={`p-4 rounded-lg mb-4 ${bgColor}`}>
+                  <p className="font-medium text-sm mb-2">
+                    💪 Análisis para Vence ({powerUsersPercentage}% power users):
+                  </p>
+                  <ul className="text-sm space-y-1 mb-3">
+                    {insights.map((insight, i) => (
+                      <li key={i}>• {insight}</li>
+                    ))}
+                  </ul>
+                  {recommendations.length > 0 && (
+                    <div>
+                      <p className="font-medium text-sm mb-1">🎯 Estrategias recomendadas:</p>
+                      <ul className="text-sm space-y-1">
+                        {recommendations.map((rec, i) => (
+                          <li key={i}>• {rec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+            
+            <div className="space-y-4">
+              {/* Power Users */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Power Users (3+ días/semana)</span>
+                <div className="text-right">
+                  <div className="font-semibold text-lg text-purple-600">{stats.habitFormation.powerUsersPercentage}%</div>
+                  <div className="text-xs text-gray-500">{stats.habitFormation.powerUsers} usuarios</div>
+                </div>
+              </div>
+              
+              {/* Weekly Active */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Weekly Active (7+ tests/mes)</span>
+                <div className="text-right">
+                  <div className="font-semibold text-lg text-blue-600">{stats.habitFormation.weeklyActivePercentage}%</div>
+                  <div className="text-xs text-gray-500">{stats.habitFormation.weeklyActiveUsers} usuarios</div>
+                </div>
+              </div>
+              
+              {/* Sesiones por semana */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Promedio sesiones/semana</span>
+                <span className="font-semibold text-lg text-green-600">{stats.habitFormation.avgSessionsPerWeek}</span>
+              </div>
+              
+              {/* Distribución de hábitos */}
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs text-gray-500 mb-2">Distribución de hábitos:</p>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Ocasional (1-2 días/sem)</span>
+                    <span className="text-orange-600">{stats.habitFormation.habitDistribution.occasional}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Regular (3-4 días/sem)</span>
+                    <span className="text-blue-600">{stats.habitFormation.habitDistribution.regular}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600 dark:text-gray-400">Habitual (5+ días/sem)</span>
+                    <span className="text-green-600">{stats.habitFormation.habitDistribution.habitual}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Gráfico de evolución Usuarios Registrados Activos */}
@@ -679,6 +1319,503 @@ export default function EngagementPage() {
                 {Math.min(...stats.dauMauHistory.map(h => h.ratio))}%
               </div>
               <div className="text-xs text-gray-500">Mínimo</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gráfico de evolución Engagement Depth */}
+      {stats.engagementDepthHistory && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              📈 Evolución de Engagement Depth
+            </h3>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Actual: <span className="font-semibold text-blue-600">{stats.engagementDepth?.testsPerActiveUser || 0} tests/usuario</span>
+            </div>
+          </div>
+          
+          <div className="relative">
+            {/* Gráfico de líneas temporal */}
+            <div className="relative h-80 border border-gray-200 dark:border-gray-700 p-4">
+              <svg width="100%" height="100%" viewBox="0 0 700 280" className="overflow-visible">
+                {/* Líneas de referencia horizontales para tests */}
+                {[0, 5, 10, 15, 20].map(y => (
+                  <g key={y}>
+                    <line 
+                      x1="60" 
+                      y1={220 - (y * 10)} 
+                      x2="640" 
+                      y2={220 - (y * 10)} 
+                      stroke="currentColor" 
+                      strokeWidth="0.5" 
+                      className="text-gray-300 dark:text-gray-600"
+                    />
+                    <text 
+                      x="55" 
+                      y={220 - (y * 10) + 4} 
+                      className="text-xs fill-gray-500 dark:fill-gray-400" 
+                      textAnchor="end"
+                    >
+                      {y}
+                    </text>
+                  </g>
+                ))}
+                
+                {/* Zonas de referencia */}
+                <rect x="60" y={220 - (10 * 10)} width="580" height="120" fill="rgb(59, 130, 246)" opacity="0.05" />
+                <text x="70" y={220 - (10 * 10) + 15} className="text-xs fill-blue-600 dark:fill-blue-400">Zona objetivo 10+ tests/usuario</text>
+                
+                <rect x="60" y={220 - (5 * 10)} width="580" height="170" fill="rgb(34, 197, 94)" opacity="0.05" />
+                <text x="70" y={220 - (5 * 10) + 15} className="text-xs fill-green-600 dark:fill-green-400">Zona objetivo 5+ días activos</text>
+                
+                {/* Líneas de datos */}
+                {stats.engagementDepthHistory.length > 1 && (
+                  <>
+                    {/* Línea Tests por usuario (azul) */}
+                    <polyline
+                      points={stats.engagementDepthHistory.map((point, index) => {
+                        const x = 60 + (index * (580 / (stats.engagementDepthHistory.length - 1)))
+                        const y = 220 - (Math.min(point.testsPerUser, 20) * 10)
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="rgb(59, 130, 246)"
+                      strokeWidth="3"
+                      className="drop-shadow-sm"
+                    />
+                    
+                    {/* Línea Días activos (verde) */}
+                    <polyline
+                      points={stats.engagementDepthHistory.map((point, index) => {
+                        const x = 60 + (index * (580 / (stats.engagementDepthHistory.length - 1)))
+                        const y = 220 - (Math.min(point.avgDaysActive, 20) * 10)
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="rgb(34, 197, 94)"
+                      strokeWidth="3"
+                      className="drop-shadow-sm"
+                    />
+                  </>
+                )}
+                
+                {/* Puntos de datos */}
+                {stats.engagementDepthHistory.map((point, index) => {
+                  const x = 60 + (index * (580 / Math.max(1, stats.engagementDepthHistory.length - 1)))
+                  const isLast = index === stats.engagementDepthHistory.length - 1
+                  
+                  const testsValue = Math.min(point.testsPerUser, 20)
+                  const daysValue = Math.min(point.avgDaysActive, 20)
+                  
+                  return (
+                    <g key={point.month}>
+                      {/* Puntos con valores */}
+                      <circle
+                        cx={x}
+                        cy={220 - (testsValue * 10)}
+                        r={isLast ? "5" : "3"}
+                        fill="rgb(59, 130, 246)"
+                        className="drop-shadow-sm cursor-pointer hover:r-6 transition-all"
+                        title={`${point.month}: ${testsValue} tests por usuario`}
+                      />
+                      <text
+                        x={x}
+                        y={220 - (testsValue * 10) - 8}
+                        className="text-xs fill-blue-600 dark:fill-blue-400 font-semibold"
+                        textAnchor="middle"
+                      >
+                        {testsValue}
+                      </text>
+                      
+                      <circle
+                        cx={x}
+                        cy={220 - (daysValue * 10)}
+                        r={isLast ? "5" : "3"}
+                        fill="rgb(34, 197, 94)"
+                        className="drop-shadow-sm cursor-pointer hover:r-6 transition-all"
+                        title={`${point.month}: ${daysValue} días activos promedio`}
+                      />
+                      <text
+                        x={x}
+                        y={220 - (daysValue * 10) - 8}
+                        className="text-xs fill-green-600 dark:fill-green-400 font-semibold"
+                        textAnchor="middle"
+                      >
+                        {daysValue}
+                      </text>
+                      
+                      {/* Etiqueta de tiempo */}
+                      <text
+                        x={x}
+                        y="245"
+                        className="text-xs fill-gray-500 dark:fill-gray-400"
+                        textAnchor="middle"
+                      >
+                        {point.month}
+                      </text>
+                    </g>
+                  )
+                })}
+                
+              </svg>
+            </div>
+            
+            {/* Leyenda */}
+            <div className="flex justify-center gap-6 mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                <span className="text-gray-600 dark:text-gray-400">Tests por usuario</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <span className="text-gray-600 dark:text-gray-400">Días activos promedio</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gráfico de evolución Habit Formation */}
+      {stats.habitFormationHistory && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              💪 Evolución de Habit Formation
+            </h3>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Actual: <span className="font-semibold text-purple-600">{stats.habitFormation?.powerUsersPercentage || 0}% power users</span>
+            </div>
+          </div>
+          
+          <div className="relative">
+            {/* Gráfico de líneas temporal */}
+            <div className="relative h-80 border border-gray-200 dark:border-gray-700 p-4">
+              <svg width="100%" height="100%" viewBox="0 0 700 280" className="overflow-visible">
+                {/* Líneas de referencia horizontales */}
+                {[0, 20, 40, 60, 80, 100].map(y => (
+                  <g key={y}>
+                    <line 
+                      x1="60" 
+                      y1={220 - (y * 2)} 
+                      x2="640" 
+                      y2={220 - (y * 2)} 
+                      stroke="currentColor" 
+                      strokeWidth="0.5" 
+                      className="text-gray-300 dark:text-gray-600"
+                    />
+                    <text 
+                      x="55" 
+                      y={220 - (y * 2) + 4} 
+                      className="text-xs fill-gray-500 dark:fill-gray-400" 
+                      textAnchor="end"
+                    >
+                      {y}%
+                    </text>
+                  </g>
+                ))}
+                
+                {/* Zonas de referencia */}
+                <rect x="60" y={220 - (25 * 2)} width="580" height="170" fill="rgb(147, 51, 234)" opacity="0.05" />
+                <text x="70" y={220 - (25 * 2) + 15} className="text-xs fill-purple-600 dark:fill-purple-400">Zona objetivo 25%+ power users</text>
+                
+                <rect x="60" y={220 - (50 * 2)} width="580" height="120" fill="rgb(249, 115, 22)" opacity="0.05" />
+                <text x="70" y={220 - (50 * 2) + 15} className="text-xs fill-orange-600 dark:fill-orange-400">Zona objetivo 50%+ weekly active</text>
+                
+                {/* Líneas de datos */}
+                {stats.habitFormationHistory.length > 1 && (
+                  <>
+                    {/* Línea Power Users (púrpura) */}
+                    <polyline
+                      points={stats.habitFormationHistory.map((point, index) => {
+                        const x = 60 + (index * (580 / (stats.habitFormationHistory.length - 1)))
+                        const y = 220 - (Math.min(point.powerUsersPercent, 100) * 2)
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="rgb(147, 51, 234)"
+                      strokeWidth="3"
+                      className="drop-shadow-sm"
+                    />
+                    
+                    {/* Línea Weekly Active (naranja) */}
+                    <polyline
+                      points={stats.habitFormationHistory.map((point, index) => {
+                        const x = 60 + (index * (580 / (stats.habitFormationHistory.length - 1)))
+                        const y = 220 - (Math.min(point.weeklyActivePercent, 100) * 2)
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="rgb(249, 115, 22)"
+                      strokeWidth="3"
+                      className="drop-shadow-sm"
+                    />
+                  </>
+                )}
+                
+                {/* Puntos de datos */}
+                {stats.habitFormationHistory.map((point, index) => {
+                  const x = 60 + (index * (580 / Math.max(1, stats.habitFormationHistory.length - 1)))
+                  const isLast = index === stats.habitFormationHistory.length - 1
+                  
+                  const powerValue = Math.min(point.powerUsersPercent, 100)
+                  const weeklyValue = Math.min(point.weeklyActivePercent, 100)
+                  
+                  return (
+                    <g key={point.month}>
+                      {/* Puntos con valores */}
+                      <circle
+                        cx={x}
+                        cy={220 - (powerValue * 2)}
+                        r={isLast ? "5" : "3"}
+                        fill="rgb(147, 51, 234)"
+                        className="drop-shadow-sm cursor-pointer hover:r-6 transition-all"
+                        title={`${point.month}: ${powerValue}% power users (3+ días/sem)`}
+                      />
+                      <text
+                        x={x}
+                        y={220 - (powerValue * 2) - 8}
+                        className="text-xs fill-purple-600 dark:fill-purple-400 font-semibold"
+                        textAnchor="middle"
+                      >
+                        {powerValue}%
+                      </text>
+                      
+                      <circle
+                        cx={x}
+                        cy={220 - (weeklyValue * 2)}
+                        r={isLast ? "5" : "3"}
+                        fill="rgb(249, 115, 22)"
+                        className="drop-shadow-sm cursor-pointer hover:r-6 transition-all"
+                        title={`${point.month}: ${weeklyValue}% weekly active (7+ tests/mes)`}
+                      />
+                      <text
+                        x={x}
+                        y={220 - (weeklyValue * 2) - 8}
+                        className="text-xs fill-orange-600 dark:fill-orange-400 font-semibold"
+                        textAnchor="middle"
+                      >
+                        {weeklyValue}%
+                      </text>
+                      
+                      {/* Etiqueta de tiempo */}
+                      <text
+                        x={x}
+                        y="245"
+                        className="text-xs fill-gray-500 dark:fill-gray-400"
+                        textAnchor="middle"
+                      >
+                        {point.month}
+                      </text>
+                    </g>
+                  )
+                })}
+                
+              </svg>
+            </div>
+            
+            {/* Leyenda */}
+            <div className="flex justify-center gap-6 mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                <span className="text-gray-600 dark:text-gray-400">Power Users (3+ días/sem)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                <span className="text-gray-600 dark:text-gray-400">Weekly Active (7+ tests/mes)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gráfico de evolución True Retention Rate */}
+      {stats.retentionRateHistory && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              🎯 Evolución de True Retention Rate
+            </h3>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Promedio actual: <span className="font-semibold text-green-600">
+                {stats.retentionAnalysis ? Math.round(stats.retentionAnalysis.reduce((sum, c) => sum + c.day1Retention, 0) / stats.retentionAnalysis.filter(c => c.registered > 0).length || 0) : 0}%
+              </span> Day 1
+            </div>
+          </div>
+          
+          <div className="relative">
+            {/* Gráfico de líneas temporal */}
+            <div className="relative h-80 border border-gray-200 dark:border-gray-700 p-4">
+              <svg width="100%" height="100%" viewBox="0 0 700 280" className="overflow-visible">
+                {/* Líneas de referencia horizontales */}
+                {[0, 20, 40, 60, 80, 100].map(y => (
+                  <g key={y}>
+                    <line 
+                      x1="60" 
+                      y1={220 - (y * 2)} 
+                      x2="640" 
+                      y2={220 - (y * 2)} 
+                      stroke="currentColor" 
+                      strokeWidth="0.5" 
+                      className="text-gray-300 dark:text-gray-600"
+                    />
+                    <text 
+                      x="55" 
+                      y={220 - (y * 2) + 4} 
+                      className="text-xs fill-gray-500 dark:fill-gray-400" 
+                      textAnchor="end"
+                    >
+                      {y}%
+                    </text>
+                  </g>
+                ))}
+                
+                {/* Zonas de referencia */}
+                <rect x="60" y={220 - (40 * 2)} width="580" height="140" fill="rgb(34, 197, 94)" opacity="0.05" />
+                <text x="70" y={220 - (40 * 2) + 15} className="text-xs fill-green-600 dark:fill-green-400">Zona objetivo 40%+</text>
+                
+                <rect x="60" y={220 - (25 * 2)} width="580" height="170" fill="rgb(59, 130, 246)" opacity="0.05" />
+                <text x="70" y={220 - (25 * 2) + 15} className="text-xs fill-blue-600 dark:fill-blue-400">Zona objetivo 25%+</text>
+                
+                {/* Líneas de datos */}
+                {stats.retentionRateHistory.length > 1 && (
+                  <>
+                    {/* Línea Day 1 (verde) */}
+                    <polyline
+                      points={stats.retentionRateHistory.map((point, index) => {
+                        const x = 60 + (index * (580 / (stats.retentionRateHistory.length - 1)))
+                        const y = 220 - (Math.min(point.day1Retention, 100) * 2)
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="rgb(34, 197, 94)"
+                      strokeWidth="3"
+                      className="drop-shadow-sm"
+                    />
+                    
+                    {/* Línea Day 7 (azul) */}
+                    <polyline
+                      points={stats.retentionRateHistory.map((point, index) => {
+                        const x = 60 + (index * (580 / (stats.retentionRateHistory.length - 1)))
+                        const y = 220 - (Math.min(point.day7Retention, 100) * 2)
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="rgb(59, 130, 246)"
+                      strokeWidth="3"
+                      className="drop-shadow-sm"
+                    />
+                    
+                    {/* Línea Day 30 (púrpura) */}
+                    <polyline
+                      points={stats.retentionRateHistory.map((point, index) => {
+                        const x = 60 + (index * (580 / (stats.retentionRateHistory.length - 1)))
+                        const y = 220 - (Math.min(point.day30Retention, 100) * 2)
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="rgb(147, 51, 234)"
+                      strokeWidth="3"
+                      className="drop-shadow-sm"
+                    />
+                  </>
+                )}
+                
+                {/* Puntos de datos y etiquetas */}
+                {stats.retentionRateHistory.map((point, index) => {
+                  const x = 60 + (index * (580 / Math.max(1, stats.retentionRateHistory.length - 1)))
+                  const isLast = index === stats.retentionRateHistory.length - 1
+                  
+                  // Limitar valores a 100% máximo
+                  const day1Value = Math.min(point.day1Retention, 100)
+                  const day7Value = Math.min(point.day7Retention, 100)
+                  const day30Value = Math.min(point.day30Retention, 100)
+                  
+                  return (
+                    <g key={point.period}>
+                      {/* Puntos con valores */}
+                      <circle
+                        cx={x}
+                        cy={220 - (day1Value * 2)}
+                        r={isLast ? "5" : "3"}
+                        fill="rgb(34, 197, 94)"
+                        className="drop-shadow-sm cursor-pointer hover:r-6 transition-all"
+                        title={`${point.periodLabel}: ${day1Value}% Day 1 retention`}
+                      />
+                      <text
+                        x={x}
+                        y={220 - (day1Value * 2) - 8}
+                        className="text-xs fill-green-600 dark:fill-green-400 font-semibold"
+                        textAnchor="middle"
+                      >
+                        {day1Value}%
+                      </text>
+                      
+                      <circle
+                        cx={x}
+                        cy={220 - (day7Value * 2)}
+                        r={isLast ? "5" : "3"}
+                        fill="rgb(59, 130, 246)"
+                        className="drop-shadow-sm cursor-pointer hover:r-6 transition-all"
+                        title={`${point.periodLabel}: ${day7Value}% Day 7 retention`}
+                      />
+                      <text
+                        x={x}
+                        y={220 - (day7Value * 2) - 8}
+                        className="text-xs fill-blue-600 dark:fill-blue-400 font-semibold"
+                        textAnchor="middle"
+                      >
+                        {day7Value}%
+                      </text>
+                      
+                      <circle
+                        cx={x}
+                        cy={220 - (day30Value * 2)}
+                        r={isLast ? "5" : "3"}
+                        fill="rgb(147, 51, 234)"
+                        className="drop-shadow-sm cursor-pointer hover:r-6 transition-all"
+                        title={`${point.periodLabel}: ${day30Value}% Day 30 retention`}
+                      />
+                      <text
+                        x={x}
+                        y={220 - (day30Value * 2) - 8}
+                        className="text-xs fill-purple-600 dark:fill-purple-400 font-semibold"
+                        textAnchor="middle"
+                      >
+                        {day30Value}%
+                      </text>
+                      
+                      {/* Etiqueta de tiempo */}
+                      <text
+                        x={x}
+                        y="245"
+                        className="text-xs fill-gray-500 dark:fill-gray-400"
+                        textAnchor="middle"
+                      >
+                        {point.periodLabel}
+                      </text>
+                    </g>
+                  )
+                })}
+                
+              </svg>
+            </div>
+            
+            {/* Leyenda */}
+            <div className="flex justify-center gap-4 mt-4 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <span className="text-gray-600 dark:text-gray-400">Day 1 Retention</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                <span className="text-gray-600 dark:text-gray-400">Day 7 Retention</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                <span className="text-gray-600 dark:text-gray-400">Day 30 Retention</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1281,6 +2418,144 @@ export default function EngagementPage() {
                     <li>• <span className="text-blue-600">Day 7 bajo:</span> No ven valor, tests aburridos</li>
                     <li>• <span className="text-purple-600">Day 30 bajo:</span> No hay hábito, falta gamificación</li>
                     <li>• <span className="text-orange-600">Estrategia:</span> Emails específicos por día de retención</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Engagement Depth */}
+      {showEngagementModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  📈 ¿Qué es Engagement Depth?
+                </h3>
+                <button 
+                  onClick={() => setShowEngagementModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="text-sm text-gray-600 dark:text-gray-300 space-y-4">
+                <div>
+                  <p className="font-medium mb-2">¿Qué mide esta métrica?</p>
+                  <p><strong>Engagement Depth:</strong> Mide la CALIDAD del engagement, no solo la cantidad. ¿Los usuarios que se quedan realmente usan la app intensivamente?</p>
+                  <p className="mt-2"><strong>Diferencia clave:</strong> Un usuario puede ser "activo" con 1 test/mes vs. otro con 20 tests/mes</p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+                  <p className="font-medium mb-2">Métricas incluidas:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <strong>Tests por usuario activo:</strong> Intensidad de uso promedio</li>
+                    <li>• <strong>Días activos/mes:</strong> Frecuencia de regreso</li>
+                    <li>• <strong>Streak promedio:</strong> Días consecutivos máximos</li>
+                    <li>• <strong>Distribución:</strong> Casual vs Regular vs Power users</li>
+                  </ul>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                  <p className="font-medium mb-2">💡 ¿Por qué es importante?</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <span className="text-blue-600">Predice LTV</span>: Power users valen 10x más que casuales</li>
+                    <li>• <span className="text-green-600">Detecta engagement real</span>: ¿Los usuarios realmente usan o solo "prueban"?</li>
+                    <li>• <span className="text-purple-600">Segmentación</span>: Diferentes estrategias para cada tipo</li>
+                    <li>• <span className="text-orange-600">Product-market fit</span>: High depth = producto adictivo</li>
+                  </ul>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
+                  <p className="font-medium mb-2">📊 Benchmarks para Vence:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <span className="text-green-600">Tests/usuario: 8+</span> = Engagement profundo</li>
+                    <li>• <span className="text-blue-600">Días activos: 6+</span> = Uso regular</li>
+                    <li>• <span className="text-purple-600">Streak: 4+ días</span> = Formación de hábito</li>
+                    <li>• <span className="text-orange-600">Power users: 30%+</span> = Base sólida</li>
+                  </ul>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <p className="font-medium mb-2">🎯 Para Vence específicamente:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <span className="text-green-600">Casual users</span>: Email de "¿cómo van los estudios?"</li>
+                    <li>• <span className="text-blue-600">Regular users</span>: Recordatorios de consistencia</li>
+                    <li>• <span className="text-purple-600">Power users</span>: Features avanzadas, referrals</li>
+                    <li>• <span className="text-orange-600">Streak bajo</span>: Gamificación y objetivos diarios</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Habit Formation */}
+      {showHabitModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  💪 ¿Qué es Habit Formation?
+                </h3>
+                <button 
+                  onClick={() => setShowHabitModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="text-sm text-gray-600 dark:text-gray-300 space-y-4">
+                <div>
+                  <p className="font-medium mb-2">¿Qué mide esta métrica?</p>
+                  <p><strong>Habit Formation:</strong> ¿Los usuarios han convertido Vence en un HÁBITO? Mide la frecuencia y consistencia del uso.</p>
+                  <p className="mt-2"><strong>Clave del éxito:</strong> Apps que forman hábitos tienen LTV 10x mayor y retención masiva</p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+                  <p className="font-medium mb-2">Métricas de hábito:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <strong>Power Users:</strong> 3+ días/semana (hábito fuerte)</li>
+                    <li>• <strong>Weekly Active:</strong> 7+ tests/mes (uso consistente)</li>
+                    <li>• <strong>Sesiones/semana:</strong> Intensidad general</li>
+                    <li>• <strong>Distribución:</strong> Ocasional → Regular → Habitual</li>
+                  </ul>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                  <p className="font-medium mb-2">🧠 Ciencia del hábito:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <span className="text-purple-600">21 días</span>: Tiempo mínimo para formar hábito</li>
+                    <li>• <span className="text-blue-600">3+ días/semana</span>: Frecuencia crítica</li>
+                    <li>• <span className="text-green-600">Consistencia {'>'} intensidad</span>: Mejor 10 min diarios que 2h semanales</li>
+                    <li>• <span className="text-orange-600">Triggers</span>: Notificaciones, recordatorios, contexto</li>
+                  </ul>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
+                  <p className="font-medium mb-2">📊 Benchmarks apps educativas:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <span className="text-green-600">Power Users: 25%+</span> = Hábito exitoso</li>
+                    <li>• <span className="text-blue-600">Weekly Active: 40%+</span> = Engagement sólido</li>
+                    <li>• <span className="text-purple-600">Ocasional {'<'} 50%</span> = Mayoría debe ser Regular+</li>
+                    <li>• <span className="text-red-500">Señal roja:</span> {'<'}15% power users</li>
+                  </ul>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <p className="font-medium mb-2">🎯 Estrategias de formación de hábito:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <span className="text-green-600">Daily goals</span>: "Haz 1 test al día"</li>
+                    <li>• <span className="text-blue-600">Streaks</span>: Gamificación de consistencia</li>
+                    <li>• <span className="text-purple-600">Time-based triggers</span>: "Tu test de las 19:00"</li>
+                    <li>• <span className="text-orange-600">Progress visible</span>: "Llevas 5 días seguidos"</li>
                   </ul>
                 </div>
               </div>
