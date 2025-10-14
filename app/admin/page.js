@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showDAUModal, setShowDAUModal] = useState(false)
 
   // Cargar estadísticas principales
   useEffect(() => {
@@ -617,13 +618,33 @@ export default function AdminDashboard() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-6 border">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                  DAU/MAU Ratio
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
+                    DAU/MAU Ratio
+                  </p>
+                  <button 
+                    onClick={() => setShowDAUModal(true)}
+                    className="w-5 h-5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-800/50 rounded-full flex items-center justify-center transition-colors"
+                    title="Ver información detallada"
+                  >
+                    <span className="text-xs text-blue-600 dark:text-blue-400">❓</span>
+                  </button>
+                </div>
                 <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats.dauMauRatio}%</p>
                 <p className="text-xs text-gray-500 mt-1">
                   {stats.averageDAU} DAU / {stats.MAU} MAU
                 </p>
+                <div className="mt-2">
+                  <p className="text-xs font-medium">
+                    {stats.dauMauRatio < 10 && <span className="text-orange-600">📊 Engagement bajo</span>}
+                    {stats.dauMauRatio >= 10 && stats.dauMauRatio < 20 && <span className="text-yellow-600">📈 Engagement medio</span>}
+                    {stats.dauMauRatio >= 20 && stats.dauMauRatio < 50 && <span className="text-green-600">🚀 Engagement bueno</span>}
+                    {stats.dauMauRatio >= 50 && <span className="text-purple-600">⭐ Engagement excepcional</span>}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Ideal: 20-30% para apps educativas
+                  </p>
+                </div>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-lg sm:text-2xl">📊</span>
@@ -634,30 +655,75 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Explicación DAU/MAU */}
-      {stats && stats.dauMauRatio > 0 && (
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg shadow border p-4 sm:p-6">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3">
-            📊 ¿Qué significa tu DAU/MAU de {stats.dauMauRatio}%?
-          </h3>
-          <div className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
-            <p>
-              <strong>DAU (Daily Active Users):</strong> {stats.averageDAU} usuarios únicos promedio diario (últimos 7 días)
-            </p>
-            <p>
-              <strong>MAU (Monthly Active Users):</strong> {stats.MAU} usuarios únicos en los últimos 30 días
-            </p>
-            <div className="mt-4 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50">
-              <p className="font-medium mb-2">Interpretación:</p>
-              <div className="text-sm">
-                {stats.dauMauRatio < 10 && <span className="text-orange-600">📊 Engagement bajo - Los usuarios usan la app ocasionalmente</span>}
-                {stats.dauMauRatio >= 10 && stats.dauMauRatio < 20 && <span className="text-yellow-600">📈 Engagement medio - App útil pero no diaria</span>}
-                {stats.dauMauRatio >= 20 && stats.dauMauRatio < 50 && <span className="text-green-600">🚀 Engagement bueno - Los usuarios han desarrollado un hábito</span>}
-                {stats.dauMauRatio >= 50 && <span className="text-purple-600">⭐ Engagement excepcional - App tipo red social/juego adictivo</span>}
+      {/* Modal DAU/MAU */}
+      {showDAUModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  📊 ¿Qué significa tu DAU/MAU de {stats?.dauMauRatio}%?
+                </h3>
+                <button 
+                  onClick={() => setShowDAUModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl"
+                >
+                  ✕
+                </button>
               </div>
-              <p className="mt-2 text-xs text-gray-500">
-                Significa que de cada 100 usuarios mensuales, {stats.dauMauRatio} la usan diariamente
-              </p>
+              
+              <div className="text-sm text-gray-600 dark:text-gray-300 space-y-4">
+                <div>
+                  <p className="font-medium mb-2">Definiciones:</p>
+                  <p><strong>DAU (Daily Active Users):</strong> {stats?.averageDAU} usuarios únicos promedio diario (últimos 7 días)</p>
+                  <p><strong>MAU (Monthly Active Users):</strong> {stats?.MAU} usuarios únicos en los últimos 30 días</p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+                  <p className="font-medium mb-2">Tu nivel actual:</p>
+                  <div className="text-sm">
+                    {stats?.dauMauRatio < 10 && (
+                      <span className="text-orange-600">📊 Engagement bajo - Los usuarios usan la app ocasionalmente</span>
+                    )}
+                    {stats?.dauMauRatio >= 10 && stats?.dauMauRatio < 20 && (
+                      <span className="text-yellow-600">📈 Engagement medio - App útil pero no diaria</span>
+                    )}
+                    {stats?.dauMauRatio >= 20 && stats?.dauMauRatio < 50 && (
+                      <span className="text-green-600">🚀 Engagement bueno - Los usuarios han desarrollado un hábito</span>
+                    )}
+                    {stats?.dauMauRatio >= 50 && (
+                      <span className="text-purple-600">⭐ Engagement excepcional - App tipo red social/juego adictivo</span>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Significa que de cada 100 usuarios mensuales, {stats?.dauMauRatio} la usan diariamente
+                  </p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                  <p className="font-medium mb-2">Benchmarks de la industria:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <span className="text-red-600">Bajo (&lt;10%)</span>: Apps ocasionales</li>
+                    <li>• <span className="text-yellow-600">Medio (10-20%)</span>: Apps útiles</li>
+                    <li>• <span className="text-green-600">Bueno (20-30%)</span>: Apps educativas exitosas</li>
+                    <li>• <span className="text-purple-600">Excepcional (&gt;30%)</span>: Apps adictivas (juegos, redes sociales)</li>
+                  </ul>
+                  <p className="mt-3 text-sm font-medium text-blue-700 dark:text-blue-300">
+                    🎯 Para Vence (app educativa): El rango ideal es 20-30%
+                  </p>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
+                  <p className="font-medium mb-2">Cómo mejorar el engagement:</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• 🔔 Notificaciones de estudio diarias</li>
+                    <li>• 🏆 Sistema de rachas y recompensas</li>
+                    <li>• 📈 Metas de estudio personalizadas</li>
+                    <li>• 💡 Contenido fresco y relevante</li>
+                    <li>• 🎯 Tests adaptativos que reten al usuario</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </div>
