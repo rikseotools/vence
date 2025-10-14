@@ -426,7 +426,7 @@ export default function HeaderES() {
                     </button>
                   )}
                   
-                  {/* 🔥 ICONO DE RACHA - Debajo del botón de medallas, posicionado absolutamente */}
+                  {/* 🔥 ICONO DE RACHA - Debajo del botón de medallas en móvil, posicionado absolutamente */}
                   {userStreak > 0 && (
                     <button
                       onClick={() => {
@@ -447,6 +447,28 @@ export default function HeaderES() {
                     </button>
                   )}
                 </div>
+              )}
+
+              {/* 🔥 ICONO DE RACHA DESKTOP - Al lado de medallas */}
+              {user && userStreak > 0 && (
+                <button
+                  onClick={() => {
+                    setShowRankingModal(true)
+                    // Establecer tab rachas cuando se abra el modal desde la racha
+                    setTimeout(() => {
+                      const rachaBtnElement = document.querySelector('[data-tab="rachas"]')
+                      if (rachaBtnElement) {
+                        rachaBtnElement.click()
+                      }
+                    }, 100)
+                  }}
+                  className="hidden lg:flex items-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  aria-label="Ver ranking de rachas"
+                  title={`Tu racha: ${userStreak > 30 ? '30+' : userStreak} días consecutivos`}
+                >
+                  <span className="text-lg">🔥</span>
+                  <span className="text-sm font-bold ml-1">{userStreak > 30 ? '30+' : userStreak}</span>
+                </button>
               )}
 
               {/* 🎯 ICONO DE TESTS - Solo en móvil */}
