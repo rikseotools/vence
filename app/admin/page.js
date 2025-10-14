@@ -43,8 +43,8 @@ export default function AdminDashboard() {
 
         // 3. Estadísticas de emails de esta semana (desde el lunes)
         const now = new Date()
-        const dayOfWeek = now.getDay() // 0 = domingo, 1 = lunes, etc.
-        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Convertir domingo a 6
+        const currentDayOfWeek = now.getDay() // 0 = domingo, 1 = lunes, etc.
+        const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1 // Convertir domingo a 6
         const thisMonday = new Date(now)
         thisMonday.setDate(now.getDate() - daysFromMonday)
         thisMonday.setHours(0, 0, 0, 0) // Inicio del lunes
@@ -189,8 +189,8 @@ export default function AdminDashboard() {
     
     // Cálculo de semana actual (lunes a domingo)
     const now = new Date()
-    const dayOfWeek = now.getDay() // 0 = domingo, 1 = lunes, etc.
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Convertir domingo a 6
+    const weekDayOfWeek = now.getDay() // 0 = domingo, 1 = lunes, etc.
+    const daysFromMonday = weekDayOfWeek === 0 ? 6 : weekDayOfWeek - 1 // Convertir domingo a 6
     const thisMonday = new Date(now)
     thisMonday.setDate(now.getDate() - daysFromMonday)
     thisMonday.setHours(0, 0, 0, 0) // Inicio del lunes
@@ -304,6 +304,54 @@ export default function AdminDashboard() {
     const activeUsersThisWeek = activeUsersThisWeekIds.size
     const activeUsersLast30Days = activeUsersLast30DaysIds.size
 
+    // 📊 CÁLCULO DAU/MAU para engagement
+    // DAU = Promedio de usuarios únicos que completaron tests en los últimos 7 días
+    const last7DaysTests = validCompletedTests.filter(t => {
+      const testDate = new Date(t.completed_at)
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      return testDate >= sevenDaysAgo
+    })
+    
+    // Calcular usuarios únicos por día en los últimos 7 días
+    const dailyActiveUsers = {}
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+      const dateKey = date.toISOString().split('T')[0]
+      dailyActiveUsers[dateKey] = new Set()
+    }
+    
+    last7DaysTests.forEach(test => {
+      const testDate = new Date(test.completed_at)
+      const dateKey = testDate.toISOString().split('T')[0]
+      if (dailyActiveUsers[dateKey] && existingUserIds.has(test.user_id)) {
+        dailyActiveUsers[dateKey].add(test.user_id)
+      }
+    })
+    
+    // Promedio de DAU en los últimos 7 días
+    const dailyActiveUsersArray = Object.values(dailyActiveUsers).map(set => set.size)
+    const averageDAU = dailyActiveUsersArray.length > 0 ? 
+      Math.round(dailyActiveUsersArray.reduce((sum, dau) => sum + dau, 0) / dailyActiveUsersArray.length) : 0
+    
+    // MAU = Usuarios activos en los últimos 30 días
+    const MAU = activeUsersLast30Days
+    
+    // Ratio DAU/MAU como porcentaje
+    const dauMauRatio = MAU > 0 ? Math.round((averageDAU / MAU) * 100) : 0
+
+    // 📈 PROYECCIÓN ANUAL basada en crecimiento semanal CORREGIDO
+    const currentDate = new Date()
+    const projectionDayOfWeek = currentDate.getDay() // 0 = domingo, 1 = lunes, etc.
+    const daysPassedThisWeek = projectionDayOfWeek === 0 ? 7 : projectionDayOfWeek // Domingo cuenta como 7
+    
+    // Calcular promedio diario de esta semana parcial
+    const averageUsersPerDay = daysPassedThisWeek > 0 ? newUsersThisWeek / daysPassedThisWeek : 0
+    
+    // Proyectar a semana completa (7 días) y luego a año (52 semanas)
+    const projectedUsersPerWeek = averageUsersPerDay * 7
+    const projectedUsersNextYear = projectedUsersPerWeek > 0 ? 
+      totalUsers + Math.round(projectedUsersPerWeek * 52) : totalUsers
+
     const result = {
       totalUsers,
       activeUsers,
@@ -319,7 +367,16 @@ export default function AdminDashboard() {
       newUsersThisWeekBySource, // 📊 NUEVO: Desglose por fuente
       abandonedTests: abandonedTests.length,
       totalTestsAttempted: totalAttempts,
-      usersWhoCompletedTests
+      usersWhoCompletedTests,
+      // 📊 NUEVO: Métricas DAU/MAU
+      averageDAU,
+      MAU,
+      dauMauRatio,
+      // 📈 NUEVO: Proyección anual
+      projectedUsersNextYear,
+      averageUsersPerDay,
+      projectedUsersPerWeek,
+      daysPassedThisWeek
     }
 
     console.log('📊 ESTADÍSTICAS FINALES:', result)
@@ -461,7 +518,7 @@ export default function AdminDashboard() {
 
       {/* Métricas principales - Mobile responsive */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6">
           
           {/* Total de usuarios */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-6 border">
@@ -476,6 +533,15 @@ export default function AdminDashboard() {
                   <div className="text-xs text-gray-700 dark:text-gray-300 mt-1 font-medium">
                     🌱 {stats.newUsersThisWeekBySource?.organic || 0} Orgánico • 💰 {stats.newUsersThisWeekBySource?.google_ads || 0} Google • 📘 {stats.newUsersThisWeekBySource?.meta_ads || 0} Meta
                   </div>
+                  {stats.newUsersThisWeek > 0 && (
+                    <div className="text-xs text-purple-600 mt-2 font-medium">
+                      📈 Proyección 2026: ~{stats.projectedUsersNextYear.toLocaleString()} usuarios
+                      <br />
+                      <span className="text-xs text-gray-500">
+                        ({stats.averageUsersPerDay.toFixed(1)}/día × 365 días)
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -489,11 +555,11 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                  Han Hecho Tests
+                  Usuarios Activos
                 </p>
                 <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.engagementRate}%</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {stats.usersWhoCompletedTests}/{stats.totalUsers} usuarios
+                  {stats.usersWhoCompletedTests}/{stats.totalUsers} han completado algún test
                 </p>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -538,7 +604,7 @@ export default function AdminDashboard() {
                 </p>
                 <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.averageAccuracy}%</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  {stats.completionRate}% completan tests
+                  {stats.completionRate}% de los tests iniciados se completan
                 </p>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -547,6 +613,53 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* DAU/MAU Ratio - NUEVA MÉTRICA */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-6 border">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
+                  DAU/MAU Ratio
+                </p>
+                <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats.dauMauRatio}%</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {stats.averageDAU} DAU / {stats.MAU} MAU
+                </p>
+              </div>
+              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-lg sm:text-2xl">📊</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* Explicación DAU/MAU */}
+      {stats && stats.dauMauRatio > 0 && (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg shadow border p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3">
+            📊 ¿Qué significa tu DAU/MAU de {stats.dauMauRatio}%?
+          </h3>
+          <div className="text-sm text-gray-600 dark:text-gray-300 space-y-2">
+            <p>
+              <strong>DAU (Daily Active Users):</strong> {stats.averageDAU} usuarios únicos promedio diario (últimos 7 días)
+            </p>
+            <p>
+              <strong>MAU (Monthly Active Users):</strong> {stats.MAU} usuarios únicos en los últimos 30 días
+            </p>
+            <div className="mt-4 p-3 rounded-lg bg-white/50 dark:bg-gray-800/50">
+              <p className="font-medium mb-2">Interpretación:</p>
+              <div className="text-sm">
+                {stats.dauMauRatio < 10 && <span className="text-orange-600">📊 Engagement bajo - Los usuarios usan la app ocasionalmente</span>}
+                {stats.dauMauRatio >= 10 && stats.dauMauRatio < 20 && <span className="text-yellow-600">📈 Engagement medio - App útil pero no diaria</span>}
+                {stats.dauMauRatio >= 20 && stats.dauMauRatio < 50 && <span className="text-green-600">🚀 Engagement bueno - Los usuarios han desarrollado un hábito</span>}
+                {stats.dauMauRatio >= 50 && <span className="text-purple-600">⭐ Engagement excepcional - App tipo red social/juego adictivo</span>}
+              </div>
+              <p className="mt-2 text-xs text-gray-500">
+                Significa que de cada 100 usuarios mensuales, {stats.dauMauRatio} la usan diariamente
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
