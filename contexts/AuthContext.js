@@ -6,6 +6,7 @@ import { getSupabaseClient } from '../lib/supabase'
 import notificationTracker from '../lib/services/notificationTracker'
 import emailTracker from '../lib/services/emailTracker'
 import { shouldForceCheckout, forceCampaignCheckout } from '../lib/campaignTracker'
+import { GoogleAdsEvents } from '../utils/googleAds'
 
 const AuthContext = createContext({})
 
@@ -291,6 +292,16 @@ export function AuthProvider({ children, initialUser = null }) {
         if (newUser) {
           // Usuario logueado - asegurar perfil y cargar datos
           console.log('👤 Usuario logueado, procesando perfil...')
+          
+          // 🎯 TRACKING GOOGLE ADS: Solo para nuevos usuarios (SIGNED_UP)
+          if (event === 'SIGNED_UP') {
+            console.log('🎯 Nuevo usuario registrado, tracking Google Ads conversion')
+            try {
+              GoogleAdsEvents.SIGNUP('google_oauth')
+            } catch (error) {
+              console.warn('⚠️ Error tracking Google Ads signup:', error)
+            }
+          }
           
           // 🆕 VERIFICAR SI DEBE FORZAR CHECKOUT (COOKIES DE CAMPAÑA)
           if (shouldForceCheckout(newUser, supabase)) {

@@ -664,13 +664,6 @@ const questionData = {
 • Opción C: [Por qué es incorrecta]
 • Opción D: [Por qué es incorrecta]
 
-❌ Errores comunes a evitar
-• [Error típico 1]
-• [Error típico 2]
-• [Error típico 3]
-• [Error típico 4]
-
-💪 Consejo de oposición: [Estrategia específica para examen real]
 ```
 
 **🎯 ELEMENTOS OBLIGATORIOS:**
@@ -678,8 +671,6 @@ const questionData = {
 1. **💡 Evaluación del ejercicio** - Qué habilidad mide
 2. **📊 Análisis visual paso a paso** - Con emojis y colores
 3. **⚡ Técnicas rápidas numeradas** - Mínimo 3 métodos
-4. **❌ Errores comunes** - 4 puntos específicos  
-5. **💪 Consejo final** - Estrategia de examen
 
 **❌ Explicaciones Malas (Evitar):**
 - Sin estructura visual (emojis, colores)
@@ -952,14 +943,6 @@ const questionData = {
       {
         title: "⚡ TÉCNICAS DE ANÁLISIS RÁPIDO (Para oposiciones)",
         content: "3 métodos específicos para resolver ESTA pregunta:\n🔍 Método 1: [específico]\n📊 Método 2: [específico]\n💰 Método 3: Descarte de opciones [específico]"
-      },
-      {
-        title: "❌ Errores comunes a evitar",
-        content: "Errores específicos que se cometen en ESTE tipo de pregunta"
-      },
-      {
-        title: "💪 Consejo de oposición",
-        content: "Estrategia específica para preguntas similares a ESTA"
       }
     ]
   },

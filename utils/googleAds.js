@@ -31,16 +31,19 @@ export const trackConversion = (conversionLabel, value = null, currency = 'EUR')
 export const GoogleAdsEvents = {
   // 🎯 CONVERSIÓN PRINCIPAL: Usuario se registra
   SIGNUP: (method = 'email') => {
-    // ✅ USAR EL NUEVO EVENTO DE GOOGLE ADS
+    // 🎯 OPCIÓN 1: CARGA DE PÁGINA (recomendado para OAuth)
     if (typeof window !== 'undefined' && window.gtag) {
+      const transactionId = generateTransactionId()
+      
+      // Fragmento exacto de Google Ads (Opción: Carga de página)
       window.gtag('event', 'conversion_event_signup', {
-        method: method,
+        // <event_parameters> - Puedes añadir parámetros personalizados aquí
+        value: 1,
         currency: 'EUR',
-        value: 1, // Valor asignado para optimización
-        transaction_id: generateTransactionId()
+        transaction_id: transactionId
       })
       
-      console.log('🎯 Google Ads Conversion tracked: conversion_event_signup', { method })
+      console.log('🎯 Google Ads Conversion tracked (page load):', 'conversion_event_signup', { method })
     }
     
     // También enviar a GA4 (mantener esto si usas Google Analytics)

@@ -15,6 +15,9 @@ export default function GoogleAnalytics() {
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
           gtag('config', 'G-WXQ069CRY9');
+          
+          // Google Ads configuration
+          gtag('config', 'AW-10842123204');
         `}
       </Script>
     </>

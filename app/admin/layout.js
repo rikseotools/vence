@@ -56,6 +56,13 @@ export default function AdminLayout({ children }) {
                   <span className="hidden sm:inline">Analytics</span>
                 </a>
                 <a 
+                  href="/admin/engagement" 
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
+                >
+                  <span className="text-base">🎯</span>
+                  <span className="hidden sm:inline">Engagement</span>
+                </a>
+                <a 
                   href="/admin/notificaciones" 
                   className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
                 >
