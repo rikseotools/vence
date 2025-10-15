@@ -31,6 +31,8 @@ const TestConfigurator = ({
   const [onlyFailedQuestions, setOnlyFailedQuestions] = useState(false); // 🆕 Solo preguntas falladas
   const [showFailedQuestionsModal, setShowFailedQuestionsModal] = useState(false); // 🆕 Modal preguntas falladas
   const [failedQuestionsData, setFailedQuestionsData] = useState(null); // 🆕 Datos de preguntas falladas
+  const [failedQuestionsCount, setFailedQuestionsCount] = useState(25); // 🆕 Cantidad de preguntas falladas
+  const [selectedFailedOrder, setSelectedFailedOrder] = useState(null); // 🆕 Orden seleccionado
   
   // 🆕 Estados para filtro de leyes
   const [selectedLaws, setSelectedLaws] = useState(new Set());
@@ -598,7 +600,7 @@ const TestConfigurator = ({
     // Crear configuración especial para preguntas falladas
     const config = {
       tema: tema,
-      numQuestions: Math.min(maxQuestions, sortedQuestions.length),
+      numQuestions: failedQuestionsCount === 'all' ? sortedQuestions.length : Math.min(failedQuestionsCount, sortedQuestions.length),
       difficultyMode: 'random', // No importa la dificultad para preguntas falladas
       onlyOfficialQuestions: false,
       focusEssentialArticles: false,
@@ -1974,13 +1976,15 @@ const TestConfigurator = ({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-4 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">❌</span>
-                <div>
-                  <h3 className="text-lg font-bold">Preguntas Falladas - Tema {tema}</h3>
-                  <p className="text-red-100 text-sm">
-                    {failedQuestionsData.totalQuestions} preguntas únicas • {failedQuestionsData.totalFailures} fallos totales
+            <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <span className="text-xl sm:text-2xl">❌</span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-base sm:text-lg font-bold leading-tight">
+                    Preguntas Falladas - Tema {tema}
+                  </h3>
+                  <p className="text-red-100 text-xs sm:text-sm">
+                    {failedQuestionsData.totalQuestions} preguntas diferentes • {failedQuestionsData.totalFailures} fallos en total
                   </p>
                 </div>
               </div>
@@ -1999,6 +2003,24 @@ const TestConfigurator = ({
             {/* Content */}
             <div className="p-6 max-h-[70vh] overflow-y-auto">
               
+              {/* Información de preguntas disponibles */}
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-center">
+                  <span className="text-2xl mr-3">📊</span>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-800">
+                      {failedQuestionsData.totalQuestions}
+                    </div>
+                    <div className="text-sm text-blue-600">
+                      preguntas diferentes que has fallado
+                    </div>
+                    <div className="text-xs text-blue-500 mt-1">
+                      ({failedQuestionsData.totalFailures} fallos en total entre todas)
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Opciones de ordenación */}
               <div className="mb-6">
                 <h4 className="font-bold text-gray-800 mb-3 flex items-center">
@@ -2008,38 +2030,109 @@ const TestConfigurator = ({
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <button
-                    onClick={() => startFailedQuestionsTest('most_failed')}
-                    className="p-4 border-2 border-red-200 rounded-lg hover:border-red-400 hover:bg-red-50 transition-all text-left"
+                    onClick={() => setSelectedFailedOrder('most_failed')}
+                    className={`p-4 border-2 rounded-lg transition-all text-left ${
+                      selectedFailedOrder === 'most_failed'
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-red-200 hover:border-red-400 hover:bg-red-50'
+                    }`}
                   >
                     <div className="font-bold text-red-800 mb-1">🔥 Más veces falladas primero</div>
                     <div className="text-sm text-red-600">Empieza por las que más te cuesta dominar</div>
                   </button>
                   
                   <button
-                    onClick={() => startFailedQuestionsTest('recent_failed')}
-                    className="p-4 border-2 border-orange-200 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-all text-left"
+                    onClick={() => setSelectedFailedOrder('recent_failed')}
+                    className={`p-4 border-2 rounded-lg transition-all text-left ${
+                      selectedFailedOrder === 'recent_failed'
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-orange-200 hover:border-orange-400 hover:bg-orange-50'
+                    }`}
                   >
                     <div className="font-bold text-orange-800 mb-1">⏰ Últimas falladas primero</div>
                     <div className="text-sm text-orange-600">Repasa tus errores más recientes</div>
                   </button>
                   
                   <button
-                    onClick={() => startFailedQuestionsTest('oldest_failed')}
-                    className="p-4 border-2 border-blue-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                    onClick={() => setSelectedFailedOrder('oldest_failed')}
+                    className={`p-4 border-2 rounded-lg transition-all text-left ${
+                      selectedFailedOrder === 'oldest_failed'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-blue-200 hover:border-blue-400 hover:bg-blue-50'
+                    }`}
                   >
                     <div className="font-bold text-blue-800 mb-1">📅 Más antiguas primero</div>
                     <div className="text-sm text-blue-600">Refuerza conceptos que llevas tiempo sin repasar</div>
                   </button>
                   
                   <button
-                    onClick={() => startFailedQuestionsTest('random')}
-                    className="p-4 border-2 border-purple-200 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+                    onClick={() => setSelectedFailedOrder('random')}
+                    className={`p-4 border-2 rounded-lg transition-all text-left ${
+                      selectedFailedOrder === 'random'
+                        ? 'border-purple-500 bg-purple-50'
+                        : 'border-purple-200 hover:border-purple-400 hover:bg-purple-50'
+                    }`}
                   >
                     <div className="font-bold text-purple-800 mb-1">🎲 Orden aleatorio</div>
                     <div className="text-sm text-purple-600">Mezcladas para variar el repaso</div>
                   </button>
                 </div>
               </div>
+
+              {/* Selector de cantidad (solo se muestra cuando se ha elegido orden) */}
+              {selectedFailedOrder && (
+                <div className="mb-6">
+                  <h4 className="font-bold text-gray-800 mb-3 flex items-center">
+                    <span className="mr-2">🔢</span>
+                    ¿Cuántas preguntas quieres hacer?
+                  </h4>
+                  
+                  <div className="grid grid-cols-5 gap-1 sm:gap-2 mb-4">
+                    {(() => {
+                      const totalQuestions = failedQuestionsData.totalQuestions;
+                      const options = [];
+                      
+                      // Solo añadir opciones que sean menores al total disponible
+                      if (totalQuestions > 10) options.push(10);
+                      if (totalQuestions > 25) options.push(25);
+                      if (totalQuestions > 50) options.push(50);
+                      if (totalQuestions > 100) options.push(100);
+                      
+                      // Siempre añadir la opción "Todas" (número exacto)
+                      options.push('all');
+                      
+                      return options.map((count) => (
+                        <button
+                          key={count}
+                          onClick={() => setFailedQuestionsCount(count)}
+                          className={`p-2 sm:p-3 border-2 rounded-lg transition-all text-center font-medium ${
+                            failedQuestionsCount === count
+                              ? 'border-green-500 bg-green-50 text-green-700'
+                              : 'border-gray-200 hover:border-green-300 hover:bg-green-25'
+                          }`}
+                        >
+                          <div className="text-sm sm:text-lg font-bold">
+                            {count === 'all' ? totalQuestions : count}
+                          </div>
+                          <div className="text-xs text-gray-600 hidden sm:block">
+                            {count === 'all' ? 'Todas' : 'preguntas'}
+                          </div>
+                        </button>
+                      ));
+                    })()}
+                  </div>
+                  
+                  {/* Botón para iniciar el test */}
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => startFailedQuestionsTest(selectedFailedOrder)}
+                      className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                    >
+                      🚀 Comenzar Test de Repaso
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Lista de preguntas falladas */}
               <div>
