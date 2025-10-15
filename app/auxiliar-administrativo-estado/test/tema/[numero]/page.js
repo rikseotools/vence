@@ -736,6 +736,9 @@ export default function TemaPage({ params }) {
         ...(config.focusEssentialArticles && { focus_essential: 'true' }),
         ...(config.focusWeakAreas && { focus_weak: 'true' }),
         ...(config.adaptiveMode && { adaptive: 'true' }), // ✨ Agregar modo adaptativo
+        ...(config.onlyFailedQuestions && { only_failed: 'true' }), // 🆕 Solo preguntas falladas
+        ...(config.failedQuestionIds && { failed_question_ids: JSON.stringify(config.failedQuestionIds) }), // 🆕 IDs ordenados
+        ...(config.failedQuestionsOrder && { failed_questions_order: config.failedQuestionsOrder }), // 🆕 Tipo de orden
         ...(config.timeLimit && { time_limit: config.timeLimit.toString() })
       })
       

@@ -28,6 +28,9 @@ const TestConfigurator = ({
   const [onlyOfficialQuestions, setOnlyOfficialQuestions] = useState(false);
   const [focusEssentialArticles, setFocusEssentialArticles] = useState(false);
   const [adaptiveMode, setAdaptiveMode] = useState(true); // ✨ Activado por defecto
+  const [onlyFailedQuestions, setOnlyFailedQuestions] = useState(false); // 🆕 Solo preguntas falladas
+  const [showFailedQuestionsModal, setShowFailedQuestionsModal] = useState(false); // 🆕 Modal preguntas falladas
+  const [failedQuestionsData, setFailedQuestionsData] = useState(null); // 🆕 Datos de preguntas falladas
   
   // 🆕 Estados para filtro de leyes
   const [selectedLaws, setSelectedLaws] = useState(new Set());
@@ -470,6 +473,175 @@ const TestConfigurator = ({
     }
   };
 
+  // 🆕 Función para cargar preguntas falladas del usuario
+  const loadFailedQuestions = async () => {
+    if (!currentUser || !tema) return
+    
+    try {
+      console.log(`🔍 Cargando preguntas falladas para tema ${tema}...`)
+      
+      // Obtener todas las preguntas que el usuario ha respondido incorrectamente en este tema
+      const { data: failedAnswers, error: failedError } = await supabase
+        .from('test_questions')
+        .select(`
+          question_id,
+          created_at,
+          time_spent_seconds,
+          tests!inner(user_id),
+          questions!inner(
+            id,
+            question_text,
+            difficulty,
+            articles!inner(
+              article_number,
+              laws!inner(short_name)
+            )
+          )
+        `)
+        .eq('tests.user_id', currentUser.id)
+        .eq('tema_number', tema)
+        .eq('is_correct', false)
+        .order('created_at', { ascending: false })
+      
+      if (failedError) {
+        console.error('❌ Error obteniendo preguntas falladas:', failedError)
+        alert('Error al cargar las preguntas falladas')
+        return
+      }
+      
+      if (!failedAnswers || failedAnswers.length === 0) {
+        alert('No tienes preguntas falladas en este tema aún.\nCompleta algunos tests primero para poder usar esta función.')
+        setOnlyFailedQuestions(false)
+        return
+      }
+      
+      // Procesar y agrupar las preguntas falladas
+      const failedQuestionsMap = new Map()
+      
+      failedAnswers.forEach(answer => {
+        const questionId = answer.question_id
+        if (!failedQuestionsMap.has(questionId)) {
+          failedQuestionsMap.set(questionId, {
+            questionId,
+            questionText: answer.questions.question_text.substring(0, 80) + '...',
+            difficulty: answer.questions.difficulty,
+            articleNumber: answer.questions.articles?.article_number,
+            lawShortName: answer.questions.articles?.laws?.short_name,
+            failedCount: 0,
+            lastFailed: answer.created_at,
+            firstFailed: answer.created_at,
+            totalTime: 0
+          })
+        }
+        
+        const question = failedQuestionsMap.get(questionId)
+        question.failedCount++
+        question.totalTime += (answer.time_spent_seconds || 0)
+        
+        // Actualizar fechas
+        if (new Date(answer.created_at) > new Date(question.lastFailed)) {
+          question.lastFailed = answer.created_at
+        }
+        if (new Date(answer.created_at) < new Date(question.firstFailed)) {
+          question.firstFailed = answer.created_at
+        }
+      })
+      
+      const failedQuestionsList = Array.from(failedQuestionsMap.values())
+      
+      setFailedQuestionsData({
+        totalQuestions: failedQuestionsList.length,
+        totalFailures: failedAnswers.length,
+        questions: failedQuestionsList
+      })
+      
+      setShowFailedQuestionsModal(true)
+      
+      console.log(`✅ ${failedQuestionsList.length} preguntas falladas cargadas`)
+      
+    } catch (error) {
+      console.error('❌ Error cargando preguntas falladas:', error)
+      alert('Error al cargar las preguntas falladas')
+      setOnlyFailedQuestions(false)
+    }
+  }
+
+  // 🆕 Función para iniciar test de preguntas falladas con orden específico
+  const startFailedQuestionsTest = (sortOrder) => {
+    if (!failedQuestionsData || !currentUser) return
+    
+    // Ordenar las preguntas según la opción elegida
+    let sortedQuestions = [...failedQuestionsData.questions]
+    
+    switch (sortOrder) {
+      case 'most_failed':
+        sortedQuestions.sort((a, b) => b.failedCount - a.failedCount)
+        break
+      case 'recent_failed':
+        sortedQuestions.sort((a, b) => new Date(b.lastFailed) - new Date(a.lastFailed))
+        break
+      case 'oldest_failed':
+        sortedQuestions.sort((a, b) => new Date(a.firstFailed) - new Date(b.firstFailed))
+        break
+      case 'random':
+        // Mezclar aleatoriamente
+        for (let i = sortedQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [sortedQuestions[i], sortedQuestions[j]] = [sortedQuestions[j], sortedQuestions[i]]
+        }
+        break
+    }
+    
+    // Obtener IDs de las preguntas ordenadas
+    const sortedQuestionIds = sortedQuestions.map(q => q.questionId)
+    
+    // Crear configuración especial para preguntas falladas
+    const config = {
+      tema: tema,
+      numQuestions: Math.min(maxQuestions, sortedQuestions.length),
+      difficultyMode: 'random', // No importa la dificultad para preguntas falladas
+      onlyOfficialQuestions: false,
+      focusEssentialArticles: false,
+      excludeRecent: false,
+      recentDays: 30,
+      focusWeakAreas: false,
+      adaptiveMode: false, // Desactivar modo adaptativo para preguntas específicas
+      onlyFailedQuestions: true,
+      failedQuestionIds: sortedQuestionIds, // 🆕 Lista específica de preguntas falladas ordenadas
+      failedQuestionsOrder: sortOrder, // 🆕 Tipo de ordenación aplicada
+      // 🆕 FILTRO DE LEYES (mantener si estaban seleccionadas)
+      selectedLaws: Array.from(selectedLaws),
+      selectedArticlesByLaw: Object.fromEntries(
+        Array.from(selectedArticlesByLaw.entries()).map(([lawId, articlesSet]) => [
+          lawId, 
+          Array.from(articlesSet)
+        ])
+      ),
+      timeLimit: null,
+      configSource: 'failed_questions_test',
+      configTimestamp: new Date().toISOString()
+    }
+
+    console.log('🎯 Iniciando test de preguntas falladas:', {
+      sortOrder,
+      questionsCount: sortedQuestions.length,
+      firstFewIds: sortedQuestionIds.slice(0, 5)
+    })
+
+    // Cerrar modal
+    setShowFailedQuestionsModal(false)
+    
+    try {
+      // Enviar configuración al componente padre
+      onStartTest(config)
+      console.log('✅ Test de preguntas falladas iniciado')
+      
+    } catch (error) {
+      console.error('❌ Error iniciando test de preguntas falladas:', error)
+      alert('Error al iniciar el test. Por favor, inténtalo de nuevo.')
+    }
+  }
+
   // 🆕 Funciones para manejar filtro de artículos
   const openArticleModal = async (lawShortName) => {
     setCurrentLawForArticles(lawShortName);
@@ -548,6 +720,7 @@ const TestConfigurator = ({
       recentDays: 30, // Valor por defecto para días recientes
       focusWeakAreas: false, // Por defecto no enfocar en áreas débiles
       adaptiveMode: adaptiveMode, // ✨ Incluir modo adaptativo
+      onlyFailedQuestions: onlyFailedQuestions, // 🆕 Solo preguntas falladas alguna vez
       // 🆕 FILTRO DE LEYES
       selectedLaws: Array.from(selectedLaws), // Convertir Set a Array
       // 🆕 FILTRO DE ARTÍCULOS POR LEY
@@ -1036,6 +1209,41 @@ const TestConfigurator = ({
               </p>
             </div>
           </div>
+
+          {/* 🎯 SOLO PREGUNTAS FALLADAS */}
+          {currentUser && (
+            <div className="border-t border-gray-200 pt-4">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={onlyFailedQuestions}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      loadFailedQuestions()
+                    } else {
+                      setOnlyFailedQuestions(false)
+                      setFailedQuestionsData(null)
+                    }
+                  }}
+                  className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  ❌ Solo preguntas falladas alguna vez
+                  <span className="text-xs text-red-600 ml-1">(repaso)</span>
+                </span>
+              </label>
+              
+              {/* Información sobre preguntas falladas */}
+              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-xs text-red-700 mb-1">
+                  🎯 Incluye solo preguntas que has respondido incorrectamente al menos una vez
+                </p>
+                <p className="text-xs text-red-600">
+                  💡 Perfecto para repasar tus puntos débiles y reforzar el aprendizaje
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
 
@@ -1073,6 +1281,14 @@ const TestConfigurator = ({
                 {adaptiveMode ? 'Activo' : 'Desactivado'}
               </span>
             </div>
+            {currentUser && onlyFailedQuestions && (
+              <div className="col-span-2">
+                <span className="text-red-600">❌ Tipo:</span>
+                <span className="font-bold text-red-800 ml-1">
+                  Solo preguntas falladas
+                </span>
+              </div>
+            )}
           </div>
           
           {onlyOfficialQuestions && (
@@ -1748,6 +1964,125 @@ const TestConfigurator = ({
               >
                 Aplicar filtro
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 MODAL DE PREGUNTAS FALLADAS */}
+      {showFailedQuestionsModal && failedQuestionsData && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">❌</span>
+                <div>
+                  <h3 className="text-lg font-bold">Preguntas Falladas - Tema {tema}</h3>
+                  <p className="text-red-100 text-sm">
+                    {failedQuestionsData.totalQuestions} preguntas únicas • {failedQuestionsData.totalFailures} fallos totales
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowFailedQuestionsModal(false)
+                  setOnlyFailedQuestions(false)
+                  setFailedQuestionsData(null)
+                }}
+                className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+              >
+                <span className="text-white font-bold">×</span>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 max-h-[70vh] overflow-y-auto">
+              
+              {/* Opciones de ordenación */}
+              <div className="mb-6">
+                <h4 className="font-bold text-gray-800 mb-3 flex items-center">
+                  <span className="mr-2">🎯</span>
+                  ¿Cómo quieres ordenar las preguntas?
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <button
+                    onClick={() => startFailedQuestionsTest('most_failed')}
+                    className="p-4 border-2 border-red-200 rounded-lg hover:border-red-400 hover:bg-red-50 transition-all text-left"
+                  >
+                    <div className="font-bold text-red-800 mb-1">🔥 Más veces falladas primero</div>
+                    <div className="text-sm text-red-600">Empieza por las que más te cuesta dominar</div>
+                  </button>
+                  
+                  <button
+                    onClick={() => startFailedQuestionsTest('recent_failed')}
+                    className="p-4 border-2 border-orange-200 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-all text-left"
+                  >
+                    <div className="font-bold text-orange-800 mb-1">⏰ Últimas falladas primero</div>
+                    <div className="text-sm text-orange-600">Repasa tus errores más recientes</div>
+                  </button>
+                  
+                  <button
+                    onClick={() => startFailedQuestionsTest('oldest_failed')}
+                    className="p-4 border-2 border-blue-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
+                  >
+                    <div className="font-bold text-blue-800 mb-1">📅 Más antiguas primero</div>
+                    <div className="text-sm text-blue-600">Refuerza conceptos que llevas tiempo sin repasar</div>
+                  </button>
+                  
+                  <button
+                    onClick={() => startFailedQuestionsTest('random')}
+                    className="p-4 border-2 border-purple-200 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-all text-left"
+                  >
+                    <div className="font-bold text-purple-800 mb-1">🎲 Orden aleatorio</div>
+                    <div className="text-sm text-purple-600">Mezcladas para variar el repaso</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Lista de preguntas falladas */}
+              <div>
+                <h5 className="font-bold text-gray-800 mb-3">📋 Tus preguntas falladas:</h5>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {failedQuestionsData.questions.slice(0, 20).map((question, index) => (
+                    <div key={question.questionId} className="p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-gray-800 mb-1">
+                            {question.questionText}
+                          </div>
+                          <div className="flex items-center space-x-3 text-xs text-gray-600">
+                            <span>📝 Art. {question.articleNumber} {question.lawShortName}</span>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                              question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                              question.difficulty === 'hard' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {question.difficulty}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold text-red-600">
+                            ❌ {question.failedCount}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(question.lastFailed).toLocaleDateString('es-ES')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {failedQuestionsData.questions.length > 20 && (
+                    <div className="text-center text-sm text-gray-500 py-2">
+                      ... y {failedQuestionsData.questions.length - 20} preguntas más
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
