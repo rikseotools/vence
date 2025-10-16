@@ -1,7 +1,15 @@
 'use client'
 import Script from 'next/script'
+import { usePathname } from 'next/navigation'
 
 export default function GoogleAnalytics() {
+  const pathname = usePathname()
+  
+  // 🚫 NO cargar Google Analytics en rutas de administración
+  if (pathname?.startsWith('/admin')) {
+    return null
+  }
+
   return (
     <>
       {/* Google Analytics - Nueva cuenta limpia para evitar mezcla con otros dominios */}
