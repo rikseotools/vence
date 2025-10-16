@@ -30,6 +30,112 @@ export default function DataTableQuestion({
 
     setTableComponent(
       <div className="w-full">
+        {/* Formato table_data estándar */}
+        {tableData && tableData.headers && tableData.rows && (
+          <div className="mb-6">
+            <h3 className="font-bold text-gray-900 dark:text-white mb-3">
+              📋 {question.content_data?.table_title || tableData.title || 'Tabla de datos'}
+            </h3>
+            <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-700 rounded-lg p-4">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-orange-300 dark:border-orange-600">
+                  <thead>
+                    <tr className="bg-orange-100 dark:bg-orange-800/40">
+                      {tableData.headers.map((header, index) => (
+                        <th key={index} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-orange-800 dark:text-orange-300 font-semibold text-sm">
+                          {header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tableData.rows.map((row, rowIndex) => (
+                      <tr key={rowIndex} className="hover:bg-orange-25 dark:hover:bg-orange-900/10">
+                        {row.map((cell, cellIndex) => (
+                          <td key={cellIndex} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-center text-gray-700 dark:text-gray-300 text-sm">
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Formato múltiples tablas para flores */}
+        {tableData && tableData.main_table && tableData.characteristics_table && (
+          <div className="space-y-6">
+            {/* Tabla principal */}
+            <div className="mb-6">
+              <h3 className="font-bold text-gray-900 dark:text-white mb-3">
+                📋 {tableData.main_table.title}
+              </h3>
+              <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-700 rounded-lg p-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-orange-300 dark:border-orange-600">
+                    <thead>
+                      <tr className="bg-orange-100 dark:bg-orange-800/40">
+                        {tableData.main_table.headers.map((header, index) => (
+                          <th key={index} className="border border-orange-300 dark:border-orange-600 px-2 py-2 text-orange-800 dark:text-orange-300 font-semibold text-xs">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableData.main_table.rows.map((row, rowIndex) => (
+                        <tr key={rowIndex} className="hover:bg-orange-25 dark:hover:bg-orange-900/10">
+                          {row.map((cell, cellIndex) => (
+                            <td key={cellIndex} className="border border-orange-300 dark:border-orange-600 px-2 py-2 text-center text-gray-700 dark:text-gray-300 text-xs">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabla de características */}
+            <div className="mb-6">
+              <h3 className="font-bold text-gray-900 dark:text-white mb-3">
+                📋 {tableData.characteristics_table.title}
+              </h3>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-blue-300 dark:border-blue-600">
+                    <thead>
+                      <tr className="bg-blue-100 dark:bg-blue-800/40">
+                        {tableData.characteristics_table.headers.map((header, index) => (
+                          <th key={index} className="border border-blue-300 dark:border-blue-600 px-3 py-2 text-blue-800 dark:text-blue-300 font-semibold text-sm">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableData.characteristics_table.rows.map((row, rowIndex) => (
+                        <tr key={rowIndex} className="hover:bg-blue-25 dark:hover:bg-blue-900/10">
+                          {row.map((cell, cellIndex) => (
+                            <td key={cellIndex} className="border border-blue-300 dark:border-blue-600 px-3 py-2 text-center text-gray-700 dark:text-gray-300 text-sm">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Formato nuevo: múltiples tablas */}
         {tables && tables.map((table, tableIndex) => (
           <div key={tableIndex} className="mb-6">

@@ -14,10 +14,16 @@ export async function GET(request, { params }) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
 
-    // Obtener pregunta básica primero
+    // Obtener pregunta con joins a categorías y secciones
     const { data: question, error } = await supabase
       .from('psychometric_questions')
-      .select('*')
+      .select(`
+        *,
+        psychometric_sections!inner(
+          section_key, display_name,
+          psychometric_categories!inner(category_key, display_name)
+        )
+      `)
       .eq('id', id)
       .single()
 
@@ -30,7 +36,7 @@ export async function GET(request, { params }) {
       return Response.json({ error: 'Question not found' }, { status: 404 })
     }
 
-    // Formatear respuesta (simplificado sin joins)
+    // Formatear respuesta con datos reales
     const formattedQuestion = {
       id: question.id,
       question_text: question.question_text,
@@ -46,12 +52,12 @@ export async function GET(request, { params }) {
       content_data: question.content_data,
       explanation: question.explanation,
       category: {
-        key: 'capacidad-administrativa',
-        name: 'Capacidad Administrativa'
+        key: question.psychometric_sections.psychometric_categories.category_key,
+        name: question.psychometric_sections.psychometric_categories.display_name
       },
       section: {
-        key: 'graficos',
-        name: 'Gráficos'
+        key: question.psychometric_sections.section_key,
+        name: question.psychometric_sections.display_name
       },
       is_active: question.is_active,
       created_at: question.created_at

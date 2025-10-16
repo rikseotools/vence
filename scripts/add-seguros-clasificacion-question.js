@@ -9,7 +9,7 @@ async function addSegurosClasificacionQuestion() {
   const questionData = {
     category_id: '55fd4bd0-faf2-4737-8203-4c41e30be41a', // Categoría capacidad-administrativa
     section_id: '72730b63-b10e-4777-b4bd-8fe7b69871a1', // Sección 'tablas' de capacidad-administrativa
-    question_text: 'Se trata de un seguro de accidentes de 2000 euros y contratado el 21/05/2016. Según las clasificaciones dadas, ¿cómo debería marcarse?',
+    question_text: 'Aplicando las reglas de clasificación, ¿qué letra le corresponde al seguro de 4000 EUROS, tipo ACCIDENTES, contratado el 14/09/2016?',
     content_data: {
       chart_type: 'data_tables',
       chart_title: 'CLASIFICACIÓN DE SEGUROS',
@@ -29,8 +29,8 @@ async function addSegurosClasificacionQuestion() {
           headers: ['Concepto', 'Valor'],
           rows: [
             ['Tipo', 'Seguro de accidentes'],
-            ['Importe', '2000 euros'],
-            ['Fecha contrato', '21/05/2016']
+            ['Importe', '4000 euros'],
+            ['Fecha contrato', '14/09/2016']
           ]
         }
       ],
@@ -41,7 +41,7 @@ async function addSegurosClasificacionQuestion() {
         },
         {
           title: '📊 ANÁLISIS PASO A PASO:',
-          content: '📋 Datos del seguro:\n✅ Tipo: Accidentes\n✅ Importe: 2000 euros\n✅ Fecha: 21/05/2016\n\n📋 Verificación criterio A:\n✅ ¿Incendios o accidentes? → Accidentes ✓\n✅ ¿Entre 1500-4500 euros? → 2000 está en rango ✓\n✅ ¿Entre 15/03/2016 y 10/05/2017? → 21/05/2016 está en rango ✓\n✅ CUMPLE criterio A\n\n📋 Verificación otros criterios:\n❌ Criterio B: Pide hasta 3000 euros y desde 15/10/2016 (fecha muy tardía)\n✅ Criterio C: Pide incendios o vida (no accidentes)\n❌ Criterio D: Solo si no se cumple ninguno anterior'
+          content: '📋 Datos del seguro:\n✅ Tipo: Accidentes\n✅ Importe: 4000 euros\n✅ Fecha: 14/09/2016\n\n📋 Verificación criterio A:\n✅ ¿Incendios o accidentes? → Accidentes ✓\n✅ ¿Entre 1500-4500 euros? → 4000 está en rango ✓\n✅ ¿Entre 15/03/2016 y 10/05/2017? → 14/09/2016 está en rango ✓\n✅ CUMPLE criterio A\n\n📋 Verificación otros criterios:\n❌ Criterio B: Pide hasta 3000 euros (4000 > 3000)\n❌ Criterio C: Pide incendios o vida (no accidentes)\n❌ Criterio D: Solo si no se cumple ninguno anterior'
         },
         {
           title: '⚡ TÉCNICAS DE ANÁLISIS RÁPIDO (Para oposiciones)',
@@ -80,8 +80,8 @@ async function addSegurosClasificacionQuestion() {
     console.log('');
     console.log('📊 Verificación del criterio A:');
     console.log('   • Tipo: Accidentes ✓ (incendios o accidentes)');
-    console.log('   • Importe: 2000€ ✓ (entre 1500-4500€)');
-    console.log('   • Fecha: 21/05/2016 ✓ (entre 15/03/2016-10/05/2017)');
+    console.log('   • Importe: 4000€ ✓ (entre 1500-4500€)');
+    console.log('   • Fecha: 14/09/2016 ✓ (entre 15/03/2016-10/05/2017)');
     console.log('   • RESULTADO: Marque A en la columna 1');
 
   } catch (err) {

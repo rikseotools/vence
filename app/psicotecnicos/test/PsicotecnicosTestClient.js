@@ -137,7 +137,9 @@ export default function PsicotecnicosTestClient() {
           q.question_subtype === 'mixed_chart' ||
           q.question_subtype === 'data_tables'
         ).length,
-        'capacidad-ortografica': 0,
+        'capacidad-ortografica': data.filter(q => 
+          q.question_subtype === 'error_detection'
+        ).length,
         'pruebas-instrucciones': 0,
         'razonamiento-numerico': 0,
         'razonamiento-verbal': 0,
@@ -198,6 +200,13 @@ export default function PsicotecnicosTestClient() {
           } else if (question.question_subtype === 'data_tables') {
             // Las preguntas de tablas van a la subcategoría 'tablas'
             counts['tablas'] = (counts['tablas'] || 0) + 1
+          }
+        }
+        // Asignar preguntas de capacidad ortográfica
+        else if (categoryKey === 'capacidad-ortografica') {
+          if (question.question_subtype === 'error_detection') {
+            // Las preguntas de detección de errores van a la subcategoría 'ortografia'
+            counts['ortografia'] = (counts['ortografia'] || 0) + 1
           }
         }
         // Para otras categorías, NO asignar preguntas aleatorias - solo si realmente corresponden
@@ -481,9 +490,11 @@ export default function PsicotecnicosTestClient() {
                     return
                   }
                   
+                  // Si se solicitan más preguntas de las disponibles, ajustar automáticamente
+                  let adjustedNumQuestions = numQuestionsPsico
                   if (numQuestionsPsico > totalQuestions) {
-                    alert(`Solo hay ${totalQuestions} preguntas disponibles. Reduce el número de preguntas o selecciona más subcategorías.`)
-                    return
+                    adjustedNumQuestions = totalQuestions
+                    console.log(`🔄 Ajustando número de preguntas de ${numQuestionsPsico} a ${totalQuestions} (máximo disponible)`)
                   }
                   
                   // Construir URL con parámetros de categorías seleccionadas
@@ -492,8 +503,8 @@ export default function PsicotecnicosTestClient() {
                   if (selectedCategoryKeys.length > 0) {
                     urlParams.set('categories', selectedCategoryKeys.join(','))
                   }
-                  // Añadir parámetro de número de preguntas
-                  urlParams.set('numQuestions', numQuestionsPsico.toString())
+                  // Añadir parámetro de número de preguntas (ajustado si es necesario)
+                  urlParams.set('numQuestions', adjustedNumQuestions.toString())
                   
                   // Redirigir al test psicotécnico con parámetros
                   router.push(`/psicotecnicos/test/ejecutar?${urlParams.toString()}`)

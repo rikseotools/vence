@@ -6,6 +6,7 @@ import PieChartQuestion from '../../../../components/PieChartQuestion'
 import DataTableQuestion from '../../../../components/DataTableQuestion'
 import LineChartQuestion from '../../../../components/LineChartQuestion'
 import MixedChartQuestion from '../../../../components/MixedChartQuestion'
+import ErrorDetectionQuestion from '../../../../components/ErrorDetectionQuestion'
 
 export default function QuestionDebugPage() {
   const params = useParams()
@@ -83,6 +84,9 @@ export default function QuestionDebugPage() {
       
       case 'mixed_chart':
         return <MixedChartQuestion {...questionProps} />
+      
+      case 'error_detection':
+        return <ErrorDetectionQuestion {...questionProps} />
       
       default:
         return (

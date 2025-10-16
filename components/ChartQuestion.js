@@ -224,14 +224,14 @@ export default function ChartQuestion({
                 {selectedAnswer === question.correct_option ? '✓' : '✗'}
               </div>
               <h4 className="font-bold text-blue-900 text-lg">
-                CAPACIDAD ADMINISTRATIVA: GRÁFICOS
+                {question.psychometric_sections?.psychometric_categories?.display_name?.toUpperCase()}: {question.psychometric_sections?.display_name?.toUpperCase()}
               </h4>
             </div>
             
 
             <h4 className="font-bold text-blue-900 mb-3 flex items-center">
               <span className="bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
-              ANÁLISIS PASO A PASO:
+              {question.content_data?.chart_type === 'error_detection' ? 'EXPLICACIÓN:' : 'ANÁLISIS PASO A PASO:'}
             </h4>
             
             {/* Secciones específicas de explicación */}

@@ -270,13 +270,38 @@ El sistema utiliza campos JSONB para almacenar contenido flexible que se adapta 
 }
 ```
 
-### Para Detección de Errores (error_detection)
+### Para Detección de Errores Ortográficos (error_detection)
 ```json
 {
-  "original_text": "Texto original correcto",
-  "modified_text": "Texto con errores introducidos",
+  "chart_type": "error_detection",
+  "original_text": "La cegadora luz que provenia de los automobiles no permitia a los ciclistas avanzar la cuesta de la montaña.",
+  "correct_text": "La cegadora luz que provenía de los automóviles no permitía a los ciclistas avanzar la cuesta de la montaña.",
   "error_count": 3,
-  "error_types": ["ortografia", "puntuacion"]
+  "errors_found": [
+    {
+      "incorrect": "provenia",
+      "correct": "provenía",
+      "position": 8,
+      "error_type": "acentuación",
+      "explanation": "Falta tilde: provenía"
+    },
+    {
+      "incorrect": "automobiles",
+      "correct": "automóviles",
+      "position": 12,
+      "error_type": "acentuación",
+      "explanation": "Falta tilde: automóviles"
+    },
+    {
+      "incorrect": "permitia",
+      "correct": "permitía",
+      "position": 15,
+      "error_type": "acentuación",
+      "explanation": "Falta tilde: permitía"
+    }
+  ],
+  "operation_type": "orthographic_error_count",
+  "evaluation_description": "Capacidad de identificar errores ortográficos de acentuación en textos"
 }
 ```
 
@@ -531,6 +556,7 @@ Cada tipo de pregunta debe tener su componente React:
 - **PieChartQuestion.js** para gráficos de tarta
 - **DataTableQuestion.js** para tablas de datos
 - **SequenceQuestion.js** para series numéricas/alfabéticas
+- **ErrorDetectionQuestion.js** para detección de errores ortográficos
 
 #### 4. Características Técnicas Implementadas
 
@@ -867,7 +893,7 @@ export default function [Tipo]ChartQuestion({
 - **histogram**: Histogramas con distribuciones de frecuencia
 - **sequence_numeric**: Series numéricas con patrones aritméticos/geométricos
 - **sequence_alphabetic**: Series de letras con patrones del alfabeto
-- **error_detection**: Comparación texto original vs. modificado
+- **error_detection**: Detección de errores ortográficos en textos
 - **classification**: Agrupación de elementos según criterios
 
 ### 🚀 Escalabilidad
@@ -1329,3 +1355,120 @@ const analyzeInteractionPatterns = (interactionData) => {
 - **Datos inconsistentes**: Métricas que no cuadran
 
 Este sistema de estadísticas psicotécnicas representa un avance significativo en la personalización del aprendizaje, proporcionando insights específicos que permiten a los usuarios optimizar su preparación para oposiciones de manera científica y medible.
+
+## Sistema de Capacidad Ortográfica
+
+### Implementación de Preguntas de Detección de Errores
+
+#### Componente Especializado: ErrorDetectionQuestion.js
+
+**Características principales:**
+- **Renderizado visual limpio**: Texto destacado en caja azul sin duplicaciones
+- **Explicación didáctica dinámica**: Generada automáticamente desde `errors_found`
+- **Formato educativo**: Muestra cada error con su corrección y explicación
+- **Adaptable**: Funciona con cualquier número de errores y tipos de texto
+
+#### Estructura de Datos Requerida
+
+```javascript
+const questionData = {
+  question_text: 'Identifica todos los errores ortográficos en el texto presentado. ¿Cuántos errores ortográficos encuentras?',
+  content_data: {
+    chart_type: 'error_detection',
+    original_text: 'Texto con errores (sin tildes donde corresponde)',
+    correct_text: 'Texto corregido con todas las tildes',
+    error_count: 3,
+    errors_found: [
+      {
+        incorrect: 'palabra_mal',
+        correct: 'palabra_bien',
+        position: 8,
+        error_type: 'acentuación',
+        explanation: 'Falta tilde: palabra_bien'
+      }
+    ]
+  },
+  question_subtype: 'error_detection'
+}
+```
+
+#### Procesamiento Automático
+
+El componente `ErrorDetectionQuestion.js` genera automáticamente:
+
+1. **Visualización del texto**: En caja destacada azul
+2. **Explicación dinámica**: Basada en `errors_found`
+3. **Formato consistente**: 
+   ```
+   📝 Análisis de errores:
+   • palabra_mal → palabra_bien (explicación)
+   ```
+
+#### Integración en PsychometricTestLayout
+
+```javascript
+case 'error_detection':
+  return (
+    <ErrorDetectionQuestion
+      question={question}
+      onAnswer={handleAnswer}
+      selectedAnswer={selectedAnswer}
+      showResult={showResult}
+      isAnswering={isAnswering}
+      attemptCount={attemptCount}
+    />
+  );
+```
+
+#### Ventajas del Sistema
+
+✅ **Sin duplicación**: El texto aparece solo una vez en el componente visual  
+✅ **Explicaciones dinámicas**: Se generan automáticamente para cualquier pregunta  
+✅ **Formato educativo**: Cada error se explica didácticamente  
+✅ **Escalable**: Funciona con 1 error o 10 errores  
+✅ **Consistente**: Mismo formato visual que otros tipos de pregunta  
+
+#### Scripts de Ejemplo
+
+Para crear nuevas preguntas de capacidad ortográfica:
+
+```javascript
+// scripts/add-nueva-pregunta-ortografia.js
+const questionData = {
+  section_id: sectionId, // deteccion_errores bajo capacidad-ortografica
+  question_text: 'Identifica todos los errores ortográficos en el texto presentado. ¿Cuántos errores ortográficos encuentras?',
+  content_data: {
+    chart_type: 'error_detection',
+    original_text: 'Texto con errores ortograficos sin tildes',
+    correct_text: 'Texto con errores ortográficos sin tildes',
+    error_count: 2,
+    errors_found: [
+      {
+        incorrect: 'ortograficos',
+        correct: 'ortográficos',
+        explanation: 'Falta tilde: ortográficos'
+      },
+      // ... más errores
+    ]
+  },
+  question_subtype: 'error_detection',
+  // ... opciones A/B/C/D y respuesta correcta
+}
+```
+
+#### Mejores Prácticas
+
+1. **Textos realistas**: Usar frases que podrían aparecer en exámenes
+2. **Errores comunes**: Focalizarse en tildes y acentuación
+3. **Explicaciones claras**: "Falta tilde: palabra_correcta"
+4. **Respuesta coherente**: El `error_count` debe coincidir con los errores reales
+5. **Testing visual**: Usar `/debug/question/[id]` para verificar renderizado
+
+#### Tipos de Errores Soportados
+
+- **Acentuación**: Palabras sin tilde donde debería llevar
+- **Diacríticos**: Confusión entre sí/si, dé/de, etc.
+- **Ortografía general**: Palabras mal escritas
+- **Posición numérica**: Para algoritmos de detección automática
+
+Este sistema proporciona una base sólida para evaluar la capacidad ortográfica en oposiciones, con explicaciones educativas que ayudan al aprendizaje.
