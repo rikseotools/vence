@@ -299,8 +299,8 @@ export default function LawTestPageWrapper({
               isPrimary: true
             },
             backToTests: {
-              href: `/auxiliar-administrativo-estado/test`,
-              label: `🗂️ Tests por Tema`,
+              href: `/leyes`,
+              label: `📚 Tests de Otras Leyes`,
               isPrimary: false
             }
           }

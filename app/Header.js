@@ -180,6 +180,7 @@ export default function HeaderES() {
       return [
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
         { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+        { href: '/leyes', label: 'Leyes', icon: '⚖️' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
@@ -192,6 +193,7 @@ export default function HeaderES() {
       return [
         { href: `${basePath}/test`, label: 'Test', icon: '🎯' },
         { href: `${basePath}/temario`, label: 'Temario', icon: '📚' },
+        { href: '/leyes', label: 'Leyes', icon: '⚖️' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
@@ -200,6 +202,7 @@ export default function HeaderES() {
       return [
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
         { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+        { href: '/leyes', label: 'Leyes', icon: '⚖️' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
@@ -211,6 +214,7 @@ export default function HeaderES() {
     return [
       { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
       { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
+      { href: '/leyes', label: 'Leyes', icon: '⚖️' },
       { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' },
       { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
     ]
@@ -481,6 +485,18 @@ export default function HeaderES() {
                   title="Tests de Práctica"
                 >
                   <span className="text-xl">🎯</span>
+                </Link>
+              )}
+
+              {/* ⚖️ ICONO DE LEYES - Solo en móvil */}
+              {user && (
+                <Link
+                  href="/leyes"
+                  className="lg:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  aria-label="Ir a Leyes"
+                  title="Estudiar Leyes"
+                >
+                  <span className="text-xl">⚖️</span>
                 </Link>
               )}
 

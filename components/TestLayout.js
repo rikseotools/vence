@@ -1381,11 +1381,11 @@ export default function TestLayout({
                                 {/* Fallback para tema = 0 sin customNavigationLinks */}
                                 {tema === 0 && !config.customNavigationLinks?.backToLaw && (
                                   <Link
-                                    href="/auxiliar-administrativo-estado/test"
+                                    href={config.isLawTest ? "/leyes" : "/auxiliar-administrativo-estado/test"}
                                     className={`px-8 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color || 'from-blue-500 to-cyan-600'} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3`}
                                   >
                                     <span>📚</span>
-                                    <span>Volver a Tests</span>
+                                    <span>{config.isLawTest ? "Volver a Leyes" : "Volver a Tests"}</span>
                                   </Link>
                                 )}
                               </>
