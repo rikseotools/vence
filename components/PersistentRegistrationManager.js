@@ -27,6 +27,7 @@ export default function PersistentRegistrationManager({
   const [user, setUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [attempt, setAttempt] = useState(1)
+  const [userRejected, setUserRejected] = useState(false)
 
   // Verificar usuario
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function PersistentRegistrationManager({
 
   // 🎯 MODAL AL INICIAR TEST
   useEffect(() => {
-    if (!enabled || user || showModal || attempt !== 1 || !totalQuestions) return
+    if (!enabled || user || showModal || attempt !== 1 || !totalQuestions || userRejected) return
     
     console.log('🎯 Trigger: Test iniciado sin usuario')
     const timer = setTimeout(() => {
@@ -64,11 +65,11 @@ export default function PersistentRegistrationManager({
     }, 15000)
     
     return () => clearTimeout(timer)
-  }, [enabled, user, showModal, attempt, totalQuestions])
+  }, [enabled, user, showModal, attempt, totalQuestions, userRejected])
 
   // 🎯 TRIGGERS DESPUÉS DE RESPUESTAS
   useEffect(() => {
-    if (!enabled || user || !showResult) return
+    if (!enabled || user || !showResult || userRejected) return
     
     const shouldTrigger = (
       (currentQuestion === 1) ||                  // Después de la 2ª pregunta
@@ -85,22 +86,22 @@ export default function PersistentRegistrationManager({
         setAttempt(prev => prev + 1)
       }, 1500)
     }
-  }, [enabled, user, showResult, currentQuestion, attempt])
+  }, [enabled, user, showResult, currentQuestion, attempt, userRejected])
 
   // 🎯 TRIGGER AL COMPLETAR TEST
   useEffect(() => {
-    if (!enabled || user || !isTestCompleted) return
+    if (!enabled || user || !isTestCompleted || userRejected) return
     
     console.log('🎯 Trigger: Test completado sin registro')
     setTimeout(() => {
       setShowModal(true)
       setAttempt(prev => prev + 1)
     }, 2000)
-  }, [enabled, user, isTestCompleted])
+  }, [enabled, user, isTestCompleted, userRejected])
 
-  // 🎯 TRIGGER POR TIEMPO (cada 2 minutos)
+  // 🎯 TRIGGER POR TIEMPO (cada 3 minutos)
   useEffect(() => {
-    if (!enabled || user || showModal) return
+    if (!enabled || user || showModal || userRejected) return
     
     const interval = setInterval(() => {
       console.log('🎯 Trigger por tiempo: 2 minutos')
@@ -109,11 +110,11 @@ export default function PersistentRegistrationManager({
     }, 180000) // 3 minutos
     
     return () => clearInterval(interval)
-  }, [enabled, user, showModal])
+  }, [enabled, user, showModal, userRejected])
 
-  // 🎯 TRIGGER POR INACTIVIDAD (30 segundos sin responder)
+  // 🎯 TRIGGER POR INACTIVIDAD (45 segundos sin responder)
   useEffect(() => {
-    if (!enabled || user || showResult || showModal) return
+    if (!enabled || user || showResult || showModal || userRejected) return
     
     const timer = setTimeout(() => {
       console.log('🎯 Trigger por inactividad')
@@ -122,7 +123,7 @@ export default function PersistentRegistrationManager({
     }, 45000)
     
     return () => clearTimeout(timer)
-  }, [enabled, user, showResult, showModal, currentQuestion])
+  }, [enabled, user, showResult, showModal, currentQuestion, userRejected])
 
   // Manejadores
   const handleRegistrationSuccess = () => {
@@ -132,8 +133,14 @@ export default function PersistentRegistrationManager({
 
   const handleRegistrationSkip = () => {
     setShowModal(false)
-    setAttempt(prev => prev + 1)
-    console.log('👋 Usuario saltó registro, attempt:', attempt + 1)
+    if (attempt >= 6) {
+      // Si ya es "última oportunidad", marcar como rechazado permanentemente
+      setUserRejected(true)
+      console.log('🚫 Usuario rechazó definitivamente el registro')
+    } else {
+      setAttempt(prev => prev + 1)
+      console.log('👋 Usuario saltó registro, attempt:', attempt + 1)
+    }
   }
 
   // Función para trigger manual desde el banner
@@ -155,7 +162,7 @@ export default function PersistentRegistrationManager({
   return (
     <>
       {/* Banner persistente y molesto */}
-      {!user && (
+      {!user && !userRejected && (
         <div className={`border rounded-lg p-4 mb-6 ${
           attempt <= 2 ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200' :
           attempt <= 5 ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-300' :

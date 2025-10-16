@@ -24,10 +24,11 @@ export default function PsychometricRegistrationManager({
   // Estados internos
   const [showModal, setShowModal] = useState(false)
   const [attempt, setAttempt] = useState(1)
+  const [userRejected, setUserRejected] = useState(false)
 
   // 🎯 MODAL AL INICIAR TEST (después de 3 segundos)
   useEffect(() => {
-    if (!enabled || user || showModal || attempt !== 1 || !totalQuestions) return
+    if (!enabled || user || showModal || attempt !== 1 || !totalQuestions || userRejected) return
     
     console.log('🎯 Psychometric Trigger: Test iniciado sin usuario')
     const timer = setTimeout(() => {
@@ -35,11 +36,11 @@ export default function PsychometricRegistrationManager({
     }, 15000)
     
     return () => clearTimeout(timer)
-  }, [enabled, user, showModal, attempt, totalQuestions])
+  }, [enabled, user, showModal, attempt, totalQuestions, userRejected])
 
   // 🎯 TRIGGERS DESPUÉS DE RESPUESTAS
   useEffect(() => {
-    if (!enabled || user || !showResult) return
+    if (!enabled || user || !showResult || userRejected) return
     
     const shouldTrigger = (
       (currentQuestion === 1) ||                  // Después de la 2ª pregunta
@@ -56,22 +57,22 @@ export default function PsychometricRegistrationManager({
         setAttempt(prev => prev + 1)
       }, 1500)
     }
-  }, [enabled, user, showResult, currentQuestion, attempt])
+  }, [enabled, user, showResult, currentQuestion, attempt, userRejected])
 
   // 🎯 TRIGGER AL COMPLETAR TEST
   useEffect(() => {
-    if (!enabled || user || !isTestCompleted) return
+    if (!enabled || user || !isTestCompleted || userRejected) return
     
     console.log('🎯 Psychometric Trigger: Test completado sin registro')
     setTimeout(() => {
       setShowModal(true)
       setAttempt(prev => prev + 1)
     }, 2000)
-  }, [enabled, user, isTestCompleted])
+  }, [enabled, user, isTestCompleted, userRejected])
 
   // 🎯 TRIGGER POR TIEMPO (cada 90 segundos)
   useEffect(() => {
-    if (!enabled || user || showModal) return
+    if (!enabled || user || showModal || userRejected) return
     
     const interval = setInterval(() => {
       console.log('🎯 Psychometric Trigger por tiempo: 90 segundos')
@@ -80,11 +81,11 @@ export default function PsychometricRegistrationManager({
     }, 180000) // 3 minutos
     
     return () => clearInterval(interval)
-  }, [enabled, user, showModal])
+  }, [enabled, user, showModal, userRejected])
 
   // 🎯 TRIGGER POR INACTIVIDAD (25 segundos sin responder)
   useEffect(() => {
-    if (!enabled || user || showResult || showModal) return
+    if (!enabled || user || showResult || showModal || userRejected) return
     
     const timer = setTimeout(() => {
       console.log('🎯 Psychometric Trigger por inactividad')
@@ -93,13 +94,19 @@ export default function PsychometricRegistrationManager({
     }, 45000)
     
     return () => clearTimeout(timer)
-  }, [enabled, user, showResult, showModal, currentQuestion])
+  }, [enabled, user, showResult, showModal, currentQuestion, userRejected])
 
   // Manejadores
   const handleRegistrationSkip = () => {
     setShowModal(false)
-    setAttempt(prev => prev + 1)
-    console.log('👋 Usuario saltó registro psicotécnico, attempt:', attempt + 1)
+    if (attempt >= 6) {
+      // Si ya es "última oportunidad", marcar como rechazado permanentemente
+      setUserRejected(true)
+      console.log('🚫 Usuario rechazó definitivamente el registro psicotécnico')
+    } else {
+      setAttempt(prev => prev + 1)
+      console.log('👋 Usuario saltó registro psicotécnico, attempt:', attempt + 1)
+    }
   }
 
   // Función para trigger manual desde el banner
@@ -121,7 +128,7 @@ export default function PsychometricRegistrationManager({
   return (
     <>
       {/* Banner persistente y molesto */}
-      {!user && (
+      {!user && !userRejected && (
         <div className={`border rounded-lg p-4 mb-6 ${
           attempt <= 2 ? 'bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200' :
           attempt <= 5 ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-300' :
