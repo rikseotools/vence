@@ -32,7 +32,7 @@ export default function PsychometricRegistrationManager({
     console.log('🎯 Psychometric Trigger: Test iniciado sin usuario')
     const timer = setTimeout(() => {
       setShowModal(true)
-    }, 3000)
+    }, 15000)
     
     return () => clearTimeout(timer)
   }, [enabled, user, showModal, attempt, totalQuestions])
@@ -42,12 +42,11 @@ export default function PsychometricRegistrationManager({
     if (!enabled || user || !showResult) return
     
     const shouldTrigger = (
-      (currentQuestion === 0 && attempt === 1) || // Primera pregunta
-      (currentQuestion === 1 && attempt <= 2) ||  // Segunda pregunta  
-      (currentQuestion === 2 && attempt <= 3) ||  // Tercera pregunta
-      (currentQuestion === 3) ||                  // Cuarta pregunta
-      (currentQuestion === 5) ||                  // Sexta pregunta
-      (currentQuestion % 2 === 0 && currentQuestion > 5) // Cada 2 preguntas después
+      (currentQuestion === 1) ||                  // Después de la 2ª pregunta
+      (currentQuestion === 3) ||                  // Después de la 4ª pregunta
+      (currentQuestion === 5) ||                  // Después de la 6ª pregunta
+      (currentQuestion === 7) ||                  // Después de la 8ª pregunta
+      (currentQuestion % 2 === 1 && currentQuestion > 7) // Cada 2 preguntas después
     )
     
     if (shouldTrigger) {
@@ -78,7 +77,7 @@ export default function PsychometricRegistrationManager({
       console.log('🎯 Psychometric Trigger por tiempo: 90 segundos')
       setShowModal(true)
       setAttempt(prev => prev + 1)
-    }, 90000) // 90 segundos
+    }, 180000) // 3 minutos
     
     return () => clearInterval(interval)
   }, [enabled, user, showModal])
@@ -91,7 +90,7 @@ export default function PsychometricRegistrationManager({
       console.log('🎯 Psychometric Trigger por inactividad')
       setShowModal(true)
       setAttempt(prev => prev + 1)
-    }, 25000)
+    }, 45000)
     
     return () => clearTimeout(timer)
   }, [enabled, user, showResult, showModal, currentQuestion])
