@@ -16,6 +16,7 @@ import {
 export default function LawTestPageWrapper({
   // 🎯 Props obligatorias para tests de ley
   lawShortName, // Ej: 'CE', 'LPAC', 'Ley 19/2013'
+  lawSlug, // Ej: 'rdl-5-2015', 'ley-19-2013' - para navegación
   testType, // 'rapido', 'avanzado', 'oficial', 'aleatorio'
   
   // 🎯 Props de personalización (opcionales)
@@ -293,8 +294,8 @@ export default function LawTestPageWrapper({
           lawShortName: lawShortName,
           customNavigationLinks: {
             backToLaw: {
-              href: `/leyes`,
-              label: `📚 Ver Todas las Leyes`,
+              href: `/leyes/${lawSlug}`,
+              label: `📚 Volver a ${lawShortName}`,
               isPrimary: true
             },
             backToTests: {

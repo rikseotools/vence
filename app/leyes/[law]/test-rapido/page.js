@@ -53,6 +53,7 @@ export default async function TestRapidoLeyPage({ params, searchParams }) {
       }>
         <LawTestPageWrapper
           lawShortName={lawShortName}
+          lawSlug={resolvedParams.law}
           testType="rapido"
           customTitle={`Test Rápido: ${lawInfo.name}`}
           customDescription={`10 preguntas aleatorias de ${lawShortName}`}

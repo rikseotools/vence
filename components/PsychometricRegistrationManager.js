@@ -40,7 +40,7 @@ export default function PsychometricRegistrationManager({
 
   // 🎯 TRIGGERS DESPUÉS DE RESPUESTAS
   useEffect(() => {
-    if (!enabled || user || !showResult || userRejected) return
+    if (!enabled || user || !showResult || userRejected || showModal) return
     
     const shouldTrigger = (
       (currentQuestion === 1) ||                  // Después de la 2ª pregunta
@@ -57,7 +57,7 @@ export default function PsychometricRegistrationManager({
         setAttempt(prev => prev + 1)
       }, 1500)
     }
-  }, [enabled, user, showResult, currentQuestion, attempt, userRejected])
+  }, [enabled, user, showResult, currentQuestion, attempt, userRejected, showModal])
 
   // 🎯 TRIGGER AL COMPLETAR TEST
   useEffect(() => {

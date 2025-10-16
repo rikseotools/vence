@@ -54,6 +54,7 @@ export default async function TestAvanzadoLeyPage({ params, searchParams }) {
       }>
         <LawTestPageWrapper
           lawShortName={lawShortName}
+          lawSlug={resolvedParams.law}
           testType="avanzado"
           customTitle={`Test Avanzado: ${lawInfo.name}`}
           customDescription={`${numQuestions} preguntas para dominar ${lawShortName}`}
