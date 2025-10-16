@@ -155,44 +155,49 @@ export default function ProgressiveRegistrationModal({
       }
     } else if (attempt >= 3) {
       return {
-        icon: "🔥",
-        title: "¡Última Oportunidad!",
+        icon: "🚀",
+        title: "¡Regístrate Ahora!",
         subtitle: `${currentQuestion + 1}/${totalQuestions} completadas`,
-        urgency: "🚨 SIN REGISTRO = PROGRESO PERDIDO",
-        backgroundColor: "from-red-500 to-pink-600",
+        urgency: "✨ Solo toma 5 segundos con Google",
+        backgroundColor: "from-blue-500 to-indigo-600",
         benefits: [
-          "⚡ SOLO 1 CLICK con Google",
-          `🎯 ${currentQuestion + 1} respuestas se perderán`,
-          "📊 Análisis GRATIS de errores",
-          "🏆 Logros instantáneos"
+          "🧠 Análisis inteligente de tu progreso",
+          "📊 Seguimiento detallado de mejoras",
+          "🎯 Recomendaciones personalizadas",
+          "📱 Sincronización en todos tus dispositivos",
+          "🔥 Sistema de rachas motivacional",
+          "⚡ Detección automática de puntos débiles"
         ]
       }
     } else if (attempt >= 2) {
       return {
-        icon: "⚠️",
-        title: "¡No Pierdas tu Progreso!",
+        icon: "🚀",
+        title: "¡Regístrate Gratis!",
         subtitle: `${currentQuestion + 1} preguntas completadas`,
-        urgency: `⏰ ${timeLeft}s - Progreso se perderá`,
-        backgroundColor: "from-yellow-500 to-orange-500",
+        urgency: `✨ Desbloquea todas las funcionalidades premium`,
+        backgroundColor: "from-emerald-500 to-blue-500",
         benefits: [
-          "💾 Guardado automático",
-          "🔄 Continúa donde lo dejaste",
-          "📱 Acceso desde cualquier dispositivo",
-          "🤖 IA detecta puntos débiles"
+          "🧠 Análisis con IA de tu progreso",
+          "📊 Seguimiento detallado de mejoras",
+          "🎯 Recomendaciones personalizadas",
+          "📱 Sincronización en todos tus dispositivos",
+          "🔥 Sistema de rachas motivacional",
+          "⚡ Detección automática de puntos débiles"
         ]
       }
     } else {
       return {
         icon: "🚀",
-        title: "¡Bienvenido al Test!",
-        subtitle: "Registro gratis para experiencia completa",
-        urgency: "Guarda tu progreso automáticamente",
+        title: "¡Regístrate Gratis!",
+        subtitle: "Desbloquea el poder de la IA",
+        urgency: "✨ Transforma tu forma de estudiar",
         backgroundColor: "from-emerald-600 to-cyan-600",
         benefits: [
-          "📊 Progreso en la nube",
-          "🎯 Recomendaciones IA",
-          "📈 Analytics detallados",
-          "🏆 Sistema de logros"
+          "🧠 Análisis inteligente con IA",
+          "📊 Seguimiento completo de progreso",
+          "🎯 Recomendaciones personalizadas",
+          "🔥 Sistema de rachas motivacional",
+          "📱 Acceso desde cualquier dispositivo"
         ]
       }
     }
@@ -291,7 +296,7 @@ export default function ProgressiveRegistrationModal({
                   </div>
                   <span>
                     {isCompleted ? "💾 Guardar Resultado" :
-                     attempt >= 3 ? "🆘 RESCATAR PROGRESO" :
+                     attempt >= 3 ? "🚀 Registrarse Ahora" :
                      "🚀 Registrarse con Google"}
                   </span>
                 </>
@@ -310,7 +315,7 @@ export default function ProgressiveRegistrationModal({
                   : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600'
               }`}
             >
-              {attempt >= 3 ? "Perder todo y continuar" : "Continuar sin guardar"}
+              {attempt >= 3 ? "Continuar sin registrarse" : "Continuar sin guardar"}
             </button>
           </div>
 

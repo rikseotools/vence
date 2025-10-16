@@ -1371,7 +1371,7 @@ export default function TestLayout({
                                 {config.customNavigationLinks?.backToTests && (
                                   <Link
                                     href={config.customNavigationLinks.backToTests.href}
-                                    className="px-8 py-4 rounded-lg font-semibold text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3"
+                                    className="px-8 py-4 rounded-lg font-semibold text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3"
                                   >
                                     <span>🗂️</span>
                                     <span>{config.customNavigationLinks.backToTests.label}</span>
