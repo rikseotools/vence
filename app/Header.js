@@ -24,6 +24,7 @@ export default function HeaderES() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
   const [userStreak, setUserStreak] = useState(0)
+  const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
   
@@ -124,6 +125,56 @@ export default function HeaderES() {
     }
   }, [user, supabase, authLoading])
 
+  // 🆕 VERIFICAR CONVERSACIONES DE FEEDBACK PENDIENTES
+  useEffect(() => {
+    async function checkPendingFeedbacks() {
+      if (!user || !supabase || !isAdmin) {
+        setPendingFeedbacks(0)
+        return
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('feedback_conversations')
+          .select('id')
+          .eq('status', 'waiting_admin')
+
+        if (error) {
+          console.error('Error verificando feedbacks pendientes:', error)
+          setPendingFeedbacks(0)
+        } else {
+          // Filtrar conversaciones que ya fueron vistas
+          let unviewedCount = data?.length || 0
+          
+          try {
+            const stored = localStorage.getItem('admin_viewed_conversations')
+            if (stored && data) {
+              const viewedIds = new Set(JSON.parse(stored))
+              const unviewedConversations = data.filter(conv => !viewedIds.has(conv.id))
+              unviewedCount = unviewedConversations.length
+              console.log(`🔔 Header: ${data.length} total, ${viewedIds.size} vistas, ${unviewedCount} pendientes`)
+            }
+          } catch (storageError) {
+            console.error('Error leyendo localStorage:', storageError)
+          }
+          
+          setPendingFeedbacks(unviewedCount)
+        }
+      } catch (err) {
+        console.error('Error en verificación de feedbacks:', err)
+        setPendingFeedbacks(0)
+      }
+    }
+
+    if (!authLoading && isAdmin) {
+      checkPendingFeedbacks()
+      
+      // Verificar cada 10 segundos para sincronización más rápida
+      const interval = setInterval(checkPendingFeedbacks, 10000)
+      return () => clearInterval(interval)
+    }
+  }, [user, supabase, authLoading, isAdmin])
+
   // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = () => {
     if (!hasOposicion || loading) {
@@ -178,7 +229,13 @@ export default function HeaderES() {
     if (user && isAdmin && !adminLoading) {
       return [
         ...baseLinks,
-        { href: '/admin', label: 'Panel Admin', icon: '👨‍💼', isAdmin: true }
+        { 
+          href: '/admin', 
+          label: 'Panel Admin', 
+          icon: '👨‍💼', 
+          isAdmin: true,
+          badge: pendingFeedbacks > 0 ? pendingFeedbacks : null
+        }
       ]
     }
     
@@ -306,11 +363,20 @@ export default function HeaderES() {
               {user && isAdmin && !adminLoading && (
                 <Link 
                   href="/admin"
-                  className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 transition-colors text-red-700 hover:text-red-800"
-                  title="Panel de Administración"
+                  className={`hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors relative ${
+                    pendingFeedbacks > 0 
+                      ? 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800 animate-pulse' 
+                      : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800'
+                  }`}
+                  title={`Panel de Administración${pendingFeedbacks > 0 ? ` (${pendingFeedbacks} pendientes)` : ''}`}
                 >
                   <span className="text-sm">👨‍💼</span>
                   <span className="text-sm font-medium">Admin</span>
+                  {pendingFeedbacks > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-bounce">
+                      {pendingFeedbacks > 9 ? '9+' : pendingFeedbacks}
+                    </span>
+                  )}
                 </Link>
               )}
 
@@ -538,12 +604,17 @@ export default function HeaderES() {
                     onClick={handleLinkClick}
                   >
                     <span className="text-2xl">{link.icon}</span>
-                    <div className="flex-1">
+                    <div className="flex-1 relative">
                       <span className="text-lg font-medium">{link.label}</span>
                       {link.isAdmin && (
                         <div className="text-xs text-red-600 dark:text-red-400">Panel de Administración</div>
                       )}
                     </div>
+                    {link.badge && (
+                      <span className="bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold animate-bounce">
+                        {link.badge > 9 ? '9+' : link.badge}
+                      </span>
+                    )}
                     {(pathname === link.href || (link.isAdmin && pathname.startsWith('/admin'))) && (
                       <span className={
                         link.isAdmin ? 'text-red-500' :

@@ -40,6 +40,13 @@ export async function POST(request) {
         }
         break
 
+      case 'chat_response':
+        emailContent = {
+          subject: `💬 Nueva Respuesta en Chat - ${data.userName}`,
+          html: generateChatResponseEmailHTML(data)
+        }
+        break
+
       default:
         return NextResponse.json(
           { success: false, error: 'Tipo de notificación no válido' },
@@ -258,6 +265,69 @@ function generateNewUserEmailHTML(data) {
             <a href="${data.adminUrl}" 
                style="background: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
               👁️ Ver Perfil de Usuario
+            </a>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+            <p style="margin: 0;">Vence Pro - Sistema de Notificaciones Admin</p>
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `
+}
+
+function generateChatResponseEmailHTML(data) {
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Nueva Respuesta en Chat</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <div style="text-align: center; border-bottom: 2px solid #8b5cf6; padding-bottom: 20px; margin-bottom: 20px;">
+            <h1 style="color: #8b5cf6; margin: 0;">💬 Nueva Respuesta en Chat de Soporte</h1>
+          </div>
+
+          <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #8b5cf6;">
+            <h2 style="color: #5b21b6; margin: 0 0 10px 0;">🔔 El usuario ha respondido</h2>
+            <p style="margin: 5px 0;"><strong>ID Conversación:</strong> ${data.conversationId}</p>
+            <p style="margin: 5px 0;"><strong>ID Feedback:</strong> ${data.feedbackId}</p>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #374151; margin-bottom: 10px;">💭 Mensaje del Usuario:</h3>
+            <div style="background: #f9fafb; padding: 15px; border-left: 4px solid #8b5cf6; border-radius: 4px;">
+              <p style="margin: 0; white-space: pre-wrap; font-size: 16px;">${data.message}</p>
+            </div>
+          </div>
+
+          <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #1e40af; margin: 0 0 10px 0;">👤 Datos del Usuario:</h3>
+            <p style="margin: 5px 0;"><strong>Nombre:</strong> ${data.userName}</p>
+            <p style="margin: 5px 0;"><strong>Email:</strong> ${data.userEmail}</p>
+            <p style="margin: 5px 0;"><strong>Fecha:</strong> ${new Date(data.createdAt).toLocaleString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</p>
+          </div>
+
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #92400e; margin: 0 0 10px 0;">⚡ Acción Requerida:</h3>
+            <p style="margin: 5px 0; color: #78350f;">El usuario está esperando una respuesta del equipo de soporte. Se recomienda responder lo antes posible para mantener una buena experiencia de usuario.</p>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="${data.adminUrl}" 
+               style="background: #8b5cf6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+              💬 Responder en Chat
             </a>
           </div>
 

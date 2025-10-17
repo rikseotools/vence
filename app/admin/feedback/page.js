@@ -1,6 +1,6 @@
 // app/admin/feedback/page.js - Panel de administración de feedback
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
 const FEEDBACK_TYPES = {
@@ -35,13 +35,82 @@ export default function AdminFeedbackPage() {
   const [conversations, setConversations] = useState({})
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
+  const [newUserMessages, setNewUserMessages] = useState(new Set()) // IDs de conversaciones con mensajes nuevos
+  const [viewedConversations, setViewedConversations] = useState(new Set()) // IDs de conversaciones que el admin ya vio
+  const messagesEndRef = useRef(null)
 
   useEffect(() => {
     if (user) {
+      console.log('🔄 Cargando datos iniciales de feedback...')
+      
+      // Cargar conversaciones vistas desde localStorage
+      try {
+        const stored = localStorage.getItem('admin_viewed_conversations')
+        if (stored) {
+          const viewedArray = JSON.parse(stored)
+          setViewedConversations(new Set(viewedArray))
+          console.log(`📂 Cargadas ${viewedArray.length} conversaciones vistas desde localStorage`)
+        }
+      } catch (error) {
+        console.error('Error cargando conversaciones vistas:', error)
+      }
+      
       loadFeedbacks()
       loadConversations()
     }
   }, [user])
+
+  // Scroll automático al final cuando cambian los mensajes
+  useEffect(() => {
+    scrollToBottom()
+  }, [chatMessages])
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const checkForNewUserMessages = useCallback(async () => {
+    try {
+      // Obtener conversaciones que tienen status 'waiting_admin' (el usuario ha respondido)
+      const { data: waitingConversations, error: convError } = await supabase
+        .from('feedback_conversations')
+        .select('id, feedback_id, status, last_message_at')
+        .eq('status', 'waiting_admin')
+
+      if (convError) throw convError
+
+      if (waitingConversations && waitingConversations.length > 0) {
+        const waitingIds = waitingConversations.map(conv => conv.id)
+        console.log(`🔔 Conversaciones esperando admin:`, waitingIds.length)
+        
+        // Solo agregar conversaciones que NO han sido vistas por el admin
+        setNewUserMessages(prev => {
+          // Filtrar solo las conversaciones que no han sido vistas
+          const unviewedIds = waitingIds.filter(id => !viewedConversations.has(id))
+          const newSet = new Set([...prev, ...unviewedIds])
+          
+          console.log(`👁️ Conversaciones vistas: ${viewedConversations.size} [${[...viewedConversations].map(id => id.substring(0,8)).join(', ')}]`)
+          console.log(`🆕 Conversaciones no vistas nuevas: ${unviewedIds.length}`)
+          console.log(`📢 Total notificaciones: ${prev.size} → ${newSet.size}`)
+          
+          return newSet
+        })
+      }
+    } catch (error) {
+      console.error('Error verificando nuevos mensajes:', error)
+    }
+  }, [supabase, viewedConversations])
+
+  // Polling para detectar nuevas respuestas de usuarios
+  useEffect(() => {
+    if (!user) return
+
+    const interval = setInterval(() => {
+      checkForNewUserMessages()
+    }, 10000) // Verificar cada 10 segundos
+
+    return () => clearInterval(interval)
+  }, [user, checkForNewUserMessages])
 
   const loadFeedbacks = async () => {
     try {
@@ -93,6 +162,9 @@ export default function AdminFeedbackPage() {
     } catch (error) {
       console.error('Error cargando conversaciones:', error)
     }
+    
+    // Verificar notificaciones después de cargar conversaciones
+    await checkForNewUserMessages()
   }
 
   const loadChatMessages = async (conversationId) => {
@@ -118,6 +190,15 @@ export default function AdminFeedbackPage() {
 
   const sendAdminMessage = async (conversationId, message) => {
     try {
+      // Primero verificar el estado actual de la conversación
+      const { data: currentConv } = await supabase
+        .from('feedback_conversations')
+        .select('status')
+        .eq('id', conversationId)
+        .single()
+
+      const wasReopened = currentConv?.status === 'closed'
+      
       const { error } = await supabase
         .from('feedback_messages')
         .insert({
@@ -129,7 +210,7 @@ export default function AdminFeedbackPage() {
 
       if (error) throw error
 
-      // Actualizar conversación
+      // Actualizar conversación - siempre reabrir si estaba cerrada
       await supabase
         .from('feedback_conversations')
         .update({ 
@@ -138,6 +219,11 @@ export default function AdminFeedbackPage() {
           admin_user_id: user.id
         })
         .eq('id', conversationId)
+
+      // Mostrar mensaje si se reabrió la conversación
+      if (wasReopened) {
+        console.log('🔄 Conversación reabierta automáticamente')
+      }
 
       // Crear notificación para el usuario
       const conversation = await supabase
@@ -148,15 +234,21 @@ export default function AdminFeedbackPage() {
 
       if (conversation.data?.user_id) {
         console.log('💬 Creando notificación de feedback response para user:', conversation.data.user_id)
+        
+        // Crear preview del mensaje (primeras 100 caracteres)
+        const messagePreview = message.length > 100 
+          ? message.substring(0, 100) + '...' 
+          : message
+        
         const { data: notifResult, error: notifError } = await supabase
           .from('notification_logs')
           .insert({
             user_id: conversation.data.user_id,
-            message_sent: 'El equipo de iLoveTest te ha respondido',
+            message_sent: `El equipo de Vence: "${messagePreview}"`,
             delivery_status: 'sent',
             context_data: { 
               type: 'feedback_response',
-              title: 'Respuesta a tu feedback',
+              title: 'Nueva respuesta de soporte',
               conversation_id: conversationId,
               feedback_id: conversation.data.feedback_id
             }
@@ -165,9 +257,41 @@ export default function AdminFeedbackPage() {
 
         if (notifError) {
           console.error('❌ Error creando notificación:', notifError)
+          console.error('❌ Detalles del error:', {
+            code: notifError.code,
+            message: notifError.message,
+            details: notifError.details,
+            hint: notifError.hint
+          })
         } else {
           console.log('✅ Notificación creada exitosamente:', notifResult)
         }
+      }
+
+      // Enviar email si el usuario no está online
+      try {
+        const emailResponse = await fetch('/api/send-support-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: conversation.data.user_id,
+            adminMessage: message.trim(),
+            conversationId: conversationId
+          })
+        })
+        
+        const emailResult = await emailResponse.json()
+        
+        if (emailResult.sent) {
+          console.log('📧 Email de soporte enviado al usuario')
+        } else {
+          console.log(`📧 Email no enviado: ${emailResult.reason}`)
+        }
+      } catch (emailError) {
+        console.error('❌ Error enviando email de soporte:', emailError)
+        // No fallar toda la operación por un error de email
       }
 
       // Recargar mensajes
@@ -216,6 +340,57 @@ export default function AdminFeedbackPage() {
     }
   }
 
+  const startChatWithUser = async (feedback) => {
+    try {
+      console.log('🚀 Iniciando chat con usuario para feedback:', feedback.id)
+      
+      // Crear la conversación
+      const { data: conversation, error: convError } = await supabase
+        .from('feedback_conversations')
+        .insert({
+          feedback_id: feedback.id,
+          user_id: feedback.user_id,
+          status: 'waiting_admin',
+          admin_id: user.id,
+          started_by_admin: true
+        })
+        .select()
+        .single()
+
+      if (convError) throw convError
+
+      console.log('✅ Conversación creada:', conversation.id)
+      
+      // Recargar conversaciones para mostrar la nueva
+      await loadConversations()
+      
+      // Abrir el chat inmediatamente
+      setSelectedConversation(conversation)
+      setChatMessages([]) // Empezar con mensajes vacíos
+      
+      // Limpiar notificación si existía y marcar como vista
+      setNewUserMessages(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(conversation.id)
+        return newSet
+      })
+      setViewedConversations(prev => {
+        const newViewed = new Set([...prev, conversation.id])
+        console.log(`✅ Nueva conversación marcada como vista: ${conversation.id.substring(0,8)}... (Total vistas: ${newViewed.size})`)
+        
+        // Sincronizar con localStorage para que el Header se entere
+        const viewedArray = [...newViewed]
+        localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
+        
+        return newViewed
+      })
+      
+    } catch (error) {
+      console.error('❌ Error iniciando chat:', error)
+      alert('Error iniciando el chat con el usuario')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -233,12 +408,21 @@ export default function AdminFeedbackPage() {
         
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-            💬 Gestión de Feedback
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Administrar comentarios y sugerencias de usuarios
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+                💬 Gestión de Feedback
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Administrar comentarios y sugerencias de usuarios
+              </p>
+            </div>
+            {newUserMessages.size > 0 && (
+              <div className="bg-red-500 text-white px-4 py-2 rounded-lg animate-pulse">
+                <span className="font-bold">{newUserMessages.size}</span> mensaje{newUserMessages.size > 1 ? 's' : ''} nuevo{newUserMessages.size > 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Estadísticas */}
@@ -345,31 +529,167 @@ export default function AdminFeedbackPage() {
                 {feedback.status === 'pending' && (
                   <div className="flex gap-2 pt-4 border-t dark:border-gray-700">
                     {/* Botón de Chat - Prioridad */}
-                    {conversations[feedback.id] && (
+                    {conversations[feedback.id] ? (
                       <button
                         onClick={() => {
                           setSelectedConversation(conversations[feedback.id])
                           loadChatMessages(conversations[feedback.id].id)
+                          // Marcar como visto y quitar notificación
+                          const conversationId = conversations[feedback.id].id
+                          setNewUserMessages(prev => {
+                            const newSet = new Set(prev)
+                            newSet.delete(conversationId)
+                            return newSet
+                          })
+                          // Marcar esta conversación como vista permanentemente
+                          setViewedConversations(prev => {
+                            const newViewed = new Set([...prev, conversationId])
+                            console.log(`✅ Conversación marcada como vista: ${conversationId.substring(0,8)}... (Total vistas: ${newViewed.size})`)
+                            
+                            // Sincronizar con localStorage para que el Header se entere
+                            const viewedArray = [...newViewed]
+                            localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
+                            
+                            return newViewed
+                          })
+                          setNewUserMessages(prev => {
+                            const newSet = new Set(prev)
+                            newSet.delete(conversations[feedback.id].id)
+                            return newSet
+                          })
                         }}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        className={`px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium ${
+                          newUserMessages.has(conversations[feedback.id].id)
+                            ? 'bg-orange-600 hover:bg-orange-700 animate-pulse'
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
                       >
                         💬 Chat ({conversations[feedback.id].status === 'waiting_admin' ? 'Nuevo' : conversations[feedback.id].status})
+                        {newUserMessages.has(conversations[feedback.id].id) && (
+                          <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-bounce">
+                            ¡NUEVO!
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => startChatWithUser(feedback)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        💬 Iniciar Chat
                       </button>
                     )}
                     
-                    <button
-                      onClick={() => setSelectedFeedback(feedback)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                    >
-                      📝 Respuesta rápida
-                    </button>
-                    <button
-                      onClick={() => updateFeedbackStatus(feedback.id, 'dismissed')}
-                      disabled={updatingStatus}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
-                    >
-                      ❌ Descartar
-                    </button>
+                    {/* Botones diferentes según si hay conversación o no */}
+                    {conversations[feedback.id] ? (
+                      // Si hay conversación: opciones de resolución y cerrar chat
+                      <>
+                        <button
+                          onClick={() => updateFeedbackStatus(feedback.id, 'resolved')}
+                          disabled={updatingStatus}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                          ✅ Resuelto
+                        </button>
+                        <button
+                          onClick={() => {
+                            // Cerrar solo el chat, mantener feedback pendiente
+                            supabase
+                              .from('feedback_conversations')
+                              .update({ status: 'closed' })
+                              .eq('id', conversations[feedback.id].id)
+                              .then(() => {
+                                console.log('💬 Chat cerrado')
+                                loadConversations()
+                              })
+                          }}
+                          disabled={updatingStatus}
+                          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                          🔒 Cerrar Chat
+                        </button>
+                        <button
+                          onClick={() => updateFeedbackStatus(feedback.id, 'dismissed')}
+                          disabled={updatingStatus}
+                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                          ❌ Descartar
+                        </button>
+                      </>
+                    ) : (
+                      // Si no hay conversación: respuesta rápida o descartar
+                      <>
+                        <button
+                          onClick={() => setSelectedFeedback(feedback)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >
+                          📝 Respuesta rápida
+                        </button>
+                        <button
+                          onClick={() => updateFeedbackStatus(feedback.id, 'dismissed')}
+                          disabled={updatingStatus}
+                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                          ❌ Descartar
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Botones de Chat para feedbacks resueltos/descartados */}
+                {feedback.status !== 'pending' && (
+                  <div className="flex gap-2 pt-4 border-t dark:border-gray-700">
+                    {conversations[feedback.id] ? (
+                      <button
+                        onClick={() => {
+                          setSelectedConversation(conversations[feedback.id])
+                          loadChatMessages(conversations[feedback.id].id)
+                          // Marcar como visto y quitar notificación
+                          const conversationId = conversations[feedback.id].id
+                          setNewUserMessages(prev => {
+                            const newSet = new Set(prev)
+                            newSet.delete(conversationId)
+                            return newSet
+                          })
+                          // Marcar esta conversación como vista permanentemente
+                          setViewedConversations(prev => {
+                            const newViewed = new Set([...prev, conversationId])
+                            console.log(`✅ Conversación marcada como vista: ${conversationId.substring(0,8)}... (Total vistas: ${newViewed.size})`)
+                            
+                            // Sincronizar con localStorage para que el Header se entere
+                            const viewedArray = [...newViewed]
+                            localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
+                            
+                            return newViewed
+                          })
+                          setNewUserMessages(prev => {
+                            const newSet = new Set(prev)
+                            newSet.delete(conversations[feedback.id].id)
+                            return newSet
+                          })
+                        }}
+                        className={`px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium ${
+                          newUserMessages.has(conversations[feedback.id].id)
+                            ? 'bg-orange-600 hover:bg-orange-700 animate-pulse'
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                      >
+                        💬 Ver Chat
+                        {newUserMessages.has(conversations[feedback.id].id) && (
+                          <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-bounce">
+                            ¡NUEVO!
+                          </span>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => startChatWithUser(feedback)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      >
+                        💬 Iniciar Chat
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -503,7 +823,7 @@ export default function AdminFeedbackPage() {
                         : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600'
                     }`}>
                       <div className="text-sm mb-1 font-medium">
-                        {message.is_admin ? '👨‍💼 Tú (Admin)' : '👤 Usuario'}
+                        {message.is_admin ? '👨‍💼 Tú (Admin)' : `👤 ${message.sender?.full_name || message.sender?.email || 'Usuario'}`}
                       </div>
                       <p className="text-sm">{message.message}</p>
                       <div className="text-xs mt-1 opacity-70">
@@ -517,6 +837,7 @@ export default function AdminFeedbackPage() {
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Input para Admin */}
@@ -545,22 +866,42 @@ export default function AdminFeedbackPage() {
                   </div>
                 </form>
                 
-                <div className="flex gap-2 mt-3">
+                {/* Botón para resolver y cerrar */}
+                <div className="mt-3 pt-3 border-t dark:border-gray-600">
                   <button
                     onClick={() => {
-                      // Cerrar conversación
-                      supabase
-                        .from('feedback_conversations')
-                        .update({ status: 'closed' })
-                        .eq('id', selectedConversation.id)
-                        .then(() => {
-                          setSelectedConversation(null)
-                          loadConversations()
-                        })
+                      if (confirm('¿Marcar este feedback como resuelto y cerrar la conversación?')) {
+                        // Cerrar conversación
+                        supabase
+                          .from('feedback_conversations')
+                          .update({ status: 'closed' })
+                          .eq('id', selectedConversation.id)
+                          .then(() => {
+                            console.log('💬 Conversación cerrada')
+                            // Marcar feedback como resuelto
+                            return supabase
+                              .from('user_feedback')
+                              .update({ 
+                                status: 'resolved',
+                                resolved_at: new Date().toISOString()
+                              })
+                              .eq('id', selectedConversation.feedback_id)
+                          })
+                          .then(() => {
+                            console.log('✅ Feedback marcado como resuelto')
+                            setSelectedConversation(null)
+                            loadConversations()
+                            loadFeedbacks()
+                          })
+                          .catch(error => {
+                            console.error('Error:', error)
+                            alert('Error al cerrar la conversación')
+                          })
+                      }
                     }}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium"
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                   >
-                    ✅ Cerrar Chat
+                    ✅ Resolver y Cerrar Conversación
                   </button>
                 </div>
               </div>
