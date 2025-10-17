@@ -18,7 +18,7 @@ const FEEDBACK_TYPES = {
 const STATUS_CONFIG = {
   'pending': { label: '⏳ Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' },
   'in_review': { label: '👀 En Revisión', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' },
-  'resolved': { label: '✅ Resuelto', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
+  'resolved': { label: '✅ Cerrado', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
   'dismissed': { label: '❌ Descartado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' }
 }
 
@@ -181,6 +181,41 @@ function SoporteContent() {
         })
         .eq('id', conversationId)
 
+      // 🔄 Si el usuario responde a una conversación resuelta, reabrir el feedback asociado
+      console.log('🔍 Verificando si feedback asociado necesita reabrirse...')
+      
+      // Obtener feedback_id desde la conversación
+      const { data: conversationData } = await supabase
+        .from('feedback_conversations')
+        .select('feedback_id')
+        .eq('id', conversationId)
+        .single()
+      
+      if (conversationData?.feedback_id) {
+        const { data: feedbackStatus } = await supabase
+          .from('user_feedback')
+          .select('status')
+          .eq('id', conversationData.feedback_id)
+          .single()
+        
+        if (feedbackStatus?.status === 'resolved' || feedbackStatus?.status === 'dismissed') {
+          console.log('🔄 Usuario respondió a feedback resuelto - reabriendo...')
+          const { error: feedbackError } = await supabase
+            .from('user_feedback')
+            .update({ 
+              status: 'pending',
+              resolved_at: null
+            })
+            .eq('id', conversationData.feedback_id)
+          
+          if (feedbackError) {
+            console.error('❌ Error reabriendo feedback:', feedbackError)
+          } else {
+            console.log('✅ Feedback reabierto por respuesta del usuario')
+          }
+        }
+      }
+
       // Enviar notificación al admin
       try {
         const { sendAdminChatResponseNotification } = await import('../../lib/notifications/adminEmailNotifications')
@@ -331,7 +366,7 @@ function SoporteContent() {
               onClick={() => setShowFeedbackModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
-              📝 Enviar Feedback
+              💬 Iniciar Conversación
             </button>
           </div>
         </div>

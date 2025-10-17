@@ -383,14 +383,14 @@ export default function HeaderES() {
                 </Link>
               )}
 
-              {/* 💬 BOTÓN DE FEEDBACK - Solo en desktop */}
+              {/* 🎧 BOTÓN DE SOPORTE - Solo en desktop */}
               <button
                 onClick={() => setShowFeedbackModal(true)}
                 className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
-                title="Enviar feedback"
+                title="Contactar soporte"
               >
-                <span className="text-sm">💬</span>
-                <span className="text-sm font-medium">Feedback</span>
+                <span className="text-sm">🎧</span>
+                <span className="text-sm font-medium">Soporte</span>
               </button>
 
               {/* Icono de ranking/liga y racha (solo usuarios logueados) */}

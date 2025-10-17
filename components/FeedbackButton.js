@@ -1,4 +1,4 @@
-// components/FeedbackButton.js - Botón flotante de feedback profesional
+// components/FeedbackButton.js - Botón flotante de soporte profesional
 'use client'
 import { useState } from 'react'
 import FeedbackModal from './FeedbackModal'
@@ -40,17 +40,17 @@ export default function FeedbackButton() {
 
   return (
     <>
-      {/* 💬 BOTÓN FLOTANTE PROFESIONAL */}
+      {/* 🎧 BOTÓN FLOTANTE PROFESIONAL */}
       <div className="fixed bottom-6 right-6 z-40">
         <button
           onClick={() => setIsModalOpen(true)}
           className="group bg-gray-600 hover:bg-gray-700 text-white p-3 md:p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 dark:focus:ring-gray-600"
-          aria-label="Enviar feedback"
-          title="¿Cómo podemos mejorar?"
+          aria-label="Contactar soporte"
+          title="¿Necesitas ayuda?"
         >
           <div className="flex items-center">
-            <span className="text-lg md:text-xl">💬</span>
-            <span className="hidden md:inline ml-2 font-medium text-sm">Feedback</span>
+            <span className="text-lg md:text-xl">🎧</span>
+            <span className="hidden md:inline ml-2 font-medium text-sm">Soporte</span>
           </div>
           
         </button>

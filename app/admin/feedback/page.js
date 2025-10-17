@@ -1,4 +1,4 @@
-// app/admin/feedback/page.js - Panel de administración de feedback
+// app/admin/feedback/page.js - Panel de administración de soporte
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -15,7 +15,7 @@ const FEEDBACK_TYPES = {
 const STATUS_CONFIG = {
   'pending': { label: '⏳ Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' },
   'in_review': { label: '👀 En Revisión', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' },
-  'resolved': { label: '✅ Resuelto', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
+  'resolved': { label: '✅ Cerrado', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
   'dismissed': { label: '❌ Descartado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' }
 }
 
@@ -61,8 +61,30 @@ export default function AdminFeedbackPage() {
       
       loadFeedbacks()
       loadConversations()
+
+      // 🔄 Suscripción real-time para cambios en feedback
+      console.log('🔔 Configurando suscripción real-time para user_feedback...')
+      const feedbackSubscription = supabase
+        .channel('feedback_changes')
+        .on('postgres_changes', 
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'user_feedback'
+          }, 
+          (payload) => {
+            console.log('🔄 Feedback actualizado en tiempo real:', payload.new)
+            loadFeedbacks() // Recargar feedbacks cuando hay cambios
+          }
+        )
+        .subscribe()
+
+      return () => {
+        console.log('🧹 Limpiando suscripción real-time...')
+        feedbackSubscription.unsubscribe()
+      }
     }
-  }, [user])
+  }, [user, supabase])
 
   // Scroll automático al final cuando cambian los mensajes
   useEffect(() => {
@@ -74,6 +96,12 @@ export default function AdminFeedbackPage() {
   }
 
   const checkForNewUserMessages = useCallback(async () => {
+    // 🚫 NO ejecutar si viewedConversations no está inicializado correctamente
+    if (!viewedConversationsLoaded) {
+      console.log('⏸️ Esperando carga de localStorage antes de verificar notificaciones...')
+      return
+    }
+
     try {
       // Obtener conversaciones que tienen status 'waiting_admin' (el usuario ha respondido)
       const { data: waitingConversations, error: convError } = await supabase
@@ -87,23 +115,24 @@ export default function AdminFeedbackPage() {
         const waitingIds = waitingConversations.map(conv => conv.id)
         console.log(`🔔 Conversaciones esperando admin:`, waitingIds.length)
         
-        // Solo agregar conversaciones que NO han sido vistas por el admin
-        setNewUserMessages(prev => {
-          // Filtrar solo las conversaciones que no han sido vistas
-          const unviewedIds = waitingIds.filter(id => !viewedConversations.has(id))
-          const newSet = new Set([...prev, ...unviewedIds])
-          
-          console.log(`👁️ Conversaciones vistas: ${viewedConversations.size} [${[...viewedConversations].map(id => id.substring(0,8)).join(', ')}]`)
-          console.log(`🆕 Conversaciones no vistas nuevas: ${unviewedIds.length}`)
-          console.log(`📢 Total notificaciones: ${prev.size} → ${newSet.size}`)
-          
-          return newSet
-        })
+        // Reemplazar completamente con las conversaciones que NO han sido vistas por el admin
+        const unviewedIds = waitingIds.filter(id => !viewedConversations.has(id))
+        const newSet = new Set(unviewedIds) // Reemplazar completamente, no añadir
+        
+        console.log(`👁️ Conversaciones vistas: ${viewedConversations.size} [${[...viewedConversations].map(id => id.substring(0,8)).join(', ')}]`)
+        console.log(`🆕 Conversaciones no vistas: ${unviewedIds.length} [${unviewedIds.map(id => id.substring(0,8)).join(', ')}]`)
+        console.log(`📢 Actualizando notificaciones con: ${newSet.size} conversaciones`)
+        
+        setNewUserMessages(newSet)
+      } else {
+        // No hay conversaciones esperando, limpiar notificaciones
+        console.log(`🧹 No hay conversaciones esperando admin - limpiando notificaciones`)
+        setNewUserMessages(new Set())
       }
     } catch (error) {
       console.error('Error verificando nuevos mensajes:', error)
     }
-  }, [supabase, viewedConversations])
+  }, [supabase, viewedConversations, viewedConversationsLoaded])
 
   // Polling para detectar nuevas respuestas de usuarios - SOLO después de cargar localStorage
   useEffect(() => {
@@ -112,14 +141,36 @@ export default function AdminFeedbackPage() {
     // Ejecutar primera verificación inmediatamente
     checkForNewUserMessages()
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       checkForNewUserMessages()
-    }, 10000) // Verificar cada 10 segundos
+      // 🔄 También recargar feedbacks para detectar cambios de estado (más frecuente)
+      try {
+        const { data, error } = await supabase
+          .from('user_feedback')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        setFeedbacks(data || [])
+        
+        // Calcular estadísticas
+        const stats = {
+          total: data?.length || 0,
+          pending: data?.filter(f => f.status === 'pending').length || 0,
+          resolved: data?.filter(f => f.status === 'resolved').length || 0,
+          dismissed: data?.filter(f => f.status === 'dismissed').length || 0
+        }
+        setStats(stats)
+      } catch (error) {
+        console.error('Error recargando feedbacks:', error)
+      }
+    }, 5000) // Verificar cada 5 segundos para detectar cambios más rápido
 
     return () => clearInterval(interval)
   }, [user, viewedConversationsLoaded, checkForNewUserMessages])
 
-  const loadFeedbacks = async () => {
+  const loadFeedbacks = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -146,7 +197,7 @@ export default function AdminFeedbackPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   const loadConversations = async () => {
     try {
@@ -197,14 +248,37 @@ export default function AdminFeedbackPage() {
 
   const sendAdminMessage = async (conversationId, message) => {
     try {
-      // Primero verificar el estado actual de la conversación
+      // Primero verificar el estado actual de la conversación Y el feedback asociado
       const { data: currentConv } = await supabase
         .from('feedback_conversations')
-        .select('status')
+        .select('status, feedback_id')
         .eq('id', conversationId)
         .single()
 
-      const wasReopened = currentConv?.status === 'closed'
+      // Verificar estado del feedback asociado (más importante que el estado de la conversación)
+      let feedbackNeedsReopening = false
+      if (currentConv?.feedback_id) {
+        const { data: feedbackData } = await supabase
+          .from('user_feedback')
+          .select('status')
+          .eq('id', currentConv.feedback_id)
+          .single()
+        
+        feedbackNeedsReopening = feedbackData?.status === 'resolved' || feedbackData?.status === 'dismissed'
+        console.log(`🔍 Estado del feedback: ${feedbackData?.status}`)
+      }
+      
+      // Verificar si necesita reabrir (conversación cerrada O feedback resuelto)
+      const conversationNeedsReopening = currentConv?.status === 'closed' || 
+                                        currentConv?.status === 'resolved' ||
+                                        currentConv?.status === 'dismissed'
+      
+      const needsReopening = conversationNeedsReopening || feedbackNeedsReopening
+      
+      console.log(`🔍 Estado actual de conversación: ${currentConv?.status}`)
+      console.log(`🔍 Conversación necesita reabrirse: ${conversationNeedsReopening}`)
+      console.log(`🔍 Feedback necesita reabrirse: ${feedbackNeedsReopening}`)
+      console.log(`🔍 Acción final - Necesita reabrirse: ${needsReopening}`)
       
       const { error } = await supabase
         .from('feedback_messages')
@@ -217,7 +291,7 @@ export default function AdminFeedbackPage() {
 
       if (error) throw error
 
-      // Actualizar conversación - siempre reabrir si estaba cerrada
+      // Actualizar conversación - siempre reabrir si estaba cerrada o resuelta
       await supabase
         .from('feedback_conversations')
         .update({ 
@@ -227,8 +301,26 @@ export default function AdminFeedbackPage() {
         })
         .eq('id', conversationId)
 
+      // Si la conversación estaba cerrada/resuelta, también reabrir el feedback
+      if (needsReopening && currentConv?.feedback_id) {
+        console.log('🔄 Reabriendo feedback asociado...')
+        const { error: feedbackError } = await supabase
+          .from('user_feedback')
+          .update({ 
+            status: 'pending', // Volver a pendiente para que aparezca en la lista
+            resolved_at: null  // Limpiar fecha de resolución
+          })
+          .eq('id', currentConv.feedback_id)
+        
+        if (feedbackError) {
+          console.error('❌ Error reabriendo feedback:', feedbackError)
+        } else {
+          console.log('✅ Feedback reabierto y marcado como pendiente')
+        }
+      }
+
       // Mostrar mensaje si se reabrió la conversación
-      if (wasReopened) {
+      if (needsReopening) {
         console.log('🔄 Conversación reabierta automáticamente')
       }
 
@@ -301,9 +393,10 @@ export default function AdminFeedbackPage() {
         // No fallar toda la operación por un error de email
       }
 
-      // Recargar mensajes
+      // Recargar mensajes, conversaciones Y feedbacks para reflejar cambios
       await loadChatMessages(conversationId)
       await loadConversations()
+      await loadFeedbacks() // 🔄 IMPORTANTE: Recargar feedbacks para ver estado actualizado
     } catch (error) {
       console.error('Error enviando mensaje:', error)
     }
@@ -389,6 +482,9 @@ export default function AdminFeedbackPage() {
         const viewedArray = [...newViewed]
         localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
         
+        // 🔄 Forzar verificación inmediata con el nuevo estado
+        setTimeout(() => checkForNewUserMessages(), 100)
+        
         return newViewed
       })
       
@@ -411,21 +507,21 @@ export default function AdminFeedbackPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                💬 Gestión de Feedback
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-1 sm:mb-2">
+                🎧 Gestión de Soporte
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Administrar comentarios y sugerencias de usuarios
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                Sistema de tickets para atención al usuario
               </p>
             </div>
             {newUserMessages.size > 0 && (
-              <div className="bg-red-500 text-white px-4 py-2 rounded-lg animate-pulse">
+              <div className="bg-red-500 text-white px-3 py-2 rounded-lg animate-pulse text-sm self-start sm:self-auto">
                 <span className="font-bold">{newUserMessages.size}</span> mensaje{newUserMessages.size > 1 ? 's' : ''} nuevo{newUserMessages.size > 1 ? 's' : ''}
               </div>
             )}
@@ -433,22 +529,22 @@ export default function AdminFeedbackPage() {
         </div>
 
         {/* Estadísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Total</div>
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-8">
+          <div className="bg-white dark:bg-gray-800 p-3 sm:p-6 rounded-lg shadow">
+            <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total</div>
           </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Pendientes</div>
+          <div className="bg-white dark:bg-gray-800 p-3 sm:p-6 rounded-lg shadow">
+            <div className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</div>
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Pendientes</div>
           </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.resolved}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Resueltos</div>
+          <div className="bg-white dark:bg-gray-800 p-3 sm:p-6 rounded-lg shadow">
+            <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{stats.resolved}</div>
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Resueltos</div>
           </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.dismissed}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Descartados</div>
+          <div className="bg-white dark:bg-gray-800 p-3 sm:p-6 rounded-lg shadow">
+            <div className="text-xl sm:text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.dismissed}</div>
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Descartados</div>
           </div>
         </div>
 
@@ -468,20 +564,20 @@ export default function AdminFeedbackPage() {
             {feedbacks.map((feedback) => (
               <div 
                 key={feedback.id} 
-                className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-6"
+                className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-4 sm:p-6"
               >
                 
                 {/* Header del feedback */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${FEEDBACK_TYPES[feedback.type]?.color || 'bg-gray-100 text-gray-800'}`}>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${FEEDBACK_TYPES[feedback.type]?.color || 'bg-gray-100 text-gray-800'}`}>
                       {FEEDBACK_TYPES[feedback.type]?.label || feedback.type}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_CONFIG[feedback.status]?.color}`}>
+                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${STATUS_CONFIG[feedback.status]?.color}`}>
                       {STATUS_CONFIG[feedback.status]?.label}
                     </span>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                     {new Date(feedback.created_at).toLocaleDateString('es-ES', {
                       year: 'numeric',
                       month: 'short',
@@ -535,7 +631,7 @@ export default function AdminFeedbackPage() {
 
                 {/* Acciones */}
                 {feedback.status === 'pending' && (
-                  <div className="flex gap-2 pt-4 border-t dark:border-gray-700">
+                  <div className="flex flex-wrap gap-2 pt-4 border-t dark:border-gray-700">
                     {/* Botón de Chat - Prioridad */}
                     {conversations[feedback.id] ? (
                       <button
@@ -558,6 +654,9 @@ export default function AdminFeedbackPage() {
                             const viewedArray = [...newViewed]
                             localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
                             
+                            // 🔄 Forzar verificación inmediata con el nuevo estado
+                            setTimeout(() => checkForNewUserMessages(), 100)
+                            
                             return newViewed
                           })
                           setNewUserMessages(prev => {
@@ -566,74 +665,47 @@ export default function AdminFeedbackPage() {
                             return newSet
                           })
                         }}
-                        className={`px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium ${
+                        className={`px-3 sm:px-4 py-2 text-white rounded-lg transition-colors text-xs sm:text-sm font-medium ${
                           newUserMessages.has(conversations[feedback.id].id)
                             ? 'bg-orange-600 hover:bg-orange-700 animate-pulse'
                             : 'bg-green-600 hover:bg-green-700'
                         }`}
                       >
-                        💬 Ver Chat
+                        <span className="sm:hidden">💬</span>
+                        <span className="hidden sm:inline">💬 Ver Chat</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => startChatWithUser(feedback)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
                       >
-                        💬 Iniciar Chat
+                        <span className="sm:hidden">💬</span>
+                        <span className="hidden sm:inline">💬 Iniciar Chat</span>
                       </button>
                     )}
                     
                     {/* Botones diferentes según si hay conversación o no */}
                     {conversations[feedback.id] ? (
-                      // Si hay conversación: opciones de resolución y cerrar chat
+                      // Si hay conversación: solo opción de cerrar
                       <>
                         <button
                           onClick={() => updateFeedbackStatus(feedback.id, 'resolved')}
                           disabled={updatingStatus}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
+                          className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium disabled:opacity-50"
                         >
-                          ✅ Resuelto
-                        </button>
-                        <button
-                          onClick={() => {
-                            // Cerrar solo el chat, mantener feedback pendiente
-                            supabase
-                              .from('feedback_conversations')
-                              .update({ status: 'closed' })
-                              .eq('id', conversations[feedback.id].id)
-                              .then(() => {
-                                console.log('💬 Chat cerrado')
-                                loadConversations()
-                              })
-                          }}
-                          disabled={updatingStatus}
-                          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium disabled:opacity-50"
-                        >
-                          🔒 Cerrar Chat
-                        </button>
-                        <button
-                          onClick={() => updateFeedbackStatus(feedback.id, 'dismissed')}
-                          disabled={updatingStatus}
-                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
-                        >
-                          ❌ Descartar
+                          <span className="sm:hidden">✅</span>
+                          <span className="hidden sm:inline">✅ Cerrado</span>
                         </button>
                       </>
                     ) : (
-                      // Si no hay conversación: respuesta rápida o descartar
+                      // Si no hay conversación: solo respuesta rápida
                       <>
                         <button
                           onClick={() => setSelectedFeedback(feedback)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                          className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
                         >
-                          📝 Respuesta rápida
-                        </button>
-                        <button
-                          onClick={() => updateFeedbackStatus(feedback.id, 'dismissed')}
-                          disabled={updatingStatus}
-                          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
-                        >
-                          ❌ Descartar
+                          <span className="sm:hidden">📝</span>
+                          <span className="hidden sm:inline">📝 Respuesta</span>
                         </button>
                       </>
                     )}
@@ -664,6 +736,9 @@ export default function AdminFeedbackPage() {
                             const viewedArray = [...newViewed]
                             localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
                             
+                            // 🔄 Forzar verificación inmediata con el nuevo estado
+                            setTimeout(() => checkForNewUserMessages(), 100)
+                            
                             return newViewed
                           })
                           setNewUserMessages(prev => {
@@ -672,20 +747,22 @@ export default function AdminFeedbackPage() {
                             return newSet
                           })
                         }}
-                        className={`px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium ${
+                        className={`px-3 sm:px-4 py-2 text-white rounded-lg transition-colors text-xs sm:text-sm font-medium ${
                           newUserMessages.has(conversations[feedback.id].id)
                             ? 'bg-orange-600 hover:bg-orange-700 animate-pulse'
                             : 'bg-green-600 hover:bg-green-700'
                         }`}
                       >
-                        💬 Ver Chat
+                        <span className="sm:hidden">💬</span>
+                        <span className="hidden sm:inline">💬 Ver Chat</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => startChatWithUser(feedback)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
                       >
-                        💬 Iniciar Chat
+                        <span className="sm:hidden">💬</span>
+                        <span className="hidden sm:inline">💬 Iniciar Chat</span>
                       </button>
                     )}
                   </div>
@@ -697,72 +774,76 @@ export default function AdminFeedbackPage() {
 
         {/* Modal de respuesta */}
         {selectedFeedback && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-2 sm:p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
               
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  📝 Responder Feedback
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b dark:border-gray-700">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  💬 Responder Ticket
                 </h3>
                 <button
                   onClick={() => setSelectedFeedback(null)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
               {/* Contenido */}
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 
-                {/* Feedback original */}
-                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Feedback original:
+                {/* Solicitud original */}
+                <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    📋 Solicitud de soporte:
                   </div>
-                  <p className="text-gray-800 dark:text-gray-200">
+                  <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200">
                     {selectedFeedback.message}
                   </p>
                 </div>
 
                 {/* Textarea de respuesta */}
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <div className="mb-4 sm:mb-6">
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Tu respuesta:
                   </label>
                   <textarea
                     value={adminResponse}
                     onChange={(e) => setAdminResponse(e.target.value)}
                     placeholder="Escribe tu respuesta al usuario..."
-                    rows={6}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    rows={4}
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base"
                   />
                 </div>
 
                 {/* Botones */}
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() => setSelectedFeedback(null)}
                     disabled={updatingStatus}
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                    className="px-4 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 text-sm sm:text-base"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={() => updateFeedbackStatus(selectedFeedback.id, 'resolved', adminResponse)}
                     disabled={updatingStatus || !adminResponse.trim()}
-                    className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 font-medium"
+                    className="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 font-medium text-sm sm:text-base"
                   >
                     {updatingStatus ? (
                       <span className="flex items-center justify-center">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Guardando...
+                        <span className="hidden sm:inline">Guardando...</span>
+                        <span className="sm:hidden">...</span>
                       </span>
                     ) : (
-                      '✅ Resolver y Responder'
+                      <>
+                        <span className="hidden sm:inline">✅ Resolver y Responder</span>
+                        <span className="sm:hidden">✅ Resolver</span>
+                      </>
                     )}
                   </button>
                 </div>
@@ -773,16 +854,16 @@ export default function AdminFeedbackPage() {
 
         {/* Modal de Chat */}
         {selectedConversation && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl h-[90vh] flex flex-col">
+          <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:w-96 sm:max-w-md h-[70vh] sm:h-[75vh] flex flex-col">
               
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    💬 Chat de Feedback
+              <div className="flex items-center justify-between p-2 sm:p-4 border-b dark:border-gray-700 flex-shrink-0">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    🎫 Ticket de Soporte
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1 truncate">
                     Estado: {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando tu respuesta' : 
                              selectedConversation.status === 'waiting_user' ? '💬 Esperando usuario' : 
                              selectedConversation.status}
@@ -790,40 +871,40 @@ export default function AdminFeedbackPage() {
                 </div>
                 <button
                   onClick={() => setSelectedConversation(null)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg transition-colors"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 sm:p-2 rounded-lg transition-colors flex-shrink-0 ml-2"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
-              {/* Feedback original */}
-              <div className="p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Feedback original:
+              {/* Solicitud original */}
+              <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600 flex-shrink-0">
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  📋 Solicitud de soporte:
                 </div>
-                <p className="text-sm text-gray-800 dark:text-gray-200">
+                <p className="text-xs text-gray-800 dark:text-gray-200 line-clamp-2">
                   {feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message}
                 </p>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-25">
+              <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 sm:space-y-3 bg-gray-25 min-h-0">
                 {chatMessages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex ${message.is_admin ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
+                    <div className={`max-w-[240px] sm:max-w-[280px] lg:max-w-md px-2 sm:px-3 py-2 rounded-lg ${
                       message.is_admin 
                         ? 'bg-blue-600 text-white' 
                         : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600'
                     }`}>
-                      <div className="text-sm mb-1 font-medium">
+                      <div className="text-xs sm:text-sm mb-1 font-medium">
                         {message.is_admin ? '👨‍💼 Tú (Admin)' : `👤 ${message.sender?.full_name || message.sender?.email || 'Usuario'}`}
                       </div>
-                      <p className="text-sm">{message.message}</p>
+                      <p className="text-xs sm:text-sm">{message.message}</p>
                       <div className="text-xs mt-1 opacity-70">
                         {new Date(message.created_at).toLocaleString('es-ES', {
                           hour: '2-digit',
@@ -840,7 +921,7 @@ export default function AdminFeedbackPage() {
               </div>
 
               {/* Input para Admin */}
-              <div className="p-4 border-t dark:border-gray-700">
+              <div className="p-2 sm:p-4 border-t dark:border-gray-700 flex-shrink-0">
                 <form onSubmit={(e) => {
                   e.preventDefault()
                   const message = e.target.message.value.trim()
@@ -849,18 +930,19 @@ export default function AdminFeedbackPage() {
                     e.target.message.value = ''
                   }
                 }}>
-                  <div className="flex gap-3">
+                  <div className="flex gap-2 sm:gap-3">
                     <input
                       name="message"
                       type="text"
                       placeholder="Escribe tu respuesta..."
-                      className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      className="flex-1 p-2 sm:p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base"
                     />
                     <button
                       type="submit"
-                      className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors font-medium"
+                      className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors font-medium text-sm sm:text-base"
                     >
-                      📤 Enviar
+                      <span className="sm:hidden">📤</span>
+                      <span className="hidden sm:inline">📤 Enviar</span>
                     </button>
                   </div>
                 </form>
@@ -869,7 +951,7 @@ export default function AdminFeedbackPage() {
                 <div className="mt-3 pt-3 border-t dark:border-gray-600">
                   <button
                     onClick={() => {
-                      if (confirm('¿Marcar este feedback como resuelto y cerrar la conversación?')) {
+                      if (confirm('¿Marcar este ticket como cerrado?')) {
                         // Cerrar conversación
                         supabase
                           .from('feedback_conversations')
@@ -898,9 +980,10 @@ export default function AdminFeedbackPage() {
                           })
                       }
                     }}
-                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium"
                   >
-                    ✅ Resolver y Cerrar Conversación
+                    <span className="hidden sm:inline">✅ Cerrar Ticket</span>
+                    <span className="sm:hidden">✅ Cerrar</span>
                   </button>
                 </div>
               </div>

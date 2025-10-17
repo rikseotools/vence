@@ -1,4 +1,4 @@
-// components/FeedbackModal.js - Modal profesional para feedback
+// components/FeedbackModal.js - Modal profesional para solicitudes de soporte
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,7 +7,7 @@ const FEEDBACK_TYPES = [
   { id: 'suggestion', label: '💡 Sugerencia de Mejora', description: 'Ideas para mejorar la app' },
   { id: 'bug', label: '🐛 Error', description: 'Algo no funciona correctamente' },
   { id: 'question_dispute', label: '⚖️ Impugnación de Pregunta', description: 'Reportar error en pregunta específica' },
-  { id: 'other', label: '❓ Otro', description: 'Cualquier otro tipo de feedback' }
+  { id: 'other', label: '❓ Otro', description: 'Cualquier otro tipo de solicitud' }
 ]
 
 export default function FeedbackModal({ isOpen, onClose, questionId = null, autoSelectQuestionDispute = false, currentTheme = null, onOpenQuestionDispute = null }) {
@@ -228,10 +228,10 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
           <div className="p-4 sm:p-6 text-center">
             <div className="text-4xl sm:text-5xl mb-3">✅</div>
             <h3 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">
-              ¡Feedback Enviado!
+              ¡Solicitud Enviada!
             </h3>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-              Gracias por ayudarnos a mejorar
+              Nos pondremos en contacto contigo pronto
             </p>
           </div>
         ) : (
@@ -241,10 +241,10 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
             <div className="flex items-center justify-between p-3 sm:p-4 border-b dark:border-gray-700">
               <div>
                 <h2 className="text-base sm:text-lg font-bold text-gray-800 dark:text-gray-200">
-                  💬 Enviar Feedback
+                  🎧 Solicitud de Soporte
                 </h2>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Ayúdanos a mejorar
+                  Estamos aquí para ayudarte
                 </p>
               </div>
               <button
@@ -265,7 +265,7 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
               {!formData.type && (
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-center">
-                    🎯 ¿Qué tipo de feedback?
+                    🎯 ¿Qué tipo de solicitud?
                   </label>
                   <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                     {FEEDBACK_TYPES.map((type) => (
@@ -335,7 +335,7 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
                 <textarea
                   value={formData.message}
                   onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
-                  placeholder="Describe tu feedback..."
+                  placeholder="Describe tu solicitud..."
                   rows={2}
                   className="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
                   required
@@ -386,7 +386,7 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
                       <span className="text-xs">Enviando...</span>
                     </span>
                   ) : (
-                    <span className="text-xs">📤 Enviar</span>
+                    <span className="text-xs">📤 Enviar Solicitud</span>
                   )}
                 </button>
               </div>

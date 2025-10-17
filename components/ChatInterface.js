@@ -111,6 +111,41 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
         })
         .eq('id', conversationId)
 
+      // 🔄 Si el usuario responde a una conversación resuelta, reabrir el feedback asociado
+      console.log('🔍 Verificando si feedback asociado necesita reabrirse...')
+      
+      // Obtener feedback_id desde la conversación
+      const { data: conversationData } = await supabase
+        .from('feedback_conversations')
+        .select('feedback_id')
+        .eq('id', conversationId)
+        .single()
+      
+      if (conversationData?.feedback_id) {
+        const { data: feedbackStatus } = await supabase
+          .from('user_feedback')
+          .select('status')
+          .eq('id', conversationData.feedback_id)
+          .single()
+        
+        if (feedbackStatus?.status === 'resolved' || feedbackStatus?.status === 'dismissed') {
+          console.log('🔄 Usuario respondió a feedback resuelto - reabriendo...')
+          const { error: feedbackError } = await supabase
+            .from('user_feedback')
+            .update({ 
+              status: 'pending',
+              resolved_at: null
+            })
+            .eq('id', conversationData.feedback_id)
+          
+          if (feedbackError) {
+            console.error('❌ Error reabriendo feedback:', feedbackError)
+          } else {
+            console.log('✅ Feedback reabierto por respuesta del usuario')
+          }
+        }
+      }
+
       setNewMessage('')
     } catch (error) {
       console.error('Error enviando mensaje:', error)
@@ -241,7 +276,7 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
         {conversation?.status === 'closed' && (
           <div className="p-4 bg-green-50 dark:bg-green-900/20 border-t border-green-200 dark:border-green-800">
             <p className="text-sm text-green-700 dark:text-green-400 text-center">
-              ✅ Esta conversación ha sido cerrada. Gracias por tu feedback!
+              ✅ Esta conversación ha sido cerrada. ¡Gracias por contactarnos!
             </p>
           </div>
         )}
