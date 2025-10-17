@@ -395,6 +395,16 @@ export default function UserAvatar() {
                 <span className="ml-auto text-xs text-gray-400">Completas</span>
               </Link>
               
+              <Link
+                href="/soporte"
+                onClick={handleLinkClick}
+                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center space-x-3 block"
+              >
+                <span>💬</span>
+                <span>Soporte</span>
+                <span className="ml-auto text-xs text-gray-400">Ayuda</span>
+              </Link>
+              
               <hr className="my-2" />
               
               <button
