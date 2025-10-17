@@ -51,35 +51,37 @@ export default function HeaderES() {
       }
 
       try {
-        // 🎯 USAR SISTEMA CENTRALIZADO: user_learning_analytics
-        const { data: analytics, error: analyticsError } = await supabase
-          .from('user_learning_analytics')
-          .select('current_streak_days')
+        // Usar exactamente la misma lógica que UserAvatar (cálculo manual que funciona)
+        const { data: userTests, error: userTestsError } = await supabase
+          .from('tests')
+          .select('id')
           .eq('user_id', user.id)
-          .order('updated_at', { ascending: false })
-          .limit(1)
-          .single()
 
-        if (analyticsError) {
-          // Si no hay analytics, intentar con analytics_daily_user_stats
-          const { data: dailyAnalytics, error: dailyError } = await supabase
-            .from('analytics_daily_user_stats')
-            .select('current_streak_days')
-            .eq('user_id', user.id)
-            .single()
-
-          if (dailyError) {
-            console.warn('Error loading user streak from both analytics tables:', analyticsError, dailyError)
-            setUserStreak(0)
-            return
-          }
-
-          const streak = dailyAnalytics?.current_streak_days || 0
-          setUserStreak(streak)
+        if (userTestsError) {
+          console.warn('Error loading user tests for streak:', userTestsError)
           return
         }
 
-        const streak = analytics?.current_streak_days || 0
+        const testIds = userTests?.map(t => t.id) || []
+        if (testIds.length === 0) {
+          setUserStreak(0)
+          return
+        }
+
+        const { data: recentActivity, error: activityError } = await supabase
+          .from('test_questions')
+          .select('created_at')
+          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
+          .in('test_id', testIds)
+          .order('created_at', { ascending: false })
+
+        if (activityError) {
+          console.warn('Error loading recent activity:', activityError)
+          return
+        }
+
+        // Calculate consecutive days streak with grace day (same as UserAvatar)
+        const streak = calculateUserStreak(recentActivity || [], 'created_at')
         setUserStreak(streak)
       } catch (error) {
         console.warn('Error calculating user streak:', error)
