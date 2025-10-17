@@ -29,17 +29,18 @@ export function useTopicUnlock() {
     try {
       setLoading(true)
 
-      // 🔧 USAR MISMA LÓGICA QUE LA PÁGINA DE TEST QUE FUNCIONA
-      // Cargar respuestas del usuario agrupadas por tema (igual que test page)
-      const { data: responses, error } = await supabase
-        .from('test_questions')
+      // 🔥 USAR USER_PROGRESS MIGRADA - MÁS EFICIENTE Y PRECISA
+      const { data: userProgressData, error } = await supabase
+        .from('user_progress')
         .select(`
-          tema_number,
-          is_correct,
-          created_at,
-          tests!inner(user_id)
+          total_attempts,
+          correct_attempts,
+          accuracy_percentage,
+          last_attempt_date,
+          needs_review,
+          topics!inner(topic_number, title)
         `)
-        .eq('tests.user_id', user.id)
+        .eq('user_id', user.id)
 
       if (error) {
         console.error('Error loading user progress:', error)
@@ -48,59 +49,35 @@ export function useTopicUnlock() {
         return
       }
 
-      // Procesar estadísticas por tema (igual que test page)
-      const themeStats = {}
-      
-      if (responses && responses.length > 0) {
-        responses.forEach(response => {
-          const theme = response.tema_number
-          if (!theme) return
+      console.log('🎯 Cargando progreso desde user_progress:', userProgressData)
 
-          if (!themeStats[theme]) {
-            themeStats[theme] = { 
-              total: 0, 
-              correct: 0, 
-              lastStudy: null 
-            }
-          }
-          
-          themeStats[theme].total++
-          if (response.is_correct) {
-            themeStats[theme].correct++
-          }
-          
-          // Actualizar última fecha de estudio
-          const studyDate = new Date(response.created_at)
-          if (!themeStats[theme].lastStudy || studyDate > themeStats[theme].lastStudy) {
-            themeStats[theme].lastStudy = studyDate
-          }
-        })
-      }
-
-      // Procesar progreso por tema
+      // Procesar progreso por tema usando datos migrados
       const progress = {}
       const unlockedSet = new Set([1]) // Tema 1 siempre desbloqueado
 
-      Object.keys(themeStats).forEach(theme => {
-        const stats = themeStats[theme]
-        const temaNumber = parseInt(theme)
-        const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0
-        const questionsAnswered = stats.total
-        
-        progress[temaNumber] = {
-          accuracy,
-          questionsAnswered,
-          masteryLevel: accuracy >= 90 ? 'expert' : accuracy >= 70 ? 'good' : 'beginner',
-          isUnlocked: temaNumber === 1 || accuracy >= UNLOCK_THRESHOLD,
-          meetsThreshold: accuracy >= UNLOCK_THRESHOLD
-        }
+      if (userProgressData && userProgressData.length > 0) {
+        userProgressData.forEach(record => {
+          const temaNumber = record.topics.topic_number
+          const accuracy = Math.round(record.accuracy_percentage || 0)
+          const questionsAnswered = record.total_attempts || 0
+          
+          progress[temaNumber] = {
+            accuracy,
+            questionsAnswered,
+            masteryLevel: accuracy >= 90 ? 'expert' : accuracy >= 70 ? 'good' : 'beginner',
+            isUnlocked: temaNumber === 1 || accuracy >= UNLOCK_THRESHOLD,
+            meetsThreshold: accuracy >= UNLOCK_THRESHOLD,
+            lastStudy: record.last_attempt_date ? new Date(record.last_attempt_date) : null,
+            needsReview: record.needs_review
+          }
 
-        // Si este tema cumple el threshold, desbloquear el siguiente
-        if (accuracy >= UNLOCK_THRESHOLD && questionsAnswered >= 10) {
-          unlockedSet.add(temaNumber)
-          unlockedSet.add(temaNumber + 1) // Desbloquear siguiente tema
-        }
-      })
+          // Si este tema cumple el threshold, desbloquear el siguiente
+          if (accuracy >= UNLOCK_THRESHOLD && questionsAnswered >= 10) {
+            unlockedSet.add(temaNumber)
+            unlockedSet.add(temaNumber + 1) // Desbloquear siguiente tema
+          }
+        })
+      }
 
       // Asegurar progresión secuencial
       const finalUnlockedSet = new Set([1])

@@ -497,6 +497,36 @@
 ### **TABLA: `user_progress`**
 | Campo | Tipo | Nullable | Default |
 |-------|------|----------|---------|
+| `id` | uuid | NO | uuid_generate_v4() |
+| `user_id` | uuid | YES | null |
+| `topic_id` | uuid | YES | null |
+| `law_id` | uuid | YES | null |
+| `article_id` | uuid | YES | null |
+| `total_attempts` | integer | YES | 0 |
+| `correct_attempts` | integer | YES | 0 |
+| `last_attempt_date` | timestamp with time zone | YES | now() |
+| `accuracy_percentage` | numeric | YES | 0.00 |
+| `needs_review` | boolean | YES | false |
+| `created_at` | timestamp with time zone | YES | now() |
+| `updated_at` | timestamp with time zone | YES | now() |
+
+**🎯 PROPÓSITO:** Seguimiento del progreso de usuarios por tema/ley/artículo. Almacena estadísticas de precisión y marca temas que necesitan revisión.
+
+### **TABLA: `topics`**
+| Campo | Tipo | Nullable | Default |
+|-------|------|----------|---------|
+| `id` | uuid | NO | uuid_generate_v4() |
+| `position_type` | text | NO | null |
+| `topic_number` | integer | NO | null |
+| `title` | text | NO | null |
+| `description` | text | YES | null |
+| `difficulty` | text | YES | 'medium'::text |
+| `estimated_hours` | integer | YES | 10 |
+| `is_active` | boolean | YES | true |
+| `created_at` | timestamp with time zone | YES | now() |
+| `updated_at` | timestamp with time zone | YES | now() |
+
+**🎯 PROPÓSITO:** Definición de temas de estudio. `topic_number` se relaciona con `tema_number` en `test_questions`.
 
 ### **TABLA: `user_recommendations`**
 | Campo | Tipo | Nullable | Default |

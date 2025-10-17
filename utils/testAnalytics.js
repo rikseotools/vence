@@ -154,6 +154,25 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     
     console.log('✅ Test completado con análisis completo')
     
+    // 🔥 ACTUALIZAR USER_PROGRESS - FIX CRÍTICO PARA DESBLOQUEO DE TEMAS
+    try {
+      console.log('🎯 Actualizando progreso del usuario...')
+      const { error: progressError } = await supabase
+        .rpc('update_user_progress', {
+          p_user_id: userSession?.user_id || null,
+          p_test_id: sessionId
+        })
+      
+      if (progressError) {
+        console.error('❌ Error actualizando user_progress:', progressError)
+        // No fallar todo el test por esto
+      } else {
+        console.log('✅ user_progress actualizado correctamente')
+      }
+    } catch (progressErr) {
+      console.error('❌ Excepción actualizando user_progress:', progressErr)
+    }
+    
     // Actualizar sesión de usuario
     if (userSession) {
       await supabase
