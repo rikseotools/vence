@@ -380,26 +380,39 @@ export default function HeaderES() {
                     </button>
                   )}
                   
-                  {/* 🔥 ICONO DE RACHA - Debajo del botón de medallas en móvil, posicionado absolutamente */}
+                  {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES */}
                   {user && (
-                    <button
-                      onClick={() => {
-                        setShowRankingModal(true)
-                        // Establecer tab rachas cuando se abra el modal desde la racha
-                        setTimeout(() => {
-                          // Buscar el botón de rachas y hacer click
-                          const rachaBtnElement = document.querySelector('[data-tab="rachas"]')
-                          if (rachaBtnElement) {
-                            rachaBtnElement.click()
-                          }
-                        }, 100)
-                      }}
-                      className={`lg:hidden absolute top-full left-1/2 transform -translate-x-1/2 flex items-center justify-center mt-1 hover:opacity-80 transition-opacity ${userStreak === 0 ? 'opacity-60' : ''}`}
-                      title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak > 30 ? '30+' : userStreak} días consecutivos`}
-                    >
-                      <span className={`text-sm ${userStreak === 0 ? 'grayscale' : ''}`}>🔥</span>
-                      <span className="text-sm font-bold ml-0.5">{userStreak > 30 ? '30+' : userStreak}</span>
-                    </button>
+                    <div className="lg:hidden absolute top-full left-1/2 transform -translate-x-1/2 -translate-x-4 flex items-center justify-center gap-4 mt-1">
+                      {/* 🔥 ICONO DE RACHA */}
+                      <button
+                        onClick={() => {
+                          setShowRankingModal(true)
+                          // Establecer tab rachas cuando se abra el modal desde la racha
+                          setTimeout(() => {
+                            // Buscar el botón de rachas y hacer click
+                            const rachaBtnElement = document.querySelector('[data-tab="rachas"]')
+                            if (rachaBtnElement) {
+                              rachaBtnElement.click()
+                            }
+                          }, 100)
+                        }}
+                        className={`flex items-center justify-center hover:opacity-80 transition-opacity ${userStreak === 0 ? 'opacity-60' : ''}`}
+                        title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak > 30 ? '30+' : userStreak} días consecutivos`}
+                      >
+                        <span className={`text-sm ${userStreak === 0 ? 'grayscale' : ''}`}>🔥</span>
+                        <span className="text-sm font-bold ml-0.5">{userStreak > 30 ? '30+' : userStreak}</span>
+                      </button>
+                      
+                      {/* ⚖️ ICONO DE LEYES */}
+                      <Link
+                        href="/leyes"
+                        className="flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                        aria-label="Ir a Leyes"
+                        title="Estudiar Leyes"
+                      >
+                        <span className="text-lg">⚖️</span>
+                      </Link>
+                    </div>
                   )}
                 </div>
               )}
@@ -438,17 +451,6 @@ export default function HeaderES() {
                 </Link>
               )}
 
-              {/* ⚖️ ICONO DE LEYES - Solo en móvil */}
-              {user && (
-                <Link
-                  href="/leyes"
-                  className="lg:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
-                  aria-label="Ir a Leyes"
-                  title="Estudiar Leyes"
-                >
-                  <span className="text-xl">⚖️</span>
-                </Link>
-              )}
 
               {/* 🧩 ICONO DE PSICOTÉCNICOS - Solo en móvil */}
               {user && (
