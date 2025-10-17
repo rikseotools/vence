@@ -315,6 +315,15 @@ El sistema utiliza campos JSONB para almacenar contenido flexible que se adapta 
 }
 ```
 
+### Para Preguntas de Texto Estándar (text_question)
+```json
+{
+  "chart_type": "text_analysis",
+  "question_type": "alphabetical_order",
+  "evaluation_description": "Capacidad de ordenar palabras alfabéticamente considerando cada letra secuencialmente"
+}
+```
+
 ## Funcionalidades del Sistema
 
 ### Gestión de Sesiones
@@ -747,6 +756,21 @@ Componentes especializados que extienden la base:
 - `pie_chart` → Gráficos circulares (PieChartQuestion.js)
 - `bar_chart` → Gráficos de barras (BarChartQuestion.js)  
 - `data_tables` → Tablas de datos (DataTableQuestion.js)
+- `error_detection` → Detección de errores ortográficos con texto a analizar (ErrorDetectionQuestion.js)
+- `text_question` → Preguntas de opción múltiple estándar sin contenido especial (integrado en PsychometricTestLayout.js)
+
+**🔍 Guía para Seleccionar el Componente Correcto:**
+
+**Usar `error_detection` cuando:**
+- La pregunta muestra un texto para analizar errores
+- Necesita mostrar un cuadro con texto original
+- Se buscan errores específicos en el texto mostrado
+
+**Usar `text_question` cuando:**
+- Pregunta de opción múltiple estándar (A, B, C, D)
+- No requiere mostrar contenido especial (gráficos, tablas, texto a analizar)
+- Las opciones son texto simple
+- Preguntas de ortografía, gramática, orden alfabético, etc.
 
 **Si es tipo existente** → Usar componente existente  
 **Si es tipo nuevo** → Crear componente especializado
@@ -799,6 +823,8 @@ const questionData = {
 - ✅ BarChartQuestion.js → listo para gráficos de barras
 - ✅ PieChartQuestion.js → listo para gráficos circulares
 - ✅ DataTableQuestion.js → listo para tablas
+- ✅ ErrorDetectionQuestion.js → listo para detección de errores ortográficos
+- ✅ text_question → listo para preguntas de opción múltiple estándar (integrado en PsychometricTestLayout.js)
 
 **Si necesita nuevo componente:**
 1. Crear `[Tipo]ChartQuestion.js`
@@ -1368,6 +1394,14 @@ Este sistema de estadísticas psicotécnicas representa un avance significativo 
 - **Formato educativo**: Muestra cada error con su corrección y explicación
 - **Adaptable**: Funciona con cualquier número de errores y tipos de texto
 
+#### Componente de Texto Estándar: text_question (PsychometricTestLayout.js)
+
+**Características principales:**
+- **Renderizado directo**: Muestra pregunta y opciones A, B, C, D sin componentes especiales
+- **Formato estándar**: Para preguntas que no requieren visualizaciones específicas
+- **Explicación integrada**: Muestra explicación tras responder
+- **Casos de uso**: Orden alfabético, comparación de frases, preguntas conceptuales
+
 #### Estructura de Datos Requerida
 
 ```javascript
@@ -1470,5 +1504,34 @@ const questionData = {
 - **Diacríticos**: Confusión entre sí/si, dé/de, etc.
 - **Ortografía general**: Palabras mal escritas
 - **Posición numérica**: Para algoritmos de detección automática
+
+### Integración con PsychometricTestLayout
+
+#### Tipos de Pregunta Soportados
+
+1. **error_detection** → ErrorDetectionQuestion.js (componente especializado)
+   - Detección de errores ortográficos
+   - Análisis de texto con explicaciones dinámicas
+   
+2. **text_question** → Renderizado inline en PsychometricTestLayout.js
+   - Preguntas de opción múltiple estándar
+   - Orden alfabético, comparación de frases
+   - Sin visualizaciones especiales
+
+#### Archivo de Debug
+
+El archivo `/app/debug/question/[id]/page.js` debe incluir ambos tipos:
+
+```javascript
+case 'error_detection':
+  return <ErrorDetectionQuestion {...questionProps} />
+
+case 'text_question':
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-8">
+      {/* Implementación estándar de pregunta */}
+    </div>
+  )
+```
 
 Este sistema proporciona una base sólida para evaluar la capacidad ortográfica en oposiciones, con explicaciones educativas que ayudan al aprendizaje.
