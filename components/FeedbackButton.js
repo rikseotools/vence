@@ -49,7 +49,7 @@ export default function FeedbackButton() {
           title="¿Necesitas ayuda?"
         >
           <div className="flex items-center">
-            <span className="text-lg md:text-xl">🎧</span>
+            <span className="text-lg md:text-xl">💬</span>
             <span className="hidden md:inline ml-2 font-medium text-sm">Soporte</span>
           </div>
           

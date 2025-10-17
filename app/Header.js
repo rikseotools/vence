@@ -389,7 +389,7 @@ export default function HeaderES() {
                 className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
                 title="Contactar soporte"
               >
-                <span className="text-sm">🎧</span>
+                <span className="text-sm">💬</span>
                 <span className="text-sm font-medium">Soporte</span>
               </button>
 

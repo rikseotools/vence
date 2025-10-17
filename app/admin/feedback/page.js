@@ -37,6 +37,7 @@ export default function AdminFeedbackPage() {
   const [chatMessages, setChatMessages] = useState([])
   const [newUserMessages, setNewUserMessages] = useState(new Set()) // IDs de conversaciones con mensajes nuevos
   const [viewedConversations, setViewedConversations] = useState(new Set()) // IDs de conversaciones que el admin ya vio
+  const [activeFilter, setActiveFilter] = useState('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
   const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se cargó localStorage
   const messagesEndRef = useRef(null)
 
@@ -505,6 +506,17 @@ export default function AdminFeedbackPage() {
     )
   }
 
+  // Función para filtrar feedbacks según el filtro activo
+  const getFilteredFeedbacks = () => {
+    if (activeFilter === 'all') return feedbacks
+    return feedbacks.filter(feedback => feedback.status === activeFilter)
+  }
+
+  // Función para manejar click en tarjetas de estadísticas
+  const handleFilterClick = (filterType) => {
+    setActiveFilter(filterType === activeFilter ? 'all' : filterType)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
@@ -518,6 +530,15 @@ export default function AdminFeedbackPage() {
               </h1>
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                 Sistema de tickets para atención al usuario
+                {activeFilter !== 'all' && (
+                  <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                    Filtro: {
+                      activeFilter === 'pending' ? 'Pendientes' :
+                      activeFilter === 'resolved' ? 'Cerrados' :
+                      activeFilter === 'dismissed' ? 'Descartados' : ''
+                    }
+                  </span>
+                )}
               </p>
             </div>
             {newUserMessages.size > 0 && (
@@ -528,40 +549,86 @@ export default function AdminFeedbackPage() {
           </div>
         </div>
 
-        {/* Estadísticas */}
+        {/* Estadísticas - Filtros Clickeables */}
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-8">
-          <div className="bg-white dark:bg-gray-800 p-3 sm:p-6 rounded-lg shadow">
+          {/* Total */}
+          <button
+            onClick={() => handleFilterClick('all')}
+            className={`p-3 sm:p-6 rounded-lg shadow transition-all hover:shadow-md ${
+              activeFilter === 'all' 
+                ? 'bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-500' 
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
             <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
             <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-3 sm:p-6 rounded-lg shadow">
+            {activeFilter === 'all' && <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">✓ Filtro activo</div>}
+          </button>
+          
+          {/* Pendientes */}
+          <button
+            onClick={() => handleFilterClick('pending')}
+            className={`p-3 sm:p-6 rounded-lg shadow transition-all hover:shadow-md ${
+              activeFilter === 'pending' 
+                ? 'bg-yellow-100 dark:bg-yellow-900/50 ring-2 ring-yellow-500' 
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
             <div className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</div>
             <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Pendientes</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-3 sm:p-6 rounded-lg shadow">
+            {activeFilter === 'pending' && <div className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">✓ Filtro activo</div>}
+          </button>
+          
+          {/* Cerrados */}
+          <button
+            onClick={() => handleFilterClick('resolved')}
+            className={`p-3 sm:p-6 rounded-lg shadow transition-all hover:shadow-md ${
+              activeFilter === 'resolved' 
+                ? 'bg-green-100 dark:bg-green-900/50 ring-2 ring-green-500' 
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
             <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">{stats.resolved}</div>
-            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Resueltos</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-3 sm:p-6 rounded-lg shadow">
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Cerrados</div>
+            {activeFilter === 'resolved' && <div className="text-xs text-green-600 dark:text-green-400 mt-1">✓ Filtro activo</div>}
+          </button>
+          
+          {/* Descartados */}
+          <button
+            onClick={() => handleFilterClick('dismissed')}
+            className={`p-3 sm:p-6 rounded-lg shadow transition-all hover:shadow-md ${
+              activeFilter === 'dismissed' 
+                ? 'bg-gray-200 dark:bg-gray-700 ring-2 ring-gray-500' 
+                : 'bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
             <div className="text-xl sm:text-2xl font-bold text-gray-600 dark:text-gray-400">{stats.dismissed}</div>
             <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Descartados</div>
-          </div>
+            {activeFilter === 'dismissed' && <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">✓ Filtro activo</div>}
+          </button>
         </div>
 
         {/* Lista de Feedbacks */}
-        {feedbacks.length === 0 ? (
+        {getFilteredFeedbacks().length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
             <div className="text-6xl mb-4">📭</div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              No hay feedbacks
+              {activeFilter === 'all' ? 'No hay tickets' : `No hay tickets ${
+                activeFilter === 'pending' ? 'pendientes' :
+                activeFilter === 'resolved' ? 'cerrados' :
+                activeFilter === 'dismissed' ? 'descartados' : ''
+              }`}
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Los comentarios de usuarios aparecerán aquí
+              {activeFilter === 'all' 
+                ? 'Los tickets de soporte aparecerán aquí'
+                : 'No se encontraron tickets con este filtro'
+              }
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {feedbacks.map((feedback) => (
+            {getFilteredFeedbacks().map((feedback) => (
               <div 
                 key={feedback.id} 
                 className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-4 sm:p-6"
@@ -684,21 +751,9 @@ export default function AdminFeedbackPage() {
                       </button>
                     )}
                     
-                    {/* Botones diferentes según si hay conversación o no */}
-                    {conversations[feedback.id] ? (
-                      // Si hay conversación: solo opción de cerrar
-                      <>
-                        <button
-                          onClick={() => updateFeedbackStatus(feedback.id, 'resolved')}
-                          disabled={updatingStatus}
-                          className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium disabled:opacity-50"
-                        >
-                          <span className="sm:hidden">✅</span>
-                          <span className="hidden sm:inline">✅ Cerrado</span>
-                        </button>
-                      </>
-                    ) : (
-                      // Si no hay conversación: solo respuesta rápida
+                    {/* Respuesta rápida solo si no hay conversación activa */}
+                    {!conversations[feedback.id] && (
+                      // Botón de respuesta rápida para feedbacks sin conversación
                       <>
                         <button
                           onClick={() => setSelectedFeedback(feedback)}
@@ -861,7 +916,7 @@ export default function AdminFeedbackPage() {
               <div className="flex items-center justify-between p-2 sm:p-4 border-b dark:border-gray-700 flex-shrink-0">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
-                    🎫 Ticket de Soporte
+                    💬 Chat de Soporte
                   </h3>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1 truncate">
                     Estado: {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando tu respuesta' : 
@@ -951,7 +1006,7 @@ export default function AdminFeedbackPage() {
                 <div className="mt-3 pt-3 border-t dark:border-gray-600">
                   <button
                     onClick={() => {
-                      if (confirm('¿Marcar este ticket como cerrado?')) {
+                      if (confirm('¿Cerrar este chat de soporte?')) {
                         // Cerrar conversación
                         supabase
                           .from('feedback_conversations')
@@ -982,7 +1037,7 @@ export default function AdminFeedbackPage() {
                     }}
                     className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium"
                   >
-                    <span className="hidden sm:inline">✅ Cerrar Ticket</span>
+                    <span className="hidden sm:inline">✅ Cerrar Chat de Soporte</span>
                     <span className="sm:hidden">✅ Cerrar</span>
                   </button>
                 </div>

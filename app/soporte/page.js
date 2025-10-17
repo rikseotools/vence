@@ -476,7 +476,7 @@ function SoporteContent() {
                                 }`}
                               >
                                 {conversations[feedback.id].status === 'waiting_user' 
-                                  ? 'Responder'
+                                  ? 'Abrir Chat'
                                   : 'Ver Chat'
                                 }
                               </button>
