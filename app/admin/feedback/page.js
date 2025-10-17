@@ -37,6 +37,7 @@ export default function AdminFeedbackPage() {
   const [chatMessages, setChatMessages] = useState([])
   const [newUserMessages, setNewUserMessages] = useState(new Set()) // IDs de conversaciones con mensajes nuevos
   const [viewedConversations, setViewedConversations] = useState(new Set()) // IDs de conversaciones que el admin ya vio
+  const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se cargó localStorage
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -53,6 +54,9 @@ export default function AdminFeedbackPage() {
         }
       } catch (error) {
         console.error('Error cargando conversaciones vistas:', error)
+      } finally {
+        // Marcar como cargado independientemente de si había data o no
+        setViewedConversationsLoaded(true)
       }
       
       loadFeedbacks()
@@ -101,16 +105,19 @@ export default function AdminFeedbackPage() {
     }
   }, [supabase, viewedConversations])
 
-  // Polling para detectar nuevas respuestas de usuarios
+  // Polling para detectar nuevas respuestas de usuarios - SOLO después de cargar localStorage
   useEffect(() => {
-    if (!user) return
+    if (!user || !viewedConversationsLoaded) return
+
+    // Ejecutar primera verificación inmediatamente
+    checkForNewUserMessages()
 
     const interval = setInterval(() => {
       checkForNewUserMessages()
     }, 10000) // Verificar cada 10 segundos
 
     return () => clearInterval(interval)
-  }, [user, checkForNewUserMessages])
+  }, [user, viewedConversationsLoaded, checkForNewUserMessages])
 
   const loadFeedbacks = async () => {
     try {
@@ -564,12 +571,7 @@ export default function AdminFeedbackPage() {
                             : 'bg-green-600 hover:bg-green-700'
                         }`}
                       >
-                        💬 Chat ({conversations[feedback.id].status === 'waiting_admin' ? 'Nuevo' : conversations[feedback.id].status})
-                        {newUserMessages.has(conversations[feedback.id].id) && (
-                          <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-bounce">
-                            ¡NUEVO!
-                          </span>
-                        )}
+                        💬 Ver Chat
                       </button>
                     ) : (
                       <button
@@ -676,11 +678,6 @@ export default function AdminFeedbackPage() {
                         }`}
                       >
                         💬 Ver Chat
-                        {newUserMessages.has(conversations[feedback.id].id) && (
-                          <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-bounce">
-                            ¡NUEVO!
-                          </span>
-                        )}
                       </button>
                     ) : (
                       <button

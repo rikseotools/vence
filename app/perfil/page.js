@@ -24,7 +24,8 @@ function PerfilPageContent() {
   
   // 🆕 EMAIL PREFERENCES - SIMPLIFICADO
   const [emailPreferences, setEmailPreferences] = useState({
-    receive_emails: true // Una sola opción simple
+    receive_emails: true, // Una sola opción simple
+    support_emails: true  // Nueva opción para emails de soporte
   })
   const [emailPrefLoading, setEmailPrefLoading] = useState(true)
   const [emailPrefSaving, setEmailPrefSaving] = useState(false)
@@ -104,16 +105,19 @@ function PerfilPageContent() {
         if (error && error.code === 'PGRST116') {
           // No existe, crear con valores por defecto
           setEmailPreferences({
-            receive_emails: true // Por defecto, recibir emails
+            receive_emails: true, // Por defecto, recibir emails
+            support_emails: true  // Por defecto, recibir emails de soporte
           })
         } else if (error) {
           console.error('Error cargando preferencias de email:', error)
-          setEmailPreferences({ receive_emails: true })
+          setEmailPreferences({ receive_emails: true, support_emails: true })
         } else {
           // Mapear las preferencias complejas a nuestra opción simple
           const receiveEmails = !preferences.unsubscribed_all
+          const supportEmails = !preferences.email_soporte_disabled
           setEmailPreferences({
-            receive_emails: receiveEmails
+            receive_emails: receiveEmails,
+            support_emails: supportEmails
           })
         }
       } catch (error) {
@@ -267,6 +271,7 @@ function PerfilPageContent() {
       
       // Convertir nuestra opción simple al formato de BD existente (TODOS los tipos)
       const receiveEmails = newPreferences.receive_emails
+      const supportEmails = newPreferences.support_emails
       const updateData = {
         user_id: user.id,
         unsubscribed_all: !receiveEmails,
@@ -275,6 +280,7 @@ function PerfilPageContent() {
         email_bienvenida_motivacional: receiveEmails,
         email_bienvenida_inmediato: receiveEmails,
         email_resumen_semanal: receiveEmails,
+        email_soporte_disabled: !supportEmails,  // Nueva columna para soporte
         unsubscribed_at: receiveEmails ? null : new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -301,7 +307,19 @@ function PerfilPageContent() {
 
   // 🆕 MANEJAR CAMBIOS EN EMAIL PREFERENCES - SIMPLIFICADO
   const handleEmailPrefChange = (value) => {
-    const newPreferences = { receive_emails: value }
+    const newPreferences = { 
+      ...emailPreferences,
+      receive_emails: value 
+    }
+    saveEmailPreferences(newPreferences)
+  }
+
+  // 🆕 MANEJAR CAMBIOS EN SOPORTE ESPECÍFICAMENTE
+  const handleSupportEmailChange = (value) => {
+    const newPreferences = { 
+      ...emailPreferences,
+      support_emails: value 
+    }
     saveEmailPreferences(newPreferences)
   }
 
@@ -715,6 +733,42 @@ function PerfilPageContent() {
                   <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
                     {emailPreferences.receive_emails ? (
                       <span className="text-xs text-green-600">✓</span>
+                    ) : (
+                      <span className="text-xs text-gray-400">✕</span>
+                    )}
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Opción específica para emails de soporte */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h5 className="font-medium text-gray-800">
+                  💬 Emails de Soporte
+                </h5>
+                <p className="text-sm text-gray-600">
+                  {emailPreferences.support_emails ? (
+                    <>Recibes emails cuando el equipo responde a tus consultas</>
+                  ) : (
+                    <>No recibes emails de respuestas del equipo de soporte</>
+                  )}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={emailPreferences.support_emails}
+                  onChange={(e) => handleSupportEmailChange(e.target.checked)}
+                  disabled={emailPrefSaving}
+                  className="sr-only peer"
+                />
+                <div className="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:bg-blue-500 transition-colors">
+                  <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
+                    {emailPreferences.support_emails ? (
+                      <span className="text-xs text-blue-600">✓</span>
                     ) : (
                       <span className="text-xs text-gray-400">✕</span>
                     )}

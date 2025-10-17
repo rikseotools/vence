@@ -260,7 +260,7 @@ export default function NotificationBell() {
 
         case 'feedback_response':
           if (actionType === 'open_chat') {
-            return `/feedback/chat?conversation_id=${notification.data?.conversation_id}`
+            return `/soporte?conversation_id=${notification.context_data?.conversation_id || notification.data?.conversation_id}`
           }
           break
           
@@ -381,7 +381,7 @@ export default function NotificationBell() {
             className={`z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700 overflow-y-auto ${
               isDesktop 
                 ? 'absolute right-0 mt-2 w-[420px] max-h-96'
-                : 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[95vw] max-w-md max-h-[80vh]'
+                : 'fixed top-16 right-2 left-2 w-auto max-h-[75vh]'
             }`}
           >
             {/* Header del panel */}
@@ -564,11 +564,11 @@ export default function NotificationBell() {
                             {actions.primary && (
                               <button
                                 onClick={(e) => handleActionClick(notification, 'primary', e)}
-                                className="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-colors group"
+                                className="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-sm font-medium transition-colors group touch-manipulation"
                               >
                                 <span className="mr-2">{getActionIcon(actions.primary.type)}</span>
                                 {actions.primary.label}
-                                {getActionTimeEstimate(actions.primary.type) && actions.primary.type !== 'intensive_test' && (
+                                {getActionTimeEstimate(actions.primary.type) && actions.primary.type !== 'intensive_test' && actions.primary.type !== 'open_chat' && (
                                   <span className="ml-2 text-blue-200 text-xs">
                                     ({getActionTimeEstimate(actions.primary.type)})
                                   </span>
@@ -577,11 +577,11 @@ export default function NotificationBell() {
                             )}
                             
                             {/* Acciones Secundarias */}
-                            <div className="flex gap-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                               {actions.secondary && (
                                 <button
                                   onClick={(e) => handleActionClick(notification, 'secondary', e)}
-                                  className="flex-1 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800/50 text-blue-700 dark:text-blue-300 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-blue-300 dark:border-blue-600"
+                                  className="w-full sm:flex-1 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800/50 text-blue-700 dark:text-blue-300 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border border-blue-300 dark:border-blue-600 touch-manipulation"
                                 >
                                   <span className="mr-1">{getActionIcon(actions.secondary.type)}</span>
                                   {actions.secondary.label}
@@ -595,7 +595,7 @@ export default function NotificationBell() {
                                     e.stopPropagation()
                                     handleShowAppealForm(notification.disputeId)
                                   }}
-                                  className="px-3 py-2 bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded-lg text-sm hover:bg-orange-200 dark:hover:bg-orange-800/50 transition-colors border border-orange-300 dark:border-orange-600"
+                                  className="w-full sm:flex-1 px-3 py-2.5 bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded-lg text-sm hover:bg-orange-200 dark:hover:bg-orange-800/50 transition-colors border border-orange-300 dark:border-orange-600 touch-manipulation"
                                   title="Contestar impugnación rechazada"
                                 >
                                   📝 Contestar
@@ -608,17 +608,20 @@ export default function NotificationBell() {
                                 !notification.isRead && (
                                   <button
                                     onClick={(e) => handleMarkAsRead(notification, e)}
-                                    className="px-3 py-2 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors"
+                                    className="w-full sm:flex-1 px-3 py-2.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors touch-manipulation"
                                     title="Marcar como leído"
                                   >
                                     ✓ Leído
                                   </button>
                                 )
+                              ) : notification.type === 'feedback_response' ? (
+                                // Para feedback: No mostrar botón (se marca como leído automáticamente al abrir chat)
+                                null
                               ) : (
                                 // Para otras: Entendido (descartar)
                                 <button
                                   onClick={(e) => handleDismiss(notification, e)}
-                                  className="px-3 py-2 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors border border-green-300 dark:border-green-600"
+                                  className="w-full sm:flex-1 px-3 py-2.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors border border-green-300 dark:border-green-600 touch-manipulation"
                                   title="Ocultar esta notificación"
                                 >
                                   Marcar como leído
@@ -782,15 +785,26 @@ export default function NotificationBell() {
                       ? `${notifications.length} notificaciones totales`
                       : `${filteredNotifications.length} en esta categoría`}
                   </div>
-                  <button
-                    onClick={() => {
-                      setIsOpen(false)
-                      window.location.href = '/mis-estadisticas'
-                    }}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium py-1 px-3 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                  >
-                    Ver estadísticas →
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setIsOpen(false)
+                        window.location.href = '/soporte'
+                      }}
+                      className="text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 font-medium py-1 px-3 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                    >
+                      🎧 Soporte →
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsOpen(false)
+                        window.location.href = '/mis-estadisticas'
+                      }}
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium py-1 px-3 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                    >
+                      📊 Estadísticas →
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

@@ -25,6 +25,7 @@ export default function HeaderES() {
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
   const [userStreak, setUserStreak] = useState(0)
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
+  const [localStorageLoaded, setLocalStorageLoaded] = useState(false)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
   
@@ -128,7 +129,7 @@ export default function HeaderES() {
   // 🆕 VERIFICAR CONVERSACIONES DE FEEDBACK PENDIENTES
   useEffect(() => {
     async function checkPendingFeedbacks() {
-      if (!user || !supabase || !isAdmin) {
+      if (!user || !supabase || !isAdmin || !localStorageLoaded) {
         setPendingFeedbacks(0)
         return
       }
@@ -167,13 +168,15 @@ export default function HeaderES() {
     }
 
     if (!authLoading && isAdmin) {
+      // Marcar localStorage como cargado y ejecutar primera verificación
+      setLocalStorageLoaded(true)
       checkPendingFeedbacks()
       
       // Verificar cada 10 segundos para sincronización más rápida
       const interval = setInterval(checkPendingFeedbacks, 10000)
       return () => clearInterval(interval)
     }
-  }, [user, supabase, authLoading, isAdmin])
+  }, [user, supabase, authLoading, isAdmin, localStorageLoaded])
 
   // Enlaces simplificados para usuarios logueados
   const getLoggedInNavLinks = () => {

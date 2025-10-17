@@ -421,12 +421,8 @@ const NOTIFICATION_TYPES = {
     textColor: 'text-blue-600 dark:text-blue-400',
     borderColor: 'border-blue-200 dark:border-blue-800',
     primaryAction: {
-      label: '💬 Abrir Chat',
+      label: 'Abrir Chat',
       type: 'open_chat'
-    },
-    secondaryAction: {
-      label: '📋 Ver Feedback',
-      type: 'view_feedback'
     }
   },
   'progress_update': { 
@@ -653,9 +649,7 @@ export function useIntelligentNotifications() {
 
         case 'feedback_response':
           if (actionType === 'open_chat') {
-            return `/feedback/chat?conversation_id=${notification.data?.conversation_id}`
-          } else if (actionType === 'view_feedback') {
-            return `/feedback?${baseParams.toString()}`
+            return `/soporte?conversation_id=${notification.context_data?.conversation_id || notification.data?.conversation_id}`
           }
           break
           
@@ -1472,23 +1466,29 @@ export function useIntelligentNotifications() {
       
       console.log('📧 Notificaciones encontradas:', notifications?.length || 0, notifications)
 
-      const systemNotifs = notifications?.map(notif => ({
-        id: `system-${notif.id}`,
-        type: notif.type,
-        title: notif.title,
-        message: notif.message,
-        timestamp: notif.created_at,
-        isRead: notif.is_read,
-        data: notif.data,
-        priority: NOTIFICATION_TYPES[notif.type]?.priority || 30,
-        ...(NOTIFICATION_TYPES[notif.type] || {
-          icon: '💬',
-          color: 'blue',
-          bgColor: 'bg-blue-100 dark:bg-blue-900/50',
-          textColor: 'text-blue-600 dark:text-blue-400',
-          borderColor: 'border-blue-200 dark:border-blue-800'
-        })
-      })).filter(notif => !dismissedNotifications.has(notif.id)) || []
+      const systemNotifs = notifications?.map(notif => {
+        // Extraer tipo de context_data si está disponible, sino usar type directo
+        const notifType = notif.context_data?.type || notif.type
+        
+        return {
+          id: `system-${notif.id}`,
+          type: notifType,
+          title: notif.context_data?.title || notif.title || 'Notificación',
+          message: notif.message_sent || notif.message,
+          timestamp: notif.created_at,
+          isRead: !!notif.opened_at,
+          data: notif.context_data || notif.data,
+          context_data: notif.context_data,
+          priority: NOTIFICATION_TYPES[notifType]?.priority || 30,
+          ...(NOTIFICATION_TYPES[notifType] || {
+            icon: '💬',
+            color: 'blue',
+            bgColor: 'bg-blue-100 dark:bg-blue-900/50',
+            textColor: 'text-blue-600 dark:text-blue-400',
+            borderColor: 'border-blue-200 dark:border-blue-800'
+          })
+        }
+      }).filter(notif => !dismissedNotifications.has(notif.id)) || []
 
       const unreadNotifications = filterUnreadNotifications(systemNotifs)
       console.log('📧 System notifications después de filtros:', unreadNotifications.length, unreadNotifications)

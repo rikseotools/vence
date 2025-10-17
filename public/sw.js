@@ -50,7 +50,7 @@ self.addEventListener('push', (event) => {
   console.log('📢 Push notification recibida')
   
   let notificationData = {
-    title: '🎯 ilovetest - Tu oposición te espera',
+    title: '🎯 Vence - Tu oposición te espera',
     body: '¡Hora de practicar! Tu plaza de funcionario no se va a conseguir sola.',
     icon: '/icon-192.png',
     badge: '/badge-72.png',

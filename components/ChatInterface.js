@@ -190,7 +190,7 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
               }`}>
                 <div className="text-sm mb-1">
                   {message.is_admin ? (
-                    <span className="font-medium">👨‍💼 Equipo iLoveTest</span>
+                    <span className="font-medium">👨‍💼 Equipo Vence</span>
                   ) : (
                     <span className="font-medium">Tú</span>
                   )}
