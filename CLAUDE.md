@@ -9,7 +9,8 @@
 - **`TestLayout.js`** - Componente principal para tests normales/personalizados
 - **`DynamicTest.js`** - Componente para tests generados con IA
 - **`TestPageWrapper.js`** - Wrapper que maneja diferentes tipos de tests
-- **`TestConfigurator.js`** - Configurador avanzado de tests
+- **`TestConfigurator.js`** - Configurador avanzado de tests (general)
+- **`LawTestConfigurator.js`** - Configurador específico para tests de leyes individuales
 
 ### Fetchers de Datos
 - **`testFetchers.js`** - Funciones para obtener preguntas por tema
@@ -21,6 +22,19 @@
 - **`testTracking.js`** - Sistema de tracking de interacciones
 
 ## Funcionalidades Recientes
+
+### Configurador de Tests para Leyes Específicas (Implementado: 17/10/2025)
+- **Ubicación:** `app/leyes/[law]/LawTestConfigurator.js`
+- **Funcionalidad:** Configurador especializado para tests de leyes individuales
+- **Características:**
+  - Preselecciona automáticamente la ley específica
+  - Oculta opciones no relevantes (preguntas oficiales, artículos imprescindibles)
+  - Calcula correctamente las preguntas disponibles por ley
+  - Interfaz simplificada para estudio de leyes específicas
+- **Diferencias con TestConfigurator general:**
+  - No permite selección múltiple de leyes
+  - No incluye opciones de oposición (solo estudio de ley)
+  - Optimizado para una sola ley preseleccionada
 
 ### Sistema Dual de Respuestas (Implementado: 01/01/2025)
 - **Ubicación:** `TestLayout.js` líneas 924-943, `DynamicTest.js` líneas 393-412

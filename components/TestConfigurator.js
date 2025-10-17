@@ -10,7 +10,10 @@ const TestConfigurator = ({
   userStats = null,
   loading = false,
   currentUser = null,
-  lawsData = []
+  lawsData = [],
+  preselectedLaw = null,
+  hideOfficialQuestions = false,
+  hideEssentialArticles = false
 }) => {
   const supabase = getSupabaseClient();
 
@@ -276,9 +279,22 @@ const TestConfigurator = ({
 
   // 🔧 EFECTO: Cargar conteo de preguntas oficiales cuando cambia el tema
   useEffect(() => {
-    loadOfficialCount();
-  }, [supabase, tema]); // ✅ DEPENDENCIA DE 'tema' AÑADIDA
+    // Solo cargar si tenemos un tema válido y no estamos en modo ley específica
+    if (tema !== null && tema !== undefined && (!lawsData || lawsData.length === 0)) {
+      loadOfficialCount();
+    }
+  }, [supabase, tema, lawsData]); // ✅ DEPENDENCIA DE 'tema' Y 'lawsData' AÑADIDA
 
+  // 🔧 EFECTO: Inicializar selectedLaws cuando preselectedLaw está presente
+  useEffect(() => {
+    if (preselectedLaw && lawsData && lawsData.length > 0) {
+      const matchingLaw = lawsData.find(law => law.law_short_name === preselectedLaw);
+      if (matchingLaw) {
+        console.log('🎯 Inicializando selectedLaws con ley preseleccionada:', preselectedLaw);
+        setSelectedLaws(new Set([preselectedLaw]));
+      }
+    }
+  }, [preselectedLaw, lawsData]);
 
   // Estados y funciones existentes...
 
@@ -318,22 +334,44 @@ const TestConfigurator = ({
     }
     
     // Fallback: usar el total como número (para casos legacy)
-    return typeof totalQuestions === 'number' ? totalQuestions : 0;
+    const result = typeof totalQuestions === 'number' ? totalQuestions : 0;
+    // Validar que no sea NaN
+    if (isNaN(result)) {
+      console.warn('⚠️ baseQuestionCount es NaN:', { totalQuestions, result });
+      return 0;
+    }
+    return result;
   }, [focusEssentialArticles, essentialQuestionsCount, essentialQuestionsByDifficulty, difficultyMode, onlyOfficialQuestions, officialQuestionsCount, totalQuestions]);
 
   // 🆕 Calcular preguntas disponibles considerando leyes y artículos seleccionados
   const availableQuestions = useMemo(() => {
+    console.log('🔍 Calculando availableQuestions:', { 
+      lawsData: lawsData?.length, 
+      selectedLawsSize: selectedLaws.size, 
+      baseQuestionCount,
+      selectedLaws: Array.from(selectedLaws)
+    });
+    
     // Si no hay datos de leyes, usar el cálculo base
     if (!lawsData || lawsData.length === 0) {
+      console.log('📊 Usando baseQuestionCount:', baseQuestionCount);
       return baseQuestionCount;
     }
     
     // Si no hay leyes seleccionadas, retornar 0
     if (selectedLaws.size === 0) {
+      console.log('⚠️ No hay leyes seleccionadas, retornando 0');
       return 0;
     }
     
-    // Calcular preguntas basándose en artículos específicos seleccionados
+    // Para modo de ley específica (una sola ley), usar directamente el questions_count
+    if (selectedLaws.size === 1 && lawsData.length === 1) {
+      const law = lawsData[0];
+      console.log('🎯 Modo ley específica, usando questions_count:', law.questions_count);
+      return law.questions_count || 0;
+    }
+    
+    // Para modo multi-ley o con filtros de artículos
     let totalQuestions = 0;
     
     for (const law of lawsData) {
@@ -342,26 +380,32 @@ const TestConfigurator = ({
       const articlesForLaw = availableArticlesByLaw.get(law.law_short_name);
       const selectedArticlesForLaw = selectedArticlesByLaw.get(law.law_short_name);
       
-      if (articlesForLaw && selectedArticlesForLaw) {
+      if (articlesForLaw && selectedArticlesForLaw && selectedArticlesForLaw.size > 0) {
         // Contar preguntas de artículos específicos seleccionados
         const questionsFromSelectedArticles = articlesForLaw
           .filter(article => selectedArticlesForLaw.has(article.article_number))
-          .reduce((sum, article) => sum + article.question_count, 0);
+          .reduce((sum, article) => sum + (article.question_count || 0), 0);
         
         totalQuestions += questionsFromSelectedArticles;
       } else {
-        // Si no hay filtro de artículos específico, usar proporción por ley
-        const totalArticles = lawsData.reduce((sum, law) => sum + law.articles_with_questions, 0);
-        const proportion = law.articles_with_questions / totalArticles;
-        totalQuestions += Math.floor(baseQuestionCount * proportion);
+        // Si no hay filtro de artículos específico, usar el questions_count de la ley
+        console.log('📊 Usando questions_count de la ley:', law.law_short_name, law.questions_count);
+        totalQuestions += law.questions_count || 0;
       }
     }
     
+    console.log('✅ Total preguntas calculadas:', totalQuestions);
     return totalQuestions;
   }, [baseQuestionCount, lawsData, selectedLaws, availableArticlesByLaw, selectedArticlesByLaw]);
 
   const maxQuestions = useMemo(() => {
-    return Math.min(selectedQuestions, availableQuestions);
+    const result = Math.min(selectedQuestions, availableQuestions);
+    // Validar que no sea NaN
+    if (isNaN(result) || result < 0) {
+      console.warn('⚠️ maxQuestions es NaN o negativo:', { selectedQuestions, availableQuestions, result });
+      return 0;
+    }
+    return result;
   }, [selectedQuestions, availableQuestions]);
 
   // Funciones existentes (getDifficulty* eliminadas)...
@@ -978,6 +1022,7 @@ const TestConfigurator = ({
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
             
             {/* Solo preguntas oficiales - CON CONTEO CORREGIDO POR TEMA */}
+            {!hideOfficialQuestions && (
             <div>
               <label className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -1093,8 +1138,10 @@ const TestConfigurator = ({
                 </div>
               )}
             </div>
+            )}
 
             {/* 🆕 ARTÍCULOS IMPRESCINDIBLES */}
+            {!hideEssentialArticles && (
             <div className="border-t border-gray-200 pt-4">
               <label className="flex items-center space-x-2">
                 <input
@@ -1184,6 +1231,7 @@ const TestConfigurator = ({
                 </div>
               )}
             </div>
+            )}
           </div>
 
           {/* ✨ MODO ADAPTATIVO */}

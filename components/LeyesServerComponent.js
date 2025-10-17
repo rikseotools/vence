@@ -158,23 +158,15 @@ export default async function LeyesServerComponent() {
                       </p>
                     )}
 
-                    {/* Botones de acción - CON ENLACE A TEORÍA */}
+                    {/* Botones de acción */}
                     <div className="space-y-3">
-                      {/* Botones principales de test */}
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/leyes/${canonicalSlug}/test-rapido?n=10`}
-                          className="flex-1 bg-green-50 text-green-700 text-center py-2 px-3 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors"
-                        >
-                          ⚡ Test Rápido
-                        </Link>
-                        <Link
-                          href={`/leyes/${canonicalSlug}/avanzado?n=25`}
-                          className="flex-1 bg-blue-50 text-blue-700 text-center py-2 px-3 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
-                        >
-                          🎯 Avanzado
-                        </Link>
-                      </div>
+                      {/* Botón de test */}
+                      <Link
+                        href={`/leyes/${canonicalSlug}`}
+                        className="block bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-center py-3 px-4 rounded-lg text-sm font-medium hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                      >
+                        🎯 Test {law.short_name}
+                      </Link>
                       
                       {/* Enlace a teoría - SEO importante */}
                       <Link

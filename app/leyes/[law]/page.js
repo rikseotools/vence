@@ -6,6 +6,7 @@ import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
+import LawTestConfigurator from './LawTestConfigurator'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
@@ -16,13 +17,41 @@ export async function generateMetadata({ params }) {
   const lawShortName = mapLawSlugToShortName(resolvedParams.law)
   const canonicalSlug = getCanonicalSlug(lawShortName)
   
+  // Generar descripción SEO específica para cada ley
+  const generateSEODescription = (lawShortName, lawName) => {
+    const seoDescriptions = {
+      'CE': 'Test de Constitución Española con preguntas de exámenes oficiales. Artículos, derechos fundamentales, organización del Estado. Preparación completa para oposiciones.',
+      'Ley 39/2015': 'Test Ley 39/2015 LPAC - Procedimiento Administrativo Común. Preguntas oficiales sobre tramitación, plazos, recursos administrativos. Esencial para oposiciones.',
+      'Ley 40/2015': 'Test Ley 40/2015 LRJSP - Régimen Jurídico Sector Público. Organización administrativa, competencias, funcionamiento. Preguntas actualizadas para oposiciones.',
+      'Ley 19/2013': 'Test Ley 19/2013 de Transparencia, Acceso a la Información Pública y Buen Gobierno. Preguntas oficiales sobre transparencia administrativa.',
+      'Código Civil': 'Test Código Civil español con preguntas de exámenes oficiales. Personas, bienes, obligaciones, contratos, familia, sucesiones. Derecho civil completo.',
+      'Código Penal': 'Test Código Penal español actualizado. Delitos, penas, responsabilidad penal. Preguntas de exámenes oficiales para oposiciones de justicia.',
+      'Ley 7/1985': 'Test Ley 7/1985 Bases del Régimen Local. Municipios, provincias, competencias locales. Preguntas oficiales para oposiciones de administración local.',
+      'RDL 5/2015': 'Test Estatuto Básico del Empleado Público (TREBEP) - RDL 5/2015. Derechos, deberes, carrera profesional, régimen disciplinario. Esencial para oposiciones públicas.',
+      'Estatuto de los Trabajadores': 'Test Estatuto de los Trabajadores actualizado. Contratos, derechos laborales, jornada, salarios. Preguntas oficiales de derecho laboral.',
+      'TUE': 'Test Tratado de la Unión Europea con preguntas oficiales. Instituciones europeas, principios fundamentales, ciudadanía europea.',
+      'TFUE': 'Test Tratado de Funcionamiento de la UE. Mercado interior, políticas europeas, competencias. Preguntas actualizadas para oposiciones europeas.',
+      'LO 6/1985': 'Test Ley Orgánica del Poder Judicial. Organización judicial, juzgados, tribunales, carrera judicial. Preguntas oficiales para oposiciones de justicia.',
+      'Ley 50/1981': 'Test Estatuto Orgánico del Ministerio Fiscal. Funciones del fiscal, organización, principios. Preguntas actualizadas para oposiciones de justicia.',
+      'Ley 50/1997': 'Test Ley 50/1997 del Gobierno. Organización, funcionamiento y competencias del Gobierno. Preguntas oficiales para oposiciones administrativas.',
+      'Ley 47/2003': 'Test Ley 47/2003 General Presupuestaria. Régimen presupuestario del sector público, contabilidad pública. Esencial para oposiciones económicas.',
+      'LOTC': 'Test Ley Orgánica del Tribunal Constitucional. Organización, competencias, procedimientos constitucionales. Preguntas para oposiciones jurídicas.',
+      'LO 3/2007': 'Test Ley Orgánica 3/2007 para la Igualdad Efectiva entre Mujeres y Hombres. Principios de igualdad, políticas públicas. Oposiciones sociales.',
+      'LO 3/2018': 'Test Ley Orgánica 3/2018 de Protección de Datos Personales y Garantía de los Derechos Digitales. RGPD español para oposiciones tecnológicas.'
+    }
+    
+    return seoDescriptions[lawShortName] || `Test ${lawName} con preguntas actualizadas de exámenes oficiales. Contenido completo para preparación de oposiciones y estudio jurídico especializado.`
+  }
+
   return {
     title: `Test ${lawInfo.name} | Vence`,
-    description: `Tests completos de ${lawInfo.name}. Modalidades rápida y avanzada. ${lawInfo.description}`,
+    description: generateSEODescription(lawShortName, lawInfo.name),
     keywords: [
       `test ${lawInfo.name.toLowerCase()}`,
       'test leyes gratis',
       'práctica jurídica online',
+      'oposiciones',
+      'preguntas oficiales',
       'vence'
     ].join(', '),
     
@@ -33,7 +62,7 @@ export async function generateMetadata({ params }) {
     
     openGraph: {
       title: `Test: ${lawInfo.name} | Vence`,
-      description: `Tests completos de ${lawInfo.name} en Vence`,
+      description: generateSEODescription(lawShortName, lawInfo.name),
       type: 'website',
       siteName: 'Vence',
       url: `${SITE_URL}/leyes/${canonicalSlug}` // También canonical en OG
@@ -101,18 +130,10 @@ async function LawStatsLoader({ lawShortName }) {
     }
 
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+      <div className="flex justify-center mb-8">
         <div className="bg-white rounded-lg p-4 shadow-md text-center">
           <div className="text-2xl font-bold text-blue-600">{stats.totalQuestions}</div>
           <div className="text-gray-600 text-sm">Total Preguntas</div>
-        </div>
-        <div className="bg-white rounded-lg p-4 shadow-md text-center">
-          <div className="text-2xl font-bold text-green-600">{stats.officialQuestions}</div>
-          <div className="text-gray-600 text-sm">Oficiales</div>
-        </div>
-        <div className="bg-white rounded-lg p-4 shadow-md text-center">
-          <div className="text-2xl font-bold text-purple-600">100%</div>
-          <div className="text-gray-600 text-sm">Gratis</div>
         </div>
       </div>
     )
@@ -167,83 +188,27 @@ export default async function LawMainPage({ params, searchParams }) {
         <div className="text-center mb-12">
           <div className="mb-4">
             <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold">
-              📚 TEST DE LEY
+              📚 TEST {lawShortName}
             </span>
           </div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            Test de {lawInfo.name}
-          </h1>
           <p className="text-xl text-gray-600 mb-6">
             {lawInfo.description}
           </p>
         </div>
 
-        {/* Estadísticas */}
-        <Suspense fallback={
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg p-4 shadow-md animate-pulse">
-                <div className="h-8 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded"></div>
-              </div>
-            ))}
-          </div>
-        }>
-          <LawStatsLoader lawShortName={lawShortName} />
-        </Suspense>
 
-        {/* 2 MODALIDADES DE TEST - COMPACTO */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12 max-w-3xl mx-auto">
-          
-          {/* Test Rápido */}
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all">
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 text-white">
-              <div className="flex items-center gap-3">
-                <div className="text-2xl">⚡</div>
-                <div>
-                  <h3 className="text-lg font-bold">Test Rápido</h3>
-                  <p className="text-green-100 text-sm">10 preguntas en 5 minutos</p>
-                </div>
+        {/* TEST PERSONALIZADO DE LA LEY */}
+        <div className="max-w-4xl mx-auto mb-12">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white">
+              <div className="text-center">
+                <div className="text-3xl mb-2">🎯</div>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 leading-tight">Test {lawShortName}</h3>
+                <p className="text-blue-100">Configura tu test personalizado</p>
               </div>
             </div>
-            <div className="p-4">
-              <ul className="text-gray-600 mb-4 space-y-1 text-sm">
-                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Repaso diario</li>
-                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Preguntas aleatorias</li>
-                <li className="flex items-center"><span className="text-green-500 mr-2">✓</span> Práctica rápida</li>
-              </ul>
-              <Link
-                href={`/leyes/${canonicalSlug}/test-rapido?n=10`}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-4 rounded-lg font-medium text-center block hover:opacity-90 transition-opacity"
-              >
-                ⚡ Empezar Test Rápido
-              </Link>
-            </div>
-          </div>
-
-          {/* Test Avanzado */}
-          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 text-white">
-              <div className="flex items-center gap-3">
-                <div className="text-2xl">🎯</div>
-                <div>
-                  <h3 className="text-lg font-bold">Test Avanzado</h3>
-                  <p className="text-blue-100 text-sm">25 preguntas completas</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-4">
-              <ul className="text-gray-600 mb-4 space-y-1 text-sm">
-                <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Evaluación completa</li>
-                <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Perfecto para exámenes</li>
-                <li className="flex items-center"><span className="text-blue-500 mr-2">✓</span> Preguntas oficiales</li>
-              </ul>
-              <Link
-                href={`/leyes/${canonicalSlug}/avanzado?n=25`}
-                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 px-4 rounded-lg font-medium text-center block hover:opacity-90 transition-opacity"
-              >
-                🎯 Empezar Test Avanzado
-              </Link>
+            <div className="p-6">
+              <LawTestConfigurator lawShortName={lawShortName} lawDisplayName={lawInfo.name} />
             </div>
           </div>
         </div>

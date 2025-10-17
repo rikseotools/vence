@@ -251,10 +251,10 @@ export default function LawTestPageWrapper({
               </a>
               
               <a 
-                href="/auxiliar-administrativo-estado/test"
+                href={`/leyes/${lawSlug}`}
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm inline-block w-full text-center underline"
               >
-                🏠 Volver a Tests por Tema
+                🏠 Volver a {lawShortName}
               </a>
             </div>
           </div>

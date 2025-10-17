@@ -978,7 +978,7 @@ export default function TestLayout({
                   </span>
                   {!isTestCompleted && (
                     <button
-                      onClick={() => window.location.href = '/auxiliar-administrativo-estado/test'}
+                      onClick={() => window.location.href = config.isLawTest ? '/leyes' : '/auxiliar-administrativo-estado/test'}
                       className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
                     >
                       <span>←</span>
