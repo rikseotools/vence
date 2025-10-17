@@ -201,7 +201,8 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
                     hour: '2-digit',
                     minute: '2-digit',
                     day: '2-digit',
-                    month: '2-digit'
+                    month: '2-digit',
+                    timeZone: 'Europe/Madrid'
                   })}
                 </div>
               </div>

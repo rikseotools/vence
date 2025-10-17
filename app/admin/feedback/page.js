@@ -487,7 +487,8 @@ export default function AdminFeedbackPage() {
                       month: 'short',
                       day: 'numeric',
                       hour: '2-digit',
-                      minute: '2-digit'
+                      minute: '2-digit',
+                      timeZone: 'Europe/Madrid'
                     })}
                   </div>
                 </div>
@@ -828,7 +829,8 @@ export default function AdminFeedbackPage() {
                           hour: '2-digit',
                           minute: '2-digit',
                           day: '2-digit',
-                          month: '2-digit'
+                          month: '2-digit',
+                          timeZone: 'Europe/Madrid'
                         })}
                       </div>
                     </div>
