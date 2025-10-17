@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext' // Using context instead of local instance
+import { calculateUserStreak } from '@/utils/streakCalculator'
 
 export default function UserAvatar() {
   // Using Auth context instead of local state
@@ -122,7 +123,7 @@ export default function UserAvatar() {
       }
 
       // Calculate consecutive days streak with grace day
-      const streak = calculateRealStreak(recentActivity || [])
+      const streak = calculateUserStreak(recentActivity || [], 'created_at')
 
       // ⚡ Calculate accuracy from count queries (OPTIMIZED)
       const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
@@ -149,58 +150,7 @@ export default function UserAvatar() {
     }
   }
 
-  // Function to calculate consecutive days streak with grace day
-  const calculateRealStreak = (activities) => {
-    if (!activities || activities.length === 0) return 0
-    
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    // Crear array de días con actividad (últimos 30 días)
-    const activeDays = []
-    for (let i = 0; i < 30; i++) {
-      const checkDate = new Date(today)
-      checkDate.setDate(today.getDate() - i)
-      
-      const hasActivityOnDate = activities.some(activity => {
-        const activityDate = new Date(activity.created_at)
-        activityDate.setHours(0, 0, 0, 0)
-        return activityDate.getTime() === checkDate.getTime()
-      })
-      
-      activeDays.push(hasActivityOnDate)
-    }
-    
-    // Encontrar punto de inicio (hoy o ayer)
-    let startIndex = -1
-    if (activeDays[0]) {
-      startIndex = 0 // Empezar desde hoy
-    } else if (activeDays[1]) {
-      startIndex = 1 // Empezar desde ayer
-    } else {
-      return 0 // No hay actividad reciente
-    }
-    
-    // Contar racha permitiendo máximo 1 día consecutivo sin actividad
-    let streak = 0
-    let consecutiveMisses = 0
-    
-    for (let i = startIndex; i < activeDays.length; i++) {
-      if (activeDays[i]) {
-        streak++
-        consecutiveMisses = 0 // Resetear contador de faltas
-      } else {
-        consecutiveMisses++
-        if (consecutiveMisses >= 2) {
-          // Si faltas 2+ días seguidos, se rompe la racha
-          break
-        }
-        // Si es solo 1 día sin actividad, continuar (día de gracia)
-      }
-    }
-    
-    return streak
-  }
+  // Función de cálculo de racha movida a utils/streakCalculator.js para evitar duplicación
 
   const handleSignOut = () => {
     setShowDropdown(false)
