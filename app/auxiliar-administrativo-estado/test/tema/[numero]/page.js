@@ -864,12 +864,6 @@ export default function TemaPage({ params }) {
 
         {/* ✅ 1️⃣ CONFIGURADOR AVANZADO DINÁMICO */}
         <section className="mb-8">
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-sm">
-              <div><strong>DEBUG:</strong> difficultyStats = {JSON.stringify(difficultyStats)}</div>
-              <div><strong>Total:</strong> {Object.values(difficultyStats).reduce((sum, count) => sum + count, 0)}</div>
-            </div>
-          )}
           <TestConfigurator
             tema={temaNumber}
             totalQuestions={difficultyStats}

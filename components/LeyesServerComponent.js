@@ -115,9 +115,8 @@ export default async function LeyesServerComponent() {
             const canonicalSlug = getCanonicalSlug(law.short_name)
             
             return (
-              <Link
+              <div
                 key={law.id}
-                href={`/leyes/${canonicalSlug}`}
                 className="group block"
               >
                 <div className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border hover:border-blue-200">
@@ -178,7 +177,7 @@ export default async function LeyesServerComponent() {
                     </div>
                   </div>
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>

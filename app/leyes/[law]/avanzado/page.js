@@ -60,7 +60,7 @@ export default async function TestAvanzadoLeyPage({ params, searchParams }) {
           customDescription={`${numQuestions} preguntas para dominar ${lawShortName}`}
           customIcon="🎯"
           customColor="from-blue-500 to-indigo-600"
-          customSubtitle={`Test completo - ${lawInfo.description}`}
+          customSubtitle={`${numQuestions} preguntas avanzadas de preparación`}
           defaultConfig={{
             numQuestions: numQuestions,
             timeLimit: numQuestions * 90, // 1.5 minutos por pregunta

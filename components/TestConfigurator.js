@@ -299,15 +299,6 @@ const TestConfigurator = ({
   // Estados y funciones existentes...
 
   const baseQuestionCount = useMemo(() => {
-    console.log('🔍 [DEBUG] baseQuestionCount - recibiendo totalQuestions:', { 
-      totalQuestions,
-      type: typeof totalQuestions,
-      keys: typeof totalQuestions === 'object' ? Object.keys(totalQuestions) : 'N/A',
-      values: typeof totalQuestions === 'object' ? Object.values(totalQuestions) : 'N/A',
-      focusEssentialArticles,
-      onlyOfficialQuestions,
-      difficultyMode
-    });
 
     // 🔥 PRIORIDAD 1: Artículos imprescindibles (si está activado)
     if (focusEssentialArticles) {
@@ -317,7 +308,6 @@ const TestConfigurator = ({
         return essentialQuestionsByDifficulty[difficultyMode];
       }
       // Si no, usar el total
-      console.log(`📊 Usando ${essentialQuestionsCount} preguntas de artículos imprescindibles (total)`);
       return essentialQuestionsCount;
     }
     
