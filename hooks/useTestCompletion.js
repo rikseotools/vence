@@ -101,18 +101,8 @@ export function useTestCompletion() {
       const dismissed = getDismissedNotifications()
       let autoDismissed = 0
       
-      // Buscar y descartar notificaciones de inactividad/racha rota
-      for (let days = 2; days <= 30; days++) {
-        const inactiveId = `reminder-inactive-${days}`
-        if (!dismissed.has(inactiveId)) {
-          saveDismissedNotification(inactiveId)
-          autoDismissed++
-        }
-      }
-
-      if (autoDismissed > 0) {
-        console.log(`✅ ${autoDismissed} notificaciones de inactividad/racha rota auto-descartadas`)
-      }
+      // ✅ Auto-dismiss de notificaciones de inactividad eliminado - ya no se generan
+      console.log(`✅ Auto-dismiss no necesario - notificaciones de inactividad eliminadas del sistema`)
       
     } catch (error) {
       console.warn('Error en auto-dismiss de notificaciones:', error)

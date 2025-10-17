@@ -1316,63 +1316,11 @@ export function useIntelligentNotifications() {
 
       const notifications = [];
 
-      if (lastTest) {
-        const daysSinceLastTest = Math.floor(
-          (new Date() - new Date(lastTest.completed_at)) / (1000 * 60 * 60 * 24)
-        );
-
-        // Recordatorio por inactividad (2+ días)
-        if (daysSinceLastTest >= 2) {
-          const isUrgent = daysSinceLastTest >= 5;
-          
-          // ✅ FIX: Usar ID base sin días para evitar notificaciones diarias repetidas
-          const baseNotificationId = isUrgent ? 'reminder-streak-broken' : 'reminder-inactive'
-          
-          // Verificar cooldown desde la última vez que se marcó como leída
-          const lastReadKey = `${baseNotificationId}-last-read`
-          const lastRead = readNotifications[lastReadKey]
-          const daysSinceLastRead = lastRead ? 
-            Math.floor((new Date() - new Date(lastRead)) / (1000 * 60 * 60 * 24)) : 
-            999 // Si nunca se ha leído
-          
-          // Cooldown de 3 días para racha rota, 2 días para inactividad normal
-          const cooldownDays = isUrgent ? 3 : 2
-          const isInCooldown = daysSinceLastRead < cooldownDays
-          
-          const notificationId = baseNotificationId // Usar ID base consistente
-          const isAlreadyRead = !!readNotifications[notificationId]
-          
-          if (!dismissedNotifications.has(notificationId) && !isAlreadyRead && !isInCooldown) {
-            notifications.push({
-              id: notificationId,
-              type: isUrgent ? 'streak_broken' : 'inactive_reminder',
-              title: isUrgent ? '💔 ¡Racha Rota!' : '😴 Te Echamos de Menos',
-              message: isUrgent 
-                ? `Llevas ${daysSinceLastTest} días sin estudiar. ¡Vamos a recuperar el ritmo!`
-                : `Han pasado ${daysSinceLastTest} días desde tu último test. ¿Un repaso rápido?`,
-              timestamp: new Date().toISOString(),
-              isRead: false,
-              days_inactive: daysSinceLastTest,
-              priority: isUrgent ? NOTIFICATION_TYPES.streak_broken.priority : 75,
-              ...(isUrgent ? NOTIFICATION_TYPES.streak_broken : {
-                icon: '😴',
-                color: 'orange',
-                bgColor: 'bg-orange-100 dark:bg-orange-900/50',
-                textColor: 'text-orange-600 dark:text-orange-400',
-                borderColor: 'border-orange-200 dark:border-orange-800',
-                primaryAction: {
-                  label: '🚀 Test Rápido (3 min)',
-                  type: 'quick_test'
-                },
-                secondaryAction: {
-                  label: '📊 Ver Mi Progreso',
-                  type: 'view_stats'
-                }
-              })
-            });
-          }
-        }
-      }
+      // 🚫 ELIMINADAS notificaciones de inactividad cuando el usuario está navegando
+      // Si el usuario está activo en la web, no tiene sentido mostrar notificaciones
+      // de "racha rota" o "te echamos de menos" - ya está aquí, interesado en estudiar
+      console.log('🚫 Notificaciones de inactividad/racha rota eliminadas - el usuario está navegando activamente')
+      
 
       // Filtrar notificaciones leídas (OPCIÓN B: desaparecen)
       const unreadNotifications = filterUnreadNotifications(notifications)
@@ -1686,12 +1634,7 @@ export function useIntelligentNotifications() {
           userId: user?.id
         }
         
-        // ✅ FIX: Para notificaciones de racha rota/inactividad, guardar cooldown
-        if (notificationId === 'reminder-streak-broken' || notificationId === 'reminder-inactive') {
-          const cooldownKey = `${notificationId}-last-read`
-          readNotifications[cooldownKey] = new Date().toISOString()
-          console.log(`💾 Cooldown iniciado para ${cooldownKey}`)
-        }
+        // ✅ Cooldowns de racha rota eliminados - ya no se usan estas notificaciones
         
         // Guardar en localStorage
         localStorage.setItem(readNotificationsKey, JSON.stringify(readNotifications))
