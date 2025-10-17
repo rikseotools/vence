@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { calculateUserStreak } from '@/utils/streakCalculator'
 
 export default function RankingModal({ isOpen, onClose }) {
   const { user, supabase } = useAuth()
@@ -251,65 +250,23 @@ export default function RankingModal({ isOpen, onClose }) {
   const loadStreakRanking = async () => {
     setLoading(true)
     try {
-      // Obtener toda la actividad de tests completados
-      const { data: recentActivity, error } = await supabase
-        .from('tests')
-        .select(`
-          user_id,
-          completed_at
-        `)
-        .order('completed_at', { ascending: false })
+      // 🎯 USAR SISTEMA CENTRALIZADO: user_learning_analytics
+      const { data: analyticsData, error } = await supabase
+        .from('user_learning_analytics')
+        .select('user_id, current_streak_days')
+        .gte('current_streak_days', 2) // Solo usuarios con racha >= 2 días
+        .order('current_streak_days', { ascending: false })
+        .limit(20) // Top 20 rachas
 
       if (error) {
-        console.error('Error loading streak ranking:', error)
+        console.error('Error loading streak ranking from analytics:', error)
         return
       }
 
-      console.log('🔍 DEBUG: Datos cargados para streaks:', recentActivity?.length || 0, 'registros')
-
-      // Calcular rachas por usuario (usando tests completados, no respuestas individuales)
-      const userTests = {}
-      
-      recentActivity?.forEach(test => {
-        const userId = test.user_id
-        if (!userId) return
-        
-        if (!userTests[userId]) {
-          userTests[userId] = []
-        }
-        userTests[userId].push({ completed_at: test.completed_at })
-      })
-      
-      // DEBUG: Mostrar datos de usuarios específicos
-      const debugUsers = Object.entries(userTests)
-        .map(([userId, tests]) => ({
-          userId: userId.slice(0, 8),
-          totalTests: tests.length,
-          uniqueDays: [...new Set(tests.map(test => new Date(test.completed_at).toISOString().split('T')[0]))],
-          firstTest: tests[tests.length - 1]?.completed_at?.slice(0, 10),
-          lastTest: tests[0]?.completed_at?.slice(0, 10)
-        }))
-        .slice(0, 5) // Solo primeros 5 para debug
-        
-      console.log('🔍 DEBUG: Muestra de usuarios con tests:', debugUsers)
-
-      // Calcular racha para cada usuario usando la misma lógica del perfil
-      const streakData = Object.entries(userTests).map(([userId, tests]) => {
-        const streak = calculateUserStreak(tests, 'completed_at')
-        return {
-          userId,
-          streak
-        }
-      })
-
-      // Filtrar solo usuarios con racha >= 2 días y ordenar por racha
-      const filteredStreaks = streakData
-        .filter(user => user.streak >= 2)
-        .sort((a, b) => b.streak - a.streak)
-        .slice(0, 20) // Top 20 rachas
+      console.log('🔍 DEBUG: Rachas centralizadas cargadas:', analyticsData?.length || 0, 'usuarios')
 
       // Obtener nombres de usuarios
-      const userIds = filteredStreaks.map(u => u.userId)
+      const userIds = analyticsData.map(u => u.user_id)
       
       // Incluir usuario actual si no está en el ranking
       if (user && !userIds.includes(user.id)) {
@@ -367,12 +324,13 @@ export default function RankingModal({ isOpen, onClose }) {
       }
 
       // Combinar datos con nombres
-      const finalStreakRanking = filteredStreaks.map((streakUser, index) => {
+      const finalStreakRanking = analyticsData.map((streakUser, index) => {
         return {
-          ...streakUser,
+          userId: streakUser.user_id,
+          streak: streakUser.current_streak_days,
           rank: index + 1,
-          name: getDisplayName(streakUser.userId),
-          isCurrentUser: streakUser.userId === user?.id
+          name: getDisplayName(streakUser.user_id),
+          isCurrentUser: streakUser.user_id === user?.id
         }
       })
 
