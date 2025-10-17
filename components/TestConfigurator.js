@@ -39,7 +39,7 @@ const TestConfigurator = ({
   
   // 🆕 Estados para filtro de leyes
   const [selectedLaws, setSelectedLaws] = useState(new Set());
-  const [showLawsFilter, setShowLawsFilter] = useState(true);
+  const [showLawsFilter, setShowLawsFilter] = useState(false);
   
   // 🆕 Estados para filtro de artículos
   const [selectedArticlesByLaw, setSelectedArticlesByLaw] = useState(new Map());
