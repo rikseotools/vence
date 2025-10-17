@@ -39,7 +39,7 @@ const TestConfigurator = ({
   
   // 🆕 Estados para filtro de leyes
   const [selectedLaws, setSelectedLaws] = useState(new Set());
-  const [showLawsFilter, setShowLawsFilter] = useState(false);
+  const [showLawsFilter, setShowLawsFilter] = useState(true);
   
   // 🆕 Estados para filtro de artículos
   const [selectedArticlesByLaw, setSelectedArticlesByLaw] = useState(new Map());
@@ -299,6 +299,16 @@ const TestConfigurator = ({
   // Estados y funciones existentes...
 
   const baseQuestionCount = useMemo(() => {
+    console.log('🔍 [DEBUG] baseQuestionCount - recibiendo totalQuestions:', { 
+      totalQuestions,
+      type: typeof totalQuestions,
+      keys: typeof totalQuestions === 'object' ? Object.keys(totalQuestions) : 'N/A',
+      values: typeof totalQuestions === 'object' ? Object.values(totalQuestions) : 'N/A',
+      focusEssentialArticles,
+      onlyOfficialQuestions,
+      difficultyMode
+    });
+
     // 🔥 PRIORIDAD 1: Artículos imprescindibles (si está activado)
     if (focusEssentialArticles) {
       // Si hay filtro de dificultad específico, usar ese conteo
@@ -307,11 +317,13 @@ const TestConfigurator = ({
         return essentialQuestionsByDifficulty[difficultyMode];
       }
       // Si no, usar el total
+      console.log(`📊 Usando ${essentialQuestionsCount} preguntas de artículos imprescindibles (total)`);
       return essentialQuestionsCount;
     }
     
     // 🔥 PRIORIDAD 2: Solo preguntas oficiales
     if (onlyOfficialQuestions) {
+      console.log(`📊 Usando ${officialQuestionsCount} preguntas oficiales`);
       return officialQuestionsCount;
     }
     
@@ -321,20 +333,34 @@ const TestConfigurator = ({
       if (difficultyMode !== 'random') {
         // Filtro específico de dificultad
         switch (difficultyMode) {
-          case 'easy': return totalQuestions.easy || 0;
-          case 'medium': return totalQuestions.medium || 0;
-          case 'hard': return totalQuestions.hard || 0;
-          case 'extreme': return totalQuestions.extreme || 0;
-          default: return Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
+          case 'easy': 
+            console.log(`📊 Usando ${totalQuestions.easy || 0} preguntas fáciles`);
+            return totalQuestions.easy || 0;
+          case 'medium': 
+            console.log(`📊 Usando ${totalQuestions.medium || 0} preguntas medias`);
+            return totalQuestions.medium || 0;
+          case 'hard': 
+            console.log(`📊 Usando ${totalQuestions.hard || 0} preguntas difíciles`);
+            return totalQuestions.hard || 0;
+          case 'extreme': 
+            console.log(`📊 Usando ${totalQuestions.extreme || 0} preguntas extremas`);
+            return totalQuestions.extreme || 0;
+          default: 
+            const defaultTotal = Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
+            console.log(`📊 Usando ${defaultTotal} preguntas (default case)`);
+            return defaultTotal;
         }
       } else {
         // Modo random: sumar todas las dificultades
-        return Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
+        const randomTotal = Object.values(totalQuestions).reduce((sum, count) => sum + count, 0);
+        console.log(`📊 Usando ${randomTotal} preguntas (modo random, sumando todas las dificultades)`);
+        return randomTotal;
       }
     }
     
     // Fallback: usar el total como número (para casos legacy)
     const result = typeof totalQuestions === 'number' ? totalQuestions : 0;
+    console.log(`📊 Usando fallback: ${result} preguntas (número directo o 0)`);
     // Validar que no sea NaN
     if (isNaN(result)) {
       console.warn('⚠️ baseQuestionCount es NaN:', { totalQuestions, result });
@@ -349,29 +375,51 @@ const TestConfigurator = ({
       lawsData: lawsData?.length, 
       selectedLawsSize: selectedLaws.size, 
       baseQuestionCount,
-      selectedLaws: Array.from(selectedLaws)
+      selectedLaws: Array.from(selectedLaws),
+      preselectedLaw
     });
     
     // Si no hay datos de leyes, usar el cálculo base
     if (!lawsData || lawsData.length === 0) {
-      console.log('📊 Usando baseQuestionCount:', baseQuestionCount);
+      console.log('📊 Usando baseQuestionCount (sin datos de leyes):', baseQuestionCount);
       return baseQuestionCount;
     }
     
-    // Si no hay leyes seleccionadas, retornar 0
-    if (selectedLaws.size === 0) {
-      console.log('⚠️ No hay leyes seleccionadas, retornando 0');
-      return 0;
+    // ✅ PARA TEMAS NORMALES: solo usar baseQuestionCount si no hay filtros activos
+    if (!preselectedLaw && !showLawsFilter && selectedLaws.size === 0) {
+      console.log('📊 Tema normal (sin filtros activos), usando baseQuestionCount:', baseQuestionCount);
+      return baseQuestionCount;
     }
     
-    // Para modo de ley específica (una sola ley), usar directamente el questions_count
-    if (selectedLaws.size === 1 && lawsData.length === 1) {
+    // ✅ CORREGIDO: Para temas normales, no requerir selección de leyes
+    if (selectedLaws.size === 0) {
+      // Si es un configurador específico de ley (preselectedLaw), sí requerir selección
+      if (preselectedLaw) {
+        console.log('⚠️ Configurador específico de ley sin selección, retornando 0');
+        return 0;
+      }
+      // Para temas normales, usar baseQuestionCount automáticamente
+      console.log('📊 Tema normal sin leyes seleccionadas, usando baseQuestionCount:', baseQuestionCount);
+      return baseQuestionCount;
+    }
+    
+    // Para modo de ley específica (LawTestConfigurator), usar directamente el questions_count
+    if (preselectedLaw && selectedLaws.size === 1 && lawsData.length === 1) {
       const law = lawsData[0];
-      console.log('🎯 Modo ley específica, usando questions_count:', law.questions_count);
+      console.log('🎯 Configurador específico de ley, usando questions_count:', law.questions_count);
       return law.questions_count || 0;
     }
     
-    // Para modo multi-ley o con filtros de artículos
+    // ✅ Si todas las leyes están seleccionadas y no hay filtros de artículos específicos, usar baseQuestionCount
+    const allLawsSelected = lawsData.length > 0 && selectedLaws.size === lawsData.length;
+    const hasSpecificArticleFilters = Array.from(selectedArticlesByLaw.values()).some(articles => articles.size > 0);
+    
+    if (allLawsSelected && !hasSpecificArticleFilters) {
+      console.log('📊 Todas las leyes seleccionadas sin filtros específicos, usando baseQuestionCount:', baseQuestionCount);
+      return baseQuestionCount;
+    }
+    
+    // Para modo multi-ley o con filtros de artículos específicos
     let totalQuestions = 0;
     
     for (const law of lawsData) {
@@ -387,10 +435,13 @@ const TestConfigurator = ({
           .reduce((sum, article) => sum + (article.question_count || 0), 0);
         
         totalQuestions += questionsFromSelectedArticles;
+        console.log('📊 Preguntas de artículos específicos de', law.law_short_name, ':', questionsFromSelectedArticles);
       } else {
-        // Si no hay filtro de artículos específico, usar el questions_count de la ley
-        console.log('📊 Usando questions_count de la ley:', law.law_short_name, law.questions_count);
-        totalQuestions += law.questions_count || 0;
+        // Si no hay filtro de artículos específico, usar proporción del baseQuestionCount
+        const lawProportion = (law.articles_with_questions || 0) / lawsData.reduce((sum, l) => sum + (l.articles_with_questions || 0), 0);
+        const lawQuestions = Math.round(baseQuestionCount * lawProportion);
+        console.log('📊 Proporción estimada para', law.law_short_name, ':', lawQuestions, 'preguntas');
+        totalQuestions += lawQuestions;
       }
     }
     
