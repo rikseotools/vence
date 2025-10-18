@@ -387,7 +387,7 @@ export default function AdminFeedbackPage() {
         if (emailResult.sent) {
           console.log('📧 Email de soporte enviado al usuario')
         } else {
-          console.log(`📧 Email no enviado: ${emailResult.reason}`)
+          console.log(`📧 Email no enviado:`, emailResult)
         }
       } catch (emailError) {
         console.error('❌ Error enviando email de soporte:', emailError)
