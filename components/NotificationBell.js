@@ -171,6 +171,7 @@ export default function NotificationBell() {
 
   // 🆕 GENERAR URL DE ACCIÓN (copiada del hook para uso local)
   const generateActionUrl = (notification, actionType) => {
+    console.log('🔍 generateActionUrl called:', { type: notification.type, actionType, notification })
     const baseParams = new URLSearchParams({
       utm_source: 'notification',
       utm_campaign: notification.campaign || 'general',
@@ -250,9 +251,12 @@ export default function NotificationBell() {
           break
           
         case 'dispute_update':
+          console.log('🔍 Dispute case - actionType:', actionType, 'notification:', notification)
           if (actionType === 'view_dispute') {
             // Ir a la página de soporte/impugnaciones con la disputa específica
-            return `/soporte?tab=impugnaciones&dispute_id=${notification.disputeId || notification.id}&${baseParams.toString()}`
+            const disputeId = notification.disputeId || notification.id.replace('dispute-', '') || notification.id
+            console.log('✅ Generated dispute URL with disputeId:', disputeId)
+            return `/soporte?tab=impugnaciones&dispute_id=${disputeId}&${baseParams.toString()}`
           }
           break
 
@@ -713,16 +717,6 @@ export default function NotificationBell() {
                                 </span>
                               )}
                               
-                              {/* ✅ Indicador de estado para impugnaciones */}
-                              {notification.type === 'dispute_update' && (
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                  notification.dispute_status === 'resolved' 
-                                    ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
-                                    : 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300'
-                                }`}>
-                                  {notification.dispute_status === 'resolved' ? '✅ Aceptada' : '❌ Rechazada'}
-                                </span>
-                              )}
                             </div>
                             
                             {/* ⏰ Timestamp limpio */}

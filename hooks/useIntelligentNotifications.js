@@ -456,6 +456,18 @@ const NOTIFICATION_TYPES = {
       label: '📋 Ver Novedades',
       type: 'view_changelog'
     }
+  },
+  'dispute_update': { 
+    priority: 40, 
+    icon: '✅', 
+    color: 'blue',
+    bgColor: 'bg-blue-100 dark:bg-blue-900/50',
+    textColor: 'text-blue-600 dark:text-blue-400',
+    borderColor: 'border-blue-200 dark:border-blue-800',
+    primaryAction: {
+      label: '📋 Ver Impugnación',
+      type: 'view_dispute'
+    }
   }
 }
 
