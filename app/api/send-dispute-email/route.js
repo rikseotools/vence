@@ -109,8 +109,14 @@ export async function POST(request) {
     }
 
     console.log(`📧 API: Enviando email a: ${disputeInfo.user_profiles.email}`)
-    console.log(`📧 API: Status: ${disputeInfo.status}`)
+    console.log(`📧 API: Status: "${disputeInfo.status}"`)
+    console.log(`📧 API: Status type: ${typeof disputeInfo.status}`)
+    console.log(`📧 API: Status length: ${disputeInfo.status?.length}`)
     console.log(`📧 API: Tiene admin_response: ${!!disputeInfo.admin_response}`)
+    console.log(`📧 API: Admin response preview: "${disputeInfo.admin_response?.substring(0, 50)}..."`)
+    console.log(`📧 API: Resolved at: ${disputeInfo.resolved_at}`)
+    console.log(`📧 API: Created at: ${disputeInfo.created_at}`)
+    console.log(`📧 API: Full dispute data:`, JSON.stringify(disputeInfo, null, 2))
 
     // 4. Enviar email usando el sistema existente
     const result = await sendEmail(disputeInfo.user_id, 'impugnacion_respuesta', customData)
