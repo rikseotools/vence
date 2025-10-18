@@ -1,10 +1,10 @@
--- Fix para constraint de email_events que bloquea 'bienvenida_inmediato'
+-- Fix para constraint de email_events que bloquea múltiples tipos
 -- Error: violates check constraint "email_events_email_type_check"
 
 -- 1. Eliminar constraint existente
 ALTER TABLE email_events DROP CONSTRAINT IF EXISTS email_events_email_type_check;
 
--- 2. Crear nuevo constraint con 'bienvenida_inmediato' incluido
+-- 2. Crear nuevo constraint con todos los tipos necesarios
 ALTER TABLE email_events ADD CONSTRAINT email_events_email_type_check 
 CHECK (email_type IN (
     'welcome', 
@@ -15,7 +15,9 @@ CHECK (email_type IN (
     'streak_danger', 
     'newsletter', 
     'system',
-    'bienvenida_inmediato'
+    'bienvenida_inmediato',
+    'impugnacion_respuesta',
+    'soporte_respuesta'
 ));
 
 -- Verificar que el constraint se aplicó correctamente
