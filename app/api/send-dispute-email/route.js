@@ -12,12 +12,12 @@ function getSupabase() {
   )
 }
 
-// Obtener información del usuario y la disputa
-async function getDisputeInfo(disputeId) {
+// Obtener información del usuario y la disputa con retry para read consistency
+async function getDisputeInfo(disputeId, retryCount = 0) {
   try {
     const supabase = getSupabase()
     
-    console.log(`🔍 API: Buscando disputa con ID: ${disputeId}`)
+    console.log(`🔍 API: Buscando disputa con ID: ${disputeId} (intento ${retryCount + 1})`)
     
     // Primero obtener la disputa básica
     const { data: disputeData, error: disputeError } = await supabase
@@ -31,6 +31,13 @@ async function getDisputeInfo(disputeId) {
 
     if (disputeError || !disputeData) {
       throw new Error('Disputa no encontrada')
+    }
+
+    // Si el status es 'pending' y es un retry desde trigger, esperar y reintentar
+    if (disputeData.status === 'pending' && retryCount < 3) {
+      console.log(`⏳ API: Status pending detectado, reintentando en 200ms...`)
+      await new Promise(resolve => setTimeout(resolve, 200))
+      return getDisputeInfo(disputeId, retryCount + 1)
     }
 
     // Luego obtener user info
@@ -88,6 +95,16 @@ export async function POST(request) {
         success: false, 
         error: 'Disputa no encontrada' 
       }, { status: 404 })
+    }
+
+    // 2. Solo enviar email si hay respuesta del admin
+    if (!disputeInfo.admin_response || !disputeInfo.admin_response.trim()) {
+      console.log(`⏭️ API: No hay admin_response, saltando envío de email`)
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Email no enviado - sin respuesta del admin',
+        disputeId: disputeId
+      })
     }
 
     console.log(`📧 API: Disputa encontrada para usuario: ${disputeInfo.user_profiles.email}`)
