@@ -131,7 +131,7 @@ Te animo a que sigas reportando cualquier error que encuentres, ¡tu ojo crític
 
 ¡Mucho ánimo con tu preparación! 💪',
     resolved_at = NOW(),
-    is_read = true
+    is_read = false
 WHERE id = 'DISPUTE_ID';
 ```
 
@@ -156,7 +156,7 @@ Recuerda que si tienes dudas sobre cualquier tema, también puedes consultar nue
 
 ¡Mucho ánimo con tu preparación! 💪',
     resolved_at = NOW(),
-    is_read = true
+    is_read = false
 WHERE id = 'DISPUTE_ID';
 ```
 
@@ -263,7 +263,7 @@ UPDATE question_disputes
 SET status = 'resolved',
     admin_response = '¡Muchísimas gracias Ismael! 🎯 Tenías toda la razón...',
     resolved_at = NOW(),
-    is_read = true
+    is_read = false
 WHERE id = '52ec0bb9-6b0b-4b28-9536-e1a7d34b43b5';
 ```
 

@@ -15,6 +15,7 @@ import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { calculateUserStreak } from '@/utils/streakCalculator'
+import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 
 export default function HeaderES() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -31,6 +32,7 @@ export default function HeaderES() {
   
   const { user, loading: authLoading, supabase } = useAuth()
   const oposicionContext = useOposicion()
+  const adminNotifications = useAdminNotifications()
   
   // Valores por defecto seguros
   const oposicionMenu = oposicionContext?.oposicionMenu || {
@@ -367,17 +369,17 @@ export default function HeaderES() {
                 <Link 
                   href="/admin"
                   className={`hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors relative ${
-                    pendingFeedbacks > 0 
+                    (adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 
                       ? 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800 animate-pulse' 
                       : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800'
                   }`}
-                  title={`Panel de Administración${pendingFeedbacks > 0 ? ` (${pendingFeedbacks} pendientes)` : ''}`}
+                  title={`Panel de Administración${(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 ? ` (${adminNotifications?.feedback + adminNotifications?.impugnaciones} pendientes)` : ''}`}
                 >
                   <span className="text-sm">👨‍💼</span>
                   <span className="text-sm font-medium">Admin</span>
-                  {pendingFeedbacks > 0 && (
+                  {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-bounce">
-                      {pendingFeedbacks > 9 ? '9+' : pendingFeedbacks}
+                      {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 9 ? '9+' : (adminNotifications?.feedback + adminNotifications?.impugnaciones)}
                     </span>
                   )}
                 </Link>

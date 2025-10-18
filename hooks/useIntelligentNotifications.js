@@ -532,7 +532,7 @@ export function useIntelligentNotifications() {
   const [lastMotivationalCheck, setLastMotivationalCheck] = useState(null)
   
   // Estados por categoría
-  const [disputeNotifications, setDisputeNotifications] = useState([])
+  // const [disputeNotifications, setDisputeNotifications] = useState([]) // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
   const [problematicArticles, setProblematicArticles] = useState([])
   const [studyStreaks, setStudyStreaks] = useState([])
   const [achievements, setAchievements] = useState([])
@@ -740,7 +740,7 @@ export function useIntelligentNotifications() {
 
       // Cargar en paralelo todas las categorías
       await Promise.all([
-        loadDisputeNotifications(),
+        // loadDisputeNotifications(), // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
         loadProblematicArticles(),
         loadStudyStreaks(),
         loadAchievements(),
@@ -752,7 +752,7 @@ export function useIntelligentNotifications() {
 
       // 🆕 Si no hay notificaciones urgentes, cargar motivacionales
       const hasUrgentNotifications = [
-        ...disputeNotifications,
+        // ...disputeNotifications, // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
         ...problematicArticles,
         ...studyStreaks,
         ...achievements,
@@ -1548,7 +1548,7 @@ export function useIntelligentNotifications() {
   // Combinar y ordenar todas las notificaciones por prioridad
   useEffect(() => {
     const combined = [
-      ...disputeNotifications,
+      // ...disputeNotifications, // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
       ...problematicArticles,
       ...studyStreaks,
       ...achievements,
@@ -1564,7 +1564,7 @@ export function useIntelligentNotifications() {
     });
 
     setAllNotifications(combined);
-  }, [disputeNotifications, problematicArticles, studyStreaks, achievements, studyReminders, progressUpdates, motivationalNotifications, systemNotifications]);
+  }, [problematicArticles, studyStreaks, achievements, studyReminders, progressUpdates, motivationalNotifications, systemNotifications]);
 
   // Calcular contadores
   const unreadCount = allNotifications.filter(n => !n.isRead).length;
@@ -1715,7 +1715,7 @@ export function useIntelligentNotifications() {
     setProgressUpdates(prev => prev.filter(n => n.id !== notificationId));
     setMotivationalNotifications(prev => prev.filter(n => n.id !== notificationId));
     setSystemNotifications(prev => prev.filter(n => n.id !== notificationId));
-    setDisputeNotifications(prev => prev.filter(n => n.id !== notificationId)); // ¡FALTABA ESTO!
+    // setDisputeNotifications(prev => prev.filter(n => n.id !== notificationId)); // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
   };
 
   // 🆕 FUNCIÓN PARA OBTENER ACCIONES DE UNA NOTIFICACIÓN
@@ -1791,7 +1791,7 @@ export function useIntelligentNotifications() {
     categorizedNotifications,
     
     // Por tipo específico
-    disputeNotifications,
+    // disputeNotifications, // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
     problematicArticles,
     studyStreaks,
     achievements,

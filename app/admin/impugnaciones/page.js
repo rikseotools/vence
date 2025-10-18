@@ -289,7 +289,7 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
                     🏷️ ID: <strong className="font-mono">{dispute.id.slice(0, 8)}...</strong>
                   </span>
                   <span className="bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded truncate">
-                    ❓ Pregunta: <strong className="font-mono">{dispute.question_id.slice(0, 8)}...</strong>
+                    ❓ Pregunta: <strong className="font-mono">{dispute.question_id?.slice(0, 8) || 'N/A'}...</strong>
                   </span>
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
