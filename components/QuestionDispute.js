@@ -50,6 +50,13 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
         // Enviar email de notificación al admin
         if (data && data[0]) {
           try {
+            // Obtener el texto de la pregunta para el email admin
+            const { data: questionData } = await supabase
+              .from('questions')
+              .select('question_text')
+              .eq('id', questionId)
+              .single()
+
             const { sendAdminDisputeNotification } = await import('../lib/notifications/adminEmailNotifications')
             await sendAdminDisputeNotification({
               id: data[0].id,
@@ -59,6 +66,7 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
               user_name: user.user_metadata?.full_name || 'Sin nombre',
               dispute_type: disputeType,
               description: disputeType === 'otro' ? description.trim() : `Motivo: ${disputeType}${description.trim() ? ` - Detalles: ${description.trim()}` : ''}`,
+              question_text: questionData?.question_text || 'Texto no disponible',
               created_at: data[0].created_at
             })
           } catch (emailError) {
