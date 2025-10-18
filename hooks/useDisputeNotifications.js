@@ -67,6 +67,7 @@ export function useDisputeNotifications() {
         .eq('user_id', user.id)
         .in('status', ['resolved', 'rejected', 'appealed'])
         .gte('resolved_at', thirtyDaysAgo)
+        .eq('is_read', false) // 🆕 Solo mostrar notificaciones NO leídas
         .order('resolved_at', { ascending: false })
 
       if (error) throw error
@@ -74,8 +75,8 @@ export function useDisputeNotifications() {
       const notifications = disputes?.map(dispute => ({
         id: dispute.id,
         type: 'dispute_update',
-        title: dispute.status === 'resolved' ? '✅ Impugnación Aceptada' : 
-               dispute.status === 'appealed' ? '📝 Alegación Enviada' : '❌ Impugnación Rechazada',
+        title: dispute.status === 'resolved' ? '✅ Impugnación Respondida' : 
+               dispute.status === 'appealed' ? '📝 Alegación Enviada' : '❌ Impugnación Respondida',
         message: `Tu reporte sobre ${dispute.questions.articles.laws.short_name} Art. ${dispute.questions.articles.article_number} ha sido ${
           dispute.status === 'resolved' ? 'aceptado' : 
           dispute.status === 'appealed' ? 'alegado - esperando revisión' : 'rechazado'
@@ -105,13 +106,18 @@ export function useDisputeNotifications() {
     try {
       if (!user) return
 
+      console.log('🔍 Marcando como leída:', { notificationId, userId: user.id })
+
       const { error } = await supabase
         .from('question_disputes')
         .update({ is_read: true })
         .eq('id', notificationId)
         .eq('user_id', user.id)
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error en markAsRead:', error)
+        throw error
+      }
 
       // Actualizar estado local
       setNotifications(prev => 

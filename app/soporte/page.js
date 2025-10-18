@@ -38,7 +38,7 @@ const DISPUTE_TYPES = {
 function SoporteContent() {
   const { user, supabase } = useAuth()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState('conversations')
+  const [activeTab, setActiveTab] = useState('conversations') // Will be updated based on URL params or pending disputes
   const [feedbacks, setFeedbacks] = useState([])
   const [notifications, setNotifications] = useState([])
   const [conversations, setConversations] = useState({})
@@ -50,6 +50,8 @@ function SoporteContent() {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [disputes, setDisputes] = useState([])
   const [disputesLoading, setDisputesLoading] = useState(false)
+  const [disputeFilter, setDisputeFilter] = useState('all') // all, pending, resolved, rejected
+  const [selectedQuestionModal, setSelectedQuestionModal] = useState(null) // Para el modal de pregunta completa
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -106,6 +108,89 @@ function SoporteContent() {
       }
     }
   }, [searchParams, disputes])
+
+  // 🆕 AUTO-DETECTAR TAB POR DEFECTO BASADO EN DISPUTAS PENDIENTES
+  useEffect(() => {
+    // Solo aplicar lógica automática si no hay parámetros explícitos en URL
+    const hasUrlParams = searchParams.get('tab') || searchParams.get('conversation_id') || searchParams.get('dispute_id')
+    
+    if (!hasUrlParams && disputes.length > 0) {
+      // Contar disputas pendientes (no resueltas y no leídas)
+      const pendingDisputes = disputes.filter(d => 
+        d.status === 'pending' || 
+        (d.status !== 'pending' && !d.is_read)
+      )
+      
+      if (pendingDisputes.length > 0) {
+        console.log(`🔍 Auto-detectado: ${pendingDisputes.length} impugnaciones pendientes, cambiando a tab disputes`)
+        setActiveTab('disputes')
+        setDisputeFilter('pending') // 🆕 Establecer filtro en "pendientes" por defecto
+      }
+    }
+  }, [disputes, searchParams])
+
+  // 🆕 FUNCIÓN PARA FORMATEAR ARTÍCULO CON RESALTADO INTELIGENTE
+  const formatArticleContent = (content, question, correctAnswer) => {
+    if (!content) return 'Contenido no disponible'
+    
+    let formattedContent = content
+      // Convertir saltos de línea a <br>
+      .replace(/\n/g, '<br>')
+      // Convertir números de punto (1., 2., etc.) en párrafos numerados
+      .replace(/(\d+\.\s)/g, '<br><strong>$1</strong>')
+      // Convertir letras de punto (a), b), etc.) en sub-párrafos  
+      .replace(/([a-z]\)\s)/g, '<br>&nbsp;&nbsp;<strong>$1</strong>')
+      // Agregar espaciado después de puntos finales seguidos de mayúscula
+      .replace(/\.\s+(?=[A-Z])/g, '.<br><br>')
+      // Limpiar múltiples <br> consecutivos
+      .replace(/(<br>\s*){3,}/g, '<br><br>')
+      // Limpiar <br> al inicio
+      .replace(/^(<br>\s*)+/, '')
+
+    // Resaltar referencias a leyes y normativas
+    formattedContent = formattedContent
+      .replace(/(Ley\s+\d+\/\d+)/gi, '<strong style="color: #2563eb; background-color: #eff6ff; padding: 1px 3px; border-radius: 2px;">📋 $1</strong>')
+      .replace(/(Real Decreto\s+\d+\/\d+)/gi, '<strong style="color: #16a34a; background-color: #f0fdf4; padding: 1px 3px; border-radius: 2px;">📜 $1</strong>')
+      .replace(/(artículo\s+\d+)/gi, '<strong style="color: #9333ea; background-color: #faf5ff; padding: 1px 3px; border-radius: 2px;">📄 $1</strong>')
+
+    // Intentar resaltar frases clave que puedan estar relacionadas con la respuesta correcta
+    if (correctAnswer && correctAnswer.length > 10) {
+      // Extraer palabras clave de la respuesta correcta (eliminando artículos, preposiciones, etc.)
+      const stopWords = ['el', 'la', 'los', 'las', 'un', 'una', 'de', 'del', 'en', 'y', 'o', 'que', 'por', 'para', 'con', 'se', 'es', 'son', 'está', 'están']
+      const keywords = correctAnswer.toLowerCase()
+        .replace(/[.,;:!?()]/g, ' ')
+        .split(' ')
+        .filter(word => word.length > 3 && !stopWords.includes(word))
+        .slice(0, 3) // Solo primeras 3 palabras clave
+      
+      // Resaltar cada palabra clave en el contenido
+      keywords.forEach(keyword => {
+        if (keyword.length > 3) {
+          const regex = new RegExp(`(\\b${keyword}\\w*)`, 'gi')
+          formattedContent = formattedContent.replace(regex, 
+            '<mark style="background-color: #fef3c7; padding: 2px 4px; border-radius: 3px; font-weight: bold; color: #92400e;">🎯 $1</mark>'
+          )
+        }
+      })
+    }
+
+    return formattedContent
+  }
+
+  // 🆕 FILTRAR DISPUTAS SEGÚN FILTRO SELECCIONADO
+  const getFilteredDisputes = () => {
+    if (disputeFilter === 'all') return disputes
+    
+    switch (disputeFilter) {
+      case 'pending':
+        return disputes.filter(d => d.status === 'pending')
+      case 'resolved':
+        // "Resueltas" incluye todas las que ya tienen respuesta del admin
+        return disputes.filter(d => d.status === 'resolved' || d.status === 'rejected' || d.status === 'appealed')
+      default:
+        return disputes
+    }
+  }
 
   const loadUserData = async () => {
     try {
@@ -203,9 +288,11 @@ function SoporteContent() {
             option_b,
             option_c,
             option_d,
+            explanation,
             articles!inner (
               article_number,
               title,
+              content,
               laws!inner (short_name)
             )
           )
@@ -640,19 +727,53 @@ function SoporteContent() {
             {/* Disputes Tab */}
             {activeTab === 'disputes' && (
               <div className="space-y-4">
+                
+                {/* 🆕 FILTROS COMPACTOS PARA DISPUTAS */}
+                {disputes.length > 0 && (
+                  <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 sm:p-4 mb-6">
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-gray-800 dark:text-gray-200 text-sm sm:text-base">🔍 Filtrar:</h4>
+                      {/* Versión móvil: una sola fila con scroll horizontal */}
+                      <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+                        {[
+                          { key: 'pending', label: 'Pendientes', emoji: '⏳', count: disputes.filter(d => d.status === 'pending').length },
+                          { key: 'resolved', label: 'Resueltas', emoji: '✅', count: disputes.filter(d => d.status === 'resolved' || d.status === 'rejected' || d.status === 'appealed').length },
+                          { key: 'all', label: 'Todas', emoji: '📋', count: disputes.length }
+                        ].map(filter => (
+                          <button
+                            key={filter.key}
+                            onClick={() => setDisputeFilter(filter.key)}
+                            className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+                              disputeFilter === filter.key
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-white dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-500 border border-gray-200 dark:border-gray-500'
+                            }`}
+                          >
+                            <span className="sm:hidden">{filter.emoji} {filter.key === 'pending' ? 'Pend.' : filter.key === 'resolved' ? 'Resuel.' : 'Todas'} {filter.count}</span>
+                            <span className="hidden sm:inline">{filter.emoji} {filter.label} ({filter.count})</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {disputesLoading ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                     <p className="text-gray-600 dark:text-gray-400">Cargando impugnaciones...</p>
                   </div>
-                ) : disputes.length === 0 ? (
+                ) : getFilteredDisputes().length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-6xl mb-4">⚖️</div>
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      No tienes impugnaciones
+                      {disputes.length === 0 ? 'No tienes impugnaciones' : `No hay impugnaciones ${disputeFilter === 'all' ? '' : disputeFilter}`}
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      Cuando encuentres una pregunta incorrecta, puedes reportarla desde el test.
+                      {disputes.length === 0 
+                        ? 'Cuando encuentres una pregunta incorrecta, puedes reportarla desde el test.'
+                        : 'Cambia el filtro para ver otras impugnaciones.'
+                      }
                     </p>
                     <Link 
                       href="/auxiliar-administrativo-estado/test"
@@ -662,7 +783,7 @@ function SoporteContent() {
                     </Link>
                   </div>
                 ) : (
-                  disputes.map((dispute) => {
+                  getFilteredDisputes().map((dispute) => {
                     const statusConfig = DISPUTE_STATUS_CONFIG[dispute.status] || { label: dispute.status, color: 'bg-gray-100 text-gray-800' }
                     return (
                       <div key={dispute.id} id={`dispute-${dispute.id}`} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -693,12 +814,30 @@ function SoporteContent() {
 
                         {/* Pregunta impugnada (versión compacta) */}
                         <div className="mb-4">
-                          <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">📋 Pregunta impugnada:</h4>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-gray-800 dark:text-gray-200">📋 Pregunta impugnada:</h4>
+                            <button
+                              onClick={() => setSelectedQuestionModal(dispute)}
+                              className="px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+                            >
+                              👁️ Ver pregunta
+                            </button>
+                          </div>
                           <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
-                            <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">{dispute.questions?.question_text}</p>
-                            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                              Respuesta correcta: {['A', 'B', 'C', 'D'][dispute.questions?.correct_option - 1]}
-                            </p>
+                            <p className="text-gray-700 dark:text-gray-300 text-sm mb-3">{dispute.questions?.question_text}</p>
+                            
+                            {/* Respuesta correcta completa */}
+                            <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded border-l-4 border-green-400">
+                              <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">
+                                Respuesta correcta: {['A', 'B', 'C', 'D'][dispute.questions?.correct_option - 1]}
+                              </p>
+                              <p className="text-sm text-green-800 dark:text-green-300">
+                                {dispute.questions?.correct_option === 1 ? dispute.questions?.option_a :
+                                 dispute.questions?.correct_option === 2 ? dispute.questions?.option_b :
+                                 dispute.questions?.correct_option === 3 ? dispute.questions?.option_c :
+                                 dispute.questions?.correct_option === 4 ? dispute.questions?.option_d : 'N/A'}
+                              </p>
+                            </div>
                           </div>
                         </div>
 
@@ -715,7 +854,7 @@ function SoporteContent() {
                           <div className="mb-4">
                             <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">💼 Respuesta de Vence:</h4>
                             <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border-l-4 border-green-400">
-                              <p className="text-green-800 dark:text-green-300 text-sm">{dispute.admin_response}</p>
+                              <p className="text-green-800 dark:text-green-300 text-sm whitespace-pre-wrap leading-relaxed">{dispute.admin_response}</p>
                               {dispute.resolved_at && (
                                 <p className="text-xs text-green-600 dark:text-green-400 mt-2">
                                   ✅ Resuelto el {new Date(dispute.resolved_at).toLocaleDateString('es-ES', {
@@ -798,6 +937,113 @@ function SoporteContent() {
 
           </div>
         </div>
+
+        {/* Modal de Pregunta Completa */}
+        {selectedQuestionModal && (
+          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-2 sm:p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg sm:max-w-3xl max-h-[95vh] overflow-y-auto">
+              
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  📋 Pregunta Completa
+                </h3>
+                <button
+                  onClick={() => setSelectedQuestionModal(null)}
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Contenido */}
+              <div className="p-4 sm:p-6 space-y-6">
+                
+                {/* Pregunta */}
+                <div>
+                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">❓ Pregunta:</h4>
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {selectedQuestionModal.questions?.question_text}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Opciones */}
+                <div>
+                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">📝 Opciones:</h4>
+                  <div className="space-y-2">
+                    {['A', 'B', 'C', 'D'].map((letter, index) => {
+                      const isCorrect = selectedQuestionModal.questions?.correct_option === (index + 1)
+                      const optionText = selectedQuestionModal.questions?.[`option_${letter.toLowerCase()}`]
+                      
+                      return (
+                        <div
+                          key={letter}
+                          className={`p-3 rounded-lg border-2 ${
+                            isCorrect 
+                              ? 'bg-green-50 dark:bg-green-900/30 border-green-400 text-green-800 dark:text-green-200'
+                              : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className={`font-bold text-sm ${isCorrect ? 'text-green-700 dark:text-green-300' : 'text-gray-500 dark:text-gray-400'}`}>
+                              {letter})
+                            </span>
+                            <span className="flex-1">{optionText}</span>
+                            {isCorrect && <span className="text-green-600 dark:text-green-400">✅</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Explicación */}
+                {selectedQuestionModal.questions?.explanation && (
+                  <div>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">💡 Explicación:</h4>
+                    <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border-l-4 border-blue-400">
+                      <div className="text-blue-800 dark:text-blue-200 leading-relaxed whitespace-pre-wrap text-sm">
+                        {selectedQuestionModal.questions.explanation}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Artículo (si existe) */}
+                {selectedQuestionModal.questions?.articles && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-gray-800 dark:text-gray-200">📜 Artículo:</h4>
+                      <span className="text-xs bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded-full">
+                        🎯 Contiene respuesta
+                      </span>
+                    </div>
+                    <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg border-l-4 border-purple-400">
+                      <p className="text-purple-800 dark:text-purple-200 font-medium mb-3">
+                        {selectedQuestionModal.questions.articles.laws?.short_name} - Artículo {selectedQuestionModal.questions.articles.article_number}
+                      </p>
+                      
+                      {selectedQuestionModal.questions.articles.content ? (
+                        <div className="text-purple-700 dark:text-purple-300 text-sm leading-relaxed whitespace-pre-wrap">
+                          {selectedQuestionModal.questions.articles.content}
+                        </div>
+                      ) : (
+                        <div className="text-purple-600 dark:text-purple-400 text-sm italic">
+                          ⚠️ El contenido del artículo no está disponible.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal de Chat */}
         {selectedConversation && (

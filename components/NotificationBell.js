@@ -133,7 +133,7 @@ export default function NotificationBell() {
         // ✅ ACCIÓN PRIMARIA: Manejar según tipo de notificación
         if (notification.type === 'dispute_update') {
           // 🆕 IMPUGNACIONES: Marcar como leído Y navegar
-          await markAsRead(notification.id)
+          await disputeNotifications.markAsRead(notification.id)
           
           // Generar URL y navegar
           const actionUrl = generateActionUrl(notification, action.type)
@@ -250,11 +250,9 @@ export default function NotificationBell() {
           break
           
         case 'dispute_update':
-          if (actionType === 'view_corrected_question') {
-            const questionId = notification.question_id
-            return `/pregunta/${questionId}?${baseParams.toString()}`
-          } else if (actionType === 'view_disputes') {
-            return `/mis-impugnaciones?${baseParams.toString()}`
+          if (actionType === 'view_dispute') {
+            // Ir a la página de soporte/impugnaciones con la disputa específica
+            return `/soporte?tab=impugnaciones&dispute_id=${notification.disputeId || notification.id}&${baseParams.toString()}`
           }
           break
 
@@ -309,7 +307,19 @@ export default function NotificationBell() {
   // Manejar botón "Marcar como leído" (solo impugnaciones)
   const handleMarkAsRead = (notification, event) => {
     event.stopPropagation()
-    markAsRead(notification.id)
+    
+    console.log('🔍 handleMarkAsRead llamado:', { 
+      type: notification.type, 
+      id: notification.id, 
+      disputeId: notification.disputeId 
+    })
+    
+    // Si es una notificación de disputa, usar el hook de disputas
+    if (notification.type === 'dispute_update') {
+      disputeNotifications.markAsRead(notification.id)
+    } else {
+      markAsRead(notification.id)
+    }
   }
 
   // Manejar botón "Entendido" (descartar otras notificaciones)
@@ -321,18 +331,53 @@ export default function NotificationBell() {
   // Recargar notificaciones
   const handleRefresh = () => {
     loadAllNotifications()
+    disputeNotifications.refreshNotifications() // Refrescar también las disputas
+  }
+
+  // 🆕 MEZCLAR NOTIFICACIONES DE DISPUTAS CON NOTIFICACIONES PRINCIPALES
+  const getAllNotifications = () => {
+    // Combinar notificaciones principales con disputas
+    const combinedNotifications = [
+      ...notifications,
+      ...(disputeNotifications.notifications || [])
+    ]
+    
+    // Ordenar por timestamp (más recientes primero)
+    return combinedNotifications.sort((a, b) => 
+      new Date(b.timestamp || b.resolved_at || 0) - new Date(a.timestamp || a.resolved_at || 0)
+    )
   }
 
   // Filtrar notificaciones según categoría seleccionada
   const getFilteredNotifications = () => {
+    const allNotifications = getAllNotifications()
+    
     if (selectedCategory === 'all') {
-      return notifications
+      return allNotifications
     }
-    return categorizedNotifications[selectedCategory] || []
+    
+    // Filtrar por categoría - las disputas van en 'important'
+    const disputeNotifs = disputeNotifications.notifications || []
+    const mainNotifs = categorizedNotifications[selectedCategory] || []
+    
+    if (selectedCategory === 'important') {
+      return [...mainNotifs, ...disputeNotifs]
+    }
+    
+    return mainNotifs
+  }
+
+  // 🆕 CALCULAR TOTAL DE NOTIFICACIONES NO LEÍDAS INCLUYENDO DISPUTAS
+  const getTotalUnreadCount = () => {
+    const mainUnread = unreadCount || 0
+    const disputeUnread = disputeNotifications.unreadCount || 0
+    return mainUnread + disputeUnread
   }
 
   // Obtener color del badge según la prioridad máxima
   const getBadgeColor = () => {
+    // Si hay disputas no leídas, prioridad alta
+    if ((disputeNotifications.unreadCount || 0) > 0) return 'bg-red-500'
     if (categorizedNotifications.critical.length > 0) return 'bg-red-500'
     if (categorizedNotifications.important.length > 0) return 'bg-orange-500'
     if (categorizedNotifications.recommendations.length > 0) return 'bg-yellow-500'
@@ -351,7 +396,7 @@ export default function NotificationBell() {
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
-        aria-label={`Notificaciones ${unreadCount > 0 ? `(${unreadCount} nuevas)` : ''}`}
+        aria-label={`Notificaciones ${getTotalUnreadCount() > 0 ? `(${getTotalUnreadCount()} nuevas)` : ''}`}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -359,9 +404,9 @@ export default function NotificationBell() {
         </svg>
         
         {/* Badge de notificaciones */}
-        {unreadCount > 0 && (
+        {getTotalUnreadCount() > 0 && (
           <span className={`absolute -top-1 -right-1 ${getBadgeColor()} text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse`}>
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {getTotalUnreadCount() > 9 ? '9+' : getTotalUnreadCount()}
           </span>
         )}
       </button>
@@ -391,9 +436,9 @@ export default function NotificationBell() {
                   🔔 Notificaciones Inteligentes
                 </h3>
                 <div className="flex items-center space-x-2">
-                  {unreadCount > 0 && (
+                  {getTotalUnreadCount() > 0 && (
                     <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
-                      {unreadCount} nuevas
+                      {getTotalUnreadCount()} nuevas
                     </span>
                   )}
                   {/* Botón refrescar */}
@@ -427,7 +472,7 @@ export default function NotificationBell() {
                       : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'
                   }`}
                 >
-                  Todas ({notifications.length})
+                  Todas ({getAllNotifications().length})
                 </button>
                 {categorizedNotifications.critical.length > 0 && (
                   <button
@@ -507,7 +552,19 @@ export default function NotificationBell() {
               ) : (
                 filteredNotifications.map((notification) => {
                   // 🆕 OBTENER ACCIONES ESPECÍFICAS PARA ESTA NOTIFICACIÓN
-                  const actions = getNotificationActions(notification)
+                  let actions
+                  
+                  if (notification.type === 'dispute_update') {
+                    // Acciones específicas para impugnaciones
+                    actions = {
+                      primary: {
+                        type: 'view_dispute',
+                        label: '📋 Ver Impugnación'
+                      }
+                    }
+                  } else {
+                    actions = getNotificationActions(notification)
+                  }
                   
                   return (
                     <div 
@@ -536,9 +593,14 @@ export default function NotificationBell() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  console.log('🔍 Clic en X - notification:', { 
+                                    type: notification.type, 
+                                    id: notification.id, 
+                                    disputeId: notification.disputeId 
+                                  })
                                   // Para impugnaciones, marcar como leído en BD. Para otras, solo ocultar.
                                   if (notification.type === 'dispute_update') {
-                                    markAsRead(notification.id)
+                                    disputeNotifications.markAsRead(notification.id)
                                   } else {
                                     handleDismiss(notification, e)
                                   }
@@ -578,7 +640,8 @@ export default function NotificationBell() {
                             
                             {/* Acciones Secundarias */}
                             <div className="flex flex-col sm:flex-row gap-2">
-                              {actions.secondary && (
+                              {/* Solo mostrar acciones secundarias para notificaciones que NO sean de disputas */}
+                              {notification.type !== 'dispute_update' && actions.secondary && (
                                 <button
                                   onClick={(e) => handleActionClick(notification, 'secondary', e)}
                                   className="w-full sm:flex-1 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800/50 text-blue-700 dark:text-blue-300 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border border-blue-300 dark:border-blue-600 touch-manipulation"
@@ -602,23 +665,12 @@ export default function NotificationBell() {
                                 </button>
                               )}
                               
-                              {/* Botón Marcar como leído / Entendido */}
-                              {notification.type === 'dispute_update' ? (
-                                // Para impugnaciones: Marcar como leído
-                                !notification.isRead && (
-                                  <button
-                                    onClick={(e) => handleMarkAsRead(notification, e)}
-                                    className="w-full sm:flex-1 px-3 py-2.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors touch-manipulation"
-                                    title="Marcar como leído"
-                                  >
-                                    ✓ Leído
-                                  </button>
-                                )
-                              ) : notification.type === 'feedback_response' ? (
+                              {/* Botón Marcar como leído / Entendido - SOLO para notificaciones que NO sean de disputas */}
+                              {notification.type === 'feedback_response' ? (
                                 // Para feedback: No mostrar botón (se marca como leído automáticamente al abrir chat)
                                 null
-                              ) : (
-                                // Para otras: Entendido (descartar)
+                              ) : notification.type !== 'dispute_update' ? (
+                                // Para otras (no disputas): Entendido (descartar)
                                 <button
                                   onClick={(e) => handleDismiss(notification, e)}
                                   className="w-full sm:flex-1 px-3 py-2.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors border border-green-300 dark:border-green-600 touch-manipulation"
@@ -626,7 +678,7 @@ export default function NotificationBell() {
                                 >
                                   Marcar como leído
                                 </button>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                           
@@ -783,7 +835,7 @@ export default function NotificationBell() {
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     {selectedCategory === 'all' 
-                      ? `${notifications.length} notificaciones totales`
+                      ? `${getAllNotifications().length} notificaciones totales`
                       : `${filteredNotifications.length} en esta categoría`}
                   </div>
                   <div className="flex gap-2">
