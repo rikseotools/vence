@@ -830,7 +830,7 @@ export function useIntelligentNotifications() {
         id: `dispute-${dispute.id}`,
         type: 'dispute_update',
         title: dispute.status === 'resolved' ? '✅ Impugnación Aceptada' : '❌ Impugnación Rechazada',
-        message: `Tu reporte sobre ${dispute.questions.articles.laws.short_name} Art. ${dispute.questions.articles.article_number} ha sido ${dispute.status === 'resolved' ? 'aceptado' : 'rechazado'}.`,
+        body: `Tu reporte sobre ${dispute.questions.articles.laws.short_name} Art. ${dispute.questions.articles.article_number} ha sido ${dispute.status === 'resolved' ? 'aceptado' : 'rechazado'}.`,
         timestamp: dispute.resolved_at,
         isRead: dispute.is_read || false,
         article: `${dispute.questions.articles.laws.short_name} - Art. ${dispute.questions.articles.article_number}`,
@@ -1017,7 +1017,7 @@ export function useIntelligentNotifications() {
               title: articlesAfterCooldown.length === 1 
                 ? `📉 Artículo Problemático: ${finalShortName}` 
                 : `📉 ${articlesAfterCooldown.length} Artículos Problemáticos: ${finalShortName}`,
-              message: articlesAfterCooldown.length === 1 
+              body: articlesAfterCooldown.length === 1 
                 ? `${finalShortName} Art. ${worstArticle.article_number}: ${worstArticle.accuracy_percentage}% de aciertos`
                 : `${finalShortName} Arts. ${articleNumbers} con <70% accuracy. El peor: Art. ${worstArticle.article_number} (${worstArticle.accuracy_percentage}%)`,
               timestamp: new Date().toISOString(),
@@ -1148,7 +1148,7 @@ export function useIntelligentNotifications() {
               id: notificationId,
               type: 'achievement',
               title: '🏆 ¡Nuevo Récord de Racha!',
-              message: `¡${streakDays} días es tu nueva mejor racha! ¿Subimos el listón?`,
+              body: `¡${streakDays} días es tu nueva mejor racha! ¿Subimos el listón?`,
               timestamp: analytics.updated_at,
               isRead: false,
               streak_days: streakDays,
@@ -1380,7 +1380,7 @@ export function useIntelligentNotifications() {
               id: notificationId,
               type: 'progress_update',
               title: '📊 Tema Dominado',
-              message: `Tema ${tema.tema_number}: ${Math.round(tema.overall_accuracy)}% de dominio. ¿Ponemos a prueba tu maestría?`,
+              body: `Tema ${tema.tema_number}: ${Math.round(tema.overall_accuracy)}% de dominio. ¿Ponemos a prueba tu maestría?`,
               timestamp: tema.updated_at,
               isRead: false,
               tema_number: tema.tema_number,
@@ -1434,7 +1434,7 @@ export function useIntelligentNotifications() {
           id: `system-${notif.id}`,
           type: notifType,
           title: notif.context_data?.title || notif.title || 'Notificación',
-          message: notif.message_sent || notif.message,
+          body: notif.message_sent || notif.message,
           timestamp: notif.created_at,
           isRead: !!notif.opened_at,
           data: notif.context_data || notif.data,
