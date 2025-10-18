@@ -26,8 +26,7 @@ const DISPUTE_STATUS_CONFIG = {
   'pending': { label: '🟡 Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' },
   'reviewing': { label: '🔵 En revisión', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' },
   'resolved': { label: '🟢 Resuelta', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
-  'rejected': { label: '🔴 Rechazada', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
-  'appealed': { label: '📝 Con Alegación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300' }
+  'rejected': { label: '🔴 Rechazada', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' }
 }
 
 const DISPUTE_TYPES = {
@@ -372,42 +371,54 @@ function SoporteContent() {
     }
   }
 
-  // Función para responder a una impugnación
-  const handleReplyToDispute = async (dispute) => {
-    const userResponse = prompt('Escribe tu respuesta a la impugnación:')
-    
-    if (!userResponse || !userResponse.trim()) {
-      return // Usuario canceló o no escribió nada
-    }
-
+  // Función para manejar satisfacción del usuario con la respuesta
+  const handleDisputeSatisfaction = async (dispute, isSatisfied) => {
     try {
-      console.log('🔄 Respondiendo a impugnación:', dispute.id)
+      console.log(`🎯 Usuario ${isSatisfied ? 'satisfecho' : 'no satisfecho'} con impugnación:`, dispute.id)
 
-      // Solo actualizar la disputa existente - NO crear feedback
-      const { error: updateError } = await supabase
-        .from('question_disputes')
-        .update({ 
-          status: 'pending',
-          // Limpiar resolved_at para que aparezca como nueva
-          resolved_at: null,
-          // Usar appeal_text para la respuesta del usuario
-          appeal_text: userResponse.trim(),
-          appeal_submitted_at: new Date().toISOString()
-        })
-        .eq('id', dispute.id)
+      if (isSatisfied) {
+        // Usuario satisfecho - cerrar definitivamente
+        const { error: updateError } = await supabase
+          .from('question_disputes')
+          .update({ 
+            status: 'resolved',
+            appeal_text: 'Usuario de acuerdo con la respuesta del administrador.',
+            appeal_submitted_at: new Date().toISOString()
+          })
+          .eq('id', dispute.id)
 
-      if (updateError) throw updateError
+        if (updateError) throw updateError
 
-      console.log('✅ Impugnación actualizada a pending con respuesta del usuario')
+        alert('✅ Gracias por tu feedback. La impugnación se ha marcado como resuelta.')
+        
+      } else {
+        // Usuario no satisfecho - abrir formulario de apelación
+        const appealReason = prompt('Por favor, explica por qué no estás de acuerdo con la respuesta y qué consideras que debería corregirse:')
+        
+        if (!appealReason || !appealReason.trim()) {
+          return // Usuario canceló
+        }
 
-      // Recargar solo las disputas
+        const { error: updateError } = await supabase
+          .from('question_disputes')
+          .update({ 
+            status: 'pending',
+            appeal_text: appealReason.trim(),
+            appeal_submitted_at: new Date().toISOString()
+          })
+          .eq('id', dispute.id)
+
+        if (updateError) throw updateError
+
+        alert('✅ Tu apelación ha sido registrada. Vence revisará tu caso nuevamente.')
+      }
+
+      // Recargar las disputas
       await loadUserDisputes()
 
-      alert('✅ Tu respuesta ha sido registrada. La impugnación aparecerá como pendiente en el panel de administración.')
-
     } catch (error) {
-      console.error('❌ Error respondiendo a impugnación:', error)
-      alert('Error al responder. Inténtalo de nuevo.')
+      console.error('❌ Error procesando satisfacción:', error)
+      alert('Error al procesar tu respuesta. Inténtalo de nuevo.')
     }
   }
 
@@ -721,22 +732,45 @@ function SoporteContent() {
                               )}
                             </div>
                             
-                            {/* Botón de responder en cuadro azul */}
-                            {(dispute.status === 'resolved' || dispute.status === 'rejected') && (
-                              <div className="mt-4 bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border-l-4 border-blue-400">
-                                <button
-                                  onClick={() => handleReplyToDispute(dispute)}
-                                  className="inline-flex items-center px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
-                                >
-                                  💬 Responder a esta impugnación
-                                </button>
+                            {/* Botones de satisfacción discretos */}
+                            {(dispute.status === 'resolved' || dispute.status === 'rejected') && 
+                             dispute.appeal_text !== 'Usuario de acuerdo con la respuesta del administrador.' && (
+                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                  ¿Estás de acuerdo con esta respuesta?
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleDisputeSatisfaction(dispute, true)}
+                                    className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                                  >
+                                    ✅ Sí, gracias
+                                  </button>
+                                  <button
+                                    onClick={() => handleDisputeSatisfaction(dispute, false)}
+                                    className="inline-flex items-center px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
+                                  >
+                                    ❌ No, quiero apelar
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Mensaje de confirmación cuando usuario está de acuerdo */}
+                            {(dispute.status === 'resolved' || dispute.status === 'rejected') && 
+                             dispute.appeal_text === 'Usuario de acuerdo con la respuesta del administrador.' && (
+                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                  ✅ Marcado como resuelto satisfactoriamente
+                                </p>
                               </div>
                             )}
                           </div>
                         )}
 
                         {/* Alegación si existe */}
-                        {dispute.status === 'appealed' && dispute.appeal_text && (
+                        {dispute.status === 'pending' && dispute.appeal_text && 
+                         dispute.appeal_text !== 'Usuario de acuerdo con la respuesta del administrador.' && (
                           <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700">
                             <h4 className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-2">
                               📝 Tu Alegación
@@ -745,7 +779,7 @@ function SoporteContent() {
                               {dispute.appeal_text}
                             </div>
                             <div className="mt-2 text-xs text-orange-600 dark:text-orange-400">
-                              ⏳ En revisión por el equipo de administración
+                              ⏳ En revisión por Vence
                             </div>
                           </div>
                         )}
