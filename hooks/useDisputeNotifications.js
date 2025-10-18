@@ -42,6 +42,7 @@ export function useDisputeNotifications() {
       if (!user) return
 
       // Obtener impugnaciones resueltas/rechazadas recientes (últimos 30 días)
+      // Solo mostrar notificaciones de los últimos 30 días (más relevante)
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       
       const { data: disputes, error } = await supabase
