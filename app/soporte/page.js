@@ -390,9 +390,9 @@ function SoporteContent() {
           status: 'pending',
           // Limpiar resolved_at para que aparezca como nueva
           resolved_at: null,
-          // Agregar la respuesta del usuario
-          user_response: userResponse.trim(),
-          user_response_at: new Date().toISOString()
+          // Usar appeal_text para la respuesta del usuario
+          appeal_text: userResponse.trim(),
+          appeal_submitted_at: new Date().toISOString()
         })
         .eq('id', dispute.id)
 
