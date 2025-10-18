@@ -22,6 +22,20 @@ const STATUS_CONFIG = {
   'dismissed': { label: '❌ Descartado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' }
 }
 
+const DISPUTE_STATUS_CONFIG = {
+  'pending': { label: '🟡 Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' },
+  'reviewing': { label: '🔵 En revisión', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' },
+  'resolved': { label: '🟢 Resuelta', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
+  'rejected': { label: '🔴 Rechazada', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
+  'appealed': { label: '📝 Con Alegación', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300' }
+}
+
+const DISPUTE_TYPES = {
+  'respuesta_incorrecta': '❌ Respuesta Incorrecta',
+  'no_literal': '📝 No Literal',
+  'otro': '❓ Otro Motivo'
+}
+
 function SoporteContent() {
   const { user, supabase } = useAuth()
   const searchParams = useSearchParams()
@@ -35,6 +49,8 @@ function SoporteContent() {
   const [sendingMessage, setSendingMessage] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [disputes, setDisputes] = useState([])
+  const [disputesLoading, setDisputesLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -67,6 +83,31 @@ function SoporteContent() {
     }
   }, [searchParams, conversations])
 
+  // Auto-abrir tab de impugnaciones y resaltar disputa específica
+  useEffect(() => {
+    const disputeId = searchParams.get('dispute_id')
+    const tab = searchParams.get('tab')
+    
+    if (tab === 'impugnaciones') {
+      setActiveTab('disputes')
+      
+      if (disputeId && disputes.length > 0) {
+        // Scroll a la disputa específica después de un breve delay
+        setTimeout(() => {
+          const disputeElement = document.getElementById(`dispute-${disputeId}`)
+          if (disputeElement) {
+            disputeElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            // Resaltar temporalmente
+            disputeElement.classList.add('ring-4', 'ring-blue-500', 'ring-opacity-50')
+            setTimeout(() => {
+              disputeElement.classList.remove('ring-4', 'ring-blue-500', 'ring-opacity-50')
+            }, 3000)
+          }
+        }, 500)
+      }
+    }
+  }, [searchParams, disputes])
+
   const loadUserData = async () => {
     try {
       setLoading(true)
@@ -81,6 +122,13 @@ function SoporteContent() {
       setLoading(false)
     }
   }
+
+  // Cargar impugnaciones cuando se active la tab
+  useEffect(() => {
+    if (user && activeTab === 'disputes') {
+      loadUserDisputes()
+    }
+  }, [user, activeTab])
 
   const loadUserFeedbacks = async () => {
     try {
@@ -134,6 +182,47 @@ function SoporteContent() {
       setConversations(conversationsMap)
     } catch (error) {
       console.error('Error cargando conversaciones:', error)
+    }
+  }
+
+  const loadUserDisputes = async () => {
+    try {
+      setDisputesLoading(true)
+      const { data, error } = await supabase
+        .from('question_disputes')
+        .select(`
+          id,
+          dispute_type,
+          description,
+          status,
+          created_at,
+          resolved_at,
+          admin_response,
+          appeal_text,
+          appeal_submitted_at,
+          questions!inner (
+            question_text,
+            correct_option,
+            option_a,
+            option_b,
+            option_c,
+            option_d,
+            articles!inner (
+              article_number,
+              title,
+              laws!inner (short_name)
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setDisputes(data || [])
+    } catch (error) {
+      console.error('Error cargando impugnaciones:', error)
+    } finally {
+      setDisputesLoading(false)
     }
   }
 
@@ -283,6 +372,45 @@ function SoporteContent() {
     }
   }
 
+  // Función para responder a una impugnación
+  const handleReplyToDispute = async (dispute) => {
+    const userResponse = prompt('Escribe tu respuesta a la impugnación:')
+    
+    if (!userResponse || !userResponse.trim()) {
+      return // Usuario canceló o no escribió nada
+    }
+
+    try {
+      console.log('🔄 Respondiendo a impugnación:', dispute.id)
+
+      // Solo actualizar la disputa existente - NO crear feedback
+      const { error: updateError } = await supabase
+        .from('question_disputes')
+        .update({ 
+          status: 'pending',
+          // Limpiar resolved_at para que aparezca como nueva
+          resolved_at: null,
+          // Agregar la respuesta del usuario
+          user_response: userResponse.trim(),
+          user_response_at: new Date().toISOString()
+        })
+        .eq('id', dispute.id)
+
+      if (updateError) throw updateError
+
+      console.log('✅ Impugnación actualizada a pending con respuesta del usuario')
+
+      // Recargar solo las disputas
+      await loadUserDisputes()
+
+      alert('✅ Tu respuesta ha sido registrada. La impugnación aparecerá como pendiente en el panel de administración.')
+
+    } catch (error) {
+      console.error('❌ Error respondiendo a impugnación:', error)
+      alert('Error al responder. Inténtalo de nuevo.')
+    }
+  }
+
   const pendingFeedbacks = feedbacks.filter(f => f.status === 'pending')
   const waitingUserConversations = Object.values(conversations).filter(c => c.status === 'waiting_user')
   const recentNotifications = notifications.filter(n => n.context_data?.type === 'feedback_response')
@@ -385,6 +513,16 @@ function SoporteContent() {
               }`}
             >
               💬 Conversaciones ({feedbacks.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('disputes')}
+              className={`px-6 py-4 font-medium transition-colors ${
+                activeTab === 'disputes'
+                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              ⚖️ Impugnaciones ({disputes.length})
             </button>
           </div>
 
@@ -491,7 +629,141 @@ function SoporteContent() {
               </div>
             )}
 
+            {/* Disputes Tab */}
+            {activeTab === 'disputes' && (
+              <div className="space-y-4">
+                {disputesLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600 dark:text-gray-400">Cargando impugnaciones...</p>
+                  </div>
+                ) : disputes.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-6xl mb-4">⚖️</div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                      No tienes impugnaciones
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Cuando encuentres una pregunta incorrecta, puedes reportarla desde el test.
+                    </p>
+                    <Link 
+                      href="/auxiliar-administrativo-estado/test"
+                      className="inline-flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      🎯 Hacer un Test
+                    </Link>
+                  </div>
+                ) : (
+                  disputes.map((dispute) => {
+                    const statusConfig = DISPUTE_STATUS_CONFIG[dispute.status] || { label: dispute.status, color: 'bg-gray-100 text-gray-800' }
+                    return (
+                      <div key={dispute.id} id={`dispute-${dispute.id}`} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        
+                        {/* Header de la impugnación */}
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig.color}`}>
+                              {statusConfig.label}
+                            </span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {dispute.questions?.articles?.laws?.short_name} - Art. {dispute.questions?.articles?.article_number}
+                            </span>
+                            <span className="text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded">
+                              {DISPUTE_TYPES[dispute.dispute_type] || dispute.dispute_type}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            📅 {new Date(dispute.created_at).toLocaleDateString('es-ES', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </div>
 
+                        {/* Pregunta impugnada (versión compacta) */}
+                        <div className="mb-4">
+                          <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">📋 Pregunta impugnada:</h4>
+                          <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                            <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">{dispute.questions?.question_text}</p>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                              Respuesta correcta: {['A', 'B', 'C', 'D'][dispute.questions?.correct_option - 1]}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Tu reporte */}
+                        <div className="mb-4">
+                          <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">💬 Tu reporte:</h4>
+                          <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border-l-4 border-blue-400">
+                            <p className="text-blue-800 dark:text-blue-300 text-sm">{dispute.description}</p>
+                          </div>
+                        </div>
+
+                        {/* Respuesta del administrador */}
+                        {dispute.admin_response && (
+                          <div className="mb-4">
+                            <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-2">💼 Respuesta de Vence:</h4>
+                            <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg border-l-4 border-green-400">
+                              <p className="text-green-800 dark:text-green-300 text-sm">{dispute.admin_response}</p>
+                              {dispute.resolved_at && (
+                                <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                                  ✅ Resuelto el {new Date(dispute.resolved_at).toLocaleDateString('es-ES', {
+                                    year: 'numeric',
+                                    month: 'long', 
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </p>
+                              )}
+                            </div>
+                            
+                            {/* Botón de responder en cuadro azul */}
+                            {(dispute.status === 'resolved' || dispute.status === 'rejected') && (
+                              <div className="mt-4 bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border-l-4 border-blue-400">
+                                <button
+                                  onClick={() => handleReplyToDispute(dispute)}
+                                  className="inline-flex items-center px-3 py-1.5 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
+                                >
+                                  💬 Responder a esta impugnación
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Alegación si existe */}
+                        {dispute.status === 'appealed' && dispute.appeal_text && (
+                          <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700">
+                            <h4 className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-2">
+                              📝 Tu Alegación
+                            </h4>
+                            <div className="text-sm text-orange-700 dark:text-orange-300">
+                              {dispute.appeal_text}
+                            </div>
+                            <div className="mt-2 text-xs text-orange-600 dark:text-orange-400">
+                              ⏳ En revisión por el equipo de administración
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Estado pendiente */}
+                        {dispute.status === 'pending' && (
+                          <div className="bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-lg border-l-4 border-yellow-400">
+                            <p className="text-yellow-800 dark:text-yellow-300 text-sm">
+                              ⏳ Tu impugnación está pendiente de revisión. Te notificaremos cuando sea procesada.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
 
           </div>
         </div>
