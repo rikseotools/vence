@@ -113,7 +113,8 @@ function SoporteContent() {
       await Promise.all([
         loadUserFeedbacks(),
         loadUserNotifications(),
-        loadUserConversations()
+        loadUserConversations(),
+        loadUserDisputes() // Cargar impugnaciones desde el inicio
       ])
     } catch (error) {
       console.error('Error cargando datos:', error)
@@ -122,12 +123,7 @@ function SoporteContent() {
     }
   }
 
-  // Cargar impugnaciones cuando se active la tab
-  useEffect(() => {
-    if (user && activeTab === 'disputes') {
-      loadUserDisputes()
-    }
-  }, [user, activeTab])
+  // Las impugnaciones se cargan automáticamente en loadUserData()
 
   const loadUserFeedbacks = async () => {
     try {
@@ -135,6 +131,7 @@ function SoporteContent() {
         .from('user_feedback')
         .select('*')
         .eq('user_id', user.id)
+        .neq('type', 'question_dispute') // Excluir impugnaciones de conversaciones
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -505,7 +502,7 @@ function SoporteContent() {
               onClick={() => setShowFeedbackModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
-              💬 Iniciar Conversación
+              💬 Abrir chat soporte
             </button>
           </div>
         </div>
@@ -523,7 +520,7 @@ function SoporteContent() {
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
-              💬 Conversaciones ({feedbacks.length})
+              💬 Chat de soporte ({feedbacks.length})
             </button>
             <button
               onClick={() => setActiveTab('disputes')}
@@ -548,7 +545,7 @@ function SoporteContent() {
                   <div className="text-center py-8">
                     <div className="text-6xl mb-4">💬</div>
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                      No tienes conversaciones
+                      No tienes chats de soporte
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
                       Cuando envíes un mensaje al equipo aparecerá aquí
@@ -557,7 +554,7 @@ function SoporteContent() {
                       onClick={() => setShowFeedbackModal(true)}
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      💬 Iniciar Conversación
+                      💬 Abrir chat soporte
                     </button>
                   </div>
                 ) : (
