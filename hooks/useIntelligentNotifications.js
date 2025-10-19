@@ -311,22 +311,6 @@ const NOTIFICATION_TYPES = {
       type: 'view_theory'
     }
   },
-  'streak_broken': { 
-    priority: 95, 
-    icon: '💔', 
-    color: 'red',
-    bgColor: 'bg-red-100 dark:bg-red-900/50',
-    textColor: 'text-red-600 dark:text-red-400',
-    borderColor: 'border-red-200 dark:border-red-800',
-    primaryAction: {
-      label: '🚀 Recuperar Racha (3 min)',
-      type: 'quick_test'
-    },
-    secondaryAction: {
-      label: '📊 Ver Mi Progreso',
-      type: 'view_stats'
-    }
-  },
 
   // 🟠 IMPORTANTES (Prioridad 70-89) - ACCIÓN DE MEJORA
   'problematic_articles': { 
@@ -347,22 +331,6 @@ const NOTIFICATION_TYPES = {
   },
 
   // 🟡 RECOMENDACIONES (Prioridad 50-69) - ACCIÓN DE CONTINUIDAD
-  'study_streak': { 
-    priority: 65, 
-    icon: '🔥', 
-    color: 'yellow',
-    bgColor: 'bg-yellow-100 dark:bg-yellow-900/50',
-    textColor: 'text-yellow-600 dark:text-yellow-400',
-    borderColor: 'border-yellow-200 dark:border-yellow-800',
-    primaryAction: {
-      label: '🚀 Mantener Racha (5 min)',
-      type: 'maintain_streak'
-    },
-    secondaryAction: {
-      label: '📈 Ver Racha Completa',
-      type: 'view_streak_stats'
-    }
-  },
   'achievement': { 
     priority: 60, 
     icon: '🏆', 
@@ -423,22 +391,6 @@ const NOTIFICATION_TYPES = {
     primaryAction: {
       label: '💬 Abrir Chat',
       type: 'open_chat'
-    }
-  },
-  'progress_update': { 
-    priority: 35, 
-    icon: '📊', 
-    color: 'blue',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/50',
-    textColor: 'text-blue-600 dark:text-blue-400',
-    borderColor: 'border-blue-200 dark:border-blue-800',
-    primaryAction: {
-      label: '🎯 Test Avanzado',
-      type: 'advanced_test'
-    },
-    secondaryAction: {
-      label: '📊 Ver Detalles',
-      type: 'view_details'
     }
   },
   'new_content': {
@@ -546,10 +498,10 @@ export function useIntelligentNotifications() {
   // Estados por categoría
   // const [disputeNotifications, setDisputeNotifications] = useState([]) // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
   const [problematicArticles, setProblematicArticles] = useState([])
-  const [studyStreaks, setStudyStreaks] = useState([])
+  // const [studyStreaks, setStudyStreaks] = useState([]) // 🚫 ELIMINADO
   const [achievements, setAchievements] = useState([])
   const [studyReminders, setStudyReminders] = useState([])
-  const [progressUpdates, setProgressUpdates] = useState([])
+  // const [progressUpdates, setProgressUpdates] = useState([]) // 🚫 ELIMINADO
   const [motivationalNotifications, setMotivationalNotifications] = useState([])
   const [systemNotifications, setSystemNotifications] = useState([])
 
@@ -611,15 +563,7 @@ export function useIntelligentNotifications() {
           }
           break
           
-        case 'study_streak':
-          if (actionType === 'maintain_streak') {
-            baseParams.append('mode', 'streak')
-            baseParams.append('n', '5')
-            return `/test/mantener-racha?${baseParams.toString()}`
-          } else if (actionType === 'view_streak_stats') {
-            return `/mis-estadisticas?${baseParams.toString()}`
-          }
-          break
+        // case 'study_streak': // 🚫 ELIMINADO
           
         case 'achievement':
         case 'improvement':
@@ -632,23 +576,9 @@ export function useIntelligentNotifications() {
           }
           break
           
-        case 'streak_broken':
-          if (actionType === 'quick_test') {
-            baseParams.append('mode', 'recovery')
-            baseParams.append('n', '5')
-            return `/test/rapido?${baseParams.toString()}`
-          } else if (actionType === 'view_stats') {
-            return `/mis-estadisticas?${baseParams.toString()}`
-          }
-          break
+        // case 'streak_broken': // 🚫 ELIMINADO
           
-        case 'progress_update':
-          if (actionType === 'advanced_test') {
-            return `/test/rapido?${baseParams.toString()}`
-          } else if (actionType === 'view_details') {
-            return `/mis-estadisticas?${baseParams.toString()}`
-          }
-          break
+        // case 'progress_update': // 🚫 ELIMINADO
           
         case 'dispute_update':
           if (actionType === 'view_corrected_question') {
@@ -754,10 +684,10 @@ export function useIntelligentNotifications() {
       await Promise.all([
         // loadDisputeNotifications(), // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
         loadProblematicArticles(),
-        loadStudyStreaks(),
+        // loadStudyStreaks(), // 🚫 ELIMINADO
         loadAchievements(),
         loadStudyReminders(),
-        loadProgressUpdates(),
+        // loadProgressUpdates(), // 🚫 ELIMINADO
         loadSystemNotifications()
       ])
       
@@ -766,10 +696,10 @@ export function useIntelligentNotifications() {
       const hasUrgentNotifications = [
         // ...disputeNotifications, // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
         ...problematicArticles,
-        ...studyStreaks,
+        // ...studyStreaks, // 🚫 ELIMINADO
         ...achievements,
         ...studyReminders,
-        ...progressUpdates,
+        // ...progressUpdates, // 🚫 ELIMINADO
         ...systemNotifications
       ].some(n => !n.isRead)
 
@@ -1559,12 +1489,12 @@ export function useIntelligentNotifications() {
   // Función para resetear notificaciones
   const resetNotifications = () => {
     setAllNotifications([]);
-    setDisputeNotifications([]);
+    // setDisputeNotifications([]); // 🚫 ELIMINADO
     setProblematicArticles([]);
-    setStudyStreaks([]);
+    // setStudyStreaks([]); // 🚫 ELIMINADO
     setAchievements([]);
     setStudyReminders([]);
-    setProgressUpdates([]);
+    // setProgressUpdates([]); // 🚫 ELIMINADO
     setMotivationalNotifications([]);
     setSystemNotifications([]);
     setLoading(false);
@@ -1575,10 +1505,10 @@ export function useIntelligentNotifications() {
     const combined = [
       // ...disputeNotifications, // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
       ...problematicArticles,
-      ...studyStreaks,
+      // ...studyStreaks, // 🚫 ELIMINADO
       ...achievements,
       ...studyReminders,
-      ...progressUpdates,
+      // ...progressUpdates, // 🚫 ELIMINADO
       ...motivationalNotifications,
       ...systemNotifications
     ].sort((a, b) => {
@@ -1589,7 +1519,7 @@ export function useIntelligentNotifications() {
     });
 
     setAllNotifications(combined);
-  }, [problematicArticles, studyStreaks, achievements, studyReminders, progressUpdates, motivationalNotifications, systemNotifications]);
+  }, [problematicArticles, achievements, studyReminders, motivationalNotifications, systemNotifications]);
 
   // Calcular contadores
   const unreadCount = allNotifications.filter(n => !n.isRead).length;
@@ -1674,12 +1604,8 @@ export function useIntelligentNotifications() {
                 prev.filter(n => n.id !== notificationId)
               );
               break;
-            case 'study_streak':
-            case 'streak_broken':
-              setStudyStreaks(prev => 
-                prev.filter(n => n.id !== notificationId)
-              );
-              break;
+            // case 'study_streak': // 🚫 ELIMINADO
+            // case 'streak_broken': // 🚫 ELIMINADO
             case 'achievement':
               setAchievements(prev => 
                 prev.filter(n => n.id !== notificationId)
@@ -1690,9 +1616,9 @@ export function useIntelligentNotifications() {
                 prev.filter(n => n.id !== notificationId)
               );
               break;
-            case 'progress_update':
+            // case 'progress_update': // 🚫 ELIMINADO
             case 'improvement':
-              setProgressUpdates(prev => 
+              setAchievements(prev => 
                 prev.filter(n => n.id !== notificationId)
               );
               break;
@@ -1818,10 +1744,10 @@ export function useIntelligentNotifications() {
     // Por tipo específico
     // disputeNotifications, // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
     problematicArticles,
-    studyStreaks,
+    // studyStreaks, // 🚫 ELIMINADO
     achievements,
     studyReminders,
-    progressUpdates,
+    // progressUpdates, // 🚫 ELIMINADO
     motivationalNotifications,
     systemNotifications,
     

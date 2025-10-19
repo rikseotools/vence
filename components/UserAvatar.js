@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext' // Using context instead of local instance
-import { calculateUserStreak } from '@/utils/streakCalculator'
+// import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 
 export default function UserAvatar() {
   // Using Auth context instead of local state
@@ -110,20 +110,25 @@ export default function UserAvatar() {
         console.warn('Error loading question counts:', totalError || correctError)
       }
 
-      // 5. Calculate streak (consecutive days with activity) - USING test_questions
-      const { data: recentActivity, error: activityError } = await supabase
-        .from('test_questions')
-        .select('created_at')
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
-        .in('test_id', testIds)
-        .order('created_at', { ascending: false })
+      // 5. ⚡ OPTIMIZADO: Obtener racha desde tabla user_streaks
+      const { data: streakData, error: streakError } = await supabase
+        .from('user_streaks')
+        .select('current_streak')
+        .eq('user_id', userId)
+        .single()
 
-      if (activityError) {
-        console.warn('Error loading recent activity:', activityError)
+      let streak = 0
+      if (streakError) {
+        if (streakError.code === 'PGRST116') {
+          // No existe registro, la racha es 0
+          streak = 0
+        } else {
+          console.warn('Error loading user streak:', streakError)
+          streak = 0
+        }
+      } else {
+        streak = streakData?.current_streak || 0
       }
-
-      // Calculate consecutive days streak with grace day
-      const streak = calculateUserStreak(recentActivity || [], 'created_at')
 
       // ⚡ Calculate accuracy from count queries (OPTIMIZED)
       const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0

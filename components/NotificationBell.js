@@ -731,7 +731,7 @@ export default function NotificationBell() {
                                     id: notification.id, 
                                     disputeId: notification.disputeId 
                                   })
-                                  // Para impugnaciones y feedback, marcar como leído en BD. Para otras, solo ocultar.
+                                  // Para impugnaciones y feedback, marcar como leído en BD. Para logros/progreso, auto-marcar. Para otras, solo ocultar.
                                   if (notification.type === 'dispute_update') {
                                     disputeNotifications.markAsRead(notification.id)
                                   } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {

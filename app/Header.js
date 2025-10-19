@@ -14,7 +14,7 @@ import '@/lib/debug/medalDebug' // Cargar funciones de debug
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
-import { calculateUserStreak } from '@/utils/streakCalculator'
+// import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 
 export default function HeaderES() {
@@ -55,40 +55,29 @@ export default function HeaderES() {
       }
 
       try {
-        // Usar exactamente la misma lógica que UserAvatar (cálculo manual que funciona)
-        const { data: userTests, error: userTestsError } = await supabase
-          .from('tests')
-          .select('id')
+        // ⚡ CONSULTA SÚPER OPTIMIZADA - Una sola query simple
+        const { data: streakData, error: streakError } = await supabase
+          .from('user_streaks')
+          .select('current_streak')
           .eq('user_id', user.id)
+          .single()
 
-        if (userTestsError) {
-          console.warn('Error loading user tests for streak:', userTestsError)
+        if (streakError) {
+          if (streakError.code === 'PGRST116') {
+            // No existe registro, la racha es 0
+            setUserStreak(0)
+          } else {
+            console.warn('Error loading user streak:', streakError)
+            setUserStreak(0)
+          }
           return
         }
 
-        const testIds = userTests?.map(t => t.id) || []
-        if (testIds.length === 0) {
-          setUserStreak(0)
-          return
-        }
-
-        const { data: recentActivity, error: activityError } = await supabase
-          .from('test_questions')
-          .select('created_at')
-          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
-          .in('test_id', testIds)
-          .order('created_at', { ascending: false })
-
-        if (activityError) {
-          console.warn('Error loading recent activity:', activityError)
-          return
-        }
-
-        // Calculate consecutive days streak with grace day (same as UserAvatar)
-        const streak = calculateUserStreak(recentActivity || [], 'created_at')
-        setUserStreak(streak)
+        setUserStreak(streakData?.current_streak || 0)
+        console.log(`🔥 Header: Racha cargada desde user_streaks: ${streakData?.current_streak || 0} días`)
       } catch (error) {
         console.warn('Error calculating user streak:', error)
+        setUserStreak(0)
       }
     }
 
