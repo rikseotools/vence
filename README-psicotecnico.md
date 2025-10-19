@@ -866,6 +866,13 @@ Aplicar la **Guía Crítica** para determinar el componente correcto:
 #### Paso 4: Reporte Final OBLIGATORIO
 Al terminar de procesar todas las imágenes, proporcionar:
 
+**🔗 PÁGINA DE NAVEGACIÓN POR LOTES:**
+```
+http://localhost:3000/debug/batch
+```
+*Página que permite navegar por todas las preguntas del lote actual con botones Anterior/Siguiente*
+
+**📋 RESUMEN DE PREGUNTAS PROCESADAS:**
 ```
 ## 📋 RESUMEN DE PREGUNTAS PROCESADAS
 
