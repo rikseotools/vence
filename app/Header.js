@@ -314,8 +314,43 @@ export default function HeaderES() {
   return (
     <>
       <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 relative">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+        <div className={`container mx-auto px-4 ${user ? 'py-6 pb-12 lg:pb-6' : 'py-6'}`}>
+          <div className="flex items-center justify-between relative">
+            
+            {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES */}
+            {user && (
+              <div className="lg:hidden absolute top-full right-52 flex items-center gap-4 mt-1 mb-2">
+                {/* 🔥 ICONO DE RACHA */}
+                <button
+                  onClick={() => {
+                    setShowRankingModal(true)
+                    // Establecer tab rachas cuando se abra el modal desde la racha
+                    setTimeout(() => {
+                      // Buscar el botón de rachas y hacer click
+                      const rachaBtnElement = document.querySelector('[data-tab="rachas"]')
+                      if (rachaBtnElement) {
+                        rachaBtnElement.click()
+                      }
+                    }, 100)
+                  }}
+                  className={`flex items-center justify-center hover:opacity-80 transition-opacity ${userStreak === 0 ? 'opacity-60' : ''}`}
+                  title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak > 30 ? '30+' : userStreak} días consecutivos`}
+                >
+                  <span className={`text-sm ${userStreak === 0 ? 'grayscale' : ''}`}>🔥</span>
+                  <span className="text-sm font-bold ml-0.5">{userStreak > 30 ? '30+' : userStreak}</span>
+                </button>
+                
+                {/* ⚖️ ICONO DE LEYES */}
+                <Link
+                  href="/leyes"
+                  className="flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  aria-label="Ir a Leyes"
+                  title="Estudiar Leyes"
+                >
+                  <span className="text-lg">⚖️</span>
+                </Link>
+              </div>
+            )}
             
             {/* IZQUIERDA: Logo más pequeño en móvil */}
             <div className="flex items-center flex-shrink-0">
@@ -437,41 +472,6 @@ export default function HeaderES() {
                               d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                       </svg>
                     </button>
-                  )}
-                  
-                  {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES */}
-                  {user && (
-                    <div className="lg:hidden absolute top-full left-1/2 transform -translate-x-1/2 -translate-x-4 flex items-center justify-center gap-4 mt-1">
-                      {/* 🔥 ICONO DE RACHA */}
-                      <button
-                        onClick={() => {
-                          setShowRankingModal(true)
-                          // Establecer tab rachas cuando se abra el modal desde la racha
-                          setTimeout(() => {
-                            // Buscar el botón de rachas y hacer click
-                            const rachaBtnElement = document.querySelector('[data-tab="rachas"]')
-                            if (rachaBtnElement) {
-                              rachaBtnElement.click()
-                            }
-                          }, 100)
-                        }}
-                        className={`flex items-center justify-center hover:opacity-80 transition-opacity ${userStreak === 0 ? 'opacity-60' : ''}`}
-                        title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak > 30 ? '30+' : userStreak} días consecutivos`}
-                      >
-                        <span className={`text-sm ${userStreak === 0 ? 'grayscale' : ''}`}>🔥</span>
-                        <span className="text-sm font-bold ml-0.5">{userStreak > 30 ? '30+' : userStreak}</span>
-                      </button>
-                      
-                      {/* ⚖️ ICONO DE LEYES */}
-                      <Link
-                        href="/leyes"
-                        className="flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
-                        aria-label="Ir a Leyes"
-                        title="Estudiar Leyes"
-                      >
-                        <span className="text-lg">⚖️</span>
-                      </Link>
-                    </div>
                   )}
                 </div>
               )}
