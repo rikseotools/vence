@@ -74,7 +74,6 @@ export default function HeaderES() {
         }
 
         setUserStreak(streakData?.current_streak || 0)
-        console.log(`🔥 Header: Racha cargada desde user_streaks: ${streakData?.current_streak || 0} días`)
       } catch (error) {
         console.warn('Error calculating user streak:', error)
         setUserStreak(0)

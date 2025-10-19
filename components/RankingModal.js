@@ -264,7 +264,6 @@ export default function RankingModal({ isOpen, onClose }) {
         return
       }
 
-      console.log('🔍 DEBUG: Rachas cargadas desde user_streaks:', streakData?.length || 0, 'usuarios')
 
       // Transformar datos al formato esperado
       const filteredStreaks = streakData?.map(item => ({
