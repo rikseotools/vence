@@ -138,7 +138,9 @@ export default function PsicotecnicosTestClient() {
           q.question_subtype === 'data_tables'
         ).length,
         'capacidad-ortografica': data.filter(q => 
-          q.question_subtype === 'error_detection'
+          q.question_subtype === 'error_detection' ||
+          q.question_subtype === 'text_question' ||
+          q.question_subtype === 'word_analysis'
         ).length,
         'pruebas-instrucciones': 0,
         'razonamiento-numerico': 0,
@@ -204,8 +206,10 @@ export default function PsicotecnicosTestClient() {
         }
         // Asignar preguntas de capacidad ortográfica
         else if (categoryKey === 'capacidad-ortografica') {
-          if (question.question_subtype === 'error_detection') {
-            // Las preguntas de detección de errores van a la subcategoría 'ortografia'
+          if (question.question_subtype === 'error_detection' ||
+              question.question_subtype === 'text_question' ||
+              question.question_subtype === 'word_analysis') {
+            // Todas las preguntas de ortografía van a la subcategoría 'ortografia'
             counts['ortografia'] = (counts['ortografia'] || 0) + 1
           }
         }

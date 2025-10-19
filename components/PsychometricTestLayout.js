@@ -8,6 +8,7 @@ import BarChartQuestion from './BarChartQuestion'
 import LineChartQuestion from './LineChartQuestion'
 import MixedChartQuestion from './MixedChartQuestion'
 import ErrorDetectionQuestion from './ErrorDetectionQuestion'
+import WordAnalysisQuestion from './WordAnalysisQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 
@@ -322,6 +323,18 @@ export default function PsychometricTestLayout({
       case 'error_detection':
         return (
           <ErrorDetectionQuestion
+            question={currentQ}
+            onAnswer={handleAnswer}
+            selectedAnswer={selectedAnswer}
+            showResult={showResult}
+            isAnswering={isAnswering}
+            attemptCount={0}
+          />
+        )
+      
+      case 'word_analysis':
+        return (
+          <WordAnalysisQuestion
             question={currentQ}
             onAnswer={handleAnswer}
             selectedAnswer={selectedAnswer}

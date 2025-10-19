@@ -234,9 +234,18 @@ export default function ChartQuestion({
               {question.content_data?.chart_type === 'error_detection' ? 'EXPLICACIÓN:' : 'ANÁLISIS PASO A PASO:'}
             </h4>
             
-            {/* Secciones específicas de explicación */}
+            {/* Secciones específicas de explicación o explicación estándar */}
             <div className="space-y-4">
-              {explanationSections}
+              {explanationSections || (
+                question.explanation && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                    <div 
+                      className="text-blue-700 whitespace-pre-line"
+                      dangerouslySetInnerHTML={{ __html: question.explanation.replace(/\n/g, '<br>') }}
+                    />
+                  </div>
+                )
+              )}
             </div>
 
           </div>

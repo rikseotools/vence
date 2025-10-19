@@ -230,7 +230,7 @@ export default async function LeyesServerComponent() {
                 estudios de derecho y actualización profesional.
               </p>
               <p className="text-gray-600 mb-4 leading-relaxed">
-                En <strong>iLoveTest</strong> encontrarás tests de las leyes más importantes de España, 
+                En <strong>Vence</strong> encontrarás tests de las leyes más importantes de España, 
                 desde la Constitución hasta códigos especializados, todos actualizados y gratuitos.
               </p>
             </div>

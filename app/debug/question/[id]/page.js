@@ -7,6 +7,7 @@ import DataTableQuestion from '../../../../components/DataTableQuestion'
 import LineChartQuestion from '../../../../components/LineChartQuestion'
 import MixedChartQuestion from '../../../../components/MixedChartQuestion'
 import ErrorDetectionQuestion from '../../../../components/ErrorDetectionQuestion'
+import WordAnalysisQuestion from '../../../../components/WordAnalysisQuestion'
 
 export default function QuestionDebugPage() {
   const params = useParams()
@@ -87,6 +88,9 @@ export default function QuestionDebugPage() {
       
       case 'error_detection':
         return <ErrorDetectionQuestion {...questionProps} />
+      
+      case 'word_analysis':
+        return <WordAnalysisQuestion {...questionProps} />
       
       case 'text_question':
         return (

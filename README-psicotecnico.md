@@ -755,25 +755,143 @@ Componentes especializados que extienden la base:
 **Tipos soportados actualmente:**
 - `pie_chart` → Gráficos circulares (PieChartQuestion.js)
 - `bar_chart` → Gráficos de barras (BarChartQuestion.js)  
+- `line_chart` → Gráficos de líneas (LineChartQuestion.js)
+- `mixed_chart` → Gráficos mixtos (MixedChartQuestion.js)
 - `data_tables` → Tablas de datos (DataTableQuestion.js)
 - `error_detection` → Detección de errores ortográficos con texto a analizar (ErrorDetectionQuestion.js)
+- `word_analysis` → Análisis de palabras con recuadro de texto (WordAnalysisQuestion.js)
 - `text_question` → Preguntas de opción múltiple estándar sin contenido especial (integrado en PsychometricTestLayout.js)
 
-**🔍 Guía para Seleccionar el Componente Correcto:**
+**🔍 GUÍA CRÍTICA PARA SELECCIONAR EL COMPONENTE CORRECTO:**
+
+⚠️ **REGLA FUNDAMENTAL: NUNCA modificar componentes existentes para nuevos tipos de pregunta. SIEMPRE crear un componente nuevo.**
 
 **Usar `error_detection` cuando:**
-- La pregunta muestra un texto para analizar errores
-- Necesita mostrar un cuadro con texto original
+- La pregunta muestra un texto específico para analizar errores
+- Necesita mostrar un recuadro azul con texto original (sin título)
 - Se buscan errores específicos en el texto mostrado
+- Ejemplo: "Indica los errores en el siguiente texto: [texto]"
+
+**Usar `word_analysis` cuando:**
+- La pregunta requiere analizar una lista de palabras
+- Necesita mostrar palabras en un recuadro sin título
+- Se cuenta o evalúa algo sobre las palabras mostradas
+- Ejemplo: "Marque la cantidad de palabras sin errores: [lista de palabras]"
 
 **Usar `text_question` cuando:**
 - Pregunta de opción múltiple estándar (A, B, C, D)
 - No requiere mostrar contenido especial (gráficos, tablas, texto a analizar)
 - Las opciones son texto simple
-- Preguntas de ortografía, gramática, orden alfabético, etc.
+- Preguntas conceptuales, definiciones, reglas gramaticales
+- Ejemplo: "¿Cuál es la regla correcta de acentuación?"
+
+**Usar gráficos (`pie_chart`, `bar_chart`, etc.) cuando:**
+- La pregunta incluye datos numéricos para visualizar
+- Se necesita mostrar gráficos, tablas o datos estructurados
+- Análisis de información cuantitativa
 
 **Si es tipo existente** → Usar componente existente  
 **Si es tipo nuevo** → Crear componente especializado
+
+## 🚨 REGLAS CRÍTICAS DE DESARROLLO
+
+### ❌ PROHIBIDO: Modificar Componentes Existentes
+- **NUNCA cambiar** la funcionalidad de un componente existente para adaptar un nuevo tipo de pregunta
+- **NUNCA añadir** lógica condicional dentro de un componente para manejar casos especiales
+- **NUNCA modificar** el renderizado base de componentes ya estables
+
+### ✅ OBLIGATORIO: Crear Componentes Nuevos
+- **SIEMPRE crear** un componente nuevo para cada tipo de pregunta único
+- **MANTENER** componentes especializados y enfocados en un solo propósito
+- **SEGUIR** el patrón de nomenclatura: `[Tipo]Question.js`
+
+### 📋 Proceso de Creación de Componente Nuevo:
+1. **Analizar** el tipo de pregunta y su funcionalidad específica
+2. **Crear** archivo `components/[Tipo]Question.js`
+3. **Implementar** la lógica específica del tipo de pregunta
+4. **Añadir** import en `PsychometricTestLayout.js`
+5. **Añadir** case en el switch de renderizado
+6. **Añadir** import y case en `app/debug/question/[id]/page.js`
+7. **Documentar** en este README el nuevo tipo
+8. **Probar** con preguntas de ejemplo
+
+### 🎯 Beneficios de Esta Arquitectura:
+- **Mantenibilidad**: Cada componente tiene una responsabilidad clara
+- **Escalabilidad**: Fácil añadir nuevos tipos sin afectar existentes
+- **Debugging**: Problemas aislados por tipo de pregunta
+- **Reutilización**: Componentes especializados y optimizados
+- **Consistencia**: Patrón uniforme en toda la aplicación
+
+## 📸 MANUAL PARA PROCESAMIENTO DE IMÁGENES DE PREGUNTAS
+
+### 🔍 Análisis Obligatorio de Imágenes de Preguntas
+
+Cuando se proporcionen imágenes de preguntas psicotécnicas, seguir este proceso:
+
+#### Paso 1: Análisis Visual de la Pregunta
+1. **Leer completamente** el enunciado de la pregunta
+2. **Identificar** si hay texto adicional que debe mostrarse en recuadro
+3. **Determinar** el tipo de interacción requerida
+4. **Analizar** las opciones de respuesta (A, B, C, D)
+
+#### Paso 2: Clasificación del Componente
+Aplicar la **Guía Crítica** para determinar el componente correcto:
+
+**🔍 CRITERIOS DE SELECCIÓN:**
+
+**Usar `error_detection` cuando:**
+- ✅ La pregunta incluye un texto específico para analizar
+- ✅ Se requiere mostrar texto en un recuadro azul (sin título)
+- ✅ Se buscan errores específicos en el texto mostrado
+- ✅ Ejemplos: "Señale errores en:", "Cuántos errores hay en la frase:"
+
+**Usar `word_analysis` cuando:**
+- ✅ La pregunta requiere analizar una lista específica de palabras
+- ✅ Se necesita mostrar palabras en recuadro sin título
+- ✅ Se cuenta o evalúa algo sobre las palabras mostradas
+- ✅ Ejemplos: "Marque cantidad de palabras sin errores:", "Analice las palabras:"
+
+**Usar `text_question` cuando:**
+- ✅ Pregunta de opción múltiple estándar
+- ✅ No requiere mostrar contenido especial en recuadros
+- ✅ Las opciones contienen todo el contenido a evaluar
+- ✅ Ejemplos: "¿Cuál opción tiene más errores?", "Identifique el error en:"
+
+#### Paso 3: Implementación
+1. **Crear script** con el componente correcto identificado
+2. **Estructurar content_data** según el componente elegido
+3. **Ejecutar** el script de inserción
+4. **Verificar** funcionamiento en debug
+
+#### Paso 4: Reporte Final OBLIGATORIO
+Al terminar de procesar todas las imágenes, proporcionar:
+
+```
+## 📋 RESUMEN DE PREGUNTAS PROCESADAS
+
+| # | Pregunta | Componente Usado | Justificación | Link |
+|---|----------|------------------|---------------|------|
+| XX | Descripción breve | component_type | Razón de selección | 🔗 Link debug |
+
+## 🔍 ANÁLISIS DE SELECCIÓN:
+- X × error_detection (XX%): Para preguntas con texto a analizar
+- X × word_analysis (XX%): Para análisis de listas de palabras  
+- X × text_question (XX%): Para comparación directa de opciones
+
+✅ Todas las preguntas siguen las reglas del README
+```
+
+### ⚠️ VALIDACIONES OBLIGATORIAS:
+- **Verificar** que cada pregunta use el componente correcto según las reglas
+- **Confirmar** que el formato de content_data sea apropiado
+- **Probar** cada link de debug antes de reportar
+- **Documentar** la justificación de cada elección de componente
+
+### 🚫 ERRORES COMUNES A EVITAR:
+- Usar `error_detection` para preguntas que solo comparan opciones
+- Usar `text_question` cuando hay texto específico que mostrar en recuadro
+- No justificar la selección del componente
+- Reportar links sin verificar funcionalidad
 
 #### Paso 2: Preparar Datos de la Pregunta
 
@@ -822,8 +940,11 @@ const questionData = {
 **Si usa tipo existente:**
 - ✅ BarChartQuestion.js → listo para gráficos de barras
 - ✅ PieChartQuestion.js → listo para gráficos circulares
-- ✅ DataTableQuestion.js → listo para tablas
-- ✅ ErrorDetectionQuestion.js → listo para detección de errores ortográficos
+- ✅ LineChartQuestion.js → listo para gráficos de líneas
+- ✅ MixedChartQuestion.js → listo para gráficos mixtos
+- ✅ DataTableQuestion.js → listo para tablas de datos
+- ✅ ErrorDetectionQuestion.js → listo para detección de errores con texto a analizar
+- ✅ WordAnalysisQuestion.js → listo para análisis de palabras con recuadro
 - ✅ text_question → listo para preguntas de opción múltiple estándar (integrado en PsychometricTestLayout.js)
 
 **Si necesita nuevo componente:**
@@ -1389,10 +1510,20 @@ Este sistema de estadísticas psicotécnicas representa un avance significativo 
 #### Componente Especializado: ErrorDetectionQuestion.js
 
 **Características principales:**
-- **Renderizado visual limpio**: Texto destacado en caja azul sin duplicaciones
+- **Renderizado visual limpio**: Texto destacado en recuadro azul sin título adicional
+- **Sin etiquetas**: No muestra "📝 Texto a analizar", solo el recuadro elegante
 - **Explicación didáctica dinámica**: Generada automáticamente desde `errors_found`
 - **Formato educativo**: Muestra cada error con su corrección y explicación
 - **Adaptable**: Funciona con cualquier número de errores y tipos de texto
+
+#### Componente de Análisis de Palabras: WordAnalysisQuestion.js
+
+**Características principales:**
+- **Recuadro de palabras**: Muestra lista de palabras en un cuadro azul elegante
+- **Sin título extra**: No muestra "Texto a analizar", solo el recuadro
+- **Análisis específico**: Para contar, evaluar o analizar palabras mostradas
+- **Casos de uso**: Contar palabras sin errores, evaluar ortografía en listas
+- **Estructura requerida**: Necesita `content_data.original_text` con las palabras
 
 #### Componente de Texto Estándar: text_question (PsychometricTestLayout.js)
 
@@ -1400,7 +1531,7 @@ Este sistema de estadísticas psicotécnicas representa un avance significativo 
 - **Renderizado directo**: Muestra pregunta y opciones A, B, C, D sin componentes especiales
 - **Formato estándar**: Para preguntas que no requieren visualizaciones específicas
 - **Explicación integrada**: Muestra explicación tras responder
-- **Casos de uso**: Orden alfabético, comparación de frases, preguntas conceptuales
+- **Casos de uso**: Preguntas conceptuales, definiciones, reglas gramaticales
 
 #### Estructura de Datos Requerida
 
