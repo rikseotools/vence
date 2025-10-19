@@ -421,7 +421,7 @@ const NOTIFICATION_TYPES = {
     textColor: 'text-blue-600 dark:text-blue-400',
     borderColor: 'border-blue-200 dark:border-blue-800',
     primaryAction: {
-      label: 'Abrir Chat',
+      label: '💬 Abrir Chat',
       type: 'open_chat'
     }
   },
@@ -1430,11 +1430,24 @@ export function useIntelligentNotifications() {
         // Extraer tipo de context_data si está disponible, sino usar type directo
         const notifType = notif.context_data?.type || notif.type
         
+        // 🆕 MEJORAR NOTIFICACIONES DE FEEDBACK CON INFORMACIÓN ESPECÍFICA
+        let title = notif.context_data?.title || notif.title || 'Notificación'
+        let message = notif.message_sent || notif.message
+        
+        if (notifType === 'feedback_response') {
+          // Extraer el preview del mensaje del admin desde message_sent
+          const messageMatch = notif.message_sent?.match(/El equipo de Vence: "(.+)"/)
+          const adminMessage = messageMatch ? messageMatch[1] : notif.message_sent
+          
+          title = '💬 Nueva respuesta de Vence'
+          message = adminMessage || 'El equipo de Vence ha respondido a tu consulta'
+        }
+        
         return {
           id: `system-${notif.id}`,
           type: notifType,
-          title: notif.context_data?.title || notif.title || 'Notificación',
-          body: notif.message_sent || notif.message,
+          title: title,
+          message: message,
           timestamp: notif.created_at,
           isRead: !!notif.opened_at,
           data: notif.context_data || notif.data,

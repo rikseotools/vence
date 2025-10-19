@@ -348,7 +348,7 @@ export default function AdminFeedbackPage() {
             delivery_status: 'sent',
             context_data: { 
               type: 'feedback_response',
-              title: 'Nueva respuesta de soporte',
+              title: 'Nueva respuesta de Vence',
               conversation_id: conversationId,
               feedback_id: conversation.data.feedback_id
             }

@@ -34,6 +34,9 @@ export default function NotificationBell() {
   const [appealText, setAppealText] = useState('')
   const [submittingAppeal, setSubmittingAppeal] = useState(false)
 
+  // 🆕 Estados para swipe de notificaciones
+  const [swipeStates, setSwipeStates] = useState({}) // { notificationId: { isBeingSwiped, translateX, opacity } }
+
   // Detectar tamaño de pantalla
   useEffect(() => {
     const checkScreenSize = () => {
@@ -113,6 +116,98 @@ export default function NotificationBell() {
   const handleCancelAppeal = () => {
     setShowingAppealForm(null)
     setAppealText('')
+  }
+
+  // 🆕 FUNCIONES DE SWIPE PARA MARCAR COMO LEÍDO
+  const handleTouchStart = (notificationId, e) => {
+    if (!isDesktop) { // Solo en móvil
+      const touch = e.touches[0]
+      setSwipeStates(prev => ({
+        ...prev,
+        [notificationId]: {
+          startX: touch.clientX,
+          startY: touch.clientY,
+          translateX: 0,
+          opacity: 1,
+          isBeingSwiped: false
+        }
+      }))
+    }
+  }
+
+  const handleTouchMove = (notificationId, e) => {
+    if (!isDesktop && swipeStates[notificationId]) {
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - swipeStates[notificationId].startX
+      const deltaY = touch.clientY - swipeStates[notificationId].startY
+      
+      // Solo procesar swipe horizontal (no vertical)
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+        e.preventDefault() // Prevenir scroll
+        
+        const maxSwipe = 200
+        const clampedDeltaX = Math.max(-maxSwipe, Math.min(maxSwipe, deltaX))
+        const opacity = Math.max(0.3, 1 - Math.abs(clampedDeltaX) / maxSwipe)
+        
+        setSwipeStates(prev => ({
+          ...prev,
+          [notificationId]: {
+            ...prev[notificationId],
+            translateX: clampedDeltaX,
+            opacity: opacity,
+            isBeingSwiped: true
+          }
+        }))
+      }
+    }
+  }
+
+  const handleTouchEnd = (notificationId, notification) => {
+    if (!isDesktop && swipeStates[notificationId]) {
+      const { translateX, isBeingSwiped } = swipeStates[notificationId]
+      
+      // Si el swipe fue suficiente (más de 80px), marcar como leído
+      if (isBeingSwiped && Math.abs(translateX) > 80) {
+        // Animar salida completa
+        setSwipeStates(prev => ({
+          ...prev,
+          [notificationId]: {
+            ...prev[notificationId],
+            translateX: translateX > 0 ? 300 : -300,
+            opacity: 0
+          }
+        }))
+        
+        // Marcar como leído después de la animación
+        setTimeout(() => {
+          if (notification.type === 'dispute_update') {
+            disputeNotifications.markAsRead(notification.id)
+          } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
+            markAsRead(notification.id)
+          } else {
+            dismissNotification(notification.id)
+          }
+          
+          // Limpiar estado de swipe
+          setSwipeStates(prev => {
+            const newState = { ...prev }
+            delete newState[notificationId]
+            return newState
+          })
+        }, 300)
+      } else {
+        // Volver a posición original
+        setSwipeStates(prev => ({
+          ...prev,
+          [notificationId]: {
+            ...prev[notificationId],
+            translateX: 0,
+            opacity: 1,
+            isBeingSwiped: false
+          }
+        }))
+      }
+    }
   }
 
   // 🆕 MANEJAR ACCIÓN CON COMPORTAMIENTO DIFERENCIADO
@@ -436,9 +531,16 @@ export default function NotificationBell() {
             {/* Header del panel */}
             <div className="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 rounded-t-lg">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm sm:text-base">
-                  🔔 Notificaciones Inteligentes
-                </h3>
+                <div className="flex flex-col">
+                  <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm sm:text-base">
+                    🔔 Notificaciones
+                  </h3>
+                  {!isDesktop && filteredNotifications.length > 0 && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      💡 Desliza horizontalmente para marcar como leída
+                    </p>
+                  )}
+                </div>
                 <div className="flex items-center space-x-2">
                   {getTotalUnreadCount() > 0 && (
                     <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
@@ -573,10 +675,37 @@ export default function NotificationBell() {
                   return (
                     <div 
                       key={notification.id} 
-                      className={`p-4 border-b dark:border-gray-700 transition-colors ${
+                      className={`p-4 border-b dark:border-gray-700 transition-colors relative overflow-hidden ${
                         !notification.isRead ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''
                       }`}
+                      onTouchStart={(e) => handleTouchStart(notification.id, e)}
+                      onTouchMove={(e) => handleTouchMove(notification.id, e)}
+                      onTouchEnd={() => handleTouchEnd(notification.id, notification)}
+                      style={{
+                        transform: swipeStates[notification.id] ? `translateX(${swipeStates[notification.id].translateX}px)` : 'translateX(0)',
+                        opacity: swipeStates[notification.id] ? swipeStates[notification.id].opacity : 1,
+                        transition: swipeStates[notification.id]?.isBeingSwiped ? 'none' : 'transform 0.3s ease-out, opacity 0.3s ease-out'
+                      }}
                     >
+                      {/* 🆕 INDICADORES DE SWIPE - Solo en móvil */}
+                      {!isDesktop && swipeStates[notification.id]?.isBeingSwiped && (
+                        <>
+                          {/* Indicador izquierdo (swipe derecha) */}
+                          <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-green-500 opacity-70">
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                            </svg>
+                          </div>
+                          
+                          {/* Indicador derecho (swipe izquierda) */}
+                          <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-green-500 opacity-70">
+                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                            </svg>
+                          </div>
+                        </>
+                      )}
+                      
                       <div className="flex items-start space-x-3">
                         <div className="flex-shrink-0 mt-1">
                           <div className={`w-8 h-8 ${notification.bgColor} rounded-full flex items-center justify-center`}>
@@ -602,15 +731,22 @@ export default function NotificationBell() {
                                     id: notification.id, 
                                     disputeId: notification.disputeId 
                                   })
-                                  // Para impugnaciones, marcar como leído en BD. Para otras, solo ocultar.
+                                  // Para impugnaciones y feedback, marcar como leído en BD. Para otras, solo ocultar.
                                   if (notification.type === 'dispute_update') {
                                     disputeNotifications.markAsRead(notification.id)
+                                  } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
+                                    // 🆕 MARCAR NOTIFICACIONES DE FEEDBACK COMO LEÍDAS EN BD
+                                    handleMarkAsRead(notification, e)
                                   } else {
                                     handleDismiss(notification, e)
                                   }
                                 }}
                                 className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-red-100 dark:bg-gray-600 dark:hover:bg-red-900/50 transition-colors text-gray-600 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400 shadow-sm hover:shadow-md"
-                                title={notification.type === 'dispute_update' ? "Marcar como leído" : "Cerrar notificación"}
+                                title={
+                                  notification.type === 'dispute_update' ? "Marcar como leído" :
+                                  notification.type === 'feedback_response' || notification.id.startsWith('system-') ? "Marcar como leído" :
+                                  "Cerrar notificación"
+                                }
                                 aria-label="Cerrar notificación"
                               >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -669,11 +805,8 @@ export default function NotificationBell() {
                                 </button>
                               )}
                               
-                              {/* Botón Marcar como leído / Entendido - SOLO para notificaciones que NO sean de disputas */}
-                              {notification.type === 'feedback_response' ? (
-                                // Para feedback: No mostrar botón (se marca como leído automáticamente al abrir chat)
-                                null
-                              ) : notification.type !== 'dispute_update' ? (
+                              {/* Botón Entendido - SOLO para notificaciones que NO sean de disputas ni feedback */}
+                              {notification.type !== 'dispute_update' && notification.type !== 'feedback_response' && !notification.id.startsWith('system-') ? (
                                 // Para otras (no disputas): Entendido (descartar)
                                 <button
                                   onClick={(e) => handleDismiss(notification, e)}

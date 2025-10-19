@@ -15,16 +15,14 @@ export default function BatchDebugPage() {
 
   // 🔄 ACTUALIZAR ESTOS IDs PARA CADA NUEVO LOTE
   const currentBatch = {
-    name: "Lote 7 - Preguntas 42-48",
-    startNumber: 42,
+    name: "Lote 8 - Preguntas 49-53",
+    startNumber: 49,
     questionIds: [
-      '9e01cc44-ca37-441e-9dd4-8477d4f14ff3', // Pregunta 42
-      '5f05556d-29af-469e-89f3-c76b472cce17', // Pregunta 43
-      '7e592749-8968-4782-a39b-f2720789237d', // Pregunta 44
-      '75ab0cda-a1a6-45b5-bde0-537bf7db0b7e', // Pregunta 45
-      'c16edb79-d1d7-44ad-baf3-13921a353486', // Pregunta 46
-      '066188d2-0504-4f64-a1d5-a1f178fe8d5c', // Pregunta 47
-      '9f2ca365-8885-4b7a-a3f8-ea8b48020f7c'  // Pregunta 48
+      '9a64297f-fef9-414c-9ed9-8249a5b9d7ae', // Pregunta 49
+      '3ae81962-e75a-4b9c-8926-f613487516a1', // Pregunta 50
+      'ce347633-9ffb-43db-875a-8bfc6ea0a1f1', // Pregunta 51
+      '173dc6e1-634c-4622-8b72-1aaea334480f', // Pregunta 52
+      'ffe85d05-895c-4834-acc9-df8d44d0594e'  // Pregunta 53
     ]
   }
 
