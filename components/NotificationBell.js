@@ -186,17 +186,17 @@ export default function NotificationBell() {
           }
         }))
         
-        // Marcar como leído después de la animación
+        // Marcar como leído inmediatamente (sin esperar animación)
+        if (notification.type === 'dispute_update') {
+          disputeNotifications.markAsRead(notification.id)
+        } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
+          markAsRead(notification.id)
+        } else {
+          dismissNotification(notification.id)
+        }
+        
+        // Limpiar estado de swipe después de la animación
         setTimeout(() => {
-          if (notification.type === 'dispute_update') {
-            disputeNotifications.markAsRead(notification.id)
-          } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
-            markAsRead(notification.id)
-          } else {
-            dismissNotification(notification.id)
-          }
-          
-          // Limpiar estado de swipe
           setSwipeStates(prev => {
             const newState = { ...prev }
             delete newState[notificationId]
@@ -513,13 +513,27 @@ export default function NotificationBell() {
   const getFilteredNotifications = () => {
     const allNotifications = getAllNotifications()
     
+    // Excluir notificaciones que están siendo eliminadas por swipe
+    const filteredBySwipe = allNotifications.filter(notification => {
+      const swipeState = swipeStates[notification.id]
+      // No mostrar si está siendo eliminada (opacity 0 por swipe)
+      return !(swipeState && swipeState.opacity === 0)
+    })
+    
     if (selectedCategory === 'all') {
-      return allNotifications
+      return filteredBySwipe
     }
     
     // Filtrar por categoría - las disputas van en 'important'
-    const disputeNotifs = disputeNotifications.notifications || []
-    const mainNotifs = categorizedNotifications[selectedCategory] || []
+    const disputeNotifs = (disputeNotifications.notifications || []).filter(notification => {
+      const swipeState = swipeStates[notification.id]
+      return !(swipeState && swipeState.opacity === 0)
+    })
+    
+    const mainNotifs = (categorizedNotifications[selectedCategory] || []).filter(notification => {
+      const swipeState = swipeStates[notification.id]
+      return !(swipeState && swipeState.opacity === 0)
+    })
     
     if (selectedCategory === 'important') {
       return [...mainNotifs, ...disputeNotifs]
