@@ -161,18 +161,14 @@ export default function AdminFeedbackPage() {
       try {
         const { data, error } = await supabase
           .from('user_feedback')
-          .select(`
-            *,
-            user:user_id (
-              full_name,
-              email
-            )
-          `)
+          .select('*')
           .order('created_at', { ascending: false })
 
         if (error) throw error
 
-        setFeedbacks(data || [])
+        // Cargar perfiles de usuario para los feedbacks que tienen user_id
+        const feedbacksWithProfiles = await loadUserProfiles(data || [])
+        setFeedbacks(feedbacksWithProfiles)
         
         // Calcular estadísticas
         const stats = {
@@ -190,24 +186,61 @@ export default function AdminFeedbackPage() {
     return () => clearInterval(interval)
   }, [user, viewedConversationsLoaded, checkForNewUserMessages])
 
+  // Función para cargar perfiles de usuario por separado
+  const loadUserProfiles = async (feedbacks) => {
+    if (!feedbacks || feedbacks.length === 0) return feedbacks
+
+    try {
+      // Obtener todos los user_ids únicos que no sean null
+      const userIds = [...new Set(feedbacks.filter(f => f.user_id).map(f => f.user_id))]
+      
+      if (userIds.length === 0) return feedbacks
+
+      // Cargar perfiles en lotes
+      const { data: profiles, error } = await supabase
+        .from('user_profiles')
+        .select('id, full_name, email')
+        .in('id', userIds)
+
+      if (error) {
+        console.warn('⚠️ Error cargando perfiles de usuario:', error)
+        return feedbacks
+      }
+
+      // Crear un mapa de profiles por user_id
+      const profilesMap = new Map()
+      if (profiles) {
+        profiles.forEach(profile => {
+          profilesMap.set(profile.id, profile)
+        })
+      }
+
+      // Agregar los perfiles a los feedbacks
+      return feedbacks.map(feedback => ({
+        ...feedback,
+        user_profiles: feedback.user_id ? profilesMap.get(feedback.user_id) || null : null
+      }))
+
+    } catch (error) {
+      console.error('❌ Error en loadUserProfiles:', error)
+      return feedbacks
+    }
+  }
+
   const loadFeedbacks = useCallback(async () => {
     try {
       setLoading(true)
       
       const { data, error } = await supabase
         .from('user_feedback')
-        .select(`
-          *,
-          user:user_id (
-            full_name,
-            email
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      setFeedbacks(data || [])
+      // Cargar perfiles de usuario para los feedbacks que tienen user_id
+      const feedbacksWithProfiles = await loadUserProfiles(data || [])
+      setFeedbacks(feedbacksWithProfiles)
       
       // Calcular estadísticas
       const stats = {
@@ -409,6 +442,12 @@ export default function AdminFeedbackPage() {
         
         const emailResult = await emailResponse.json()
         
+        console.log('📧 Respuesta completa de API send-support-email:', {
+          status: emailResponse.status,
+          ok: emailResponse.ok,
+          result: emailResult
+        })
+        
         if (emailResult.sent) {
           console.log('📧 Email de soporte enviado al usuario')
         } else {
@@ -447,7 +486,7 @@ export default function AdminFeedbackPage() {
           })
         }
         updateData.admin_response = responseWithImages
-        updateData.attachments = uploadedImages.length > 0 ? JSON.stringify(uploadedImages) : null
+        // Nota: attachments se incluyen en el texto de la respuesta, no como columna separada
         updateData.admin_user_id = user.id
       }
       
@@ -774,13 +813,13 @@ export default function AdminFeedbackPage() {
                 {/* Usuario */}
                 <div className="mb-3">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    👤 {feedback.user?.full_name || 'Usuario anónimo'} 
-                    {feedback.user?.full_name && feedback.user?.email && (
+                    👤 {feedback.user_profiles?.full_name || 'Usuario anónimo'} 
+                    {feedback.user_profiles?.full_name && feedback.user_profiles?.email && (
                       <span className="text-gray-500 dark:text-gray-400 font-normal">
-                        ({feedback.user.email})
+                        ({feedback.user_profiles.email})
                       </span>
                     )}
-                    {!feedback.user?.full_name && feedback.email && (
+                    {!feedback.user_profiles?.full_name && feedback.email && (
                       <span className="text-gray-500 dark:text-gray-400 font-normal">
                         {feedback.email}
                       </span>
@@ -1128,8 +1167,8 @@ export default function AdminFeedbackPage() {
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1 truncate">
                     {(() => {
                       const feedback = feedbacks.find(f => f.id === selectedConversation.feedback_id)
-                      const userName = feedback?.user?.full_name || 'Usuario anónimo'
-                      const userEmail = feedback?.user?.email || feedback?.email
+                      const userName = feedback?.user_profiles?.full_name || 'Usuario anónimo'
+                      const userEmail = feedback?.user_profiles?.email || feedback?.email
                       return `👤 ${userName}${userEmail ? ` (${userEmail})` : ''}`
                     })()}
                   </p>

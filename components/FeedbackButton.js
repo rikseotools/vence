@@ -5,7 +5,7 @@ import FeedbackModal from './FeedbackModal'
 import QuestionDispute from './QuestionDispute'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function FeedbackButton() {
+export default function FeedbackButton({ onFeedbackSent = null }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
   const [detectedQuestionId, setDetectedQuestionId] = useState(null)
@@ -61,6 +61,7 @@ export default function FeedbackButton() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)}
         onOpenQuestionDispute={handleOpenQuestionDispute}
+        onFeedbackSent={onFeedbackSent}
       />
       
       {/* Modal de QuestionDispute */}

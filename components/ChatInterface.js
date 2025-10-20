@@ -3,6 +3,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
+// Emoticonos populares para el chat
+const EMOJIS = [
+  '😀', '😂', '😊', '😍', '🤔', '😅', '😢', '😡', '😴', '🤗',
+  '👍', '👎', '👏', '🙏', '💪', '👌', '✌️', '🤞', '🤝', '💯',
+  '❤️', '💙', '💚', '💛', '🧡', '💜', '🖤', '🤍', '❓', '❗',
+  '🎉', '🎊', '🔥', '💰', '📚', '✅', '❌', '⭐', '💡', '🚀'
+]
+
 export default function ChatInterface({ conversationId, onClose, feedbackData }) {
   const { user, supabase } = useAuth()
   const [messages, setMessages] = useState([])
@@ -10,7 +18,11 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [conversation, setConversation] = useState(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [uploadedImages, setUploadedImages] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
   const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null)
 
   useEffect(() => {
     if (conversationId) {
@@ -44,6 +56,110 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  // Función para auto-redimensionar textarea como WhatsApp
+  const autoResizeTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      const scrollHeight = textareaRef.current.scrollHeight
+      const maxHeight = 120 // Máximo ~6 líneas
+      const minHeight = 44  // Mínimo ~2 líneas
+      
+      textareaRef.current.style.height = `${Math.min(Math.max(scrollHeight, minHeight), maxHeight)}px`
+    }
+  }
+
+  // Auto-redimensionar cuando cambie el contenido
+  useEffect(() => {
+    autoResizeTextarea()
+  }, [newMessage])
+
+  // Función para insertar emoji en el mensaje
+  const insertEmoji = (emoji) => {
+    const currentMessage = newMessage
+    const cursorPosition = textareaRef.current?.selectionStart || currentMessage.length
+    const newMessageText = currentMessage.slice(0, cursorPosition) + emoji + currentMessage.slice(cursorPosition)
+    setNewMessage(newMessageText)
+    setShowEmojiPicker(false)
+    
+    // Mantener focus en el textarea
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus()
+        textareaRef.current.setSelectionRange(cursorPosition + emoji.length, cursorPosition + emoji.length)
+      }
+    }, 10)
+  }
+
+  // Función para subir imagen
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      alert('Solo se permiten archivos de imagen')
+      return
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no puede ser mayor a 5MB')
+      return
+    }
+
+    setUploadingImage(true)
+
+    try {
+      // Crear nombre único para el archivo
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `chat-images/${fileName}`
+
+      // Subir a Supabase Storage
+      const { data, error: uploadError } = await supabase.storage
+        .from('support')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      // Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('support')
+        .getPublicUrl(filePath)
+
+      // Añadir imagen a la lista
+      setUploadedImages(prev => [...prev, {
+        id: Date.now(),
+        url: publicUrl,
+        name: file.name,
+        path: filePath
+      }])
+
+    } catch (error) {
+      console.error('Error subiendo imagen:', error)
+      alert('Error al subir la imagen. Inténtalo de nuevo.')
+    } finally {
+      setUploadingImage(false)
+      // Limpiar input
+      event.target.value = ''
+    }
+  }
+
+  // Función para eliminar imagen subida
+  const removeImage = async (imageId, imagePath) => {
+    try {
+      // Eliminar de Supabase Storage
+      await supabase.storage
+        .from('support')
+        .remove([imagePath])
+
+      // Eliminar de la lista local
+      setUploadedImages(prev => prev.filter(img => img.id !== imageId))
+    } catch (error) {
+      console.error('Error eliminando imagen:', error)
+    }
   }
 
   const loadConversation = async () => {
@@ -91,13 +207,23 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
 
     setSending(true)
     try {
+      // Preparar mensaje con imágenes
+      let messageWithImages = newMessage.trim()
+      if (uploadedImages.length > 0) {
+        messageWithImages += '\n\n📸 Imágenes adjuntas:\n'
+        uploadedImages.forEach((img, index) => {
+          messageWithImages += `${index + 1}. ${img.name}: ${img.url}\n`
+        })
+      }
+
       const { error } = await supabase
         .from('feedback_messages')
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
           is_admin: false,
-          message: newMessage.trim()
+          message: messageWithImages,
+          attachments: uploadedImages.length > 0 ? JSON.stringify(uploadedImages) : null
         })
 
       if (error) throw error
@@ -147,6 +273,8 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
       }
 
       setNewMessage('')
+      setUploadedImages([])
+      setShowEmojiPicker(false)
     } catch (error) {
       console.error('Error enviando mensaje:', error)
     } finally {
@@ -249,26 +377,131 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
         {/* Input */}
         {conversation?.status !== 'closed' && (
           <form onSubmit={sendMessage} className="p-4 border-t dark:border-gray-700">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Escribe tu mensaje..."
-                disabled={sending}
-                className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={!newMessage.trim() || sending}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                {sending ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
-                  '📤'
+            <div className="space-y-3">
+              {/* Vista previa de imágenes subidas */}
+              {uploadedImages.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                    📸 Imágenes adjuntas ({uploadedImages.length})
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {uploadedImages.map((image) => (
+                      <div key={image.id} className="relative group">
+                        <img
+                          src={image.url}
+                          alt={image.name}
+                          className="w-16 h-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(image.id, image.path)}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          title={`Eliminar ${image.name}`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Input principal */}
+              <div className="relative">
+                <textarea
+                  ref={textareaRef}
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Escribe tu mensaje... (Ctrl+Enter para enviar)"
+                  disabled={sending}
+                  rows={1}
+                  className="w-full p-3 pr-20 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 resize-none overflow-hidden"
+                  style={{ 
+                    whiteSpace: 'pre-wrap', 
+                    lineHeight: '1.4',
+                    minHeight: '44px',
+                    maxHeight: '120px'
+                  }}
+                  onKeyDown={(e) => {
+                    // Enviar con Ctrl/Cmd + Enter
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                      e.preventDefault()
+                      if (newMessage.trim()) {
+                        sendMessage(e)
+                      }
+                    }
+                  }}
+                />
+                
+                {/* Botones de acción */}
+                <div className="absolute bottom-2 right-2 flex gap-1">
+                  {/* Botón de Subir Imagen */}
+                  <label className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" title="Subir imagen">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      disabled={uploadingImage}
+                    />
+                    {uploadingImage ? (
+                      <div className="animate-spin w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </label>
+                  
+                  {/* Botón de Emojis */}
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                    title="Añadir emoji"
+                  >
+                    😊
+                  </button>
+                </div>
+                
+                {/* Selector de Emojis */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-12 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 z-50 w-64 max-h-40 overflow-y-auto">
+                    <div className="grid grid-cols-8 gap-1">
+                      {EMOJIS.map((emoji, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => insertEmoji(emoji)}
+                          className="p-1 text-lg hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                          title={`Insertar ${emoji}`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </button>
+              </div>
+
+              {/* Botón enviar estilo WhatsApp */}
+              <div className="flex items-end gap-3">
+                <div className="flex-1"></div>
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim() || sending}
+                  className="w-12 h-12 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
+                  title={sending ? "Enviando..." : "Enviar mensaje (Ctrl+Enter)"}
+                >
+                  {sending ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  ) : (
+                    <svg className="w-5 h-5 transform rotate-45" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
           </form>
         )}

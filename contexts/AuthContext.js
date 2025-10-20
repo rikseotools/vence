@@ -118,7 +118,7 @@ export function AuthProvider({ children, initialUser = null }) {
     setProfileLoading(true)
     
     try {
-      console.log('📄 Cargando perfil completo del usuario...')
+      console.log('📄 Cargando perfil completo del usuario...', { userId })
       
       // 🔧 FIX: Timeout más largo para consultas lentas + AbortController
       const controller = new AbortController()
@@ -147,7 +147,13 @@ export function AuthProvider({ children, initialUser = null }) {
           return null
         }
         
-        console.error('❌ Error cargando perfil:', error)
+        console.error('❌ Error cargando perfil:', {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+          hint: error?.hint,
+          error: error
+        })
         return null
       }
       

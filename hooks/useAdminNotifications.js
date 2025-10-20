@@ -20,7 +20,21 @@ export function useAdminNotifications() {
       const intervalTime = hasAnyPending ? 30000 : 60000 // 30s si hay pendientes, 60s si no
       
       const interval = setInterval(loadPendingCounts, intervalTime)
-      return () => clearInterval(interval)
+      
+      // Listener para cambios en localStorage (cuando se marcan conversaciones como vistas)
+      const handleStorageChange = (e) => {
+        if (e.key === 'admin_viewed_conversations') {
+          console.log('🔄 localStorage admin_viewed_conversations cambió, refrescando notificaciones...')
+          loadPendingCounts()
+        }
+      }
+      
+      window.addEventListener('storage', handleStorageChange)
+      
+      return () => {
+        clearInterval(interval)
+        window.removeEventListener('storage', handleStorageChange)
+      }
     }
   }, [supabase, notifications.feedback, notifications.impugnaciones])
 
@@ -35,12 +49,12 @@ export function useAdminNotifications() {
 
       // Usar Promise.allSettled para manejar errores independientemente
       const results = await Promise.allSettled([
-        // Contar feedback pendiente con timeout
+        // Contar conversaciones de feedback no vistas (usando el mismo sistema que Header)
         Promise.race([
           supabase
-            .from('user_feedback')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'pending'),
+            .from('feedback_conversations')
+            .select('id')
+            .eq('status', 'waiting_admin'),
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Timeout')), 10000)
           )
@@ -62,8 +76,25 @@ export function useAdminNotifications() {
       let pendingFeedback = 0
       let pendingImpugnaciones = 0
 
+      // Procesar conversaciones de feedback (filtrar por localStorage igual que el Header)
       if (feedbackResult.status === 'fulfilled') {
-        pendingFeedback = feedbackResult.value.count || 0
+        const conversaciones = feedbackResult.value.data || []
+        
+        try {
+          // Aplicar el mismo filtro de localStorage que usa el Header
+          const stored = localStorage.getItem('admin_viewed_conversations')
+          if (stored && conversaciones.length > 0) {
+            const viewedIds = new Set(JSON.parse(stored))
+            const unviewedConversations = conversaciones.filter(conv => !viewedIds.has(conv.id))
+            pendingFeedback = unviewedConversations.length
+            console.log(`🔔 useAdminNotifications: ${conversaciones.length} total, ${viewedIds.size} vistas, ${pendingFeedback} pendientes`)
+          } else {
+            pendingFeedback = conversaciones.length
+          }
+        } catch (storageError) {
+          console.warn('⚠️ Error leyendo localStorage en useAdminNotifications:', storageError)
+          pendingFeedback = conversaciones.length
+        }
       } else {
         console.warn('Error cargando feedback pendiente:', feedbackResult.reason?.message)
       }

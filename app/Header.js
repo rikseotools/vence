@@ -410,7 +410,13 @@ export default function HeaderES() {
 
               {/* 🎧 BOTÓN DE SOPORTE - Solo en desktop */}
               <button
-                onClick={() => setShowFeedbackModal(true)}
+                onClick={() => {
+                  setShowFeedbackModal(true)
+                  // Refrescar notificaciones admin inmediatamente al abrir feedback
+                  if (isAdmin && adminNotifications?.refresh) {
+                    adminNotifications.refresh()
+                  }
+                }}
                 className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
                 title="Contactar soporte"
               >
@@ -660,7 +666,14 @@ export default function HeaderES() {
       />
 
       {/* 💬 BOTÓN DE FEEDBACK FLOTANTE */}
-      <FeedbackButton />
+      <FeedbackButton 
+        onFeedbackSent={() => {
+          // Refrescar notificaciones admin inmediatamente después de enviar feedback
+          if (isAdmin && adminNotifications?.refresh) {
+            adminNotifications.refresh()
+          }
+        }}
+      />
 
       {/* 💬 MODAL DE FEEDBACK */}
       <FeedbackModal 
@@ -668,6 +681,12 @@ export default function HeaderES() {
         onClose={() => setShowFeedbackModal(false)}
         onOpenQuestionDispute={() => {
           setShowQuestionDispute(true)
+        }}
+        onFeedbackSent={() => {
+          // Refrescar notificaciones admin inmediatamente después de enviar feedback
+          if (isAdmin && adminNotifications?.refresh) {
+            adminNotifications.refresh()
+          }
         }}
       />
       
