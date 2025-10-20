@@ -266,6 +266,8 @@ export default function NotificationBell() {
           // OTRAS NOTIFICACIONES: Comportamiento normal (ocultar)
           console.log('🔄 Executing normal action for:', notification.type)
           console.log('🔄 About to call executeAction with:', { notification, actionType })
+          
+          
           await executeAction(notification, actionType)
           console.log('✅ executeAction completed for:', notification.type)
         }
@@ -320,7 +322,9 @@ export default function NotificationBell() {
             baseParams.append('mode', 'intensive')
             baseParams.append('n', Math.min(notification.articlesCount * 2, 10).toString())
             
-            const url = `/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
+            // 🚀 SISTEMA UNIVERSAL: Usar /test/rapido con filtros (como level_regression)
+            baseParams.append('law', lawSlug)
+            const url = `/test/rapido?${baseParams.toString()}`
             console.log('🔗 Generated problematic_articles URL:', url)
             return url
           } else if (actionType === 'view_theory') {
@@ -331,12 +335,22 @@ export default function NotificationBell() {
           
         case 'level_regression':
           if (actionType === 'directed_test') {
-            const lawSlug = generateLawSlug(notification.law_short_name)
+            // 🔧 FIX APLICADO: Usar ruta correcta /test/rapido (no por ley específica)
+            console.log('🚀 CÓDIGO CORREGIDO EJECUTÁNDOSE - level_regression')
             baseParams.append('mode', 'recovery')
             baseParams.append('n', '15')
             
-            const url = `/test/${encodeURIComponent(lawSlug)}/test-rapido?${baseParams.toString()}`
-            console.log('🔗 Generated level_regression URL:', url)
+            // 🎯 Añadir parámetro de ley para filtrado interno
+            const lawSlug = generateLawSlug(notification.law_short_name)
+            baseParams.append('law', lawSlug)
+            
+            // 💥 CACHE BUSTER: Forzar nuevo timestamp para evitar cache
+            baseParams.append('_t', Date.now().toString())
+            
+            const url = `/test/rapido?${baseParams.toString()}`
+            console.log('🔗 NEW Generated level_regression URL (FIXED + CACHE BUSTER):', url)
+            console.log('⚠️ DEBUGGING: Si aún ves la URL incorrecta, hay un problema de cache severo')
+            
             return url
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)

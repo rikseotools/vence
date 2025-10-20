@@ -552,16 +552,22 @@ export function useIntelligentNotifications() {
       switch (notification.type) {
         case 'problematic_articles':
           if (actionType === 'intensive_test') {
-            // 🎯 USAR generateLawSlug DEL SISTEMA CENTRALIZADO
-            const lawSlug = generateLawSlug(notification.law_short_name)
+            // 🚀 SISTEMA UNIVERSAL: Usar /test/rapido con filtros (como level_regression)
             const articles = notification.articlesList?.map(a => a.article_number).join(',') || ''
             
             baseParams.append('articles', articles)
             baseParams.append('mode', 'intensive')
             baseParams.append('n', Math.min(notification.articlesCount * 2, 10).toString())
             
-            const finalUrl = `/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
-            console.log(`🔗 URL generada para test de artículos problemáticos:`)
+            // 🎯 Añadir parámetro de ley para filtrado interno
+            const lawSlug = generateLawSlug(notification.law_short_name)
+            baseParams.append('law', lawSlug)
+            
+            // 💥 CACHE BUSTER: Forzar nuevo timestamp
+            baseParams.append('_t', Date.now().toString())
+            
+            const finalUrl = `/test/rapido?${baseParams.toString()}`
+            console.log(`🔗 URL generada para test de artículos problemáticos (UNIVERSAL):`)
             console.log(`   Ley: ${notification.law_short_name} → ${lawSlug}`)
             console.log(`   Artículos: ${articles}`)
             console.log(`   URL final: ${finalUrl}`)
@@ -583,10 +589,21 @@ export function useIntelligentNotifications() {
           
         case 'level_regression':
           if (actionType === 'directed_test') {
-            const lawSlug = generateLawSlug(notification.law_short_name)
+            // 🔧 FIX CRÍTICO: Usar ruta correcta /test/rapido (no por ley específica)
+            console.log('🚀 HOOK CORREGIDO - level_regression')
             baseParams.append('mode', 'recovery')
             baseParams.append('n', '15')
-            return `/test/${encodeURIComponent(lawSlug)}/test-rapido?${baseParams.toString()}`
+            
+            // 🎯 Añadir parámetro de ley para filtrado interno
+            const lawSlug = generateLawSlug(notification.law_short_name)
+            baseParams.append('law', lawSlug)
+            
+            // 💥 CACHE BUSTER: Forzar nuevo timestamp
+            baseParams.append('_t', Date.now().toString())
+            
+            const finalUrl = `/test/rapido?${baseParams.toString()}`
+            console.log('🔗 HOOK Generated level_regression URL (FIXED):', finalUrl)
+            return finalUrl
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)
             // 🆕 INCLUIR ARTÍCULOS ESPECÍFICOS EN LA URL DE TEORÍA
