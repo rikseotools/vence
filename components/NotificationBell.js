@@ -19,6 +19,14 @@ export default function NotificationBell() {
     notificationTypes
   } = useIntelligentNotifications()
 
+  // 🧪 DEBUG: Solo log cuando hay cambios
+  if (process.env.NODE_ENV === 'development' && unreadCount > 0) {
+    console.log('🔔 NotificationBell active:', {
+      notifications: notifications?.length || 0,
+      unreadCount
+    })
+  }
+
   // Hook para impugnaciones/disputas
   const disputeNotifications = useDisputeNotifications()
 
@@ -213,15 +221,24 @@ export default function NotificationBell() {
   // 🆕 MANEJAR ACCIÓN CON COMPORTAMIENTO DIFERENCIADO
   const handleActionClick = async (notification, actionType, event) => {
     event.stopPropagation()
+    console.log('🔍 handleActionClick called:', { notification, actionType, event })
     
     const notificationType = notificationTypes[notification.type]
-    if (!notificationType) return
+    if (!notificationType) {
+      console.warn('❌ No notification type found for:', notification.type)
+      return
+    }
 
     const action = actionType === 'primary' 
       ? notificationType.primaryAction 
       : notificationType.secondaryAction
 
-    if (!action) return
+    if (!action) {
+      console.warn('❌ No action found for:', { actionType, notificationType })
+      return
+    }
+
+    console.log('🎯 Action found:', action)
 
     try {
       if (actionType === 'primary') {
@@ -232,6 +249,7 @@ export default function NotificationBell() {
           
           // Generar URL y navegar
           const actionUrl = generateActionUrl(notification, action.type)
+          console.log('🔗 Navigating to dispute URL:', actionUrl)
           setTimeout(() => {
             window.location.href = actionUrl
           }, 200)
@@ -240,24 +258,29 @@ export default function NotificationBell() {
           await markAsRead(notification.id)
           
           const actionUrl = generateActionUrl(notification, action.type)
+          console.log('🔗 Navigating to feedback URL:', actionUrl)
           setTimeout(() => {
             window.location.href = actionUrl
           }, 200)
         } else {
           // OTRAS NOTIFICACIONES: Comportamiento normal (ocultar)
+          console.log('🔄 Executing normal action for:', notification.type)
+          console.log('🔄 About to call executeAction with:', { notification, actionType })
           await executeAction(notification, actionType)
+          console.log('✅ executeAction completed for:', notification.type)
         }
       } else {
         // 👁️ ACCIÓN SECUNDARIA: Solo navegar (problema persiste)
         
         // Generar URL y navegar sin ocultar
         const actionUrl = generateActionUrl(notification, action.type)
+        console.log('🔗 Navigating to secondary URL:', actionUrl)
         setTimeout(() => {
           window.location.href = actionUrl
         }, 200)
       }
     } catch (error) {
-      // Error silencioso en producción
+      console.error('❌ Error in handleActionClick:', error)
     }
     
     // Cerrar dropdown
@@ -277,13 +300,29 @@ export default function NotificationBell() {
       switch (notification.type) {
         case 'problematic_articles':
           if (actionType === 'intensive_test') {
+            console.log('🔍 Problematic articles data:', {
+              articlesList: notification.articlesList,
+              law_short_name: notification.law_short_name,
+              articlesCount: notification.articlesCount,
+              notification: notification
+            })
+            
             const articles = notification.articlesList?.map(a => a.article_number).join(',') || ''
             const lawSlug = generateLawSlug(notification.law_short_name)
+            
+            console.log('🔍 Processing data:', {
+              articles,
+              lawSlug,
+              originalLawShortName: notification.law_short_name
+            })
+            
             baseParams.append('articles', articles)
             baseParams.append('mode', 'intensive')
             baseParams.append('n', Math.min(notification.articlesCount * 2, 10).toString())
             
-            return `/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
+            const url = `/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
+            console.log('🔗 Generated problematic_articles URL:', url)
+            return url
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)
             return `/teoria/${lawSlug}?${baseParams.toString()}`
@@ -296,7 +335,9 @@ export default function NotificationBell() {
             baseParams.append('mode', 'recovery')
             baseParams.append('n', '15')
             
-            return `/test/${encodeURIComponent(lawSlug)}/test-rapido?${baseParams.toString()}`
+            const url = `/test/${encodeURIComponent(lawSlug)}/test-rapido?${baseParams.toString()}`
+            console.log('🔗 Generated level_regression URL:', url)
+            return url
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)
             return `/teoria/${lawSlug}?${baseParams.toString()}`
@@ -320,7 +361,9 @@ export default function NotificationBell() {
             baseParams.append('mode', 'celebration')
             baseParams.append('n', '8')
             
-            return `/test/rapido?${baseParams.toString()}`
+            const url = `/test/rapido?${baseParams.toString()}`
+            console.log('🔗 Generated achievement/improvement URL:', url)
+            return url
           } else if (actionType === 'view_achievements' || actionType === 'view_progress') {
             return `/mis-estadisticas?${baseParams.toString()}`
           }
@@ -365,10 +408,15 @@ export default function NotificationBell() {
           return `/test/rapido?${baseParams.toString()}`
       }
     } catch (error) {
-      return `/test/rapido?${baseParams.toString()}`
+      console.warn('⚠️ Error in generateActionUrl:', error)
+      const fallbackUrl = `/test/rapido?${baseParams.toString()}`
+      console.log('🔗 Generated fallback URL:', fallbackUrl)
+      return fallbackUrl
     }
     
-    return `/test/rapido?${baseParams.toString()}`
+    const defaultUrl = `/test/rapido?${baseParams.toString()}`
+    console.log('🔗 Generated default URL:', defaultUrl)
+    return defaultUrl
   }
 
   // 🆕 GENERAR SLUG DE LEY (copiada del hook)
@@ -805,17 +853,10 @@ export default function NotificationBell() {
                                 </button>
                               )}
                               
-                              {/* Botón Entendido - SOLO para notificaciones que NO sean de disputas ni feedback */}
-                              {notification.type !== 'dispute_update' && notification.type !== 'feedback_response' && !notification.id.startsWith('system-') ? (
-                                // Para otras (no disputas): Entendido (descartar)
-                                <button
-                                  onClick={(e) => handleDismiss(notification, e)}
-                                  className="w-full sm:flex-1 px-3 py-2.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded-lg text-sm hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors border border-green-300 dark:border-green-600 touch-manipulation"
-                                  title="Ocultar esta notificación"
-                                >
-                                  Marcar como leído
-                                </button>
-                              ) : null}
+                              {/* 🗑️ BOTÓN ENTENDIDO REMOVIDO - Ya se marca automáticamente:
+                                   - Al hacer clic en la notificación → Se oculta automáticamente  
+                                   - Al hacer swipe → Se marca como leído automáticamente
+                                   - Al pulsar X → Se descarta automáticamente */}
                             </div>
                           </div>
                           

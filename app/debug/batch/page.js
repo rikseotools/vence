@@ -1,7 +1,13 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import ChartQuestion from '../../../components/ChartQuestion'
+import BarChartQuestion from '../../../components/BarChartQuestion'
+import PieChartQuestion from '../../../components/PieChartQuestion'
+import DataTableQuestion from '../../../components/DataTableQuestion'
+import LineChartQuestion from '../../../components/LineChartQuestion'
+import MixedChartQuestion from '../../../components/MixedChartQuestion'
+import ErrorDetectionQuestion from '../../../components/ErrorDetectionQuestion'
+import WordAnalysisQuestion from '../../../components/WordAnalysisQuestion'
 
 export default function BatchDebugPage() {
   const [questions, setQuestions] = useState([])
@@ -15,14 +21,32 @@ export default function BatchDebugPage() {
 
   // 🔄 ACTUALIZAR ESTOS IDs PARA CADA NUEVO LOTE
   const currentBatch = {
-    name: "Lote 8 - Preguntas 49-53",
-    startNumber: 49,
+    name: "Lote Ortografía - Preguntas 1-23",
+    startNumber: 1,
     questionIds: [
-      '9a64297f-fef9-414c-9ed9-8249a5b9d7ae', // Pregunta 49
-      '3ae81962-e75a-4b9c-8926-f613487516a1', // Pregunta 50
-      'ce347633-9ffb-43db-875a-8bfc6ea0a1f1', // Pregunta 51
-      '173dc6e1-634c-4622-8b72-1aaea334480f', // Pregunta 52
-      'ffe85d05-895c-4834-acc9-df8d44d0594e'  // Pregunta 53
+      '6bbaddb7-49cb-404e-9d4b-d23a79ca89c7', // Pregunta 1
+      '12a64e03-f9ba-4694-b797-43331089be17', // Pregunta 2
+      'f84431da-aea0-46f6-96e9-d2f7e9d90f24', // Pregunta 3
+      '06ec1285-47c8-4497-be97-947458dce4bf', // Pregunta 4
+      '7d023583-cd28-46e9-9f4e-0385145dd6a7', // Pregunta 5
+      '752f118f-2689-41b8-a39b-dadb22d0be8f', // Pregunta 6
+      '9d0bc41a-c6cc-40f5-a565-48c53228fb15', // Pregunta 7
+      '5a9cfb75-5639-479a-b70e-6764a0b7eef5', // Pregunta 8
+      'b4689735-6aca-4e00-88f7-9813de427e30', // Pregunta 9
+      '92187834-624c-4057-8127-840ad20ad4b0', // Pregunta 10
+      '6d5351a1-39fb-4c4b-ba8b-61268bc97691', // Pregunta 11 (antes 12)
+      '82087fbd-a314-4545-803b-3043ec40f60c', // Pregunta 12 (antes 13)
+      '0cca1edb-3449-4067-abf6-8340e984df85', // Pregunta 13 (antes 14)
+      'adea4c43-7fc4-49a3-98a1-4df539bde3c5', // Pregunta 14 (antes 15)
+      'ad521f27-e74c-467a-9c64-fa60ee19377b', // Pregunta 15 (antes 16)
+      'ea1c9b6d-88a8-4993-9ab9-31708b114f62', // Pregunta 16 (antes 17)
+      'b3138eff-9163-46f3-8398-53bb38036f6f', // Pregunta 17 (antes 18)
+      '58ed4b14-e676-4fc3-90ae-b9fc96f7ce32', // Pregunta 18 (antes 19)
+      '2d23989c-d8ea-40f1-9a10-1079f15cad81', // Pregunta 19 (antes 20)
+      '7d509265-3458-4868-9fa2-e4d29651c709', // Pregunta 20 (antes 21)
+      'f6bbf2b9-df02-462c-b5e4-dface6b0b6a4', // Pregunta 21 (antes 22)
+      'ab657fc5-5e48-4289-8551-63ceb6c3bb2d', // Pregunta 22 (antes 23)
+      '806f1391-60e5-4381-a8d2-df2709ba0814'  // Pregunta 23 (antes 24)
     ]
   }
 
@@ -102,6 +126,110 @@ export default function BatchDebugPage() {
     setSelectedAnswer(null)
     setShowResult(false)
     setAttemptCount(0)
+  }
+
+  const renderQuestion = () => {
+    if (!currentQuestion) return null
+
+    const questionProps = {
+      question: currentQuestion,
+      onAnswer: handleAnswer,
+      selectedAnswer: selectedAnswer,
+      showResult: showResult,
+      isAnswering: false,
+      attemptCount: attemptCount
+    }
+
+    switch (currentQuestion.question_subtype) {
+      case 'bar_chart':
+        return <BarChartQuestion {...questionProps} />
+      
+      case 'pie_chart':
+        return <PieChartQuestion {...questionProps} />
+      
+      case 'line_chart':
+        return <LineChartQuestion {...questionProps} />
+      
+      case 'data_tables':
+        return <DataTableQuestion {...questionProps} />
+      
+      case 'mixed_chart':
+        return <MixedChartQuestion {...questionProps} />
+      
+      case 'error_detection':
+        return <ErrorDetectionQuestion {...questionProps} />
+      
+      case 'word_analysis':
+        return <WordAnalysisQuestion {...questionProps} />
+      
+      case 'text_question':
+        return (
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <h3 className="text-xl font-bold text-gray-900 mb-6">
+              {currentQuestion.question_text}
+            </h3>
+            
+            <div className="grid gap-4 mb-8">
+              {['A', 'B', 'C', 'D'].map((letter, index) => {
+                const optionText = currentQuestion.options ? currentQuestion.options[letter] : currentQuestion[`option_${letter.toLowerCase()}`]
+                const isSelected = selectedAnswer === index
+                const isCorrect = index === currentQuestion.correct_option
+                
+                return (
+                  <button
+                    key={letter}
+                    onClick={() => !showResult && handleAnswer(index)}
+                    disabled={showResult}
+                    className={`text-left p-4 rounded-lg border transition-all duration-200 ${
+                      showResult
+                        ? isCorrect
+                          ? 'bg-green-100 border-green-500 text-green-800'
+                          : isSelected
+                            ? 'bg-red-100 border-red-500 text-red-800'
+                            : 'bg-gray-50 border-gray-300 text-gray-600'
+                        : isSelected
+                          ? 'bg-blue-100 border-blue-500 text-blue-800'
+                          : 'bg-gray-50 border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="font-bold text-lg">{letter})</span>
+                      <span className="flex-1">{optionText}</span>
+                      {showResult && isCorrect && (
+                        <span className="text-green-600">✓</span>
+                      )}
+                      {showResult && isSelected && !isCorrect && (
+                        <span className="text-red-600">✗</span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            
+            {showResult && currentQuestion.explanation && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
+                <h4 className="font-semibold text-blue-800 mb-2">📝 Explicación:</h4>
+                <div 
+                  className="text-blue-700 whitespace-pre-line"
+                  dangerouslySetInnerHTML={{ __html: currentQuestion.explanation.replace(/\n/g, '<br>') }}
+                />
+              </div>
+            )}
+          </div>
+        )
+      
+      default:
+        return (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="text-center py-8">
+              <p className="text-gray-600">
+                Tipo de pregunta no soportado: {currentQuestion.question_subtype}
+              </p>
+            </div>
+          </div>
+        )
+    }
   }
 
   if (loading) {
@@ -240,14 +368,7 @@ export default function BatchDebugPage() {
           </div>
 
           {/* Renderizar la pregunta */}
-          <ChartQuestion 
-            question={currentQuestion}
-            onAnswer={handleAnswer}
-            selectedAnswer={selectedAnswer}
-            showResult={showResult}
-            isAnswering={false}
-            attemptCount={attemptCount}
-          />
+          {renderQuestion()}
 
           {/* Botón de reset si ya se respondió */}
           {showResult && (

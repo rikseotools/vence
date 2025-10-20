@@ -8,6 +8,29 @@ import {
 } from '../lib/lawMappingUtils'
 import { MotivationalAnalyzer } from '../lib/notifications/motivationalAnalyzer.js'
 
+// 🧪 GLOBAL TEST NOTIFICATIONS MANAGER (solo desarrollo)
+let globalTestNotifications = []
+let globalTestNotificationsListeners = []
+
+const addGlobalTestNotificationsListener = (listener) => {
+  if (process.env.NODE_ENV === 'development') {
+    globalTestNotificationsListeners.push(listener)
+  }
+}
+
+const removeGlobalTestNotificationsListener = (listener) => {
+  if (process.env.NODE_ENV === 'development') {
+    globalTestNotificationsListeners = globalTestNotificationsListeners.filter(l => l !== listener)
+  }
+}
+
+const updateGlobalTestNotifications = (notifications) => {
+  if (process.env.NODE_ENV === 'development') {
+    globalTestNotifications = notifications
+    globalTestNotificationsListeners.forEach(listener => listener(notifications))
+  }
+}
+
 // 🆕 FUNCIÓN PARA ENVIAR EMAIL FALLBACK DE MENSAJES MOTIVACIONALES
 async function sendMotivationalEmail(user, notification) {
   try {
@@ -420,6 +443,17 @@ const NOTIFICATION_TYPES = {
       label: '📋 Ver Impugnación',
       type: 'view_dispute'
     }
+  },
+
+  // 🟢 MOTIVACIONALES (Prioridad 10-29) - SOLO DISMISSIBLE
+  'constructive_progress': { 
+    priority: 20, 
+    icon: '🌱', 
+    color: 'green',
+    bgColor: 'bg-green-100 dark:bg-green-900/50',
+    textColor: 'text-green-600 dark:text-green-400',
+    borderColor: 'border-green-200 dark:border-green-800',
+    // NO primaryAction ni secondaryAction - solo se puede cerrar con X o swipe
   }
 }
 
@@ -491,6 +525,7 @@ export function useIntelligentNotifications() {
   
   // Estados principales
   const [allNotifications, setAllNotifications] = useState([])
+  const [testNotifications, setTestNotifications] = useState(globalTestNotifications) // 🧪 Inicializar desde global
   const [loading, setLoading] = useState(false) // Cambiar a false para permitir carga inicial
   const [lastUpdate, setLastUpdate] = useState(null)
   const [lastMotivationalCheck, setLastMotivationalCheck] = useState(null)
@@ -525,8 +560,12 @@ export function useIntelligentNotifications() {
             baseParams.append('mode', 'intensive')
             baseParams.append('n', Math.min(notification.articlesCount * 2, 10).toString())
             
-            console.log(`🔗 URL generada con sistema centralizado: ${notification.law_short_name} → ${lawSlug}`)
-            return `/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
+            const finalUrl = `/test/${encodeURIComponent(lawSlug)}/articulos-dirigido?${baseParams.toString()}`
+            console.log(`🔗 URL generada para test de artículos problemáticos:`)
+            console.log(`   Ley: ${notification.law_short_name} → ${lawSlug}`)
+            console.log(`   Artículos: ${articles}`)
+            console.log(`   URL final: ${finalUrl}`)
+            return finalUrl
           } else if (actionType === 'view_theory') {
             const lawSlug = generateLawSlug(notification.law_short_name)
             // 🆕 INCLUIR ARTÍCULOS ESPECÍFICOS EN LA URL DE TEORÍA
@@ -645,6 +684,21 @@ export function useIntelligentNotifications() {
       window.location.href = actionUrl
     }
   }
+
+  // 🧪 Setup global test notifications listener (solo desarrollo)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const handleGlobalTestNotificationsUpdate = (notifications) => {
+        setTestNotifications(notifications)
+      }
+      
+      addGlobalTestNotificationsListener(handleGlobalTestNotificationsUpdate)
+      
+      return () => {
+        removeGlobalTestNotificationsListener(handleGlobalTestNotificationsUpdate)
+      }
+    }
+  }, [])
 
   // Cargar todas las notificaciones cuando el usuario cambie
   useEffect(() => {
@@ -1510,7 +1564,8 @@ export function useIntelligentNotifications() {
       ...studyReminders,
       // ...progressUpdates, // 🚫 ELIMINADO
       ...motivationalNotifications,
-      ...systemNotifications
+      ...systemNotifications,
+      ...testNotifications // 🧪 Incluir notificaciones de testing
     ].sort((a, b) => {
       if (a.priority !== b.priority) {
         return b.priority - a.priority;
@@ -1519,10 +1574,20 @@ export function useIntelligentNotifications() {
     });
 
     setAllNotifications(combined);
-  }, [problematicArticles, achievements, studyReminders, motivationalNotifications, systemNotifications]);
+  }, [problematicArticles, achievements, studyReminders, motivationalNotifications, systemNotifications, testNotifications]);
 
   // Calcular contadores
   const unreadCount = allNotifications.filter(n => !n.isRead).length;
+  
+  // 🧪 DEBUG: Solo log cuando hay cambios significativos
+  if (process.env.NODE_ENV === 'development' && testNotifications.length > 0) {
+    console.log('🧪 Hook state:', {
+      allNotifications: allNotifications.length,
+      testNotifications: testNotifications.length,
+      unreadCount
+    })
+  }
+  
   const categorizedNotifications = {
     critical: allNotifications.filter(n => n.priority >= 90),
     important: allNotifications.filter(n => n.priority >= 70 && n.priority < 90),
@@ -1595,6 +1660,12 @@ export function useIntelligentNotifications() {
         localStorage.setItem(readNotificationsKey, JSON.stringify(readNotifications))
         console.log('💾 Notificación marcada como leída y removida de UI:', notificationId)
         
+        // 🧪 Manejar notificaciones de testing con estado global
+        if (process.env.NODE_ENV === 'development') {
+          const updatedTestNotifications = globalTestNotifications.filter(n => n.id !== notificationId)
+          updateGlobalTestNotifications(updatedTestNotifications)
+        }
+        
         // Remover inmediatamente de todas las listas locales
         const notification = allNotifications.find(n => n.id === notificationId)
         if (notification) {
@@ -1604,8 +1675,6 @@ export function useIntelligentNotifications() {
                 prev.filter(n => n.id !== notificationId)
               );
               break;
-            // case 'study_streak': // 🚫 ELIMINADO
-            // case 'streak_broken': // 🚫 ELIMINADO
             case 'achievement':
               setAchievements(prev => 
                 prev.filter(n => n.id !== notificationId)
@@ -1616,7 +1685,6 @@ export function useIntelligentNotifications() {
                 prev.filter(n => n.id !== notificationId)
               );
               break;
-            // case 'progress_update': // 🚫 ELIMINADO
             case 'improvement':
               setAchievements(prev => 
                 prev.filter(n => n.id !== notificationId)
@@ -1629,6 +1697,7 @@ export function useIntelligentNotifications() {
             case 'study_consistency':
             case 'learning_variety':
             case 'feedback_response':
+            case 'constructive_progress': // 🧪 Incluir testing
               setMotivationalNotifications(prev => 
                 prev.filter(n => n.id !== notificationId)
               );
@@ -1649,6 +1718,12 @@ export function useIntelligentNotifications() {
     // ✅ NUEVO: Guardar en localStorage para persistencia
     saveDismissedNotification(notificationId)
     
+    // 🧪 Manejar notificaciones de testing con estado global
+    if (process.env.NODE_ENV === 'development') {
+      const updatedTestNotifications = globalTestNotifications.filter(n => n.id !== notificationId)
+      updateGlobalTestNotifications(updatedTestNotifications)
+    }
+    
     // Actualizar estado local para ocultar la notificación
     setAllNotifications(prev => 
       prev.map(notification => 
@@ -1660,13 +1735,10 @@ export function useIntelligentNotifications() {
     
     // También actualizar los arrays específicos
     setProblematicArticles(prev => prev.filter(n => n.id !== notificationId));
-    setStudyStreaks(prev => prev.filter(n => n.id !== notificationId));
     setAchievements(prev => prev.filter(n => n.id !== notificationId));
     setStudyReminders(prev => prev.filter(n => n.id !== notificationId));
-    setProgressUpdates(prev => prev.filter(n => n.id !== notificationId));
     setMotivationalNotifications(prev => prev.filter(n => n.id !== notificationId));
     setSystemNotifications(prev => prev.filter(n => n.id !== notificationId));
-    // setDisputeNotifications(prev => prev.filter(n => n.id !== notificationId)); // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
   };
 
   // 🆕 FUNCIÓN PARA OBTENER ACCIONES DE UNA NOTIFICACIÓN
@@ -1765,6 +1837,24 @@ export function useIntelligentNotifications() {
     // 🛠️ NUEVAS FUNCIONES DE GESTIÓN
     clearDismissedNotifications, // Para debugging: limpiar todas las descartadas
     getDismissedStats,          // Para debugging: ver estadísticas
+    
+    // 🧪 FUNCIONES DE TESTING (solo desarrollo)
+    injectTestNotification: process.env.NODE_ENV === 'development' ? (notification) => {
+      // Agregar prioridad desde NOTIFICATION_TYPES si no existe
+      const notificationWithPriority = {
+        ...notification,
+        priority: notification.priority || NOTIFICATION_TYPES[notification.type]?.priority || 50
+      }
+      
+      const newNotifications = [notificationWithPriority, ...globalTestNotifications]
+      updateGlobalTestNotifications(newNotifications)
+      console.log('🧪 Test notification injected globally:', notificationWithPriority)
+    } : undefined,
+    
+    clearAllNotifications: process.env.NODE_ENV === 'development' ? () => {
+      updateGlobalTestNotifications([])
+      console.log('🧹 All test notifications cleared globally')
+    } : undefined,
     
     // Configuración
     notificationTypes: NOTIFICATION_TYPES

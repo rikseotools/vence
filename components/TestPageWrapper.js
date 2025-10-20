@@ -205,7 +205,14 @@ export default function TestPageWrapper({
         })
 
         // Llamar fetchArticulosDirigido con parámetros específicos
-        questions = await fetchArticulosDirigido(lawName, finalSearchParams, testConfig)
+        try {
+          console.log('🔄 Llamando fetchArticulosDirigido con:', { lawName, finalSearchParams, testConfig })
+          questions = await fetchArticulosDirigido(lawName, finalSearchParams, testConfig)
+          console.log('✅ fetchArticulosDirigido completado, preguntas:', questions?.length || 0)
+        } catch (error) {
+          console.error('❌ Error en fetchArticulosDirigido:', error)
+          throw error
+        }
       } else if (testType === 'aleatorio' && themes && themes.length > 0) {
         // 🎲 MANEJAR TEST ALEATORIO MULTI-TEMA
         console.log('🎲 Cargando test aleatorio multi-tema con parámetros:', {
