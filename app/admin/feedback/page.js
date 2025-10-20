@@ -3,6 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
+// Emoticonos populares para el chat admin
+const EMOJIS = [
+  '😀', '😂', '😊', '😍', '🤔', '😅', '😢', '😡', '😴', '🤗',
+  '👍', '👎', '👏', '🙏', '💪', '👌', '✌️', '🤞', '🤝', '💯',
+  '❤️', '💙', '💚', '💛', '🧡', '💜', '🖤', '🤍', '❓', '❗',
+  '🎉', '🎊', '🔥', '💰', '📚', '✅', '❌', '⭐', '💡', '🚀'
+]
+
 const FEEDBACK_TYPES = {
   'bug': { label: '🐛 Bug', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
   'suggestion': { label: '💡 Sugerencia', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' },
@@ -39,6 +47,11 @@ export default function AdminFeedbackPage() {
   const [viewedConversations, setViewedConversations] = useState(new Set()) // IDs de conversaciones que el admin ya vio
   const [activeFilter, setActiveFilter] = useState('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
   const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se cargó localStorage
+  
+  // Estados para emojis e imágenes en admin
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [uploadedImages, setUploadedImages] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -148,7 +161,13 @@ export default function AdminFeedbackPage() {
       try {
         const { data, error } = await supabase
           .from('user_feedback')
-          .select('*')
+          .select(`
+            *,
+            user:user_id (
+              full_name,
+              email
+            )
+          `)
           .order('created_at', { ascending: false })
 
         if (error) throw error
@@ -177,7 +196,13 @@ export default function AdminFeedbackPage() {
       
       const { data, error } = await supabase
         .from('user_feedback')
-        .select('*')
+        .select(`
+          *,
+          user:user_id (
+            full_name,
+            email
+          )
+        `)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -413,7 +438,16 @@ export default function AdminFeedbackPage() {
       }
       
       if (response) {
-        updateData.admin_response = response
+        // Preparar respuesta con imágenes
+        let responseWithImages = response
+        if (uploadedImages.length > 0) {
+          responseWithImages += '\n\n📸 Imágenes adjuntas:\n'
+          uploadedImages.forEach((img, index) => {
+            responseWithImages += `${index + 1}. ${img.name}: ${img.url}\n`
+          })
+        }
+        updateData.admin_response = responseWithImages
+        updateData.attachments = uploadedImages.length > 0 ? JSON.stringify(uploadedImages) : null
         updateData.admin_user_id = user.id
       }
       
@@ -432,6 +466,8 @@ export default function AdminFeedbackPage() {
       await loadFeedbacks()
       setSelectedFeedback(null)
       setAdminResponse('')
+      setUploadedImages([])
+      setShowEmojiPicker(false)
 
     } catch (error) {
       console.error('Error actualizando feedback:', error)
@@ -515,6 +551,85 @@ export default function AdminFeedbackPage() {
   // Función para manejar click en tarjetas de estadísticas
   const handleFilterClick = (filterType) => {
     setActiveFilter(filterType === activeFilter ? 'all' : filterType)
+  }
+
+  // Función para insertar emoji en adminResponse
+  const insertEmoji = (emoji) => {
+    const currentMessage = adminResponse
+    const cursorPosition = currentMessage.length // Insertar al final por simplicidad
+    const newMessage = currentMessage.slice(0, cursorPosition) + emoji + currentMessage.slice(cursorPosition)
+    setAdminResponse(newMessage)
+    setShowEmojiPicker(false)
+  }
+
+  // Función para subir imagen desde admin
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      alert('Solo se permiten archivos de imagen')
+      return
+    }
+
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no puede ser mayor a 5MB')
+      return
+    }
+
+    setUploadingImage(true)
+
+    try {
+      // Crear nombre único para el archivo
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `admin-chat-images/${fileName}`
+
+      // Subir a Supabase Storage
+      const { data, error: uploadError } = await supabase.storage
+        .from('support')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      // Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('support')
+        .getPublicUrl(filePath)
+
+      // Añadir imagen a la lista
+      setUploadedImages(prev => [...prev, {
+        id: Date.now(),
+        url: publicUrl,
+        name: file.name,
+        path: filePath
+      }])
+
+    } catch (error) {
+      console.error('Error subiendo imagen:', error)
+      alert('Error al subir la imagen. Inténtalo de nuevo.')
+    } finally {
+      setUploadingImage(false)
+      // Limpiar input
+      event.target.value = ''
+    }
+  }
+
+  // Función para eliminar imagen subida
+  const removeImage = async (imageId, imagePath) => {
+    try {
+      // Eliminar de Supabase Storage
+      await supabase.storage
+        .from('support')
+        .remove([imagePath])
+
+      // Eliminar de la lista local
+      setUploadedImages(prev => prev.filter(img => img.id !== imageId))
+    } catch (error) {
+      console.error('Error eliminando imagen:', error)
+    }
   }
 
   return (
@@ -659,7 +774,17 @@ export default function AdminFeedbackPage() {
                 {/* Usuario */}
                 <div className="mb-3">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    👤 {feedback.email || 'Usuario anónimo'}
+                    👤 {feedback.user?.full_name || 'Usuario anónimo'} 
+                    {feedback.user?.full_name && feedback.user?.email && (
+                      <span className="text-gray-500 dark:text-gray-400 font-normal">
+                        ({feedback.user.email})
+                      </span>
+                    )}
+                    {!feedback.user?.full_name && feedback.email && (
+                      <span className="text-gray-500 dark:text-gray-400 font-normal">
+                        {feedback.email}
+                      </span>
+                    )}
                   </span>
                   {feedback.wants_response && (
                     <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
@@ -865,13 +990,95 @@ export default function AdminFeedbackPage() {
                   <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Tu respuesta:
                   </label>
-                  <textarea
-                    value={adminResponse}
-                    onChange={(e) => setAdminResponse(e.target.value)}
-                    placeholder="Escribe tu respuesta al usuario..."
-                    rows={4}
-                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base"
-                  />
+                  
+                  {/* Vista previa de imágenes subidas */}
+                  {uploadedImages.length > 0 && (
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                        📸 Imágenes adjuntas ({uploadedImages.length})
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {uploadedImages.map((image) => (
+                          <div key={image.id} className="relative group">
+                            <img
+                              src={image.url}
+                              alt={image.name}
+                              className="w-20 h-20 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(image.id, image.path)}
+                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                              title={`Eliminar ${image.name}`}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="relative">
+                    <textarea
+                      value={adminResponse}
+                      onChange={(e) => setAdminResponse(e.target.value)}
+                      placeholder="Escribe tu respuesta al usuario... (Usa Enter para saltos de línea)"
+                      rows={4}
+                      className="w-full p-3 pr-20 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base"
+                      style={{ whiteSpace: 'pre-wrap', lineHeight: '1.5' }}
+                    />
+                    
+                    {/* Botones de acción */}
+                    <div className="absolute bottom-2 right-2 flex gap-1">
+                      {/* Botón de Subir Imagen */}
+                      <label className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" title="Subir imagen">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          disabled={uploadingImage}
+                        />
+                        {uploadingImage ? (
+                          <div className="animate-spin w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </label>
+                      
+                      {/* Botón de Emojis */}
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                        title="Añadir emoji"
+                      >
+                        😊
+                      </button>
+                    </div>
+                    
+                    {/* Selector de Emojis */}
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-12 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 z-50 w-64 max-h-40 overflow-y-auto">
+                        <div className="grid grid-cols-8 gap-1">
+                          {EMOJIS.map((emoji, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => insertEmoji(emoji)}
+                              className="p-1 text-lg hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                              title={`Insertar ${emoji}`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Botones */}
@@ -919,6 +1126,14 @@ export default function AdminFeedbackPage() {
                     💬 Chat de Soporte
                   </h3>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1 truncate">
+                    {(() => {
+                      const feedback = feedbacks.find(f => f.id === selectedConversation.feedback_id)
+                      const userName = feedback?.user?.full_name || 'Usuario anónimo'
+                      const userEmail = feedback?.user?.email || feedback?.email
+                      return `👤 ${userName}${userEmail ? ` (${userEmail})` : ''}`
+                    })()}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5 truncate">
                     Estado: {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando tu respuesta' : 
                              selectedConversation.status === 'waiting_user' ? '💬 Esperando usuario' : 
                              selectedConversation.status}
@@ -975,30 +1190,156 @@ export default function AdminFeedbackPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Input para Admin */}
+              {/* Input para Admin estilo WhatsApp */}
               <div className="p-2 sm:p-4 border-t dark:border-gray-700 flex-shrink-0">
+                
+                {/* Vista previa de imágenes del chat */}
+                {uploadedImages.length > 0 && (
+                  <div className="mb-3">
+                    <div className="flex flex-wrap gap-2">
+                      {uploadedImages.map((image) => (
+                        <div key={image.id} className="relative group">
+                          <img
+                            src={image.url}
+                            alt={image.name}
+                            className="w-16 h-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(image.id, image.path)}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            title={`Eliminar ${image.name}`}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <form onSubmit={(e) => {
                   e.preventDefault()
                   const message = e.target.message.value.trim()
-                  if (message) {
-                    sendAdminMessage(selectedConversation.id, message)
+                  if (message || uploadedImages.length > 0) {
+                    // Preparar mensaje con imágenes
+                    let messageWithImages = message
+                    if (uploadedImages.length > 0) {
+                      messageWithImages += '\n\n📸 Imágenes adjuntas:\n'
+                      uploadedImages.forEach((img, index) => {
+                        messageWithImages += `${index + 1}. ${img.name}: ${img.url}\n`
+                      })
+                    }
+                    sendAdminMessage(selectedConversation.id, messageWithImages)
                     e.target.message.value = ''
+                    setUploadedImages([])
+                    setShowEmojiPicker(false)
                   }
                 }}>
-                  <div className="flex gap-2 sm:gap-3">
-                    <input
-                      name="message"
-                      type="text"
-                      placeholder="Escribe tu respuesta..."
-                      className="flex-1 p-2 sm:p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm sm:text-base"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors font-medium text-sm sm:text-base"
-                    >
-                      <span className="sm:hidden">📤</span>
-                      <span className="hidden sm:inline">📤 Enviar</span>
-                    </button>
+                  <div className="relative">
+                    <div className="flex gap-2 sm:gap-3 items-end">
+                      <div className="flex-1 relative">
+                        <textarea
+                          name="message"
+                          placeholder="Escribe tu respuesta... (Ctrl+Enter para enviar)"
+                          rows={1}
+                          className="w-full p-2 sm:p-3 pr-20 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base resize-none overflow-hidden"
+                          style={{ 
+                            whiteSpace: 'pre-wrap', 
+                            lineHeight: '1.4',
+                            minHeight: '40px',
+                            maxHeight: '120px'
+                          }}
+                          onKeyDown={(e) => {
+                            // Enviar con Ctrl/Cmd + Enter
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                              e.preventDefault()
+                              e.target.form.requestSubmit()
+                            }
+                          }}
+                          onInput={(e) => {
+                            // Auto-resize textarea
+                            e.target.style.height = 'auto'
+                            const scrollHeight = e.target.scrollHeight
+                            const maxHeight = 120
+                            const minHeight = 40
+                            e.target.style.height = `${Math.min(Math.max(scrollHeight, minHeight), maxHeight)}px`
+                          }}
+                        />
+                        
+                        {/* Botones de acción dentro del textarea */}
+                        <div className="absolute bottom-2 right-2 flex gap-1">
+                          {/* Botón de Subir Imagen */}
+                          <label className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" title="Subir imagen">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                              disabled={uploadingImage}
+                            />
+                            {uploadingImage ? (
+                              <div className="animate-spin w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </label>
+                          
+                          {/* Botón de Emojis */}
+                          <button
+                            type="button"
+                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
+                            title="Añadir emoji"
+                          >
+                            😊
+                          </button>
+                        </div>
+                        
+                        {/* Selector de Emojis */}
+                        {showEmojiPicker && (
+                          <div className="absolute bottom-12 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 z-50 w-64 max-h-40 overflow-y-auto">
+                            <div className="grid grid-cols-8 gap-1">
+                              {EMOJIS.map((emoji, index) => (
+                                <button
+                                  key={index}
+                                  type="button"
+                                  onClick={() => {
+                                    const textarea = document.querySelector('textarea[name="message"]')
+                                    if (textarea) {
+                                      const cursorPosition = textarea.selectionStart
+                                      const currentValue = textarea.value
+                                      const newValue = currentValue.slice(0, cursorPosition) + emoji + currentValue.slice(cursorPosition)
+                                      textarea.value = newValue
+                                      textarea.focus()
+                                      textarea.setSelectionRange(cursorPosition + emoji.length, cursorPosition + emoji.length)
+                                    }
+                                    setShowEmojiPicker(false)
+                                  }}
+                                  className="p-1 text-lg hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                                  title={`Insertar ${emoji}`}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Botón enviar estilo WhatsApp */}
+                      <button
+                        type="submit"
+                        className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex-shrink-0"
+                        title="Enviar mensaje (Ctrl+Enter)"
+                      >
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 transform rotate-45" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </form>
                 
