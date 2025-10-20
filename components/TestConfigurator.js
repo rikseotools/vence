@@ -13,7 +13,8 @@ const TestConfigurator = ({
   lawsData = [],
   preselectedLaw = null,
   hideOfficialQuestions = false,
-  hideEssentialArticles = false
+  hideEssentialArticles = false,
+  officialQuestionsCount = 0
 }) => {
   const supabase = getSupabaseClient();
 
@@ -49,9 +50,7 @@ const TestConfigurator = ({
   const [loadingArticles, setLoadingArticles] = useState(false);
 
 
-  // Estados para preguntas oficiales
-  const [officialQuestionsCount, setOfficialQuestionsCount] = useState(0);
-  const [loadingOfficialCount, setLoadingOfficialCount] = useState(false);
+  // officialQuestionsCount viene como prop, ya no necesitamos loading state
 
   // Estados para artículos imprescindibles
   const [essentialArticlesCount, setEssentialArticlesCount] = useState(0);
@@ -60,73 +59,7 @@ const TestConfigurator = ({
   const [essentialQuestionsCount, setEssentialQuestionsCount] = useState(0);
   const [essentialQuestionsByDifficulty, setEssentialQuestionsByDifficulty] = useState({});
 
-  // Cargar conteo de preguntas oficiales POR TEMA
-  const loadOfficialCount = async () => {
-    if (!supabase) return;
-    
-    setLoadingOfficialCount(true);
-    try {
-      console.log(`🏛️ Cargando preguntas oficiales para tema ${tema}...`);
-      
-      // 1️⃣ OBTENER MAPEO DEL TEMA DESDE TOPIC_SCOPE (patrón multi-ley)
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', tema)
-        .eq('topics.position_type', 'auxiliar_administrativo');
-
-      if (mappingError) {
-        console.error('❌ Error obteniendo mapeo del tema:', mappingError);
-        setOfficialQuestionsCount(0);
-        return;
-      }
-
-      if (!mappings || mappings.length === 0) {
-        console.warn(`⚠️ No se encontró mapeo para tema ${tema}`);
-        setOfficialQuestionsCount(0);
-        return;
-      }
-
-      console.log(`📋 Mapeo encontrado para tema ${tema}:`, mappings);
-
-      // 2️⃣ PARA CADA LEY MAPEADA, CONTAR PREGUNTAS OFICIALES POR SEPARADO
-      let totalOfficialCount = 0;
-
-      for (const mapping of mappings) {
-        console.log(`🔍 Contando oficiales de ${mapping.laws.short_name}, artículos:`, mapping.article_numbers);
-        
-        // 🔧 CONSULTA CORREGIDA: Incluir articles en select para poder filtrar por ellos
-        const { count, error: countError } = await supabase
-          .from('questions')
-          .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-          .eq('is_active', true)
-          .eq('is_official_exam', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers);
-
-        if (countError) {
-          console.error(`❌ Error contando oficiales de ${mapping.laws.short_name}:`, countError);
-          continue;
-        }
-
-        console.log(`✅ ${mapping.laws.short_name}: ${count || 0} preguntas oficiales`);
-        totalOfficialCount += (count || 0);
-      }
-
-      console.log(`🏛️ Total preguntas oficiales tema ${tema}: ${totalOfficialCount}`);
-      setOfficialQuestionsCount(totalOfficialCount);
-
-    } catch (error) {
-      console.error('❌ Error general cargando preguntas oficiales:', error);
-      setOfficialQuestionsCount(0);
-    } finally {
-      setLoadingOfficialCount(false);
-    }
-  };
+  // officialQuestionsCount ahora viene como prop desde la página principal
 
 
   // Cargar conteo de artículos imprescindibles POR TEMA
@@ -277,13 +210,7 @@ const TestConfigurator = ({
     setShowEssentialArticlesModal(true);
   };
 
-  // 🔧 EFECTO: Cargar conteo de preguntas oficiales cuando cambia el tema
-  useEffect(() => {
-    // Solo cargar si tenemos un tema válido y no estamos en modo ley específica
-    if (tema !== null && tema !== undefined && (!lawsData || lawsData.length === 0)) {
-      loadOfficialCount();
-    }
-  }, [supabase, tema, lawsData]); // ✅ DEPENDENCIA DE 'tema' Y 'lawsData' AÑADIDA
+  // officialQuestionsCount ahora se pasa como prop, no se carga aquí
 
   // 🔧 EFECTO: Inicializar selectedLaws cuando preselectedLaw está presente
   useEffect(() => {
@@ -1095,13 +1022,9 @@ const TestConfigurator = ({
                     focusEssentialArticles ? 'text-gray-400' : 'text-gray-700'
                   }`}>
                     🏛️ Preguntas oficiales 
-                    {loadingOfficialCount ? (
-                      <span className="text-xs text-gray-500 ml-1">(cargando...)</span>
-                    ) : (
-                      <span className="text-xs text-red-600 ml-1">
-                        ({officialQuestionsCount})
-                      </span>
-                    )}
+                    <span className="text-xs text-red-600 ml-1">
+                      ({officialQuestionsCount})
+                    </span>
                   </span>
                   <button
                     className="w-5 h-5 text-gray-400 hover:text-gray-600 rounded-full flex items-center justify-center text-sm transition-colors"
@@ -1158,7 +1081,7 @@ const TestConfigurator = ({
                   )}
 
                   {/* ❌ AVISO: Sin preguntas oficiales en base de datos */}
-                  {onlyOfficialQuestions && officialQuestionsCount === 0 && !loadingOfficialCount && (
+                  {onlyOfficialQuestions && officialQuestionsCount === 0 && (
                     <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-2">
                         <span className="text-gray-600 text-lg">📭</span>
