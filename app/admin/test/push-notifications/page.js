@@ -129,6 +129,53 @@ export default function PushNotificationsTestPage() {
     }
   }
 
+  const forceRefreshSubscriptions = async () => {
+    try {
+      setLoading(true)
+      setSendResult(null)
+
+      console.log('🧹 Iniciando limpieza de suscripciones expiradas...')
+
+      const response = await fetch('/api/admin/force-refresh-subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setSendResult({
+          success: true,
+          message: `✅ ${result.message}`,
+          details: result.results
+        })
+        console.log('✅ Limpieza completada:', result)
+        
+        // Recargar la lista de usuarios después de la limpieza
+        setTimeout(() => {
+          loadUsers()
+        }, 1000)
+      } else {
+        setSendResult({
+          success: false,
+          message: `❌ Error en limpieza: ${result.error}`,
+          details: result
+        })
+        console.error('❌ Error en limpieza:', result)
+      }
+
+    } catch (error) {
+      console.error('Error en limpieza de suscripciones:', error)
+      setSendResult({
+        success: false,
+        message: `❌ Error de conexión: ${error.message}`,
+        details: null
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const sendTestNotification = async () => {
     if (!selectedUser) {
       alert('Selecciona un usuario primero')
@@ -278,8 +325,8 @@ export default function PushNotificationsTestPage() {
                   </div>
                 </div>
                 
-                {/* Botón para refrescar usuarios */}
-                <div className="pt-4 border-t border-gray-200">
+                {/* Botones de herramientas */}
+                <div className="pt-4 border-t border-gray-200 space-y-3">
                   <button
                     onClick={loadUsers}
                     disabled={loading}
@@ -297,8 +344,27 @@ export default function PushNotificationsTestPage() {
                       </>
                     )}
                   </button>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Recarga usuarios con push activo (incluye renovaciones automáticas)
+                  
+                  <button
+                    onClick={forceRefreshSubscriptions}
+                    disabled={loading}
+                    className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Limpiando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🧹</span>
+                        <span>Limpiar Expiradas</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  <p className="text-xs text-gray-500 text-center">
+                    Usar "Limpiar Expiradas" para renovar suscripciones antiguas
                   </p>
                 </div>
               </div>
