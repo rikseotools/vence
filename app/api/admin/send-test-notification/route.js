@@ -2,13 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
 
-// Configurar VAPID
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-)
-
 export async function POST(request) {
   try {
     const { userId, title, body, category, data } = await request.json()
@@ -17,6 +10,34 @@ export async function POST(request) {
       return NextResponse.json(
         { error: 'userId, title y body son obligatorios' },
         { status: 400 }
+      )
+    }
+
+    // Configurar VAPID dentro de la función para evitar errores en build time
+    const vapidEmail = process.env.VAPID_EMAIL
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
+
+    if (!vapidEmail || !vapidPublicKey || !vapidPrivateKey) {
+      console.error('❌ VAPID keys no configuradas correctamente')
+      return NextResponse.json(
+        { error: 'Configuración VAPID incompleta' },
+        { status: 500 }
+      )
+    }
+
+    // Configurar VAPID con validación
+    try {
+      webpush.setVapidDetails(
+        `mailto:${vapidEmail}`,
+        vapidPublicKey,
+        vapidPrivateKey
+      )
+    } catch (vapidError) {
+      console.error('❌ Error configurando VAPID:', vapidError.message)
+      return NextResponse.json(
+        { error: 'Error en configuración VAPID: ' + vapidError.message },
+        { status: 500 }
       )
     }
 
