@@ -4,6 +4,21 @@
 export default function AdminTestsPage() {
   const testTools = [
     {
+      id: 'push-notifications',
+      title: '🔔 Test Push Notifications',
+      description: 'Prueba el sistema completo de notificaciones push enviando mensajes reales a usuarios móviles. Incluye debug del navegador y búsqueda de usuarios.',
+      features: [
+        'Enviar push real a usuarios específicos',
+        'Buscador de usuarios con push habilitado',
+        'Debug info del navegador actual',
+        'Configurar mensajes personalizados',
+        'Tracking completo de envíos'
+      ],
+      link: '/admin/test/push-notifications',
+      buttonText: 'Abrir Test Push',
+      color: 'green'
+    },
+    {
       id: 'debug',
       title: '🐛 Debug de Notificaciones',
       description: 'Herramientas para debugging del sistema de notificaciones push. Inyectar notificaciones de prueba, ver estado del sistema y logs.',
@@ -35,6 +50,13 @@ export default function AdminTestsPage() {
 
   const getColorClasses = (color) => {
     const colors = {
+      green: {
+        bg: 'bg-green-50 dark:bg-green-900/20',
+        border: 'border-green-200 dark:border-green-800',
+        text: 'text-green-700 dark:text-green-300',
+        button: 'bg-green-600 hover:bg-green-700',
+        accent: 'text-green-600 dark:text-green-400'
+      },
       purple: {
         bg: 'bg-purple-50 dark:bg-purple-900/20',
         border: 'border-purple-200 dark:border-purple-800',
@@ -136,7 +158,15 @@ export default function AdminTestsPage() {
           🚀 Acceso Rápido
         </h2>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <a
+            href="/admin/test/push-notifications"
+            className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-center"
+          >
+            <div className="text-lg mb-1">🔔</div>
+            <div className="text-sm font-medium text-gray-900 dark:text-white">Test Push</div>
+          </a>
+          
           <a
             href="/admin/debug"
             className="p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-center"
@@ -178,7 +208,10 @@ export default function AdminTestsPage() {
         </h3>
         <div className="text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
           <p>
-            <strong>Debug de Notificaciones:</strong> Úsalo para probar el sistema de notificaciones push en el navegador.
+            <strong>Test Push Notifications:</strong> Envía notificaciones push reales a usuarios móviles específicos para probar el sistema completo.
+          </p>
+          <p>
+            <strong>Debug de Notificaciones:</strong> Úsalo para probar el sistema de notificaciones push en el navegador actual.
           </p>
           <p>
             <strong>Test de Emails:</strong> Úsalo para probar los templates de emails motivacionales y verificar la entrega.

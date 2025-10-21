@@ -169,7 +169,7 @@ export default function NotificationDebugInfo({ show = false }) {
     }
   }
 
-  if (!show || process.env.NODE_ENV !== 'development') {
+  if (!show || process.env.NODE_ENV === 'production') {
     return null
   }
 

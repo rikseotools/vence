@@ -5,7 +5,6 @@ import HeaderES from './Header'
 import FooterES from './Footer'
 import Breadcrumbs from '../components/Breadcrumbs'
 import PushNotificationManager from '../components/PushNotificationManager'
-import NotificationDebugInfo from '../components/NotificationDebugInfo'
 import GoogleAnalytics from '../components/GoogleAnalytics'
 import { AuthProvider, useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
@@ -80,9 +79,6 @@ function LayoutContent({ children }) {
       <main className="min-h-screen">
         {/* Mostrar gestor de notificaciones push */}
         <PushNotificationManager />
-        
-        {/* Debug info solo en desarrollo */}        
-        <NotificationDebugInfo show={process.env.NODE_ENV === 'development'} />
         
         {children}
       </main>
