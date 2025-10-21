@@ -118,6 +118,13 @@ export default function AdminLayout({ children }) {
                   <span className="text-base">📧</span>
                   <span className="hidden sm:inline">Newsletters</span>
                 </a>
+                <a 
+                  href="/admin/tests" 
+                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
+                >
+                  <span className="text-base">🧪</span>
+                  <span className="hidden sm:inline">Tests</span>
+                </a>
               </nav>
             </div>
           </div>

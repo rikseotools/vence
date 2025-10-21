@@ -317,7 +317,7 @@ export default function HeaderES() {
         <div className={`container mx-auto px-4 ${user ? 'py-6 pb-12 lg:pb-6' : 'py-6'}`}>
           <div className="flex items-center justify-between relative">
             
-            {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES */}
+            {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES + SOPORTE */}
             {user && (
               <div className="lg:hidden absolute top-full right-52 flex items-center gap-4 mt-1 mb-2">
                 {/* 🔥 ICONO DE RACHA */}
@@ -349,6 +349,22 @@ export default function HeaderES() {
                 >
                   <span className="text-lg">⚖️</span>
                 </Link>
+
+                {/* 💬 ICONO DE SOPORTE */}
+                <button
+                  onClick={() => {
+                    setShowFeedbackModal(true)
+                    // Refrescar notificaciones admin inmediatamente al abrir feedback
+                    if (isAdmin && adminNotifications?.refresh) {
+                      adminNotifications.refresh()
+                    }
+                  }}
+                  className="flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  aria-label="Contactar soporte"
+                  title="Contactar soporte"
+                >
+                  <span className="text-lg">💬</span>
+                </button>
               </div>
             )}
             
@@ -665,15 +681,17 @@ export default function HeaderES() {
         onClose={() => setShowRankingModal(false)} 
       />
 
-      {/* 💬 BOTÓN DE FEEDBACK FLOTANTE */}
-      <FeedbackButton 
-        onFeedbackSent={() => {
-          // Refrescar notificaciones admin inmediatamente después de enviar feedback
-          if (isAdmin && adminNotifications?.refresh) {
-            adminNotifications.refresh()
-          }
-        }}
-      />
+      {/* 💬 BOTÓN DE FEEDBACK FLOTANTE - Solo desktop */}
+      <div className="hidden lg:block">
+        <FeedbackButton 
+          onFeedbackSent={() => {
+            // Refrescar notificaciones admin inmediatamente después de enviar feedback
+            if (isAdmin && adminNotifications?.refresh) {
+              adminNotifications.refresh()
+            }
+          }}
+        />
+      </div>
 
       {/* 💬 MODAL DE FEEDBACK */}
       <FeedbackModal 
