@@ -111,11 +111,8 @@ export async function POST(request) {
     console.log(`📧 API: Status: ${disputeInfo.status}`)
 
     // 2. Crear URLs
-    // Asegurar que siempre use la URL de producción
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://www.vence.es' 
-      : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es')
-    
+    // Siempre usar URL de producción en emails
+    const baseUrl = 'https://www.vence.es'
     const disputeUrl = `${baseUrl}/soporte?tab=impugnaciones&dispute_id=${disputeId}`
     const unsubscribeUrl = `${baseUrl}/perfil`
 
