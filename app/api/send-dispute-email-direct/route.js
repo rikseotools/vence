@@ -92,8 +92,13 @@ export async function POST(request) {
     console.log(`📧 API-DIRECT: Admin response preview: "${adminResponse?.substring(0, 50)}..."`)
 
     // Crear URLs
-    const disputeUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'}/soporte?tab=impugnaciones&dispute_id=${disputeId}`
-    const unsubscribeUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es'}/perfil`
+    // Asegurar que siempre use la URL de producción
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://www.vence.es' 
+      : (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.vence.es')
+    
+    const disputeUrl = `${baseUrl}/soporte?tab=impugnaciones&dispute_id=${disputeId}`
+    const unsubscribeUrl = `${baseUrl}/perfil`
 
     // Preparar datos del email
     const customData = {
