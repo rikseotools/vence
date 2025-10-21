@@ -442,15 +442,8 @@ export default function AdminFeedbackPage() {
         
         const emailResult = await emailResponse.json()
         
-        console.log('📧 Respuesta completa de API send-support-email:', {
-          status: emailResponse.status,
-          ok: emailResponse.ok,
-          result: emailResult
-        })
         
-        if (emailResult.sent) {
-          console.log('📧 Email de soporte enviado al usuario')
-        } else {
+        if (!emailResult.sent) {
           console.log(`📧 Email no enviado:`, emailResult)
         }
       } catch (emailError) {
