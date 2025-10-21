@@ -67,6 +67,16 @@ function SoporteContent() {
     scrollToBottom()
   }, [chatMessages])
 
+  // Bloquear scroll del body cuando hay modales abiertos
+  useEffect(() => {
+    if (selectedConversation || selectedQuestionModal) {
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = 'unset'
+      }
+    }
+  }, [selectedConversation, selectedQuestionModal])
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -940,8 +950,16 @@ function SoporteContent() {
 
         {/* Modal de Pregunta Completa */}
         {selectedQuestionModal && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-2 sm:p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg sm:max-w-3xl max-h-[95vh] overflow-y-auto">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-hidden"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setSelectedQuestionModal(null)
+              }
+            }}
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm sm:max-w-lg lg:max-w-3xl max-h-[90vh] overflow-y-auto">
               
               {/* Header */}
               <div className="flex items-center justify-between p-4 sm:p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
@@ -1047,8 +1065,16 @@ function SoporteContent() {
 
         {/* Modal de Chat */}
         {selectedConversation && (
-          <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-2 sm:p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm sm:max-w-2xl h-[95vh] sm:h-[85vh] flex flex-col">
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-hidden"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setSelectedConversation(null)
+              }
+            }}
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm sm:max-w-lg lg:max-w-2xl h-[90vh] sm:h-[85vh] flex flex-col overflow-hidden">
               
               {/* Header */}
               <div className="flex items-center justify-between p-4 sm:p-6 border-b dark:border-gray-700">
