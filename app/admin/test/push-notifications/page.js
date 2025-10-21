@@ -163,7 +163,15 @@ export default function PushNotificationsTestPage() {
         })
       })
 
-      const result = await response.json()
+      let result
+      try {
+        result = await response.json()
+      } catch (parseError) {
+        console.error('❌ Error parsing response:', parseError)
+        result = { error: 'Error parsing server response' }
+      }
+
+      console.log('📡 Response status:', response.status, 'Result:', result)
 
       if (response.ok) {
         setSendResult({
@@ -173,12 +181,28 @@ export default function PushNotificationsTestPage() {
         })
         console.log('✅ Notificación enviada:', result)
       } else {
+        // Manejar errores específicos conocidos
+        let errorMessage = result?.error || 'Error desconocido'
+        
+        if (response.status === 410) {
+          errorMessage = 'Suscripción push expirada o cancelada. El usuario debe volver a habilitar las notificaciones.'
+        } else if (response.status === 404) {
+          errorMessage = 'Usuario no encontrado o sin configuración de push'
+        } else if (response.status === 400) {
+          errorMessage = result?.error || 'Error en los datos enviados'
+        }
+
         setSendResult({
           success: false,
-          message: `❌ Error enviando notificación: ${result.error}`,
-          details: result
+          message: `❌ ${errorMessage}`,
+          details: {
+            status: response.status,
+            error: result?.error,
+            statusText: response.statusText,
+            ...result
+          }
         })
-        console.error('❌ Error:', result)
+        console.error('❌ Error response:', { status: response.status, result })
       }
 
     } catch (error) {
@@ -240,10 +264,10 @@ export default function PushNotificationsTestPage() {
             <div className="space-y-6">
               
 
-              {/* Estadísticas */}
+              {/* Estadísticas y Herramientas */}
               <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">📊 Estadísticas</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">📊 Estadísticas y Herramientas</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">{users.length}</div>
                     <div className="text-sm text-gray-600">Usuarios con Push</div>
@@ -252,6 +276,30 @@ export default function PushNotificationsTestPage() {
                     <div className="text-2xl font-bold text-green-600">{filteredUsers.length}</div>
                     <div className="text-sm text-gray-600">Filtrados</div>
                   </div>
+                </div>
+                
+                {/* Botón para refrescar usuarios */}
+                <div className="pt-4 border-t border-gray-200">
+                  <button
+                    onClick={loadUsers}
+                    disabled={loading}
+                    className="w-full bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Actualizando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🔄</span>
+                        <span>Actualizar Lista</span>
+                      </>
+                    )}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Recarga usuarios con push activo (incluye renovaciones automáticas)
+                  </p>
                 </div>
               </div>
 
@@ -411,6 +459,28 @@ export default function PushNotificationsTestPage() {
                 </div>
               )}
 
+            </div>
+          </div>
+
+          {/* Información y Solución de Problemas */}
+          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-start space-x-3">
+              <span className="text-2xl">💡</span>
+              <div>
+                <h3 className="text-lg font-bold text-blue-900 mb-2">Información sobre Notificaciones Push</h3>
+                <div className="text-blue-800 text-sm space-y-2">
+                  <p><strong>✅ Funcionamiento normal:</strong> El sistema funciona completamente desde localhost</p>
+                  <p><strong>🔄 Renovación automática:</strong> Las suscripciones se renuevan automáticamente cuando los usuarios usan la app</p>
+                  <p><strong>🔄 Suscripción expirada (Error 410):</strong> El sistema intenta renovar automáticamente, pero si persiste:</p>
+                  <ul className="ml-4 space-y-1">
+                    <li>• El usuario debe visitar cualquier página de la app</li>
+                    <li>• Se renovará automáticamente en segundo plano</li>
+                    <li>• Usar el botón "Actualizar Lista" para ver cambios</li>
+                  </ul>
+                  <p><strong>📱 Testing móvil:</strong> Funciona directamente desde la misma WiFi (no es necesario localhost)</p>
+                  <p><strong>🎯 Mejor práctica:</strong> Los usuarios activos tendrán suscripciones válidas automáticamente</p>
+                </div>
+              </div>
             </div>
           </div>
 

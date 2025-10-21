@@ -22,6 +22,9 @@ export default function PushNotificationManager() {
       checkNotificationSupport()
       loadUserSettings()
       
+      // 🔄 Verificar y renovar suscripción automáticamente cada vez que el usuario use la app
+      refreshSubscriptionIfExpired()
+      
       // 📊 TRACKING: Listener para errores globales del navegador móvil
       const handleGlobalError = async (event) => {
         if (event.error && (
@@ -449,6 +452,88 @@ export default function PushNotificationManager() {
       console.error('Error disabling notifications:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 🔄 Función para renovar automáticamente suscripciones expiradas
+  const refreshSubscriptionIfExpired = async () => {
+    try {
+      // Solo para usuarios con push ya habilitado
+      if (!user || !notificationState.settings?.push_enabled) return
+
+      console.log('🔍 Verificando validez de suscripción push...')
+
+      // Verificar si tenemos service worker y push manager
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+
+      const registration = await navigator.serviceWorker.ready
+      const currentSubscription = await registration.pushManager.getSubscription()
+
+      // Si no hay suscripción actual pero debería haberla, renovar
+      if (!currentSubscription && notificationState.settings.push_subscription) {
+        console.log('🔄 Suscripción no encontrada en navegador, renovando...')
+        await renewSubscription(registration)
+      } else if (currentSubscription) {
+        // Verificar si la suscripción es diferente a la guardada
+        const savedSubscription = JSON.parse(notificationState.settings.push_subscription || '{}')
+        if (currentSubscription.endpoint !== savedSubscription.endpoint) {
+          console.log('🔄 Suscripción cambió, actualizando...')
+          await updateSubscriptionInDatabase(currentSubscription)
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Error verificando suscripción (no crítico):', error.message)
+      // No mostrar error al usuario, es una verificación en background
+    }
+  }
+
+  const renewSubscription = async (registration) => {
+    try {
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!vapidPublicKey) return
+
+      // Crear nueva suscripción
+      const newSubscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      })
+
+      console.log('✅ Nueva suscripción creada automáticamente')
+
+      // Actualizar en base de datos
+      await updateSubscriptionInDatabase(newSubscription)
+
+    } catch (error) {
+      console.log('⚠️ Error renovando suscripción:', error.message)
+    }
+  }
+
+  const updateSubscriptionInDatabase = async (subscription) => {
+    try {
+      const response = await fetch('/api/push/refresh-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          newSubscription: subscription
+        })
+      })
+
+      if (response.ok) {
+        console.log('✅ Suscripción actualizada en base de datos')
+        
+        // Actualizar estado local
+        setNotificationState(prev => ({
+          ...prev,
+          subscription: subscription,
+          settings: {
+            ...prev.settings,
+            push_subscription: JSON.stringify(subscription)
+          }
+        }))
+      }
+    } catch (error) {
+      console.log('⚠️ Error actualizando suscripción en BD:', error.message)
     }
   }
 
