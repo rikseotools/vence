@@ -38,6 +38,35 @@ export default function ImpugnacionesPage() {
     }
   }
 
+  const closeDispute = async (disputeId) => {
+    if (!supabase) return
+
+    try {
+      console.log('🔒 Cerrando impugnación:', disputeId)
+
+      const { error } = await supabase
+        .from('question_disputes')
+        .update({
+          status: 'rejected',
+          resolved_at: new Date().toISOString(),
+          admin_response: 'Impugnación cerrada por el administrador sin respuesta específica.',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', disputeId)
+
+      if (error) throw error
+
+      console.log('✅ Impugnación cerrada exitosamente')
+      
+      // Recargar la lista
+      await loadImpugnaciones()
+
+    } catch (err) {
+      console.error('❌ Error cerrando impugnación:', err)
+      alert('Error al cerrar la impugnación: ' + err.message)
+    }
+  }
+
   const getFilteredImpugnaciones = () => {
     switch (filter) {
       case 'pendientes':
@@ -193,7 +222,7 @@ export default function ImpugnacionesPage() {
             </div>
             <span className="text-2xl sm:text-3xl">❌</span>
           </div>
-          <p className="text-xs text-gray-500 mt-2 hidden sm:block">No procedentes</p>
+          <p className="text-xs text-gray-500 mt-2 hidden sm:block">No procedentes + Cerradas</p>
         </div>
       </div>
 
@@ -258,6 +287,8 @@ export default function ImpugnacionesPage() {
               getStatusBadge={getStatusBadge}
               getPriorityBadge={getPriorityBadge}
               getCorrectOptionLetter={getCorrectOptionLetter}
+              onCloseDispute={closeDispute}
+              supabase={supabase}
             />
           ))
         )}
@@ -268,8 +299,22 @@ export default function ImpugnacionesPage() {
 }
 
 // Componente separado para cada tarjeta de impugnación (solo lectura)
-function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorrectOptionLetter }) {
+function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, supabase }) {
   const [showFullQuestion, setShowFullQuestion] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
+
+  const handleClose = async () => {
+    if (!confirm('¿Estás seguro de que quieres rechazar esta impugnación? Se marcará como no procedente sin respuesta específica.')) {
+      return
+    }
+
+    setIsClosing(true)
+    try {
+      await onCloseDispute(dispute.id)
+    } finally {
+      setIsClosing(false)
+    }
+  }
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-3 sm:p-6">
@@ -311,6 +356,31 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
               </div>
             </div>
           </div>
+          
+          {/* Botón de cerrar - solo para impugnaciones pendientes o con alegación */}
+          {(dispute.status === 'pending' || dispute.status === 'appealed') && (
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleClose}
+                disabled={isClosing}
+                className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                {isClosing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Cerrando...
+                  </>
+                ) : (
+                  <>
+                    ❌ Rechazar
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                (Sin respuesta)
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,7 @@
 # CLAUDE.md - Información del Proyecto
 
+> 📋 **Contexto Adicional:** Ver también `PROJECT_CONTEXT.md` para configuración MCP, READMEs disponibles y documentación complementaria.
+
 ## Descripción del Proyecto
 **Vence** es una aplicación web de preparación para oposiciones, específicamente para Auxiliar Administrativo del Estado. Permite a los usuarios realizar tests personalizados con preguntas de exámenes oficiales y contenido generado por IA.
 

@@ -79,17 +79,25 @@ export function useTopicUnlock() {
         })
       }
 
-      // Asegurar progresión secuencial
-      const finalUnlockedSet = new Set([1])
+      // Asegurar progresión secuencial - CORREGIDA
+      const finalUnlockedSet = new Set([1]) // Tema 1 siempre desbloqueado
+      
       for (let tema = 1; tema <= 28; tema++) {
-        if (unlockedSet.has(tema)) {
-          finalUnlockedSet.add(tema)
-          // Solo desbloquear el siguiente si el actual cumple requisitos
-          if (progress[tema]?.meetsThreshold && progress[tema]?.questionsAnswered >= 10) {
-            finalUnlockedSet.add(tema + 1)
-          }
+        const currentProgress = progress[tema]
+        
+        // Un tema está desbloqueado si:
+        // 1. Es el tema 1 (siempre desbloqueado)
+        // 2. El tema anterior cumple requisitos completos (70% + 10 preguntas)
+        if (tema === 1) {
+          finalUnlockedSet.add(1)
         } else {
-          break // Detener progresión si encontramos un tema no desbloqueado
+          const previousTopic = tema - 1
+          const prevProgress = progress[previousTopic]
+          
+          // Desbloquear si el tema anterior cumple ambos requisitos
+          if (prevProgress?.meetsThreshold && prevProgress?.questionsAnswered >= 10) {
+            finalUnlockedSet.add(tema)
+          }
         }
       }
 

@@ -44,9 +44,8 @@ export default function AdminFeedbackPage() {
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
   const [newUserMessages, setNewUserMessages] = useState(new Set()) // IDs de conversaciones con mensajes nuevos
-  const [viewedConversations, setViewedConversations] = useState(new Set()) // IDs de conversaciones que el admin ya vio
   const [activeFilter, setActiveFilter] = useState('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
-  const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se cargó localStorage
+  const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se inicializó
   
   // Estados para emojis e imágenes en admin
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -54,24 +53,67 @@ export default function AdminFeedbackPage() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const messagesEndRef = useRef(null)
 
+  // Función auxiliar para abrir chat y marcar como visto
+  const openChatConversation = async (conversation) => {
+    console.log('💬 Abriendo chat para conversación:', conversation.id)
+    
+    setSelectedConversation(conversation)
+    setChatMessages([]) // Empezar con mensajes vacíos
+    
+    // Limpiar notificación si existía
+    setNewUserMessages(prev => {
+      const newSet = new Set(prev)
+      newSet.delete(conversation.id)
+      return newSet
+    })
+    
+    // Marcar conversación como vista por admin en BD
+    try {
+      const response = await fetch('/api/admin/mark-conversation-viewed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: conversation.id })
+      })
+      
+      if (response.ok) {
+        console.log('✅ Conversación marcada como vista en BD')
+      } else {
+        console.error('❌ Error marcando conversación como vista')
+      }
+    } catch (error) {
+      console.error('❌ Error al marcar conversación como vista:', error)
+    }
+    
+    // Marcar mensajes del usuario como leídos y luego cargar mensajes
+    try {
+      const response = await fetch('/api/admin/mark-messages-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: conversation.id })
+      })
+      
+      if (response.ok) {
+        console.log('✅ Mensajes marcados como leídos')
+        // Cargar mensajes DESPUÉS de que se confirme la actualización
+        await loadChatMessages(conversation.id)
+      } else {
+        console.error('❌ Error marcando mensajes como leídos')
+        // Cargar mensajes de todos modos
+        await loadChatMessages(conversation.id)
+      }
+    } catch (error) {
+      console.error('❌ Error al marcar mensajes como leídos:', error)
+      // Cargar mensajes de todos modos
+      await loadChatMessages(conversation.id)
+    }
+  }
+
   useEffect(() => {
     if (user) {
       console.log('🔄 Cargando datos iniciales de feedback...')
       
-      // Cargar conversaciones vistas desde localStorage
-      try {
-        const stored = localStorage.getItem('admin_viewed_conversations')
-        if (stored) {
-          const viewedArray = JSON.parse(stored)
-          setViewedConversations(new Set(viewedArray))
-          console.log(`📂 Cargadas ${viewedArray.length} conversaciones vistas desde localStorage`)
-        }
-      } catch (error) {
-        console.error('Error cargando conversaciones vistas:', error)
-      } finally {
-        // Marcar como cargado independientemente de si había data o no
-        setViewedConversationsLoaded(true)
-      }
+      // Marcar como cargado - ya no usamos localStorage
+      setViewedConversationsLoaded(true)
       
       loadFeedbacks()
       loadConversations()
@@ -110,45 +152,60 @@ export default function AdminFeedbackPage() {
   }
 
   const checkForNewUserMessages = useCallback(async () => {
-    // 🚫 NO ejecutar si viewedConversations no está inicializado correctamente
     if (!viewedConversationsLoaded) {
-      console.log('⏸️ Esperando carga de localStorage antes de verificar notificaciones...')
+      console.log('⏸️ Esperando inicialización antes de verificar notificaciones...')
       return
     }
 
     try {
-      // Obtener conversaciones que tienen status 'waiting_admin' (el usuario ha respondido)
+      // Obtener conversaciones que tienen status 'waiting_admin' Y NO han sido vistas por admin
       const { data: waitingConversations, error: convError } = await supabase
         .from('feedback_conversations')
         .select('id, feedback_id, status, last_message_at')
         .eq('status', 'waiting_admin')
+        .is('admin_viewed_at', null) // Solo las que NO han sido vistas
 
-      if (convError) throw convError
-
-      if (waitingConversations && waitingConversations.length > 0) {
-        const waitingIds = waitingConversations.map(conv => conv.id)
-        console.log(`🔔 Conversaciones esperando admin:`, waitingIds.length)
-        
-        // Reemplazar completamente con las conversaciones que NO han sido vistas por el admin
-        const unviewedIds = waitingIds.filter(id => !viewedConversations.has(id))
-        const newSet = new Set(unviewedIds) // Reemplazar completamente, no añadir
-        
-        console.log(`👁️ Conversaciones vistas: ${viewedConversations.size} [${[...viewedConversations].map(id => id.substring(0,8)).join(', ')}]`)
-        console.log(`🆕 Conversaciones no vistas: ${unviewedIds.length} [${unviewedIds.map(id => id.substring(0,8)).join(', ')}]`)
-        console.log(`📢 Actualizando notificaciones con: ${newSet.size} conversaciones`)
-        
-        setNewUserMessages(newSet)
+      if (convError) {
+        // Si el campo admin_viewed_at no existe, usar fallback temporal
+        if (convError.message && convError.message.includes('admin_viewed_at')) {
+          console.log('⚠️ Campo admin_viewed_at no existe, usando conteo básico como fallback en admin panel')
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('feedback_conversations')
+            .select('id, feedback_id, status, last_message_at')
+            .eq('status', 'waiting_admin')
+          
+          if (fallbackError) {
+            console.error('Error en fallback admin panel:', fallbackError)
+            setNewUserMessages(new Set())
+          } else {
+            const unviewedIds = fallbackData?.map(conv => conv.id) || []
+            console.log(`🔔 Conversaciones esperando admin (fallback): ${unviewedIds.length}`)
+            setNewUserMessages(new Set(unviewedIds))
+          }
+        } else {
+          console.error('Error verificando nuevos mensajes:', convError)
+          setNewUserMessages(new Set())
+        }
       } else {
-        // No hay conversaciones esperando, limpiar notificaciones
-        console.log(`🧹 No hay conversaciones esperando admin - limpiando notificaciones`)
-        setNewUserMessages(new Set())
+        if (waitingConversations && waitingConversations.length > 0) {
+          const unviewedIds = waitingConversations.map(conv => conv.id)
+          console.log(`🔔 Conversaciones no vistas esperando admin: ${unviewedIds.length}`)
+          
+          const newSet = new Set(unviewedIds)
+          setNewUserMessages(newSet)
+        } else {
+          // No hay conversaciones esperando, limpiar notificaciones
+          console.log(`🧹 No hay conversaciones no vistas esperando admin`)
+          setNewUserMessages(new Set())
+        }
       }
     } catch (error) {
       console.error('Error verificando nuevos mensajes:', error)
+      setNewUserMessages(new Set())
     }
-  }, [supabase, viewedConversations, viewedConversationsLoaded])
+  }, [supabase, viewedConversationsLoaded])
 
-  // Polling para detectar nuevas respuestas de usuarios - SOLO después de cargar localStorage
+  // Polling para detectar nuevas respuestas de usuarios
   useEffect(() => {
     if (!user || !viewedConversationsLoaded) return
 
@@ -289,7 +346,13 @@ export default function AdminFeedbackPage() {
       const { data, error } = await supabase
         .from('feedback_messages')
         .select(`
-          *,
+          id,
+          conversation_id,
+          sender_id,
+          is_admin,
+          message,
+          created_at,
+          read_at,
           sender:sender_id (
             full_name,
             email
@@ -533,29 +596,8 @@ export default function AdminFeedbackPage() {
       // Recargar conversaciones para mostrar la nueva
       await loadConversations()
       
-      // Abrir el chat inmediatamente
-      setSelectedConversation(conversation)
-      setChatMessages([]) // Empezar con mensajes vacíos
-      
-      // Limpiar notificación si existía y marcar como vista
-      setNewUserMessages(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(conversation.id)
-        return newSet
-      })
-      setViewedConversations(prev => {
-        const newViewed = new Set([...prev, conversation.id])
-        console.log(`✅ Nueva conversación marcada como vista: ${conversation.id.substring(0,8)}... (Total vistas: ${newViewed.size})`)
-        
-        // Sincronizar con localStorage para que el Header se entere
-        const viewedArray = [...newViewed]
-        localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
-        
-        // 🔄 Forzar verificación inmediata con el nuevo estado
-        setTimeout(() => checkForNewUserMessages(), 100)
-        
-        return newViewed
-      })
+      // Abrir el chat inmediatamente usando la función unificada
+      await openChatConversation(conversation)
       
     } catch (error) {
       console.error('❌ Error iniciando chat:', error)
@@ -859,36 +901,7 @@ export default function AdminFeedbackPage() {
                     {/* Botón de Chat - Prioridad */}
                     {conversations[feedback.id] ? (
                       <button
-                        onClick={() => {
-                          setSelectedConversation(conversations[feedback.id])
-                          loadChatMessages(conversations[feedback.id].id)
-                          // Marcar como visto y quitar notificación
-                          const conversationId = conversations[feedback.id].id
-                          setNewUserMessages(prev => {
-                            const newSet = new Set(prev)
-                            newSet.delete(conversationId)
-                            return newSet
-                          })
-                          // Marcar esta conversación como vista permanentemente
-                          setViewedConversations(prev => {
-                            const newViewed = new Set([...prev, conversationId])
-                            console.log(`✅ Conversación marcada como vista: ${conversationId.substring(0,8)}... (Total vistas: ${newViewed.size})`)
-                            
-                            // Sincronizar con localStorage para que el Header se entere
-                            const viewedArray = [...newViewed]
-                            localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
-                            
-                            // 🔄 Forzar verificación inmediata con el nuevo estado
-                            setTimeout(() => checkForNewUserMessages(), 100)
-                            
-                            return newViewed
-                          })
-                          setNewUserMessages(prev => {
-                            const newSet = new Set(prev)
-                            newSet.delete(conversations[feedback.id].id)
-                            return newSet
-                          })
-                        }}
+                        onClick={() => openChatConversation(conversations[feedback.id])}
                         className={`px-3 sm:px-4 py-2 text-white rounded-lg transition-colors text-xs sm:text-sm font-medium ${
                           newUserMessages.has(conversations[feedback.id].id)
                             ? 'bg-orange-600 hover:bg-orange-700 animate-pulse'
@@ -929,36 +942,7 @@ export default function AdminFeedbackPage() {
                   <div className="flex gap-2 pt-4 border-t dark:border-gray-700">
                     {conversations[feedback.id] ? (
                       <button
-                        onClick={() => {
-                          setSelectedConversation(conversations[feedback.id])
-                          loadChatMessages(conversations[feedback.id].id)
-                          // Marcar como visto y quitar notificación
-                          const conversationId = conversations[feedback.id].id
-                          setNewUserMessages(prev => {
-                            const newSet = new Set(prev)
-                            newSet.delete(conversationId)
-                            return newSet
-                          })
-                          // Marcar esta conversación como vista permanentemente
-                          setViewedConversations(prev => {
-                            const newViewed = new Set([...prev, conversationId])
-                            console.log(`✅ Conversación marcada como vista: ${conversationId.substring(0,8)}... (Total vistas: ${newViewed.size})`)
-                            
-                            // Sincronizar con localStorage para que el Header se entere
-                            const viewedArray = [...newViewed]
-                            localStorage.setItem('admin_viewed_conversations', JSON.stringify(viewedArray))
-                            
-                            // 🔄 Forzar verificación inmediata con el nuevo estado
-                            setTimeout(() => checkForNewUserMessages(), 100)
-                            
-                            return newViewed
-                          })
-                          setNewUserMessages(prev => {
-                            const newSet = new Set(prev)
-                            newSet.delete(conversations[feedback.id].id)
-                            return newSet
-                          })
-                        }}
+                        onClick={() => openChatConversation(conversations[feedback.id])}
                         className={`px-3 sm:px-4 py-2 text-white rounded-lg transition-colors text-xs sm:text-sm font-medium ${
                           newUserMessages.has(conversations[feedback.id].id)
                             ? 'bg-orange-600 hover:bg-orange-700 animate-pulse'
@@ -1207,14 +1191,26 @@ export default function AdminFeedbackPage() {
                         {message.is_admin ? '👨‍💼 Tú (Admin)' : `👤 ${message.sender?.full_name || message.sender?.email || 'Usuario'}`}
                       </div>
                       <p className="text-xs sm:text-sm">{message.message}</p>
-                      <div className="text-xs mt-1 opacity-70">
-                        {new Date(message.created_at).toLocaleString('es-ES', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          day: '2-digit',
-                          month: '2-digit',
-                          timeZone: 'Europe/Madrid'
-                        })}
+                      <div className="flex items-center justify-between text-xs mt-1 opacity-70">
+                        <span>
+                          {new Date(message.created_at).toLocaleString('es-ES', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            day: '2-digit',
+                            month: '2-digit',
+                            timeZone: 'Europe/Madrid'
+                          })}
+                        </span>
+                        {/* Ticks de leído - solo para mensajes del usuario */}
+                        {!message.is_admin && (
+                          <span className="ml-2" title={message.read_at ? `Leído: ${new Date(message.read_at).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit' })}` : 'No leído'}>
+                            {message.read_at ? (
+                              <span className="text-blue-400">✓✓</span>
+                            ) : (
+                              <span className="text-gray-400">✓</span>
+                            )}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1270,17 +1266,48 @@ export default function AdminFeedbackPage() {
                 }}>
                   <div className="relative">
                     <div className="flex gap-2 sm:gap-3 items-end">
+                      {/* Botones de acción fuera del input - estilo WhatsApp */}
+                      <div className="flex gap-1 pb-2">
+                        {/* Botón de Subir Imagen */}
+                        <label className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" title="Subir imagen">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            disabled={uploadingImage}
+                          />
+                          {uploadingImage ? (
+                            <div className="animate-spin w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full"></div>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </label>
+                        
+                        {/* Botón de Emojis */}
+                        <button
+                          type="button"
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-600"
+                          title="Añadir emoji"
+                        >
+                          <span className="text-lg">😊</span>
+                        </button>
+                      </div>
+                      
                       <div className="flex-1 relative">
                         <textarea
                           name="message"
                           placeholder="Escribe tu respuesta... (Ctrl+Enter para enviar)"
-                          rows={1}
-                          className="w-full p-2 sm:p-3 pr-20 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base resize-none overflow-hidden"
+                          rows={3}
+                          className="w-full p-3 sm:p-4 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base resize-none overflow-hidden"
                           style={{ 
                             whiteSpace: 'pre-wrap', 
-                            lineHeight: '1.4',
-                            minHeight: '40px',
-                            maxHeight: '120px'
+                            lineHeight: '1.5',
+                            minHeight: '60px',
+                            maxHeight: '150px'
                           }}
                           onKeyDown={(e) => {
                             // Enviar con Ctrl/Cmd + Enter
@@ -1293,46 +1320,16 @@ export default function AdminFeedbackPage() {
                             // Auto-resize textarea
                             e.target.style.height = 'auto'
                             const scrollHeight = e.target.scrollHeight
-                            const maxHeight = 120
-                            const minHeight = 40
+                            const maxHeight = 150
+                            const minHeight = 60
                             e.target.style.height = `${Math.min(Math.max(scrollHeight, minHeight), maxHeight)}px`
                           }}
                         />
+                      </div>
                         
-                        {/* Botones de acción dentro del textarea */}
-                        <div className="absolute bottom-2 right-2 flex gap-1">
-                          {/* Botón de Subir Imagen */}
-                          <label className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" title="Subir imagen">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleImageUpload}
-                              className="hidden"
-                              disabled={uploadingImage}
-                            />
-                            {uploadingImage ? (
-                              <div className="animate-spin w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            )}
-                          </label>
-                          
-                          {/* Botón de Emojis */}
-                          <button
-                            type="button"
-                            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600"
-                            title="Añadir emoji"
-                          >
-                            😊
-                          </button>
-                        </div>
-                        
-                        {/* Selector de Emojis */}
-                        {showEmojiPicker && (
-                          <div className="absolute bottom-12 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 z-50 w-64 max-h-40 overflow-y-auto">
+                      {/* Selector de Emojis */}
+                      {showEmojiPicker && (
+                        <div className="absolute bottom-16 left-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 z-50 w-64 max-h-40 overflow-y-auto">
                             <div className="grid grid-cols-8 gap-1">
                               {EMOJIS.map((emoji, index) => (
                                 <button
@@ -1357,9 +1354,8 @@ export default function AdminFeedbackPage() {
                                 </button>
                               ))}
                             </div>
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       
                       {/* Botón enviar estilo WhatsApp */}
                       <button
@@ -1367,7 +1363,7 @@ export default function AdminFeedbackPage() {
                         className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 flex-shrink-0"
                         title="Enviar mensaje (Ctrl+Enter)"
                       >
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 transform rotate-45" fill="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
                         </svg>
                       </button>
