@@ -176,6 +176,56 @@ export default function PushNotificationsTestPage() {
     }
   }
 
+  const setupTestUsers = async () => {
+    try {
+      setLoading(true)
+      setSendResult(null)
+
+      console.log('👥 Configurando usuarios de prueba...')
+
+      const response = await fetch('/api/admin/setup-test-users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminEmail: user.email
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setSendResult({
+          success: true,
+          message: `✅ ${result.message}`,
+          details: result.results
+        })
+        console.log('✅ Usuarios de prueba configurados:', result)
+        
+        // Recargar la lista de usuarios después de configurar
+        setTimeout(() => {
+          loadUsers()
+        }, 1000)
+      } else {
+        setSendResult({
+          success: false,
+          message: `❌ Error configurando usuarios: ${result.error}`,
+          details: result
+        })
+        console.error('❌ Error configurando usuarios:', result)
+      }
+
+    } catch (error) {
+      console.error('Error configurando usuarios de prueba:', error)
+      setSendResult({
+        success: false,
+        message: `❌ Error de conexión: ${error.message}`,
+        details: null
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const sendTestNotification = async () => {
     if (!selectedUser) {
       alert('Selecciona un usuario primero')
@@ -363,8 +413,26 @@ export default function PushNotificationsTestPage() {
                     )}
                   </button>
                   
+                  <button
+                    onClick={setupTestUsers}
+                    disabled={loading}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Configurando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>👥</span>
+                        <span>Crear Usuarios Test</span>
+                      </>
+                    )}
+                  </button>
+                  
                   <p className="text-xs text-gray-500 text-center">
-                    Usar "Limpiar Expiradas" para renovar suscripciones antiguas
+                    Sin usuarios? Usa "Crear Usuarios Test" para tener datos de prueba
                   </p>
                 </div>
               </div>
