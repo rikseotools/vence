@@ -365,11 +365,11 @@ export default function PushNotificationsTestPage() {
           message: `❌ Error en verificación: ${result.error}`,
           details: result
         })
-        console.error('❌ Error verificando usuarios:', result)
+        console.log('❌ Error verificando usuarios:', result)
       }
 
     } catch (error) {
-      console.error('Error verificando estado de usuarios:', error)
+      console.log('Error verificando estado de usuarios:', error)
       setSendResult({
         success: false,
         message: `❌ Error de conexión: ${error.message}`,
@@ -434,11 +434,11 @@ export default function PushNotificationsTestPage() {
           message: `❌ Error forzando reactivación: ${result.error}`,
           details: result
         })
-        console.error('❌ Error forzando reactivación:', result)
+        console.log('❌ Error forzando reactivación:', result)
       }
 
     } catch (error) {
-      console.error('Error forzando prompt de reactivación:', error)
+      console.log('Error forzando prompt de reactivación:', error)
       setSendResult({
         success: false,
         message: `❌ Error de conexión: ${error.message}`,
