@@ -641,18 +641,37 @@ export default function PushNotificationManager() {
   return null
 }
 
-// Utility function para convertir VAPID key
+// Utility function para convertir VAPID key con validación mejorada
 function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4)
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/')
+  try {
+    console.log('🔑 Converting VAPID key:', base64String.substring(0, 20) + '...')
+    console.log('🔑 Original length:', base64String.length)
+    
+    const padding = '='.repeat((4 - base64String.length % 4) % 4)
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
 
-  const rawData = window.atob(base64)
-  const outputArray = new Uint8Array(rawData.length)
+    console.log('🔑 With padding:', base64.substring(0, 20) + '...', 'padding:', padding.length)
 
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i)
+    const rawData = window.atob(base64)
+    console.log('🔑 Raw data length:', rawData.length, 'bytes (should be 65)')
+    
+    if (rawData.length !== 65) {
+      console.error('❌ Invalid VAPID key length:', rawData.length, 'expected 65')
+      throw new Error(`Invalid VAPID key length: ${rawData.length}, expected 65`)
+    }
+    
+    const outputArray = new Uint8Array(rawData.length)
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    
+    console.log('✅ VAPID key converted successfully, array length:', outputArray.length)
+    return outputArray
+  } catch (error) {
+    console.error('❌ Error converting VAPID key:', error)
+    throw new Error(`VAPID key conversion failed: ${error.message}`)
   }
-  return outputArray
 }
