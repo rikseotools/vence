@@ -49,17 +49,38 @@ function MultipleCategoriesPsychometricTestContent() {
           return
         }
 
-        // Query para obtener preguntas de todas las categorías seleccionadas
+        // Mapear categorías del frontend a question_subtypes
+        const categoryToSubtypes = {
+          'capacidad-administrativa': ['bar_chart', 'pie_chart', 'line_chart', 'mixed_chart', 'data_table'],
+          'capacidad-ortografica': ['error_detection', 'text_question', 'word_analysis'],
+          'series-numericas': ['sequence_numeric'],
+          'series-alfanumericas': ['sequence'],
+          'series-letras': ['sequence'],
+          'razonamiento-numerico': ['calculation', 'logic'],
+          'razonamiento-verbal': ['analogy', 'comprehension'],
+          'pruebas-instrucciones': ['pattern', 'attention']
+        }
+
+        // Obtener todos los subtypes para las categorías seleccionadas
+        const allowedSubtypes = categories.reduce((acc, category) => {
+          const subtypes = categoryToSubtypes[category] || []
+          return [...acc, ...subtypes]
+        }, [])
+
+        console.log('🔍 Filtering by categories:', categories)
+        console.log('🔍 Allowed subtypes:', allowedSubtypes)
+
+        if (allowedSubtypes.length === 0) {
+          setError('No hay preguntas disponibles para las categorías seleccionadas')
+          return
+        }
+
+        // Query para obtener preguntas de las categorías seleccionadas solamente
         const { data, error: fetchError } = await supabase
           .from('psychometric_questions')
           .select('*')
           .eq('is_active', true)
-          // Expandir a más tipos de preguntas disponibles
-          .in('question_subtype', [
-            'bar_chart', 'pie_chart', 'line_chart', 'mixed_chart',
-            'data_table', 'sequence', 'analogy', 'comprehension',
-            'calculation', 'logic', 'pattern', 'attention'
-          ])
+          .in('question_subtype', allowedSubtypes)
 
         if (fetchError) {
           console.error('❌ Error fetching psychometric questions:', fetchError)

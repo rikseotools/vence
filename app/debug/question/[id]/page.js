@@ -8,6 +8,7 @@ import LineChartQuestion from '../../../../components/LineChartQuestion'
 import MixedChartQuestion from '../../../../components/MixedChartQuestion'
 import ErrorDetectionQuestion from '../../../../components/ErrorDetectionQuestion'
 import WordAnalysisQuestion from '../../../../components/WordAnalysisQuestion'
+import SequenceNumericQuestion from '../../../../components/SequenceNumericQuestion'
 
 export default function QuestionDebugPage() {
   const params = useParams()
@@ -91,6 +92,9 @@ export default function QuestionDebugPage() {
       
       case 'word_analysis':
         return <WordAnalysisQuestion {...questionProps} />
+      
+      case 'sequence_numeric':
+        return <SequenceNumericQuestion {...questionProps} />
       
       case 'text_question':
         return (

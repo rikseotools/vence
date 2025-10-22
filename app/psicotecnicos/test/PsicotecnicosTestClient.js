@@ -20,7 +20,7 @@ export default function PsicotecnicosTestClient() {
       'razonamiento-verbal': ['sinonimos', 'antonimos', 'analogias', 'comprension'],
       'series-alfanumericas': ['series-mixtas', 'patrones-complejos'],
       'series-letras': ['alfabeticas', 'patrones-letras'],
-      'series-numericas': ['aritmeticas', 'geometricas']
+      'series-numericas': ['series-numericas']
     }
     
     Object.keys(allSections).forEach(category => {
@@ -79,7 +79,7 @@ export default function PsicotecnicosTestClient() {
     'razonamiento-verbal': ['sinonimos', 'antonimos', 'analogias', 'comprension'],
     'series-alfanumericas': ['series-mixtas', 'patrones-complejos'],
     'series-letras': ['alfabeticas', 'patrones-letras'],
-    'series-numericas': ['aritmeticas', 'geometricas']
+    'series-numericas': ['series-numericas']
   }
 
   // Función para cargar conteos de todas las categorías principales
@@ -147,7 +147,9 @@ export default function PsicotecnicosTestClient() {
         'razonamiento-verbal': 0,
         'series-alfanumericas': 0,
         'series-letras': 0,
-        'series-numericas': 0
+        'series-numericas': data.filter(q => 
+          q.question_subtype === 'sequence_numeric'
+        ).length
       }
 
       setCategoryQuestionCounts(counts)
@@ -211,6 +213,13 @@ export default function PsicotecnicosTestClient() {
               question.question_subtype === 'word_analysis') {
             // Todas las preguntas de ortografía van a la subcategoría 'ortografia'
             counts['ortografia'] = (counts['ortografia'] || 0) + 1
+          }
+        }
+        // Asignar preguntas de series numéricas
+        else if (categoryKey === 'series-numericas') {
+          if (question.question_subtype === 'sequence_numeric') {
+            // Todas las preguntas de series numéricas van a la subcategoría 'series-numericas'
+            counts['series-numericas'] = (counts['series-numericas'] || 0) + 1
           }
         }
         // Para otras categorías, NO asignar preguntas aleatorias - solo si realmente corresponden
@@ -413,17 +422,22 @@ export default function PsicotecnicosTestClient() {
                 </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
                   <span className="text-sm text-gray-600 order-2 sm:order-1">
-                    {getSelectedSectionsCount(categoryKey)}/{(blockSections[categoryKey] || []).length} subcategorías • {categoryQuestionCounts[categoryKey] || 0} preguntas
+                    {(blockSections[categoryKey] || []).length > 1 
+                      ? `${getSelectedSectionsCount(categoryKey)}/${(blockSections[categoryKey] || []).length} subcategorías • ${categoryQuestionCounts[categoryKey] || 0} preguntas`
+                      : `${categoryQuestionCounts[categoryKey] || 0} pregunta${(categoryQuestionCounts[categoryKey] || 0) !== 1 ? 's' : ''}`
+                    }
                   </span>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleBlockClick(categoryKey)
-                    }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors order-1 sm:order-2 self-start sm:self-auto"
-                  >
-                    Configurar
-                  </button>
+                  {(blockSections[categoryKey] || []).length > 1 && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleBlockClick(categoryKey)
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors order-1 sm:order-2 self-start sm:self-auto"
+                    >
+                      Configurar
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

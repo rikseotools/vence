@@ -9,6 +9,7 @@ import LineChartQuestion from './LineChartQuestion'
 import MixedChartQuestion from './MixedChartQuestion'
 import ErrorDetectionQuestion from './ErrorDetectionQuestion'
 import WordAnalysisQuestion from './WordAnalysisQuestion'
+import SequenceNumericQuestion from './SequenceNumericQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 
@@ -45,6 +46,13 @@ export default function PsychometricTestLayout({
 
   const currentQ = questions[currentQuestion]
   const totalQuestions = questions.length
+
+  // Función para obtener el conteo de intentos de una pregunta
+  const getAttemptCount = (questionId) => {
+    // En el sistema actual, cada pregunta se intenta solo una vez por sesión
+    // Retornar 0 para indicar primer intento
+    return 0
+  }
 
   // Crear sesión de test al iniciar (solo para usuarios logueados)
   useEffect(() => {
@@ -341,6 +349,18 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={0}
+          />
+        )
+      
+      case 'sequence_numeric':
+        return (
+          <SequenceNumericQuestion
+            question={currentQ}
+            onAnswer={handleAnswer}
+            selectedAnswer={selectedAnswer}
+            showResult={showResult}
+            isAnswering={isAnswering}
+            attemptCount={getAttemptCount(currentQ.id)}
           />
         )
       
