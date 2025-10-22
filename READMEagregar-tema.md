@@ -665,7 +665,7 @@ WHERE l.short_name = 'LEY' AND a.article_number IN ('NUEVOS');
 🎯 SISTEMA OBLIGATORIO: 0=A, 1=B, 2=C, 3=D
 ```
 
-#### 2️⃣ **Plantilla SQL**
+#### 2️⃣ **Plantilla SQL para Preguntas Normales**
 ```sql
 INSERT INTO questions (
   primary_article_id,
@@ -680,7 +680,7 @@ INSERT INTO questions (
   question_type,         -- 'single'
   tags,                  -- ARRAY['tag1', 'tag2']
   is_active,             -- true
-  is_official_exam       -- true=oficial, false=normal
+  is_official_exam       -- false=pregunta normal
 ) VALUES (
   (SELECT id FROM articles WHERE article_number = 'NUM' AND law_id = (SELECT id FROM laws WHERE short_name = 'LEY')),
   'Texto de la pregunta...',
@@ -694,9 +694,67 @@ INSERT INTO questions (
   'single',
   ARRAY['tag1', 'tag2'],
   true,
-  false -- false=pregunta normal, true=examen oficial
+  false -- PREGUNTA NORMAL
 );
 ```
+
+#### 2️⃣ **Plantilla SQL para Preguntas OFICIALES** ⭐ **NUEVA**
+```sql
+INSERT INTO questions (
+  primary_article_id,
+  question_text,
+  option_a,
+  option_b, 
+  option_c,
+  option_d,
+  correct_option,        -- ⚠️ 0=A, 1=B, 2=C, 3=D
+  explanation,
+  difficulty,            -- 'easy', 'medium', 'hard', 'extreme'
+  question_type,         -- 'single'
+  tags,                  -- ARRAY['tag1', 'tag2']
+  is_active,             -- true
+  is_official_exam,      -- ⚠️ TRUE=EXAMEN OFICIAL
+  exam_source,           -- ⚠️ CAMPO OBLIGATORIO para oficiales
+  exam_date,             -- ⚠️ CAMPO RECOMENDADO para oficiales
+  exam_entity            -- ⚠️ CAMPO RECOMENDADO para oficiales
+) VALUES (
+  (SELECT id FROM articles WHERE article_number = 'NUM' AND law_id = (SELECT id FROM laws WHERE short_name = 'LEY')),
+  'Texto de la pregunta...',
+  'Opción A',
+  'Opción B',
+  'Opción C', 
+  'Opción D',
+  X, -- 0, 1, 2 o 3
+  'Explicación detallada...',
+  'medium',
+  'single',
+  ARRAY['tag1', 'tag2'],
+  true,
+  true,                           -- ⚠️ TRUE=EXAMEN OFICIAL
+  'Examen AEAT 2023',            -- ⚠️ Fuente del examen oficial
+  '2023-06-15',                  -- ⚠️ Fecha del examen (YYYY-MM-DD)
+  'Agencia Estatal de Administración Tributaria'  -- ⚠️ Entidad organizadora
+);
+```
+
+#### 📋 **REQUISITOS para Preguntas OFICIALES** ⭐ **NUEVA SECCIÓN**
+
+**🚨 CAMPOS OBLIGATORIOS:**
+- `is_official_exam: true` - Marca la pregunta como oficial
+- `exam_source` - Fuente del examen (ej: "Examen AEAT 2023", "Convocatoria AGE 2022")
+
+**🔸 CAMPOS RECOMENDADOS:**
+- `exam_date` - Fecha del examen en formato YYYY-MM-DD
+- `exam_entity` - Entidad que organizó el examen
+
+**✅ EJEMPLOS de exam_source:**
+- "Examen AEAT 2023"
+- "Convocatoria AGE 2022"
+- "Oposición Auxiliar Administrativo 2021"
+- "Examen Ministerio Justicia 2024"
+
+**❌ NUNCA dejar en NULL:**
+- Si es `is_official_exam: true` → `exam_source` debe tener valor
 
 #### 3️⃣ **Verificar**
 ```sql

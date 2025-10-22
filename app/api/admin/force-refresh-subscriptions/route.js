@@ -76,15 +76,17 @@ export async function POST(request) {
         
         const subscription = JSON.parse(userSetting.push_subscription)
         
-        // Intentar enviar una notificación silenciosa de verificación
+        // Intentar enviar una notificación silenciosa de verificación (solo para admins en testing)
         const testPayload = {
           title: 'Test de verificación',
           body: 'Verificando validez de suscripción',
           silent: true,
           tag: 'subscription-check',
+          requireInteraction: false,
           data: { 
             type: 'subscription_check',
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            adminTesting: true
           }
         }
 
