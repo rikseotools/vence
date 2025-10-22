@@ -98,17 +98,18 @@ export async function POST(request) {
         url: '/test/aleatorio?from=admin_test',
         timestamp: Date.now(),
         testSentBy: 'admin_test_panel',
+        domain: 'Vence.es', // Personalizar el nombre del dominio
         ...data
       },
       actions: [
         {
           action: 'study',
-          title: '🎯 Estudiar Ahora',
+          title: '📚 Estudiar',
           icon: '/icon-study.png'
         },
         {
           action: 'later',
-          title: '⏰ Más Tarde',
+          title: '⏰ Después',
           icon: '/icon-later.png'
         }
       ],

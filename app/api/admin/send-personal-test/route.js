@@ -117,12 +117,12 @@ export async function POST(request) {
       actions: [
         {
           action: 'study',
-          title: '📚 Ir a Vence',
+          title: '📚 Estudiar',
           icon: '/icon-study.png'
         },
         {
           action: 'dismiss',
-          title: '❌ Cerrar',
+          title: '⏰ Después',
           icon: '/icon-dismiss.png'
         }
       ],

@@ -64,12 +64,12 @@ self.addEventListener('push', (event) => {
     actions: [
       {
         action: 'study',
-        title: '🎯 Estudiar Ahora',
+        title: '📚 Estudiar',
         icon: '/icon-study.png'
       },
       {
         action: 'later',
-        title: '⏰ Más Tarde',
+        title: '⏰ Después',
         icon: '/icon-later.png'
       }
     ],
@@ -155,7 +155,7 @@ function personalizeNotification(data) {
       },
       {
         action: 'dismiss',
-        title: '❌ Ignorar',
+        title: '⏰ Después',
         icon: '/icon-dismiss.png'
       }
     ]
