@@ -70,71 +70,30 @@ export default function PushNotificationsTestPage() {
     try {
       setLoading(true)
       
-      // Cargar usuarios con configuración de notificaciones usando join manual
-      const { data: usersData, error } = await supabase
-        .from('user_profiles')
-        .select(`
-          id,
-          email,
-          full_name,
-          created_at
-        `)
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (error) throw error
-
-      // Cargar configuraciones de notificación por separado
-      const userIds = usersData?.map(u => u.id) || []
+      console.log('🔍 Cargando usuarios con push habilitado via API...')
       
-      if (userIds.length === 0) {
-        setUsers([])
-        setFilteredUsers([])
-        return
-      }
-
-      const { data: notificationSettings, error: nsError } = await supabase
-        .from('user_notification_settings')
-        .select('user_id, push_enabled, push_subscription, created_at')
-        .in('user_id', userIds)
-
-      if (nsError) {
-        console.error('Error loading notification settings:', nsError)
-        // Continuar sin configuraciones de notificación
-      }
-
-      // Combinar datos y filtrar solo usuarios con push habilitado
-      console.log('🔍 DEBUG Frontend - Datos recibidos:')
-      console.log('  - Users data:', usersData?.length || 0)
-      console.log('  - Notification settings:', notificationSettings?.length || 0)
-      
-      const usersWithPush = usersData?.filter(user => {
-        const userSettings = notificationSettings?.find(ns => ns.user_id === user.id)
-        const hasSettings = !!userSettings
-        const pushEnabled = userSettings?.push_enabled
-        const hasSubscription = !!userSettings?.push_subscription
-        
-        console.log(`🔍 Checking ${user.email}:`, { hasSettings, pushEnabled, hasSubscription })
-        
-        return userSettings && 
-               userSettings.push_enabled && 
-               userSettings.push_subscription
-      }).map(user => {
-        const userSettings = notificationSettings?.find(ns => ns.user_id === user.id)
-        return {
-          ...user,
-          user_notification_settings: userSettings
-        }
-      }) || []
-
-      console.log('🎯 Frontend result:', usersWithPush.length, 'usuarios filtrados')
-      usersWithPush.forEach((user, i) => {
-        console.log(`  ${i+1}. ${user.email} (${user.full_name})`)
+      const response = await fetch('/api/admin/load-users-with-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
       })
 
-      setUsers(usersWithPush)
-      setFilteredUsers(usersWithPush)
-      console.log(`✅ Cargados ${usersWithPush.length} usuarios con push habilitado`)
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error cargando usuarios')
+      }
+
+      console.log('📊 API Response:', result)
+      console.log('👥 Usuarios cargados:', result.users?.length || 0)
+      console.log('📊 Stats:', result.stats)
+
+      result.users?.forEach((user, i) => {
+        console.log(`  ${i+1}. ${user.email} (${user.full_name}) - Push: ${user.user_notification_settings?.push_enabled ? 'ON' : 'OFF'}`)
+      })
+
+      setUsers(result.users || [])
+      setFilteredUsers(result.users || [])
+      console.log(`✅ ${result.message}`)
 
     } catch (error) {
       console.error('Error loading users:', error)
@@ -663,7 +622,9 @@ export default function PushNotificationsTestPage() {
                             <div className="font-medium text-gray-800">{u.full_name || 'Sin nombre'}</div>
                             <div className="text-sm text-gray-600">{u.email}</div>
                           </div>
-                          <div className="text-xs text-green-600">🔔 Push ON</div>
+                          <div className={`text-xs ${u.user_notification_settings?.push_enabled ? 'text-green-600' : 'text-red-600'}`}>
+                            {u.user_notification_settings?.push_enabled ? '🔔 Push ON' : '🔕 Push OFF'}
+                          </div>
                         </div>
                       </div>
                     ))

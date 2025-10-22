@@ -22,66 +22,7 @@ export default function PushNotificationManager() {
       checkNotificationSupport()
       loadUserSettings()
       
-      // 🔄 Verificación inicial inteligente solo si han pasado 2+ días
-      // (Sin verificación automática al cargar la página)
-      
-      // 🕐 Verificación super eficiente - cada 2 días para usuarios con push habilitado
-      let verificationInterval = null
-      let lastVerification = Date.now()
-      
-      const getLastVerificationTime = () => {
-        // Obtener la última verificación desde localStorage para persistir entre sesiones
-        const stored = localStorage.getItem('vence_last_push_verification')
-        return stored ? parseInt(stored) : 0
-      }
-      
-      const setLastVerificationTime = (timestamp) => {
-        localStorage.setItem('vence_last_push_verification', timestamp.toString())
-        lastVerification = timestamp
-      }
-      
-      const shouldVerifyToday = () => {
-        const lastCheck = getLastVerificationTime()
-        const now = Date.now()
-        const twoDaysInMs = 2 * 24 * 60 * 60 * 1000 // 2 días
-        
-        return (now - lastCheck) >= twoDaysInMs
-      }
-      
-      const startSmartVerification = () => {
-        // Solo verificar si:
-        // 1. Han pasado al menos 2 DÍAS desde la última verificación
-        // 2. Tiene push habilitado (para detectar si se desactivó)
-        if (verificationInterval) return // Ya está corriendo
-        
-        // Verificar cada 6 horas, pero solo ejecutar si han pasado 2+ días
-        verificationInterval = setInterval(() => {
-          if (document.visibilityState === 'visible' && 
-              shouldVerifyToday() && 
-              notificationState.settings?.push_enabled) {
-            console.log('🔍 Verificación programada (cada 2 días)')
-            refreshSubscriptionIfExpired()
-            setLastVerificationTime(Date.now())
-          }
-        }, 6 * 60 * 60 * 1000) // Chequear cada 6 horas
-      }
-      
-      // Verificación al iniciar sesión - solo si han pasado 2+ días
-      const handleInitialCheck = () => {
-        if (shouldVerifyToday() && notificationState.settings?.push_enabled) {
-          console.log('🔍 Verificación inicial (han pasado 2+ días)')
-          refreshSubscriptionIfExpired()
-          setLastVerificationTime(Date.now())
-        }
-      }
-      
-      // Verificación inmediata SOLO al iniciar si han pasado 2+ días
-      handleInitialCheck()
-      
-      // Iniciar verificación inteligente solo si tiene push habilitado
-      if (notificationState.settings?.push_enabled) {
-        startSmartVerification()
-      }
+      // Las verificaciones automáticas se ejecutan en un useEffect separado después de cargar configuraciones
       
       // 📊 TRACKING: Listener para errores globales del navegador móvil
       const handleGlobalError = async (event) => {
@@ -135,14 +76,94 @@ export default function PushNotificationManager() {
       
       // Cleanup
       return () => {
-        if (verificationInterval) {
-          clearInterval(verificationInterval)
-        }
         window.removeEventListener('error', handleGlobalError)
         window.removeEventListener('unhandledrejection', handleUnhandledRejection)
       }
     }
   }, [user, supabase])
+
+  // useEffect para verificaciones automáticas - se ejecuta DESPUÉS de cargar configuraciones
+  useEffect(() => {
+    if (!notificationState.settings || !user || !supabase) return
+    
+    console.log('🔧 Configuraciones cargadas, iniciando sistema de verificación automática...')
+    
+    // Funciones de verificación automática (movidas aquí desde el useEffect anterior)
+    let verificationInterval = null
+    
+    const getLastVerificationTime = () => {
+      const stored = localStorage.getItem('vence_last_push_verification')
+      return stored ? parseInt(stored) : 0
+    }
+    
+    const setLastVerificationTime = (timestamp) => {
+      localStorage.setItem('vence_last_push_verification', timestamp.toString())
+    }
+    
+    const shouldVerifyToday = () => {
+      const lastCheck = getLastVerificationTime()
+      const now = Date.now()
+      const twoDaysInMs = 2 * 24 * 60 * 60 * 1000 // 2 días
+      const daysSince = (now - lastCheck) / (24 * 60 * 60 * 1000)
+      
+      console.log(`🕐 Sistema verificación automática:`, {
+        lastCheck: lastCheck > 0 ? new Date(lastCheck).toLocaleString() : 'Nunca',
+        daysSince: daysSince.toFixed(1),
+        shouldVerify: (now - lastCheck) >= twoDaysInMs,
+        pushEnabled: notificationState.settings?.push_enabled
+      })
+      
+      return (now - lastCheck) >= twoDaysInMs
+    }
+    
+    const startSmartVerification = () => {
+      if (verificationInterval) return // Ya está corriendo
+      
+      console.log('🚀 Iniciando sistema de verificación automática (cada 6h, ejecuta cada 2 días)')
+      
+      // Verificar cada 6 horas, pero solo ejecutar si han pasado 2+ días
+      verificationInterval = setInterval(() => {
+        console.log('⏰ Tick verificación (cada 6h) - evaluando condiciones...')
+        if (document.visibilityState === 'visible' && 
+            shouldVerifyToday() && 
+            notificationState.settings?.push_enabled) {
+          console.log('🔍 Verificación programada (cada 2 días)')
+          refreshSubscriptionIfExpired()
+          setLastVerificationTime(Date.now())
+        } else {
+          console.log('⏸️ Verificación omitida:', {
+            visible: document.visibilityState === 'visible',
+            shouldVerify: shouldVerifyToday(),
+            pushEnabled: notificationState.settings?.push_enabled
+          })
+        }
+      }, 6 * 60 * 60 * 1000) // Chequear cada 6 horas
+    }
+    
+    // Verificación al cargar - solo si han pasado 2+ días
+    const handleInitialCheck = () => {
+      if (shouldVerifyToday() && notificationState.settings?.push_enabled) {
+        console.log('🔍 Verificación inicial (han pasado 2+ días)')
+        refreshSubscriptionIfExpired()
+        setLastVerificationTime(Date.now())
+      }
+    }
+    
+    // Ejecutar verificación inicial
+    handleInitialCheck()
+    
+    // Iniciar verificación periódica si tiene push habilitado
+    if (notificationState.settings?.push_enabled) {
+      startSmartVerification()
+    }
+    
+    // Cleanup
+    return () => {
+      if (verificationInterval) {
+        clearInterval(verificationInterval)
+      }
+    }
+  }, [notificationState.settings, user, supabase])
 
   const checkNotificationSupport = () => {
     const supported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window

@@ -34,7 +34,7 @@ export async function POST(request) {
     // Obtener configuraciones de notificaciones por separado
     const { data: notificationSettings, error: settingsError } = await supabase
       .from('user_notification_settings')
-      .select('user_id, push_enabled, push_subscription, created_at, updated_at, disabled_reason')
+      .select('user_id, push_enabled, push_subscription, created_at, updated_at')
 
     if (settingsError) {
       console.error('❌ Error obteniendo configuraciones:', settingsError)
@@ -84,10 +84,6 @@ export async function POST(request) {
             statusLabel = '⚠️ Suscripción inválida'
             details = 'Configuración corrupta, necesita reconfiguración'
           }
-        } else if (userSettings.disabled_reason) {
-          status = 'disabled'
-          statusLabel = '🔴 Desactivado'
-          details = `Desactivado: ${userSettings.disabled_reason}`
         } else {
           status = 'inactive'
           statusLabel = '🔴 Inactivo'

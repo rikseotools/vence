@@ -25,8 +25,6 @@ export async function POST(request) {
       .update({
         push_enabled: false,
         push_subscription: null,
-        disabled_reason: reason,
-        disabled_at: timestamp || new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('user_id', userId)

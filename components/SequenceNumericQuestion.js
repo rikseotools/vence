@@ -155,7 +155,9 @@ export default function SequenceNumericQuestion({
                   <p><strong>✅ Siguiente término:</strong> 5 (porque 7 - 2 = 5)</p>
                 </div>
               ) : (
-                <p>{question.explanation}</p>
+                <div className="whitespace-pre-line">
+                  {question.explanation}
+                </div>
               )}
             </div>
           </div>

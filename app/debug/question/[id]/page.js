@@ -18,6 +18,8 @@ export default function QuestionDebugPage() {
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [showResult, setShowResult] = useState(false)
   const [attemptCount, setAttemptCount] = useState(0)
+  const [categoryQuestions, setCategoryQuestions] = useState([])
+  const [currentIndex, setCurrentIndex] = useState(0)
 
   useEffect(() => {
     if (params.id) {
@@ -36,11 +38,43 @@ export default function QuestionDebugPage() {
       }
 
       setQuestion(data.question)
+      
+      // Obtener todas las preguntas de la misma categoría
+      await fetchCategoryQuestions(data.question.category_id, data.question.id)
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchCategoryQuestions = async (categoryId, currentQuestionId) => {
+    try {
+      const response = await fetch(`/api/debug/category/${categoryId}/questions`)
+      const data = await response.json()
+
+      if (response.ok && data.questions) {
+        setCategoryQuestions(data.questions)
+        const index = data.questions.findIndex(q => q.id === currentQuestionId)
+        setCurrentIndex(index >= 0 ? index : 0)
+      }
+    } catch (err) {
+      console.error('Error fetching category questions:', err)
+    }
+  }
+
+  const navigateToQuestion = (direction) => {
+    if (categoryQuestions.length === 0) return
+    
+    let newIndex
+    if (direction === 'next') {
+      newIndex = currentIndex < categoryQuestions.length - 1 ? currentIndex + 1 : 0
+    } else {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : categoryQuestions.length - 1
+    }
+    
+    const newQuestionId = categoryQuestions[newIndex].id
+    window.location.href = `/debug/question/${newQuestionId}`
   }
 
   const handleAnswer = (optionIndex) => {

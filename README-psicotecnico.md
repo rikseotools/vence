@@ -1673,3 +1673,204 @@ case 'text_question':
 ```
 
 Este sistema proporciona una base sólida para evaluar la capacidad ortográfica en oposiciones, con explicaciones educativas que ayudan al aprendizaje.
+
+## 🔧 Sistema de Debug y Testing
+
+### Debug Batch - Navegación Entre Preguntas
+
+El sistema incluye una funcionalidad completa para revisar múltiples preguntas de forma secuencial mediante **Debug Batch**.
+
+#### URL Principal
+```
+http://localhost:3000/debug/batch
+```
+
+#### Funcionalidades Disponibles
+
+**🎮 Navegación Completa:**
+- ✅ Botones "Anterior" y "Siguiente" para navegación secuencial
+- ✅ Navegación rápida por números (1, 2, 3, etc.) en la parte superior  
+- ✅ Contador de posición: "Pregunta X de Y"
+- ✅ Enlaces individuales a cada pregunta desde el lote
+
+**🔍 Funciones de Debug:**
+- ✅ Reset de pregunta para volver a intentar
+- ✅ Contador de intentos en tiempo real
+- ✅ Información técnica completa (ID, componente, fecha)
+- ✅ Link directo a pregunta individual (`/debug/question/[id]`)
+
+#### Configuración del Lote
+
+El archivo `/app/debug/batch/page.js` se puede configurar para diferentes categorías:
+
+```javascript
+// Ejemplo: Lote de Series Numéricas
+const currentBatch = {
+  name: "Lote Series Numéricas - Preguntas 1-3",
+  startNumber: 1,
+  questionIds: [
+    'fb259e88-f01c-4105-885c-1e1da63d5b84', // Serie: 11, 11, 9, 9, 7, 7, ?
+    '1bf0664e-3b99-4d82-94cf-79dfee0f6bf9', // Series con interrogantes
+    'cd274a48-9d61-4d02-9585-6b66d9af5772'  // Serie: 1-3-5-7-9-11-?
+  ]
+}
+```
+
+#### Componentes Soportados
+
+El sistema de debug batch soporta todos los tipos de pregunta psicotécnica:
+
+- `bar_chart` → BarChartQuestion
+- `pie_chart` → PieChartQuestion  
+- `line_chart` → LineChartQuestion
+- `data_tables` → DataTableQuestion
+- `mixed_chart` → MixedChartQuestion
+- `error_detection` → ErrorDetectionQuestion
+- `word_analysis` → WordAnalysisQuestion
+- `sequence_numeric` → SequenceNumericQuestion
+- `text_question` → Renderizado inline
+
+#### Casos de Uso
+
+**📊 Para Desarrolladores:**
+- Probar componentes nuevos rápidamente
+- Verificar renderizado de explicaciones
+- Navegar entre preguntas sin cambiar URLs
+
+**📝 Para Content Creators:**
+- Revisar lotes completos de preguntas
+- Validar consistencia visual
+- Probar flujo de usuario completo
+
+**🎯 Para QA:**
+- Testing sistemático de categorías
+- Verificar funcionalidad de componentes
+- Documentar bugs por lotes
+
+#### Ejemplo de Navegación
+
+1. **Acceder**: http://localhost:3000/debug/batch
+2. **Navegar**: Usar botones "Anterior/Siguiente" o números
+3. **Resetear**: Botón "🔄 Reiniciar Pregunta" si ya respondiste
+4. **Abrir individual**: Click en "Abrir en nueva pestaña"
+
+Este sistema facilita enormemente el proceso de desarrollo, testing y validación de contenido psicotécnico. 🚀
+
+### 🧩 Desarrollo de Nuevos Componentes de Pregunta
+
+#### Principio Fundamental
+**Cada tipo de pregunta (`question_subtype`) necesita su propio componente React especializado.**
+
+#### Proceso de Creación de Nuevos Tipos
+
+**1. Crear el Componente:**
+```javascript
+// /components/MiNuevoTipoPregunta.js
+'use client'
+import { useState, useEffect } from 'react'
+
+export default function MiNuevoTipoPregunta({ 
+  question, onAnswer, selectedAnswer, showResult, isAnswering, attemptCount = 0 
+}) {
+  // Lógica específica del tipo de pregunta
+  // ...
+  
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-8">
+      {/* UI específica para este tipo */}
+    </div>
+  )
+}
+```
+
+**2. Registrar en PsychometricTestLayout.js:**
+```javascript
+// Importar el componente
+import MiNuevoTipoPregunta from './MiNuevoTipoPregunta'
+
+// Añadir case en renderQuestion()
+switch (currentQ.question_subtype) {
+  case 'mi_nuevo_tipo':
+    return (
+      <MiNuevoTipoPregunta
+        question={currentQ}
+        onAnswer={handleAnswer}
+        selectedAnswer={selectedAnswer}
+        showResult={showResult}
+        isAnswering={isAnswering}
+        attemptCount={getAttemptCount(currentQ.id)}
+      />
+    )
+  // ... otros casos
+}
+```
+
+**3. Añadir al Debug Individual:**
+```javascript
+// /app/debug/question/[id]/page.js
+import MiNuevoTipoPregunta from '../../../../components/MiNuevoTipoPregunta'
+
+// Añadir case en renderQuestion()
+case 'mi_nuevo_tipo':
+  return <MiNuevoTipoPregunta {...questionProps} />
+```
+
+**4. Añadir al Debug Batch:**
+```javascript
+// /app/debug/batch/page.js  
+import MiNuevoTipoPregunta from '../../../components/MiNuevoTipoPregunta'
+
+// Añadir case en renderQuestion()
+case 'mi_nuevo_tipo':
+  return <MiNuevoTipoPregunta {...questionProps} />
+```
+
+**5. Actualizar Ejecutor de Tests:**
+```javascript
+// /app/psicotecnicos/test/ejecutar/PsychometricTestExecutor.js
+const categoryToSubtypes = {
+  'mi-categoria': ['mi_nuevo_tipo'],
+  // ... otras categorías
+}
+```
+
+#### Ejemplo Completo: SequenceNumericQuestion
+
+**Componente creado:**
+- `/components/SequenceNumericQuestion.js`
+- Maneja `question_subtype: 'sequence_numeric'`
+- UI especializada para series numéricas
+- Procesamiento de explicaciones con `whitespace-pre-line`
+
+**Integración realizada:**
+- ✅ PsychometricTestLayout.js (case 'sequence_numeric')
+- ✅ Debug individual (case 'sequence_numeric') 
+- ✅ Debug batch (case 'sequence_numeric')
+- ✅ Ejecutor de tests (categoryToSubtypes mapping)
+
+#### Estructura de Props Estándar
+
+Todos los componentes de pregunta reciben las mismas props:
+
+```javascript
+{
+  question,           // Objeto completo de la pregunta
+  onAnswer,          // Función callback para responder
+  selectedAnswer,    // Índice de respuesta seleccionada (0,1,2,3)
+  showResult,        // Boolean si mostrar resultado
+  isAnswering,       // Boolean si está procesando respuesta
+  attemptCount       // Número de intentos realizados
+}
+```
+
+#### Checklist para Nuevos Tipos
+
+- [ ] 📝 Crear componente en `/components/`
+- [ ] 🔗 Importar y registrar en PsychometricTestLayout.js
+- [ ] 🐛 Añadir soporte en debug individual 
+- [ ] 🔄 Añadir soporte en debug batch
+- [ ] ⚙️ Configurar mapping en ejecutor de tests
+- [ ] 🧪 Crear preguntas de ejemplo
+- [ ] 📖 Documentar en README-psicotecnico.md
+
+Este sistema modular permite añadir fácilmente nuevos tipos de preguntas manteniendo consistencia en toda la aplicación. 🎯

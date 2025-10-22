@@ -8,6 +8,7 @@ import LineChartQuestion from '../../../components/LineChartQuestion'
 import MixedChartQuestion from '../../../components/MixedChartQuestion'
 import ErrorDetectionQuestion from '../../../components/ErrorDetectionQuestion'
 import WordAnalysisQuestion from '../../../components/WordAnalysisQuestion'
+import SequenceNumericQuestion from '../../../components/SequenceNumericQuestion'
 
 export default function BatchDebugPage() {
   const [questions, setQuestions] = useState([])
@@ -21,32 +22,29 @@ export default function BatchDebugPage() {
 
   // 🔄 ACTUALIZAR ESTOS IDs PARA CADA NUEVO LOTE
   const currentBatch = {
-    name: "Lote Ortografía - Preguntas 1-23",
+    name: "Lote Series Numéricas - 17 Preguntas (01-03, 05-19, sin 04 y 11)",
     startNumber: 1,
     questionIds: [
-      '6bbaddb7-49cb-404e-9d4b-d23a79ca89c7', // Pregunta 1
-      '12a64e03-f9ba-4694-b797-43331089be17', // Pregunta 2
-      'f84431da-aea0-46f6-96e9-d2f7e9d90f24', // Pregunta 3
-      '06ec1285-47c8-4497-be97-947458dce4bf', // Pregunta 4
-      '7d023583-cd28-46e9-9f4e-0385145dd6a7', // Pregunta 5
-      '752f118f-2689-41b8-a39b-dadb22d0be8f', // Pregunta 6
-      '9d0bc41a-c6cc-40f5-a565-48c53228fb15', // Pregunta 7
-      '5a9cfb75-5639-479a-b70e-6764a0b7eef5', // Pregunta 8
-      'b4689735-6aca-4e00-88f7-9813de427e30', // Pregunta 9
-      '92187834-624c-4057-8127-840ad20ad4b0', // Pregunta 10
-      '6d5351a1-39fb-4c4b-ba8b-61268bc97691', // Pregunta 11 (antes 12)
-      '82087fbd-a314-4545-803b-3043ec40f60c', // Pregunta 12 (antes 13)
-      '0cca1edb-3449-4067-abf6-8340e984df85', // Pregunta 13 (antes 14)
-      'adea4c43-7fc4-49a3-98a1-4df539bde3c5', // Pregunta 14 (antes 15)
-      'ad521f27-e74c-467a-9c64-fa60ee19377b', // Pregunta 15 (antes 16)
-      'ea1c9b6d-88a8-4993-9ab9-31708b114f62', // Pregunta 16 (antes 17)
-      'b3138eff-9163-46f3-8398-53bb38036f6f', // Pregunta 17 (antes 18)
-      '58ed4b14-e676-4fc3-90ae-b9fc96f7ce32', // Pregunta 18 (antes 19)
-      '2d23989c-d8ea-40f1-9a10-1079f15cad81', // Pregunta 19 (antes 20)
-      '7d509265-3458-4868-9fa2-e4d29651c709', // Pregunta 20 (antes 21)
-      'f6bbf2b9-df02-462c-b5e4-dface6b0b6a4', // Pregunta 21 (antes 22)
-      'ab657fc5-5e48-4289-8551-63ceb6c3bb2d', // Pregunta 22 (antes 23)
-      '806f1391-60e5-4381-a8d2-df2709ba0814'  // Pregunta 23 (antes 24)
+      'fb259e88-f01c-4105-885c-1e1da63d5b84', // 01: Continúa la siguiente serie numérica: 11, 11, 9, 9, 7, 7, ?
+      '1bf0664e-3b99-4d82-94cf-79dfee0f6bf9', // 02: Dada la siguiente serie numérica, averigüe el valor de los interrogantes
+      'cd274a48-9d61-4d02-9585-6b66d9af5772', // 03: Indique el número que continúa la serie: 1-3-5-7-9-11-?
+      // Pregunta 04 está pendiente de identificar
+      // Nuevo lote 2025-10-22
+      'b2654a77-8b4a-4535-b9be-655af170f51a', // 05: Series intercaladas: 21, 26, 32, 37, 44, 49, 57, ?
+      'b7af7b1a-cb01-4184-8a31-0f4ad037ab08', // 06: Series correlativas: 99, 96, 94, 91, 89, 86, ?
+      '5c98f1cc-c5cc-4b4f-b344-95844f73e9e7', // 07: Series intercaladas: 1, 2, 1, 3, 1, 4, ?
+      'e76317de-25c1-474f-8b5d-0a9fcd31877d', // 08: Series con fracciones: 12/6, 12/4, 12/3, 5, 12/2, 7, ?
+      'de886620-1313-4f27-9eea-6ba7865474fc', // 09: Series correlativas: 6, 26, 44, 60, 74, 86, ?
+      '70e9c3c1-ceaa-49a4-b26e-a0eb0b40799c', // 10: Series numéricas: 4, 11, 32, 95, ?
+      // 'd3304f01-0296-419f-bd82-bab420e18a81', // 11: Series de letras: H, H, I, J, H, K, L, M, H, N, Ñ, O, ? (ELIMINADA)
+      '98bf406b-1ae6-4566-831f-f5d766abe4a6', // 12: Series correlativas: 83, 84, 86, 89, 93, 98, ?
+      '1a750bb9-6bb6-4092-b4db-c4cc09d8cf50', // 13: Series correlativas: 28, 27, 25, 22, 18, 13, ?
+      '847f5bdd-1524-45e5-9a01-9f6603b7f4e5', // 14: Series intercaladas: 3, 2, 4, 2, 5, 2, ?
+      '292ba6c3-1383-4ab1-aac9-44be32dcbbe6', // 15: Series cíclicas: 8, 10, 13, 17, 19, 22, 26, ?
+      'a6695969-ab69-4b09-8c0f-00b3ad48d029', // 16: Series intercaladas: 9, 5, 7, 4, 5, 3, 3, 2, ?
+      '6ce02744-c0a6-4718-94ce-a535b41e8124', // 17: Series numéricas: 2, 5, 10, 13, 26, 29, ?
+      '3eb6143c-3e33-48a7-a8f0-ac50441e8c44', // 18: Series correlativas: 22, 44, 88, 176, 352, 704, ?
+      '706bd23d-12b7-4326-b308-07d464126925'  // 19: Series correlativas: 5, 18, 33, 50, 69, 90, ?
     ]
   }
 
@@ -161,6 +159,9 @@ export default function BatchDebugPage() {
       
       case 'word_analysis':
         return <WordAnalysisQuestion {...questionProps} />
+      
+      case 'sequence_numeric':
+        return <SequenceNumericQuestion {...questionProps} />
       
       case 'text_question':
         return (

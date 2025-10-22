@@ -41,10 +41,6 @@ export async function POST(request) {
         user_id: userId,
         push_enabled: false,
         push_subscription: null,
-        forced_reactivation: true,
-        forced_by: forcedBy || 'admin',
-        forced_at: new Date().toISOString(),
-        disabled_reason: 'admin_forced_reactivation',
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' })
 
