@@ -329,6 +329,126 @@ export default function PushNotificationsTestPage() {
     }
   }
 
+  // 🔍 Verificar el estado de notificaciones push de todos los usuarios
+  const checkAllUsersStatus = async () => {
+    try {
+      setLoading(true)
+      setSendResult(null)
+
+      console.log('🔍 Verificando estado de push de todos los usuarios...')
+
+      const response = await fetch('/api/admin/check-all-push-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setSendResult({
+          success: true,
+          message: `✅ Verificación completada: ${result.stats.totalUsers} usuarios analizados`,
+          details: {
+            stats: result.stats,
+            summary: `🟢 ${result.stats.activeUsers} activos | 🔴 ${result.stats.inactiveUsers} inactivos | ⚠️ ${result.stats.expiredUsers} expirados`
+          }
+        })
+        console.log('✅ Estado de usuarios verificado:', result)
+        
+        // Recargar la lista después de la verificación
+        setTimeout(() => {
+          loadUsers()
+        }, 1000)
+      } else {
+        setSendResult({
+          success: false,
+          message: `❌ Error en verificación: ${result.error}`,
+          details: result
+        })
+        console.error('❌ Error verificando usuarios:', result)
+      }
+
+    } catch (error) {
+      console.error('Error verificando estado de usuarios:', error)
+      setSendResult({
+        success: false,
+        message: `❌ Error de conexión: ${error.message}`,
+        details: null
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ⚡ Forzar prompt de reactivación para usuario seleccionado
+  const forceReactivationPrompt = async () => {
+    if (!selectedUser) {
+      alert('Selecciona un usuario primero')
+      return
+    }
+
+    const confirmAction = confirm(
+      `¿Forzar prompt de reactivación para ${selectedUser.email}?\n\n` +
+      `Esto reiniciará su configuración de notificaciones y le mostrará el banner de activación la próxima vez que use la app.`
+    )
+
+    if (!confirmAction) return
+
+    try {
+      setLoading(true)
+      setSendResult(null)
+
+      console.log('⚡ Forzando prompt de reactivación para:', selectedUser.email)
+
+      const response = await fetch('/api/admin/force-reactivation-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          userEmail: selectedUser.email,
+          forcedBy: user.email
+        })
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setSendResult({
+          success: true,
+          message: `✅ Prompt de reactivación forzado para ${selectedUser.email}`,
+          details: {
+            action: 'Configuración reiniciada',
+            nextStep: 'El usuario verá el prompt de activación en su próxima visita',
+            timestamp: new Date().toLocaleString()
+          }
+        })
+        console.log('✅ Prompt forzado exitosamente:', result)
+        
+        // Recargar la lista para ver el cambio de estado
+        setTimeout(() => {
+          loadUsers()
+        }, 1000)
+      } else {
+        setSendResult({
+          success: false,
+          message: `❌ Error forzando reactivación: ${result.error}`,
+          details: result
+        })
+        console.error('❌ Error forzando reactivación:', result)
+      }
+
+    } catch (error) {
+      console.error('Error forzando prompt de reactivación:', error)
+      setSendResult({
+        success: false,
+        message: `❌ Error de conexión: ${error.message}`,
+        details: null
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (authLoading || adminLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -445,6 +565,44 @@ export default function PushNotificationsTestPage() {
                       </>
                     )}
                   </button>
+                  
+                  <button
+                    onClick={checkAllUsersStatus}
+                    disabled={loading}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Verificando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🔍</span>
+                        <span>Verificar Todos</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  {selectedUser && (
+                    <button
+                      onClick={forceReactivationPrompt}
+                      disabled={loading}
+                      className="w-full bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Forzando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>⚡</span>
+                          <span>Forzar Reactivación</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   
                   <p className="text-xs text-gray-500 text-center">
                     Sin usuarios? Usa "Crear Usuarios Test" para tener datos de prueba
