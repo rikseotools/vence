@@ -22,8 +22,15 @@ export default function PushNotificationManager() {
       checkNotificationSupport()
       loadUserSettings()
       
-      // 🔄 Verificar y renovar suscripción automáticamente cada vez que el usuario use la app
+      // 🔄 Verificar y limpiar suscripciones expiradas cada vez que el usuario use la app
       refreshSubscriptionIfExpired()
+      
+      // 🕐 Ejecutar verificación periódica cada 30 segundos (solo si está activo)
+      const verificationInterval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          refreshSubscriptionIfExpired()
+        }
+      }, 30000) // 30 segundos
       
       // 📊 TRACKING: Listener para errores globales del navegador móvil
       const handleGlobalError = async (event) => {
@@ -77,6 +84,7 @@ export default function PushNotificationManager() {
       
       // Cleanup
       return () => {
+        clearInterval(verificationInterval)
         window.removeEventListener('error', handleGlobalError)
         window.removeEventListener('unhandledrejection', handleUnhandledRejection)
       }
@@ -461,7 +469,7 @@ export default function PushNotificationManager() {
     }
   }
 
-  // 🔄 Función para renovar automáticamente suscripciones expiradas
+  // 🔄 Función para detectar suscripciones expiradas/desactivadas
   const refreshSubscriptionIfExpired = async () => {
     try {
       // Solo para usuarios con push ya habilitado
@@ -474,13 +482,32 @@ export default function PushNotificationManager() {
 
       const registration = await navigator.serviceWorker.ready
       const currentSubscription = await registration.pushManager.getSubscription()
+      const currentPermission = Notification.permission
 
-      // Si no hay suscripción actual pero debería haberla, renovar
+      // CASO 1: Usuario desactivó permisos desde el navegador
+      if (currentPermission === 'denied' && notificationState.settings.push_enabled) {
+        console.log('🚫 Usuario desactivó permisos desde navegador - marcando como deshabilitado')
+        await markSubscriptionAsDisabled('permissions_denied')
+        return
+      }
+
+      // CASO 2: No hay suscripción actual pero debería haberla
       if (!currentSubscription && notificationState.settings.push_subscription) {
-        console.log('🔄 Suscripción no encontrada en navegador, renovando...')
-        await renewSubscription(registration)
-      } else if (currentSubscription) {
-        // Verificar si la suscripción es diferente a la guardada
+        console.log('🚫 Suscripción no encontrada en navegador - probablemente desactivada por el usuario')
+        
+        // Verificar si es una suscripción fake (para testing)
+        const savedSubscription = JSON.parse(notificationState.settings.push_subscription || '{}')
+        const isFakeSubscription = savedSubscription.endpoint?.includes('FAKE_ENDPOINT_FOR_TESTING')
+        
+        if (!isFakeSubscription) {
+          // Es una suscripción real que ya no existe = usuario la desactivó
+          await markSubscriptionAsDisabled('subscription_removed')
+          return
+        }
+      }
+
+      // CASO 3: Suscripción cambió (renovación normal)
+      if (currentSubscription) {
         const savedSubscription = JSON.parse(notificationState.settings.push_subscription || '{}')
         if (currentSubscription.endpoint !== savedSubscription.endpoint) {
           console.log('🔄 Suscripción cambió, actualizando...')
@@ -490,6 +517,43 @@ export default function PushNotificationManager() {
     } catch (error) {
       console.log('⚠️ Error verificando suscripción (no crítico):', error.message)
       // No mostrar error al usuario, es una verificación en background
+    }
+  }
+
+  // 🚫 Marcar suscripción como deshabilitada cuando se detecta que el usuario la desactivó
+  const markSubscriptionAsDisabled = async (reason) => {
+    try {
+      console.log(`🚫 Marcando push como deshabilitado. Razón: ${reason}`)
+      
+      const response = await fetch('/api/push/mark-disabled', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          reason: reason,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      if (response.ok) {
+        console.log('✅ Push marcado como deshabilitado en BD')
+        
+        // Actualizar estado local para mostrar el prompt de reactivación
+        setNotificationState(prev => ({
+          ...prev,
+          settings: {
+            ...prev.settings,
+            push_enabled: false,
+            push_subscription: null
+          },
+          showPrompt: Notification.permission === 'default', // Solo mostrar prompt si puede pedir permisos
+          permission: Notification.permission
+        }))
+      } else {
+        console.error('❌ Error marcando push como deshabilitado')
+      }
+    } catch (error) {
+      console.error('❌ Error en markSubscriptionAsDisabled:', error)
     }
   }
 
