@@ -104,8 +104,18 @@ export default function PushNotificationsTestPage() {
       }
 
       // Combinar datos y filtrar solo usuarios con push habilitado
+      console.log('🔍 DEBUG Frontend - Datos recibidos:')
+      console.log('  - Users data:', usersData?.length || 0)
+      console.log('  - Notification settings:', notificationSettings?.length || 0)
+      
       const usersWithPush = usersData?.filter(user => {
         const userSettings = notificationSettings?.find(ns => ns.user_id === user.id)
+        const hasSettings = !!userSettings
+        const pushEnabled = userSettings?.push_enabled
+        const hasSubscription = !!userSettings?.push_subscription
+        
+        console.log(`🔍 Checking ${user.email}:`, { hasSettings, pushEnabled, hasSubscription })
+        
         return userSettings && 
                userSettings.push_enabled && 
                userSettings.push_subscription
@@ -116,6 +126,11 @@ export default function PushNotificationsTestPage() {
           user_notification_settings: userSettings
         }
       }) || []
+
+      console.log('🎯 Frontend result:', usersWithPush.length, 'usuarios filtrados')
+      usersWithPush.forEach((user, i) => {
+        console.log(`  ${i+1}. ${user.email} (${user.full_name})`)
+      })
 
       setUsers(usersWithPush)
       setFilteredUsers(usersWithPush)
