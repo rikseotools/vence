@@ -22,58 +22,61 @@ export default function PushNotificationManager() {
       checkNotificationSupport()
       loadUserSettings()
       
-      // 🔄 Verificar y limpiar suscripciones expiradas cada vez que el usuario use la app
-      refreshSubscriptionIfExpired()
+      // 🔄 Verificación inicial inteligente solo si han pasado 2+ días
+      // (Sin verificación automática al cargar la página)
       
-      // 🕐 Verificación inteligente y eficiente
+      // 🕐 Verificación super eficiente - cada 2 días para usuarios con push habilitado
       let verificationInterval = null
       let lastVerification = Date.now()
       
+      const getLastVerificationTime = () => {
+        // Obtener la última verificación desde localStorage para persistir entre sesiones
+        const stored = localStorage.getItem('vence_last_push_verification')
+        return stored ? parseInt(stored) : 0
+      }
+      
+      const setLastVerificationTime = (timestamp) => {
+        localStorage.setItem('vence_last_push_verification', timestamp.toString())
+        lastVerification = timestamp
+      }
+      
+      const shouldVerifyToday = () => {
+        const lastCheck = getLastVerificationTime()
+        const now = Date.now()
+        const twoDaysInMs = 2 * 24 * 60 * 60 * 1000 // 2 días
+        
+        return (now - lastCheck) >= twoDaysInMs
+      }
+      
       const startSmartVerification = () => {
         // Solo verificar si:
-        // 1. Han pasado al menos 5 minutos desde la última verificación
-        // 2. El usuario está activo (visible)
-        // 3. Tiene push habilitado
+        // 1. Han pasado al menos 2 DÍAS desde la última verificación
+        // 2. Tiene push habilitado (para detectar si se desactivó)
         if (verificationInterval) return // Ya está corriendo
         
+        // Verificar cada 6 horas, pero solo ejecutar si han pasado 2+ días
         verificationInterval = setInterval(() => {
-          const now = Date.now()
-          const timeSinceLastCheck = now - lastVerification
-          
-          // Verificar solo cada 5 minutos (300000ms) y si está visible
           if (document.visibilityState === 'visible' && 
-              timeSinceLastCheck >= 300000 && 
+              shouldVerifyToday() && 
               notificationState.settings?.push_enabled) {
-            lastVerification = now
+            console.log('🔍 Verificación programada (cada 2 días)')
             refreshSubscriptionIfExpired()
+            setLastVerificationTime(Date.now())
           }
-        }, 60000) // Chequear cada minuto, pero solo ejecutar cada 5 minutos
+        }, 6 * 60 * 60 * 1000) // Chequear cada 6 horas
       }
       
-      // Verificación adicional en eventos clave (más eficiente)
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          // Verificar solo si han pasado más de 5 minutos desde el último check
-          const timeSinceLastCheck = Date.now() - lastVerification
-          if (timeSinceLastCheck >= 300000) {
-            refreshSubscriptionIfExpired()
-            lastVerification = Date.now()
-          }
-        }
-      }
-      
-      // Eventos que pueden indicar cambios en notificaciones
-      const handleFocus = () => {
-        const timeSinceLastCheck = Date.now() - lastVerification
-        if (timeSinceLastCheck >= 300000) { // Solo si han pasado 5+ minutos
+      // Verificación al iniciar sesión - solo si han pasado 2+ días
+      const handleInitialCheck = () => {
+        if (shouldVerifyToday() && notificationState.settings?.push_enabled) {
+          console.log('🔍 Verificación inicial (han pasado 2+ días)')
           refreshSubscriptionIfExpired()
-          lastVerification = Date.now()
+          setLastVerificationTime(Date.now())
         }
       }
       
-      // Listeners eficientes
-      document.addEventListener('visibilitychange', handleVisibilityChange)
-      window.addEventListener('focus', handleFocus)
+      // Verificación inmediata SOLO al iniciar si han pasado 2+ días
+      handleInitialCheck()
       
       // Iniciar verificación inteligente solo si tiene push habilitado
       if (notificationState.settings?.push_enabled) {
@@ -135,8 +138,6 @@ export default function PushNotificationManager() {
         if (verificationInterval) {
           clearInterval(verificationInterval)
         }
-        document.removeEventListener('visibilitychange', handleVisibilityChange)
-        window.removeEventListener('focus', handleFocus)
         window.removeEventListener('error', handleGlobalError)
         window.removeEventListener('unhandledrejection', handleUnhandledRejection)
       }
