@@ -25,12 +25,60 @@ export default function PushNotificationManager() {
       // 🔄 Verificar y limpiar suscripciones expiradas cada vez que el usuario use la app
       refreshSubscriptionIfExpired()
       
-      // 🕐 Ejecutar verificación periódica cada 30 segundos (solo si está activo)
-      const verificationInterval = setInterval(() => {
+      // 🕐 Verificación inteligente y eficiente
+      let verificationInterval = null
+      let lastVerification = Date.now()
+      
+      const startSmartVerification = () => {
+        // Solo verificar si:
+        // 1. Han pasado al menos 5 minutos desde la última verificación
+        // 2. El usuario está activo (visible)
+        // 3. Tiene push habilitado
+        if (verificationInterval) return // Ya está corriendo
+        
+        verificationInterval = setInterval(() => {
+          const now = Date.now()
+          const timeSinceLastCheck = now - lastVerification
+          
+          // Verificar solo cada 5 minutos (300000ms) y si está visible
+          if (document.visibilityState === 'visible' && 
+              timeSinceLastCheck >= 300000 && 
+              notificationState.settings?.push_enabled) {
+            lastVerification = now
+            refreshSubscriptionIfExpired()
+          }
+        }, 60000) // Chequear cada minuto, pero solo ejecutar cada 5 minutos
+      }
+      
+      // Verificación adicional en eventos clave (más eficiente)
+      const handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
-          refreshSubscriptionIfExpired()
+          // Verificar solo si han pasado más de 5 minutos desde el último check
+          const timeSinceLastCheck = Date.now() - lastVerification
+          if (timeSinceLastCheck >= 300000) {
+            refreshSubscriptionIfExpired()
+            lastVerification = Date.now()
+          }
         }
-      }, 30000) // 30 segundos
+      }
+      
+      // Eventos que pueden indicar cambios en notificaciones
+      const handleFocus = () => {
+        const timeSinceLastCheck = Date.now() - lastVerification
+        if (timeSinceLastCheck >= 300000) { // Solo si han pasado 5+ minutos
+          refreshSubscriptionIfExpired()
+          lastVerification = Date.now()
+        }
+      }
+      
+      // Listeners eficientes
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('focus', handleFocus)
+      
+      // Iniciar verificación inteligente solo si tiene push habilitado
+      if (notificationState.settings?.push_enabled) {
+        startSmartVerification()
+      }
       
       // 📊 TRACKING: Listener para errores globales del navegador móvil
       const handleGlobalError = async (event) => {
@@ -84,7 +132,11 @@ export default function PushNotificationManager() {
       
       // Cleanup
       return () => {
-        clearInterval(verificationInterval)
+        if (verificationInterval) {
+          clearInterval(verificationInterval)
+        }
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('focus', handleFocus)
         window.removeEventListener('error', handleGlobalError)
         window.removeEventListener('unhandledrejection', handleUnhandledRejection)
       }
@@ -469,31 +521,32 @@ export default function PushNotificationManager() {
     }
   }
 
-  // 🔄 Función para detectar suscripciones expiradas/desactivadas
+  // 🔄 Función eficiente para detectar suscripciones expiradas/desactivadas
   const refreshSubscriptionIfExpired = async () => {
     try {
-      // Solo para usuarios con push ya habilitado
+      // Validaciones rápidas que no consumen datos
       if (!user || !notificationState.settings?.push_enabled) return
-
-      console.log('🔍 Verificando validez de suscripción push...')
-
-      // Verificar si tenemos service worker y push manager
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
 
-      const registration = await navigator.serviceWorker.ready
-      const currentSubscription = await registration.pushManager.getSubscription()
-      const currentPermission = Notification.permission
+      console.log('🔍 Verificación eficiente de suscripción push...')
 
-      // CASO 1: Usuario desactivó permisos desde el navegador
+      // Verificaciones locales primero (sin red)
+      const currentPermission = Notification.permission
+      
+      // CASO 1: Usuario desactivó permisos desde el navegador (verificación local)
       if (currentPermission === 'denied' && notificationState.settings.push_enabled) {
-        console.log('🚫 Usuario desactivó permisos desde navegador - marcando como deshabilitado')
+        console.log('🚫 Permisos denegados detectados localmente')
         await markSubscriptionAsDisabled('permissions_denied')
         return
       }
 
-      // CASO 2: No hay suscripción actual pero debería haberla
+      // CASO 2: Verificar suscripción actual (verificación local)
+      const registration = await navigator.serviceWorker.ready
+      const currentSubscription = await registration.pushManager.getSubscription()
+
+      // No hay suscripción actual pero debería haberla
       if (!currentSubscription && notificationState.settings.push_subscription) {
-        console.log('🚫 Suscripción no encontrada en navegador - probablemente desactivada por el usuario')
+        console.log('🚫 Suscripción removida detectada localmente')
         
         // Verificar si es una suscripción fake (para testing)
         const savedSubscription = JSON.parse(notificationState.settings.push_subscription || '{}')
@@ -506,16 +559,20 @@ export default function PushNotificationManager() {
         }
       }
 
-      // CASO 3: Suscripción cambió (renovación normal)
-      if (currentSubscription) {
+      // CASO 3: Suscripción cambió (verificación local)
+      if (currentSubscription && notificationState.settings.push_subscription) {
         const savedSubscription = JSON.parse(notificationState.settings.push_subscription || '{}')
         if (currentSubscription.endpoint !== savedSubscription.endpoint) {
-          console.log('🔄 Suscripción cambió, actualizando...')
+          console.log('🔄 Cambio de suscripción detectado, actualizando...')
           await updateSubscriptionInDatabase(currentSubscription)
         }
       }
+
+      // Todo OK - no se necesita acción de red
+      console.log('✅ Verificación completada - suscripción válida')
+      
     } catch (error) {
-      console.log('⚠️ Error verificando suscripción (no crítico):', error.message)
+      console.log('⚠️ Error en verificación (no crítico):', error.message)
       // No mostrar error al usuario, es una verificación en background
     }
   }
