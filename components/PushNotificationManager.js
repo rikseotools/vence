@@ -170,8 +170,14 @@ export default function PushNotificationManager() {
       // 📊 TRACKING: Solicitando permisos
       await notificationTracker.trackPermissionRequested(user)
       
+      // Verificar disponibilidad de variables antes de solicitar permisos
+      console.log('🔑 Verificando VAPID key:', !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY)
+      console.log('🔑 VAPID key length:', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.length || 0)
+      
       // Solicitar permiso
+      console.log('🚪 Solicitando permisos de notificación...')
       const permission = await Notification.requestPermission()
+      console.log('🚪 Permiso obtenido:', permission)
       const responseTime = Date.now() - startTime
       
       if (permission === 'granted') {
@@ -325,15 +331,15 @@ export default function PushNotificationManager() {
       }
       
       // Mostrar error específico según el tipo
-      let errorMessage = 'Error al configurar notificaciones. '
+      let errorMessage = 'Error al configurar notificaciones:\n\n'
       if (error.name === 'NotAllowedError') {
-        errorMessage += 'Permisos denegados por el navegador.'
+        errorMessage += '❌ Permisos denegados por el navegador.\n\nPrueba:\n1. Ir a configuración del navegador\n2. Buscar "Notificaciones"\n3. Permitir para este sitio'
       } else if (error.name === 'AbortError') {
-        errorMessage += 'Operación cancelada.'
+        errorMessage += '❌ Operación cancelada.'
       } else if (error.message.includes('VAPID')) {
-        errorMessage += 'Error de configuración del servidor.'
+        errorMessage += '❌ Error de configuración del servidor.\n\nError: ' + error.message
       } else {
-        errorMessage += 'Inténtalo de nuevo.'
+        errorMessage += '❌ Error desconocido:\n\n' + error.message + '\n\nTipo: ' + error.name + '\n\nStack: ' + (error.stack ? error.stack.substring(0, 200) : 'N/A')
       }
       
       alert(errorMessage)

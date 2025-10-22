@@ -43,21 +43,13 @@ export async function POST(request) {
           continue
         }
 
-        // Crear configuración de notificaciones de prueba
-        const testSubscription = {
-          endpoint: `https://fcm.googleapis.com/fcm/send/test-${userProfile.id}:FAKE_ENDPOINT_FOR_TESTING`,
-          keys: {
-            p256dh: 'FAKE_P256DH_KEY_FOR_TESTING',
-            auth: 'FAKE_AUTH_KEY_FOR_TESTING'
-          }
-        }
-
+        // Crear configuración básica SIN suscripción fake - que aparezca el prompt automático
         const { error: upsertError } = await supabase
           .from('user_notification_settings')
           .upsert({
             user_id: userProfile.id,
-            push_enabled: true,
-            push_subscription: JSON.stringify(testSubscription),
+            push_enabled: false,
+            push_subscription: null,
             preferred_times: ['09:00', '14:00', '20:00'],
             timezone: 'Europe/Madrid',
             frequency: 'smart',
