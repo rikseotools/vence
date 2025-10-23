@@ -9,6 +9,7 @@ import MixedChartQuestion from '../../../components/MixedChartQuestion'
 import ErrorDetectionQuestion from '../../../components/ErrorDetectionQuestion'
 import WordAnalysisQuestion from '../../../components/WordAnalysisQuestion'
 import SequenceNumericQuestion from '../../../components/SequenceNumericQuestion'
+import SequenceLetterQuestion from '../../../components/SequenceLetterQuestion'
 
 export default function BatchDebugPage() {
   const [questions, setQuestions] = useState([])
@@ -22,29 +23,10 @@ export default function BatchDebugPage() {
 
   // 🔄 ACTUALIZAR ESTOS IDs PARA CADA NUEVO LOTE
   const currentBatch = {
-    name: "Lote Series Numéricas - 17 Preguntas (01-03, 05-19, sin 04 y 11)",
+    name: "Series de Letras - P01 - 1 pregunta",
     startNumber: 1,
     questionIds: [
-      'fb259e88-f01c-4105-885c-1e1da63d5b84', // 01: Continúa la siguiente serie numérica: 11, 11, 9, 9, 7, 7, ?
-      '1bf0664e-3b99-4d82-94cf-79dfee0f6bf9', // 02: Dada la siguiente serie numérica, averigüe el valor de los interrogantes
-      'cd274a48-9d61-4d02-9585-6b66d9af5772', // 03: Indique el número que continúa la serie: 1-3-5-7-9-11-?
-      // Pregunta 04 está pendiente de identificar
-      // Nuevo lote 2025-10-22
-      'b2654a77-8b4a-4535-b9be-655af170f51a', // 05: Series intercaladas: 21, 26, 32, 37, 44, 49, 57, ?
-      'b7af7b1a-cb01-4184-8a31-0f4ad037ab08', // 06: Series correlativas: 99, 96, 94, 91, 89, 86, ?
-      '5c98f1cc-c5cc-4b4f-b344-95844f73e9e7', // 07: Series intercaladas: 1, 2, 1, 3, 1, 4, ?
-      'e76317de-25c1-474f-8b5d-0a9fcd31877d', // 08: Series con fracciones: 12/6, 12/4, 12/3, 5, 12/2, 7, ?
-      'de886620-1313-4f27-9eea-6ba7865474fc', // 09: Series correlativas: 6, 26, 44, 60, 74, 86, ?
-      '70e9c3c1-ceaa-49a4-b26e-a0eb0b40799c', // 10: Series numéricas: 4, 11, 32, 95, ?
-      // 'd3304f01-0296-419f-bd82-bab420e18a81', // 11: Series de letras: H, H, I, J, H, K, L, M, H, N, Ñ, O, ? (ELIMINADA)
-      '98bf406b-1ae6-4566-831f-f5d766abe4a6', // 12: Series correlativas: 83, 84, 86, 89, 93, 98, ?
-      '1a750bb9-6bb6-4092-b4db-c4cc09d8cf50', // 13: Series correlativas: 28, 27, 25, 22, 18, 13, ?
-      '847f5bdd-1524-45e5-9a01-9f6603b7f4e5', // 14: Series intercaladas: 3, 2, 4, 2, 5, 2, ?
-      '292ba6c3-1383-4ab1-aac9-44be32dcbbe6', // 15: Series cíclicas: 8, 10, 13, 17, 19, 22, 26, ?
-      'a6695969-ab69-4b09-8c0f-00b3ad48d029', // 16: Series intercaladas: 9, 5, 7, 4, 5, 3, 3, 2, ?
-      '6ce02744-c0a6-4718-94ce-a535b41e8124', // 17: Series numéricas: 2, 5, 10, 13, 26, 29, ?
-      '3eb6143c-3e33-48a7-a8f0-ac50441e8c44', // 18: Series correlativas: 22, 44, 88, 176, 352, 704, ?
-      '706bd23d-12b7-4326-b308-07d464126925'  // 19: Series correlativas: 5, 18, 33, 50, 69, 90, ?
+      '27787b60-ea30-40fb-abd1-57e2e550919b'  // P01: Serie de letras correlativas: c,d,c,d,e,e,f,e,f,g,? (A=G)
     ]
   }
 
@@ -162,6 +144,9 @@ export default function BatchDebugPage() {
       
       case 'sequence_numeric':
         return <SequenceNumericQuestion {...questionProps} />
+      
+      case 'sequence_letter':
+        return <SequenceLetterQuestion {...questionProps} />
       
       case 'text_question':
         return (

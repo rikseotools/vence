@@ -19,7 +19,7 @@ export default function PsicotecnicosTestClient() {
       'razonamiento-numerico': ['operaciones', 'series', 'problemas', 'fracciones', 'porcentajes', 'ecuaciones', 'geometria', 'estadistica', 'probabilidad', 'logica-matematica', 'calculo-mental', 'magnitudes', 'proporciones'],
       'razonamiento-verbal': ['sinonimos', 'antonimos', 'analogias', 'comprension'],
       'series-alfanumericas': ['series-mixtas', 'patrones-complejos'],
-      'series-letras': ['alfabeticas', 'patrones-letras'],
+      'series-letras': ['series-letras-correlativas'],
       'series-numericas': ['series-numericas']
     }
     
@@ -78,7 +78,7 @@ export default function PsicotecnicosTestClient() {
     'razonamiento-numerico': ['operaciones', 'series', 'problemas', 'fracciones', 'porcentajes', 'ecuaciones', 'geometria', 'estadistica', 'probabilidad', 'logica-matematica', 'calculo-mental', 'magnitudes', 'proporciones'],
     'razonamiento-verbal': ['sinonimos', 'antonimos', 'analogias', 'comprension'],
     'series-alfanumericas': ['series-mixtas', 'patrones-complejos'],
-    'series-letras': ['alfabeticas', 'patrones-letras'],
+    'series-letras': ['series-letras-correlativas'],
     'series-numericas': ['series-numericas']
   }
 
@@ -146,7 +146,9 @@ export default function PsicotecnicosTestClient() {
         'razonamiento-numerico': 0,
         'razonamiento-verbal': 0,
         'series-alfanumericas': 0,
-        'series-letras': 0,
+        'series-letras': data.filter(q => 
+          q.question_subtype === 'sequence_letter'
+        ).length,
         'series-numericas': data.filter(q => 
           q.question_subtype === 'sequence_numeric'
         ).length

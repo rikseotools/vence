@@ -9,6 +9,7 @@ import MixedChartQuestion from '../../../../components/MixedChartQuestion'
 import ErrorDetectionQuestion from '../../../../components/ErrorDetectionQuestion'
 import WordAnalysisQuestion from '../../../../components/WordAnalysisQuestion'
 import SequenceNumericQuestion from '../../../../components/SequenceNumericQuestion'
+import SequenceLetterQuestion from '../../../../components/SequenceLetterQuestion'
 
 export default function QuestionDebugPage() {
   const params = useParams()
@@ -129,6 +130,9 @@ export default function QuestionDebugPage() {
       
       case 'sequence_numeric':
         return <SequenceNumericQuestion {...questionProps} />
+      
+      case 'sequence_letter':
+        return <SequenceLetterQuestion {...questionProps} />
       
       case 'text_question':
         return (

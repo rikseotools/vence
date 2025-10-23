@@ -3,6 +3,12 @@
 ## Descripción General
 Este documento describe la estructura de base de datos para el nuevo sistema de tests psicotécnicos implementado en Vence. El sistema permite la creación y gestión de preguntas psicotécnicas variadas, incluyendo gráficos, tablas, analogías, secuencias numéricas, y otras categorías especializadas.
 
+## 🔗 URL PRINCIPAL DE DEBUG
+```
+http://localhost:3000/debug/batch
+```
+**Página principal para revisar múltiples preguntas psicotécnicas con navegación completa entre ellas**
+
 ## Arquitectura del Sistema
 
 ### Estructura de Datos JSONB
@@ -241,6 +247,76 @@ El sistema utiliza campos JSONB para almacenar contenido flexible que se adapta 
 - **secuencias_aritmeticas**: Secuencias aritméticas
 - **secuencias_geometricas**: Secuencias geométricas
 - **patrones_complejos**: Patrones numéricos complejos
+
+#### Implementación de Series Numéricas (sequence_numeric)
+
+**Componente**: `SequenceNumericQuestion.js`
+
+**Estructura de Datos Requerida:**
+```javascript
+{
+  question_text: "¿Qué número seguiría en la siguiente serie? 2, 11, 4, 11, 8, 11, ?",
+  content_data: {
+    pattern_type: "intercaladas",     // tipo de patrón identificado
+    solution_method: "manual"        // método de resolución
+  },
+  explanation: "🔍 Análisis de la serie:...",  // campo de texto plano con formato
+  question_subtype: "sequence_numeric",
+  correct_option: 0  // 0=A, 1=B, 2=C, 3=D
+}
+```
+
+**Características del Componente:**
+- ✅ **Recuadro azul**: Muestra la secuencia numérica destacada
+- ✅ **Renderizado de explicación**: Con `whitespace-pre-line` para formato correcto
+- ✅ **Sin títulos hardcodeados**: La explicación viene completa de BD
+- ✅ **Botones rápidos**: A/B/C/D para respuesta rápida
+- ✅ **Compatible**: Con preguntas existentes del sistema
+
+**Formato de Pregunta:**
+```
+✅ CORRECTO: "¿Qué número seguiría en la siguiente serie? 2, 11, 4, 11, 8, 11, ?"
+❌ INCORRECTO: "2, 11, 4, 11, 8, 11, ?"  // Solo serie, sin pregunta
+```
+
+**Formato de Explicación (campo `explanation`):**
+```
+🔍 Análisis de la serie:
+• Analizamos las dos series intercaladas:
+• Serie A (posiciones 1,3,5,7): 2, 4, 8, ?
+• Serie B (posiciones 2,4,6,8): 11, 11, 11, 11
+
+📊 Patrón identificado:
+• Serie A: Cada número se duplica (2×2=4, 4×2=8, 8×2=16)
+• Serie B: Constante, siempre 11
+
+✅ Aplicando el patrón:
+• Siguiente término en Serie A: 8 × 2 = 16
+
+La respuesta correcta es A: 16
+```
+
+**Tipos de Patrones Soportados:**
+- **intercaladas**: Dos series alternadas independientes
+- **odd_differences**: Diferencias con números impares consecutivos
+- **division**: División constante entre términos
+- **alternating**: Patrones alternantes complejos
+
+**Script de Ejemplo:**
+```javascript
+// scripts/add-serie-numerica-question.js
+const questionData = {
+  question_text: "¿Qué número seguiría en la siguiente serie? X, Y, Z, ?",
+  content_data: {
+    pattern_type: "tipo_patron",
+    solution_method: "manual"
+  },
+  explanation: "Texto formateado con emojis y estructura...",
+  question_subtype: "sequence_numeric",
+  option_a: "16", option_b: "42", option_c: "30", option_d: "17",
+  correct_option: 0
+}
+```
 
 ## Tipos de Contenido JSONB
 
@@ -1676,14 +1752,23 @@ Este sistema proporciona una base sólida para evaluar la capacidad ortográfica
 
 ## 🔧 Sistema de Debug y Testing
 
-### Debug Batch - Navegación Entre Preguntas
+### 🔗 URLs PRINCIPALES DE DEBUG
 
-El sistema incluye una funcionalidad completa para revisar múltiples preguntas de forma secuencial mediante **Debug Batch**.
-
-#### URL Principal
+#### 🎯 Debug Batch - Navegación Entre Preguntas (PRINCIPAL)
 ```
 http://localhost:3000/debug/batch
 ```
+**Página principal para revisar múltiples preguntas de forma secuencial con navegación completa**
+
+#### 🔍 Debug Individual - Pregunta Específica
+```
+http://localhost:3000/debug/question/[id]
+```
+**Para revisar una pregunta individual por su ID**
+
+### Debug Batch - Navegación Entre Preguntas
+
+El sistema incluye una funcionalidad completa para revisar múltiples preguntas de forma secuencial mediante **Debug Batch**.
 
 #### Funcionalidades Disponibles
 

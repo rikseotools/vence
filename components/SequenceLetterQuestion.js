@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 
-export default function SequenceNumericQuestion({ 
+export default function SequenceLetterQuestion({ 
   question, onAnswer, selectedAnswer, showResult, isAnswering, attemptCount = 0 
 }) {
   const [timeTaken, setTimeTaken] = useState(0)
@@ -37,7 +37,7 @@ export default function SequenceNumericQuestion({
   }
 
   const renderSequence = () => {
-    // No renderizar recuadro azul para secuencias numéricas
+    // No renderizar recuadro azul para secuencias de letras
     // Las secuencias van integradas en el texto de la pregunta
     return null
   }
@@ -77,7 +77,7 @@ export default function SequenceNumericQuestion({
               className={buttonClass}
             >
               <span className="font-semibold mr-3">{option.key}.</span>
-              {option.text}
+              <span className="font-mono text-lg">{option.text}</span>
             </button>
           )
         })}
@@ -141,22 +141,12 @@ export default function SequenceNumericQuestion({
               </div>
             ))
           ) : (
-            // Fallback para explanation simple o hardcoded
+            // Fallback para explanation simple
             <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
               <div className="text-gray-700 text-sm">
-                {patternType === 'intercalated' ? (
-                  <div>
-                    <p>• 11, 11 → 9, 9: Los números se repiten de dos en dos, restando 2</p>
-                    <p>• 9, 9 → 7, 7: Confirmamos el patrón: -2 y repetición</p>
-                    <p>• 7, 7 → ?, ?: Siguiendo el patrón: 7 - 2 = 5</p>
-                    <p className="mt-2"><strong>✅ Patrón identificado:</strong> Series intercaladas con números repetidos que disminuyen de 2 en 2</p>
-                    <p><strong>✅ Siguiente término:</strong> 5 (porque 7 - 2 = 5)</p>
-                  </div>
-                ) : (
-                  <div className="whitespace-pre-line">
-                    {question.explanation}
-                  </div>
-                )}
+                <div className="whitespace-pre-line">
+                  {question.explanation}
+                </div>
               </div>
             </div>
           )}
