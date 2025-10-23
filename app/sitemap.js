@@ -100,6 +100,12 @@ export default async function sitemap() {
       changeFrequency: 'monthly',
       priority: 0.8,
     },
+    {
+      url: `${SITE_URL}/psicotecnicos/secuencias-numericas`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
   ]
 
   // 🚫 URLs QUE NO QUIERES INDEXAR (todas las páginas de test)
