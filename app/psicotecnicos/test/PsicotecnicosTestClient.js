@@ -224,6 +224,13 @@ export default function PsicotecnicosTestClient() {
             counts['series-numericas'] = (counts['series-numericas'] || 0) + 1
           }
         }
+        // Asignar preguntas de series de letras
+        else if (categoryKey === 'series-letras') {
+          if (question.question_subtype === 'sequence_letter') {
+            // Todas las preguntas de series de letras van a la subcategoría 'series-letras-correlativas'
+            counts['series-letras-correlativas'] = (counts['series-letras-correlativas'] || 0) + 1
+          }
+        }
         // Para otras categorías, NO asignar preguntas aleatorias - solo si realmente corresponden
         // Por ahora no tenemos preguntas específicas para estas categorías
       })

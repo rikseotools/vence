@@ -106,6 +106,12 @@ export default async function sitemap() {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
+    {
+      url: `${SITE_URL}/psicotecnicos/series-letras`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
   ]
 
   // 🚫 URLs QUE NO QUIERES INDEXAR (todas las páginas de test)

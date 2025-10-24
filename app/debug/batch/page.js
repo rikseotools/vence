@@ -23,10 +23,22 @@ export default function BatchDebugPage() {
 
   // 🔄 ACTUALIZAR ESTOS IDs PARA CADA NUEVO LOTE
   const currentBatch = {
-    name: "Series de Letras - P01 - 1 pregunta",
-    startNumber: 1,
+    name: "Series de Letras - P02-P16 - 13 preguntas",
+    startNumber: 2,
     questionIds: [
-      '27787b60-ea30-40fb-abd1-57e2e550919b'  // P01: Serie de letras correlativas: c,d,c,d,e,e,f,e,f,g,? (A=G)
+      '99bafb9a-b091-4ca9-85e6-a914a0bda188',  // P02: En un abecedario donde no se tienen en cuenta las letras dobles... (B=M)
+      '6bb7b707-f6ef-44b9-892a-dfd2ca1ed82b',  // P03: Continúe la siguiente serie de letras: a j c l e n g o i ? (A=q)
+      'f4cd4939-fa46-47b7-a4ec-76612db865d6',  // P04: Indique qué letra continúa cada serie... C-C-D-E-E-E-F-G-G-G-H-? (C=I)
+      '196ed971-d48c-4678-9cdf-2a61b8931164',  // P05: Indique la opción que continúa la serie: C-G-K-Ñ-¿? (C=R)
+      'ce88154b-db5e-43e7-ac0d-ca6df6b5928c',  // P06: Indique la opción que continúa la serie: I-K-N-Q-¿? (B=V)
+      '60dffa89-afaf-4eee-911c-51d2a0578bfb',  // P07: Continúe con las dos letras... p-r-t; t-w-z; z-d-h; h-¿?-¿? (A=m-q)
+      '236b3b39-3579-4e82-82c7-02d949b0fbe8',  // P08: ¿Qué letra continuaría la siguiente serie? h h i j l k n l o m ¿? (A=q)
+      'ca20f537-6944-4f0d-8f6a-ec2e84f6fe0a',  // P09: Indique la letra que continúa... D Z V R Ñ ¿? (A=K)
+      '83dbe8ca-3110-4f81-9da6-5f2ec160516c',  // P11: Indique qué letra continúa... M-W-M-N-W-M-N-Ñ-W-M-N-Ñ-O-W-? (B=M)
+      '42f65f2d-e0ba-45e4-adbc-6c87f8af8e87',  // P12: Indique qué letra continúa... Z-X-U-Q-¿? (C=M)
+      'b5285e55-4bd7-49bf-be3f-fa5055834b3c',  // P14: Indique qué letra continúa la serie... C-E-G-I-K-M-Ñ-? (A=P)
+      'd1d3e097-e367-41fa-8470-6f34d84bae3f',  // P15: Indique la opción que continúa la serie: L-M-G-F-Ñ-O-E-¿? (B=D)
+      '1c09dab3-bd1c-43de-ad6c-4298de195117'   // P16: En la siguiente serie, marque la letra... h i j h i j i h i j h i j ¿? (A=k)
     ]
   }
 

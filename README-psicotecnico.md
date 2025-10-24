@@ -240,8 +240,7 @@ El sistema utiliza campos JSONB para almacenar contenido flexible que se adapta 
 - **series_alfanumericas**: Series mixtas
 
 ### 7. Series de Letras
-- **continuacion_series**: Continuación de series de letras
-- **patrones_alfabeticos**: Reconocimiento de patrones
+- **series-letras-correlativas**: Series de letras correlativas
 
 ### 8. Series Numéricas
 - **secuencias_aritmeticas**: Secuencias aritméticas

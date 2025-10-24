@@ -55,7 +55,7 @@ function MultipleCategoriesPsychometricTestContent() {
           'capacidad-ortografica': ['error_detection', 'text_question', 'word_analysis'],
           'series-numericas': ['sequence_numeric'],
           'series-alfanumericas': ['sequence'],
-          'series-letras': ['sequence'],
+          'series-letras': ['sequence_letter'],
           'razonamiento-numerico': ['calculation', 'logic'],
           'razonamiento-verbal': ['analogy', 'comprehension'],
           'pruebas-instrucciones': ['pattern', 'attention']
