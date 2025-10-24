@@ -11,6 +11,7 @@ import ErrorDetectionQuestion from './ErrorDetectionQuestion'
 import WordAnalysisQuestion from './WordAnalysisQuestion'
 import SequenceNumericQuestion from './SequenceNumericQuestion'
 import SequenceLetterQuestion from './SequenceLetterQuestion'
+import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 
@@ -368,6 +369,18 @@ export default function PsychometricTestLayout({
       case 'sequence_letter':
         return (
           <SequenceLetterQuestion
+            question={currentQ}
+            onAnswer={handleAnswer}
+            selectedAnswer={selectedAnswer}
+            showResult={showResult}
+            isAnswering={isAnswering}
+            attemptCount={getAttemptCount(currentQ.id)}
+          />
+        )
+      
+      case 'sequence_alphanumeric':
+        return (
+          <SequenceAlphanumericQuestion
             question={currentQ}
             onAnswer={handleAnswer}
             selectedAnswer={selectedAnswer}

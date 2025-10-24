@@ -10,6 +10,7 @@ import ErrorDetectionQuestion from '../../../../components/ErrorDetectionQuestio
 import WordAnalysisQuestion from '../../../../components/WordAnalysisQuestion'
 import SequenceNumericQuestion from '../../../../components/SequenceNumericQuestion'
 import SequenceLetterQuestion from '../../../../components/SequenceLetterQuestion'
+import SequenceAlphanumericQuestion from '../../../../components/SequenceAlphanumericQuestion'
 
 export default function QuestionDebugPage() {
   const params = useParams()
@@ -133,6 +134,9 @@ export default function QuestionDebugPage() {
       
       case 'sequence_letter':
         return <SequenceLetterQuestion {...questionProps} />
+      
+      case 'sequence_alphanumeric':
+        return <SequenceAlphanumericQuestion {...questionProps} />
       
       case 'text_question':
         return (

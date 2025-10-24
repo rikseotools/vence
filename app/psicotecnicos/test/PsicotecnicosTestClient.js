@@ -18,7 +18,7 @@ export default function PsicotecnicosTestClient() {
       'pruebas-instrucciones': ['instrucciones-simples', 'instrucciones-complejas'],
       'razonamiento-numerico': ['operaciones', 'series', 'problemas', 'fracciones', 'porcentajes', 'ecuaciones', 'geometria', 'estadistica', 'probabilidad', 'logica-matematica', 'calculo-mental', 'magnitudes', 'proporciones'],
       'razonamiento-verbal': ['sinonimos', 'antonimos', 'analogias', 'comprension'],
-      'series-alfanumericas': ['series-mixtas', 'patrones-complejos'],
+      'series-alfanumericas': ['series-mixtas'],
       'series-letras': ['series-letras-correlativas'],
       'series-numericas': ['series-numericas']
     }
@@ -77,7 +77,7 @@ export default function PsicotecnicosTestClient() {
     'pruebas-instrucciones': ['instrucciones-simples', 'instrucciones-complejas'],
     'razonamiento-numerico': ['operaciones', 'series', 'problemas', 'fracciones', 'porcentajes', 'ecuaciones', 'geometria', 'estadistica', 'probabilidad', 'logica-matematica', 'calculo-mental', 'magnitudes', 'proporciones'],
     'razonamiento-verbal': ['sinonimos', 'antonimos', 'analogias', 'comprension'],
-    'series-alfanumericas': ['series-mixtas', 'patrones-complejos'],
+    'series-alfanumericas': ['series-mixtas'],
     'series-letras': ['series-letras-correlativas'],
     'series-numericas': ['series-numericas']
   }
@@ -145,7 +145,9 @@ export default function PsicotecnicosTestClient() {
         'pruebas-instrucciones': 0,
         'razonamiento-numerico': 0,
         'razonamiento-verbal': 0,
-        'series-alfanumericas': 0,
+        'series-alfanumericas': data.filter(q => 
+          q.question_subtype === 'sequence_alphanumeric'
+        ).length,
         'series-letras': data.filter(q => 
           q.question_subtype === 'sequence_letter'
         ).length,
@@ -229,6 +231,13 @@ export default function PsicotecnicosTestClient() {
           if (question.question_subtype === 'sequence_letter') {
             // Todas las preguntas de series de letras van a la subcategoría 'series-letras-correlativas'
             counts['series-letras-correlativas'] = (counts['series-letras-correlativas'] || 0) + 1
+          }
+        }
+        // Asignar preguntas de series alfanuméricas
+        else if (categoryKey === 'series-alfanumericas') {
+          if (question.question_subtype === 'sequence_alphanumeric') {
+            // Todas las preguntas de series alfanuméricas van a la subcategoría 'series-mixtas'
+            counts['series-mixtas'] = (counts['series-mixtas'] || 0) + 1
           }
         }
         // Para otras categorías, NO asignar preguntas aleatorias - solo si realmente corresponden
