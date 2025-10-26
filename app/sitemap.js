@@ -113,6 +113,14 @@ export default async function sitemap() {
       priority: 0.8,
     },
     
+    // Tests de Oposiciones - Página Principal
+    {
+      url: `${SITE_URL}/test-oposiciones`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    
     // Tests de la Constitución Española 1978 - SEO Optimizados
     {
       url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978`,
@@ -188,6 +196,104 @@ export default async function sitemap() {
     },
     {
       url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/disposiciones-adicionales-transitorias-derogatoria-final`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    
+    // Tests de la Ley 39/2015 - SEO Optimizados
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-preliminar`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-i-capitulo-i-capacidad-obrar-concepto-interesado`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-i-capitulo-ii-identificacion-firma-interesados`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-ii-capitulo-i-normas-generales-actuacion`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-ii-capitulo-ii-terminos-plazos`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iii-capitulo-i-requisitos-actos-administrativos`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iii-capitulo-ii-eficacia-actos`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iii-capitulo-iii-nulidad-anulabilidad`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-i-ii-garantias-iniciacion`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-iii-iv-ordenacion-instruccion`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-v-vi-vii-finalizacion-simplificada-ejecucion`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-v-capitulo-i-revision-oficio`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-v-capitulo-ii-recursos-administrativos`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-vi-iniciativa-legislativa-potestad-reglamentaria`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/test-plazos`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
