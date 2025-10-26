@@ -910,12 +910,14 @@ const TestConfigurator = ({
 
         </div>
 
-        {/* 🆕 3. Filtro de Leyes */}
-        {lawsData && lawsData.length > 1 && (
+        {/* 🆕 3. Filtro de Leyes y Artículos */}
+        {lawsData && lawsData.length >= 1 && (
           <div className="mb-6">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-blue-900">📖 Filtrar por Leyes</h3>
+                <h3 className="font-semibold text-blue-900">
+                  {lawsData.length > 1 ? '📖 Filtrar por Leyes' : '📄 Filtrar por Artículos'}
+                </h3>
                 <button
                   onClick={() => setShowLawsFilter(!showLawsFilter)}
                   className="text-blue-600 hover:text-blue-800 text-sm font-medium"
@@ -926,20 +928,27 @@ const TestConfigurator = ({
               
               {showLawsFilter && (
                 <div className="space-y-3">
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={selectAllLaws}
-                      className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                    >
-                      Seleccionar todas
-                    </button>
-                    <button
-                      onClick={deselectAllLaws}
-                      className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
-                    >
-                      Deseleccionar todas
-                    </button>
-                  </div>
+                  {lawsData.length === 1 && (
+                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                      💡 Puedes filtrar por artículos específicos de esta ley usando el botón "🔧 Filtrar artículos"
+                    </div>
+                  )}
+                  {lawsData.length > 1 && (
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        onClick={selectAllLaws}
+                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                      >
+                        Seleccionar todas
+                      </button>
+                      <button
+                        onClick={deselectAllLaws}
+                        className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
+                      >
+                        Deseleccionar todas
+                      </button>
+                    </div>
+                  )}
                   
                   <div className="grid grid-cols-1 gap-2">
                     {lawsData.map((law) => (
@@ -990,7 +999,7 @@ const TestConfigurator = ({
           <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-4">
             
             {/* Solo preguntas oficiales - CON CONTEO CORREGIDO POR TEMA */}
-            {!hideOfficialQuestions && (
+            {!hideOfficialQuestions && officialQuestionsCount > 0 && (
             <div>
               <label className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -1105,7 +1114,7 @@ const TestConfigurator = ({
             )}
 
             {/* 🆕 ARTÍCULOS IMPRESCINDIBLES */}
-            {!hideEssentialArticles && (
+            {!hideEssentialArticles && officialQuestionsCount > 0 && (
             <div className="border-t border-gray-200 pt-4">
               <label className="flex items-center space-x-2">
                 <input

@@ -112,6 +112,26 @@ export default async function sitemap() {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
+    
+    // Tests de la Constitución Española 1978 - SEO Optimizados
+    {
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/preambulo-y-titulo-preliminar`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-viii-organizacion-territorial`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
   ]
 
   // 🚫 URLs QUE NO QUIERES INDEXAR (todas las páginas de test)

@@ -54,7 +54,7 @@ export default function TestPageWrapper({
   const finalSearchParams = propsSearchParams || hookSearchParams
 
  // 🎯 Función para detectar fetcher correcto según el tema
-  const getFetcherForTema = (tema, testType) => {
+  const getFetcherForTema = (tema, testType, hasLawFilters = false) => {
     // 🎲 NUEVO: Para tests aleatorios multi-tema
     if (testType === 'aleatorio' && themes && themes.length > 0) {
       console.log(`🎲 Test aleatorio multi-tema: ${themes.length} temas`)
@@ -65,6 +65,12 @@ export default function TestPageWrapper({
     // La función automáticamente detectará si es multi-ley desde topic_scope
     if (tema && tema > 0) {
       console.log(`🎯 Tema ${tema} usando fetcher dinámico (topic_scope)`)
+      return fetchQuestionsByTopicScope
+    }
+    
+    // 🆕 NUEVO: Para tests sin tema pero con filtros de leyes específicas
+    if (!tema && hasLawFilters && testType === 'personalizado') {
+      console.log(`🎯 Test personalizado sin tema pero con filtros de leyes - usando fetchQuestionsByTopicScope`)
       return fetchQuestionsByTopicScope
     }
     
@@ -89,14 +95,14 @@ export default function TestPageWrapper({
         color: "from-blue-500 to-cyan-600",
         icon: "🎲",
         subtitle: "Orden completamente aleatorio",
-        fetcher: getFetcherForTema(tema, 'aleatorio') // 🎯 DETECCIÓN AUTOMÁTICA
+        fetcher: getFetcherForTema(tema, 'aleatorio', false) // 🎯 DETECCIÓN AUTOMÁTICA
       },
       personalizado: {
         name: "Test Personalizado", 
         description: " ",
         color: "from-purple-500 to-indigo-600",
         icon: "✨",
-        fetcher: getFetcherForTema(tema, 'personalizado') // 🎯 DETECCIÓN AUTOMÁTICA
+        fetcher: getFetcherForTema(tema, 'personalizado', !!(defaultConfig?.selectedLaws?.length)) // 🎯 DETECCIÓN AUTOMÁTICA
       },
       rapido: {
         name: "Test Rápido",
@@ -104,7 +110,7 @@ export default function TestPageWrapper({
         color: "from-green-500 to-emerald-600", 
         icon: "⚡",
         subtitle: "Práctica rápida en 5 minutos",
-        fetcher: getFetcherForTema(tema, 'rapido') // 🎯 DETECCIÓN AUTOMÁTICA
+        fetcher: getFetcherForTema(tema, 'rapido', false) // 🎯 DETECCIÓN AUTOMÁTICA
       },
       oficial: {
         name: "Test Oficial",
@@ -112,7 +118,7 @@ export default function TestPageWrapper({
         color: "from-red-500 to-pink-600",
         icon: "🏛️", 
         subtitle: "Preguntas que aparecieron en exámenes oficiales",
-        fetcher: getFetcherForTema(tema, 'oficial') // 🎯 DETECCIÓN AUTOMÁTICA
+        fetcher: getFetcherForTema(tema, 'oficial', false) // 🎯 DETECCIÓN AUTOMÁTICA
       },
       // 🆕 NUEVOS TIPOS PARA NOTIFICACIONES
       'articulos-dirigido': {
@@ -233,26 +239,31 @@ export default function TestPageWrapper({
           const selectedLawsParam = finalSearchParams?.get?.('selected_laws')
           const selectedArticlesByLawParam = finalSearchParams?.get?.('selected_articles_by_law')
           
+          // 🔧 PRIORIZAR CONFIG DESDE PROPS (defaultConfig) SOBRE URL
+          let selectedLaws = testConfig?.selectedLaws || []
+          let selectedArticlesByLaw = testConfig?.selectedArticlesByLaw || {}
           
-          let selectedLaws = []
-          let selectedArticlesByLaw = {}
+          // Solo usar parámetros de URL si no hay config desde props
+          if (selectedLaws.length === 0 && selectedLawsParam) {
+            try {
+              selectedLaws = JSON.parse(selectedLawsParam)
+              selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
+            } catch (error) {
+              console.error('❌ Error parsing filtros URL en TestPageWrapper:', error)
+            }
+          }
           
-          try {
-            selectedLaws = selectedLawsParam ? JSON.parse(selectedLawsParam) : []
-            selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
-            
-            // Agregar filtros al config que se pasa al fetcher
-            finalTestConfig = {
-              ...testConfig,
-              selectedLaws,
-              selectedArticlesByLaw
-            }
-            
-            if (selectedLaws.length > 0) {
-              console.log('🔧 Filtros aplicados:', selectedLaws.length, 'leyes,', Object.keys(selectedArticlesByLaw).length, 'grupos de artículos')
-            }
-          } catch (error) {
-            console.error('❌ Error parsing filtros en TestPageWrapper:', error)
+          // Agregar filtros al config que se pasa al fetcher
+          finalTestConfig = {
+            ...testConfig,
+            selectedLaws,
+            selectedArticlesByLaw
+          }
+          
+          if (selectedLaws.length > 0) {
+            console.log('🔧 Filtros aplicados desde', testConfig?.selectedLaws ? 'props' : 'URL', ':', selectedLaws.length, 'leyes,', Object.keys(selectedArticlesByLaw).length, 'grupos de artículos')
+            console.log('🎯 Leyes seleccionadas:', selectedLaws)
+            console.log('🎯 Artículos por ley:', selectedArticlesByLaw)
           }
         }
         
