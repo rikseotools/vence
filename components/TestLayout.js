@@ -1436,7 +1436,7 @@ export default function TestLayout({
                                 <div>
                                   <span>👤 </span>
                                   <button 
-                                    onClick={() => window.location.reload()} 
+                                    onClick={() => window.location.href = '/login'} 
                                     className="underline hover:text-blue-600 dark:hover:text-blue-400"
                                   >
                                     Regístrate gratis

@@ -30,7 +30,8 @@ function StartTestButton({ sectionConfig, questionsCount }) {
       customNavigationLinks: {
         backToLaw: {
           href: '/test-oposiciones/test-de-la-constitucion-espanola-de-1978',
-          text: 'Volver a Tests de la Constitución Española 1978'
+          text: 'Volver a Tests de la Constitución Española 1978',
+          label: 'Volver a Tests de la Constitución Española 1978'
         }
       }
     }
