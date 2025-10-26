@@ -20,9 +20,9 @@ function StartTestButton({ sectionConfig, questionsCount }) {
       difficultyMode: 'random',
       adaptive: true,
       onlyOfficialQuestions: false,
-      selectedLaws: ['Constitución Española'],
+      selectedLaws: ['CE'],
       selectedArticlesByLaw: sectionConfig.articleRange ? {
-        'Constitución Española': Array.from(
+        'CE': Array.from(
           { length: sectionConfig.articleRange.end - sectionConfig.articleRange.start + 1 }, 
           (_, i) => String(sectionConfig.articleRange.start + i)
         )
