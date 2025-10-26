@@ -4,6 +4,15 @@ const nextConfig = {
     ignoreDuringBuilds: true, // ✅ Tu configuración existente
   },
   
+  // ✅ Optimizaciones de rendimiento
+  experimental: {
+    optimizeCss: true,
+    cssChunking: 'strict',
+  },
+  
+  // ✅ Compresión mejorada
+  compress: true,
+  
   // ✅ Agregar configuración de SEO
   env: {
     SITE_URL: process.env.NODE_ENV === 'production' 

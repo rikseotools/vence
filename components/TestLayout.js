@@ -1384,7 +1384,7 @@ export default function TestLayout({
                                 {config.customNavigationLinks?.backToTests && (
                                   <Link
                                     href={config.customNavigationLinks.backToTests.href}
-                                    className="px-8 py-4 rounded-lg font-semibold text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3"
+                                    className="px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 sm:space-x-3 text-sm sm:text-base w-full sm:w-auto"
                                   >
                                     <span>🗂️</span>
                                     <span>{config.customNavigationLinks.backToTests.label}</span>
@@ -1395,7 +1395,7 @@ export default function TestLayout({
                                 {tema === 0 && !config.customNavigationLinks?.backToLaw && (
                                   <Link
                                     href={config.isLawTest ? "/leyes" : "/auxiliar-administrativo-estado/test"}
-                                    className={`px-8 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color || 'from-blue-500 to-cyan-600'} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3`}
+                                    className={`px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color || 'from-blue-500 to-cyan-600'} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 sm:space-x-3 text-sm sm:text-base w-full sm:w-auto`}
                                   >
                                     <span>📚</span>
                                     <span>{config.isLawTest ? "Volver a Leyes" : "Volver a Tests"}</span>
@@ -1408,7 +1408,7 @@ export default function TestLayout({
                                 {/* Botón principal: Volver al Tema */}
                                 <Link
                                   href={`/auxiliar-administrativo-estado/test/tema/${tema}`}
-                                  className={`px-8 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3`}
+                                  className={`px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 sm:space-x-3 text-sm sm:text-base w-full sm:w-auto`}
                                 >
                                   <span>📚</span>
                                   <span>Volver al Tema {tema}</span>

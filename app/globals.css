@@ -14,39 +14,41 @@
   }
 }
 
-/* Animaciones para notificaciones admin */
-@keyframes admin-urgent-pulse {
-  0%, 100% { 
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% { 
-    transform: scale(1.05);
-    opacity: 0.8;
-  }
-}
-
-@keyframes admin-notification-blink {
-  0%, 50% { 
-    opacity: 1;
-    background-color: rgb(239 68 68); /* red-500 */
-  }
-  51%, 100% { 
-    opacity: 0.7;
-    background-color: rgb(185 28 28); /* red-700 */
-  }
-}
-
-.admin-urgent-pulse {
-  animation: admin-urgent-pulse 2s infinite;
-}
-
-.admin-notification-blink {
-  animation: admin-notification-blink 2s infinite;
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Lazy load animations for admin features */
+@layer utilities {
+  @keyframes admin-urgent-pulse {
+    0%, 100% { 
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% { 
+      transform: scale(1.05);
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes admin-notification-blink {
+    0%, 50% { 
+      opacity: 1;
+      background-color: rgb(239 68 68); /* red-500 */
+    }
+    51%, 100% { 
+      opacity: 0.7;
+      background-color: rgb(185 28 28); /* red-700 */
+    }
+  }
+
+  .admin-urgent-pulse {
+    animation: admin-urgent-pulse 2s infinite;
+  }
+
+  .admin-notification-blink {
+    animation: admin-notification-blink 2s infinite;
+  }
 }

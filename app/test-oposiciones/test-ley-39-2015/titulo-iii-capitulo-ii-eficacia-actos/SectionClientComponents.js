@@ -30,7 +30,8 @@ function StartTestButton({ sectionConfig, questionsCount }) {
       customNavigationLinks: {
         backToLaw: {
           href: '/test-oposiciones/test-ley-39-2015',
-          text: 'Volver a Tests de la Ley 39/2015'
+          text: 'Volver a Tests de la Ley 39/2015',
+          label: 'Volver a Tests de la Ley 39/2015'
         }
       }
     }

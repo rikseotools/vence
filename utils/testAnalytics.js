@@ -154,23 +154,36 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     
     console.log('✅ Test completado con análisis completo')
     
-    // 🔥 ACTUALIZAR USER_PROGRESS - FIX CRÍTICO PARA DESBLOQUEO DE TEMAS
-    try {
-      console.log('🎯 Actualizando progreso del usuario...')
-      const { error: progressError } = await supabase
-        .rpc('update_user_progress', {
-          p_user_id: userSession?.user_id || null,
-          p_test_id: sessionId
+    // 🔥 ACTUALIZAR USER_PROGRESS - TEMPORALMENTE DESHABILITADO
+    // TODO: Arreglar función RPC update_user_progress (error: column q.topic_id does not exist)
+    if (false && userSession?.user_id && testData?.topic_number) {
+      try {
+        console.log('🎯 Actualizando progreso del usuario...')
+        console.log('📋 Parámetros RPC:', {
+          p_user_id: userSession.user_id,
+          p_topic_number: testData.topic_number,
+          userSession_type: typeof userSession.user_id,
+          topic_number_type: typeof testData.topic_number
         })
-      
-      if (progressError) {
-        console.error('❌ Error actualizando user_progress:', progressError)
-        // No fallar todo el test por esto
-      } else {
-        console.log('✅ user_progress actualizado correctamente')
+        
+        const { error: progressError } = await supabase
+          .rpc('update_user_progress_simple', {
+            p_user_id: userSession.user_id,
+            p_topic_number: testData.topic_number
+          })
+        
+        if (progressError) {
+          console.error('❌ Error actualizando user_progress:', progressError)
+          console.error('📝 Detalles del error:', JSON.stringify(progressError, null, 2))
+          // No fallar todo el test por esto
+        } else {
+          console.log('✅ user_progress actualizado correctamente')
+        }
+      } catch (progressErr) {
+        console.error('❌ Excepción actualizando user_progress:', progressErr)
       }
-    } catch (progressErr) {
-      console.error('❌ Excepción actualizando user_progress:', progressErr)
+    } else {
+      console.log('ℹ️ update_user_progress temporalmente deshabilitado - función RPC con errores')
     }
     
     // Actualizar sesión de usuario
