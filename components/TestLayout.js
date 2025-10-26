@@ -1373,10 +1373,10 @@ export default function TestLayout({
                                 {config.customNavigationLinks?.backToLaw && (
                                   <Link
                                     href={config.customNavigationLinks.backToLaw.href}
-                                    className={`px-8 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center space-x-3`}
+                                    className={`px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto`}
                                   >
                                     <span>📚</span>
-                                    <span>{config.customNavigationLinks.backToLaw.label}</span>
+                                    <span className="text-center">{config.customNavigationLinks.backToLaw.label}</span>
                                   </Link>
                                 )}
                                 
