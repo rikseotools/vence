@@ -13,22 +13,6 @@ export default function TestConstitucionPage() {
   // Estructura de la Constitución Española (hardcodeada por ahora)
   const constitucionSections = [
     {
-      id: 'caracteristicas',
-      title: 'LA CONSTITUCIÓN ESPAÑOLA DE 1978. CARACTERÍSTICAS GENERALES.',
-      description: 'Características generales de la Constitución Española de 1978',
-      slug: 'caracteristicas-generales',
-      image: '🏛️',
-      articles: null
-    },
-    {
-      id: 'estructura',
-      title: 'LA CONSTITUCIÓN ESPAÑOLA DE 1978. ESTRUCTURA.',
-      description: 'Estructura general de la Constitución Española',
-      slug: 'estructura',
-      image: '📋',
-      articles: null
-    },
-    {
       id: 'preambulo',
       title: 'PREÁMBULO Y TÍTULO PRELIMINAR.',
       description: 'Preámbulo y Título Preliminar de la Constitución',
@@ -132,14 +116,6 @@ export default function TestConstitucionPage() {
       slug: 'titulo-x-de-la-reforma-constitucional',
       image: '📖',
       articles: { start: 166, end: 169 }
-    },
-    {
-      id: 'disposiciones',
-      title: 'Disposiciones adicionales, transitorias, derogatoria y final.',
-      description: 'Disposiciones adicionales y finales',
-      slug: 'disposiciones-adicionales-transitorias-final',
-      image: '📄',
-      articles: null
     }
   ]
 

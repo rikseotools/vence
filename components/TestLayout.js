@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import PersistentRegistrationManager from './PersistentRegistrationManager'
+import { usePathname } from 'next/navigation'
 import QuestionEvolution from './QuestionEvolution'
 import QuestionDispute from './QuestionDispute'
 
@@ -89,6 +90,12 @@ export default function TestLayout({
   const questionHeaderRef = useRef(null)
   const sessionCreationRef = useRef(new Set())
   const registrationProcessingRef = useRef(new Set())
+
+  // Hook para obtener la URL actual
+  const pathname = usePathname()
+  
+  // Detectar si estamos en /test-oposiciones/ para desactivar modal de registro
+  const isTestOposicionesSection = pathname?.startsWith('/test-oposiciones/')
 
   // ✅ MOVER CÁLCULO DE ESTADOS DERIVADOS DESPUÉS DE DECLARACIONES
   // Estados calculados - MOVIDO AQUÍ PARA EVITAR ERRORES DE ORDEN  
@@ -919,7 +926,7 @@ export default function TestLayout({
       score={score}
       startTime={startTime}
       isTestCompleted={isTestCompleted}
-      enabled={true} 
+      enabled={!isTestOposicionesSection} 
     >
       {/* Fondo con dark mode */}
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
