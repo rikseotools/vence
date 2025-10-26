@@ -15,6 +15,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const [sortBy, setSortBy] = useState('tema') // 'tema', 'accuracy_asc', 'accuracy_desc', 'last_study_new', 'last_study_old'
   const [showStatsInfo, setShowStatsInfo] = useState(false)
   const [activeTab, setActiveTab] = useState('materias')
+  const [expandedBlocks, setExpandedBlocks] = useState({
+    bloque1: true,  // Bloque I expandido por defecto
+    bloque2: false  // Bloque II colapsado por defecto
+  })
 
 
 
@@ -61,6 +65,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
           const theme = row.tema_number
           if (!theme) return
 
+          console.log(`📋 Procesando tema ${theme}:`, row.total, 'respuestas')
+
           themeStats[theme] = {
             total: parseInt(row.total),
             correct: parseInt(row.correct),
@@ -74,6 +80,23 @@ export default function TestsAuxiliarAdministrativoEstado() {
         })
 
         console.log('🎯 Estadísticas procesadas:', Object.keys(themeStats).length, 'temas')
+        
+        // 🔧 FIX TEMPORAL: Agregar temas de Bloque II con datos por defecto si no están incluidos
+        const bloqueIITemas = [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112];
+        
+        bloqueIITemas.forEach(temaNumber => {
+          if (!themeStats[temaNumber]) {
+            console.log(`📋 Agregando tema ${temaNumber} con datos por defecto`)
+            themeStats[temaNumber] = {
+              total: 0,
+              correct: 0,
+              accuracy: 0,
+              lastStudy: null,
+              lastStudyFormatted: 'Nunca'
+            }
+          }
+        })
+        
         setUserStats(themeStats)
       } else {
         console.error('❌ Error cargando estadísticas:', error)
@@ -108,9 +131,18 @@ export default function TestsAuxiliarAdministrativoEstado() {
     return colorClasses[color] || colorClasses.gray
   }
 
-  // ✅ FUNCIÓN: getSortedThemes con colores dinámicos basados en accuracy - CORREGIDO CON 16 TEMAS OFICIALES
-  const getSortedThemes = () => {
-    const themes = [
+  // ✅ FUNCIÓN: Alternar expansión de bloques
+  const toggleBlock = (blockId) => {
+    setExpandedBlocks(prev => ({
+      ...prev,
+      [blockId]: !prev[blockId]
+    }))
+  }
+
+  // ✅ FUNCIÓN: getSortedThemes con colores dinámicos basados en accuracy - ORGANIZADO POR BLOQUES
+  const getThemesByBlock = () => {
+    // Bloque I: Organización Pública (Temas 1-16)
+    const bloque1Themes = [
       { id: 1, title: 'La Constitución Española de 1978', href: '/auxiliar-administrativo-estado/test/tema/1' },
       { id: 2, title: 'El Tribunal Constitucional. La Corona', href: '/auxiliar-administrativo-estado/test/tema/2' },
       { id: 3, title: 'Las Cortes Generales', href: '/auxiliar-administrativo-estado/test/tema/3' },
@@ -127,16 +159,44 @@ export default function TestsAuxiliarAdministrativoEstado() {
       { id: 14, title: 'Derechos y Deberes de los Funcionarios', href: '/auxiliar-administrativo-estado/test/tema/14' },
       { id: 15, title: 'El Presupuesto del Estado en España', href: '/auxiliar-administrativo-estado/test/tema/15' },
       { id: 16, title: 'Políticas de Igualdad y contra la Violencia de Género', href: '/auxiliar-administrativo-estado/test/tema/16' }
-    ].map(theme => {
-      // ✅ ASIGNAR COLOR DINÁMICO SEGÚN ESTADÍSTICAS DE USUARIO
-      const stats = userStats[theme.id]
-      const accuracy = stats ? stats.accuracy : 0
-      const color = stats ? getAccuracyColor(accuracy) : 'gray'
-      
-      return { ...theme, color, accuracy }
-    })
+    ]
 
-    return themes.sort((a, b) => {
+    // Bloque II: Actividad Administrativa y Ofimática  
+    const bloque2Themes = [
+      { id: 101, title: 'Atención al público', href: '/auxiliar-administrativo-estado/test/tema/101', displayNumber: 1 },
+      { id: 102, title: 'Los servicios de información administrativa', href: '/auxiliar-administrativo-estado/test/tema/102', displayNumber: 2 },
+      { id: 103, title: 'Concepto de documento, registro y archivo', href: '/auxiliar-administrativo-estado/test/tema/103', displayNumber: 3 },
+      { id: 104, title: 'Administración electrónica y servicios al ciudadano', href: '/auxiliar-administrativo-estado/test/tema/104', displayNumber: 4 },
+      { id: 105, title: 'Informática básica: conceptos fundamentales sobre el hardware y el software', href: '/auxiliar-administrativo-estado/test/tema/105', displayNumber: 5 },
+      { id: 106, title: 'Introducción al sistema operativo', href: '/auxiliar-administrativo-estado/test/tema/106', displayNumber: 6 },
+      { id: 107, title: 'El explorador de Windows', href: '/auxiliar-administrativo-estado/test/tema/107', displayNumber: 7 },
+      { id: 108, title: 'Procesadores de texto: Word', href: '/auxiliar-administrativo-estado/test/tema/108', displayNumber: 8 },
+      { id: 109, title: 'Hojas de cálculo: Excel', href: '/auxiliar-administrativo-estado/test/tema/109', displayNumber: 9 },
+      { id: 110, title: 'Bases de datos: Access', href: '/auxiliar-administrativo-estado/test/tema/110', displayNumber: 10 },
+      { id: 111, title: 'Correo electrónico: conceptos elementales y funcionamiento', href: '/auxiliar-administrativo-estado/test/tema/111', displayNumber: 11 },
+      { id: 112, title: 'La Red Internet', href: '/auxiliar-administrativo-estado/test/tema/112', displayNumber: 12 }
+    ]
+
+    // Función para procesar themes con estadísticas
+    const processThemes = (themes) => {
+      return themes.map(theme => {
+        const stats = userStats[theme.id]
+        const accuracy = stats ? stats.accuracy : 0
+        const color = stats ? getAccuracyColor(accuracy) : 'gray'
+        return { ...theme, color, accuracy }
+      })
+    }
+
+    return {
+      bloque1: processThemes(bloque1Themes),
+      bloque2: processThemes(bloque2Themes)
+    }
+  }
+
+  // ✅ FUNCIÓN: getSortedThemes - Mantenida para compatibilidad con Test Aleatorio
+  const getSortedThemes = () => {
+    const { bloque1 } = getThemesByBlock()
+    return bloque1.sort((a, b) => {
       const statsA = userStats[a.id]
       const statsB = userStats[b.id]
 
@@ -179,6 +239,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
       }
     })
   }
+
 
   // Mostrar loading solo durante la verificación inicial de auth
   if (loading) {
@@ -272,8 +333,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
                     </div>
                   </div>
                   
-                  {/* ✅ BOTONES DINÁMICOS CON COLORES POR ACCURACY */}
-                  <div className="space-y-4">
+                  {/* ✅ ESTRUCTURA EN ÁRBOL CON BLOQUES */}
+                  <div className="space-y-6">
                     {/* Test Aleatorio */}
                     <Link
                       href="/auxiliar-administrativo-estado/test/aleatorio"
@@ -292,47 +353,139 @@ export default function TestsAuxiliarAdministrativoEstado() {
                       </div>
                     </Link>
 
-                    {getSortedThemes().map((theme) => (
-                      <Link
-                        key={theme.id}
-                        href={theme.href}
-                        className={`block ${getColorClasses(theme.color)} text-white py-4 px-8 rounded-lg font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl active:scale-95 focus:outline-none focus:ring-4 group`}
+                    {/* BLOQUE I: ORGANIZACIÓN PÚBLICA */}
+                    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                      <button
+                        onClick={() => toggleBlock('bloque1')}
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300"
                       >
                         <div className="flex items-center justify-between">
-                          <span>Tests Tema {theme.id}: {theme.title}</span>
-                          <div className="flex items-center space-x-3">
-                            {userStats[theme.id] && (
-                              <>
-                                <div className="flex items-center space-x-1">
-                                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
-                                    {userStats[theme.id].accuracy}% ({userStats[theme.id].correct}/{userStats[theme.id].total})
-                                  </span>
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      e.stopPropagation()
-                                      setShowStatsInfo(true)
-                                    }}
-                                    className="text-white/70 hover:text-white transition-colors p-1"
-                                    title="¿Qué significa este porcentaje?"
-                                  >
-                                    ℹ️
-                                  </button>
-                                </div>
-                                <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
-                                  Último estudio: {userStats[theme.id].lastStudyFormatted}
-                                </span>
-                              </>
-                            )}
-                            {!userStats[theme.id] && (
-                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                                Sin datos
-                              </span>
-                            )}
+                          <div className="flex items-center">
+                            <span className="mr-3 text-xl">🏛️</span>
+                            <span>Bloque I: Organización Pública</span>
+                            <span className="ml-3 bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                              16 temas
+                            </span>
                           </div>
+                          <span className={`text-2xl transition-transform duration-300 ${expandedBlocks.bloque1 ? 'rotate-180' : ''}`}>
+                            ▼
+                          </span>
                         </div>
-                      </Link>
-                    ))}
+                      </button>
+                      
+                      {expandedBlocks.bloque1 && (
+                        <div className="p-4 space-y-3 bg-gray-50">
+                          {getThemesByBlock().bloque1.map((theme) => (
+                            <Link
+                              key={theme.id}
+                              href={theme.href}
+                              className={`block ${getColorClasses(theme.color)} text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 group`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>Tema {theme.displayNumber || theme.id}: {theme.title}</span>
+                                <div className="flex items-center space-x-3">
+                                  {userStats[theme.id] && (
+                                    <>
+                                      <div className="flex items-center space-x-1">
+                                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                          {userStats[theme.id].accuracy}% ({userStats[theme.id].correct}/{userStats[theme.id].total})
+                                        </span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            setShowStatsInfo(true)
+                                          }}
+                                          className="text-white/70 hover:text-white transition-colors p-1"
+                                          title="¿Qué significa este porcentaje?"
+                                        >
+                                          ℹ️
+                                        </button>
+                                      </div>
+                                      <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
+                                        {userStats[theme.id].lastStudyFormatted}
+                                      </span>
+                                    </>
+                                  )}
+                                  {!userStats[theme.id] && (
+                                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                                      Sin datos
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* BLOQUE II: ACTIVIDAD ADMINISTRATIVA Y OFIMÁTICA */}
+                    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+                      <button
+                        onClick={() => toggleBlock('bloque2')}
+                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <span className="mr-3 text-xl">💻</span>
+                            <span>Bloque II: Actividad Administrativa y Ofimática</span>
+                            <span className="ml-3 bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                              En desarrollo
+                            </span>
+                          </div>
+                          <span className={`text-2xl transition-transform duration-300 ${expandedBlocks.bloque2 ? 'rotate-180' : ''}`}>
+                            ▼
+                          </span>
+                        </div>
+                      </button>
+                      
+                      {expandedBlocks.bloque2 && (
+                        <div className="p-4 space-y-3 bg-gray-50">
+                          {getThemesByBlock().bloque2.map((theme) => (
+                            <Link
+                              key={theme.id}
+                              href={theme.href}
+                              className={`block ${getColorClasses(theme.color)} text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 group`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span>Tema {theme.displayNumber || theme.id}: {theme.title}</span>
+                                <div className="flex items-center space-x-3">
+                                  {userStats[theme.id] && (
+                                    <>
+                                      <div className="flex items-center space-x-1">
+                                        <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                          {userStats[theme.id].accuracy}% ({userStats[theme.id].correct}/{userStats[theme.id].total})
+                                        </span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            setShowStatsInfo(true)
+                                          }}
+                                          className="text-white/70 hover:text-white transition-colors p-1"
+                                          title="¿Qué significa este porcentaje?"
+                                        >
+                                          ℹ️
+                                        </button>
+                                      </div>
+                                      <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
+                                        {userStats[theme.id].lastStudyFormatted}
+                                      </span>
+                                    </>
+                                  )}
+                                  {!userStats[theme.id] && (
+                                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                                      Sin datos
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </>
 

@@ -74,8 +74,8 @@ function TestPersonalizadoContent({ params }) {
     )
   }
 
-  // ✅ VALIDAR TEMA
-  if (isNaN(temaNumber) || temaNumber < 1 || temaNumber > 50) {
+  // ✅ VALIDAR TEMA (Bloque I: 1-16, Bloque II: 101+)
+  if (isNaN(temaNumber) || temaNumber < 1 || (temaNumber > 16 && temaNumber < 101) || temaNumber > 200) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">
@@ -84,7 +84,7 @@ function TestPersonalizadoContent({ params }) {
             Tema No Válido
           </h1>
           <p className="text-gray-600 mb-6">
-            El Tema {temaNumber} no es válido. Debe estar entre 1 y 50.
+            El Tema {temaNumber} no es válido. Debe ser del Bloque I (1-16) o Bloque II (101+).
           </p>
           <a 
             href="/auxiliar-administrativo-estado/test"
@@ -97,13 +97,17 @@ function TestPersonalizadoContent({ params }) {
     )
   }
 
+  // ✅ CONVERTIR NÚMERO DE TEMA PARA MOSTRAR (101 → Tema 1, 104 → Tema 4, etc.)
+  const displayTemaNumber = temaNumber >= 101 ? temaNumber - 100 : temaNumber
+  const bloqueInfo = temaNumber >= 101 ? ' (Bloque II)' : ' (Bloque I)'
+  
   return (
     <TestPageWrapper
       testType="personalizado"
       tema={temaNumber}
       testConfig={testConfig}
-      customTitle={`Test Personalizado - Tema ${temaNumber}`}
-      customDescription={`Test personalizado con ${testConfig.numQuestions} preguntas del Tema ${temaNumber}`}
+      customTitle={`Test Personalizado - Tema ${displayTemaNumber}${bloqueInfo}`}
+      customDescription={`Test personalizado con ${testConfig.numQuestions} preguntas`}
       customIcon="✨"
       customColor="from-purple-500 to-indigo-600"
     />

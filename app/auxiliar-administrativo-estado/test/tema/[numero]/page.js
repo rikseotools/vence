@@ -1,6 +1,6 @@
 // app/auxiliar-administrativo-estado/test/tema/[numero]/page.js - PÁGINA DINÁMICA MEJORADA
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
@@ -16,6 +16,8 @@ export default function TemaPage({ params }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [temaNotFound, setTemaNotFound] = useState(false)
+  const [showOposicionDropdown, setShowOposicionDropdown] = useState(false)
+  const dropdownRef = useRef(null)
   
   // ✅ ESTADOS PARA ESTADÍSTICAS
   const [difficultyStats, setDifficultyStats] = useState({})
@@ -105,6 +107,20 @@ export default function TemaPage({ params }) {
     refreshStats()
   }, [currentUser?.id, temaNumber]) // Solo cuando cambie el usuario o tema
 
+  // Efecto para cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowOposicionDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
   // ✅ RESOLVER PARAMS ASYNC
   useEffect(() => {
     async function resolveParams() {
@@ -114,8 +130,8 @@ export default function TemaPage({ params }) {
       setResolvedParams(resolved)
       setTemaNumber(tema)
       
-      // Validar número de tema
-      if (isNaN(tema) || tema < 1 || tema > 50) {
+      // Validar número de tema (1-16 Bloque I, 104+ Bloque II)
+      if (isNaN(tema) || tema < 1 || (tema > 16 && tema < 101) || tema > 200) {
         if (process.env.NODE_ENV === 'development') {
           console.log('❌ Número de tema inválido:', tema)
         }
@@ -603,13 +619,7 @@ export default function TemaPage({ params }) {
         .eq('tema_number', temaNumber)
         .eq('questions.is_active', true)
 
-      if (error || !userAnswers || userAnswers.length === 0) {
-        setUserStats(null)
-        setUserAnswers([])
-        return
-      }
-
-      setUserAnswers(userAnswers)
+      setUserAnswers(userAnswers || [])
       
       // ✅ SOLUCIÓN DEFINITIVA: Obtener estadísticas directamente y pasarlas
       console.log('🔄 Obteniendo estadísticas frescas directamente...')
@@ -618,7 +628,8 @@ export default function TemaPage({ params }) {
       console.log('🧮 [PROCESANDO] estadísticas obtenidas directamente:', currentStats)
       console.log('🔍 [VERIFICACIÓN] ¿estadísticas tienen datos?', Object.keys(currentStats).length > 0)
       
-      processUserStats(userAnswers, currentStats)
+      // ✅ PROCESAR ESTADÍSTICAS INCLUSO SI NO HAY RESPUESTAS DEL USUARIO
+      processUserStats(userAnswers || [], currentStats)
 
     } catch (error) {
       setUserStats(null)
@@ -647,7 +658,7 @@ export default function TemaPage({ params }) {
 
     // Estadísticas reales finales
     const totalCorrect = userAnswers.filter(a => a.is_correct).length
-    const overallAccuracy = (totalCorrect / userAnswers.length) * 100
+    const overallAccuracy = userAnswers.length > 0 ? (totalCorrect / userAnswers.length) * 100 : 0
 
     // Calcular preguntas únicas respondidas vs nunca vistas
     const uniqueQuestionIds = userAnswers.map(a => a.question_id)
@@ -808,15 +819,72 @@ export default function TemaPage({ params }) {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-3 py-6">
         
-        {/* ✅ HEADER DINÁMICO */}
+        {/* ✅ HEADER DINÁMICO CON DROPDOWN */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium mb-3">
-            <span className="mr-1">🏛️</span>
-            Auxiliar Administrativo del Estado
+          <div className="relative inline-block" ref={dropdownRef}>
+            <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium mb-3">
+              <span className="mr-1">🏛️</span>
+              <Link
+                href="/auxiliar-administrativo-estado/test"
+                className="hover:text-blue-900 transition-colors"
+              >
+                Auxiliar Administrativo del Estado
+              </Link>
+              <button
+                onClick={() => setShowOposicionDropdown(!showOposicionDropdown)}
+                className="ml-1 hover:text-blue-900 transition-colors"
+              >
+                <span className="text-xs">▼</span>
+              </button>
+              <span className="mx-2 text-blue-600">›</span>
+              <span className="font-semibold">
+                {temaNumber >= 101 ? 'Bloque II' : 'Bloque I'}
+              </span>
+            </div>
+
+            {/* Dropdown de Oposiciones */}
+            {showOposicionDropdown && (
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="py-2">
+                  <Link
+                    href="/auxiliar-administrativo-estado/test"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+                    onClick={() => setShowOposicionDropdown(false)}
+                  >
+                    <div className="flex items-center">
+                      <span className="mr-2">🏛️</span>
+                      <div>
+                        <div className="font-medium">Auxiliar Administrativo del Estado</div>
+                        <div className="text-xs text-gray-500">Todos los temas</div>
+                      </div>
+                    </div>
+                  </Link>
+                  
+                  <div className="border-t border-gray-100 my-1"></div>
+                  
+                  <Link
+                    href="/administrativo-estado"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors"
+                    onClick={() => setShowOposicionDropdown(false)}
+                  >
+                    <div className="flex items-center">
+                      <span className="mr-2">🏛️</span>
+                      <div>
+                        <div className="font-medium">Administrativo del Estado</div>
+                        <div className="text-xs text-gray-500">Cambiar oposición</div>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
           
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-            Tema {temaNumber}: {topicData.title}
+            {topicData.title?.startsWith('Tema ') ? 
+              topicData.title : 
+              `Tema ${temaNumber >= 101 ? temaNumber - 100 : temaNumber}: ${topicData.title}`
+            }
           </h1>
           
           <p className="text-gray-600 text-sm md:text-base mb-4">
@@ -835,7 +903,7 @@ export default function TemaPage({ params }) {
             )}
             
             {/* ✅ MOSTRAR PROGRESO DEL USUARIO */}
-            {currentUser && userStats && userStats.uniqueQuestionsAnswered > 0 && (
+            {currentUser && userStats && userStats.totalQuestionsAvailable > 0 && (
               <div className="mt-3 space-y-1">
                 <p className="text-green-600 font-medium text-sm">
                   ✅ {userStats.uniqueQuestionsAnswered} vistas
@@ -880,7 +948,7 @@ export default function TemaPage({ params }) {
         {currentUser && userStats && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              📊 Tu Progreso en el Tema {temaNumber}
+              📊 Tu Progreso en el {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}
             </h2>
             
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -888,7 +956,7 @@ export default function TemaPage({ params }) {
                 <h3 className="font-bold text-gray-800 text-lg">👤 Rendimiento Personal</h3>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-blue-600">{userStats.overallAccuracy.toFixed(1)}%</div>
-                  <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en Tema {temaNumber}</div>
+                  <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}</div>
                   {userStats.isRealData && (
                     <div className="text-xs text-green-600 font-medium">✅ Datos reales</div>
                   )}

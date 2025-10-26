@@ -978,11 +978,17 @@ export default function TestLayout({
                   </span>
                   {!isTestCompleted && (
                     <button
-                      onClick={() => window.location.href = config.isLawTest ? '/leyes' : '/auxiliar-administrativo-estado/test'}
+                      onClick={() => {
+                        if (config.customNavigationLinks?.backToLaw) {
+                          window.location.href = config.customNavigationLinks.backToLaw.href
+                        } else {
+                          window.location.href = config.isLawTest ? '/leyes' : '/auxiliar-administrativo-estado/test'
+                        }
+                      }}
                       className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
                     >
                       <span>←</span>
-                      <span>Volver a Tests</span>
+                      <span>{config.customNavigationLinks?.backToLaw?.text || 'Volver a Tests'}</span>
                     </button>
                   )}
                 </div>

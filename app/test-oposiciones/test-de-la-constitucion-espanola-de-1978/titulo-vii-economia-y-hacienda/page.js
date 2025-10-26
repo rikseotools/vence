@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-viii-organizacion-territorial/page.js
+// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-vii-economia-y-hacienda/page.js
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -7,23 +7,18 @@ import TestPageWrapper from '../../../../components/TestPageWrapper'
 
 const supabase = getSupabaseClient()
 
-export default function TituloVIIIOrganizacionTerritorialPage() {
+export default function TituloVIIEconomiaHaciendaPage() {
   const [loading, setLoading] = useState(true)
   const [showTest, setShowTest] = useState(false)
   const [stats, setStats] = useState(null)
 
   // Configuración específica para esta sección
   const sectionConfig = {
-    title: 'Título VIII. De la organización territorial del Estado',
-    description: 'Test del Título VIII sobre organización territorial del Estado (Art. 137-158)',
+    title: 'Título VII. Economía y Hacienda',
+    description: 'Test del Título VII sobre Economía y Hacienda (Art. 128-136)',
     lawId: '6ad91a6c-41ec-431f-9c80-5f5566834941', // ID de la Constitución
-    articleRange: { start: 137, end: 158 },
-    slug: 'titulo-viii-organizacion-territorial',
-    chapters: [
-      'Capítulo 1º. Principios generales.',
-      'Capítulo 2º. De la Administración local.',
-      'Capítulo 3º. De las Comunidades Autónomas.'
-    ]
+    articleRange: { start: 128, end: 136 },
+    slug: 'titulo-vii-economia-y-hacienda'
   }
 
   useEffect(() => {
@@ -32,7 +27,7 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
 
   const loadSectionStats = async () => {
     try {
-      // Obtener preguntas específicas de esta sección (artículos 137-158)
+      // Obtener preguntas específicas de esta sección (artículos 128-136)
       const articleNumbers = Array.from(
         { length: sectionConfig.articleRange.end - sectionConfig.articleRange.start + 1 }, 
         (_, i) => String(sectionConfig.articleRange.start + i)
@@ -113,8 +108,8 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
         defaultConfig={testConfig}
         customTitle={`Test: ${sectionConfig.title}`}
         customDescription={sectionConfig.description}
-        customIcon="🗺️"
-        customColor="from-green-500 to-emerald-600"
+        customIcon="💰"
+        customColor="from-emerald-500 to-teal-600"
       />
     )
   }
@@ -141,32 +136,50 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
       </div>
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-700 text-white py-12">
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-12">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="text-6xl mb-4">🗺️</div>
+          <div className="text-6xl mb-4">💰</div>
           <h1 className="text-3xl font-bold mb-4">
             {sectionConfig.title}
           </h1>
-          <p className="text-green-100 text-lg mb-6">
+          <p className="text-emerald-100 text-lg mb-6">
             {sectionConfig.description}
           </p>
           
           {!loading && stats && (
-            <div className="flex justify-center gap-8">
+            <div className="flex justify-center gap-8 mb-8">
               <div className="bg-white/10 rounded-lg p-4">
                 <div className="text-2xl font-bold">{stats.questionsCount}</div>
-                <div className="text-sm text-green-100">Preguntas</div>
+                <div className="text-sm text-emerald-100">Preguntas</div>
               </div>
               <div className="bg-white/10 rounded-lg p-4">
                 <div className="text-2xl font-bold">{stats.articlesCount}</div>
-                <div className="text-sm text-green-100">Artículos</div>
+                <div className="text-sm text-emerald-100">Artículos</div>
               </div>
               <div className="bg-white/10 rounded-lg p-4">
-                <div className="text-2xl font-bold">{sectionConfig.chapters.length}</div>
-                <div className="text-sm text-green-100">Capítulos</div>
+                <div className="text-2xl font-bold">9</div>
+                <div className="text-sm text-emerald-100">Artículos</div>
               </div>
             </div>
           )}
+
+          {/* Botón de inicio del test */}
+          <div className="text-center">
+            {loading ? (
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            ) : stats && stats.questionsCount > 0 ? (
+              <button
+                onClick={handleStartTest}
+                className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg text-lg transition-colors duration-200 shadow-lg"
+              >
+                🚀 Empezar Test ({stats.questionsCount} preguntas)
+              </button>
+            ) : (
+              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                ⚠️ No hay preguntas disponibles para esta sección aún.
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -179,13 +192,20 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">📍 Estructura del Título VIII</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">📍 Artículos del Título VII</h3>
               <div className="space-y-3">
-                {sectionConfig.chapters.map((chapter, idx) => (
-                  <div key={idx} className="bg-gray-50 rounded p-3">
-                    <h4 className="font-medium text-gray-800 text-sm">{chapter}</h4>
-                  </div>
-                ))}
+                <div className="bg-gray-50 rounded p-3">
+                  <h4 className="font-medium text-gray-800 text-sm">Art. 128 - Riqueza del país</h4>
+                </div>
+                <div className="bg-gray-50 rounded p-3">
+                  <h4 className="font-medium text-gray-800 text-sm">Art. 129 - Sector público económico</h4>
+                </div>
+                <div className="bg-gray-50 rounded p-3">
+                  <h4 className="font-medium text-gray-800 text-sm">Art. 130-131 - Planificación económica</h4>
+                </div>
+                <div className="bg-gray-50 rounded p-3">
+                  <h4 className="font-medium text-gray-800 text-sm">Art. 132-136 - Hacienda pública</h4>
+                </div>
               </div>
             </div>
             
@@ -193,47 +213,47 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
               <h3 className="font-semibold text-gray-900 mb-2">🎯 Temas Principales</h3>
               <ul className="text-gray-600 text-sm space-y-2">
                 <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Principios generales de organización territorial</span>
+                  <span className="text-emerald-500 mr-2 mt-1">•</span>
+                  <span>Riqueza nacional y sectores económicos</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Municipios, provincias y autonomía local</span>
+                  <span className="text-emerald-500 mr-2 mt-1">•</span>
+                  <span>Sector público y empresa pública</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Comunidades Autónomas y sus competencias</span>
+                  <span className="text-emerald-500 mr-2 mt-1">•</span>
+                  <span>Planificación de la actividad económica</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Distribución de competencias Estado-CCAA</span>
+                  <span className="text-emerald-500 mr-2 mt-1">•</span>
+                  <span>Presupuestos Generales del Estado</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Financiación de las Comunidades Autónomas</span>
+                  <span className="text-emerald-500 mr-2 mt-1">•</span>
+                  <span>Sistema tributario</span>
                 </li>
                 <li className="flex items-start">
-                  <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Control del Estado sobre las CCAA</span>
+                  <span className="text-emerald-500 mr-2 mt-1">•</span>
+                  <span>Tribunal de Cuentas</span>
                 </li>
               </ul>
               
               <h3 className="font-semibold text-gray-900 mb-2 mt-4">📊 Características del Test</h3>
               <ul className="text-gray-600 text-sm space-y-1">
                 <li className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  Artículos 137-158
+                  <span className="text-emerald-500 mr-2">✓</span>
+                  Artículos 128-136
                 </li>
                 <li className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
-                  3 capítulos específicos
+                  <span className="text-emerald-500 mr-2">✓</span>
+                  Fundamental para Auxiliar Administrativo
                 </li>
                 <li className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
+                  <span className="text-emerald-500 mr-2">✓</span>
                   Modo adaptativo
                 </li>
                 <li className="flex items-center">
-                  <span className="text-green-500 mr-2">✓</span>
+                  <span className="text-emerald-500 mr-2">✓</span>
                   Explicaciones detalladas
                 </li>
               </ul>
@@ -241,22 +261,39 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
           </div>
         </div>
 
-        {/* Botón de inicio */}
-        <div className="text-center">
-          {loading ? (
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-          ) : stats && stats.questionsCount > 0 ? (
-            <button
-              onClick={handleStartTest}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors duration-200"
-            >
-              🚀 Empezar Test ({stats.questionsCount} preguntas)
-            </button>
-          ) : (
-            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-              ⚠️ No hay preguntas disponibles para esta sección aún.
+        {/* Contenido educativo */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">
+            Artículos Clave para Oposiciones
+          </h2>
+          
+          <div className="space-y-6">
+            <div className="border-l-4 border-emerald-500 pl-4">
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Art. 133 - Potestad tributaria</h3>
+              <div className="space-y-2">
+                <p className="text-gray-700">• La potestad originaria para establecer tributos corresponde exclusivamente al Estado</p>
+                <p className="text-gray-700">• Las Comunidades Autónomas y Corporaciones locales podrán establecer y exigir tributos con arreglo a la Constitución y las leyes</p>
+              </div>
             </div>
-          )}
+            
+            <div className="border-l-4 border-emerald-500 pl-4">
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Art. 134 - Presupuestos Generales del Estado</h3>
+              <div className="space-y-2">
+                <p className="text-gray-700">• Incluirán la totalidad de los gastos e ingresos del sector público estatal</p>
+                <p className="text-gray-700">• Su elaboración, aprobación y ejecución responderán a los principios de estabilidad presupuestaria y sostenibilidad financiera</p>
+                <p className="text-gray-700">• El Gobierno deberá presentar ante el Congreso de los Diputados el proyecto de ley de Presupuestos al menos tres meses antes de la expiración de los del año anterior</p>
+              </div>
+            </div>
+            
+            <div className="border-l-4 border-emerald-500 pl-4">
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Art. 136 - Tribunal de Cuentas</h3>
+              <div className="space-y-2">
+                <p className="text-gray-700">• Órgano supremo fiscalizador de las cuentas y de la gestión económica del Estado</p>
+                <p className="text-gray-700">• Depende directamente de las Cortes Generales</p>
+                <p className="text-gray-700">• Sin perjuicio de su propia jurisdicción, remitirá a las Cortes Generales un informe anual</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Enlaces relacionados */}
@@ -264,22 +301,22 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
           <h3 className="font-bold text-gray-900 mb-4">Tests Relacionados</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link
+              href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-viii-organizacion-territorial"
+              className="text-blue-600 hover:text-blue-800 font-medium"
+            >
+              → Título VIII: Organización territorial del Estado
+            </Link>
+            <Link
               href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-iii-de-las-cortes-generales"
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
               → Título III: De las Cortes Generales
             </Link>
             <Link
-              href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-iv-del-gobierno-y-la-administracion"
+              href="/auxiliar-administrativo-estado/test/tema/8"
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
-              → Título IV: Del Gobierno y la Administración
-            </Link>
-            <Link
-              href="/auxiliar-administrativo-estado/test/tema/9"
-              className="text-blue-600 hover:text-blue-800 font-medium"
-            >
-              → Test Tema 9: Organización Territorial (Auxiliar Administrativo)
+              → Test Tema 8: Economía y Hacienda (Auxiliar Administrativo)
             </Link>
             <Link
               href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978"

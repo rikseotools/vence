@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-viii-organizacion-territorial/page.js
+// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-v-relaciones-gobierno-cortes/page.js
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -7,23 +7,18 @@ import TestPageWrapper from '../../../../components/TestPageWrapper'
 
 const supabase = getSupabaseClient()
 
-export default function TituloVIIIOrganizacionTerritorialPage() {
+export default function TituloVRelacionesGobiernoPage() {
   const [loading, setLoading] = useState(true)
   const [showTest, setShowTest] = useState(false)
   const [stats, setStats] = useState(null)
 
   // Configuración específica para esta sección
   const sectionConfig = {
-    title: 'Título VIII. De la organización territorial del Estado',
-    description: 'Test del Título VIII sobre organización territorial del Estado (Art. 137-158)',
+    title: 'Título V. De las relaciones entre el Gobierno y las Cortes Generales',
+    description: 'Test del Título V sobre las relaciones entre el Gobierno y las Cortes (Art. 108-116)',
     lawId: '6ad91a6c-41ec-431f-9c80-5f5566834941', // ID de la Constitución
-    articleRange: { start: 137, end: 158 },
-    slug: 'titulo-viii-organizacion-territorial',
-    chapters: [
-      'Capítulo 1º. Principios generales.',
-      'Capítulo 2º. De la Administración local.',
-      'Capítulo 3º. De las Comunidades Autónomas.'
-    ]
+    articleRange: { start: 108, end: 116 },
+    slug: 'titulo-v-relaciones-gobierno-cortes'
   }
 
   useEffect(() => {
@@ -32,7 +27,7 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
 
   const loadSectionStats = async () => {
     try {
-      // Obtener preguntas específicas de esta sección (artículos 137-158)
+      // Obtener preguntas específicas de esta sección (artículos 108-116)
       const articleNumbers = Array.from(
         { length: sectionConfig.articleRange.end - sectionConfig.articleRange.start + 1 }, 
         (_, i) => String(sectionConfig.articleRange.start + i)
@@ -113,8 +108,8 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
         defaultConfig={testConfig}
         customTitle={`Test: ${sectionConfig.title}`}
         customDescription={sectionConfig.description}
-        customIcon="🗺️"
-        customColor="from-green-500 to-emerald-600"
+        customIcon="🤝"
+        customColor="from-green-500 to-blue-600"
       />
     )
   }
@@ -141,9 +136,9 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
       </div>
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-700 text-white py-12">
+      <div className="bg-gradient-to-r from-green-600 to-blue-700 text-white py-12">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="text-6xl mb-4">🗺️</div>
+          <div className="text-6xl mb-4">🤝</div>
           <h1 className="text-3xl font-bold mb-4">
             {sectionConfig.title}
           </h1>
@@ -152,7 +147,7 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
           </p>
           
           {!loading && stats && (
-            <div className="flex justify-center gap-8">
+            <div className="flex justify-center gap-8 mb-8">
               <div className="bg-white/10 rounded-lg p-4">
                 <div className="text-2xl font-bold">{stats.questionsCount}</div>
                 <div className="text-sm text-green-100">Preguntas</div>
@@ -162,11 +157,29 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
                 <div className="text-sm text-green-100">Artículos</div>
               </div>
               <div className="bg-white/10 rounded-lg p-4">
-                <div className="text-2xl font-bold">{sectionConfig.chapters.length}</div>
-                <div className="text-sm text-green-100">Capítulos</div>
+                <div className="text-2xl font-bold">9</div>
+                <div className="text-sm text-green-100">Artículos</div>
               </div>
             </div>
           )}
+
+          {/* Botón de inicio del test */}
+          <div className="text-center">
+            {loading ? (
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            ) : stats && stats.questionsCount > 0 ? (
+              <button
+                onClick={handleStartTest}
+                className="bg-white text-green-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg text-lg transition-colors duration-200 shadow-lg"
+              >
+                🚀 Empezar Test ({stats.questionsCount} preguntas)
+              </button>
+            ) : (
+              <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                ⚠️ No hay preguntas disponibles para esta sección aún.
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -179,13 +192,20 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h3 className="font-semibold text-gray-900 mb-2">📍 Estructura del Título VIII</h3>
+              <h3 className="font-semibold text-gray-900 mb-2">📍 Artículos del Título V</h3>
               <div className="space-y-3">
-                {sectionConfig.chapters.map((chapter, idx) => (
-                  <div key={idx} className="bg-gray-50 rounded p-3">
-                    <h4 className="font-medium text-gray-800 text-sm">{chapter}</h4>
-                  </div>
-                ))}
+                <div className="bg-gray-50 rounded p-3">
+                  <h4 className="font-medium text-gray-800 text-sm">Art. 108 - Responsabilidad política</h4>
+                </div>
+                <div className="bg-gray-50 rounded p-3">
+                  <h4 className="font-medium text-gray-800 text-sm">Art. 109-110 - Control parlamentario</h4>
+                </div>
+                <div className="bg-gray-50 rounded p-3">
+                  <h4 className="font-medium text-gray-800 text-sm">Art. 111-112 - Información parlamentaria</h4>
+                </div>
+                <div className="bg-gray-50 rounded p-3">
+                  <h4 className="font-medium text-gray-800 text-sm">Art. 113-116 - Mociones y cuestiones</h4>
+                </div>
               </div>
             </div>
             
@@ -194,27 +214,27 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
               <ul className="text-gray-600 text-sm space-y-2">
                 <li className="flex items-start">
                   <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Principios generales de organización territorial</span>
+                  <span>Responsabilidad política del Gobierno</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Municipios, provincias y autonomía local</span>
+                  <span>Control parlamentario</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Comunidades Autónomas y sus competencias</span>
+                  <span>Interpelaciones y preguntas</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Distribución de competencias Estado-CCAA</span>
+                  <span>Cuestión de confianza</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Financiación de las Comunidades Autónomas</span>
+                  <span>Moción de censura</span>
                 </li>
                 <li className="flex items-start">
                   <span className="text-green-500 mr-2 mt-1">•</span>
-                  <span>Control del Estado sobre las CCAA</span>
+                  <span>Disolución de las Cámaras</span>
                 </li>
               </ul>
               
@@ -222,11 +242,11 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
               <ul className="text-gray-600 text-sm space-y-1">
                 <li className="flex items-center">
                   <span className="text-green-500 mr-2">✓</span>
-                  Artículos 137-158
+                  Artículos 108-116
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-2">✓</span>
-                  3 capítulos específicos
+                  Fundamental para Auxiliar Administrativo
                 </li>
                 <li className="flex items-center">
                   <span className="text-green-500 mr-2">✓</span>
@@ -241,22 +261,37 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
           </div>
         </div>
 
-        {/* Botón de inicio */}
-        <div className="text-center">
-          {loading ? (
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
-          ) : stats && stats.questionsCount > 0 ? (
-            <button
-              onClick={handleStartTest}
-              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors duration-200"
-            >
-              🚀 Empezar Test ({stats.questionsCount} preguntas)
-            </button>
-          ) : (
-            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
-              ⚠️ No hay preguntas disponibles para esta sección aún.
+        {/* Contenido educativo */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">
+            Artículos Clave para Oposiciones
+          </h2>
+          
+          <div className="space-y-6">
+            <div className="border-l-4 border-green-500 pl-4">
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Art. 108 - Responsabilidad política</h3>
+              <p className="text-gray-700">El Gobierno responde solidariamente en su gestión política ante el Congreso de los Diputados.</p>
             </div>
-          )}
+            
+            <div className="border-l-4 border-green-500 pl-4">
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Art. 113 - Cuestión de confianza</h3>
+              <div className="space-y-2">
+                <p className="text-gray-700">• El Presidente del Gobierno puede plantear ante el Congreso de los Diputados la cuestión de confianza</p>
+                <p className="text-gray-700">• La confianza se entenderá otorgada cuando vote a favor la mayoría simple</p>
+                <p className="text-gray-700">• Si no se otorga la confianza, el Gobierno presentará su dimisión al Rey</p>
+              </div>
+            </div>
+            
+            <div className="border-l-4 border-green-500 pl-4">
+              <h3 className="font-bold text-lg text-gray-900 mb-2">Art. 113 - Moción de censura</h3>
+              <div className="space-y-2">
+                <p className="text-gray-700">• Debe ser propuesta por al menos la décima parte de los Diputados</p>
+                <p className="text-gray-700">• Debe incluir un candidato a la Presidencia del Gobierno</p>
+                <p className="text-gray-700">• Solo puede ser aprobada por mayoría absoluta del Congreso</p>
+                <p className="text-gray-700">• Si prospera, el Gobierno cesará y el candidato será nombrado Presidente</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Enlaces relacionados */}
@@ -276,10 +311,10 @@ export default function TituloVIIIOrganizacionTerritorialPage() {
               → Título IV: Del Gobierno y la Administración
             </Link>
             <Link
-              href="/auxiliar-administrativo-estado/test/tema/9"
+              href="/auxiliar-administrativo-estado/test/tema/6"
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
-              → Test Tema 9: Organización Territorial (Auxiliar Administrativo)
+              → Test Tema 6: Relaciones Gobierno y Cortes (Auxiliar Administrativo)
             </Link>
             <Link
               href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978"
