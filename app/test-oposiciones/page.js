@@ -94,30 +94,30 @@ export default function TestOposicionesPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-emerald-600 text-white py-20">
+      <div className="bg-gradient-to-r from-slate-700 to-gray-800 text-white py-12 md:py-20">
         <div className="max-w-6xl mx-auto px-4 text-center">
-          <div className="text-8xl mb-6">🎯</div>
-          <h1 className="text-5xl font-bold mb-6">
+          <div className="text-6xl md:text-8xl mb-4 md:mb-6">🎯</div>
+          <h1 className="text-3xl md:text-5xl font-bold mb-4 md:mb-6">
             Tests de Oposiciones
           </h1>
-          <p className="text-xl text-blue-100 mb-8 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-200 mb-6 md:mb-8 max-w-3xl mx-auto">
             Prepárate para tus oposiciones con tests especializados por ley y materia. 
             Contenido actualizado, preguntas oficiales y seguimiento de progreso.
           </p>
           
           {!loading && stats && (
-            <div className="flex justify-center gap-8 mb-8">
-              <div className="bg-white/10 rounded-lg p-6">
-                <div className="text-3xl font-bold">{stats.totalLaws}</div>
-                <div className="text-sm text-blue-100">Leyes Disponibles</div>
+            <div className="flex justify-center gap-4 md:gap-8 mb-6 md:mb-8">
+              <div className="bg-white/10 rounded-lg p-3 md:p-6 min-w-0">
+                <div className="text-xl md:text-3xl font-bold">{stats.totalLaws}</div>
+                <div className="text-xs md:text-sm text-gray-200">Leyes</div>
               </div>
-              <div className="bg-white/10 rounded-lg p-6">
-                <div className="text-3xl font-bold">{stats.totalSections}</div>
-                <div className="text-sm text-blue-100">Secciones</div>
+              <div className="bg-white/10 rounded-lg p-3 md:p-6 min-w-0">
+                <div className="text-xl md:text-3xl font-bold">{stats.totalSections}</div>
+                <div className="text-xs md:text-sm text-gray-200">Secciones</div>
               </div>
-              <div className="bg-white/10 rounded-lg p-6">
-                <div className="text-3xl font-bold">{stats.totalQuestions}</div>
-                <div className="text-sm text-blue-100">Preguntas</div>
+              <div className="bg-white/10 rounded-lg p-3 md:p-6 min-w-0">
+                <div className="text-xl md:text-3xl font-bold">{stats.totalQuestions}</div>
+                <div className="text-xs md:text-sm text-gray-200">Preguntas</div>
               </div>
             </div>
           )}
@@ -125,30 +125,30 @@ export default function TestOposicionesPage() {
       </div>
 
       {/* Leyes Disponibles */}
-      <div className="max-w-6xl mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+      <div className="max-w-6xl mx-auto px-4 py-8 md:py-16">
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4">
             Leyes Disponibles
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
             Cada ley está organizada por títulos y capítulos para un estudio más eficaz y dirigido
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8 mb-8 md:mb-16">
           {availableLaws.map((law) => (
             <Link
               key={law.id}
               href={`/test-oposiciones/${law.slug}`}
               className="group block"
             >
-              <div className={`bg-gradient-to-r ${law.color} rounded-2xl p-8 text-white transform transition-all duration-300 hover:scale-105 hover:shadow-xl`}>
-                <div className="flex items-start justify-between mb-6">
-                  <div className="text-6xl group-hover:scale-110 transition-transform duration-300">
+              <div className={`bg-gradient-to-r ${law.color} rounded-xl md:rounded-2xl p-4 md:p-6 text-white transform transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer`}>
+                <div className="flex items-start justify-between mb-4">
+                  <div className="text-4xl md:text-6xl group-hover:scale-110 transition-transform duration-300">
                     {law.image}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {law.tags.map((tag) => (
+                  <div className="flex flex-wrap gap-1 md:gap-2">
+                    {law.tags.slice(0, 2).map((tag) => (
                       <span 
                         key={tag}
                         className="bg-white/20 text-xs px-2 py-1 rounded-full"
@@ -159,32 +159,29 @@ export default function TestOposicionesPage() {
                   </div>
                 </div>
                 
-                <h3 className="text-2xl font-bold mb-4 group-hover:text-blue-100 transition-colors">
+                <h3 className="text-lg md:text-2xl font-bold mb-2 md:mb-3 group-hover:text-blue-100 transition-colors line-clamp-2">
                   {law.title}
                 </h3>
                 
-                <p className="text-blue-100 mb-6 leading-relaxed">
+                <p className="text-blue-100 mb-4 md:mb-5 leading-relaxed text-sm md:text-base line-clamp-3">
                   {law.description}
                 </p>
                 
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="bg-white/10 rounded-lg p-3 text-center">
-                    <div className="text-xl font-bold">{law.sections}</div>
+                <div className="grid grid-cols-2 gap-2 md:gap-4 mb-4">
+                  <div className="bg-white/10 rounded-lg p-2 md:p-3 text-center">
+                    <div className="text-lg md:text-xl font-bold">{law.sections}</div>
                     <div className="text-xs text-blue-100">Secciones</div>
                   </div>
-                  <div className="bg-white/10 rounded-lg p-3 text-center">
-                    <div className="text-xl font-bold">{law.articles}</div>
+                  <div className="bg-white/10 rounded-lg p-2 md:p-3 text-center">
+                    <div className="text-lg md:text-xl font-bold">{law.articles}</div>
                     <div className="text-xs text-blue-100">Artículos</div>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-blue-100">
-                    Prioridad: {law.priority === 1 ? 'Máxima' : 'Alta'}
-                  </span>
+                <div className="flex items-center justify-end">
                   <div className="flex items-center text-white group-hover:translate-x-2 transition-transform duration-300">
-                    <span className="mr-2">Empezar Tests</span>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span className="mr-2 text-sm md:text-base">Empezar Tests</span>
+                    <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
@@ -195,10 +192,10 @@ export default function TestOposicionesPage() {
         </div>
 
         {/* Información Adicional */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="text-4xl mb-4">🎯</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+          <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+            <div className="text-3xl md:text-4xl mb-3 md:mb-4">🎯</div>
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 md:mb-3">
               Enfoque Especializado
             </h3>
             <p className="text-gray-600 text-sm">
@@ -207,9 +204,9 @@ export default function TestOposicionesPage() {
             </p>
           </div>
           
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="text-4xl mb-4">📊</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">
+          <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+            <div className="text-3xl md:text-4xl mb-3 md:mb-4">📊</div>
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 md:mb-3">
               Seguimiento de Progreso
             </h3>
             <p className="text-gray-600 text-sm">
@@ -218,9 +215,9 @@ export default function TestOposicionesPage() {
             </p>
           </div>
           
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="text-4xl mb-4">✅</div>
-            <h3 className="text-xl font-bold text-gray-900 mb-3">
+          <div className="bg-white rounded-xl shadow-md p-4 md:p-6">
+            <div className="text-3xl md:text-4xl mb-3 md:mb-4">✅</div>
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 md:mb-3">
               Contenido Actualizado
             </h3>
             <p className="text-gray-600 text-sm">
@@ -232,20 +229,20 @@ export default function TestOposicionesPage() {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-gray-900 text-white py-16">
+      <div className="bg-gray-900 text-white py-12 md:py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">
             ¿Listo para empezar tu preparación?
           </h2>
-          <p className="text-xl text-gray-300 mb-8">
+          <p className="text-lg md:text-xl text-gray-300 mb-6 md:mb-8">
             Comienza con la Constitución Española, la base de todas las oposiciones
           </p>
           <Link
             href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978"
-            className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg text-lg transition-colors duration-200"
+            className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 md:px-8 rounded-lg text-base md:text-lg transition-colors duration-200"
           >
             🏛️ Empezar con la Constitución
-            <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 md:w-5 md:h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </Link>

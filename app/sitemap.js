@@ -194,12 +194,6 @@ export default async function sitemap() {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
-    {
-      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/disposiciones-adicionales-transitorias-derogatoria-final`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
     
     // Tests de la Ley 39/2015 - SEO Optimizados
     {

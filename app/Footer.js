@@ -13,6 +13,7 @@ export default function FooterES() {
       { nombre: 'Constitución Española', href: '/leyes/constitucion-espanola', disponible: true },
       { nombre: 'Test Constitución 1978', href: '/test-oposiciones/test-de-la-constitucion-espanola-de-1978', disponible: true },
       { nombre: 'Ley 39/2015', href: '/leyes/ley-39-2015', disponible: true },
+      { nombre: 'Test Ley 39/2015', href: '/test-oposiciones/test-de-la-ley-39-2015-del-procedimiento-administrativo-comun', disponible: true },
       { nombre: 'Ley 40/2015', href: '/leyes/ley-40-2015', disponible: true },
       { nombre: 'Ley 19/2013', href: '/leyes/ley-19-2013', disponible: true },
       { nombre: 'Ley 7/1985', href: '/leyes/ley-7-1985', disponible: true }
