@@ -21,6 +21,21 @@ const nextConfig = {
       : 'http://localhost:3000'
   },
   
+  // ✅ URL ALIAS CORTA para mejor SEO
+  async rewrites() {
+    return [
+      {
+        source: '/test-oposiciones/constitucion-titulos',
+        destination: '/test-oposiciones/test-de-la-constitucion-espanola-de-1978'
+      },
+      // ✅ También alias para las sub-rutas de títulos
+      {
+        source: '/test-oposiciones/constitucion-titulos/:path*',
+        destination: '/test-oposiciones/test-de-la-constitucion-espanola-de-1978/:path*'
+      }
+    ]
+  },
+
   // ✅ Redirigir automáticamente sin www a con www (solo en producción)
   async redirects() {
     if (process.env.NODE_ENV === 'production') {

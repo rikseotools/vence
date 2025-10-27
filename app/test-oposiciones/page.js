@@ -16,7 +16,7 @@ export default function TestOposicionesPage() {
       id: 'constitucion',
       title: 'Constitución Española de 1978',
       description: 'La norma suprema del ordenamiento jurídico español. Fundamental para cualquier oposición.',
-      slug: 'test-de-la-constitucion-espanola-de-1978',
+      slug: 'constitucion-titulos',
       image: '🏛️',
       color: 'from-blue-600 to-indigo-700',
       sections: 11,
@@ -238,7 +238,7 @@ export default function TestOposicionesPage() {
             Comienza con la Constitución Española, la base de todas las oposiciones
           </p>
           <Link
-            href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978"
+            href="/test-oposiciones/constitucion-titulos"
             className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 md:px-8 rounded-lg text-base md:text-lg transition-colors duration-200"
           >
             🏛️ Empezar con la Constitución

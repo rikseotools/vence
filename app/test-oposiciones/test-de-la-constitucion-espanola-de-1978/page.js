@@ -23,16 +23,16 @@ export async function generateMetadata() {
       'vence'
     ].join(', '),
     
-    // Canonical hacia esta misma URL (contenido diferente que /leyes/)
+    // ✅ Canonical hacia URL corta optimizada para SEO
     alternates: {
-      canonical: '/test-oposiciones/test-de-la-constitucion-espanola-de-1978'
+      canonical: '/test-oposiciones/constitucion-titulos'
     },
     
     openGraph: {
       title: 'Test Constitución Española 1978 por Títulos | Oposiciones | Vence',
       description: 'Tests específicos por títulos constitucionales. Preparación para oposiciones con preguntas oficiales organizadas por artículos.',
       type: 'website',
-      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978`,
+      url: `${SITE_URL}/test-oposiciones/constitucion-titulos`,
       siteName: 'Vence'
     },
     
@@ -92,7 +92,7 @@ export default async function TestConstitucionPage() {
         "@type": "ListItem", 
         "position": 2,
         "name": "Constitución Española 1978",
-        "item": `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978`
+        "item": `${SITE_URL}/test-oposiciones/constitucion-titulos`
       }
     ]
   }
