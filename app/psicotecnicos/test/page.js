@@ -17,7 +17,7 @@ export const metadata = {
     description: 'Practica tests psicotécnicos gratuitos. Más de 500 preguntas para preparar tu oposición.'
   },
   alternates: {
-    canonical: 'https://vence.es/psicotecnicos/test'
+    canonical: `${process.env.SITE_URL || 'https://www.vence.es'}/psicotecnicos/test`
   }
 }
 

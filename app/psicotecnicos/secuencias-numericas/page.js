@@ -28,7 +28,7 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: 'https://vence.es/psicotecnicos/secuencias-numericas'
+    canonical: `${process.env.SITE_URL || 'https://www.vence.es'}/psicotecnicos/secuencias-numericas`
   }
 }
 

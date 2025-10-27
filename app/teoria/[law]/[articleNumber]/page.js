@@ -74,7 +74,7 @@ export async function generateMetadata({ params }) {
         },
       },
       alternates: {
-        canonical: `https://vence.es/teoria/${lawSlug}/${articleParam}`
+        canonical: `${process.env.SITE_URL || 'https://www.vence.es'}/teoria/${lawSlug}/${articleParam}`
       }
     }
   } catch (error) {

@@ -26,7 +26,7 @@ export const metadata = {
     images: ['https://vence.es/og-leyes-oposiciones.jpg'],
   },
   alternates: {
-    canonical: 'https://vence.es/leyes-de-oposiciones',
+    canonical: `${process.env.SITE_URL || 'https://www.vence.es'}/leyes-de-oposiciones`
   },
 }
 

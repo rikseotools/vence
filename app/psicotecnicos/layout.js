@@ -26,7 +26,7 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: 'https://vence.es/psicotecnicos'
+    canonical: `${process.env.SITE_URL || 'https://www.vence.es'}/psicotecnicos`
   }
 }
 

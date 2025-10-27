@@ -32,7 +32,7 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: 'https://vence.es/teoria'
+    canonical: `${process.env.SITE_URL || 'https://www.vence.es'}/teoria`
   }
 }
 
