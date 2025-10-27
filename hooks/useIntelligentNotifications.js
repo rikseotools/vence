@@ -1546,6 +1546,12 @@ export function useIntelligentNotifications() {
       const motivationalNotifsWithoutCooldown = motivationalNotifs.filter(notification => {
         if (notification.type === 'study_consistency') {
           const inCooldown = isInMotivationalCooldown(user.id, 'study_consistency')
+          console.log(`🔍 DEBUG: Verificando cooldown para "Patrón Óptimo":`, {
+            notificationId: notification.id,
+            type: notification.type,
+            inCooldown,
+            userId: user.id
+          })
           if (inCooldown) {
             console.log(`⏰ Notificación "Patrón Óptimo" en cooldown - no mostrar`)
             return false
@@ -1791,11 +1797,24 @@ export function useIntelligentNotifications() {
     
     // 🆕 DETECTAR Y APLICAR COOLDOWN PARA NOTIFICACIONES MOTIVACIONALES
     if (user?.id && notificationId.includes('motivational-')) {
+      console.log('🔍 DEBUG: Detectada notificación motivacional para cooldown:', {
+        notificationId,
+        userId: user.id,
+        isConsistencyPattern: notificationId.includes('consistency-pattern')
+      })
+      
       // Extraer tipo de notificación del ID
       if (notificationId.includes('consistency-pattern')) {
+        console.log('🔄 Activando cooldown para study_consistency...')
         setMotivationalCooldown(user.id, 'study_consistency')
       }
       // Aquí se pueden añadir más tipos motivacionales en el futuro
+    } else {
+      console.log('🔍 DEBUG: No es notificación motivacional o falta usuario:', {
+        hasUser: !!user?.id,
+        isMotivational: notificationId.includes('motivational-'),
+        notificationId
+      })
     }
     
     // ✅ NUEVO: Guardar en localStorage para persistencia
