@@ -6,11 +6,15 @@ import { AuthProvider } from '../contexts/AuthContext'
 export default function SpanishLayout({ children }) {
   return (
     <html lang="es">
-      <body>
+      <body className="min-h-screen">
         <AuthProvider initialUser={null}>
-          <ClientLayoutContent>
-            {children}
-          </ClientLayoutContent>
+          <div className="flex flex-col min-h-screen">
+            <ClientLayoutContent>
+              <main className="flex-1">
+                {children}
+              </main>
+            </ClientLayoutContent>
+          </div>
         </AuthProvider>
         <GoogleAnalytics />
       </body>

@@ -44,7 +44,7 @@ export default function FooterES() {
   // Si el usuario está logueado, mostrar solo las dos secciones inferiores
   if (user) {
     return (
-      <footer className="bg-gray-900 text-white">
+      <footer className="bg-gray-900 text-white mt-auto">
         {/* Sección inferior con copyright y enlaces */}
         <div className="border-t border-gray-800">
           <div className="container mx-auto px-4 py-6">
@@ -83,7 +83,7 @@ export default function FooterES() {
 
   // Footer completo para usuarios no logueados
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-gray-900 text-white mt-auto">
       {/* Sección principal del footer */}
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">

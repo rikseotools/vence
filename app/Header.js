@@ -290,7 +290,7 @@ export default function HeaderES() {
   // Mostrar loading mientras se verifica auth
   if (authLoading) {
     return (
-      <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
+      <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 h-16">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             {/* Logo con loading - Responsive y más grande */}
@@ -317,7 +317,7 @@ export default function HeaderES() {
 
   return (
     <>
-      <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 relative">
+      <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 relative h-16">
         <div className={`container mx-auto px-4 ${user ? 'py-6 pb-12 lg:pb-6' : 'py-6'}`}>
           <div className="flex items-center justify-between relative">
             

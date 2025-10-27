@@ -55,16 +55,14 @@ export default function ClientLayoutContent({ children }) {
   return (
     <>
       <HeaderES />
-      <main>
-        {/* Breadcrumbs solo para usuarios no logueados */}
-        {!user && !loading && (
-          <Breadcrumbs 
-            pathname={pathname}
-            getBreadcrumbLabels={getBreadcrumbLabels}
-          />
-        )}
-        {children}
-      </main>
+      {/* Breadcrumbs solo para usuarios no logueados */}
+      {!user && !loading && (
+        <Breadcrumbs 
+          pathname={pathname}
+          getBreadcrumbLabels={getBreadcrumbLabels}
+        />
+      )}
+      {children}
       <FooterES />
       
       {/* Manager de notificaciones solo para usuarios logueados */}
