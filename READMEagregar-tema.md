@@ -957,3 +957,181 @@ VALUES (article_id, 'pregunta', 'A', 'B', 'C', 'D', 0, 'explicación', 'medium',
 los articulos nuevos que haya que crear, tu me los debs pedir  y yo te los doy del boe
 
 las preguntas debes darmelas todas juntas en el mismo artefacto
+
+
+## 📚 **LEYES FICTICIAS PARA CONTENIDO TÉCNICO** ⭐ NUEVA SECCIÓN
+
+### 🎯 **¿Cuándo crear una Ley Ficticia?**
+
+Cuando el tema **NO está basado en legislación oficial** sino en conocimientos técnicos:
+- ✅ Informática (Windows, Office, hardware, redes)
+- ✅ Herramientas digitales (navegadores, correo, gestores)
+- ✅ Conocimientos prácticos no legislativos
+- ❌ NO usar si el tema cita leyes/artículos BOE oficiales
+
+---
+
+### 📋 **PROCESO SIMPLIFICADO**
+
+#### **1. Crear Ley Ficticia**
+```sql
+INSERT INTO laws (
+  name,
+  short_name,
+  description,
+  year,
+  type,
+  scope,
+  is_active
+) VALUES (
+  'Nombre descriptivo completo',
+  'Nombre corto',
+  'Ley ficticia para agrupar conocimientos sobre [TEMA]...',  -- ⚠️ SIEMPRE empezar con "Ley ficticia"
+  2024,
+  'regulation',  -- Usar 'regulation' para contenido técnico
+  'national',    -- Usar 'national' como estándar
+  true
+);
+```
+
+#### **2. Crear Artículo Único (normalmente solo artículo 1)**
+```sql
+INSERT INTO articles (
+  law_id,
+  article_number,
+  title,
+  content,
+  is_active,
+  is_verified
+) VALUES (
+  'UUID_LEY_FICTICIA',
+  '1',
+  'Título descriptivo del contenido',
+  'Descripción del artículo que agrupa todo el contenido técnico del tema',
+  true,
+  true
+);
+```
+
+#### **3. Mapear en topic_scope (igual que con leyes reales)**
+```sql
+INSERT INTO topic_scope (
+  topic_id,
+  law_id,
+  article_numbers,
+  weight
+) VALUES (
+  'UUID_TEMA',
+  'UUID_LEY_FICTICIA',
+  ARRAY['1'],  -- Normalmente solo artículo 1
+  1.0
+);
+```
+
+#### **4. Crear Preguntas (vinculadas al artículo 1)**
+```sql
+INSERT INTO questions (
+  primary_article_id,
+  question_text,
+  option_a,
+  option_b,
+  option_c,
+  option_d,
+  correct_option,
+  explanation,
+  difficulty,
+  question_type,
+  tags,
+  is_active,
+  is_official_exam
+) VALUES (
+  (SELECT id FROM articles WHERE article_number = '1' AND law_id = (SELECT id FROM laws WHERE short_name = 'NOMBRE_CORTO_LEY')),
+  'Pregunta...',
+  'A', 'B', 'C', 'D',
+  0,  -- 0=A, 1=B, 2=C, 3=D
+  'Explicación...',
+  'medium',
+  'single',
+  ARRAY['tag1', 'tag2'],
+  true,
+  false
+);
+```
+
+---
+
+### 🎨 **CONVENCIONES IMPORTANTES**
+
+| Campo | Valor Recomendado | Ejemplo |
+|-------|-------------------|---------|
+| **description** | Empezar con "Ley ficticia para agrupar conocimientos sobre..." | "Ley ficticia para agrupar conocimientos sobre procesadores de texto: Microsoft Word y Writer..." |
+| **type** | `'regulation'` | Para contenido técnico |
+| **scope** | `'national'` | Estándar para leyes ficticias |
+| **article_number** | `'1'` | Normalmente un solo artículo contenedor |
+
+---
+
+### 📊 **EJEMPLOS EXISTENTES EN EL SISTEMA**
+
+```sql
+-- Ver leyes ficticias existentes
+SELECT id, short_name, name, description 
+FROM laws 
+WHERE description ILIKE '%ficticia%'
+ORDER BY created_at DESC;
+```
+
+**Ejemplos reales:**
+- **Windows 10**: "Ley ficticia para agrupar conocimientos sobre el sistema operativo Windows 10"
+- **Explorador de Windows**: "Ley ficticia que agrupa conocimientos sobre el Explorador de Windows 10..."
+- **Informática Básica**: "Ley ficticia para agrupar conceptos fundamentales de informática..."
+- **Procesadores de texto**: "Ley ficticia para agrupar conocimientos sobre procesadores de texto: Microsoft Word y Writer..."
+
+---
+
+### ⚠️ **DIFERENCIAS vs LEYES REALES**
+
+| Aspecto | Ley Real | Ley Ficticia |
+|---------|----------|--------------|
+| **Fuente** | BOE oficial | Conocimiento técnico |
+| **Artículos** | Múltiples específicos | Normalmente solo artículo 1 |
+| **Contenido** | Texto legislativo exacto | Descripción del contenido técnico |
+| **description** | Descripción de la ley | "Ley ficticia para agrupar conocimientos sobre..." |
+| **Verificación** | BOE consolidado | No aplica |
+
+---
+
+### ✅ **CHECKLIST LEY FICTICIA**
+
+- [ ] Descripción empieza con "Ley ficticia"
+- [ ] type = 'regulation'
+- [ ] scope = 'national'
+- [ ] Artículo 1 creado con contenido descriptivo
+- [ ] Mapeo en topic_scope con ARRAY['1']
+- [ ] Preguntas vinculadas al artículo 1
+- [ ] Verificación: consulta devuelve el tema completo
+
+---
+
+### 🔍 **VERIFICACIÓN COMPLETA**
+
+```sql
+-- Verificar ley ficticia y su estructura
+SELECT 
+  t.topic_number,
+  t.title as tema,
+  l.short_name as ley,
+  l.description,
+  ts.article_numbers,
+  a.article_number,
+  a.title as articulo_titulo,
+  COUNT(q.id) as total_preguntas
+FROM topics t
+JOIN topic_scope ts ON t.id = ts.topic_id  
+JOIN laws l ON ts.law_id = l.id
+LEFT JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(ts.article_numbers)
+LEFT JOIN questions q ON q.primary_article_id = a.id
+WHERE l.description ILIKE '%ficticia%'
+GROUP BY t.topic_number, t.title, l.short_name, l.description, ts.article_numbers, a.article_number, a.title
+ORDER BY t.topic_number;
+```

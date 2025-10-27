@@ -1804,7 +1804,7 @@ export function useIntelligentNotifications() {
       })
       
       // Extraer tipo de notificación del ID
-      if (notificationId.includes('consistency-pattern')) {
+      if (notificationId === 'motivational-consistency-pattern') {
         console.log('🔄 Activando cooldown para study_consistency...')
         setMotivationalCooldown(user.id, 'study_consistency')
       }
