@@ -43,19 +43,6 @@ export default async function sitemap() {
       priority: 0.9,
     },
     
-    // ✅ SOLO Tema 7 - página principal (no test-personalizado ni otros)
-    {
-      url: `${SITE_URL}/auxiliar-administrativo-estado/temario/tema-7`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/auxiliar-administrativo-estado/test/tema/7`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
     
     // ✅ PÁGINAS PRINCIPALES DE CONTENIDO - NO TESTS
     {
@@ -77,21 +64,6 @@ export default async function sitemap() {
       priority: 0.6,
     },
     
-    // Test rápido general - ÚNICA URL de test en sitemap
-    {
-      url: `${SITE_URL}/test/rapido`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    
-    // Página de unsubscribe
-    {
-      url: `${SITE_URL}/unsubscribe`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly',
-      priority: 0.3,
-    },
     
     // Tests Psicotécnicos
     {
