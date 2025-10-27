@@ -8,6 +8,7 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     cssChunking: 'strict',
+    inlineCss: true,
   },
   
   // ✅ Compresión mejorada
