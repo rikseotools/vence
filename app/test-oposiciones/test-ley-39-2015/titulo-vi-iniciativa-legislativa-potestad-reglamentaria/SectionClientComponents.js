@@ -37,15 +37,17 @@ function StartTestButton({ sectionConfig, questionsCount }) {
     }
 
     return (
-      <TestPageWrapper
-        testType="personalizado"
-        tema={null}
-        defaultConfig={testConfig}
-        customTitle={`Test: ${sectionConfig.title}`}
-        customDescription={sectionConfig.description}
-        customIcon="📜"
-        customColor="from-emerald-500 to-teal-600"
-      />
+      <div className="min-h-screen">
+        <TestPageWrapper
+          testType="personalizado"
+          tema={null}
+          defaultConfig={testConfig}
+          customTitle={`Test: ${sectionConfig.title}`}
+          customDescription={sectionConfig.description}
+          customIcon="📜"
+          customColor="from-emerald-500 to-teal-600"
+        />
+      </div>
     )
   }
 
