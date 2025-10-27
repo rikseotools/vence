@@ -133,6 +133,8 @@ const URGENT_ACCURACY_THRESHOLD = 30 // Si accuracy < 30%, mostrar tras solo 3 t
 const ACHIEVEMENT_COOLDOWN_KEY = 'achievement_global_cooldown'
 const DAILY_ACHIEVEMENT_LIMIT = 2 // Máximo 2 notificaciones de logros/progreso por día
 const ACHIEVEMENT_COOLDOWN_HOURS = 24 // Cooldown de 24 horas
+const MOTIVATIONAL_COOLDOWN_DAYS = 14 // Cooldown de 14 días para notificaciones motivacionales
+const MOTIVATIONAL_COOLDOWN_KEY = 'vence_motivational_cooldowns'
 
 // Obtener notificaciones descartadas del localStorage
 const getDismissedNotifications = () => {
@@ -314,6 +316,49 @@ const recordAchievementShown = (userId) => {
   } catch (error) {
     console.error('Error registrando logro mostrado:', error)
   }
+}
+
+// 🆕 FUNCIONES PARA COOLDOWN DE NOTIFICACIONES MOTIVACIONALES (14 días)
+const getMotivationalCooldown = (userId, notificationType) => {
+  try {
+    if (typeof window === 'undefined') return null
+    
+    const stored = localStorage.getItem(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`)
+    if (!stored) return null
+    
+    const data = JSON.parse(stored)
+    return data[notificationType] || null
+  } catch (error) {
+    console.error('Error obteniendo cooldown motivacional:', error)
+    return null
+  }
+}
+
+const setMotivationalCooldown = (userId, notificationType) => {
+  try {
+    if (typeof window === 'undefined') return
+    
+    const stored = localStorage.getItem(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`)
+    const data = stored ? JSON.parse(stored) : {}
+    
+    data[notificationType] = {
+      dismissedAt: Date.now(),
+      cooldownDays: MOTIVATIONAL_COOLDOWN_DAYS
+    }
+    
+    localStorage.setItem(`${MOTIVATIONAL_COOLDOWN_KEY}_${userId}`, JSON.stringify(data))
+    console.log(`⏰ Cooldown de ${MOTIVATIONAL_COOLDOWN_DAYS} días activado para ${notificationType}`)
+  } catch (error) {
+    console.error('Error estableciendo cooldown motivacional:', error)
+  }
+}
+
+const isInMotivationalCooldown = (userId, notificationType) => {
+  const cooldown = getMotivationalCooldown(userId, notificationType)
+  if (!cooldown) return false
+  
+  const daysSince = (Date.now() - cooldown.dismissedAt) / (1000 * 60 * 60 * 24)
+  return daysSince < cooldown.cooldownDays
 }
 
 // 🎯 CONFIGURACIÓN DE TIPOS DE NOTIFICACIONES CON ACCIONES
@@ -1497,9 +1542,20 @@ export function useIntelligentNotifications() {
       // Generar notificaciones motivacionales basadas en datos reales
       const motivationalNotifs = await analyzer.generateMotivationalNotifications()
 
+      // 🆕 FILTRAR NOTIFICACIONES EN COOLDOWN (14 días)
+      const motivationalNotifsWithoutCooldown = motivationalNotifs.filter(notification => {
+        if (notification.type === 'study_consistency') {
+          const inCooldown = isInMotivationalCooldown(user.id, 'study_consistency')
+          if (inCooldown) {
+            console.log(`⏰ Notificación "Patrón Óptimo" en cooldown - no mostrar`)
+            return false
+          }
+        }
+        return true
+      })
 
       // Filtrar notificaciones leídas y descartadas  
-      const unreadMotivationalNotifs = filterUnreadNotifications(motivationalNotifs)
+      const unreadMotivationalNotifs = filterUnreadNotifications(motivationalNotifsWithoutCooldown)
       
       // 🆕 ENVIAR AUTOMÁTICAMENTE LAS NOTIFICACIONES NUEVAS (push + email fallback)
       for (const notification of unreadMotivationalNotifs) {
@@ -1732,6 +1788,15 @@ export function useIntelligentNotifications() {
   // Función para descartar notificación - ACTUALIZADA CON PERSISTENCIA
   const dismissNotification = (notificationId) => {
     console.log('🗑️ Descartando notificación:', notificationId);
+    
+    // 🆕 DETECTAR Y APLICAR COOLDOWN PARA NOTIFICACIONES MOTIVACIONALES
+    if (user?.id && notificationId.includes('motivational-')) {
+      // Extraer tipo de notificación del ID
+      if (notificationId.includes('consistency-pattern')) {
+        setMotivationalCooldown(user.id, 'study_consistency')
+      }
+      // Aquí se pueden añadir más tipos motivacionales en el futuro
+    }
     
     // ✅ NUEVO: Guardar en localStorage para persistencia
     saveDismissedNotification(notificationId)

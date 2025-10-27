@@ -125,9 +125,7 @@ SET status = 'resolved',
 
 ✅ [RESULTADO FINAL]
 
-Tu aportación ha mejorado la calidad del contenido para todos 🙌
-
-Te animo a que sigas reportando cualquier error que encuentres, ¡tu ojo crítico es muy valioso! 📚
+Te animo a que sigas reportando cualquier error que encuentres, y también sugerencias de mejora de Vence.es! 📚
 
 ¡Mucho ánimo con tu preparación! 💪',
     resolved_at = NOW(),
@@ -150,9 +148,7 @@ Tras revisar cuidadosamente tu consulta, confirmamos que la pregunta está corre
 
 💡 [CONSEJO PARA RECORDAR O ENTENDER MEJOR]
 
-Tu atención al detalle es muy valiosa, ¡sigue así! 🔍
-
-Recuerda que si tienes dudas sobre cualquier tema, también puedes consultar nuestros artículos explicativos. 📚
+Recuerda que si tienes dudas sobre cualquier tema, también puedes consultar nuestros artículos explicativos, y siempre puedes enviar sugerencias de mejora de Vence.es! 📚
 
 ¡Mucho ánimo con tu preparación! 💪',
     resolved_at = NOW(),
@@ -193,9 +189,7 @@ WHERE id = 'DISPUTE_ID';
 
 ✅ [Resultado final claro]
 
-Tu aportación ha mejorado la calidad del contenido para todos 🙌
-
-Te animo a que sigas reportando cualquier error que encuentres, ¡tu ojo crítico es muy valioso! 📚
+Te animo a que sigas reportando cualquier error que encuentres, y también sugerencias de mejora de Vence.es! 📚
 
 ¡Mucho ánimo con tu preparación! 💪
 ```
@@ -213,9 +207,7 @@ Tras revisar cuidadosamente tu consulta, confirmamos que la pregunta está corre
 
 💡 [Consejo útil para recordar]
 
-Tu atención al detalle es muy valiosa, ¡sigue así! 🔍
-
-Recuerda que si tienes dudas sobre cualquier tema, también puedes consultar nuestros artículos explicativos. 📚
+Recuerda que si tienes dudas sobre cualquier tema, también puedes consultar nuestros artículos explicativos, y siempre puedes enviar sugerencias de mejora de Vence.es! 📚
 
 ¡Mucho ánimo con tu preparación! 💪
 ```
