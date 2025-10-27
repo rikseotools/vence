@@ -18,7 +18,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     'leyes': '📚 Leyes',
     'temario': '📚 Temarios',
     'test': '🎯 Tests',
-    'psicotecnicos': '🧠 Psicotécnicos',
+    'psicotecnicos': '🧩 Psicotécnicos',
     'guardia-civil': '🚔 Guardia Civil',
     'policia-nacional': '👮‍♂️ Policía Nacional'
   }
@@ -35,28 +35,28 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   ]
 
   // Opciones de sección específicas según contexto
-  const getTestOptions = () => {
+  const getSectionOptions = () => {
     if (isAuxiliarAdmin) {
       return [
         { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
+        { key: 'temario', label: '📚 Temario', path: '/temario' },
+        { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos' }
       ]
     } else if (isLeyes) {
       return [
-        { key: 'test', label: '🎯 Tests de Leyes', path: '/test' },
-        { key: 'temario', label: '📚 Teoría', path: '/teoria' }
+        { key: 'test', label: '🎯 Tests', path: '/test' },
+        { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos' }
       ]
     } else if (isTeoria) {
       return [
-        { key: 'test', label: '🎯 Tests de Leyes', path: '/leyes' },
-        { key: 'temario', label: '📚 Teoría', path: '/teoria' }
+        { key: 'test', label: '🎯 Tests', path: '/test' },
+        { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos' }
       ]
     } else {
-      // Para psicotécnicos u otros contextos
+      // Para psicotécnicos - solo cambiar entre tipos de test
       return [
-        { key: 'test', label: '🎯 Tests de Leyes', path: '/test' },
-        { key: 'psicotecnicos', label: '🧠 Tests Psicotécnicos', path: '/psicotecnicos' },
-        { key: 'temario', label: '📚 Temarios', path: '/temario' }
+        { key: 'test', label: '🎯 Tests de Leyes', path: '/leyes/test' },
+        { key: 'psicotecnicos', label: '🧩 Tests Psicotécnicos', path: '/psicotecnicos' }
       ]
     }
   }
@@ -137,19 +137,25 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
   // Función para cambiar de sección manteniendo la oposición actual
   const changeSection = (newSectionPath) => {
-    let basePath = ''
+    let finalPath = ''
     
-    // Determinar la ruta base según la oposición actual
-    if (isAuxiliarAdmin) {
-      basePath = '/auxiliar-administrativo-estado'
-    } else if (isAdministrativo) {
-      basePath = '/administrativo'  
-    } else if (isLeyes) {
-      basePath = '/leyes'
+    // Si la ruta ya incluye una base completa (como /leyes/test), usarla directamente
+    if (newSectionPath.includes('/') && !newSectionPath.startsWith('/test') && !newSectionPath.startsWith('/temario') && !newSectionPath.startsWith('/psicotecnicos')) {
+      finalPath = newSectionPath
+    } else {
+      // Determinar la ruta base según la oposición actual
+      let basePath = ''
+      if (isAuxiliarAdmin) {
+        basePath = '/auxiliar-administrativo-estado'
+      } else if (isAdministrativo) {
+        basePath = '/administrativo'  
+      } else if (isLeyes) {
+        basePath = '/leyes'
+      }
+      finalPath = basePath + newSectionPath
     }
     
-    const newPath = basePath + newSectionPath
-    router.push(newPath)
+    router.push(finalPath)
     setOpenDropdown(null)
   }
 
@@ -247,7 +253,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                 {/* Texto clickeable - no navega porque ya estamos en la sección actual */}
                 <span className="text-gray-700 font-semibold">
                   {isInTests && '🎯 Tests'}
-                  {isPsicotecnicos && '🧠 Psicotécnicos'}
+                  {isPsicotecnicos && '🧩 Psicotécnicos'}
                   {isInTemario && '📚 Temario'}
                 </span>
                 
@@ -265,19 +271,19 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                 <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="p-2">
                     <div className="text-xs text-gray-500 mb-2 px-2">Cambiar a:</div>
-                    {getTestOptions().map((option) => (
+                    {getSectionOptions().map((option) => (
                       <button
                         key={option.key}
                         onClick={() => changeSection(option.path)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-colors text-sm"
                         disabled={
-                          (option.key === 'test' && isInTests) || 
+                          (option.key === 'test' && isInTests && !isPsicotecnicos) || 
                           (option.key === 'psicotecnicos' && isPsicotecnicos) ||
                           (option.key === 'temario' && pathname.includes('/temario'))
                         }
                       >
                         {option.label}
-                        {((option.key === 'test' && isInTests) || 
+                        {((option.key === 'test' && isInTests && !isPsicotecnicos) || 
                           (option.key === 'psicotecnicos' && isPsicotecnicos) ||
                           (option.key === 'temario' && pathname.includes('/temario'))) && (
                           <span className="text-gray-400 ml-2">(actual)</span>

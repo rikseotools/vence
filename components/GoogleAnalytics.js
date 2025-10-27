@@ -7,13 +7,13 @@ export default function GoogleAnalytics() {
   const pathname = usePathname()
   const [shouldLoad, setShouldLoad] = useState(false)
   
-  // 🚫 NO cargar Google Analytics en rutas de administración
-  if (pathname?.startsWith('/admin')) {
-    return null
-  }
-
   // ⚡ Cargar GA solo después de interacción del usuario o 3 segundos
   useEffect(() => {
+    // 🚫 NO cargar Google Analytics en rutas de administración
+    if (pathname?.startsWith('/admin')) {
+      return
+    }
+
     const handleInteraction = () => setShouldLoad(true)
     const timer = setTimeout(() => setShouldLoad(true), 3000)
     
@@ -29,9 +29,10 @@ export default function GoogleAnalytics() {
         document.removeEventListener(event, handleInteraction)
       )
     }
-  }, [])
+  }, [pathname])
 
-  if (!shouldLoad) {
+  // 🚫 NO renderizar Google Analytics en rutas de administración
+  if (pathname?.startsWith('/admin') || !shouldLoad) {
     return null
   }
 

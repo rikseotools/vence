@@ -113,7 +113,10 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }) {
               recent_days: config.recentDays.toString(),
               difficulty_mode: config.difficultyMode,
               ...(config.adaptiveMode && { adaptive: 'true' }),
-              ...(config.timeLimit && { time_limit: config.timeLimit.toString() })
+              ...(config.timeLimit && { time_limit: config.timeLimit.toString() }),
+              ...(config.onlyFailedQuestions && { only_failed: 'true' }),
+              ...(config.failedQuestionIds && { failed_ids: config.failedQuestionIds.join(',') }),
+              ...(config.failedQuestionsOrder && { failed_order: config.failedQuestionsOrder })
             })
             
             // Navegar al test avanzado de la ley (equivale a test personalizado)

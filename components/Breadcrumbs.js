@@ -25,6 +25,18 @@ export default function Breadcrumbs({ customLabels = {}, className = "" }) {
     'constitucion-espanola': 'Constitución Española',
     'titulo-preliminar': 'Título Preliminar',
     'leyes': '📚 Leyes',
+    'ley-39-2015': 'Ley 39/2015',
+    'ley-40-2015': 'Ley 40/2015', 
+    'ley-19-2013': 'Ley 19/2013',
+    'ley-7-1985': 'Ley 7/1985',
+    'codigo-civil': 'Código Civil',
+    'codigo-penal': 'Código Penal',
+    'lo-6-1985': 'LO 6/1985',
+    'lo-3-2018': 'LO 3/2018',
+    'tue': 'TUE',
+    'tfue': 'TFUE',
+    'agenda-2030': 'Agenda 2030',
+    'gobierno-abierto': 'Gobierno Abierto',
     'guardia-civil': '🚔 Guardia Civil',
     'policia-nacional': '👮‍♂️ Policía Nacional'
   }

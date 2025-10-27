@@ -55,8 +55,12 @@ export default function ClientLayoutContent({ children }) {
   return (
     <>
       <HeaderES />
-      {/* Breadcrumbs solo para usuarios no logueados */}
-      {!user && !loading && (
+      {/* Breadcrumbs solo para usuarios no logueados Y solo en páginas que no tengan breadcrumbs específicos */}
+      {!user && !loading && 
+       !pathname.startsWith('/leyes') && 
+       !pathname.startsWith('/teoria') && 
+       !pathname.includes('/constitucion-titulos') && 
+       !pathname.includes('/test-de-la-constitucion-espanola-de-1978') && (
         <Breadcrumbs 
           pathname={pathname}
           getBreadcrumbLabels={getBreadcrumbLabels}

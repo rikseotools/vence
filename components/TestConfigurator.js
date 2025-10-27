@@ -219,6 +219,18 @@ const TestConfigurator = ({
       if (matchingLaw) {
         console.log('🎯 Inicializando selectedLaws con ley preseleccionada:', preselectedLaw);
         setSelectedLaws(new Set([preselectedLaw]));
+        
+        // También cargar artículos automáticamente para la ley preseleccionada
+        if (!availableArticlesByLaw.has(preselectedLaw)) {
+          console.log('🔄 Cargando artículos automáticamente para ley preseleccionada:', preselectedLaw);
+          loadArticlesForLaw(preselectedLaw).then(articles => {
+            setAvailableArticlesByLaw(prev => new Map(prev.set(preselectedLaw, articles)));
+            
+            // Inicializar todos los artículos como seleccionados por defecto
+            const articleNumbers = new Set(articles.map(art => art.article_number));
+            setSelectedArticlesByLaw(prev => new Map(prev.set(preselectedLaw, articleNumbers)));
+          });
+        }
       }
     }
   }, [preselectedLaw, lawsData]);
@@ -310,10 +322,11 @@ const TestConfigurator = ({
     
     // ✅ CORREGIDO: Para temas normales, no requerir selección de leyes
     if (selectedLaws.size === 0) {
-      // Si es un configurador específico de ley (preselectedLaw), sí requerir selección
-      if (preselectedLaw) {
-        console.log('⚠️ Configurador específico de ley sin selección, retornando 0');
-        return 0;
+      // Si es un configurador específico de ley (preselectedLaw), usar questions_count directamente
+      if (preselectedLaw && lawsData.length === 1) {
+        const law = lawsData[0];
+        console.log('🎯 Configurador específico de ley sin selectedLaws inicializados, usando questions_count:', law.questions_count);
+        return law.questions_count || 0;
       }
       // Para temas normales, usar baseQuestionCount automáticamente
       console.log('📊 Tema normal sin leyes seleccionadas, usando baseQuestionCount:', baseQuestionCount);
@@ -421,13 +434,64 @@ const TestConfigurator = ({
 
   // 🆕 Función para cargar artículos disponibles por ley
   const loadArticlesForLaw = async (lawShortName) => {
-    if (!supabase || !tema) return [];
+    if (!supabase) return [];
     
     setLoadingArticles(true);
     try {
-      console.log(`📋 Cargando artículos para ley ${lawShortName} del tema ${tema}...`);
+      console.log(`📋 Cargando artículos para ley ${lawShortName} (tema: ${tema || 'configurador específico'})...`);
       
-      // Obtener mapeo del tema desde topic_scope
+      // Si es configurador específico (tema null), cargar artículos directamente
+      if (!tema) {
+        console.log(`📋 Configurador específico - cargando artículos directamente para ${lawShortName}`);
+        
+        // Primero buscar law_id usando lawShortName
+        const { data: law, error: lawError } = await supabase
+          .from('laws')
+          .select('id')
+          .eq('short_name', lawShortName)
+          .single();
+        
+        if (lawError) {
+          console.error('❌ Error buscando law_id:', lawError);
+          return [];
+        }
+        
+        // Ahora cargar artículos usando law_id
+        const { data: articles, error } = await supabase
+          .from('articles')
+          .select(`
+            article_number,
+            questions!inner(id)
+          `)
+          .eq('law_id', law.id)
+          .eq('questions.is_active', true);
+        
+        if (error) {
+          console.error('❌ Error cargando artículos directamente:', error);
+          return [];
+        }
+        
+        // Agrupar por artículo y contar preguntas
+        const articleCounts = articles.reduce((acc, item) => {
+          const articleNum = item.article_number;
+          if (!acc[articleNum]) {
+            acc[articleNum] = { article_number: articleNum, question_count: 0 };
+          }
+          acc[articleNum].question_count++;
+          return acc;
+        }, {});
+        
+        const result = Object.values(articleCounts).sort((a, b) => {
+          const aNum = parseInt(a.article_number) || 0;
+          const bNum = parseInt(b.article_number) || 0;
+          return aNum - bNum;
+        });
+        
+        console.log(`✅ ${result.length} artículos cargados directamente para ${lawShortName}`);
+        return result;
+      }
+      
+      // Obtener mapeo del tema desde topic_scope (solo para temas normales)
       const { data: mappings, error: mappingError } = await supabase
         .from('topic_scope')
         .select(`
@@ -489,13 +553,13 @@ const TestConfigurator = ({
 
   // 🆕 Función para cargar preguntas falladas del usuario
   const loadFailedQuestions = async () => {
-    if (!currentUser || !tema) return
+    if (!currentUser) return
     
     try {
-      console.log(`🔍 Cargando preguntas falladas para tema ${tema}...`)
+      console.log(`🔍 Cargando preguntas falladas para ${tema ? `tema ${tema}` : 'configurador específico'}...`)
       
-      // Obtener todas las preguntas que el usuario ha respondido incorrectamente en este tema
-      const { data: failedAnswers, error: failedError } = await supabase
+      // Construir la consulta base
+      let query = supabase
         .from('test_questions')
         .select(`
           question_id,
@@ -513,9 +577,24 @@ const TestConfigurator = ({
           )
         `)
         .eq('tests.user_id', currentUser.id)
-        .eq('tema_number', tema)
         .eq('is_correct', false)
-        .order('created_at', { ascending: false })
+      
+      // Si es configurador específico de ley, filtrar por leyes seleccionadas
+      if (!tema && selectedLaws.size > 0) {
+        console.log('🎯 Configurador específico - filtrando por leyes:', Array.from(selectedLaws))
+        query = query.in('questions.articles.laws.short_name', Array.from(selectedLaws))
+      } else if (tema) {
+        // Si es tema específico, usar filtro normal
+        query = query.eq('tema_number', tema)
+      } else {
+        // Si no hay tema ni leyes seleccionadas, no hay nada que buscar
+        console.warn('⚠️ No hay tema ni leyes seleccionadas para buscar preguntas falladas')
+        alert('No se puede determinar qué preguntas buscar. Selecciona una ley primero.')
+        setOnlyFailedQuestions(false)
+        return
+      }
+      
+      const { data: failedAnswers, error: failedError } = await query.order('created_at', { ascending: false })
       
       if (failedError) {
         console.error('❌ Error obteniendo preguntas falladas:', failedError)
