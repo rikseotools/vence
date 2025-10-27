@@ -120,7 +120,7 @@ async function sendNotificationWithFallback(user, notification) {
 }
 
 // 🔧 FUNCIONES PARA PERSISTENCIA LOCAL (localStorage) - NUEVO
-const DISMISSED_NOTIFICATIONS_KEY = 'dismissed_notifications'
+const DISMISSED_NOTIFICATIONS_KEY = 'dismissed_notifications_v2'
 const DISMISSED_EXPIRY_HOURS = 24 // Las notificaciones descartadas se "olvidan" después de 24h
 
 // 🆕 SISTEMA DE COOLDOWN PARA ARTÍCULOS PROBLEMÁTICOS
