@@ -116,7 +116,18 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }) {
               ...(config.timeLimit && { time_limit: config.timeLimit.toString() }),
               ...(config.onlyFailedQuestions && { only_failed: 'true' }),
               ...(config.failedQuestionIds && { failed_ids: config.failedQuestionIds.join(',') }),
-              ...(config.failedQuestionsOrder && { failed_order: config.failedQuestionsOrder })
+              ...(config.failedQuestionsOrder && { failed_order: config.failedQuestionsOrder }),
+              // 🆕 FILTRO DE SECCIONES/TÍTULOS
+              ...(config.selectedSectionFilter && { 
+                section_filter: JSON.stringify({
+                  title: config.selectedSectionFilter.title,
+                  articleRange: config.selectedSectionFilter.articleRange
+                })
+              }),
+              // 🆕 FILTRO DE ARTÍCULOS ESPECÍFICOS
+              ...(config.selectedArticlesByLaw && config.selectedArticlesByLaw[lawShortName] && config.selectedArticlesByLaw[lawShortName].length > 0 && {
+                selected_articles: config.selectedArticlesByLaw[lawShortName].join(',')
+              })
             })
             
             // Navegar al test avanzado de la ley (equivale a test personalizado)

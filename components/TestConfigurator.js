@@ -2,6 +2,7 @@
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { getSupabaseClient } from '../lib/supabase';
+import SectionFilterModal from './SectionFilterModal';
 
 const TestConfigurator = ({ 
   tema = 7,
@@ -48,6 +49,10 @@ const TestConfigurator = ({
   const [currentLawForArticles, setCurrentLawForArticles] = useState(null);
   const [availableArticlesByLaw, setAvailableArticlesByLaw] = useState(new Map());
   const [loadingArticles, setLoadingArticles] = useState(false);
+
+  // 🆕 Estados para filtro de títulos/secciones
+  const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState(null);
 
 
   // officialQuestionsCount viene como prop, ya no necesitamos loading state
@@ -226,9 +231,8 @@ const TestConfigurator = ({
           loadArticlesForLaw(preselectedLaw).then(articles => {
             setAvailableArticlesByLaw(prev => new Map(prev.set(preselectedLaw, articles)));
             
-            // Inicializar todos los artículos como seleccionados por defecto
-            const articleNumbers = new Set(articles.map(art => art.article_number));
-            setSelectedArticlesByLaw(prev => new Map(prev.set(preselectedLaw, articleNumbers)));
+            // NO inicializar artículos como seleccionados por defecto - solo cargar los disponibles
+            console.log('✅ Artículos cargados para', preselectedLaw, ':', articles.length, 'artículos disponibles');
           });
         }
       }
@@ -336,6 +340,34 @@ const TestConfigurator = ({
     // Para modo de ley específica (LawTestConfigurator), usar directamente el questions_count
     if (preselectedLaw && selectedLaws.size === 1 && lawsData.length === 1) {
       const law = lawsData[0];
+      
+      // 📚 Si hay filtro de sección activo, estimar preguntas de ese rango
+      if (selectedSectionFilter && selectedSectionFilter.articleRange) {
+        const articleRange = selectedSectionFilter.articleRange.end - selectedSectionFilter.articleRange.start + 1;
+        const estimatedQuestions = Math.round((law.questions_count || 0) * (articleRange / 169)); // 169 = total artículos CE
+        console.log(`📚 Filtro de sección activo (${selectedSectionFilter.title}): estimando ${estimatedQuestions} preguntas de ${articleRange} artículos`);
+        return Math.max(1, estimatedQuestions); // Mínimo 1 pregunta
+      }
+      
+      // 📄 Si hay filtro de artículos específicos activo, calcular preguntas específicas
+      const selectedArticlesForLaw = selectedArticlesByLaw.get(law.law_short_name);
+      if (selectedArticlesForLaw && selectedArticlesForLaw.size > 0) {
+        const articlesForLaw = availableArticlesByLaw.get(law.law_short_name);
+        if (articlesForLaw) {
+          // Datos de artículos disponibles - contar preguntas específicas
+          const questionsFromSelectedArticles = articlesForLaw
+            .filter(article => selectedArticlesForLaw.has(article.article_number))
+            .reduce((sum, article) => sum + (article.question_count || 0), 0);
+          console.log(`📄 Filtro de artículos específicos activo: ${questionsFromSelectedArticles} preguntas de ${selectedArticlesForLaw.size} artículos`);
+          return Math.max(1, questionsFromSelectedArticles); // Mínimo 1 pregunta
+        } else {
+          // Datos de artículos aún no disponibles - estimación conservadora
+          const estimatedQuestions = selectedArticlesForLaw.size * 3;
+          console.log(`📄 Filtro de artículos específicos (datos cargando): estimando ${estimatedQuestions} preguntas de ${selectedArticlesForLaw.size} artículos`);
+          return Math.max(1, estimatedQuestions);
+        }
+      }
+      
       console.log('🎯 Configurador específico de ley, usando questions_count:', law.questions_count);
       return law.questions_count || 0;
     }
@@ -358,14 +390,23 @@ const TestConfigurator = ({
       const articlesForLaw = availableArticlesByLaw.get(law.law_short_name);
       const selectedArticlesForLaw = selectedArticlesByLaw.get(law.law_short_name);
       
-      if (articlesForLaw && selectedArticlesForLaw && selectedArticlesForLaw.size > 0) {
-        // Contar preguntas de artículos específicos seleccionados
-        const questionsFromSelectedArticles = articlesForLaw
-          .filter(article => selectedArticlesForLaw.has(article.article_number))
-          .reduce((sum, article) => sum + (article.question_count || 0), 0);
-        
-        totalQuestions += questionsFromSelectedArticles;
-        console.log('📊 Preguntas de artículos específicos de', law.law_short_name, ':', questionsFromSelectedArticles);
+      if (selectedArticlesForLaw && selectedArticlesForLaw.size > 0) {
+        // Hay artículos específicos seleccionados
+        if (articlesForLaw) {
+          // Datos de artículos disponibles - contar preguntas específicas
+          const questionsFromSelectedArticles = articlesForLaw
+            .filter(article => selectedArticlesForLaw.has(article.article_number))
+            .reduce((sum, article) => sum + (article.question_count || 0), 0);
+          
+          totalQuestions += questionsFromSelectedArticles;
+          console.log('📊 Preguntas de artículos específicos de', law.law_short_name, ':', questionsFromSelectedArticles);
+        } else {
+          // Datos de artículos aún no disponibles - estimación conservadora
+          // Asumir promedio de ~3 preguntas por artículo seleccionado
+          const estimatedQuestions = selectedArticlesForLaw.size * 3;
+          totalQuestions += estimatedQuestions;
+          console.log('📊 Estimación de preguntas para', law.law_short_name, '(datos de artículos cargando):', estimatedQuestions, 'preguntas para', selectedArticlesForLaw.size, 'artículos');
+        }
       } else {
         // Si no hay filtro de artículos específico, usar proporción del baseQuestionCount
         const lawProportion = (law.articles_with_questions || 0) / lawsData.reduce((sum, l) => sum + (l.articles_with_questions || 0), 0);
@@ -377,7 +418,7 @@ const TestConfigurator = ({
     
     console.log('✅ Total preguntas calculadas:', totalQuestions);
     return totalQuestions;
-  }, [baseQuestionCount, lawsData, selectedLaws, availableArticlesByLaw, selectedArticlesByLaw]);
+  }, [baseQuestionCount, lawsData, selectedLaws, availableArticlesByLaw, selectedArticlesByLaw, selectedSectionFilter]);
 
   const maxQuestions = useMemo(() => {
     const result = Math.min(selectedQuestions, availableQuestions);
@@ -710,6 +751,8 @@ const TestConfigurator = ({
           Array.from(articlesSet)
         ])
       ),
+      // 🆕 FILTRO DE SECCIONES/TÍTULOS
+      selectedSectionFilter: selectedSectionFilter,
       timeLimit: null,
       configSource: 'failed_questions_test',
       configTimestamp: new Date().toISOString()
@@ -757,6 +800,9 @@ const TestConfigurator = ({
   };
 
   const toggleArticleSelection = (lawShortName, articleNumber) => {
+    // Limpiar filtro de títulos cuando se selecciona filtro de artículos
+    setSelectedSectionFilter(null);
+    
     setSelectedArticlesByLaw(prev => {
       const newMap = new Map(prev);
       const currentArticles = newMap.get(lawShortName) || new Set();
@@ -773,12 +819,18 @@ const TestConfigurator = ({
   };
 
   const selectAllArticlesForLaw = (lawShortName) => {
+    // Limpiar filtro de títulos cuando se selecciona filtro de artículos
+    setSelectedSectionFilter(null);
+    
     const articles = availableArticlesByLaw.get(lawShortName) || [];
     const allArticles = new Set(articles.map(art => art.article_number));
     setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, allArticles)));
   };
 
   const deselectAllArticlesForLaw = (lawShortName) => {
+    // Limpiar filtro de títulos cuando se selecciona filtro de artículos
+    setSelectedSectionFilter(null);
+    
     setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, new Set())));
   };
 
@@ -823,6 +875,8 @@ const TestConfigurator = ({
           Array.from(articlesSet)
         ])
       ), // Convertir Map<string, Set> a Object<string, Array>
+      // 🆕 FILTRO DE SECCIONES/TÍTULOS
+      selectedSectionFilter: selectedSectionFilter,
       // 🆕 INCLUIR METADATOS ADICIONALES
       timeLimit: null, // Por si se añade límite de tiempo en el futuro
       configSource: 'test_configurator',
@@ -989,7 +1043,45 @@ const TestConfigurator = ({
 
         </div>
 
-        {/* 🆕 3. Filtro de Leyes y Artículos */}
+        {/* 🆕 3a. Filtro por Títulos (solo para leyes individuales) */}
+        {lawsData && lawsData.length === 1 && (
+          <div className="mb-6">
+            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-purple-900">
+                  📚 Filtrar por Títulos
+                </h3>
+                <button
+                  onClick={() => setIsSectionModalOpen(true)}
+                  className="text-purple-600 hover:text-purple-800 text-sm font-medium bg-white px-3 py-1 rounded border hover:bg-purple-50 transition-colors"
+                >
+                  Seleccionar Títulos
+                </button>
+              </div>
+              
+              {selectedSectionFilter && (
+                <div className="mt-3 p-2 bg-white border border-purple-200 rounded text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-purple-800 font-medium">
+                      {selectedSectionFilter.title}
+                    </span>
+                    <button
+                      onClick={() => setSelectedSectionFilter(null)}
+                      className="text-purple-600 hover:text-purple-800 text-xs"
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                  <div className="text-purple-600 text-xs mt-1">
+                    Artículos {selectedSectionFilter.articleRange?.start} - {selectedSectionFilter.articleRange?.end}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 🆕 3b. Filtro de Leyes y Artículos */}
         {lawsData && lawsData.length >= 1 && (
           <div className="mb-6">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -2280,6 +2372,19 @@ const TestConfigurator = ({
           </div>
         </div>
       )}
+
+      {/* Modal de Filtro por Títulos/Secciones */}
+      <SectionFilterModal
+        isOpen={isSectionModalOpen}
+        onClose={() => setIsSectionModalOpen(false)}
+        lawSlug={preselectedLaw || (lawsData.length === 1 ? lawsData[0].law_short_name : null)}
+        onSectionSelect={(section) => {
+          setSelectedSectionFilter(section);
+          setIsSectionModalOpen(false);
+          // Limpiar filtro de artículos cuando se selecciona filtro de títulos
+          setSelectedArticlesByLaw(new Map());
+        }}
+      />
     </div>
   );
 };
