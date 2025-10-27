@@ -38,10 +38,12 @@ export default function QuestionEvolution({
           return
         }
 
-        console.log('🔍 QuestionEvolution: Buscando historial para:', {
-          questionId,
-          userId
-        })
+        // Solo log una vez por questionId
+        if (!window.questionEvolutionCache) window.questionEvolutionCache = new Set()
+        if (!window.questionEvolutionCache.has(questionId)) {
+          console.log('🔍 QuestionEvolution: Buscando historial para:', { questionId, userId })
+          window.questionEvolutionCache.add(questionId)
+        }
         
         // Consulta completa: Obtener toda la información disponible
         const { data: previousHistory, error } = await supabase
@@ -127,10 +129,13 @@ export default function QuestionEvolution({
     // Fix: previousHistory YA incluye la respuesta actual de la BD
     // No necesitamos sumar +1 ni agregar current porque ya está incluido
     
-    console.log('🔍 [DEBUG] Calculando evolución:', {
-      previousHistoryLength: previousHistory.length,
-      shouldNotAddCurrent: true // Ya está en previousHistory
-    })
+    // Debug throttled para evitar spam
+    if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
+      console.log('🔍 [DEBUG] Calculando evolución:', {
+        previousHistoryLength: previousHistory.length,
+        shouldNotAddCurrent: true
+      })
+    }
     
     // Corrección: usar solo previousHistory que ya incluye todo
     const totalIntentos = previousHistory.length

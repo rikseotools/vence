@@ -101,8 +101,8 @@ async function sendNotificationWithFallback(user, notification) {
       const notificationBody = notification.body || notification.message
       new Notification(notification.title, {
         body: notificationBody,
-        icon: '/icon-192x192.png',
-        badge: '/icon-192x192.png',
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
         tag: `motivational-${notification.type}`,
         requireInteraction: false,
         silent: false
@@ -258,7 +258,8 @@ const shouldShowProblematicArticle = (userId, lawShortName, articleNumber, accur
   // No mostrar
   const remainingDays = Math.max(0, COOLDOWN_DAYS - daysSinceLastShown)
   const remainingTests = Math.max(0, MIN_TESTS_THRESHOLD - testsSinceLastShown)
-  console.log(`🚫 NO mostrar ${articleKey}: Faltan ${Math.ceil(remainingDays)} días o ${remainingTests} tests`)
+  // Logs de cooldown comentados para reducir spam
+  // console.log(`🚫 NO mostrar ${articleKey}: Faltan ${Math.ceil(remainingDays)} días o ${remainingTests} tests`)
   return false
 }
 
@@ -934,7 +935,7 @@ export function useIntelligentNotifications() {
       const notifications = []
       
       if (articles && articles.length > 0) {
-        console.log(`📊 ${articles.length} artículos problemáticos encontrados`)
+        // console.log(`📊 ${articles.length} artículos problemáticos encontrados`)
         
         // Agrupar artículos por ley CON VALIDACIÓN CENTRALIZADA
         const articlesByLaw = articles.reduce((acc, article) => {
@@ -980,7 +981,7 @@ export function useIntelligentNotifications() {
             )
             
             if (!shouldShow) {
-              console.log(`🕒 Artículo ${finalShortName} Art.${article.article_number} filtrado por cooldown`)
+              // console.log(`🕒 Artículo ${finalShortName} Art.${article.article_number} filtrado por cooldown`)
             }
             
             return shouldShow
@@ -988,7 +989,7 @@ export function useIntelligentNotifications() {
           
           // Si no quedan artículos después del filtro de cooldown, no crear notificación
           if (articlesAfterCooldown.length === 0) {
-            console.log(`🚫 No se creará notificación para ${finalShortName}: todos los artículos están en cooldown`)
+            // console.log(`🚫 No se creará notificación para ${finalShortName}: todos los artículos están en cooldown`)
             return // Salir de este forEach
           }
           

@@ -686,19 +686,21 @@ export default function PushNotificationManager() {
     }
   }
 
-  // Debug info
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔔 PushNotificationManager state:', {
-      hasUser: !!user,
-      supported: notificationState.supported,
-      permission: notificationState.permission,
-      hasSettings: !!notificationState.settings,
-      pushEnabled: notificationState.settings?.push_enabled,
-      showPrompt: notificationState.showPrompt,
-      loading: loading,
-      subscription: !!notificationState.subscription
-    })
-  }
+  // Debug info throttled
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const timeoutId = setTimeout(() => {
+        console.log('🔔 PushNotificationManager state:', {
+          hasUser: !!user,
+          supported: notificationState.supported,
+          permission: notificationState.permission,
+          pushEnabled: notificationState.settings?.push_enabled
+        })
+      }, 2000) // Solo cada 2 segundos
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [user, notificationState.permission, notificationState.settings?.push_enabled])
 
   // No mostrar nada si no hay usuario o no es compatible
   if (!user || !notificationState.supported) return null

@@ -19,13 +19,19 @@ export default function NotificationBell() {
     notificationTypes
   } = useIntelligentNotifications()
 
-  // 🧪 DEBUG: Solo log cuando hay cambios
-  if (process.env.NODE_ENV === 'development' && unreadCount > 0) {
-    console.log('🔔 NotificationBell active:', {
-      notifications: notifications?.length || 0,
-      unreadCount
-    })
-  }
+  // 🧪 DEBUG: Solo log cuando hay cambios (throttled)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && unreadCount > 0) {
+      const timeoutId = setTimeout(() => {
+        console.log('🔔 NotificationBell active:', {
+          notifications: notifications?.length || 0,
+          unreadCount
+        })
+      }, 1000) // Throttle a 1 segundo
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [unreadCount, notifications?.length])
 
   // Hook para impugnaciones/disputas
   const disputeNotifications = useDisputeNotifications()

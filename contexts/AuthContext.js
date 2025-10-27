@@ -290,7 +290,10 @@ export function AuthProvider({ children, initialUser = null }) {
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔄 AuthProvider: Auth state cambió:', event, session?.user?.email)
+        // Solo log eventos importantes, no TOKEN_REFRESHED
+        if (event !== 'TOKEN_REFRESHED') {
+          console.log('🔄 AuthProvider: Auth state cambió:', event, session?.user?.email)
+        }
         
         const newUser = session?.user || null
         setUser(newUser)

@@ -64,7 +64,7 @@ export default function TestPageWrapper({
     // ✅ NUEVO: Usar siempre fetchQuestionsByTopicScope para temas
     // La función automáticamente detectará si es multi-ley desde topic_scope
     if (tema && tema > 0) {
-      console.log(`🎯 Tema ${tema} usando fetcher dinámico (topic_scope)`)
+      // console.log(`🎯 Tema ${tema} usando fetcher dinámico (topic_scope)`)
       return fetchQuestionsByTopicScope
     }
     
@@ -160,7 +160,7 @@ export default function TestPageWrapper({
       ...defaultConfig
     }
 
-    console.log('🔧 getTestConfig resultado:', finalConfig)
+    // console.log('🔧 getTestConfig resultado:', finalConfig)
     return finalConfig
   }
 
@@ -188,7 +188,7 @@ export default function TestPageWrapper({
       console.log('🚀 TestPageWrapper: Cargando test', testType, 'para tema', tema)
 
       const testConfig = getTestConfig()
-      console.log('🔧 Config generado:', testConfig)
+      // console.log('🔧 Config generado:', testConfig)
       setConfig(testConfig)
 
       // 🎯 Usar fetcher del tipo de test
@@ -261,9 +261,9 @@ export default function TestPageWrapper({
           }
           
           if (selectedLaws.length > 0) {
-            console.log('🔧 Filtros aplicados desde', testConfig?.selectedLaws ? 'props' : 'URL', ':', selectedLaws.length, 'leyes,', Object.keys(selectedArticlesByLaw).length, 'grupos de artículos')
-            console.log('🎯 Leyes seleccionadas:', selectedLaws)
-            console.log('🎯 Artículos por ley:', selectedArticlesByLaw)
+            // console.log('🔧 Filtros aplicados desde', testConfig?.selectedLaws ? 'props' : 'URL', ':', selectedLaws.length, 'leyes,', Object.keys(selectedArticlesByLaw).length, 'grupos de artículos')
+            // console.log('🎯 Leyes seleccionadas:', selectedLaws)
+            // console.log('🎯 Artículos por ley:', selectedArticlesByLaw)
           }
         }
         
