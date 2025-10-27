@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-ii-de-la-corona/page.js
+// app/test-oposiciones/constitucion-titulos/titulo-ii-de-la-corona/page.js
 import Link from 'next/link'
 import { loadConstitucionSectionData, generateConstitucionSectionMetadata } from '../../../../lib/constitucionSSR'
 import { StartTestButton, TabsSection } from './SectionClientComponents'
@@ -28,7 +28,7 @@ export default async function SectionPage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Sección no encontrada</h1>
           <p className="text-gray-600 mb-4">La sección solicitada no existe.</p>
           <Link 
-            href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978"
+            href="/test-oposiciones/constitucion-titulos"
             className="text-blue-600 hover:text-blue-800"
           >
             Volver a Tests de la Constitución Española 1978
@@ -50,7 +50,7 @@ export default async function SectionPage() {
               Tests de Oposiciones
             </Link>
             <span className="mx-2">›</span>
-            <Link href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978" className="hover:text-blue-600">
+            <Link href="/test-oposiciones/constitucion-titulos" className="hover:text-blue-600">
               Constitución Española 1978
             </Link>
             <span className="mx-2">›</span>
@@ -116,7 +116,7 @@ export default async function SectionPage() {
           <h3 className="font-bold text-gray-900 mb-4">Tests Relacionados</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link
-              href="/test-oposiciones/test-de-la-constitucion-espanola-de-1978"
+              href="/test-oposiciones/constitucion-titulos"
               className="text-blue-600 hover:text-blue-800 font-medium"
             >
               → Volver a todos los tests de la Constitución Española 1978

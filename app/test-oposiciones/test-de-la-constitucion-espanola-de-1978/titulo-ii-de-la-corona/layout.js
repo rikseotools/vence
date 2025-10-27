@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-ii-de-la-corona/layout.js
+// app/test-oposiciones/constitucion-titulos/titulo-ii-de-la-corona/layout.js
 export const metadata = {
   title: 'Test Título II De la Corona - Constitución Española 1978',
   description: 'Test específico del Título II sobre la Corona de la Constitución Española (artículos 56-65). Rey, sucesión, regencia y Casa Real para oposiciones.',

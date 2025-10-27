@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-v-relaciones-gobierno-cortes/layout.js
+// app/test-oposiciones/constitucion-titulos/titulo-v-relaciones-gobierno-cortes/layout.js
 export const metadata = {
   title: 'Test Título V Relaciones entre el Gobierno y las Cortes - Constitución Española 1978',
   description: 'Test específico del Título V sobre las relaciones entre el Gobierno y las Cortes de la Constitución Española (artículos 108-116). Control parlamentario, moción de censura y cuestión de confianza.',

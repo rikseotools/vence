@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-iv-del-gobierno-y-la-administracion/SectionClientComponents.js
+// app/test-oposiciones/constitucion-titulos/titulo-iv-del-gobierno-y-la-administracion/SectionClientComponents.js
 'use client'
 import { useState } from 'react'
 import TestPageWrapper from '../../../../components/TestPageWrapper'
@@ -29,7 +29,7 @@ function StartTestButton({ sectionConfig, questionsCount }) {
       } : {},
       customNavigationLinks: {
         backToLaw: {
-          href: '/test-oposiciones/test-de-la-constitucion-espanola-de-1978',
+          href: '/test-oposiciones/constitucion-titulos',
           text: 'Volver a Tests de la Constitución Española 1978',
           label: 'Volver a Tests de la Constitución Española 1978',
           label: 'Volver a Tests de la Constitución Española 1978'

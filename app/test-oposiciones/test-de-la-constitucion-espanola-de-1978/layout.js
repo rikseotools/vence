@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/layout.js
+// app/test-oposiciones/constitucion-titulos/layout.js
 export const metadata = {
   title: 'Tests Constitución Española 1978 - Preparación Oposiciones | Vence',
   description: 'Tests especializados de la Constitución Española organizados por títulos y capítulos. Preparación para oposiciones de Auxiliar Administrativo, AGE, Justicia, Correos, Sanidad y más.',

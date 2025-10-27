@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-x-de-la-reforma-constitucional/layout.js
+// app/test-oposiciones/constitucion-titulos/titulo-x-de-la-reforma-constitucional/layout.js
 export const metadata = {
   title: 'Test Título X De la Reforma Constitucional - Constitución Española 1978',
   description: 'Test específico del Título X sobre la reforma constitucional de la Constitución Española (artículos 166-169). Procedimientos de reforma.',

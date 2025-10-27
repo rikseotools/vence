@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-i-derechos-y-deberes-fundamentales/layout.js
+// app/test-oposiciones/constitucion-titulos/titulo-i-derechos-y-deberes-fundamentales/layout.js
 export const metadata = {
   title: 'Test Título I Derechos y Deberes Fundamentales - Constitución Española 1978',
   description: 'Test específico del Título I sobre derechos y deberes fundamentales de la Constitución Española (artículos 10-55). Ideal para preparar oposiciones de Auxiliar Administrativo, Estado, Justicia y más.',

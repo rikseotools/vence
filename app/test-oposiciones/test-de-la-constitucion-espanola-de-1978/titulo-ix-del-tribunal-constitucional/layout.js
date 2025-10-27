@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-ix-del-tribunal-constitucional/layout.js
+// app/test-oposiciones/constitucion-titulos/titulo-ix-del-tribunal-constitucional/layout.js
 export const metadata = {
   title: 'Test Título IX Del Tribunal Constitucional - Constitución Española 1978',
   description: 'Test específico del Título IX sobre el Tribunal Constitucional de la Constitución Española (artículos 159-165). Competencias, composición y funcionamiento.',

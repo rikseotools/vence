@@ -1,4 +1,4 @@
-// app/test-oposiciones/test-de-la-constitucion-espanola-de-1978/page.js
+// app/test-oposiciones/constitucion-titulos/page.js
 import Link from 'next/link'
 import { loadConstitucionData } from '../../../lib/constitucionSSR'
 
@@ -159,7 +159,7 @@ export default async function TestConstitucionPage() {
           {sections.map((section) => (
             <Link
               key={section.id}
-              href={`/test-oposiciones/test-de-la-constitucion-espanola-de-1978/${section.slug}`}
+              href={`/test-oposiciones/constitucion-titulos/${section.slug}`}
               className="group bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 hover:border-blue-300"
             >
               <div className="p-6">
