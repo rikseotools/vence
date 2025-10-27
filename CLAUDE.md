@@ -169,3 +169,5 @@ git push origin main
 - **NUNCA hacer commits automáticos sin autorización explícita del usuario**
 - Solo hacer commit cuando el usuario específicamente lo solicite
 - Anotar cambios completados pero esperar instrucciones para commit
+- **IMPORTANTE:** A veces los problemas no se solucionan completamente al primer intento
+- Siempre verificar que el fix funciona antes de proponer commit

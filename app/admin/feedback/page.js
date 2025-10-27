@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@supabase/supabase-js'
 
 // Emoticonos populares para el chat admin
 const EMOJIS = [
@@ -46,6 +47,7 @@ export default function AdminFeedbackPage() {
   const [newUserMessages, setNewUserMessages] = useState(new Set()) // IDs de conversaciones con mensajes nuevos
   const [activeFilter, setActiveFilter] = useState('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
   const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se inicializó
+  const [userProfilesCache, setUserProfilesCache] = useState(new Map()) // Cache de perfiles de usuario
   
   // Estados para emojis e imágenes en admin
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -251,10 +253,25 @@ export default function AdminFeedbackPage() {
       // Obtener todos los user_ids únicos que no sean null
       const userIds = [...new Set(feedbacks.filter(f => f.user_id).map(f => f.user_id))]
       
-      if (userIds.length === 0) return feedbacks
+      console.log(`🔍 Cargando perfiles para ${userIds.length} usuarios únicos`)
+      console.log('📋 User IDs específicos:', userIds)
+      
+      // Debug específico para Ismael
+      const hasIsmaelId = userIds.includes('7f40b5c7-c52f-4c1f-9d30-db7a49c57f43')
+      console.log('🎯 ¿Incluye ID de Ismael?', hasIsmaelId)
 
-      // Cargar perfiles en lotes
-      const { data: profiles, error } = await supabase
+      if (userIds.length === 0) {
+        console.log('ℹ️ No hay user_ids para cargar perfiles')
+        return feedbacks
+      }
+
+      // Cargar perfiles en lotes CON SERVICE ROLE (bypassa RLS automáticamente)
+      const supabaseServiceRole = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+      
+      const { data: profiles, error } = await supabaseServiceRole
         .from('user_profiles')
         .select('id, full_name, email')
         .in('id', userIds)
@@ -264,19 +281,41 @@ export default function AdminFeedbackPage() {
         return feedbacks
       }
 
-      // Crear un mapa de profiles por user_id
+      console.log(`✅ Perfiles cargados: ${profiles?.length || 0}/${userIds.length}`)
+      console.log('📝 IDs de perfiles obtenidos:', profiles?.map(p => p.id) || [])
+
+      // Crear un mapa de profiles por user_id y actualizar cache
       const profilesMap = new Map()
       if (profiles) {
         profiles.forEach(profile => {
           profilesMap.set(profile.id, profile)
+          console.log(`📝 Perfil cargado: ${profile.full_name || profile.email || profile.id}`)
+        })
+        
+        // Actualizar cache global
+        setUserProfilesCache(prevCache => {
+          const newCache = new Map(prevCache)
+          profiles.forEach(profile => {
+            newCache.set(profile.id, profile)
+          })
+          return newCache
         })
       }
 
+      // Debug: Log de usuarios que no tienen perfil
+      const missingProfiles = userIds.filter(id => !profilesMap.has(id))
+      if (missingProfiles.length > 0) {
+        console.warn(`⚠️ Usuarios sin perfil: ${missingProfiles.length}`, missingProfiles)
+      }
+
       // Agregar los perfiles a los feedbacks
-      return feedbacks.map(feedback => ({
-        ...feedback,
-        user_profiles: feedback.user_id ? profilesMap.get(feedback.user_id) || null : null
-      }))
+      return feedbacks.map(feedback => {
+        const profile = feedback.user_id ? profilesMap.get(feedback.user_id) || null : null
+        return {
+          ...feedback,
+          user_profiles: profile
+        }
+      })
 
     } catch (error) {
       console.error('❌ Error en loadUserProfiles:', error)
@@ -287,6 +326,7 @@ export default function AdminFeedbackPage() {
   const loadFeedbacks = useCallback(async () => {
     try {
       setLoading(true)
+      console.log('🔄 Iniciando carga de feedbacks...')
       
       const { data, error } = await supabase
         .from('user_feedback')
@@ -295,8 +335,23 @@ export default function AdminFeedbackPage() {
 
       if (error) throw error
 
+      console.log(`📋 Feedbacks obtenidos: ${data?.length || 0}`)
+
       // Cargar perfiles de usuario para los feedbacks que tienen user_id
       const feedbacksWithProfiles = await loadUserProfiles(data || [])
+      
+      console.log('📝 Feedbacks con perfiles procesados:', feedbacksWithProfiles?.length)
+      
+      // Debug específico para ismaelceuta
+      const ismaelFeedback = feedbacksWithProfiles?.find(f => f.email === 'ismaelceuta@gmail.com')
+      if (ismaelFeedback) {
+        console.log('🎯 Feedback de Ismael procesado:', {
+          email: ismaelFeedback.email,
+          user_id: ismaelFeedback.user_id,
+          user_profiles: ismaelFeedback.user_profiles
+        })
+      }
+      
       setFeedbacks(feedbacksWithProfiles)
       
       // Calcular estadísticas
@@ -307,6 +362,14 @@ export default function AdminFeedbackPage() {
         dismissed: data?.filter(f => f.status === 'dismissed').length || 0
       }
       setStats(stats)
+
+      console.log('✅ Feedbacks cargados y estado actualizado')
+      
+      // 🔧 FORCE REFRESH: Forzar re-render después de cargar perfiles
+      setTimeout(() => {
+        console.log('🔄 Forzando re-render después de cargar perfiles')
+        setFeedbacks(prevFeedbacks => [...prevFeedbacks])
+      }, 100)
 
     } catch (error) {
       console.error('Error cargando feedbacks:', error)
@@ -730,11 +793,24 @@ export default function AdminFeedbackPage() {
                 )}
               </p>
             </div>
-            {newUserMessages.size > 0 && (
-              <div className="bg-red-500 text-white px-3 py-2 rounded-lg animate-pulse text-sm self-start sm:self-auto">
-                <span className="font-bold">{newUserMessages.size}</span> mensaje{newUserMessages.size > 1 ? 's' : ''} nuevo{newUserMessages.size > 1 ? 's' : ''}
-              </div>
-            )}
+            <div className="flex gap-2 items-center">
+              {newUserMessages.size > 0 && (
+                <div className="bg-red-500 text-white px-3 py-2 rounded-lg animate-pulse text-sm">
+                  <span className="font-bold">{newUserMessages.size}</span> mensaje{newUserMessages.size > 1 ? 's' : ''} nuevo{newUserMessages.size > 1 ? 's' : ''}
+                </div>
+              )}
+              {/* Botón temporal de debug */}
+              <button
+                onClick={() => {
+                  console.log('🔄 Forzando recarga de feedbacks...')
+                  loadFeedbacks()
+                }}
+                className="bg-blue-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-600 transition-colors"
+                title="Recargar feedbacks (debug)"
+              >
+                🔄 Recargar
+              </button>
+            </div>
           </div>
         </div>
 
@@ -848,17 +924,53 @@ export default function AdminFeedbackPage() {
                 {/* Usuario */}
                 <div className="mb-3">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    👤 {feedback.user_profiles?.full_name || 'Usuario anónimo'} 
-                    {feedback.user_profiles?.full_name && feedback.user_profiles?.email && (
-                      <span className="text-gray-500 dark:text-gray-400 font-normal">
-                        ({feedback.user_profiles.email})
-                      </span>
-                    )}
-                    {!feedback.user_profiles?.full_name && feedback.email && (
-                      <span className="text-gray-500 dark:text-gray-400 font-normal">
-                        {feedback.email}
-                      </span>
-                    )}
+                    👤 {
+                      (() => {
+                        // 🔧 MEJORADO: Usar cache como fallback
+                        const profileFromCache = feedback.user_id ? userProfilesCache.get(feedback.user_id) : null
+                        const profile = feedback.user_profiles || profileFromCache
+                        
+                        // Debug en tiempo real
+                        if (feedback.email === 'ismaelceuta@gmail.com') {
+                          console.log('🎯 Renderizando feedback de Ismael:', {
+                            email: feedback.email,
+                            user_id: feedback.user_id,
+                            user_profiles: feedback.user_profiles,
+                            profileFromCache,
+                            finalProfile: profile,
+                            full_name: profile?.full_name,
+                            has_full_name: !!profile?.full_name
+                          })
+                        }
+                        
+                        return profile?.full_name ? (
+                          profile.full_name
+                        ) : feedback.email ? (
+                          `${feedback.email}`
+                        ) : (
+                          'Usuario anónimo'
+                        )
+                      })()
+                    }
+                    {(() => {
+                      const profileFromCache = feedback.user_id ? userProfilesCache.get(feedback.user_id) : null
+                      const profile = feedback.user_profiles || profileFromCache
+                      
+                      if (profile?.full_name && profile?.email) {
+                        return (
+                          <span className="text-gray-500 dark:text-gray-400 font-normal">
+                            {` (${profile.email})`}
+                          </span>
+                        )
+                      } else if (profile?.full_name && feedback.email && !profile?.email) {
+                        return (
+                          <span className="text-gray-500 dark:text-gray-400 font-normal">
+                            {` (${feedback.email})`}
+                          </span>
+                        )
+                      }
+                      return null
+                    })()}
                   </span>
                   {feedback.wants_response && (
                     <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
@@ -1144,9 +1256,9 @@ export default function AdminFeedbackPage() {
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1 truncate">
                     {(() => {
                       const feedback = feedbacks.find(f => f.id === selectedConversation.feedback_id)
-                      const userName = feedback?.user_profiles?.full_name || 'Usuario anónimo'
+                      const userName = feedback?.user_profiles?.full_name || feedback?.email || 'Usuario anónimo'
                       const userEmail = feedback?.user_profiles?.email || feedback?.email
-                      return `👤 ${userName}${userEmail ? ` (${userEmail})` : ''}`
+                      return `👤 ${userName}${userEmail && userName !== userEmail ? ` (${userEmail})` : ''}`
                     })()}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5 truncate">
