@@ -154,37 +154,8 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     
     console.log('✅ Test completado con análisis completo')
     
-    // 🔥 ACTUALIZAR USER_PROGRESS - TEMPORALMENTE DESHABILITADO
-    // TODO: Arreglar función RPC update_user_progress (error: column q.topic_id does not exist)
-    if (false && userSession?.user_id && testData?.topic_number) {
-      try {
-        console.log('🎯 Actualizando progreso del usuario...')
-        console.log('📋 Parámetros RPC:', {
-          p_user_id: userSession.user_id,
-          p_topic_number: testData.topic_number,
-          userSession_type: typeof userSession.user_id,
-          topic_number_type: typeof testData.topic_number
-        })
-        
-        const { error: progressError } = await supabase
-          .rpc('update_user_progress_simple', {
-            p_user_id: userSession.user_id,
-            p_topic_number: testData.topic_number
-          })
-        
-        if (progressError) {
-          console.error('❌ Error actualizando user_progress:', progressError)
-          console.error('📝 Detalles del error:', JSON.stringify(progressError, null, 2))
-          // No fallar todo el test por esto
-        } else {
-          console.log('✅ user_progress actualizado correctamente')
-        }
-      } catch (progressErr) {
-        console.error('❌ Excepción actualizando user_progress:', progressErr)
-      }
-    } else {
-      console.log('ℹ️ update_user_progress temporalmente deshabilitado - función RPC con errores')
-    }
+    // 🔥 ACTUALIZAR USER_PROGRESS - REPARADO CON MÉTODO DIRECTO
+    await updateUserProgressDirect(userSession?.user_id, sessionId, finalScore, allAnswers.length)
     
     // Actualizar sesión de usuario
     if (userSession) {
@@ -208,6 +179,99 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
   } catch (error) {
     console.error('❌ Error completando test completo:', error)
     return { success: false, status: 'error' }
+  }
+}
+
+// 🔧 FUNCIÓN REPARADA: Actualizar user_progress directamente (SIN RPC rota)
+export const updateUserProgressDirect = async (userId, sessionId, correctAnswers, totalQuestions) => {
+  if (!userId || !sessionId) {
+    console.log('ℹ️ Saltando update user_progress - faltan datos básicos')
+    return
+  }
+
+  try {
+    console.log('🎯 Actualizando user_progress directamente...', { userId, sessionId, correctAnswers, totalQuestions })
+
+    // 1. Obtener el tema del test desde la tabla tests
+    const { data: testData, error: testError } = await supabase
+      .from('tests')
+      .select('topic_id, test_type')
+      .eq('id', sessionId)
+      .single()
+
+    if (testError || !testData?.topic_id) {
+      console.log('ℹ️ No se puede actualizar user_progress - no hay topic_id en el test')
+      return
+    }
+
+    console.log('📊 Test encontrado:', { topic_id: testData.topic_id, test_type: testData.test_type })
+
+    // 2. Verificar si ya existe registro de user_progress para este usuario y tema
+    const { data: existingProgress, error: checkError } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('topic_id', testData.topic_id)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('❌ Error verificando user_progress existente:', checkError)
+      return
+    }
+
+    const accuracy = Math.round((correctAnswers / totalQuestions) * 100)
+    const now = new Date().toISOString()
+
+    if (existingProgress) {
+      // 3A. Actualizar registro existente
+      const newTotalAttempts = existingProgress.total_attempts + totalQuestions
+      const newCorrectAttempts = existingProgress.correct_attempts + correctAnswers
+      const newAccuracy = Math.round((newCorrectAttempts / newTotalAttempts) * 100)
+
+      const { error: updateError } = await supabase
+        .from('user_progress')
+        .update({
+          total_attempts: newTotalAttempts,
+          correct_attempts: newCorrectAttempts,
+          accuracy_percentage: newAccuracy,
+          last_attempt_date: now,
+          updated_at: now,
+          needs_review: newAccuracy < 70
+        })
+        .eq('user_id', userId)
+        .eq('topic_id', testData.topic_id)
+
+      if (updateError) {
+        console.error('❌ Error actualizando user_progress:', updateError)
+      } else {
+        console.log(`✅ user_progress actualizado: ${newAccuracy}% (${newCorrectAttempts}/${newTotalAttempts})`)
+      }
+
+    } else {
+      // 3B. Crear nuevo registro
+      const { error: insertError } = await supabase
+        .from('user_progress')
+        .insert({
+          user_id: userId,
+          topic_id: testData.topic_id,
+          total_attempts: totalQuestions,
+          correct_attempts: correctAnswers,
+          accuracy_percentage: accuracy,
+          last_attempt_date: now,
+          needs_review: accuracy < 70,
+          created_at: now,
+          updated_at: now
+        })
+
+      if (insertError) {
+        console.error('❌ Error creando user_progress:', insertError)
+      } else {
+        console.log(`✅ user_progress creado: ${accuracy}% (${correctAnswers}/${totalQuestions})`)
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error en updateUserProgressDirect:', error)
   }
 }
 
