@@ -17,7 +17,7 @@ export const metadata = {
 
 export default function TestOposicionesLayout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {children}
     </div>
   )

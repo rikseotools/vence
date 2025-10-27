@@ -23,7 +23,7 @@ export default async function SectionPage() {
   
   if (!data || !data.config) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-96 bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Sección no encontrada</h1>
           <p className="text-gray-600 mb-4">La sección solicitada no existe.</p>
@@ -41,7 +41,7 @@ export default async function SectionPage() {
   const { config: sectionConfig, stats } = data
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-200 py-4">
         <div className="max-w-4xl mx-auto px-4">

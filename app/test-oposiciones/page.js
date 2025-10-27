@@ -92,7 +92,7 @@ export default function TestOposicionesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-slate-700 to-gray-800 text-white py-12 md:py-20">
         <div className="max-w-6xl mx-auto px-4 text-center">
