@@ -79,7 +79,7 @@ export function useTopicUnlock() {
         })
       }
 
-      // Asegurar progresión secuencial - CORREGIDA
+      // Asegurar progresión secuencial - CORREGIDA CON FLEXIBILIDAD AVANZADA
       const finalUnlockedSet = new Set([1]) // Tema 1 siempre desbloqueado
       
       for (let tema = 1; tema <= 28; tema++) {
@@ -88,14 +88,39 @@ export function useTopicUnlock() {
         // Un tema está desbloqueado si:
         // 1. Es el tema 1 (siempre desbloqueado)
         // 2. El tema anterior cumple requisitos completos (70% + 10 preguntas)
+        // 3. NUEVO: Tiene progreso propio suficiente (permite saltar gaps)
+        // 4. NUEVO: El usuario tiene buen progreso en temas anteriores (permite saltar 1 gap)
         if (tema === 1) {
           finalUnlockedSet.add(1)
         } else {
           const previousTopic = tema - 1
           const prevProgress = progress[previousTopic]
           
-          // Desbloquear si el tema anterior cumple ambos requisitos
-          if (prevProgress?.meetsThreshold && prevProgress?.questionsAnswered >= 10) {
+          // Método 1: Desbloqueo normal (tema anterior cumple requisitos)
+          const normalUnlock = prevProgress?.meetsThreshold && prevProgress?.questionsAnswered >= 10
+          
+          // Método 2: NUEVO - Desbloqueo por progreso propio (para casos edge)
+          const selfUnlock = currentProgress?.questionsAnswered >= 20 && currentProgress?.accuracy >= 75
+          
+          // Método 3: NUEVO - Desbloqueo flexible si usuario avanzó varios temas
+          const skipUnlock = tema <= 6 && Object.keys(progress).some(t => parseInt(t) > tema && progress[t]?.meetsThreshold)
+          
+          // Método 4: NUEVO - Desbloqueo por gap único (máximo 1 gap permitido)
+          const gapUnlock = tema <= 8 && (() => {
+            // Verificar si hay buen progreso en los 2 temas anteriores al gap
+            const twoBack = tema - 2
+            const threeBack = tema - 3
+            const twoBackProgress = progress[twoBack]
+            const threeBackProgress = progress[threeBack]
+            
+            // Si hay un gap de 1 tema pero buen progreso antes y después
+            const hasGoodProgressBefore = (twoBackProgress?.meetsThreshold && twoBackProgress?.questionsAnswered >= 10) ||
+                                         (threeBackProgress?.meetsThreshold && threeBackProgress?.questionsAnswered >= 10)
+            
+            return hasGoodProgressBefore && (!prevProgress || prevProgress.questionsAnswered === 0)
+          })()
+          
+          if (normalUnlock || selfUnlock || skipUnlock || gapUnlock) {
             finalUnlockedSet.add(tema)
           }
         }
