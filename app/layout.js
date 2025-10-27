@@ -10,7 +10,7 @@ export default function SpanishLayout({ children }) {
         <AuthProvider initialUser={null}>
           <div className="flex flex-col min-h-screen">
             <ClientLayoutContent>
-              <main className="flex-1">
+              <main className="flex-1 min-h-0">
                 {children}
               </main>
             </ClientLayoutContent>
