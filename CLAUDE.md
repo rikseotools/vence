@@ -1,6 +1,6 @@
 # CLAUDE.md - Información del Proyecto
 
-> 📋 **Contexto Adicional:** Ver también `PROJECT_CONTEXT.md` para configuración MCP, READMEs disponibles y documentación complementaria.
+> 📋 **Contexto Adicional:** Ver también `PROJECT_CONTEXT.md` para configuración MCP y `docs/` para documentación organizada por categorías.
 
 ## Descripción del Proyecto
 **Vence** es una aplicación web de preparación para oposiciones, específicamente para Auxiliar Administrativo del Estado. Permite a los usuarios realizar tests personalizados con preguntas de exámenes oficiales y contenido generado por IA.
@@ -161,8 +161,8 @@ git push origin main
 - `package.json` - Dependencias y scripts
 
 ### Documentación de Base de Datos
-- **README-todas-tablas.md:** Documentación detallada de todas las tablas y su estructura
-- Para verificar estructura de tablas, consultar `README-todas-tablas.md` antes de hacer queries
+- **docs/database/tablas.md:** Documentación detallada de todas las tablas y su estructura
+- Para verificar estructura de tablas, consultar `docs/database/tablas.md` antes de hacer queries
 - Evita asumir nombres de columnas, siempre verificar con `information_schema.columns` o el README
 
 ### ⚠️ CRÍTICO: Verificación de Contenido Legal

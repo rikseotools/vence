@@ -118,8 +118,27 @@ export default function LawMonitoringTab() {
     }
   }
 
+  // Cargar leyes iniciales sin verificar automáticamente
   useEffect(() => {
-    checkLawChanges()
+    const loadLaws = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('/api/law-changes')
+        const data = await response.json()
+        
+        if (data.success) {
+          setLaws(data.results)
+        } else {
+          setError(data.error || 'Error obteniendo lista de leyes')
+        }
+      } catch (err) {
+        setError('Error conectando con el servidor')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadLaws()
   }, [])
 
   const hasUnreviewedChanges = laws.some(law => law.changeStatus === 'changed')
