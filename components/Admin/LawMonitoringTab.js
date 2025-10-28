@@ -3,9 +3,24 @@
 
 import { useState, useEffect } from 'react'
 
+// Componente Spinner
+const Spinner = ({ size = 'sm' }) => {
+  const sizeClasses = {
+    sm: 'w-4 h-4',
+    md: 'w-6 h-6',
+    lg: 'w-8 h-8'
+  }
+  
+  return (
+    <div className={`animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 ${sizeClasses[size]}`}>
+    </div>
+  )
+}
+
 export default function LawMonitoringTab() {
   const [laws, setLaws] = useState([])
   const [loading, setLoading] = useState(false)
+  const [processingLaws, setProcessingLaws] = useState(new Set()) // IDs de leyes siendo procesadas
   const [lastCheck, setLastCheck] = useState(null)
   const [error, setError] = useState(null)
 
@@ -13,20 +28,63 @@ export default function LawMonitoringTab() {
     try {
       setLoading(true)
       setError(null)
+      setProcessingLaws(new Set())
       
-      const response = await fetch('/api/law-changes')
-      const data = await response.json()
+      // Primero obtener lista de leyes
+      const initialResponse = await fetch('/api/law-changes')
+      const initialData = await initialResponse.json()
       
-      if (data.success) {
-        setLaws(data.results)
-        setLastCheck(data.summary.lastRun)
-      } else {
-        setError(data.error || 'Error desconocido')
+      if (!initialData.success) {
+        setError(initialData.error || 'Error obteniendo lista de leyes')
+        return
       }
+      
+      // Mostrar leyes iniciales
+      setLaws(initialData.results)
+      
+      // Verificar cada ley individualmente para mostrar progreso
+      const lawsToCheck = initialData.results
+      
+      for (const law of lawsToCheck) {
+        try {
+          // Marcar ley como procesándose
+          setProcessingLaws(prev => new Set([...prev, law.id]))
+          
+          // Verificar ley específica
+          const response = await fetch(`/api/law-changes?law=${encodeURIComponent(law.law)}`)
+          const data = await response.json()
+          
+          if (data.success && data.results.length > 0) {
+            const updatedLaw = data.results[0]
+            
+            // Actualizar solo esta ley en el estado
+            setLaws(prev => prev.map(l => 
+              l.id === law.id ? updatedLaw : l
+            ))
+          }
+          
+          // Pequeña pausa entre verificaciones
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+        } catch (err) {
+          console.error(`Error verificando ${law.law}:`, err)
+        } finally {
+          // Remover ley de procesándose
+          setProcessingLaws(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(law.id)
+            return newSet
+          })
+        }
+      }
+      
+      setLastCheck(new Date().toISOString())
+      
     } catch (err) {
       setError('Error conectando con el servidor')
     } finally {
       setLoading(false)
+      setProcessingLaws(new Set())
     }
   }
 
@@ -81,11 +139,43 @@ export default function LawMonitoringTab() {
         <button
           onClick={checkLawChanges}
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto"
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto flex items-center space-x-2"
         >
-          {loading ? 'Verificando...' : 'Verificar ahora'}
+          {loading && <Spinner size="sm" />}
+          <span>{loading ? 'Verificando...' : 'Verificar ahora'}</span>
         </button>
       </div>
+
+      {/* Barra de progreso global */}
+      {loading && laws.length > 0 && (
+        <div className="mb-6">
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Progreso de verificación
+              </span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {laws.length - processingLaws.size} / {laws.length}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ 
+                  width: `${laws.length > 0 ? ((laws.length - processingLaws.size) / laws.length) * 100 : 0}%` 
+                }}
+              ></div>
+            </div>
+            {processingLaws.size > 0 && (
+              <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                Verificando: {[...processingLaws].map(id => 
+                  laws.find(l => l.id === id)?.law
+                ).filter(Boolean).join(', ')}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4 mb-6">
@@ -138,7 +228,14 @@ export default function LawMonitoringTab() {
                 </td>
                 
                 <td className="px-6 py-4">
-                  {law.status === 'error' ? (
+                  {processingLaws.has(law.id) ? (
+                    <div className="flex items-center space-x-2">
+                      <Spinner size="sm" />
+                      <span className="text-sm text-blue-600 dark:text-blue-400">
+                        Verificando...
+                      </span>
+                    </div>
+                  ) : law.status === 'error' ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200">
                       ❌ Error
                     </span>
@@ -209,7 +306,14 @@ export default function LawMonitoringTab() {
 
             {/* Status */}
             <div className="mb-3">
-              {law.status === 'error' ? (
+              {processingLaws.has(law.id) ? (
+                <div className="flex items-center space-x-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <Spinner size="sm" />
+                  <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                    Verificando en BOE...
+                  </span>
+                </div>
+              ) : law.status === 'error' ? (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200">
                   ❌ Error
                 </span>
