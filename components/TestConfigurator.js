@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getSupabaseClient } from '../lib/supabase';
 import SectionFilterModal from './SectionFilterModal';
+import { fetchLawSections } from '../lib/teoriaFetchers';
+import { getCanonicalSlug } from '../lib/lawMappingUtils';
 
 const TestConfigurator = ({ 
   tema = 7,
@@ -53,6 +55,7 @@ const TestConfigurator = ({
   // 🆕 Estados para filtro de títulos/secciones
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
   const [selectedSectionFilter, setSelectedSectionFilter] = useState(null);
+  const [availableSectionsByLaw, setAvailableSectionsByLaw] = useState(new Map());
 
 
   // officialQuestionsCount viene como prop, ya no necesitamos loading state
@@ -453,16 +456,27 @@ const TestConfigurator = ({
       const initialSelectedLaws = new Set(lawsData.map(law => law.law_short_name));
       setSelectedLaws(initialSelectedLaws);
       
-      // 🔄 Para LawTestConfigurator, cargar artículos automáticamente
+      // 🔄 Para LawTestConfigurator, cargar artículos y secciones automáticamente
       if (lawsData.length === 1) {
         const law = lawsData[0];
         const lawShortName = law.law_short_name;
         
+        // Cargar artículos si no están en cache
         if (!availableArticlesByLaw.has(lawShortName)) {
           console.log('🔄 Cargando artículos automáticamente para LawTestConfigurator:', lawShortName);
           loadArticlesForLaw(lawShortName).then(articles => {
             setAvailableArticlesByLaw(prev => new Map(prev.set(lawShortName, articles)));
             console.log('✅ Artículos cargados para LawTestConfigurator', lawShortName, ':', articles.length, 'artículos disponibles');
+          });
+        }
+        
+        // Cargar secciones si no están en cache (para determinar si mostrar el botón)
+        if (!availableSectionsByLaw.has(lawShortName)) {
+          console.log('📚 Cargando secciones automáticamente para LawTestConfigurator:', lawShortName);
+          const lawSlug = getCanonicalSlug(lawShortName);
+          loadSectionsForLaw(lawSlug).then(sections => {
+            setAvailableSectionsByLaw(prev => new Map(prev.set(lawShortName, sections)));
+            console.log('✅ Secciones cargadas para LawTestConfigurator', lawShortName, ':', sections.length, 'secciones disponibles');
           });
         }
       }
@@ -605,6 +619,18 @@ const TestConfigurator = ({
       return [];
     } finally {
       setLoadingArticles(false);
+    }
+  };
+
+  // 🆕 Función para cargar secciones de una ley específica
+  const loadSectionsForLaw = async (lawSlug) => {
+    try {
+      console.log('📚 Cargando secciones para ley:', lawSlug);
+      const data = await fetchLawSections(lawSlug);
+      return data.sections || [];
+    } catch (error) {
+      console.error('❌ Error cargando secciones:', error);
+      return [];
     }
   };
 
@@ -1091,8 +1117,12 @@ const TestConfigurator = ({
 
         </div>
 
-        {/* 🆕 3a. Filtro por Títulos (solo para leyes individuales) */}
-        {lawsData && lawsData.length === 1 && (
+        {/* 🆕 3a. Filtro por Títulos (solo para leyes individuales con secciones disponibles) */}
+        {lawsData && lawsData.length === 1 && (() => {
+          const law = lawsData[0];
+          const sectionsForLaw = availableSectionsByLaw.get(law.law_short_name) || [];
+          return sectionsForLaw.length > 0;
+        })() && (
           <div className="mb-6">
             <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
               <div className="flex items-center justify-between mb-3">

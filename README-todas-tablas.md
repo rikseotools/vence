@@ -1,6 +1,6 @@
 # 📊 README Completo - Base de Datos Sistema iLoveTest
 
-## 🗄️ **ESTRUCTURA COMPLETA DE TABLAS - TODAS LAS 34 TABLAS**
+## 🗄️ **ESTRUCTURA COMPLETA DE TABLAS - TODAS LAS 35 TABLAS**
 
 ---
 
@@ -81,6 +81,25 @@
 | `last_modification_date` | date | YES | null |
 | `verification_date` | date | YES | null |
 | `is_verified` | boolean | YES | true |
+
+### **TABLA: `law_sections`** ⭐ NUEVA (26/10/2025)
+| Campo | Tipo | Nullable | Default |
+|-------|------|----------|---------|
+| `id` | uuid | NO | uuid_generate_v4() |
+| `law_id` | uuid | YES | REFERENCES laws(id) |
+| `section_type` | text | YES | null |
+| `section_number` | text | YES | null |
+| `title` | text | YES | null |
+| `description` | text | YES | null |
+| `article_range_start` | integer | YES | null |
+| `article_range_end` | integer | YES | null |
+| `slug` | text | YES | null |
+| `order_position` | integer | YES | null |
+| `is_active` | boolean | YES | true |
+| `created_at` | timestamp with time zone | YES | now() |
+| `updated_at` | timestamp with time zone | YES | now() |
+
+**🎯 PROPÓSITO:** Sistema de navegación por títulos/capítulos de leyes. Permite filtrar artículos por secciones específicas de la legislación.
 
 ### **TABLA: `law_versions`**
 | Campo | Tipo | Nullable | Default |
@@ -1443,3 +1462,20 @@
   - NO envía email si usuario está activo (solo notificación in-app)
   - SÍ envía email si usuario está inactivo
   - Almacena medallas en `user_medals` con flag `viewed: false`
+
+---
+
+## 📚 **SISTEMA DE NAVEGACIÓN DE LEYES** ⭐ NUEVO (26/10/2025)
+
+#### 58. **`fetchLawSections(lawSlug)` ⭐ NUEVA**
+- **Tipo:** Navegación por títulos/capítulos
+- **Retorna:** `record`
+- **Descripción:** Obtiene secciones (títulos/capítulos) de una ley específica
+- **Funcionalidades:**
+  - Mapeo automático de slug → short_name
+  - Filtrado por secciones activas (is_active = true)
+  - Ordenación por order_position
+  - Retorna información de artículo ranges (start-end)
+  - Validación de existencia de ley
+- **Uso:** Modal "Filtrar por Títulos" en sistema de teoría de leyes
+- **Tabla:** `law_sections`

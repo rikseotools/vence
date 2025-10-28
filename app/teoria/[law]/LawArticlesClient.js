@@ -2,10 +2,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { fetchLawArticles, fetchMultipleArticlesOfficialExamData } from '@/lib/teoriaFetchers'
+import { fetchLawArticles, fetchMultipleArticlesOfficialExamData, fetchLawSections } from '@/lib/teoriaFetchers'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
+import SectionFilterModal from '@/components/SectionFilterModal'
 import { 
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
@@ -22,6 +23,10 @@ export default function LawArticlesClient({ params, searchParams }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [officialExamData, setOfficialExamData] = useState({})
   const [userOposicion, setUserOposicion] = useState(null)
+  const [isSectionModalOpen, setIsSectionModalOpen] = useState(false)
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState(null)
+  const [availableSections, setAvailableSections] = useState([])
+  const [sectionsLoaded, setSectionsLoaded] = useState(false)
 
   // Resolver params en el cliente
   useEffect(() => {
@@ -64,8 +69,22 @@ export default function LawArticlesClient({ params, searchParams }) {
       
       try {
         setLoading(true)
+        
+        // Cargar artículos de la ley
         const data = await fetchLawArticles(lawSlug)
         setLawData(data)
+        
+        // Cargar secciones de la ley para determinar si mostrar filtro
+        try {
+          const sectionsData = await fetchLawSections(lawSlug)
+          setAvailableSections(sectionsData.sections || [])
+          console.log('📚 Secciones cargadas para', lawSlug, ':', sectionsData.sections?.length || 0)
+        } catch (sectionsError) {
+          console.warn('⚠️ No se pudieron cargar secciones para', lawSlug, ':', sectionsError.message)
+          setAvailableSections([])
+        }
+        setSectionsLoaded(true)
+        
       } catch (err) {
         console.error('❌ Error cargando artículos:', err)
         setError(err.message)
@@ -248,6 +267,26 @@ export default function LawArticlesClient({ params, searchParams }) {
 
   const { articles, law } = lawData
 
+  // Filtrar artículos por sección seleccionada
+  const filteredArticles = selectedSectionFilter 
+    ? articles.filter(article => {
+        if (!selectedSectionFilter.articleRange) return false
+        const articleNum = parseInt(article.article_number)
+        return articleNum >= selectedSectionFilter.articleRange.start && 
+               articleNum <= selectedSectionFilter.articleRange.end
+      })
+    : articles
+
+  // Handler para selección de sección
+  const handleSectionSelect = (section) => {
+    setSelectedSectionFilter(section)
+  }
+
+  // Handler para limpiar filtro de sección
+  const clearSectionFilter = () => {
+    setSelectedSectionFilter(null)
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* Header minimalista */}
@@ -270,6 +309,42 @@ export default function LawArticlesClient({ params, searchParams }) {
           </div>
         </div>
       </div>
+
+      {/* Filtros de navegación - Solo mostrar si hay secciones disponibles */}
+      {sectionsLoaded && availableSections.length > 0 && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => setIsSectionModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
+            >
+              <span>📚</span>
+              <span>Filtrar por Títulos</span>
+            </button>
+          
+          {selectedSectionFilter && (
+            <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              <span className="text-blue-700 font-medium">
+                {selectedSectionFilter.title}
+              </span>
+              <button
+                onClick={clearSectionFilter}
+                className="text-blue-600 hover:text-blue-800 ml-2"
+                title="Limpiar filtro"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          
+          {selectedSectionFilter && (
+            <div className="text-sm text-gray-600">
+              Mostrando {filteredArticles.length} de {articles.length} artículos
+            </div>
+          )}
+        </div>
+        </div>
+      )}
 
       {/* Sección destacada de artículos problemáticos */}
       {problematicArticles.length > 0 && (
@@ -365,9 +440,9 @@ export default function LawArticlesClient({ params, searchParams }) {
 
       {/* Lista de artículos - Diseño minimalista */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {articles.length > 0 ? (
+        {filteredArticles.length > 0 ? (
           <div className="space-y-3">
-            {articles.map((article) => {
+            {filteredArticles.map((article) => {
               const isProblematic = problematicArticles.includes(article.article_number)
               
               return (
@@ -456,6 +531,14 @@ export default function LawArticlesClient({ params, searchParams }) {
         onClose={closeModal}
         articleNumber={selectedArticle}
         lawSlug={lawSlug}
+      />
+
+      {/* Modal de filtro por secciones */}
+      <SectionFilterModal
+        isOpen={isSectionModalOpen}
+        onClose={() => setIsSectionModalOpen(false)}
+        lawSlug={lawSlug}
+        onSectionSelect={handleSectionSelect}
       />
     </div>
   )
