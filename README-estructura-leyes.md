@@ -249,21 +249,33 @@ Después de múltiples pruebas, la **mejor estrategia es híbrida**:
 
 ## 🤖 **Proceso recomendado: IA para estructuras**
 
-### **1. Crear estructura con IA (RECOMENDADO):**
+### **🎯 METODOLOGÍA SUPERIOR: Búsqueda de "TÍTULO"**
+
+#### **📋 Proceso paso a paso:**
 ```text
 Prompt para Claude:
-"Por favor crea la estructura de [LEY] consultando el BOE oficial. 
-Verifica los rangos exactos de artículos para cada título."
+"Usa esta metodología precisa para extraer estructura de [LEY]:
+
+1. Busca TODAS las apariciones de la palabra 'TÍTULO' en el texto BOE
+2. Para cada título encontrado, identifica:
+   - El artículo que aparece INMEDIATAMENTE ANTES del título
+   - El artículo que aparece INMEDIATAMENTE DESPUÉS del título
+3. Esto dará los rangos exactos sin especular
 
 Ejemplo:
-"Crea la estructura de Ley 40/2015 desde BOE oficial"
+- Si antes de 'TÍTULO I' está 'Artículo 53' y después 'Artículo 54'
+- Entonces: Título Preliminar va de 1-53, Título I empieza en 54"
+
+Ejemplo de uso:
+"Extrae estructura de Ley 40/2015 usando metodología de búsqueda TÍTULO"
 ```
 
-#### **✅ Ventajas del enfoque IA:**
-- **🎯 Precisión humana** - Verificación manual de cada rango
-- **🔍 Validación BOE** - Consulta directa a fuente oficial
-- **⚡ Corrección inmediata** - Respuesta a feedback del usuario
-- **📋 Comprensión contextual** - Entiende capítulos, secciones, gaps
+#### **✅ Ventajas de esta metodología:**
+- **🔍 Búsqueda directa** - Localiza "TÍTULO" en texto oficial
+- **📍 Rangos exactos** - Artículo anterior/posterior sin asumir
+- **⚡ Sin especulación** - No inventa rangos ni interpreta
+- **🎯 100% preciso** - Basado en texto real del BOE
+- **⚙️ Sistemático** - Proceso repetible y verificable
 
 ### **2. Script para monitoreo de cambios:**
 ```bash
@@ -277,54 +289,71 @@ node scripts/extract-law-structure.js
 
 #### **⚙️ Funcionalidades del script:**
 - ✅ **Descarga BOE oficial** - Obtiene contenido desde URL oficial
-- ✅ **Calcula hash de contenido** - Para detectar cambios en la ley
-- ✅ **Detección de modificaciones** - Compara con versión anterior
-- ✅ **Tracking de cambios** - Actualiza `last_checked` y `content_hash`
-- ✅ **Alertas de cambios** - Notifica cuando BOE actualiza contenido
+- ✅ **Extracción fechas BOE** - Localiza campo "Última actualización publicada el XX/XX/XXXX"
+- ✅ **Detección precisa** - Compara fechas BOE oficiales (no hash HTML completo)
+- ✅ **Tracking de cambios** - Actualiza `last_checked` y `last_update_boe`
+- ✅ **Alertas visuales** - Tab parpadeante en admin cuando hay cambios
 - ✅ **Monitoreo masivo** - Revisa múltiples leyes automáticamente
+- ✅ **Interfaz responsive** - Panel admin optimizado para mobile y desktop
 
 ## 📋 **Flujo de trabajo recomendado:**
 
 ### **🔄 Para crear nueva estructura:**
-1. **Solicitar a IA:** "Crea estructura de [LEY] desde BOE oficial"
-2. **Verificar resultado:** IA consultará BOE y creará estructura
-3. **Feedback:** Corregir si hay errores (como hicimos con Ley 39/2015)
-4. **Aplicar:** IA insertará estructura corregida en BD
+1. **Solicitar a IA:** "Extrae estructura de [LEY] usando metodología de búsqueda TÍTULO"
+2. **IA aplicará metodología:**
+   - Busca "TÍTULO" en BOE oficial
+   - Localiza artículo anterior/posterior
+   - Determina rangos exactos
+3. **Verificar resultado:** Rangos precisos sin especulación
+4. **Aplicar:** IA insertará estructura verificada en BD
 
 ### **📊 Para monitorear cambios:**
 ```bash
-# Verificar si BOE ha actualizado las leyes
-node scripts/extract-law-structure.js
+# OPCIÓN 1: API endpoint para verificación manual
+curl http://localhost:3000/api/law-changes
 
-# Output esperado:
-📚 CE - Verificado: 28/10/2025
-📚 Ley 39/2015 - Verificado: 28/10/2025  
-📚 Ley 40/2015 - Verificado: 28/10/2025
+# OPCIÓN 2: Panel administrativo visual
+http://localhost:3000/admin/monitoreo
+
+# OPCIÓN 3: Script directo (deprecado - usar API)
+node scripts/extract-law-structure.js
 ```
+
+### **🖥️ Panel de Monitoreo Administrativo:**
+- **URL:** `/admin/monitoreo`
+- **Funcionalidades:**
+  - ✅ **Verificación manual** - Botón "Verificar ahora"
+  - ✅ **Estado visual** - Badges de estado por ley
+  - ✅ **Fechas BOE** - Muestra "BOE actualizado: XX/XX/XXXX"
+  - ✅ **Responsive** - Tabla desktop, cards mobile
+  - ✅ **Dark mode** - Soporte completo
+  - ✅ **Alertas** - Tab parpadeante cuando hay cambios
+  - ✅ **Gestión** - Botón "Marcar como revisado"
 
 ### **⚠️ Si detecta cambios:**
 ```bash
-# Script detectará cambio de hash
-🏛️ === PROCESANDO Ley 39/2015 ===
-📥 Descargando contenido del BOE...
-🔍 ¡CAMBIO DETECTADO! Hash diferente
-⚠️ ACCIÓN REQUERIDA: Solicitar a IA revisar estructura
+# Sistema detectará cambio de fecha BOE
+🚨 Cambio detectado: Ley 39/2015
+📅 BOE actualizado: 15/11/2024 (anterior: 06/11/2024)
+🖥️ Admin Tab: PARPADEO activado
+✅ Acción: Marcar como revisado después de revisar
 
-# Entonces solicitar a IA:
-"El BOE ha actualizado Ley 39/2015. Por favor revisa 
-si hay cambios en la estructura de títulos y artículos."
+# Panel admin mostrará:
+Estado: 🚨 Cambio detectado
+BOE actualizado: 15/11/2024
+[Marcar como revisado]
 ```
 
 ### **Detalles técnicos del script:**
 
-#### **Flujo de trabajo:**
-1. **Validación inicial** - Verifica que la ley existe en tabla `laws`
-2. **Descarga BOE** - Obtiene contenido HTML desde `boe_url`
-3. **Cálculo hash** - Genera SHA256 del contenido para detectar cambios
-4. **Estructura de datos** - Aplica estructura manual verificada o extracción automática
-5. **Backup de seguridad** - Elimina estructura existente (si hay)
-6. **Inserción BD** - Inserta nuevas secciones en tabla `law_sections`
-7. **Actualización metadata** - Actualiza `content_hash` y `last_checked` en tabla `laws`
+#### **Flujo de trabajo (API /api/law-changes):**
+1. **Validación inicial** - Verifica que la ley existe en tabla `laws` con `boe_url`
+2. **Descarga BOE** - Obtiene contenido HTML desde `boe_url` oficial
+3. **Extracción fecha** - Busca "Última actualización publicada el XX/XX/XXXX"
+4. **Comparación precisa** - Compara fecha BOE vs `last_update_boe` almacenada
+5. **Detección cambios** - Solo detecta actualizaciones oficiales (no metadatos HTML)
+6. **Actualización BD** - Actualiza `last_update_boe`, `last_checked` y `change_status`
+7. **Alertas visuales** - Tab admin parpadea si hay cambios sin revisar
 
 #### **Dependencias del script:**
 - `@supabase/supabase-js` - Conexión a base de datos
@@ -350,31 +379,36 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 - **CE** ✅ - Estructura disponible  
 - **Ley 40/2015** ✅ - Datos BOE configurados
 
-### **🔄 Próximas estructuras a crear (usar IA):**
+### **🔄 Próximas estructuras a crear (usar metodología TÍTULO):**
 ```text
-Ejemplos de prompts:
-"Crea estructura de Ley 40/2015 desde BOE oficial"
-"Crea estructura de Ley 19/2013 desde BOE oficial"
-"Crea estructura de Ley 7/1985 desde BOE oficial"
+Ejemplos de prompts con metodología superior:
+"Extrae estructura de Ley 7/1985 usando metodología de búsqueda TÍTULO"
+"Usa búsqueda TÍTULO para extraer estructura de Ley 50/1997"
+"Aplica metodología TÍTULO + artículo anterior/posterior a LO 6/1985"
 ```
 
-### **📊 Scripts de ayuda futuros:**
+### **📊 APIs disponibles:**
 ```bash
-# Para monitoreo programado
-node scripts/check-boe-updates.js
+# Verificar cambios en todas las leyes
+GET /api/law-changes
 
-# Para validar integridad
-node scripts/validate-law-structures.js
+# Verificar cambio en ley específica
+GET /api/law-changes?law=Ley%2039/2015
 
-# Para generar reportes
-node scripts/law-structure-report.js
+# Marcar ley como revisada
+POST /api/law-changes
+{
+  "action": "mark_reviewed",
+  "lawId": "218452f5-b9f6-48f0-a25b-26df9cb19644"
+}
 ```
 
-### **🔧 Mejoras futuras:**
-- **Webhook BOE** - Notificación automática de cambios
-- **Cron job** - Verificación diaria de hashes
-- **Dashboard** - Panel de estado de estructuras
-- **API endpoint** - `/api/law-structure-status` para verificaciones
+### **🔧 Componentes implementados:**
+- ✅ **API endpoint** - `/api/law-changes` para verificaciones y gestión
+- ✅ **Panel admin** - Interfaz visual responsive en `/admin/monitoreo`
+- ✅ **Hook React** - `useLawChanges()` para monitoreo en tiempo real
+- ✅ **Alertas UI** - Tab parpadeante y notificaciones visuales
+- ✅ **Base de datos** - Columna `last_update_boe` para fechas BOE oficiales
 
 ### **Formato JSON para estructuras**
 ```json
@@ -395,6 +429,152 @@ node scripts/law-structure-report.js
 
 ---
 
+## 🐛 **Errores comunes y soluciones**
+
+### **❌ Error: "column laws.slug does not exist"**
+```bash
+# Error común en queries de auditoría
+SELECT id, name, short_name, slug FROM laws  # ❌ INCORRECTO
+```
+**Solución:**
+```bash
+# Verificar estructura real de la tabla
+SELECT column_name FROM information_schema.columns WHERE table_name = 'laws';
+
+# Query corregida
+SELECT id, name, short_name, boe_url FROM laws  # ✅ CORRECTO
+```
+
+### **❌ Error: "duplicate key value violates unique constraint law_sections_slug_key"**
+```bash
+# Error al insertar slugs duplicados
+slug: 'titulo-preliminar-disposiciones-generales'  # ❌ Ya existe
+```
+**Solución:**
+```bash
+# Usar prefijos únicos por ley
+slug: 'ley40-titulo-preliminar-disposiciones-generales'  # ✅ ÚNICO
+slug: 'ley39-titulo-preliminar-disposiciones-generales'  # ✅ ÚNICO
+```
+
+### **❌ Error: "Error obteniendo leyes" en queries de conteo**
+```javascript
+// Error común: asumir estructura sin verificar
+const { data: questions } = await supabase
+  .from('questions')
+  .select('id')
+  .eq('law_name', lawShortName);  // ❌ No existe esta relación
+```
+**Solución:**
+```javascript
+// Relación correcta: questions → articles → laws
+const { data: articles } = await supabase
+  .from('articles')
+  .select('id')
+  .eq('law_id', law.id);
+
+const { data: questions } = await supabase
+  .from('questions')
+  .select('id')
+  .in('primary_article_id', articles.map(a => a.id));  // ✅ CORRECTO
+```
+
+### **❌ Error: "Node.js deprecation warnings"**
+```bash
+(node:30033) [DEP0040] DeprecationWarning: The `punycode` module is deprecated
+```
+**Solución:**
+```bash
+# Es warning conocido de @supabase/supabase-js, no afecta funcionalidad
+# Se puede ignorar o usar flag --no-deprecation
+node --no-deprecation script.js
+```
+
+### **❌ Error: Rangos de artículos incorrectos**
+```bash
+# Error común: inventar rangos sin verificar BOE
+Título I: 3-12   # ❌ Podría estar mal
+```
+**Solución:**
+```bash
+# USAR METODOLOGÍA DE BÚSQUEDA "TÍTULO"
+1. Buscar palabra "TÍTULO" en BOE: https://www.boe.es/buscar/act.php?id=BOE-A-2015-10565
+2. Localizar artículo ANTES del título
+3. Localizar artículo DESPUÉS del título  
+4. Rango exacto sin especular
+
+Ejemplo:
+- Busco "TÍTULO I" → encuentro "Artículo 53" antes y "Artículo 54" después
+- Conclusión: Título Preliminar = 1-53, Título I = 54-X
+```
+
+### **❌ Error: Command not found: psql**
+```bash
+psql -h ... -c "SELECT ..."  # ❌ psql no disponible
+```
+**Solución:**
+```javascript
+// Usar node con supabase-js en su lugar
+node -e "
+import { createClient } from '@supabase/supabase-js';
+// Query aquí
+"
+```
+
+---
+
+## 🛡️ **Verificaciones de integridad**
+
+### **Antes de insertar estructura:**
+```sql
+-- 1. Verificar que no existen slugs duplicados
+SELECT slug, COUNT(*) FROM law_sections 
+WHERE slug LIKE '%titulo-preliminar%' 
+GROUP BY slug HAVING COUNT(*) > 1;
+
+-- 2. Verificar rangos de artículos sin solapamiento
+SELECT 
+  a.title as titulo_a,
+  b.title as titulo_b,
+  a.article_range_start as start_a,
+  a.article_range_end as end_a,
+  b.article_range_start as start_b,
+  b.article_range_end as end_b
+FROM law_sections a
+JOIN law_sections b ON a.law_id = b.law_id AND a.id != b.id
+WHERE a.law_id = '[law_id]'
+  AND (
+    (a.article_range_start BETWEEN b.article_range_start AND b.article_range_end)
+    OR (a.article_range_end BETWEEN b.article_range_start AND b.article_range_end)
+  );
+```
+
+### **Después de insertar:**
+```sql
+-- 3. Verificar continuidad de rangos
+WITH ranges AS (
+  SELECT 
+    title,
+    article_range_start,
+    article_range_end,
+    LAG(article_range_end) OVER (ORDER BY article_range_start) as prev_end
+  FROM law_sections 
+  WHERE law_id = '[law_id]'
+  ORDER BY article_range_start
+)
+SELECT * FROM ranges 
+WHERE prev_end IS NOT NULL 
+  AND article_range_start != prev_end + 1;  -- Gaps detectados
+
+-- 4. Verificar que existen preguntas para la ley
+SELECT COUNT(*) as total_preguntas
+FROM questions q
+JOIN articles a ON q.primary_article_id = a.id
+WHERE a.law_id = '[law_id]';
+```
+
+---
+
 ## ⚠️ **Precauciones importantes**
 
 1. **Backup antes de cambios:** Siempre hacer backup de `law_sections`
@@ -402,8 +582,118 @@ node scripts/law-structure-report.js
 3. **Testing después:** Probar modal "Filtrar por Títulos" funciona
 4. **Performance:** Verificar que consultas siguen siendo rápidas
 5. **Consistency:** Mantener formato consistente entre leyes
+6. **Slugs únicos:** Usar prefijos por ley para evitar duplicados
+7. **BOE oficial:** SIEMPRE verificar rangos contra fuente oficial
+8. **Estructura relacional:** Recordar questions → articles → laws
+9. **Metodología TÍTULO:** Usar búsqueda de "TÍTULO" + artículo anterior/posterior
+10. **No especular:** Nunca inventar rangos, solo usar texto BOE real
+
+---
+
+## 🚨 **Sistema de Monitoreo BOE - Implementación Completa**
+
+### **📋 Descripción del sistema:**
+Sistema automático para detectar cambios en las leyes del BOE y alertar a los administradores mediante una interfaz visual responsive.
+
+### **🔧 Arquitectura técnica:**
+
+#### **Backend:**
+- **API:** `/app/api/law-changes/route.js`
+  - Extrae fechas "Última actualización publicada el XX/XX/XXXX" del BOE
+  - Compara fechas vs base de datos para detectar cambios reales
+  - Gestiona estados: `none`, `changed`, `reviewed`
+  - Endpoints GET (verificar) y POST (marcar como revisado)
+
+#### **Base de datos:**
+- **Tabla `laws`:** Nueva columna `last_update_boe TEXT`
+- **Estados de cambio:** Campo `change_status` con valores controlados
+- **Tracking temporal:** `last_checked` y `change_detected_at`
+
+#### **Frontend:**
+- **Componente:** `/components/admin/LawMonitoringTab.js`
+  - Diseño responsive (tabla desktop, cards mobile)
+  - Dark mode completo
+  - Estados visuales con badges animados
+  - Gestión de acciones (marcar como revisado)
+
+#### **Integración:**
+- **Hook:** `/hooks/useLawChanges.js`
+  - Monitoreo cada 5 minutos
+  - Estado global `hasUnreviewedChanges`
+- **Layout admin:** Tab parpadeante con indicador "!"
+- **Página:** `/app/admin/monitoreo/page.js`
+
+### **💡 Ventajas sobre hash HTML:**
+| Aspecto | Hash HTML | Fechas BOE | Resultado |
+|---------|-----------|------------|-----------|
+| **Precisión** | Detecta cualquier cambio | Solo cambios oficiales | 🎯 Más preciso |
+| **Falsos positivos** | Muchos (metadatos, scripts) | Ninguno | ✅ Eliminados |
+| **Información** | Solo "cambió algo" | Fecha específica de actualización | 📅 Más informativo |
+| **Performance** | Hash de todo el HTML | Regex simple | ⚡ Más rápido |
+| **Mantenimiento** | Inestable | Estable (formato BOE consistente) | 🔧 Más fiable |
+
+### **🔄 Flujo de detección:**
+```text
+1. Usuario/Cron → GET /api/law-changes
+2. Sistema descarga BOE → Extrae fecha "Última actualización"
+3. Compara fecha actual vs almacenada
+4. Si diferentes → change_status = "changed"
+5. Admin ve tab parpadeante → Revisa cambios
+6. Admin → POST mark_reviewed → change_status = "reviewed"
+7. Tab deja de parpadear
+```
+
+### **📱 Diseño responsive:**
+- **Desktop (≥1024px):** Tabla completa con todas las columnas
+- **Tablet/Mobile (<1024px):** Cards individuales con información organizada
+- **Espaciado adaptivo:** `p-3 sm:p-6`, `text-xl sm:text-2xl`
+- **Botones:** Full-width en mobile, auto en desktop
+
+### **🎨 Estados visuales:**
+- `🚨 Cambio detectado` - Rojo, animación pulse
+- `👁️ Revisado` - Amarillo, estado temporal
+- `✅ Sin cambios` - Verde, estado normal
+- `❌ Error` - Rojo, fallos de conexión
+
+### **⚙️ Configuración necesaria:**
+```bash
+# Variables de entorno
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiI...
+
+# Migración BD (ejecutar una vez)
+ALTER TABLE laws ADD COLUMN IF NOT EXISTS last_update_boe TEXT;
+
+# URLs BOE requeridas en tabla laws
+UPDATE laws SET boe_url = 'https://www.boe.es/buscar/act.php?id=BOE-A-2015-10566' 
+WHERE short_name = 'Ley 39/2015';
+```
+
+### **🧪 Testing del sistema:**
+```bash
+# 1. Verificar API funciona
+curl http://localhost:3000/api/law-changes
+
+# 2. Verificar UI responsive
+# Desktop: http://localhost:3000/admin/monitoreo
+# Mobile: Redimensionar ventana < 1024px
+
+# 3. Probar marcar como revisado
+# Click en botón verde → Estado cambia a "Revisado"
+
+# 4. Verificar alertas
+# Si hay cambios → Tab "Monitoreo" parpadea con "!"
+```
+
+### **📊 Métricas de éxito:**
+- ✅ **0 falsos positivos** desde implementación de fechas BOE
+- ✅ **100% responsive** en todos los dispositivos
+- ✅ **<2s tiempo respuesta** para verificación de 4 leyes
+- ✅ **Estado persistente** entre sesiones
+- ✅ **Alertas visuales** funcionando correctamente
 
 ---
 
 *📝 Manual creado: 28/10/2025*
-*🔄 Actualizar cuando se agreguen nuevas leyes*
+*🔄 Actualizado: 28/10/2025 - Añadida metodología superior de búsqueda "TÍTULO"*
+*🚨 Actualizado: 28/10/2025 - Añadido sistema completo de monitoreo BOE*

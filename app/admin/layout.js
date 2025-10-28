@@ -1,12 +1,14 @@
 // app/admin/layout.js - Layout base para área administrativa CORREGIDO
 'use client'
-import ProtectedRoute from '@/components/Admin/ProtectedRoute'
+import ProtectedRoute from '@/components/admin/ProtectedRoute'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
+import { useLawChanges } from '@/hooks/useLawChanges'
 
 // Metadata moved to page components since this is now a client component
 
 export default function AdminLayout({ children }) {
   const adminNotifications = useAdminNotifications()
+  const { hasUnreviewedChanges } = useLawChanges()
 
   return (
     <ProtectedRoute>
@@ -124,6 +126,20 @@ export default function AdminLayout({ children }) {
                 >
                   <span className="text-base">🧪</span>
                   <span className="hidden sm:inline">Tests</span>
+                </a>
+                <a 
+                  href="/admin/monitoreo" 
+                  className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                    hasUnreviewedChanges ? 'animate-pulse' : ''
+                  }`}
+                >
+                  <span className="text-base">🚨</span>
+                  <span className="hidden sm:inline">Monitoreo</span>
+                  {hasUnreviewedChanges && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                      !
+                    </span>
+                  )}
                 </a>
               </nav>
             </div>
