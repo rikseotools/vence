@@ -226,13 +226,7 @@ export default async function LawMainPage({ params, searchParams }) {
               href="/leyes"
               className="bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium text-center hover:bg-gray-200 transition-colors"
             >
-              📚 Todas las Leyes
-            </Link>
-            <Link
-              href="/test/rapido"
-              className="bg-yellow-100 text-yellow-800 py-3 px-4 rounded-lg font-medium text-center hover:bg-yellow-200 transition-colors"
-            >
-              🎲 Test Aleatorio
+              📚 Ver más leyes
             </Link>
           </div>
         </div>
