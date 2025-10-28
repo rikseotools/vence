@@ -165,6 +165,12 @@ git push origin main
 - Para verificar estructura de tablas, consultar `README-todas-tablas.md` antes de hacer queries
 - Evita asumir nombres de columnas, siempre verificar con `information_schema.columns` o el README
 
+### ⚠️ CRÍTICO: Verificación de Contenido Legal
+- **NUNCA crear estructuras de leyes sin verificar primero con BOE oficial**
+- **SIEMPRE consultar fuentes oficiales ANTES de crear contenido normativo**
+- **Verificar artículos, títulos y rangos contra documentos oficiales**
+- **En contenido legal, la precisión es crítica para la plataforma**
+
 ### Política de Commits
 - **NUNCA hacer commits automáticos sin autorización explícita del usuario**
 - Solo hacer commit cuando el usuario específicamente lo solicite
