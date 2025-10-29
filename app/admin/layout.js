@@ -1,6 +1,6 @@
 // app/admin/layout.js - Layout base para área administrativa CORREGIDO
 'use client'
-import ProtectedRoute from '@/components/admin/ProtectedRoute'
+import ProtectedRoute from '@/components/Admin/ProtectedRoute'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useLawChanges } from '@/hooks/useLawChanges'
 
