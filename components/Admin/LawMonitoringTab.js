@@ -21,6 +21,7 @@ export default function LawMonitoringTab() {
   const [laws, setLaws] = useState([])
   const [loading, setLoading] = useState(false)
   const [processingLaws, setProcessingLaws] = useState(new Set()) // IDs de leyes siendo procesadas
+  const [completedLaws, setCompletedLaws] = useState(new Set()) // IDs de leyes completadas
   const [lastCheck, setLastCheck] = useState(null)
   const [error, setError] = useState(null)
 
@@ -29,6 +30,7 @@ export default function LawMonitoringTab() {
       setLoading(true)
       setError(null)
       setProcessingLaws(new Set())
+      setCompletedLaws(new Set())
       
       // Primero obtener lista de leyes
       const initialResponse = await fetch('/api/law-changes')
@@ -69,12 +71,13 @@ export default function LawMonitoringTab() {
         } catch (err) {
           console.error(`Error verificando ${law.law}:`, err)
         } finally {
-          // Remover ley de procesándose
+          // Remover ley de procesándose y marcar como completada
           setProcessingLaws(prev => {
             const newSet = new Set(prev)
             newSet.delete(law.id)
             return newSet
           })
+          setCompletedLaws(prev => new Set([...prev, law.id]))
         }
       }
       
@@ -85,6 +88,7 @@ export default function LawMonitoringTab() {
     } finally {
       setLoading(false)
       setProcessingLaws(new Set())
+      setCompletedLaws(new Set())
     }
   }
 
@@ -123,7 +127,7 @@ export default function LawMonitoringTab() {
     const loadLaws = async () => {
       try {
         setLoading(true)
-        const response = await fetch('/api/law-changes')
+        const response = await fetch('/api/law-changes?readonly=true')
         const data = await response.json()
         
         if (data.success) {
@@ -142,6 +146,24 @@ export default function LawMonitoringTab() {
   }, [])
 
   const hasUnreviewedChanges = laws.some(law => law.changeStatus === 'changed')
+
+  // Ordenar leyes por fecha BOE (más recientes primero)
+  const sortedLaws = [...laws].sort((a, b) => {
+    // Ordenar por fecha BOE: primero las modificadas recientemente
+    if (a.lastUpdateBOE && b.lastUpdateBOE) {
+      // Convertir fechas DD/MM/YYYY a Date para comparar
+      const dateA = new Date(a.lastUpdateBOE.split('/').reverse().join('-'))
+      const dateB = new Date(b.lastUpdateBOE.split('/').reverse().join('-'))
+      return dateB.getTime() - dateA.getTime() // Más reciente primero
+    }
+    
+    // Si solo una tiene fecha BOE, ponerla primero
+    if (a.lastUpdateBOE && !b.lastUpdateBOE) return -1
+    if (!a.lastUpdateBOE && b.lastUpdateBOE) return 1
+    
+    // Si ninguna tiene fecha BOE, ordenar por nombre
+    return a.law.localeCompare(b.law)
+  })
 
   return (
     <div className="p-3 sm:p-6">
@@ -166,7 +188,7 @@ export default function LawMonitoringTab() {
       </div>
 
       {/* Barra de progreso global */}
-      {loading && laws.length > 0 && (
+      {loading && sortedLaws.length > 0 && (
         <div className="mb-6">
           <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             <div className="flex justify-between items-center mb-2">
@@ -174,21 +196,21 @@ export default function LawMonitoringTab() {
                 Progreso de verificación
               </span>
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {laws.length - processingLaws.size} / {laws.length}
+                {completedLaws.size} / {sortedLaws.length}
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div 
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{ 
-                  width: `${laws.length > 0 ? ((laws.length - processingLaws.size) / laws.length) * 100 : 0}%` 
+                  width: `${sortedLaws.length > 0 ? (completedLaws.size / sortedLaws.length) * 100 : 0}%` 
                 }}
               ></div>
             </div>
             {processingLaws.size > 0 && (
               <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
                 Verificando: {[...processingLaws].map(id => 
-                  laws.find(l => l.id === id)?.law
+                  sortedLaws.find(l => l.id === id)?.law
                 ).filter(Boolean).join(', ')}
               </div>
             )}
@@ -225,12 +247,15 @@ export default function LawMonitoringTab() {
                 Última verificación
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                Último cambio BOE
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Acción
               </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {laws.map((law) => (
+            {sortedLaws.map((law) => (
               <tr 
                 key={law.id}
                 className={law.changeStatus === 'changed' ? 'bg-red-50 dark:bg-red-900/20' : ''}
@@ -284,6 +309,17 @@ export default function LawMonitoringTab() {
                   {law.lastChecked ? new Date(law.lastChecked).toLocaleString('es-ES') : 'Nunca'}
                 </td>
                 
+                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  {law.lastUpdateBOE ? (
+                    <div className="flex items-center space-x-1">
+                      <span className="text-xs">📅</span>
+                      <span>{law.lastUpdateBOE}</span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-600">Sin fecha</span>
+                  )}
+                </td>
+                
                 <td className="px-6 py-4 text-sm">
                   {law.changeStatus === 'changed' && (
                     <button
@@ -302,7 +338,7 @@ export default function LawMonitoringTab() {
 
       {/* Mobile Cards */}
       <div className="lg:hidden space-y-4">
-        {laws.map((law) => (
+        {sortedLaws.map((law) => (
           <div 
             key={law.id}
             className={`bg-white dark:bg-gray-800 rounded-lg shadow border ${
@@ -359,8 +395,13 @@ export default function LawMonitoringTab() {
             </div>
 
             {/* Last Check */}
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
               📅 Última verificación: {law.lastChecked ? new Date(law.lastChecked).toLocaleString('es-ES') : 'Nunca'}
+            </div>
+
+            {/* Last BOE Update */}
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              📋 Último cambio BOE: {law.lastUpdateBOE ? law.lastUpdateBOE : 'Sin fecha'}
             </div>
 
             {/* Action */}
@@ -376,7 +417,7 @@ export default function LawMonitoringTab() {
         ))}
       </div>
 
-      {laws.length === 0 && !loading && (
+      {sortedLaws.length === 0 && !loading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           No hay leyes configuradas para monitoreo
         </div>
