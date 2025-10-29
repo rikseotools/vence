@@ -34,113 +34,129 @@ export default function AdminLayout({ children }) {
                 </div>
               </div>
 
-              {/* Navegación superior - Responsive */}
-              <nav className="flex items-center space-x-2 sm:space-x-4">
-                <a 
-                  href="/admin" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">📊</span>
-                  <span className="hidden sm:inline">Dashboard</span>
-                </a>
-                <a 
-                  href="/admin/usuarios" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">👥</span>
-                  <span className="hidden sm:inline">Usuarios</span>
-                </a>
-                <a 
-                  href="/admin/analytics" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">📈</span>
-                  <span className="hidden sm:inline">Analytics</span>
-                </a>
-                <a 
-                  href="/admin/engagement" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">🎯</span>
-                  <span className="hidden sm:inline">Engagement</span>
-                </a>
-                <a 
-                  href="/admin/notificaciones" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">🔔</span>
-                  <span className="hidden sm:inline">Notificaciones</span>
-                </a>
-                <a 
-                  href="/admin/notificaciones/push" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">📱</span>
-                  <span className="hidden sm:inline">Push</span>
-                </a>
-                <a 
-                  href="/admin/notificaciones/email" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">📧</span>
-                  <span className="hidden sm:inline">Emails</span>
-                </a>
-                <a 
-                  href="/admin/feedback" 
-                  className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
-                    adminNotifications?.feedback > 0 ? 'animate-pulse' : ''
-                  }`}
-                >
-                  <span className="text-base">💬</span>
-                  <span className="hidden sm:inline">Feedback</span>
-                  {adminNotifications?.feedback > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
-                      {adminNotifications.feedback}
-                    </span>
-                  )}
-                </a>
-                <a 
-                  href="/admin/impugnaciones" 
-                  className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
-                    adminNotifications?.impugnaciones > 0 ? 'animate-pulse' : ''
-                  }`}
-                >
-                  <span className="text-base">📋</span>
-                  <span className="hidden sm:inline">Impugnaciones</span>
-                  {adminNotifications?.impugnaciones > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
-                      {adminNotifications.impugnaciones}
-                    </span>
-                  )}
-                </a>
-                <a 
-                  href="/admin/newsletters" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">📧</span>
-                  <span className="hidden sm:inline">Newsletters</span>
-                </a>
-                <a 
-                  href="/admin/tests" 
-                  className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1"
-                >
-                  <span className="text-base">🧪</span>
-                  <span className="hidden sm:inline">Tests</span>
-                </a>
-                <a 
-                  href="/admin/monitoreo" 
-                  className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 sm:px-3 py-2 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
-                    hasUnreviewedChanges ? 'animate-pulse' : ''
-                  }`}
-                >
-                  <span className="text-base">🚨</span>
-                  <span className="hidden sm:inline">Monitoreo</span>
-                  {hasUnreviewedChanges && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
-                      !
-                    </span>
-                  )}
-                </a>
+              {/* Logo compacto solo en móvil */}
+              <div className="sm:hidden">
+                <h1 className="text-base font-bold text-gray-900 dark:text-white">Admin</h1>
+              </div>
+            </div>
+          </div>
+          
+          {/* Navegación en dos filas */}
+          <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <nav className="py-2">
+                {/* Primera fila */}
+                <div className="flex items-center justify-center flex-wrap gap-1 mb-2">
+                  <a 
+                    href="/admin" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                  </a>
+                  <a 
+                    href="/admin/usuarios" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>👥</span>
+                    <span>Usuarios</span>
+                  </a>
+                  <a 
+                    href="/admin/analytics" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>📈</span>
+                    <span>Analytics</span>
+                  </a>
+                  <a 
+                    href="/admin/engagement" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>🎯</span>
+                    <span>Engagement</span>
+                  </a>
+                  <a 
+                    href="/admin/notificaciones" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>🔔</span>
+                    <span>Notificaciones</span>
+                  </a>
+                  <a 
+                    href="/admin/tests" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>🧪</span>
+                    <span>Tests</span>
+                  </a>
+                </div>
+                
+                {/* Segunda fila */}
+                <div className="flex items-center justify-center flex-wrap gap-1">
+                  <a 
+                    href="/admin/notificaciones/push" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>📱</span>
+                    <span>Push</span>
+                  </a>
+                  <a 
+                    href="/admin/notificaciones/email" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>📧</span>
+                    <span>Emails</span>
+                  </a>
+                  <a 
+                    href="/admin/feedback" 
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      adminNotifications?.feedback > 0 ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    <span>💬</span>
+                    <span>Feedback</span>
+                    {adminNotifications?.feedback > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                        {adminNotifications.feedback}
+                      </span>
+                    )}
+                  </a>
+                  <a 
+                    href="/admin/impugnaciones" 
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      adminNotifications?.impugnaciones > 0 ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    <span>📋</span>
+                    <span>Impugnaciones</span>
+                    {adminNotifications?.impugnaciones > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                        {adminNotifications.impugnaciones}
+                      </span>
+                    )}
+                  </a>
+                  <a 
+                    href="/admin/newsletters" 
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>📧</span>
+                    <span>Newsletters</span>
+                  </a>
+                  <a 
+                    href="/admin/monitoreo" 
+                    className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
+                      hasUnreviewedChanges ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    <span>🚨</span>
+                    <span>Monitoreo</span>
+                    {hasUnreviewedChanges && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+                        !
+                      </span>
+                    )}
+                  </a>
+                </div>
               </nav>
             </div>
           </div>
