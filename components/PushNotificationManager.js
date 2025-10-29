@@ -127,7 +127,6 @@ export default function PushNotificationManager() {
         if (document.visibilityState === 'visible' && 
             shouldVerifyToday() && 
             notificationState.settings?.push_enabled) {
-          console.log('🔍 Verificación programada (cada 2 días)')
           refreshSubscriptionIfExpired()
           setLastVerificationTime(Date.now())
         } else {
@@ -143,7 +142,6 @@ export default function PushNotificationManager() {
     // Verificación al cargar - solo si han pasado 2+ días
     const handleInitialCheck = () => {
       if (shouldVerifyToday() && notificationState.settings?.push_enabled) {
-        console.log('🔍 Verificación inicial (han pasado 2+ días)')
         refreshSubscriptionIfExpired()
         setLastVerificationTime(Date.now())
       }
@@ -279,7 +277,6 @@ export default function PushNotificationManager() {
           console.log('✅ Service worker ready')
 
           // Obtener o crear suscripción push
-          console.log('🔍 Verificando suscripción existente...')
           let subscription = await registration.pushManager.getSubscription()
           
           if (!subscription) {
@@ -549,8 +546,6 @@ export default function PushNotificationManager() {
       // Validaciones rápidas que no consumen datos
       if (!user || !notificationState.settings?.push_enabled) return
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-
-      console.log('🔍 Verificación eficiente de suscripción push...')
 
       // Verificaciones locales primero (sin red)
       const currentPermission = Notification.permission

@@ -23,41 +23,15 @@ export default function ProtectedRoute({ children, requireRole = 'admin' }) {
       }
 
       try {
-        console.log('🔍 Verificando permisos de admin para:', user.email)
-        console.log('🔍 Usuario actual:', user)
-        
-        // Verificar usuario desde supabase.auth.getUser()
-        const { data: userData, error: userError } = await supabase.auth.getUser()
-        console.log('🔍 Usuario desde supabase.auth.getUser():', userData, userError)
-        
         // Verificar si el usuario actual es admin usando la función SQL
         const { data, error } = await supabase.rpc('is_current_user_admin')
-        console.log('🔍 Resultado is_current_user_admin:', data, error)
-        
-        // También probar consulta directa
-        const { data: directCheck, error: directError } = await supabase
-          .from('admin_users_with_roles')
-          .select('active_roles')
-          .eq('user_id', user.id)
-          .single()
-        console.log('🔍 Consulta directa admin_users_with_roles:', directCheck, directError)
         
         if (error) {
           console.error('❌ Error verificando permisos:', error)
-          
-          // Si la función RPC falla, usar consulta directa como fallback
-          if (directCheck && directCheck.active_roles) {
-            const hasAdminRole = directCheck.active_roles.includes('admin') || 
-                                directCheck.active_roles.includes('super_admin')
-            console.log('✅ Usando consulta directa - Status de admin:', hasAdminRole)
-            setIsAdmin(hasAdminRole)
-          } else {
-            setError('Error verificando permisos de administrador')
-            setIsAdmin(false)
-          }
+          setError('Error verificando permisos de administrador')
+          setIsAdmin(false)
         } else {
           const adminStatus = data === true
-          console.log('✅ Status de admin desde RPC:', adminStatus)
           setIsAdmin(adminStatus)
         }
         

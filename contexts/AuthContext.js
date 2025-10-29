@@ -418,7 +418,6 @@ export function AuthProvider({ children, initialUser = null }) {
       }
       
       const result = data[0]
-      console.log('🔍 Resultado verificación acceso:', result)
       
       return result
       
