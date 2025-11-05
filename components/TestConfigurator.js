@@ -1428,9 +1428,10 @@ const TestConfigurator = ({
                     
                     {/* Mostrar lista de artículos si están cargados */}
                     {loadingEssentialCount ? (
-                      <p className="text-xs text-gray-600 italic">
-                        🔄 Cargando artículos imprescindibles...
-                      </p>
+                      <div className="flex items-center space-x-2 text-xs text-gray-600 italic">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
+                        <span>Cargando artículos imprescindibles... esto puede tardar un momento</span>
+                      </div>
                     ) : essentialArticlesList.length > 0 ? (
                       <div className="mt-2">
                         <p className="text-xs text-red-700 font-medium mb-1">
