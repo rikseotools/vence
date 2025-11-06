@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import notificationTracker from '../lib/services/notificationTracker'
+import pwaTracker from '../lib/services/pwaTracker'
 
 export default function PushNotificationManager() {
   const { user, supabase } = useAuth()
@@ -19,6 +20,17 @@ export default function PushNotificationManager() {
     if (typeof window !== 'undefined' && user && supabase) {
       // Configurar tracker con instancia de Supabase
       notificationTracker.setSupabaseInstance(supabase)
+      
+      // 📱 PWA TRACKING: Configurar PWA tracker
+      pwaTracker.setSupabaseInstance(supabase)
+      // Iniciar sesión PWA automáticamente
+      pwaTracker.startSession()
+      
+      // Detectar usuarios PWA existentes (delay para dar tiempo a auth)
+      setTimeout(() => {
+        pwaTracker.detectExistingPWAUser()
+      }, 2000)
+      
       checkNotificationSupport()
       loadUserSettings()
       
@@ -219,6 +231,9 @@ export default function PushNotificationManager() {
           trigger: 'user_initiated'
         }
       })
+      
+      // 📱 PWA TRACKING: Track que usuario interactuó con notificaciones (pueden estar relacionadas)
+      pwaTracker.trackAction('notification_permission_requested')
     } catch (trackingError) {
       console.error('⚠️ Error en tracking inicial:', trackingError)
       // Continuar aunque falle el tracking

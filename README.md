@@ -4,7 +4,7 @@
 
 ## 🎯 **La Revolución: IA Personal + Tests Tradicionales**
 
-### 🧠 **Sistema de Notificaciones Inteligentes** ⭐ *PIEDRA ANGULAR*
+### 🧠 **Sistema de Notificaciones Inteligentes + PWA** ⭐ *PIEDRA ANGULAR*
 **Lo que nos hace únicos en el mercado:**
 
 - **📊 Análisis Automático**: Tu comportamiento de estudio se convierte en insights personalizados
@@ -12,6 +12,8 @@
 - **💡 Motivación Adaptativa**: Solo cuando realmente aporta valor (no spam)
 - **🚀 Acciones Directas**: Cada notificación lleva a una solución específica
 - **⚡ Tiempo Real**: Aprende y se adapta constantemente a tu progreso
+- **📱 PWA Tracking**: Sistema completo de tracking de instalaciones y uso PWA
+- **🔔 Push Notifications**: Gestión avanzada con análisis de engagement
 
 ### 📈 **Tipos de Inteligencia Implementada:**
 
@@ -48,6 +50,8 @@ Construido sobre la plataforma más completa del mercado:
 - **Analytics de progreso** y recomendaciones personalizadas
 - **🆕 EXÁMENES OFICIALES EXACTOS** - Recreación de exámenes reales
 - **🆕 CONTEXTO HISTÓRICO** - Artículos que "caen seguro" en exámenes
+- **🆕 PWA TRACKING COMPLETO** - Sistema de seguimiento de instalaciones y uso
+- **🆕 ANALYTICS PUSH REALES** - Datos reales de notificaciones y engagement
 - **🎉 CONSTITUCIÓN ESPAÑOLA COMPLETA** - 169 artículos mapeados (100%)
 - **🆕 CONTROL DE VERSIONES** - Sistema de actualización legal automático
 - **🆕 ARQUITECTURA HÍBRIDA** - Consultas rápidas + análisis profundo
@@ -166,7 +170,60 @@ Construido sobre la plataforma más completa del mercado:
 ├── user_progress - Progreso detallado por artículo
 ├── user_recommendations - Recomendaciones personalizadas
 └── user_notifications - Sistema de notificaciones inteligentes
+
+📱 PWA Y NOTIFICACIONES (4 tablas) ⭐ NUEVO
+├── pwa_events - Eventos de instalación y uso PWA
+├── pwa_sessions - Sesiones detalladas PWA vs Web
+├── notification_events - Eventos de notificaciones push
+└── email_events - Analytics de emails enviados
 ```
+
+---
+
+## 📱 **Sistema PWA y Notificaciones Avanzado**
+
+### 🎯 **PWA Tracking Completo**
+**Sistema de seguimiento de instalaciones y uso de Progressive Web App:**
+
+- **📊 Detección Automática**: Detecta usuarios que ya tienen PWA instalada (retroactivo)
+- **📱 Tracking en Tiempo Real**: Registra instalaciones, sesiones, y uso standalone vs web
+- **🔍 Múltiples Métodos de Detección**:
+  - Modo standalone directo (iOS Safari, Android Chrome)
+  - API `getInstalledRelatedApps` (Chrome/Edge)
+  - Heurística de ausencia de install prompt
+  - Análisis de patrones de uso frecuente
+- **📈 Métricas Reales**: Conversión de prompts a instalaciones, duración de sesiones
+- **🎯 Admin Panel Completo**: `/admin/pwa` con estadísticas detalladas
+
+### 🔔 **Push Notifications Analytics**
+**Sistema avanzado de análisis de notificaciones push:**
+
+- **👥 Gestión de Usuarios**: Tracking completo de permisos y suscripciones
+- **📊 Analytics Detalladas**:
+  - Usuarios con permisos concedidos vs suscripciones activas
+  - Click-through rates por tipo de notificación
+  - Distribución por dispositivos y navegadores
+  - Tendencias diarias y patrones de uso
+- **🎯 Targeting Inteligente**: Identificación de usuarios listos para recibir notificaciones
+- **📈 Admin Panels**: 
+  - `/admin/notificaciones` - Overview general
+  - `/admin/notificaciones/push` - Análisis detallado
+  - `/admin/notificaciones/push/usuarios` - Gestión de usuarios
+
+### 📊 **Datos Reales vs Estimaciones**
+**Todos los paneles muestran datos 100% reales:**
+
+- **❌ Antes**: "PWAs Estimadas ~32% de usuarios activos"
+- **✅ Ahora**: "PWAs Instaladas: X (datos reales)"
+- **❌ Antes**: "Push Estimados ~15% usuarios registrados"  
+- **✅ Ahora**: "Push Activos: Y (suscripciones push)"
+
+### 🔧 **Implementación Técnica**
+- **Service Worker**: `/public/sw.js` - Manejo completo de notificaciones
+- **PWA Tracker**: `/lib/services/pwaTracker.js` - Detección y tracking automático
+- **Notification Tracker**: `/lib/services/notificationTracker.js` - Analytics push
+- **Base de Datos**: Tablas `pwa_events`, `pwa_sessions`, `notification_events`
+- **Admin Components**: Componentes especializados para cada tipo de análisis
 
 ---
 

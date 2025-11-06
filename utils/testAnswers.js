@@ -98,6 +98,13 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
         const articleId = questionData.article?.id || generateArticleId(questionData, tema)
         
         
+        // ✅ OBTENER USUARIO AUTENTICADO
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          console.error('❌ No se puede obtener usuario autenticado:', userError)
+          throw new Error('Usuario no autenticado')
+        }
+        
         // ✅ OBTENER INFO DE DISPOSITIVO CORRECTAMENTE
         const deviceInfo = getDeviceInfo()
         

@@ -70,8 +70,38 @@ export default function QuestionEvolution({
             )
           `)
           .eq('question_id', questionId)
-          .in('test_id', await getUserTestIds(userId))
+          .eq('tests.user_id', userId)
           .order('created_at', { ascending: true })
+
+        // Obtener datos correctos de primer y último intento
+        const { data: questionStats, error: statsError } = await supabase
+          .from('user_question_history')
+          .select('first_attempt_at, last_attempt_at, total_attempts')
+          .eq('user_id', userId)
+          .eq('question_id', questionId)
+          .single()
+
+        // 🔍 LOGS DETALLADOS PARA DEBUG
+        console.log('🔍 [QuestionEvolution] DEBUG DETALLADO:')
+        console.log('   📝 Question ID:', questionId)
+        console.log('   👤 User ID:', userId)
+        console.log('   📊 Previous History:', previousHistory?.length || 0, 'registros')
+        console.log('   📊 Question Stats:', questionStats ? 'ENCONTRADOS' : 'NO ENCONTRADOS')
+        console.log('   ❌ Stats Error:', statsError?.message || 'ninguno')
+        
+        if (questionStats) {
+          console.log('   📈 Stats Details:')
+          console.log('      Primer intento:', questionStats.first_attempt_at)
+          console.log('      Último intento:', questionStats.last_attempt_at)
+          console.log('      Total intentos:', questionStats.total_attempts)
+        }
+        
+        if (previousHistory && previousHistory.length > 0) {
+          console.log('   📋 History Details:')
+          previousHistory.forEach((h, i) => {
+            console.log(`      ${i+1}. ${h.created_at} - Correcto: ${h.is_correct}`)
+          })
+        }
 
         if (error) {
           console.error('Error fetching question history:', error)
@@ -89,7 +119,17 @@ export default function QuestionEvolution({
         setHistory(historialCompleto)
         
         // Calcular datos de evolución completos
-        const evolucionCalculada = calculateCompleteEvolution(historialCompleto, currentResult)
+        const evolucionCalculada = calculateCompleteEvolution(historialCompleto, currentResult, questionStats)
+        
+        // 🔍 LOG FINAL DE DECISIÓN
+        console.log('🎯 [QuestionEvolution] DECISIÓN FINAL:')
+        console.log('   📊 Historial para calcular:', historialCompleto.length, 'registros')
+        console.log('   📈 Question Stats para calcular:', questionStats ? 'SÍ' : 'NO')
+        console.log('   🎯 Evolución calculada:', evolucionCalculada)
+        console.log('   🔍 Mostrará como:', 
+          evolucionCalculada?.totalIntentos === 1 ? 'PRIMERA VEZ' : 
+          `REPETIDA (${evolucionCalculada?.totalIntentos || 0} intentos)`)
+        
         setEvolutionData(evolucionCalculada)
         
       } catch (err) {
@@ -125,9 +165,15 @@ export default function QuestionEvolution({
   }
 
   // ✅ FUNCIÓN CORREGIDA: Calcular evolución con TODA la información
-  const calculateCompleteEvolution = (previousHistory, current) => {
+  const calculateCompleteEvolution = (previousHistory, current, questionStats) => {
     // Fix: previousHistory YA incluye la respuesta actual de la BD
     // No necesitamos sumar +1 ni agregar current porque ya está incluido
+    
+    // 🔍 LOGS DETALLADOS PARA CÁLCULO
+    console.log('🧮 [calculateCompleteEvolution] ENTRADA:')
+    console.log('   📊 Previous History:', previousHistory?.length || 0, 'registros')
+    console.log('   🎯 Current Result:', current)
+    console.log('   📈 Question Stats:', questionStats)
     
     // Debug throttled para evitar spam
     if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
@@ -191,9 +237,17 @@ export default function QuestionEvolution({
     // Usar solo previousHistory para todas las métricas
     const mejorasTiempo = calcularMejoraTiempoSolo(previousHistory)
     const mejorasConfianza = calcularMejoraConfianzaSolo(previousHistory)
-    const analisisTemporal = calcularAnalisisTemporal(previousHistory)
+    const analisisTemporal = calcularAnalisisTemporal(previousHistory, questionStats)
     const patronesRendimiento = calcularPatronesRendimientoSolo(previousHistory)
     const estadisticasAvanzadas = calcularEstadisticasAvanzadasSolo(previousHistory)
+
+    // 🔍 LOG ANTES DEL RETURN
+    console.log('🧮 [calculateCompleteEvolution] RESULTADO:')
+    console.log('   🎯 Tipo evolución:', tipoEvolucion)
+    console.log('   💬 Mensaje:', mensaje)
+    console.log('   📊 Total intentos:', totalIntentos)
+    console.log('   ✅ Tasa aciertos:', tasaAciertos)
+    console.log('   📈 Es primera vez?:', totalIntentos === 0)
 
     return {
       tipoEvolucion,
@@ -213,17 +267,35 @@ export default function QuestionEvolution({
   }
 
   // Función: Calcular análisis temporal completo
-  const calcularAnalisisTemporal = (history) => {
+  const calcularAnalisisTemporal = (history, questionStats) => {
     if (history.length === 0) return null
 
-    const fechas = history.map(h => new Date(h.created_at))
-    const primerIntento = fechas[0]
-    const ultimoIntento = fechas[fechas.length - 1]
+    // Usar datos correctos de user_question_history si están disponibles
+    const primerIntento = questionStats?.first_attempt_at 
+      ? new Date(questionStats.first_attempt_at) 
+      : new Date(history[0]?.created_at)
+    
+    const ultimoIntento = questionStats?.last_attempt_at 
+      ? new Date(questionStats.last_attempt_at) 
+      : new Date(history[history.length - 1]?.created_at)
+    
+    // 🔍 LOG ANÁLISIS TEMPORAL
+    console.log('🕐 [calcularAnalisisTemporal] FECHAS:')
+    console.log('   📊 History length:', history.length)
+    console.log('   📅 Primer intento calculated:', primerIntento)
+    console.log('   📅 Último intento calculated:', ultimoIntento)
+    console.log('   📊 Question Stats disponible:', !!questionStats)
+    if (history.length > 1) {
+      history.forEach((h, i) => {
+        console.log(`   ${i+1}. ${h.created_at} - Correcto: ${h.is_correct}`)
+      })
+    }
     
     // Días únicos de estudio
     const diasUnicos = [...new Set(history.map(h => h.created_at.split('T')[0]))]
     
-    // Calcular intervalos entre intentos
+    // Calcular intervalos entre intentos usando todas las fechas del historial
+    const fechas = history.map(h => new Date(h.created_at))
     const intervalos = []
     for (let i = 1; i < fechas.length; i++) {
       const dias = Math.ceil((fechas[i] - fechas[i-1]) / (1000 * 60 * 60 * 24))
