@@ -52,7 +52,11 @@ function SoporteContent() {
   const [disputesLoading, setDisputesLoading] = useState(false)
   const [disputeFilter, setDisputeFilter] = useState('all') // all, pending, resolved, rejected
   const [selectedQuestionModal, setSelectedQuestionModal] = useState(null) // Para el modal de pregunta completa
+  const [expandedImage, setExpandedImage] = useState(null) // Para el modal de imagen expandida
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const messagesEndRef = useRef(null)
+  const textareaRef = useRef(null)
 
   useEffect(() => {
     if (user) {
@@ -69,16 +73,154 @@ function SoporteContent() {
 
   // Bloquear scroll del body cuando hay modales abiertos
   useEffect(() => {
-    if (selectedConversation || selectedQuestionModal) {
+    if (selectedConversation || selectedQuestionModal || expandedImage) {
       document.body.style.overflow = 'hidden'
       return () => {
         document.body.style.overflow = 'unset'
       }
     }
-  }, [selectedConversation, selectedQuestionModal])
+  }, [selectedConversation, selectedQuestionModal, expandedImage])
+
+  // Handle ESC key to close modals
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.keyCode === 27) {
+        if (showEmojiPicker) {
+          setShowEmojiPicker(false)
+        } else if (expandedImage) {
+          setExpandedImage(null)
+        } else if (selectedQuestionModal) {
+          setSelectedQuestionModal(null)
+        } else if (selectedConversation) {
+          setSelectedConversation(null)
+        }
+      }
+    }
+    document.addEventListener('keydown', handleEsc)
+    return () => document.removeEventListener('keydown', handleEsc)
+  }, [showEmojiPicker, expandedImage, selectedQuestionModal, selectedConversation])
+
+  // Close emoji picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showEmojiPicker && !event.target.closest('.emoji-picker-container')) {
+        setShowEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showEmojiPicker])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  // Handle image upload
+  const handleImageUpload = async (file) => {
+    if (!file || !selectedConversation) return
+    
+    try {
+      setUploadingImage(true)
+      
+      // Validation
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (file.size > maxSize) {
+        alert('La imagen debe ser menor a 5MB')
+        return
+      }
+
+      if (!file.type.startsWith('image/')) {
+        alert('Por favor selecciona un archivo de imagen válido')
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const response = await fetch('/api/upload-feedback-image', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        throw new Error(error)
+      }
+
+      const result = await response.json()
+      
+      if (result.url) {
+        // Add image URL to textarea
+        const currentText = newMessage
+        const imageText = `${result.url}\n`
+        setNewMessage(currentText + imageText)
+        
+        if (textareaRef.current) {
+          textareaRef.current.focus()
+        }
+      }
+
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('Error al subir la imagen. Inténtalo de nuevo.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  // Insert emoji
+  const insertEmoji = (emoji) => {
+    const currentText = newMessage
+    setNewMessage(currentText + emoji)
+    setShowEmojiPicker(false)
+    
+    if (textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }
+
+  // WhatsApp-style image rendering
+  const renderMessageWithImages = (messageText) => {
+    if (!messageText) return messageText
+    
+    const imageUrlRegex = /(https?:\/\/[^\s\n]+\.(?:jpg|jpeg|png|gif|webp|JPG|JPEG|PNG|GIF|WEBP)(?:\?[^\s\n]*)?)/gi
+    const parts = messageText.split(imageUrlRegex)
+    
+    return parts.map((part, index) => {
+      if (part.match(imageUrlRegex)) {
+        return (
+          <div key={index} className="mt-2 mb-1">
+            <div 
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setExpandedImage(part)
+              }}
+              className="relative cursor-pointer group bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg max-w-[200px] border border-blue-200 dark:border-blue-700 hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
+            >
+              <img 
+                src={part} 
+                alt="Imagen adjunta"
+                className="w-full h-auto rounded-md max-h-32 object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                  e.target.nextElementSibling.style.display = 'block'
+                }}
+              />
+              <div style={{display: 'none'}} className="text-xs text-blue-600 dark:text-blue-400">
+                🖼️ Error cargando imagen
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all">
+                <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">🔍 Ver</span>
+              </div>
+            </div>
+          </div>
+        )
+      } else {
+        return part.trim() && <span key={index}>{part}</span>
+      }
+    })
   }
 
   // Auto-abrir conversación si viene del parámetro conversation_id
@@ -119,25 +261,29 @@ function SoporteContent() {
     }
   }, [searchParams, disputes])
 
-  // 🆕 AUTO-DETECTAR TAB POR DEFECTO BASADO EN DISPUTAS PENDIENTES
+  // 🆕 AUTO-DETECTAR TAB POR DEFECTO BASADO EN ELEMENTOS PENDIENTES
   useEffect(() => {
     // Solo aplicar lógica automática si no hay parámetros explícitos en URL
     const hasUrlParams = searchParams.get('tab') || searchParams.get('conversation_id') || searchParams.get('dispute_id')
     
-    if (!hasUrlParams && disputes.length > 0) {
-      // Contar disputas pendientes (no resueltas y no leídas)
-      const pendingDisputes = disputes.filter(d => 
-        d.status === 'pending' || 
-        (d.status !== 'pending' && !d.is_read)
-      )
+    if (!hasUrlParams && (disputes.length > 0 || Object.keys(conversations).length > 0)) {
+      // Contar disputas pendientes (no resueltas)
+      const pendingDisputes = disputes.filter(d => d.status === 'pending')
       
-      if (pendingDisputes.length > 0) {
+      // Contar conversaciones esperando respuesta del usuario
+      const waitingUserConversations = Object.values(conversations).filter(c => c.status === 'waiting_user')
+      
+      // Prioridad: 1) Conversaciones esperando usuario, 2) Disputas pendientes
+      if (waitingUserConversations.length > 0) {
+        console.log(`🔍 Auto-detectado: ${waitingUserConversations.length} conversaciones esperando usuario, cambiando a tab conversations`)
+        setActiveTab('conversations')
+      } else if (pendingDisputes.length > 0) {
         console.log(`🔍 Auto-detectado: ${pendingDisputes.length} impugnaciones pendientes, cambiando a tab disputes`)
         setActiveTab('disputes')
         setDisputeFilter('pending') // 🆕 Establecer filtro en "pendientes" por defecto
       }
     }
-  }, [disputes, searchParams])
+  }, [disputes, conversations, searchParams])
 
   // 🆕 FUNCIÓN PARA FORMATEAR ARTÍCULO CON RESALTADO INTELIGENTE
   const formatArticleContent = (content, question, correctAnswer) => {
@@ -518,6 +664,7 @@ function SoporteContent() {
 
   const pendingFeedbacks = feedbacks.filter(f => f.status === 'pending')
   const waitingUserConversations = Object.values(conversations).filter(c => c.status === 'waiting_user')
+  const pendingDisputes = disputes.filter(d => d.status === 'pending')
   const recentNotifications = notifications.filter(n => n.context_data?.type === 'feedback_response')
 
   if (!user) {
@@ -703,8 +850,8 @@ function SoporteContent() {
                                   ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
                                   : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                               }`}>
-                                {conversations[feedback.id].status === 'waiting_admin' ? '⏳ Esperando respuesta de Vence' : 
-                                 conversations[feedback.id].status === 'waiting_user' ? '💬 Te respondieron' : 
+                                {conversations[feedback.id].status === 'waiting_admin' ? '⏳ Esperando respuesta' : 
+                                 conversations[feedback.id].status === 'waiting_user' ? '💬 Nueva respuesta' : 
                                  conversations[feedback.id].status}
                               </span>
                               <button
@@ -719,8 +866,8 @@ function SoporteContent() {
                                 }`}
                               >
                                 {conversations[feedback.id].status === 'waiting_user' 
-                                  ? 'Abrir Chat'
-                                  : 'Ver Chat'
+                                  ? 'Ver Respuesta'
+                                  : 'Abrir Chat'
                                 }
                               </button>
                             </div>
@@ -1077,20 +1224,20 @@ function SoporteContent() {
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm sm:max-w-lg lg:max-w-2xl h-[90vh] sm:h-[85vh] flex flex-col overflow-hidden">
               
               {/* Header */}
-              <div className="flex items-center justify-between p-4 sm:p-6 border-b dark:border-gray-700">
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b dark:border-gray-700 bg-gradient-to-r from-blue-500 to-purple-600">
                 <div>
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
-                    💬 Chat
+                  <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                    💬 Chat de Soporte
                   </h3>
-                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando respuesta de Vence' : 
-                     selectedConversation.status === 'waiting_user' ? '💬 Te respondieron' : 
-                     selectedConversation.status}
+                  <p className="text-xs sm:text-sm text-blue-100 mt-1">
+                    {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando respuesta de nuestro equipo' : 
+                     selectedConversation.status === 'waiting_user' ? '💬 Continúa la conversación' : 
+                     'Chat activo'}
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedConversation(null)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg transition-colors"
+                  className="text-white/80 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1103,9 +1250,9 @@ function SoporteContent() {
                 <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Original:
                 </div>
-                <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200">
-                  {feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message}
-                </p>
+                <div className="text-xs sm:text-sm text-gray-800 dark:text-gray-200">
+                  {renderMessageWithImages(feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message)}
+                </div>
               </div>
 
               {/* Messages */}
@@ -1123,7 +1270,7 @@ function SoporteContent() {
                       <div className="text-sm mb-1 font-medium">
                         {message.is_admin ? '👨‍💼 Equipo Vence' : '👤 Tú'}
                       </div>
-                      <p className="text-sm">{message.message}</p>
+                      <div className="text-sm">{renderMessageWithImages(message.message)}</div>
                       <div className="text-xs mt-1 opacity-70">
                         {new Date(message.created_at).toLocaleString('es-ES', {
                           hour: '2-digit',
@@ -1140,34 +1287,101 @@ function SoporteContent() {
               </div>
 
               {/* Input para Usuario */}
-              <div className="p-3 sm:p-4 border-t dark:border-gray-700">
+              <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-800">
                 <form onSubmit={(e) => {
                   e.preventDefault()
                   if (newMessage.trim()) {
                     sendUserMessage(selectedConversation.id, newMessage)
                   }
-                }}>
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                    <input
+                }} className="space-y-3">
+                  
+                  {/* Textarea con botones */}
+                  <div className="relative">
+                    <textarea
+                      ref={textareaRef}
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      type="text"
-                      placeholder="Escribe tu respuesta..."
+                      placeholder="Escribe tu mensaje..."
                       disabled={sendingMessage}
-                      className="w-full sm:flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:opacity-50"
+                      rows="3"
+                      className="w-full p-3 pr-20 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:opacity-50 resize-none"
                     />
+                    
+                    {/* Action buttons */}
+                    <div className="absolute right-3 top-3 flex gap-2">
+                      {/* Image upload button */}
+                      <label className="cursor-pointer p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              handleImageUpload(file)
+                            }
+                            e.target.value = '' // Reset input
+                          }}
+                          disabled={uploadingImage}
+                        />
+                        {uploadingImage ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                        ) : (
+                          <span className="text-lg">🖼️</span>
+                        )}
+                      </label>
+
+                      {/* Emoji button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      >
+                        <span className="text-lg">😊</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Emoji picker */}
+                  {showEmojiPicker && (
+                    <div className="emoji-picker-container bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                      <div className="grid grid-cols-8 gap-1 text-xl">
+                        {['😊', '😂', '😍', '😢', '😡', '👍', '👎', '❤️', '🎉', '🔥', '💡', '❌', '✅', '⚠️', '🤔', '😴'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => insertEmoji(emoji)}
+                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Help text and send button */}
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Usa el botón de imagen para adjuntar imagen si lo deseas
+                    </p>
                     <button
                       type="submit"
                       disabled={sendingMessage || !newMessage.trim()}
-                      className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors font-medium disabled:opacity-50 touch-manipulation"
+                      className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 focus:ring-4 focus:ring-blue-300 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
                     >
                       {sendingMessage ? (
-                        <span className="flex items-center">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Enviando...
-                        </span>
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Enviando...</span>
+                        </>
                       ) : (
-                        '📤 Enviar'
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
+                          <span>Enviar</span>
+                        </>
                       )}
                     </button>
                   </div>
@@ -1178,6 +1392,35 @@ function SoporteContent() {
         )}
 
       </div>
+
+      {/* Modal de Imagen Expandida */}
+      {expandedImage && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setExpandedImage(null)
+            }
+          }}
+        >
+          <div className="relative max-w-5xl max-h-[90vh] overflow-auto">
+            <button
+              onClick={() => setExpandedImage(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <img 
+              src={expandedImage} 
+              alt="Imagen expandida"
+              className="max-w-full max-h-full object-contain rounded-lg"
+              style={{ maxHeight: 'calc(90vh - 2rem)' }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modal de Feedback */}
       <FeedbackModal 

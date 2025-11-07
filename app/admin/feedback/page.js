@@ -47,6 +47,7 @@ export default function AdminFeedbackPage() {
   const [newUserMessages, setNewUserMessages] = useState(new Set()) // IDs de conversaciones con mensajes nuevos
   const [activeFilter, setActiveFilter] = useState('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
   const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se inicializó
+  const [expandedImage, setExpandedImage] = useState(null) // Estado para modal de imagen expandida
   const [userProfilesCache, setUserProfilesCache] = useState(new Map()) // Cache de perfiles de usuario
   
   // Estados para emojis e imágenes en admin
@@ -54,6 +55,27 @@ export default function AdminFeedbackPage() {
   const [uploadedImages, setUploadedImages] = useState([])
   const [uploadingImage, setUploadingImage] = useState(false)
   const messagesEndRef = useRef(null)
+  const chatTextareaRef = useRef(null)
+
+  // Efecto para cerrar modal de imagen con ESC
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && expandedImage) {
+        setExpandedImage(null)
+      }
+    }
+
+    if (expandedImage) {
+      document.addEventListener('keydown', handleKeyDown)
+      // Prevenir scroll del body cuando el modal está abierto
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'unset'
+    }
+  }, [expandedImage])
 
   // Función auxiliar para abrir chat y marcar como visto
   const openChatConversation = async (conversation) => {
@@ -596,15 +618,8 @@ export default function AdminFeedbackPage() {
       }
       
       if (response) {
-        // Preparar respuesta con imágenes
-        let responseWithImages = response
-        if (uploadedImages.length > 0) {
-          responseWithImages += '\n\n📸 Imágenes adjuntas:\n'
-          uploadedImages.forEach((img, index) => {
-            responseWithImages += `${index + 1}. ${img.name}: ${img.url}\n`
-          })
-        }
-        updateData.admin_response = responseWithImages
+        // La respuesta ya incluye las URLs de imagen directamente en el texto
+        updateData.admin_response = response
         // Nota: attachments se incluyen en el texto de la respuesta, no como columna separada
         updateData.admin_user_id = user.id
       }
@@ -624,7 +639,6 @@ export default function AdminFeedbackPage() {
       await loadFeedbacks()
       setSelectedFeedback(null)
       setAdminResponse('')
-      setUploadedImages([])
       setShowEmojiPicker(false)
 
     } catch (error) {
@@ -699,19 +713,179 @@ export default function AdminFeedbackPage() {
     setShowEmojiPicker(false)
   }
 
-  // Función para subir imagen desde admin
-  const handleImageUpload = async (event) => {
+  // Función para renderizar mensaje con imágenes incrustadas (estilo WhatsApp)
+  const renderMessageWithImages = (messageText) => {
+    if (!messageText) return ''
+    
+    console.log('🖼️ [DEBUG] Procesando mensaje:', messageText.substring(0, 100) + '...')
+    
+    // Detectar URLs de imagen en el mensaje - regex más amplia
+    const imageUrlRegex = /(https?:\/\/[^\s\n]+\.(?:jpg|jpeg|png|gif|webp|JPG|JPEG|PNG|GIF|WEBP)(?:\?[^\s\n]*)?)/gi
+    const urls = messageText.match(imageUrlRegex)
+    
+    console.log('🖼️ [DEBUG] URLs encontradas:', urls)
+    console.log('🖼️ [DEBUG] Mensaje completo para análisis:', messageText)
+    
+    if (!urls || urls.length === 0) {
+      // No hay imágenes, renderizar solo texto
+      return <span style={{ whiteSpace: 'pre-wrap' }}>{messageText}</span>
+    }
+    
+    // Dividir el texto por las URLs de imagen
+    const parts = messageText.split(imageUrlRegex)
+    
+    return parts.map((part, index) => {
+      // Resetear regex para cada test
+      const testRegex = /(https?:\/\/[^\s\n]+\.(?:jpg|jpeg|png|gif|webp|JPG|JPEG|PNG|GIF|WEBP)(?:\?[^\s\n]*)?)/gi
+      
+      // Si es una URL de imagen, renderizar como imagen pequeña
+      if (testRegex.test(part)) {
+        console.log('🖼️ [DEBUG] Renderizando imagen:', part)
+        return (
+          <div 
+            key={index} 
+            className="my-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
+            style={{ userSelect: 'none' }}
+          >
+            <div className="text-xs text-blue-600 dark:text-blue-400 mb-2 font-medium">
+              📸 Imagen adjunta - Click para expandir
+            </div>
+            <div 
+              className="inline-block cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('🖼️ [DEBUG] Click en contenedor para expandir:', part)
+                setExpandedImage(part)
+              }}
+            >
+              <img
+                src={part}
+                alt="Imagen adjunta"
+                className="max-w-48 max-h-36 rounded-lg border-2 border-blue-400 dark:border-blue-500 hover:opacity-80 hover:border-blue-600 transition-all object-cover shadow-lg pointer-events-none"
+                onError={(e) => {
+                  console.error('❌ [DEBUG] Error cargando imagen:', part)
+                  e.target.style.display = 'none'
+                  // Mostrar link si la imagen no carga
+                  const link = document.createElement('a')
+                  link.href = part
+                  link.target = '_blank'
+                  link.className = 'text-blue-500 hover:underline text-sm font-medium'
+                  link.textContent = '🖼️ Ver imagen (enlace directo)'
+                  e.target.parentNode.appendChild(link)
+                }}
+                onLoad={() => {
+                  console.log('✅ [DEBUG] Imagen cargada exitosamente:', part)
+                }}
+                title="Click para expandir imagen"
+                draggable={false}
+              />
+            </div>
+          </div>
+        )
+      } else {
+        // Si es texto normal, renderizar como texto con saltos de línea
+        return (
+          <span key={index} style={{ whiteSpace: 'pre-wrap' }}>
+            {part}
+          </span>
+        )
+      }
+    })
+  }
+
+  // Función para insertar imagen en input del chat
+  const handleChatImageUpload = async (event, textareaRef) => {
     const file = event.target.files[0]
     if (!file) return
 
-    // Validar tipo de archivo
+    console.log('📸 Chat: Iniciando subida de imagen:', file.name)
+
+    // Validar archivo
     if (!file.type.startsWith('image/')) {
       alert('Solo se permiten archivos de imagen')
       return
     }
 
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no puede ser mayor a 5MB')
+      return
+    }
+
+    setUploadingImage(true)
+
+    try {
+      // Usar la API para subir
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('userPath', 'admin-chat-images')
+
+      const response = await fetch('/api/upload-feedback-image', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Error subiendo imagen')
+      }
+
+      const result = await response.json()
+      console.log('✅ Chat: Imagen subida:', result.url)
+
+      // Verificar que el textarea existe
+      if (!textareaRef.current) {
+        console.error('❌ Chat: Textarea ref no está disponible')
+        // Mostrar la URL como fallback
+        alert(`Imagen subida exitosamente: ${result.url}`)
+        return
+      }
+
+      // Enviar la imagen directamente al chat
+      const currentMessage = textareaRef.current.value.trim()
+      const messageWithImage = currentMessage ? `${currentMessage}\n${result.url}` : result.url
+      
+      // Enviar mensaje con imagen al chat inmediatamente
+      if (selectedConversation?.id) {
+        await sendAdminMessage(selectedConversation.id, messageWithImage)
+        textareaRef.current.value = '' // Limpiar textarea
+        console.log('✅ Chat: Imagen enviada directamente al chat')
+      } else {
+        // Si no hay conversación activa, insertar en textarea como fallback
+        const imageMarkdown = `\n${result.url}\n`
+        const cursorPosition = textareaRef.current.selectionStart
+        const currentValue = textareaRef.current.value
+        const newValue = currentValue.slice(0, cursorPosition) + imageMarkdown + currentValue.slice(cursorPosition)
+        textareaRef.current.value = newValue
+        textareaRef.current.selectionStart = textareaRef.current.selectionEnd = cursorPosition + imageMarkdown.length
+        console.log('✅ Chat: Imagen insertada en textarea (fallback)')
+      }
+
+    } catch (error) {
+      console.error('❌ Chat: Error subiendo imagen:', error)
+      alert('Error al subir la imagen')
+    } finally {
+      setUploadingImage(false)
+      event.target.value = '' // Limpiar input file
+    }
+  }
+
+  // Función para subir imagen desde admin
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    console.log('📸 Iniciando subida de imagen:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`)
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      console.error('❌ Tipo de archivo no válido:', file.type)
+      alert('Solo se permiten archivos de imagen (JPG, PNG, GIF, etc.)')
+      return
+    }
+
     // Validar tamaño (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
+      console.error('❌ Archivo demasiado grande:', file.size, 'bytes')
       alert('La imagen no puede ser mayor a 5MB')
       return
     }
@@ -724,29 +898,122 @@ export default function AdminFeedbackPage() {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `admin-chat-images/${fileName}`
 
-      // Subir a Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
-        .from('support')
-        .upload(filePath, file)
+      console.log('📤 Subiendo archivo a Supabase:', filePath)
 
-      if (uploadError) throw uploadError
+      // Usar cliente con service role para garantizar permisos
+      const supabaseServiceRole = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+
+      // Intentar subir a bucket 'feedback-images' (más específico)
+      const { data, error: uploadError } = await supabaseServiceRole.storage
+        .from('feedback-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true // Permitir sobrescribir si existe
+        })
+
+      if (uploadError) {
+        console.error('❌ Error de Supabase Storage:', uploadError)
+        
+        // Si el bucket no existe, intentar crearlo automáticamente
+        if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('bucket')) {
+          console.log('🆕 Intentando crear bucket feedback-images...')
+          
+          const { data: bucketData, error: bucketError } = await supabaseServiceRole.storage
+            .createBucket('feedback-images', { 
+              public: true,
+              allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+            })
+          
+          if (bucketError) {
+            console.error('❌ Error creando bucket:', bucketError)
+            throw new Error(`Error de configuración del storage: ${uploadError.message}`)
+          }
+          
+          console.log('✅ Bucket creado exitosamente')
+          
+          // Intentar subir nuevamente
+          const { data: retryData, error: retryError } = await supabaseServiceRole.storage
+            .from('feedback-images')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: true
+            })
+          
+          if (retryError) {
+            throw new Error(`Error en segunda tentativa: ${retryError.message}`)
+          }
+          
+          console.log('✅ Archivo subido exitosamente (segundo intento)')
+        } else {
+          throw uploadError
+        }
+      } else {
+        console.log('✅ Archivo subido exitosamente')
+      }
 
       // Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('support')
+      const { data: { publicUrl } } = supabaseServiceRole.storage
+        .from('feedback-images')
         .getPublicUrl(filePath)
 
-      // Añadir imagen a la lista
-      setUploadedImages(prev => [...prev, {
-        id: Date.now(),
-        url: publicUrl,
-        name: file.name,
-        path: filePath
-      }])
+      console.log('🔗 URL pública generada:', publicUrl)
+
+      // En lugar de añadir a lista separada, insertar directamente en el mensaje
+      const imageMarkdown = `\n${publicUrl}\n`
+      
+      // Insertar en adminResponse donde está el cursor (al final por simplicidad)
+      setAdminResponse(prev => prev + imageMarkdown)
+
+      console.log('✅ Imagen insertada directamente en el mensaje')
+      
+      // Mostrar mensaje de éxito al usuario
+      const successMessage = `✅ Imagen "${file.name}" subida correctamente`
+      // Crear una notificación temporal en lugar de alert
+      const notification = document.createElement('div')
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        font-size: 14px;
+        max-width: 300px;
+      `
+      notification.textContent = successMessage
+      document.body.appendChild(notification)
+      
+      // Remover después de 3 segundos
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification)
+        }
+      }, 3000)
 
     } catch (error) {
-      console.error('Error subiendo imagen:', error)
-      alert('Error al subir la imagen. Inténtalo de nuevo.')
+      console.error('❌ Error completo subiendo imagen:', error)
+      console.error('❌ Stack trace:', error.stack)
+      
+      // Mostrar error más específico al usuario
+      let userMessage = 'Error al subir la imagen.'
+      
+      if (error.message?.includes('Bucket not found')) {
+        userMessage = 'Error de configuración del almacenamiento. Contacta al administrador.'
+      } else if (error.message?.includes('permissions') || error.message?.includes('policy')) {
+        userMessage = 'Error de permisos al subir la imagen. Verifica tu configuración.'
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        userMessage = 'Error de conexión. Verifica tu internet e inténtalo de nuevo.'
+      } else if (error.message) {
+        userMessage = `Error: ${error.message}`
+      }
+      
+      alert(userMessage)
     } finally {
       setUploadingImage(false)
       // Limpiar input
@@ -757,15 +1024,33 @@ export default function AdminFeedbackPage() {
   // Función para eliminar imagen subida
   const removeImage = async (imageId, imagePath) => {
     try {
+      console.log('🗑️ Eliminando imagen:', imagePath)
+      
+      // Usar cliente con service role para garantizar permisos
+      const supabaseServiceRole = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+      
       // Eliminar de Supabase Storage
-      await supabase.storage
-        .from('support')
+      const { error } = await supabaseServiceRole.storage
+        .from('feedback-images')
         .remove([imagePath])
 
-      // Eliminar de la lista local
+      if (error) {
+        console.error('❌ Error eliminando de storage:', error)
+        // No lanzar error, solo loggear
+      } else {
+        console.log('✅ Imagen eliminada del storage')
+      }
+
+      // Eliminar de la lista local (siempre, incluso si falla el storage)
       setUploadedImages(prev => prev.filter(img => img.id !== imageId))
+      console.log('✅ Imagen removida de la lista local')
     } catch (error) {
-      console.error('Error eliminando imagen:', error)
+      console.error('❌ Error eliminando imagen:', error)
+      // Remover de la lista local de todas formas
+      setUploadedImages(prev => prev.filter(img => img.id !== imageId))
     }
   }
 
@@ -1038,7 +1323,11 @@ export default function AdminFeedbackPage() {
                       // Botón de respuesta rápida para feedbacks sin conversación
                       <>
                         <button
-                          onClick={() => setSelectedFeedback(feedback)}
+                          onClick={() => {
+                            console.log('📝 [ADMIN] Abriendo modal de respuesta para feedback:', feedback.id)
+                            setSelectedFeedback(feedback)
+                            console.log('📸 [ADMIN] Modal listo - función handleImageUpload disponible:', typeof handleImageUpload)
+                          }}
                           className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
                         >
                           <span className="sm:hidden">📝</span>
@@ -1108,9 +1397,9 @@ export default function AdminFeedbackPage() {
                   <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     📋 Solicitud de soporte:
                   </div>
-                  <p className="text-sm sm:text-base text-gray-800 dark:text-gray-200">
-                    {selectedFeedback.message}
-                  </p>
+                  <div className="text-sm sm:text-base text-gray-800 dark:text-gray-200">
+                    {renderMessageWithImages(selectedFeedback.message)}
+                  </div>
                 </div>
 
                 {/* Textarea de respuesta */}
@@ -1119,33 +1408,6 @@ export default function AdminFeedbackPage() {
                     Tu respuesta:
                   </label>
                   
-                  {/* Vista previa de imágenes subidas */}
-                  {uploadedImages.length > 0 && (
-                    <div className="mb-3">
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                        📸 Imágenes adjuntas ({uploadedImages.length})
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {uploadedImages.map((image) => (
-                          <div key={image.id} className="relative group">
-                            <img
-                              src={image.url}
-                              alt={image.name}
-                              className="w-20 h-20 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeImage(image.id, image.path)}
-                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              title={`Eliminar ${image.name}`}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <div className="relative">
                     <textarea
@@ -1160,18 +1422,19 @@ export default function AdminFeedbackPage() {
                     {/* Botones de acción */}
                     <div className="absolute bottom-2 right-2 flex gap-1">
                       {/* Botón de Subir Imagen */}
-                      <label className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer" title="Subir imagen">
+                      <label className="p-2 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer border border-gray-200 dark:border-gray-600 hover:border-blue-300" title="Subir imagen (JPG, PNG, GIF - máx 5MB)">
                         <input
                           type="file"
                           accept="image/*"
                           onChange={handleImageUpload}
+                          onClick={() => console.log('📸 [ADMIN] Click en botón de subir imagen')}
                           className="hidden"
                           disabled={uploadingImage}
                         />
                         {uploadingImage ? (
                           <div className="animate-spin w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full"></div>
                         ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         )}
@@ -1282,9 +1545,9 @@ export default function AdminFeedbackPage() {
                 <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                   📋 Solicitud de soporte:
                 </div>
-                <p className="text-xs text-gray-800 dark:text-gray-200 line-clamp-2">
-                  {feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message}
-                </p>
+                <div className="text-xs text-gray-800 dark:text-gray-200 line-clamp-3">
+                  {renderMessageWithImages(feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message)}
+                </div>
               </div>
 
               {/* Messages */}
@@ -1302,7 +1565,9 @@ export default function AdminFeedbackPage() {
                       <div className="text-xs sm:text-sm mb-1 font-medium">
                         {message.is_admin ? '👨‍💼 Tú (Admin)' : `👤 ${message.sender?.full_name || message.sender?.email || 'Usuario'}`}
                       </div>
-                      <p className="text-xs sm:text-sm">{message.message}</p>
+                      <div className="text-xs sm:text-sm">
+                        {renderMessageWithImages(message.message)}
+                      </div>
                       <div className="flex items-center justify-between text-xs mt-1 opacity-70">
                         <span>
                           {new Date(message.created_at).toLocaleString('es-ES', {
@@ -1333,46 +1598,14 @@ export default function AdminFeedbackPage() {
               {/* Input para Admin estilo WhatsApp */}
               <div className="p-2 sm:p-4 border-t dark:border-gray-700 flex-shrink-0">
                 
-                {/* Vista previa de imágenes del chat */}
-                {uploadedImages.length > 0 && (
-                  <div className="mb-3">
-                    <div className="flex flex-wrap gap-2">
-                      {uploadedImages.map((image) => (
-                        <div key={image.id} className="relative group">
-                          <img
-                            src={image.url}
-                            alt={image.name}
-                            className="w-16 h-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(image.id, image.path)}
-                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            title={`Eliminar ${image.name}`}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 <form onSubmit={(e) => {
                   e.preventDefault()
                   const message = e.target.message.value.trim()
-                  if (message || uploadedImages.length > 0) {
-                    // Preparar mensaje con imágenes
-                    let messageWithImages = message
-                    if (uploadedImages.length > 0) {
-                      messageWithImages += '\n\n📸 Imágenes adjuntas:\n'
-                      uploadedImages.forEach((img, index) => {
-                        messageWithImages += `${index + 1}. ${img.name}: ${img.url}\n`
-                      })
-                    }
-                    sendAdminMessage(selectedConversation.id, messageWithImages)
+                  if (message) {
+                    // El mensaje ya incluye las URLs de imagen directamente
+                    sendAdminMessage(selectedConversation.id, message)
                     e.target.message.value = ''
-                    setUploadedImages([])
                     setShowEmojiPicker(false)
                   }
                 }}>
@@ -1385,7 +1618,7 @@ export default function AdminFeedbackPage() {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={handleImageUpload}
+                            onChange={(e) => handleChatImageUpload(e, chatTextareaRef)}
                             className="hidden"
                             disabled={uploadingImage}
                           />
@@ -1411,8 +1644,9 @@ export default function AdminFeedbackPage() {
                       
                       <div className="flex-1 relative">
                         <textarea
+                          ref={chatTextareaRef}
                           name="message"
-                          placeholder="Escribe tu respuesta... (Ctrl+Enter para enviar)"
+                          placeholder="Escribe tu respuesta... Usa el botón de imagen para adjuntar imagen si lo deseas."
                           rows={3}
                           className="w-full p-3 sm:p-4 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base resize-none overflow-hidden"
                           style={{ 
@@ -1448,7 +1682,7 @@ export default function AdminFeedbackPage() {
                                   key={index}
                                   type="button"
                                   onClick={() => {
-                                    const textarea = document.querySelector('textarea[name="message"]')
+                                    const textarea = chatTextareaRef.current
                                     if (textarea) {
                                       const cursorPosition = textarea.selectionStart
                                       const currentValue = textarea.value
@@ -1523,6 +1757,43 @@ export default function AdminFeedbackPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal para expandir imagen (estilo WhatsApp) */}
+        {expandedImage && (
+          <div 
+            className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
+            onClick={() => setExpandedImage(null)}
+          >
+            <div className="relative max-w-full max-h-full">
+              {/* Botón de cerrar */}
+              <button
+                onClick={() => setExpandedImage(null)}
+                className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors border-2 border-white/30 hover:border-white/50"
+                title="Cerrar (ESC)"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              {/* Imagen expandida */}
+              <img
+                src={expandedImage}
+                alt="Imagen expandida"
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+              
+              {/* Botón para abrir en nueva pestaña */}
+              <button
+                onClick={() => window.open(expandedImage, '_blank')}
+                className="absolute bottom-4 right-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+              >
+                🔗 Abrir en nueva pestaña
+              </button>
             </div>
           </div>
         )}

@@ -141,14 +141,18 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
     const file = event.target.files[0]
     if (!file) return
 
+    console.log('📸 [USER] Iniciando subida de imagen:', file.name, `(${(file.size / 1024 / 1024).toFixed(2)} MB)`)
+
     // Validar tipo de archivo
     if (!file.type.startsWith('image/')) {
-      setError('Solo se permiten archivos de imagen')
+      console.error('❌ [USER] Tipo de archivo no válido:', file.type)
+      setError('Solo se permiten archivos de imagen (JPG, PNG, GIF, etc.)')
       return
     }
 
     // Validar tamaño (máximo 5MB)
     if (file.size > 5 * 1024 * 1024) {
+      console.error('❌ [USER] Archivo demasiado grande:', file.size, 'bytes')
       setError('La imagen no puede ser mayor a 5MB')
       return
     }
@@ -157,34 +161,80 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
     setError('')
 
     try {
-      // Crear nombre único para el archivo
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
-      const filePath = `feedback-images/${fileName}`
+      console.log('📤 [USER] Subiendo archivo vía API...')
 
-      // Subir a Supabase Storage
-      const { data, error: uploadError } = await supabase.storage
-        .from('support')
-        .upload(filePath, file)
+      // Crear FormData para la API
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('userPath', 'user-feedback-images')
 
-      if (uploadError) throw uploadError
+      // Llamar a la API de subida
+      const response = await fetch('/api/upload-feedback-image', {
+        method: 'POST',
+        body: formData
+      })
 
-      // Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('support')
-        .getPublicUrl(filePath)
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error desconocido en la subida')
+      }
+
+      console.log('✅ [USER] Respuesta exitosa de API:', result)
 
       // Añadir imagen a la lista
       setUploadedImages(prev => [...prev, {
         id: Date.now(),
-        url: publicUrl,
-        name: file.name,
-        path: filePath
+        url: result.url,
+        name: result.fileName,
+        path: result.path
       }])
 
+      console.log('✅ [USER] Imagen añadida a la lista correctamente')
+
+      // Mostrar notificación de éxito
+      const successMessage = `✅ Imagen "${file.name}" subida correctamente`
+      const notification = document.createElement('div')
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 9999;
+        font-size: 14px;
+        max-width: 300px;
+      `
+      notification.textContent = successMessage
+      document.body.appendChild(notification)
+      
+      // Remover después de 3 segundos
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification)
+        }
+      }, 3000)
+
     } catch (error) {
-      console.error('Error subiendo imagen:', error)
-      setError('Error al subir la imagen. Inténtalo de nuevo.')
+      console.error('❌ [USER] Error completo subiendo imagen:', error)
+      
+      // Mostrar error más específico al usuario
+      let userMessage = 'Error al subir la imagen.'
+      
+      if (error.message?.includes('Bucket not found')) {
+        userMessage = 'Error de configuración del almacenamiento. Contacta al administrador.'
+      } else if (error.message?.includes('permissions') || error.message?.includes('policy')) {
+        userMessage = 'Error de permisos al subir la imagen. Intenta iniciar sesión o contacta al soporte.'
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        userMessage = 'Error de conexión. Verifica tu internet e inténtalo de nuevo.'
+      } else if (error.message) {
+        userMessage = `Error: ${error.message}`
+      }
+      
+      setError(userMessage)
     } finally {
       setUploadingImage(false)
       // Limpiar input
@@ -195,15 +245,28 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
   // Función para eliminar imagen subida
   const removeImage = async (imageId, imagePath) => {
     try {
-      // Eliminar de Supabase Storage
-      await supabase.storage
-        .from('support')
-        .remove([imagePath])
+      console.log('🗑️ [USER] Eliminando imagen:', imagePath)
+      
+      // Llamar a la API para eliminar
+      const response = await fetch(`/api/upload-feedback-image?path=${encodeURIComponent(imagePath)}`, {
+        method: 'DELETE'
+      })
 
-      // Eliminar de la lista local
+      if (!response.ok) {
+        const result = await response.json()
+        console.error('❌ [USER] Error eliminando de API:', result.error)
+        // No lanzar error, solo loggear
+      } else {
+        console.log('✅ [USER] Imagen eliminada del storage vía API')
+      }
+
+      // Eliminar de la lista local (siempre, incluso si falla la API)
       setUploadedImages(prev => prev.filter(img => img.id !== imageId))
+      console.log('✅ [USER] Imagen removida de la lista local')
     } catch (error) {
-      console.error('Error eliminando imagen:', error)
+      console.error('❌ [USER] Error eliminando imagen:', error)
+      // Remover de la lista local de todas formas
+      setUploadedImages(prev => prev.filter(img => img.id !== imageId))
     }
   }
 

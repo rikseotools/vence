@@ -13,7 +13,10 @@
     "db:clean": "node scripts/clean-database.js",
     "db:load-constitucion": "node scripts/load-constitucion.js",
     "db:load-constitucion-pdf": "node scripts/load-constitucion.js pdfs/constitucion-espanola.pdf",
-    "create-pwa-tables": "node scripts/create-pwa-tables.js"
+    "create-pwa-tables": "node scripts/create-pwa-tables.js",
+    "setup-feedback-storage": "node scripts/setup-feedback-storage.js",
+    "setup-storage-policies": "node scripts/setup-storage-policies.js",
+    "test-image-upload": "node scripts/test-image-upload.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

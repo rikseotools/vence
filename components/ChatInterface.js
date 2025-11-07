@@ -23,6 +23,179 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
   const [uploadingImage, setUploadingImage] = useState(false)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+  const [expandedImage, setExpandedImage] = useState(null) // Estado para modal de imagen expandida
+
+  // Efecto para cerrar modal de imagen con ESC
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && expandedImage) {
+        setExpandedImage(null)
+      }
+    }
+
+    if (expandedImage) {
+      document.addEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'unset'
+    }
+  }, [expandedImage])
+
+  // Función para insertar emoji en el mensaje
+  const insertEmoji = (emoji) => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      const cursorPosition = textarea.selectionStart
+      const currentValue = textarea.value
+      const newValue = currentValue.slice(0, cursorPosition) + emoji + currentValue.slice(cursorPosition)
+      setNewMessage(newValue)
+      textarea.focus()
+      textarea.setSelectionRange(cursorPosition + emoji.length, cursorPosition + emoji.length)
+    }
+    setShowEmojiPicker(false)
+  }
+
+  // Función para subir imagen desde usuario
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+
+    console.log('📸 [USER] Iniciando subida de imagen:', file.name)
+
+    // Validar archivo
+    if (!file.type.startsWith('image/')) {
+      alert('Solo se permiten archivos de imagen')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no puede ser mayor a 5MB')
+      return
+    }
+
+    setUploadingImage(true)
+
+    try {
+      // Usar la API para subir
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('userPath', 'user-feedback-images')
+
+      const response = await fetch('/api/upload-feedback-image', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!response.ok) {
+        throw new Error('Error subiendo imagen')
+      }
+
+      const result = await response.json()
+      console.log('✅ [USER] Imagen subida:', result.url)
+
+      // Insertar URL directamente en el mensaje donde está el cursor
+      const textarea = textareaRef.current
+      if (textarea) {
+        const imageMarkdown = `\n${result.url}\n`
+        const cursorPosition = textarea.selectionStart
+        const currentValue = textarea.value
+        const newValue = currentValue.slice(0, cursorPosition) + imageMarkdown + currentValue.slice(cursorPosition)
+        setNewMessage(newValue)
+        textarea.focus()
+        textarea.setSelectionRange(cursorPosition + imageMarkdown.length, cursorPosition + imageMarkdown.length)
+      }
+
+    } catch (error) {
+      console.error('❌ [USER] Error subiendo imagen:', error)
+      alert('Error al subir la imagen')
+    } finally {
+      setUploadingImage(false)
+      event.target.value = '' // Limpiar input file
+    }
+  }
+
+  // Función para renderizar mensaje con imágenes incrustadas (estilo WhatsApp)
+  const renderMessageWithImages = (messageText) => {
+    if (!messageText) return ''
+    
+    console.log('🖼️ [USER CHAT] Procesando mensaje:', messageText.substring(0, 100) + '...')
+    
+    // Detectar URLs de imagen en el mensaje
+    const imageUrlRegex = /(https?:\/\/[^\s\n]+\.(?:jpg|jpeg|png|gif|webp|JPG|JPEG|PNG|GIF|WEBP)(?:\?[^\s\n]*)?)/gi
+    const urls = messageText.match(imageUrlRegex)
+    
+    console.log('🖼️ [USER CHAT] URLs encontradas:', urls)
+    
+    if (!urls || urls.length === 0) {
+      // No hay imágenes, renderizar solo texto
+      return <span style={{ whiteSpace: 'pre-wrap' }}>{messageText}</span>
+    }
+    
+    // Dividir el texto por las URLs de imagen
+    const parts = messageText.split(imageUrlRegex)
+    
+    return parts.map((part, index) => {
+      // Resetear regex para cada test
+      const testRegex = /(https?:\/\/[^\s\n]+\.(?:jpg|jpeg|png|gif|webp|JPG|JPEG|PNG|GIF|WEBP)(?:\?[^\s\n]*)?)/gi
+      
+      // Si es una URL de imagen, renderizar como imagen pequeña
+      if (testRegex.test(part)) {
+        console.log('🖼️ [USER CHAT] Renderizando imagen:', part)
+        return (
+          <div 
+            key={index} 
+            className="my-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700"
+            style={{ userSelect: 'none' }}
+          >
+            <div className="text-xs text-blue-600 dark:text-blue-400 mb-2 font-medium">
+              📸 Imagen adjunta - Click para expandir
+            </div>
+            <div 
+              className="inline-block cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('🖼️ [USER CHAT] Click en imagen para expandir:', part)
+                setExpandedImage(part)
+              }}
+            >
+              <img
+                src={part}
+                alt="Imagen adjunta"
+                className="max-w-48 max-h-36 rounded-lg border-2 border-blue-400 dark:border-blue-500 hover:opacity-80 hover:border-blue-600 transition-all object-cover shadow-lg pointer-events-none"
+                onError={(e) => {
+                  console.error('❌ [USER CHAT] Error cargando imagen:', part)
+                  e.target.style.display = 'none'
+                  // Mostrar link si la imagen no carga
+                  const link = document.createElement('a')
+                  link.href = part
+                  link.target = '_blank'
+                  link.className = 'text-blue-500 hover:underline text-sm font-medium'
+                  link.textContent = '🖼️ Ver imagen (enlace directo)'
+                  e.target.parentNode.appendChild(link)
+                }}
+                onLoad={() => {
+                  console.log('✅ [USER CHAT] Imagen cargada exitosamente:', part)
+                }}
+                title="Click para expandir imagen"
+                draggable={false}
+              />
+            </div>
+          </div>
+        )
+      } else {
+        // Si es texto normal, renderizar como texto con saltos de línea
+        return (
+          <span key={index} style={{ whiteSpace: 'pre-wrap' }}>
+            {part}
+          </span>
+        )
+      }
+    })
+  }
 
   useEffect(() => {
     if (conversationId) {
@@ -358,7 +531,7 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
                     <span className="font-medium">Tú</span>
                   )}
                 </div>
-                <p className="text-sm">{message.message}</p>
+                <div className="text-sm">{renderMessageWithImages(message.message)}</div>
                 <div className="text-xs mt-1 opacity-70">
                   {new Date(message.created_at).toLocaleString('es-ES', {
                     hour: '2-digit',
@@ -412,7 +585,7 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
                   ref={textareaRef}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Escribe tu mensaje... (Ctrl+Enter para enviar)"
+                  placeholder="Escribe tu mensaje... Usa el botón de imagen para adjuntar imagen si lo deseas."
                   disabled={sending}
                   rows={1}
                   className="w-full p-3 pr-20 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 disabled:opacity-50 resize-none overflow-hidden"
@@ -514,6 +687,43 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
           </div>
         )}
       </div>
+
+      {/* Modal para expandir imagen (estilo WhatsApp) */}
+      {expandedImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
+          onClick={() => setExpandedImage(null)}
+        >
+          <div className="relative max-w-full max-h-full">
+            {/* Botón de cerrar */}
+            <button
+              onClick={() => setExpandedImage(null)}
+              className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-colors border-2 border-white/30 hover:border-white/50"
+              title="Cerrar (ESC)"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Imagen expandida */}
+            <img
+              src={expandedImage}
+              alt="Imagen expandida"
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            
+            {/* Botón para abrir en nueva pestaña */}
+            <button
+              onClick={() => window.open(expandedImage, '_blank')}
+              className="absolute bottom-4 right-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors"
+            >
+              🔗 Abrir en nueva pestaña
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
