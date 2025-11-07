@@ -1,6 +1,6 @@
 // app/api/admin/send-push-notification/route.js - Envío masivo de notificaciones push
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import webpush from 'web-push'
 
@@ -21,7 +21,10 @@ if (vapidDetails.publicKey && vapidDetails.privateKey) {
 
 export async function POST(request) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    )
 
     // 1. Verificar autenticación y permisos de admin
     const { data: { user }, error: userError } = await supabase.auth.getUser()
