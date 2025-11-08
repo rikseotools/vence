@@ -67,20 +67,17 @@ export default function PersistentRegistrationManager({
     return () => clearTimeout(timer)
   }, [enabled, user, showModal, attempt, totalQuestions, userRejected])
 
-  // 🎯 TRIGGERS DESPUÉS DE RESPUESTAS
+  // 🎯 TRIGGERS CADA 3 PREGUNTAS RESPONDIDAS
   useEffect(() => {
     if (!enabled || user || !showResult || userRejected || showModal) return
     
     const shouldTrigger = (
-      (currentQuestion === 1) ||                  // Después de la 2ª pregunta
-      (currentQuestion === 3) ||                  // Después de la 4ª pregunta
-      (currentQuestion === 5) ||                  // Después de la 6ª pregunta
-      (currentQuestion === 7) ||                  // Después de la 8ª pregunta
-      (currentQuestion % 2 === 1 && currentQuestion > 7) // Cada 2 preguntas después
+      (currentQuestion + 1) % 3 === 0 &&         // Cada 3 preguntas (3, 6, 9, 12...)
+      currentQuestion >= 2                        // A partir de la 3ª pregunta
     )
     
     if (shouldTrigger) {
-      console.log('🎯 Trigger: Pregunta', currentQuestion + 1, '- Recordatorio')
+      console.log('🎯 Trigger cada 3 preguntas: Pregunta', currentQuestion + 1, '- Intento', attempt)
       setTimeout(() => {
         setShowModal(true)
         setAttempt(prev => prev + 1)
@@ -99,31 +96,8 @@ export default function PersistentRegistrationManager({
     }, 2000)
   }, [enabled, user, isTestCompleted, userRejected])
 
-  // 🎯 TRIGGER POR TIEMPO (cada 3 minutos)
-  useEffect(() => {
-    if (!enabled || user || showModal || userRejected) return
-    
-    const interval = setInterval(() => {
-      console.log('🎯 Trigger por tiempo: 2 minutos')
-      setShowModal(true)
-      setAttempt(prev => prev + 1)
-    }, 180000) // 3 minutos
-    
-    return () => clearInterval(interval)
-  }, [enabled, user, showModal, userRejected])
-
-  // 🎯 TRIGGER POR INACTIVIDAD (45 segundos sin responder)
-  useEffect(() => {
-    if (!enabled || user || showResult || showModal || userRejected) return
-    
-    const timer = setTimeout(() => {
-      console.log('🎯 Trigger por inactividad')
-      setShowModal(true)
-      setAttempt(prev => prev + 1)
-    }, 45000)
-    
-    return () => clearTimeout(timer)
-  }, [enabled, user, showResult, showModal, currentQuestion, userRejected])
+  // 🚫 TRIGGERS POR TIEMPO DESACTIVADOS (menos agresivo)
+  // Solo se activa cada 3 preguntas y al completar test
 
   // Manejadores
   const handleRegistrationSuccess = () => {
