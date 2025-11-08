@@ -29,10 +29,10 @@ export async function GET(request) {
       await supabase.from('email_events').insert({
         user_id: userId,
         event_type: 'opened',
-        email_type: 'newsletter',
+        email_type: type, // ✅ FIX: Usar el tipo real del email
         email_address: userProfile?.email || 'unknown@tracking.vence.es',
-        subject: type === 'newsletter' ? 'Newsletter Opened' : 'Email Tracking - Opened',
-        template_id: templateId || 'newsletter',
+        subject: `${type} Email - Opened`,
+        template_id: templateId || type,
         email_content_preview: `${type} email opened - tracking event`,
         created_at: new Date().toISOString()
       })
