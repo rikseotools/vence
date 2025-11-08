@@ -198,7 +198,8 @@ export default function NotificationBell() {
         } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
           markAsRead(notification.id)
         } else {
-          dismissNotification(notification.id)
+          // ✅ FIX: Marcar notificaciones motivacionales como leídas permanentemente
+          markAsRead(notification.id)
         }
         
         // Limpiar estado de swipe después de la animación
@@ -492,7 +493,8 @@ export default function NotificationBell() {
   // Manejar botón "Entendido" (descartar otras notificaciones)
   const handleDismiss = (notification, event) => {
     event.stopPropagation()
-    dismissNotification(notification.id)
+    // ✅ FIX: Marcar notificaciones motivacionales como leídas permanentemente
+    markAsRead(notification.id)
   }
 
   // Recargar notificaciones
@@ -813,23 +815,20 @@ export default function NotificationBell() {
                                     id: notification.id, 
                                     disputeId: notification.disputeId 
                                   })
-                                  // Para impugnaciones y feedback, marcar como leído en BD. Para logros/progreso, auto-marcar. Para otras, solo ocultar.
+                                  // ✅ FIX: Marcar TODAS las notificaciones como leídas permanentemente
                                   if (notification.type === 'dispute_update') {
                                     disputeNotifications.markAsRead(notification.id)
                                   } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
-                                    // 🆕 MARCAR NOTIFICACIONES DE FEEDBACK COMO LEÍDAS EN BD
+                                    // MARCAR NOTIFICACIONES DE FEEDBACK COMO LEÍDAS EN BD
                                     handleMarkAsRead(notification, e)
                                   } else {
-                                    handleDismiss(notification, e)
+                                    // ✅ FIX: Marcar notificaciones motivacionales como leídas (no solo ocultar)
+                                    handleMarkAsRead(notification, e)
                                   }
                                 }}
                                 className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 hover:bg-red-100 dark:bg-gray-600 dark:hover:bg-red-900/50 transition-colors text-gray-600 hover:text-red-600 dark:text-gray-300 dark:hover:text-red-400 shadow-sm hover:shadow-md"
-                                title={
-                                  notification.type === 'dispute_update' ? "Marcar como leído" :
-                                  notification.type === 'feedback_response' || notification.id.startsWith('system-') ? "Marcar como leído" :
-                                  "Cerrar notificación"
-                                }
-                                aria-label="Cerrar notificación"
+                                title="Marcar como leído"
+                                aria-label="Marcar como leído"
                               >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
