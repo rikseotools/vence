@@ -455,8 +455,7 @@ export default function DynamicTest({ titulo, dificultad }) {
                       <div className="my-6 text-center">
                         <p className="text-xs text-gray-500 mb-3">Publicidad</p>
                         <AdSenseComponent 
-                          adSlot="1234567890"
-                          style={{ display: 'block', textAlign: 'center' }}
+                          adType="TEST_AFTER_ANSWER"
                           className="max-w-lg mx-auto"
                         />
                       </div>
@@ -526,8 +525,7 @@ export default function DynamicTest({ titulo, dificultad }) {
               <div className="my-8 text-center">
                 <p className="text-xs text-gray-500 mb-3">Publicidad</p>
                 <AdSenseComponent 
-                  adSlot="1234567890"
-                  style={{ display: 'block', textAlign: 'center' }}
+                  adType="TEST_COMPLETION"
                   className="max-w-2xl mx-auto"
                 />
               </div>

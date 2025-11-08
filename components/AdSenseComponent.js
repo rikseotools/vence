@@ -1,14 +1,19 @@
 // components/AdSenseComponent.js
 'use client'
 import { useEffect, useRef } from 'react'
+import { getAdSlot, getAdStyle } from '../lib/adsense-config'
 
 export default function AdSenseComponent({ 
-  adSlot, 
-  style = { display: 'block' }, 
+  adSlot = null, 
+  adType = 'TEST_AFTER_ANSWER',
+  style = null, 
   format = 'auto',
   fullWidthResponsive = true,
   className = ''
 }) {
+  // Usar configuración dinámica
+  const finalAdSlot = adSlot || getAdSlot(adType)
+  const finalStyle = style || getAdStyle(adType)
   const adRef = useRef(null)
 
   useEffect(() => {
@@ -27,9 +32,9 @@ export default function AdSenseComponent({
       <ins
         ref={adRef}
         className="adsbygoogle"
-        style={style}
+        style={finalStyle}
         data-ad-client="ca-pub-5346427920432730"
-        data-ad-slot={adSlot}
+        data-ad-slot={finalAdSlot}
         data-ad-format={format}
         data-full-width-responsive={fullWidthResponsive}
       />
