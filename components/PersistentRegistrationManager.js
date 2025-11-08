@@ -1,6 +1,7 @@
 // components/PersistentRegistrationManager.js
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import ProgressiveRegistrationModal from './ProgressiveRegistrationModal'
 
@@ -23,6 +24,9 @@ export default function PersistentRegistrationManager({
   enabled = true,
   children
 }) {
+  // Hook de router
+  const router = useRouter()
+  
   // Estados internos
   const [user, setUser] = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -33,10 +37,16 @@ export default function PersistentRegistrationManager({
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user)
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) {
+          console.log('🔍 No hay sesión activa, usuario no registrado')
+          setUser(null)
+        } else {
+          console.log('✅ Usuario encontrado:', user?.email || 'sin email')
+          setUser(user)
+        }
       } catch (error) {
-        console.warn('Error verificando usuario:', error)
+        console.log('🔍 Error verificando usuario (normal en localhost):', error.message)
         setUser(null)
       }
     }
@@ -45,6 +55,7 @@ export default function PersistentRegistrationManager({
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('🔄 Auth change:', event, session?.user?.email || 'no user')
         setUser(session?.user || null)
         if (session?.user) {
           setShowModal(false)
@@ -67,14 +78,26 @@ export default function PersistentRegistrationManager({
     return () => clearTimeout(timer)
   }, [enabled, user, showModal, attempt, totalQuestions, userRejected])
 
-  // 🎯 TRIGGERS CADA 3 PREGUNTAS RESPONDIDAS
+  // 🎯 TRIGGERS CADA 3 PREGUNTAS RESPONDIDAS  
   useEffect(() => {
+    console.log('🔍 DEBUG Trigger:', { 
+      enabled, 
+      user: !!user, 
+      showResult, 
+      userRejected, 
+      showModal, 
+      currentQuestion,
+      attempt 
+    })
+    
     if (!enabled || user || !showResult || userRejected || showModal) return
     
     const shouldTrigger = (
       (currentQuestion + 1) % 3 === 0 &&         // Cada 3 preguntas (3, 6, 9, 12...)
       currentQuestion >= 2                        // A partir de la 3ª pregunta
     )
+    
+    console.log('🎯 Should trigger?', shouldTrigger, 'Pregunta:', currentQuestion + 1)
     
     if (shouldTrigger) {
       console.log('🎯 Trigger cada 3 preguntas: Pregunta', currentQuestion + 1, '- Intento', attempt)
@@ -119,7 +142,8 @@ export default function PersistentRegistrationManager({
 
   // Función para trigger manual desde el banner
   const triggerManual = () => {
-    setShowModal(true)
+    // En lugar de abrir modal, ir directamente a login
+    router.push('/login')
   }
 
   // Función para formatear tiempo
