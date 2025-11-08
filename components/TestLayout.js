@@ -27,6 +27,7 @@ import {
 } from '../utils/testAnalytics.js'
 import { testTracker } from '../utils/testTracking.js'
 import { useTestCompletion } from '../hooks/useTestCompletion'
+import AdSenseComponent from './AdSenseComponent'
 
 export default function TestLayout({
   tema,
@@ -1251,6 +1252,18 @@ export default function TestLayout({
                           )}
                         </div>
                         
+                        {/* Anuncio AdSense después de cada respuesta */}
+                        {currentQuestion > 0 && (
+                          <div className="my-6 text-center">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Publicidad</p>
+                            <AdSenseComponent 
+                              adSlot="1234567890"
+                              style={{ display: 'block', textAlign: 'center' }}
+                              className="max-w-lg mx-auto"
+                            />
+                          </div>
+                        )}
+                        
                         {/* Condición mejorada: Solo mostrar botón si NO es la última pregunta */}
                         {!isExplicitlyCompleted && currentQuestion < effectiveQuestions.length - 1 ? (
                           <button
@@ -1360,6 +1373,16 @@ export default function TestLayout({
                             ) : (
                               "📚 Repasa el temario y vuelve a intentarlo"
                             )}
+                          </div>
+                          
+                          {/* Anuncio AdSense al finalizar test */}
+                          <div className="my-8 text-center">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Publicidad</p>
+                            <AdSenseComponent 
+                              adSlot="1234567890"
+                              style={{ display: 'block', textAlign: 'center' }}
+                              className="max-w-2xl mx-auto"
+                            />
                           </div>
                           
                           {/* Botones simplificados - solo 2 opciones */}

@@ -6,6 +6,13 @@ import { AuthProvider } from '../contexts/AuthContext'
 export default function SpanishLayout({ children }) {
   return (
     <html lang="es">
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5346427920432730"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="min-h-screen">
         <AuthProvider initialUser={null}>
           <div className="flex flex-col min-h-screen">

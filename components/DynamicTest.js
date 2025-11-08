@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import AdSenseComponent from './AdSenseComponent'
 
 export default function DynamicTest({ titulo, dificultad }) {
   const [loading, setLoading] = useState(true)
@@ -449,6 +450,18 @@ export default function DynamicTest({ titulo, dificultad }) {
                       </div>
                     )}
 
+                    {/* Anuncio AdSense después de cada respuesta */}
+                    {currentQuestion > 0 && (
+                      <div className="my-6 text-center">
+                        <p className="text-xs text-gray-500 mb-3">Publicidad</p>
+                        <AdSenseComponent 
+                          adSlot="1234567890"
+                          style={{ display: 'block', textAlign: 'center' }}
+                          className="max-w-lg mx-auto"
+                        />
+                      </div>
+                    )}
+                    
                     {currentQuestion < testData.questions.length - 1 && (
                       <div className="text-center">
                         <button
@@ -507,6 +520,16 @@ export default function DynamicTest({ titulo, dificultad }) {
                     usando inteligencia artificial basada en los artículos constitucionales.
                   </p>
                 </div>
+              </div>
+
+              {/* Anuncio AdSense al finalizar test dinámico */}
+              <div className="my-8 text-center">
+                <p className="text-xs text-gray-500 mb-3">Publicidad</p>
+                <AdSenseComponent 
+                  adSlot="1234567890"
+                  style={{ display: 'block', textAlign: 'center' }}
+                  className="max-w-2xl mx-auto"
+                />
               </div>
 
               <div className="grid md:grid-cols-4 gap-4 max-w-3xl mx-auto">
