@@ -637,25 +637,20 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
       return { success: false, error: error.message }
     }
 
-    // Guardar evento en base de datos con emailId para tracking
+    // Guardar evento en base de datos para tracking
     const { error: insertError } = await supabase.from('email_events').insert({
       user_id: userId,
-      email_id: data?.id || temporaryEmailId, // Usar ID real o temporal
       email_type: 'motivation',
       event_type: 'sent',
       email_address: email,
       subject: analysis.subject,
       template_id: analysis.messageType,
-      email_content_preview: analysis.body.substring(0, 200),
-      metadata: {
-        temporary_id: temporaryEmailId,
-        tracking_enabled: true
-      }
+      email_content_preview: analysis.body.substring(0, 200)
     })
 
     if (insertError) {
       console.error('❌ Error guardando evento en email_events:', insertError)
-      // No fallar el envío por error de logging
+      return { success: false, error: `Failed to log email: ${insertError.message}` }
     } else {
       console.log('✅ Evento guardado en email_events')
     }
