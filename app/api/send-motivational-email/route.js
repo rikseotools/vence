@@ -152,15 +152,12 @@ export async function POST(request) {
         
         await supabase.from('email_events').insert({
           user_id: userId,
-          email_id: result.id,
           event_type: 'sent',
           email_type: 'motivational',
+          email_address: email, 
           subject: `🎯 ${title}`,
-          metadata: {
-            message_type: messageType,
-            primary_action: primaryAction?.type,
-            secondary_action: secondaryAction?.type
-          }
+          template_id: messageType,
+          email_content_preview: body?.substring(0, 200) || title
         })
         console.log('📊 Analytics registrado correctamente')
       } catch (analyticsError) {

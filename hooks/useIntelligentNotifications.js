@@ -726,11 +726,11 @@ export function useIntelligentNotifications() {
       
       console.log(`🎯 Ejecutando acción: ${action.label} → ${actionUrl}`)
       
-      // ✅ NUEVO: Guardar en localStorage ANTES de navegar si es acción primaria
+      // ✅ FIX: Marcar como leída ANTES de navegar si es acción primaria  
       if (actionType === 'primary') {
         saveDismissedNotification(notification.id)
-        dismissNotification(notification.id)
-        console.log(`🗑️ Notificación ${notification.id} ocultada PERMANENTEMENTE por acción primaria`)
+        await markAsRead(notification.id)  // ✅ FIX: Marcar como leída permanentemente
+        console.log(`✅ Notificación ${notification.id} marcada como leída por acción primaria`)
       } else {
         console.log(`👁️ Acción secundaria: notificación ${notification.id} permanece visible`)
       }
