@@ -179,6 +179,7 @@ export default function HeaderES() {
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
         { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
+        { href: '/test-oposiciones', label: 'Test Oposiciones', icon: '📋' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
@@ -192,6 +193,7 @@ export default function HeaderES() {
         { href: `${basePath}/test`, label: 'Test', icon: '🎯' },
         { href: `${basePath}/temario`, label: 'Temario', icon: '📚' },
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
+        { href: '/test-oposiciones', label: 'Test Oposiciones', icon: '📋' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
@@ -201,6 +203,7 @@ export default function HeaderES() {
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
         { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
+        { href: '/test-oposiciones', label: 'Test Oposiciones', icon: '📋' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
       ]
@@ -213,6 +216,7 @@ export default function HeaderES() {
       { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
       { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
+      { href: '/test-oposiciones', label: 'Test Oposiciones', icon: '📋' },
       { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' },
       { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
     ]

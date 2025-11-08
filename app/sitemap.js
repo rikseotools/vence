@@ -95,79 +95,79 @@ export default async function sitemap() {
     
     // Tests de la Constitución Española 1978 - SEO Optimizados
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/preambulo-y-titulo-preliminar`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/preambulo-y-titulo-preliminar`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-i-derechos-y-deberes-fundamentales`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-i-derechos-y-deberes-fundamentales`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-ii-de-la-corona`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-ii-de-la-corona`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-iii-de-las-cortes-generales`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-iii-de-las-cortes-generales`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-iv-del-gobierno-y-la-administracion`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-iv-del-gobierno-y-la-administracion`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-v-relaciones-gobierno-cortes`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-v-relaciones-gobierno-cortes`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-vi-del-poder-judicial`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-vi-del-poder-judicial`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-vii-economia-y-hacienda`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-vii-economia-y-hacienda`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-viii-organizacion-territorial`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-viii-organizacion-territorial`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-ix-del-tribunal-constitucional`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-ix-del-tribunal-constitucional`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/constitucion-titulos/titulo-x-de-la-reforma-constitucional`,
+      url: `${SITE_URL}/test-oposiciones/test-de-la-constitucion-espanola-de-1978/titulo-x-de-la-reforma-constitucional`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
     },
     
-    // Tests de la Ley 39/2015 - SEO Optimizados
+    // Tests de la Ley 39/2015 - SEO Optimizados (SOLO secciones reales de la BD)
     {
       url: `${SITE_URL}/test-oposiciones/test-ley-39-2015`,
       lastModified: new Date(),
@@ -187,19 +187,7 @@ export default async function sitemap() {
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-i-capitulo-ii-identificacion-firma-interesados`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
       url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-ii-capitulo-i-normas-generales-actuacion`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-ii-capitulo-ii-terminos-plazos`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
@@ -211,31 +199,7 @@ export default async function sitemap() {
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iii-capitulo-ii-eficacia-actos`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iii-capitulo-iii-nulidad-anulabilidad`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
       url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-i-ii-garantias-iniciacion`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-iii-iv-ordenacion-instruccion`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-iv-capitulos-v-vi-vii-finalizacion-simplificada-ejecucion`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
@@ -247,19 +211,7 @@ export default async function sitemap() {
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-v-capitulo-ii-recursos-administrativos`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
       url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/titulo-vi-iniciativa-legislativa-potestad-reglamentaria`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/test-oposiciones/test-ley-39-2015/test-plazos`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
