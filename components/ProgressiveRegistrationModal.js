@@ -17,6 +17,8 @@ export default function ProgressiveRegistrationModal({
   isInitialPrompt = false,
   isQuestionPrompt = false
 }) {
+  // 🚫 TEMPORALMENTE DESACTIVADO - Modal muy agresivo
+  return null
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [timeLeft, setTimeLeft] = useState(30)
