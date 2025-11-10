@@ -901,6 +901,39 @@ VALUES (tema_8_id, ley_50_1997_id, ARRAY['15'], 1.0);
 
 ---
 
+## 🎯 **CHECKLIST DE VERIFICACIÓN ANTES DE CREAR CONTENIDO** ⭐ *NUEVA SECCIÓN*
+
+### ✅ **Antes de crear una LEY:**
+- [ ] ¿Hay preguntas específicas que mencionan esta ley?
+- [ ] ¿La ley aparece en el texto de al menos 1 pregunta?
+- [ ] ¿He verificado exhaustivamente que no existe ya? (múltiples búsquedas)
+- [ ] ¿Tengo el nombre oficial completo del BOE?
+- [ ] **REGLA:** Solo crear si hay demanda real de preguntas
+
+### ✅ **Antes de crear ARTÍCULOS:**
+- [ ] ¿Hay preguntas que referencian específicamente este artículo?
+- [ ] ¿El artículo está en el content_scope de la sección correspondiente?
+- [ ] ¿Tengo el contenido oficial del BOE del artículo?
+- [ ] **REGLA:** Crear artículos solo cuando hay preguntas que los necesitan
+
+### ✅ **Flujo de trabajo CORRECTO:**
+1. [ ] **ANALIZAR** → ¿Qué leyes/artículos necesitan mis preguntas?
+2. [ ] **VERIFICAR** → ¿Cuáles ya existen en la BD?
+3. [ ] **IDENTIFICAR** → ¿Cuáles faltan realmente?
+4. [ ] **CREAR** → Solo las que faltan y tienen demanda
+5. [ ] **AÑADIR** → Las preguntas con vinculaciones correctas
+6. [ ] **LIMPIAR** → Eliminar contenido creado sin propósito
+
+### 🚨 **Señales de alarma:**
+- ❌ "Creo esta ley por si acaso" → **NO CREAR**
+- ❌ "La ley aparece en un error" → **VERIFICAR NECESIDAD PRIMERO**
+- ❌ "Mejor tener todas las leyes completas" → **CREAR SOLO LO NECESARIO**
+- ❌ "Ya creé la ley, ahora veamos si hay preguntas" → **FLUJO INVERTIDO**
+
+**🎯 PRINCIPIO FUNDAMENTAL: La demanda de preguntas impulsa la creación de contenido, no al revés.**
+
+---
+
 **🎉 ¡Con esta guía puedes crear cualquier tema de oposición de forma sistemática y sin errores!**
 
 ---
@@ -1113,6 +1146,356 @@ ORDER BY created_at DESC;
 
 ---
 
+## 📚 **CONTENT COLLECTIONS - NUEVO SISTEMA TEMÁTICO** ⭐ NUEVA SECCIÓN
+
+### 🎯 **¿Cuándo usar Content Collections?**
+
+Para **contenido organizado temáticamente** que:
+- ✅ Agrupa preguntas por materia (no por ley específica)
+- ✅ Cruza múltiples leyes y artículos reales
+- ✅ Se organiza por conceptos/materias (ej: Procedimiento Administrativo)
+- ✅ Contiene subsecciones temáticas específicas
+- ❌ NO crear temas tradicionales en tabla `topics`
+
+**🔥 CARACTERÍSTICA CLAVE:** Las preguntas se vinculan a **artículos reales** de **leyes existentes**, pero se organizan por **materia temática**.
+
+---
+
+### 📋 **ARQUITECTURA DEL SISTEMA**
+
+```
+content_collections (Ej: "Procedimiento Administrativo")
+├── content_sections (Ej: "Conceptos Generales", "Actos Administrativos")
+├── content_scope (Mapea secciones → artículos reales)
+└── Web Structure (/test-oposiciones/procedimiento-administrativo/)
+```
+
+**🔗 FLUJO:**
+1. **Collection** → Agrupación principal temática
+2. **Sections** → Subsecciones de estudio específicas
+3. **Scope** → Mapeo a artículos reales de leyes BOE
+4. **Questions** → Vinculadas a artículos reales (como siempre)
+5. **Web** → Estructura de páginas automática
+
+---
+
+### 🛠️ **PROCESO COMPLETO PASO A PASO**
+
+#### **1️⃣ CREAR CONTENT COLLECTION**
+```sql
+INSERT INTO content_collections (
+  name,
+  slug,
+  description,
+  icon,
+  color,
+  is_active
+) VALUES (
+  'Nombre de la Materia',
+  'slug-materia',  -- Ej: 'procedimiento-administrativo'
+  'Descripción completa del contenido que se cubrirá...',
+  '📋',  -- Emoji representativo
+  'from-teal-600 to-emerald-700',  -- Clases Tailwind CSS
+  true
+);
+```
+
+#### **2️⃣ CREAR SECTIONS DE LA COLLECTION**
+```sql
+-- Obtener ID de la collection
+SELECT id FROM content_collections WHERE slug = 'slug-materia';
+
+-- Crear múltiples secciones
+INSERT INTO content_sections (
+  collection_id,
+  section_number,
+  name,
+  slug,
+  description,
+  icon,
+  order_position,
+  is_active
+) VALUES 
+  ('UUID_COLLECTION', 1, 'Conceptos Generales', 'conceptos-generales', 'Principios fundamentales y definiciones básicas...', '📚', 1, true),
+  ('UUID_COLLECTION', 2, 'Actos Administrativos', 'actos-administrativos', 'Elementos y requisitos de los actos administrativos...', '📄', 2, true),
+  ('UUID_COLLECTION', 3, 'Recursos Administrativos', 'recursos-administrativos', 'Tipos de recursos y procedimientos...', '⚖️', 3, true);
+  -- ... más secciones según el material
+```
+
+#### **3️⃣ CREAR ESTRUCTURA WEB AUTOMÁTICA**
+
+**📁 Estructura de archivos necesaria:**
+```
+app/test-oposiciones/slug-materia/
+├── page.js                    # Página principal con grid de secciones
+├── [seccion]/
+│   └── page.js               # Páginas dinámicas de cada sección
+└── lib/slug-materiaSSR.js    # Funciones SSR para cargar datos
+```
+
+**📝 Plantilla page.js principal:**
+```javascript
+// app/test-oposiciones/slug-materia/page.js
+import Link from 'next/link'
+import { loadMateriaData } from '../../lib/slug-materiaSSR'
+
+export default async function MateriaPage() {
+  const { sections, stats } = await loadMateriaData()
+
+  return (
+    <div className="bg-gray-50">
+      {/* Header con stats */}
+      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white py-16">
+        <div className="max-w-6xl mx-auto px-4 text-center">
+          <h1 className="text-4xl font-bold mb-4">Tests {collection.name}</h1>
+          <div className="flex justify-center gap-8 mb-8">
+            <div className="bg-white/10 rounded-lg p-6">
+              <div className="text-3xl font-bold">{stats.totalSections}</div>
+              <div className="text-sm">Secciones</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid de secciones */}
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {sections.map((section) => (
+            <Link
+              key={section.id}
+              href={`/test-oposiciones/slug-materia/${section.slug}`}
+              className="group bg-white rounded-xl shadow-md hover:shadow-xl transition-all"
+            >
+              <div className="p-6">
+                <div className="text-4xl mb-4">{section.icon}</div>
+                <h3 className="font-bold text-gray-900 mb-3">{section.name}</h3>
+                <p className="text-gray-600 text-sm">{section.description}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+#### **4️⃣ MAPEAR SECCIONES A ARTÍCULOS REALES**
+```sql
+-- Para cada sección, mapear a artículos BOE específicos
+INSERT INTO content_scope (
+  section_id,
+  law_id,
+  article_numbers,
+  weight
+) VALUES (
+  (SELECT id FROM content_sections WHERE slug = 'conceptos-generales'),
+  (SELECT id FROM laws WHERE short_name = 'Ley 39/2015'),  -- Ley real del BOE
+  ARRAY['1', '2', '3', '4', '5'],  -- Artículos reales específicos
+  1.0
+);
+
+-- Mapear a otra ley si es necesario
+INSERT INTO content_scope (
+  section_id,
+  law_id,
+  article_numbers,
+  weight
+) VALUES (
+  (SELECT id FROM content_sections WHERE slug = 'conceptos-generales'),
+  (SELECT id FROM laws WHERE short_name = 'Ley 40/2015'),  -- Otra ley real
+  ARRAY['1', '2'],
+  0.8
+);
+```
+
+#### **5️⃣ CREAR PREGUNTAS (VINCULADAS A ARTÍCULOS REALES)**
+```sql
+-- Las preguntas se crean IGUAL que siempre: vinculadas a artículos reales
+INSERT INTO questions (
+  primary_article_id,
+  question_text,
+  option_a,
+  option_b,
+  option_c,
+  option_d,
+  correct_option,
+  explanation,
+  difficulty,
+  question_type,
+  tags,
+  is_active
+) VALUES (
+  (SELECT id FROM articles WHERE article_number = '1' AND law_id = (SELECT id FROM laws WHERE short_name = 'Ley 39/2015')),
+  'Pregunta sobre conceptos generales...',
+  'Opción A',
+  'Opción B',
+  'Opción C',
+  'Opción D',
+  2,  -- 0=A, 1=B, 2=C, 3=D
+  'Explicación basada en el artículo 1 de la Ley 39/2015...',
+  'medium',
+  'single',
+  ARRAY['procedimiento-administrativo', 'conceptos-generales'],  -- Tags temáticos
+  true
+);
+```
+
+#### **6️⃣ AGREGAR CARD EN PÁGINA PRINCIPAL**
+```javascript
+// En app/test-oposiciones/page.js - agregar a availableLaws array:
+{
+  id: 'slug-materia',
+  title: 'Nombre de la Materia',
+  description: 'Descripción del contenido organizado por materias...',
+  slug: 'slug-materia',
+  image: '📋',
+  color: 'from-teal-600 to-emerald-700',
+  sections: 10,
+  articles: 'Múltiples leyes',
+  priority: 3,
+  tags: ['Temático', 'Completo']
+}
+```
+
+---
+
+### 🔍 **VERIFICACIONES NECESARIAS**
+
+#### **1. Verificar estructura completa**
+```sql
+SELECT 
+  cc.name as collection,
+  cs.section_number,
+  cs.name as section,
+  cs.slug,
+  cs.is_active,
+  COUNT(csc.id) as mapeos_ley
+FROM content_collections cc
+JOIN content_sections cs ON cc.id = cs.collection_id  
+LEFT JOIN content_scope csc ON cs.id = csc.section_id
+WHERE cc.slug = 'slug-materia'
+GROUP BY cc.name, cs.section_number, cs.name, cs.slug, cs.is_active
+ORDER BY cs.order_position;
+```
+
+#### **2. Verificar mapeo a leyes reales**
+```sql
+SELECT 
+  cs.name as section,
+  l.short_name as ley,
+  csc.article_numbers,
+  array_length(csc.article_numbers, 1) as total_articulos
+FROM content_sections cs
+JOIN content_scope csc ON cs.id = csc.section_id
+JOIN laws l ON csc.law_id = l.id
+WHERE cs.collection_id = (SELECT id FROM content_collections WHERE slug = 'slug-materia')
+ORDER BY cs.order_position, l.short_name;
+```
+
+#### **3. Verificar preguntas disponibles**
+```sql
+SELECT 
+  cs.name as section,
+  l.short_name,
+  a.article_number,
+  COUNT(q.id) as preguntas
+FROM content_sections cs
+JOIN content_scope csc ON cs.id = csc.section_id
+JOIN laws l ON csc.law_id = l.id
+JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(csc.article_numbers)
+LEFT JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+WHERE cs.collection_id = (SELECT id FROM content_collections WHERE slug = 'slug-materia')
+GROUP BY cs.name, l.short_name, a.article_number, cs.order_position
+ORDER BY cs.order_position, l.short_name, a.article_number::integer;
+```
+
+---
+
+### ⚡ **VENTAJAS del Sistema Content Collections**
+
+| Aspecto | Content Collections | Temas Tradicionales |
+|---------|--------------------|--------------------|
+| **Organización** | Por materia temática | Por oposición específica |
+| **Artículos** | Múltiples leyes reales | Una ley o pocas leyes |
+| **Flexibilidad** | Agrupa conceptos relacionados | Estructura rígida por tema |
+| **Escalabilidad** | Fácil agregar secciones | Limitado por temario oficial |
+| **Preguntas** | Vinculadas a BOE real | Vinculadas a BOE real |
+| **Navegación** | Grid de materias | Lista lineal de tests |
+
+---
+
+### ✅ **CHECKLIST CONTENT COLLECTION**
+
+- [ ] Content collection creada con slug único
+- [ ] Multiple sections creadas con order_position
+- [ ] Estructura web implementada (/test-oposiciones/slug/)
+- [ ] Páginas dinámicas [seccion] funcionan (200 OK)
+- [ ] Content_scope mapea sections a artículos BOE reales
+- [ ] Preguntas vinculadas a artículos reales (no ficticios)
+- [ ] Card agregada en página principal test-oposiciones
+- [ ] Verificación: todas las secciones cargan sin errores
+- [ ] Verificación: mapeo a leyes reales es correcto
+
+---
+
+### 🎯 **EJEMPLO COMPLETO: Procedimiento Administrativo**
+
+```sql
+-- 1. Collection principal
+INSERT INTO content_collections (name, slug, description, icon, color, is_active) 
+VALUES ('Procedimiento Administrativo', 'procedimiento-administrativo', 'Contenido organizado por materias del procedimiento administrativo común...', '📋', 'from-teal-600 to-emerald-700', true);
+
+-- 2. Secciones (10 secciones)
+INSERT INTO content_sections (collection_id, section_number, name, slug, description, icon, order_position, is_active) 
+VALUES 
+  ((SELECT id FROM content_collections WHERE slug = 'procedimiento-administrativo'), 1, 'Conceptos Generales', 'conceptos-generales', 'Principios fundamentales...', '📚', 1, true),
+  ((SELECT id FROM content_collections WHERE slug = 'procedimiento-administrativo'), 2, 'Actos Administrativos', 'actos-administrativos', 'Elementos y requisitos...', '📄', 2, true);
+
+-- 3. Mapeo a leyes reales
+INSERT INTO content_scope (section_id, law_id, article_numbers, weight) 
+VALUES (
+  (SELECT id FROM content_sections WHERE slug = 'conceptos-generales'),
+  (SELECT id FROM laws WHERE short_name = 'Ley 39/2015'),
+  ARRAY['1', '2', '3', '4', '5'],
+  1.0
+);
+
+-- 4. Estructura web: /app/test-oposiciones/procedimiento-administrativo/
+-- 5. Preguntas vinculadas a artículos reales de Ley 39/2015
+```
+
+---
+
+### 🚨 **DIFERENCIAS CRÍTICAS**
+
+| Aspecto | Topics Tradicionales | Content Collections |
+|---------|---------------------|-------------------|
+| **Tabla principal** | `topics` | `content_collections` |
+| **Subsecciones** | No tiene | `content_sections` |
+| **Mapeo** | `topic_scope` | `content_scope` |
+| **URL** | `/test/tema-X/` | `/test-oposiciones/materia/` |
+| **Organización** | Por número de tema | Por concepto temático |
+| **Público objetivo** | Oposición específica | Transversal a oposiciones |
+
+---
+
+### 💡 **CUÁNDO USAR CADA SISTEMA**
+
+**🎯 Usar CONTENT COLLECTIONS cuando:**
+- El contenido cruza múltiples leyes
+- Se organiza por conceptos/materias
+- Es aplicable a varias oposiciones
+- Se necesita navegación temática flexible
+
+**📚 Usar TEMAS TRADICIONALES cuando:**
+- Es contenido específico de una oposición
+- Sigue estructura oficial del temario
+- Se mapea a pocas leyes específicas
+- Se necesita orden lineal de estudio
+
+---
+
 ### 🔍 **VERIFICACIÓN COMPLETA**
 
 ```sql
@@ -1135,3 +1518,1047 @@ WHERE l.description ILIKE '%ficticia%'
 GROUP BY t.topic_number, t.title, l.short_name, l.description, ts.article_numbers, a.article_number, a.title
 ORDER BY t.topic_number;
 ```
+
+---
+
+## 📚 **GUÍA ESPECÍFICA: AÑADIR PREGUNTAS A CONTENT SCOPE** ⭐ NUEVA SECCIÓN ACTUALIZADA
+
+### 🎯 **¿Qué es Content Scope?**
+
+**Content Scope** es el sistema para mapear **secciones temáticas** (como "Conceptos Generales") a **artículos específicos** de leyes reales del BOE, similar a topic_scope pero para **contenido organizado por materias**.
+
+**🔥 DIFERENCIA CLAVE vs Topics:**
+- **Topics**: Tema 8 → Artículos específicos
+- **Content Scope**: "Conceptos Generales" → Artículos específicos de múltiples leyes
+
+---
+
+### 🛠️ **PROCESO COMPLETO PASO A PASO**
+
+#### **1️⃣ IDENTIFICAR CONTENT SCOPE EXISTENTE**
+
+```sql
+-- Ver qué content_scope ya existe para la sección
+SELECT 
+  cs.name as seccion,
+  l.short_name as ley,
+  csc.article_numbers
+FROM content_sections cs
+JOIN content_scope csc ON cs.id = csc.section_id
+JOIN laws l ON csc.law_id = l.id
+WHERE cs.slug = 'SLUG_SECCION';  -- Ej: 'conceptos-generales'
+```
+
+#### **2️⃣ DECISIÓN: INSERT vs UPDATE vs CREAR NUEVO**
+
+**🔍 CASO A: La ley YA está mapeada → UPDATE artículos**
+```sql
+UPDATE content_scope 
+SET article_numbers = ARRAY['1', '2', '3', 'NUEVOS_ARTICLES']
+WHERE section_id = (SELECT id FROM content_sections WHERE slug = 'conceptos-generales')
+  AND law_id = (SELECT id FROM laws WHERE short_name = 'Ley 39/2015');
+```
+
+**🔍 CASO B: La ley NO está mapeada → INSERT nuevo mapeo**
+```sql
+INSERT INTO content_scope (
+  section_id,
+  law_id,
+  article_numbers,
+  weight
+) VALUES (
+  (SELECT id FROM content_sections WHERE slug = 'conceptos-generales'),
+  (SELECT id FROM laws WHERE short_name = 'NUEVA_LEY'),
+  ARRAY['1', '2', '3'],  -- Artículos específicos
+  1.0
+);
+```
+
+**🔍 CASO C: La sección NO existe → CREAR TODO**
+```sql
+-- 1. Buscar collection padre
+SELECT id FROM content_collections WHERE slug = 'procedimiento-administrativo';
+
+-- 2. Crear sección
+INSERT INTO content_sections (
+  collection_id,
+  section_number,
+  name, 
+  slug,
+  description,
+  icon,
+  order_position,
+  is_active
+) VALUES (
+  'UUID_COLLECTION',
+  X,  -- Número de sección
+  'Nombre de la Sección',
+  'slug-seccion',
+  'Descripción de la sección...',
+  '📚',
+  X,  -- Posición en orden
+  true
+);
+
+-- 3. Crear mapeo inicial
+INSERT INTO content_scope (section_id, law_id, article_numbers, weight)
+VALUES (
+  (SELECT id FROM content_sections WHERE slug = 'slug-seccion'),
+  (SELECT id FROM laws WHERE short_name = 'Ley 39/2015'), 
+  ARRAY['1', '2', '3'],
+  1.0
+);
+```
+
+---
+
+#### **3️⃣ VERIFICAR ARTÍCULOS EXISTEN**
+
+```sql
+-- Verificar que todos los artículos existen en la BD
+SELECT 
+  a.article_number,
+  a.title,
+  CASE WHEN a.content IS NOT NULL THEN '✅ Contenido OK' ELSE '❌ Sin contenido' END as content_status
+FROM articles a
+JOIN laws l ON a.law_id = l.id
+WHERE l.short_name = 'LEY_ESPECÍFICA'
+  AND a.article_number = ANY(ARRAY['LISTA', 'DE', 'ARTICULOS'])
+ORDER BY a.article_number::integer;
+```
+
+**⚠️ Si faltan artículos → PARAR y solicitarlos del BOE oficial**
+
+---
+
+#### **4️⃣ CREAR PREGUNTAS VINCULADAS A CONTENT SCOPE**
+
+```sql
+-- Script para crear múltiples preguntas de content scope
+INSERT INTO questions (
+  primary_article_id,
+  question_text,
+  option_a,
+  option_b,
+  option_c,
+  option_d,
+  correct_option,
+  explanation,
+  difficulty,
+  question_type,
+  tags,
+  is_active,
+  is_official_exam,
+  exam_source
+) VALUES (
+  -- Pregunta 1: Ley 39/2015, Art. 1
+  (SELECT id FROM articles WHERE article_number = '1' AND law_id = (SELECT id FROM laws WHERE short_name = 'Ley 39/2015')),
+  'Pregunta sobre conceptos generales del artículo 1...',
+  'Opción A',
+  'Opción B',
+  'Opción C',
+  'Opción D',
+  1,  -- B=1 (sistema 0=A, 1=B, 2=C, 3=D)
+  'Explicación basada en el artículo 1 de la Ley 39/2015...',
+  'medium',
+  'single',
+  ARRAY['procedimiento-administrativo', 'conceptos-generales'],
+  true,
+  false,  -- Pregunta normal (no oficial)
+  null
+), (
+  -- Pregunta 2: Ley 39/2015, Art. 3  
+  (SELECT id FROM articles WHERE article_number = '3' AND law_id = (SELECT id FROM laws WHERE short_name = 'Ley 39/2015')),
+  'Pregunta sobre principios de actuación...',
+  'Opción A',
+  'Opción B',
+  'Opción C',
+  'Opción D',
+  2,  -- C=2
+  'Explicación basada en el artículo 3 de la Ley 39/2015...',
+  'medium',
+  'single',
+  ARRAY['procedimiento-administrativo', 'conceptos-generales', 'principios'],
+  true,
+  false,
+  null
+), (
+  -- Pregunta 3: CE, Art. 103
+  (SELECT id FROM articles WHERE article_number = '103' AND law_id = (SELECT id FROM laws WHERE short_name = 'CE')),
+  'Pregunta sobre eficacia de la Administración...',
+  'Opción A',
+  'Opción B', 
+  'Opción C',
+  'Opción D',
+  0,  -- A=0
+  'Explicación basada en el artículo 103 CE...',
+  'medium',
+  'single',
+  ARRAY['constitucional', 'administracion-publica'],
+  true,
+  false,
+  null
+);
+-- ... más preguntas según sea necesario
+```
+
+---
+
+#### **5️⃣ VERIFICAR CONTENT SCOPE FUNCIONA**
+
+```sql
+-- Verificar que el mapeo content_scope está completo
+SELECT 
+  cs.name as seccion,
+  l.short_name,
+  csc.article_numbers,
+  COUNT(q.id) as preguntas_disponibles
+FROM content_sections cs
+JOIN content_scope csc ON cs.id = csc.section_id
+JOIN laws l ON csc.law_id = l.id
+JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(csc.article_numbers)
+LEFT JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+WHERE cs.slug = 'SLUG_SECCION'
+GROUP BY cs.name, l.short_name, csc.article_numbers
+ORDER BY l.short_name;
+```
+
+**✅ Output esperado:**
+```
+seccion            | short_name   | article_numbers | preguntas_disponibles
+Conceptos Generales| CE          | {103,105}       | 15
+Conceptos Generales| Ley 39/2015 | {1,2,3}        | 10  
+Conceptos Generales| Ley 40/2015 | {1,4}          | 5
+```
+
+---
+
+### 🌐 **VERIFICAR FUNCIONALIDAD WEB**
+
+#### **URLs que deben funcionar:**
+- `http://localhost:3000/test-oposiciones/procedimiento-administrativo` → Listado de secciones  
+- `http://localhost:3000/test-oposiciones/procedimiento-administrativo/conceptos-generales` → Detalle de sección
+- `http://localhost:3000/test-personalizado?seccion=conceptos-generales` → Test funcional
+
+#### **Verificación en consola:**
+```sql
+-- Simular carga de preguntas de content_scope
+SELECT 
+  cs.name as seccion,
+  l.short_name as ley,
+  a.article_number,
+  q.question_text,
+  q.correct_option,
+  q.explanation
+FROM content_sections cs
+JOIN content_scope csc ON cs.id = csc.section_id  
+JOIN laws l ON csc.law_id = l.id
+JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(csc.article_numbers)
+JOIN questions q ON q.primary_article_id = a.id
+WHERE cs.slug = 'conceptos-generales'
+  AND q.is_active = true
+ORDER BY l.short_name, a.article_number::integer
+LIMIT 5;
+```
+
+---
+
+### ⭐ **PLANTILLA PARA SCRIPT DE PREGUNTAS CONTENT SCOPE**
+
+```javascript
+// scripts/add-content-scope-questions-SECCION.js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
+// Función helper para convertir letra a número
+function letterToNumber(letter) {
+  const map = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };  // ⚠️ Sistema 0-indexed correcto
+  return map[letter.toUpperCase()];
+}
+
+// Preguntas específicas para la sección
+const questionsBatch = [
+  {
+    question_text: "Pregunta específica...",
+    option_a: "Opción A",
+    option_b: "Opción B", 
+    option_c: "Opción C",
+    option_d: "Opción D",
+    correct_option: "B",  // Se convierte a 1
+    explanation: "Explicación detallada...",
+    law_short_name: "Ley 39/2015",
+    article_number: "3"
+  },
+  // ... más preguntas
+]
+
+async function addContentScopeQuestions() {
+  console.log('🔧 AÑADIENDO PREGUNTAS A CONTENT SCOPE: SECCION\n')
+  
+  for (const [index, questionData] of questionsBatch.entries()) {
+    // 1. Verificar duplicados por similitud de texto
+    const { data: existingQuestion } = await supabase
+      .from('questions')
+      .select('id')
+      .ilike('question_text', questionData.question_text.substring(0, 50) + '%')
+      .single()
+    
+    if (existingQuestion) {
+      console.log(`⚠️ Pregunta ${index + 1} duplicada, saltando...`)
+      continue
+    }
+    
+    // 2. Obtener la ley
+    const { data: law } = await supabase
+      .from('laws')
+      .select('id')
+      .eq('short_name', questionData.law_short_name)
+      .single()
+    
+    if (!law) {
+      console.log(`❌ Ley ${questionData.law_short_name} no encontrada`)
+      continue
+    }
+    
+    // 3. Obtener el artículo
+    const { data: article } = await supabase
+      .from('articles')
+      .select('id')
+      .eq('law_id', law.id)
+      .eq('article_number', questionData.article_number)
+      .single()
+    
+    if (!article) {
+      console.log(`❌ Artículo ${questionData.article_number} de ${questionData.law_short_name} no encontrado`)
+      continue
+    }
+    
+    // 4. Insertar la pregunta
+    const { data: newQuestion, error: questionError } = await supabase
+      .from('questions')
+      .insert({
+        question_text: questionData.question_text,
+        option_a: questionData.option_a,
+        option_b: questionData.option_b,
+        option_c: questionData.option_c,
+        option_d: questionData.option_d,
+        correct_option: letterToNumber(questionData.correct_option),  // ⚠️ Conversión correcta
+        explanation: questionData.explanation,
+        primary_article_id: article.id,
+        is_active: true,
+        difficulty: 'medium',
+        is_official_exam: false,
+        exam_source: 'content_scope_batch_SECCION',
+        created_at: new Date().toISOString()
+      })
+      .select('id')
+      .single()
+    
+    if (questionError) {
+      console.log(`❌ Error insertando pregunta ${index + 1}: ${questionError.message}`)
+      continue
+    }
+    
+    console.log(`✅ Pregunta ${index + 1} añadida: ${newQuestion.id}`)
+  }
+  
+  console.log('\n🎯 Preguntas añadidas a content_scope exitosamente!')
+}
+
+addContentScopeQuestions()
+```
+
+---
+
+### ✅ **CHECKLIST CONTENT SCOPE**
+
+- [ ] **Content scope verificado** → ¿Qué leyes están mapeadas?
+- [ ] **Artículos verificados** → ¿Existen todos en BD?
+- [ ] **Preguntas creadas** → Vinculadas a artículos reales
+- [ ] **Sistema respuestas correcto** → 0=A, 1=B, 2=C, 3=D
+- [ ] **Tags temáticos** → ARRAY['procedimiento-administrativo', 'seccion-especifica']
+- [ ] **URLs funcionan** → Sección detalle y test personalizado
+- [ ] **Verificación SQL** → Count de preguntas coincide
+- [ ] **Navegación web** → Grid de secciones carga correctamente
+
+---
+
+### 🚨 **ERRORES CRÍTICOS A EVITAR**
+
+#### ❌ **Error 1: UPDATE sin mapeo existente**
+```sql
+-- ❌ ESTO FALLA SILENCIOSAMENTE
+UPDATE content_scope SET article_numbers = ARRAY['1','2','3']
+WHERE law_id = ley_no_mapeada_id;  -- 0 filas afectadas
+```
+
+#### ❌ **Error 2: Opciones incorrectas**  
+```sql
+-- ❌ MAL: Sistema 1-indexed
+correct_option = 4  -- D (NO EXISTE)
+
+-- ✅ BIEN: Sistema 0-indexed  
+correct_option = 3  -- D
+```
+
+#### ❌ **Error 3: No verificar artículos**
+- Crear preguntas sin verificar que los artículos existen
+- Resultado: primary_article_id NULL → Error
+
+#### ❌ **Error 4: Tags incorrectos**
+```sql
+-- ❌ MAL: Tags genéricos
+tags = ARRAY['pregunta', 'test']
+
+-- ✅ BIEN: Tags específicos de content scope
+tags = ARRAY['procedimiento-administrativo', 'conceptos-generales', 'ley-39-2015']
+```
+
+---
+
+### 💡 **REGLAS DE ORO CONTENT SCOPE**
+
+1. **VERIFICAR PRIMERO** → Qué está mapeado vs qué necesitas mapear
+2. **ARTÍCULOS REALES** → Solo vincular a artículos existentes del BOE
+3. **SISTEMA 0-INDEXED** → A=0, B=1, C=2, D=3 (SIEMPRE)
+4. **TAGS TEMÁTICOS** → Incluir nombre de la sección y ley
+5. **EXPLICACIONES PRECISAS** → Referenciar artículo específico
+6. **UNA SQL A LA VEZ** → No ejecutar batches grandes sin verificar
+
+---
+
+### 🎯 **EJEMPLO REAL: Conceptos Generales**
+
+```sql
+-- 1. Verificar mapeo existente
+SELECT l.short_name, csc.article_numbers 
+FROM content_scope csc 
+JOIN laws l ON csc.law_id = l.id 
+WHERE section_id = (SELECT id FROM content_sections WHERE slug = 'conceptos-generales');
+
+-- Resultado:
+-- Ley 39/2015 | {1,2,3}
+-- CE | {103,105}  
+-- Ley 40/2015 | {1,4}
+
+-- 2. Crear pregunta vinculada a Art. 3 Ley 39/2015
+INSERT INTO questions (primary_article_id, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, difficulty, question_type, tags, is_active) 
+VALUES (
+  (SELECT id FROM articles WHERE article_number = '3' AND law_id = (SELECT id FROM laws WHERE short_name = 'Ley 39/2015')),
+  '¿Cuál es uno de los principios de actuación de las Administraciones Públicas según la Ley 39/2015?',
+  'Discrecionalidad absoluta',
+  'Transparencia y participación', 
+  'Secreto administrativo',
+  'Autonomía total',
+  1,  -- B=1 (Transparencia y participación)
+  'La Ley 39/2015 establece entre sus principios la transparencia y participación ciudadana como pilares fundamentales de la actuación administrativa.',
+  'medium',
+  'single',
+  ARRAY['procedimiento-administrativo', 'conceptos-generales', 'principios', 'ley-39-2015'],
+  true
+);
+
+-- 3. Verificar que funciona
+SELECT COUNT(*) FROM questions q
+JOIN articles a ON q.primary_article_id = a.id  
+JOIN laws l ON a.law_id = l.id
+WHERE l.short_name = 'Ley 39/2015' 
+  AND a.article_number = '3'
+  AND q.is_active = true;
+-- Expected: 6+ preguntas
+```
+
+**🎯 RESULTADO:** Pregunta aparece en `/test-personalizado?seccion=conceptos-generales` automáticamente.
+
+---
+
+## 🎯 **CÓMO USAR EL SISTEMA CONTENT SCOPE EXISTENTE** ⭐ SECCIÓN PRÁCTICA
+
+### 📋 **SITUACIÓN: Quiero añadir preguntas a una sección existente**
+
+**Content Scope ya está implementado y funcionando**. Solo necesitas seguir este flujo:
+
+#### **PASO 1: Identificar sección existente**
+```sql
+-- Ver todas las secciones disponibles en content collections
+SELECT 
+  cc.name as collection,
+  cs.section_number,
+  cs.name,
+  cs.slug,
+  cs.description
+FROM content_collections cc
+JOIN content_sections cs ON cc.id = cs.collection_id
+WHERE cc.is_active = true AND cs.is_active = true
+ORDER BY cc.name, cs.order_position;
+```
+
+**📋 Secciones disponibles actualmente:**
+- **procedimiento-administrativo/conceptos-generales** ✅ (ya tiene 26 preguntas)
+- **procedimiento-administrativo/el-procedimiento-administrativo** (pendiente)
+- **procedimiento-administrativo/responsabilidad-patrimonial** (pendiente)
+- Y otras 7 secciones más...
+
+#### **PASO 2: Verificar mapeo actual de la sección**
+```sql
+-- Para sección específica (ej: conceptos-generales)
+SELECT 
+  cs.name as seccion,
+  l.short_name as ley,
+  csc.article_numbers,
+  array_length(csc.article_numbers, 1) as total_articulos
+FROM content_sections cs
+JOIN content_scope csc ON cs.id = csc.section_id
+JOIN laws l ON csc.law_id = l.id
+WHERE cs.slug = 'conceptos-generales'  -- CAMBIAR por la sección que quieras
+ORDER BY l.short_name;
+```
+
+**📊 Ejemplo output conceptos-generales:**
+```
+seccion            | ley          | article_numbers | total_articulos
+Conceptos Generales| CE          | {103,105}       | 2
+Conceptos Generales| Ley 39/2015 | {1,2,3}        | 3  
+Conceptos Generales| Ley 40/2015 | {1,4}          | 2
+```
+
+#### **PASO 3: Crear script de preguntas usando la plantilla**
+
+```javascript
+// scripts/add-[SECCION]-questions.js
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
+function letterToNumber(letter) {
+  const map = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+  return map[letter.toUpperCase()];
+}
+
+const questionsBatch = [
+  {
+    question_text: "¿Tu pregunta específica sobre la sección?",
+    option_a: "Opción A",
+    option_b: "Opción B",
+    option_c: "Opción C", 
+    option_d: "Opción D",
+    correct_option: "C",  // Se convierte a 2
+    explanation: "Explicación detallada referenciando el artículo específico...",
+    law_short_name: "Ley 39/2015",  // Debe ser una de las leyes mapeadas
+    article_number: "3"             // Debe ser uno de los artículos mapeados
+  },
+  // ... hasta 10 preguntas por batch
+]
+
+async function addQuestionsToContentScope() {
+  console.log('🔧 AÑADIENDO PREGUNTAS A CONTENT SCOPE\n')
+  
+  let addedCount = 0
+  let duplicateCount = 0
+  
+  for (const [index, questionData] of questionsBatch.entries()) {
+    console.log(`📝 Procesando pregunta ${index + 1}/${questionsBatch.length}...`)
+    
+    // 1. Verificar duplicados
+    const { data: existingQuestion } = await supabase
+      .from('questions')
+      .select('id')
+      .ilike('question_text', questionData.question_text.substring(0, 50) + '%')
+      .single()
+    
+    if (existingQuestion) {
+      console.log(`   ⚠️ Pregunta duplicada, saltando...`)
+      duplicateCount++
+      continue
+    }
+    
+    // 2. Obtener ley
+    const { data: law } = await supabase
+      .from('laws')
+      .select('id')
+      .eq('short_name', questionData.law_short_name)
+      .single()
+    
+    if (!law) {
+      console.log(`   ❌ Ley ${questionData.law_short_name} no encontrada`)
+      continue
+    }
+    
+    // 3. Obtener artículo
+    const { data: article } = await supabase
+      .from('articles')
+      .select('id')
+      .eq('law_id', law.id)
+      .eq('article_number', questionData.article_number)
+      .single()
+    
+    if (!article) {
+      console.log(`   ❌ Artículo ${questionData.article_number} de ${questionData.law_short_name} no encontrado`)
+      continue
+    }
+    
+    // 4. Insertar pregunta
+    const { data: newQuestion, error: questionError } = await supabase
+      .from('questions')
+      .insert({
+        question_text: questionData.question_text,
+        option_a: questionData.option_a,
+        option_b: questionData.option_b,
+        option_c: questionData.option_c,
+        option_d: questionData.option_d,
+        correct_option: letterToNumber(questionData.correct_option),
+        explanation: questionData.explanation,
+        primary_article_id: article.id,
+        is_active: true,
+        difficulty: 'medium',
+        is_official_exam: false,
+        exam_source: 'content_scope_batch'
+      })
+      .select('id')
+      .single()
+    
+    if (questionError) {
+      console.log(`   ❌ Error insertando: ${questionError.message}`)
+      continue
+    }
+    
+    console.log(`   ✅ Pregunta añadida: ${newQuestion.id}`)
+    addedCount++
+  }
+  
+  console.log(`\n📊 RESUMEN:`)
+  console.log(`✅ Preguntas añadidas: ${addedCount}`)
+  console.log(`⚠️ Duplicadas ignoradas: ${duplicateCount}`)
+  console.log(`🎯 Total procesadas: ${questionsBatch.length}`)
+}
+
+addQuestionsToContentScope()
+```
+
+#### **PASO 4: Ejecutar script**
+```bash
+NEXT_PUBLIC_SUPABASE_URL=https://yqbpstxowvgipqspqrgo.supabase.co SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w node scripts/add-[SECCION]-questions.js
+```
+
+#### **PASO 5: Verificar que funciona**
+```sql
+-- Contar nuevas preguntas por sección
+SELECT 
+  cs.name as seccion,
+  l.short_name,
+  COUNT(q.id) as total_preguntas
+FROM content_sections cs
+JOIN content_scope csc ON cs.id = csc.section_id
+JOIN laws l ON csc.law_id = l.id
+JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(csc.article_numbers)
+LEFT JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+WHERE cs.slug = 'TU_SECCION_AQUI'
+GROUP BY cs.name, l.short_name
+ORDER BY l.short_name;
+```
+
+#### **PASO 6: Probar URLs**
+- **Sección detalle:** `http://localhost:3000/test-oposiciones/procedimiento-administrativo/TU_SECCION`
+- **Test funcional:** `http://localhost:3000/test-personalizado?seccion=TU_SECCION`
+
+---
+
+### 🎯 **FLUJO TÍPICO PARA AÑADIR PREGUNTAS**
+
+**📌 ORDEN RECOMENDADO:**
+
+1. **Analiza 10 preguntas muestra** → ¿Qué artículos necesitas?
+2. **Verifica mapeo actual** → ¿Ya están mapeados esos artículos?
+3. **Si faltan artículos → PARAR** → Solicita artículos BOE oficiales
+4. **Si faltan mapeos → UPDATE content_scope** → Añadir artículos al mapeo
+5. **Crea script con plantilla** → 10 preguntas máximo por batch
+6. **Ejecuta script** → Verifica salida sin errores
+7. **Prueba URLs** → Sección detalle + test personalizado
+8. **Confirma count** → SQL de verificación
+
+---
+
+### 🚨 **ERRORES MÁS COMUNES**
+
+#### **❌ Error 1: Crear leyes sin verificar necesidad** ⭐ *NUEVA LECCIÓN*
+```javascript
+// ❌ INCORRECTO: Crear ley porque aparece en un error
+async function createLeyInnecesaria() {
+  // Ví "Ley 1/2015" en un error y la creé sin verificar
+  const { data } = await supabase.from('laws').insert({
+    name: 'Ley 1/2015, de 6 de febrero...',
+    short_name: 'Ley 1/2015',
+    // ...
+  })
+  // ❌ RESULTADO: Ley creada sin propósito, sin preguntas que la usen
+}
+
+// ✅ CORRECTO: Verificar primero si hay preguntas que la necesitan
+async function verificarAntesDe() {
+  // 1. Buscar preguntas que mencionen la ley
+  const { data: preguntasConLey } = await supabase
+    .from('questions')
+    .select('id')
+    .ilike('question_text', '%Ley 1/2015%')
+  
+  if (preguntasConLey.length === 0) {
+    console.log('❌ No hay preguntas que usen esta ley - NO crear')
+    return
+  }
+  
+  // 2. Solo entonces crear la ley
+  // ...
+}
+```
+
+**🎯 REGLA: Solo crear leyes cuando hay preguntas específicas que las referencian.**
+
+#### **❌ Error 2: Flujo incorrecto de verificación** ⭐ *NUEVA LECCIÓN*
+```javascript
+// ❌ INCORRECTO: Crear primero, verificar después
+async function flujoIncorrecto() {
+  // 1. Crear ley porque aparece en error
+  await crearLey1_2015()
+  
+  // 2. Añadir preguntas
+  await añadirPreguntas()
+  
+  // 3. Después me doy cuenta que no hay preguntas que la usen
+  // ❌ RESULTADO: Trabajo redundante, ley innecesaria
+}
+
+// ✅ CORRECTO: Verificar primero, crear solo si es necesario
+async function flujoCorreto() {
+  // 1. PRIMERO: Revisar qué leyes necesitan las preguntas
+  const leyesNecesarias = await analizarPreguntasDelLote()
+  
+  // 2. SEGUNDO: Verificar qué leyes ya existen
+  const leyesFaltantes = await verificarLeyesExistentes(leyesNecesarias)
+  
+  // 3. TERCERO: Crear solo las leyes que realmente faltan
+  for (const ley of leyesFaltantes) {
+    await crearLeyConArticulos(ley)
+  }
+  
+  // 4. CUARTO: Añadir las preguntas
+  await añadirPreguntas()
+  // ✅ RESULTADO: Solo se crea lo necesario, trabajo eficiente
+}
+```
+
+**🎯 REGLA: SIEMPRE verificar necesidad ANTES de crear contenido.**
+
+#### **❌ Error 3: Usar artículos no mapeados**
+```javascript
+// ❌ MAL: Art. 15 no está en content_scope de conceptos-generales
+law_short_name: "Ley 39/2015",
+article_number: "15"  // No mapeado
+
+// ✅ BIEN: Solo artículos mapeados {1,2,3}  
+article_number: "3"   // Sí mapeado
+```
+
+#### **❌ Error 2: Opciones incorrectas**
+```javascript
+correct_option: "4"  // ❌ No existe
+correct_option: "D"  // ✅ Se convierte a 3
+```
+
+#### **❌ Error 3: No verificar duplicados**
+- El script maneja duplicados automáticamente
+- Compara primeros 50 caracteres de question_text
+- Si encuentra similar → salta sin insertar
+
+#### **❌ Error 4: Leyes inexistentes**
+```sql
+-- Verificar que la ley existe ANTES de crear script
+SELECT id, short_name FROM laws WHERE short_name = 'Ley 39/2015';
+```
+
+---
+
+### 📋 **CHECKLIST RÁPIDO PARA CONTENT SCOPE**
+
+- [ ] Sección existe en content_sections ✅
+- [ ] Content_scope mapeado con artículos específicos ✅
+- [ ] Artículos BOE existen en BD ✅
+- [ ] Script usa solo artículos mapeados ✅
+- [ ] Sistema 0-indexed (A=0, B=1, C=2, D=3) ✅
+- [ ] Script detecta duplicados ✅
+- [ ] URLs sección + test funcionan ✅
+- [ ] Count SQL correcto ✅
+
+---
+
+### 💡 **REGLAS DE ORO RÁPIDAS**
+
+1. **SOLO artículos ya mapeados** en content_scope
+2. **Sistema 0-indexed SIEMPRE** (A=0, B=1, C=2, D=3)
+3. **Máximo 10 preguntas** por script/batch
+4. **Verificar duplicados** automático en script
+5. **URLs de prueba** siempre después de insertar
+6. **Si falla algo** → revisar mapeo content_scope primero
+
+---
+
+### 🎯 **PRÓXIMAS SECCIONES PENDIENTES**
+
+Para continuar expandiendo procedimiento-administrativo:
+
+```sql
+-- Ver secciones SIN preguntas aún
+SELECT 
+  cs.name,
+  cs.slug,
+  COALESCE(COUNT(q.id), 0) as preguntas_actuales
+FROM content_sections cs
+JOIN content_collections cc ON cs.collection_id = cc.id
+LEFT JOIN content_scope csc ON cs.id = csc.section_id
+LEFT JOIN laws l ON csc.law_id = l.id
+LEFT JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(csc.article_numbers)
+LEFT JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+WHERE cc.slug = 'procedimiento-administrativo'
+GROUP BY cs.name, cs.slug, cs.order_position
+HAVING COUNT(q.id) = 0
+ORDER BY cs.order_position;
+```
+
+**🎯 RESULTADO ESPERADO:** Lista de secciones que necesitan preguntas, ordenadas por prioridad.
+
+---
+
+## 🛠️ **COMANDOS ÚTILES CONTENT SCOPE**
+
+### **Ver estado completo del sistema:**
+```sql
+SELECT 
+  cc.name as collection,
+  COUNT(DISTINCT cs.id) as total_secciones,
+  COUNT(DISTINCT csc.id) as total_mapeos,
+  COUNT(DISTINCT q.id) as total_preguntas
+FROM content_collections cc
+LEFT JOIN content_sections cs ON cc.id = cs.collection_id
+LEFT JOIN content_scope csc ON cs.id = csc.section_id  
+LEFT JOIN laws l ON csc.law_id = l.id
+LEFT JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(csc.article_numbers)
+LEFT JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+WHERE cc.is_active = true
+GROUP BY cc.name;
+```
+
+### **Ver progreso por sección:**
+```sql
+SELECT 
+  cs.name,
+  cs.slug,
+  COUNT(DISTINCT l.id) as leyes_mapeadas,
+  COUNT(DISTINCT a.id) as articulos_mapeados,
+  COUNT(q.id) as preguntas_disponibles,
+  CASE 
+    WHEN COUNT(q.id) >= 10 THEN '✅ Completa'
+    WHEN COUNT(q.id) >= 5 THEN '🔶 Parcial'  
+    WHEN COUNT(q.id) > 0 THEN '🔸 Iniciada'
+    ELSE '❌ Pendiente'
+  END as status
+FROM content_sections cs
+LEFT JOIN content_scope csc ON cs.id = csc.section_id
+LEFT JOIN laws l ON csc.law_id = l.id
+LEFT JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(csc.article_numbers)
+LEFT JOIN questions q ON q.primary_article_id = a.id AND q.is_active = true
+WHERE cs.collection_id = (SELECT id FROM content_collections WHERE slug = 'procedimiento-administrativo')
+GROUP BY cs.name, cs.slug, cs.order_position
+ORDER BY cs.order_position;
+```
+
+**🎯 ESTOS COMANDOS te dan visibilidad completa del estado actual del sistema Content Scope.**
+
+---
+
+## 🎓 **LEARNINGS Y MEJORES PRÁCTICAS** ⭐ NUEVA SECCIÓN
+
+### 🚀 **CASO DE ESTUDIO: Procedimiento Administrativo - Ejecución**
+
+*Basado en la implementación exitosa de la sección de ejecución con 41 preguntas y artículos BOE oficiales.*
+
+#### **📝 LEARNINGS CRÍTICOS**
+
+**🔴 1. ORDEN CORRECTO DE IMPLEMENTACIÓN**
+```
+✅ PROCESO CORRECTO:
+1. Verificar artículos existen → 2. Crear artículos faltantes → 3. Crear content_scope → 4. Añadir preguntas
+
+❌ PROCESO INCORRECTO: 
+1. Crear preguntas → 2. Crear artículos después → 3. Errores de FK
+```
+
+**🔴 2. VERIFICACIÓN PREVIA DE ARTÍCULOS BOE**
+- **SIEMPRE verificar artículos existen antes de crear preguntas**
+- En el caso de ejecución: artículos 99 y 105 no existían
+- **Solución:** Solicitar contenido BOE oficial al usuario ANTES de proceder
+
+```sql
+-- Query crítica ANTES de crear preguntas:
+SELECT 
+  unnest(ARRAY['96','97','98','99','100','101','102','103','104','105']) as required_article,
+  CASE WHEN a.id IS NOT NULL THEN '✅ Existe' ELSE '❌ Falta' END as status,
+  a.title
+FROM unnest(ARRAY['96','97','98','99','100','101','102','103','104','105']) as required_article
+LEFT JOIN articles a ON a.article_number = required_article 
+  AND a.law_id = (SELECT id FROM laws WHERE short_name = 'Ley 39/2015')
+ORDER BY required_article::integer;
+```
+
+**🔴 3. DATABASE SCHEMA GOTCHAS**
+
+| Error Común | Campo Correcto | Error Típico |
+|-------------|----------------|--------------|
+| `difficulty_level` | `difficulty` | Column doesn't exist |
+| `question_type = 'multiple_choice'` | `question_type = 'single'` | Check constraint violation |
+| CommonJS `require()` | ES `import` | Module syntax error |
+
+**🔴 4. CONTENT_SCOPE ESPECÍFICO vs GENERAL**
+- ❌ **Error:** Crear content_scope en sección general "procedimiento-administrativo"  
+- ✅ **Correcto:** Crear sección específica "El Procedimiento Administrativo: Ejecución"
+- **Learning:** Cada subsección debe tener su propio content_scope específico
+
+#### **🛠️ TEMPLATE DE SCRIPT BULLETPROOF**
+
+```javascript
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+async function addQuestionsToContentScope() {
+  try {
+    // 1. 🔍 VERIFICAR SECCIÓN EXISTE
+    const { data: section, error: sectionError } = await supabase
+      .from('content_sections')
+      .select('id, name')
+      .eq('slug', 'ejecucion')
+      .single();
+    
+    if (sectionError || !section) {
+      throw new Error('❌ Sección no existe. Crear primero.');
+    }
+    
+    // 2. 🔍 VERIFICAR ARTÍCULOS EXISTEN
+    const requiredArticles = ['96', '98', '101', '102', '104'];
+    const { data: articles, error: articlesError } = await supabase
+      .from('articles')
+      .select('id, article_number')
+      .eq('law_id', 'UUID_LEY_39_2015')
+      .in('article_number', requiredArticles);
+    
+    if (articles.length !== requiredArticles.length) {
+      const missing = requiredArticles.filter(req => 
+        !articles.find(art => art.article_number === req)
+      );
+      throw new Error(`❌ Artículos faltantes: ${missing.join(', ')}`);
+    }
+    
+    // 3. 🔍 FUNCIÓN HELPER PARA CONVERTIR RESPUESTAS
+    const letterToNumber = (letter) => {
+      const map = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+      return map[letter.toUpperCase()] ?? 0;
+    };
+    
+    // 4. 📝 PROCESAR PREGUNTAS
+    const questionsData = [
+      {
+        question_text: "¿Cuál es el principio de ejecutoriedad?",
+        option_a: "Los actos administrativos se ejecutan inmediatamente",
+        option_b: "Los actos administrativos son ejecutables sin necesidad de intervención judicial",
+        option_c: "Los actos administrativos requieren autorización judicial",
+        option_d: "Los actos administrativos se ejecutan solo si hay recurso",
+        correct_option: "B",
+        explanation: "**Ejecutoriedad**: Los actos administrativos pueden ejecutarse por la propia Administración sin necesidad de acudir a los tribunales...",
+        primary_article_number: "98"
+      }
+      // ... más preguntas
+    ];
+    
+    // 5. 💾 INSERTAR PREGUNTAS CON VALIDACIÓN
+    for (const questionData of questionsData) {
+      const article = articles.find(a => a.article_number === questionData.primary_article_number);
+      
+      if (!article) {
+        console.log(`⚠️ Saltando pregunta: artículo ${questionData.primary_article_number} no encontrado`);
+        continue;
+      }
+      
+      // Schema correcto validado
+      const questionInsert = {
+        question_text: questionData.question_text,
+        option_a: questionData.option_a,
+        option_b: questionData.option_b,
+        option_c: questionData.option_c,
+        option_d: questionData.option_d,
+        correct_option: letterToNumber(questionData.correct_option),
+        explanation: questionData.explanation,
+        primary_article_id: article.id,
+        difficulty: 'medium',        // ✅ Campo correcto
+        question_type: 'single',     // ✅ Valor correcto
+        is_official_exam: false,
+        is_active: true
+      };
+      
+      const { data, error } = await supabase
+        .from('questions')
+        .insert(questionInsert)
+        .select('id, question_text');
+      
+      if (error) {
+        console.log('❌ Error inserting question:', error.message);
+      } else {
+        console.log(`✅ Pregunta añadida: ${data[0].question_text.substring(0, 50)}...`);
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Error general:', error.message);
+  }
+}
+
+addQuestionsToContentScope();
+```
+
+#### **📋 CHECKLIST POST-IMPLEMENTACIÓN**
+
+```bash
+# 1. Verificar URLs funcionan
+curl -I http://localhost:3000/test-oposiciones/procedimiento-administrativo/ejecucion
+
+# 2. Verificar datos en BD
+SELECT 
+  cs.name as seccion,
+  COUNT(DISTINCT a.id) as articulos,
+  COUNT(q.id) as preguntas
+FROM content_sections cs
+JOIN content_scope csc ON cs.id = csc.section_id
+JOIN laws l ON csc.law_id = l.id  
+JOIN articles a ON a.law_id = l.id AND a.article_number = ANY(csc.article_numbers)
+LEFT JOIN questions q ON q.primary_article_id = a.id
+WHERE cs.slug = 'ejecucion'
+GROUP BY cs.name;
+
+# 3. Verificar mapeo routing
+# Confirmar 'ejecucion' está en generateStaticParams()
+```
+
+#### **🎯 GOLDEN RULES PARA CONTENT SCOPE**
+
+1. **📖 BOE FIRST**: Verificar contenido oficial ANTES de implementar
+2. **🔗 ARTICLES FIRST**: Crear artículos faltantes ANTES de preguntas  
+3. **🎯 SPECIFIC SCOPE**: Cada subsección debe tener content_scope específico
+4. **📝 DIDACTIC EXPLANATIONS**: Explicaciones deben ser educativas, no solo correctas
+5. **✅ SCHEMA VALIDATION**: Validar campos y constraints antes de insertar
+6. **🔄 ROUTING UPDATE**: Actualizar generateStaticParams para nuevas secciones
+
+**💡 RESULTADO:** 62 preguntas funcionales en 10 artículos oficiales BOE con URL activa.

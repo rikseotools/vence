@@ -216,6 +216,74 @@ export default async function sitemap() {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
+    
+    // Tests de Procedimiento Administrativo - Organización Temática
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/conceptos-generales`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/el-procedimiento-administrativo`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/responsabilidad-patrimonial`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/terminos-plazos`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/actos-administrativos`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/eficacia-validez-actos`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/nulidad-anulabilidad`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/revision-oficio`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/recursos-administrativos`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/test-oposiciones/procedimiento-administrativo/jurisdiccion-contencioso`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
   ]
 
   // 🚫 URLs QUE NO QUIERES INDEXAR (todas las páginas de test)

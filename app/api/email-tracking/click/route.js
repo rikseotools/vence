@@ -19,25 +19,43 @@ export async function GET(request) {
     
     console.log('🖱️ Email click:', { emailId, userId, action, type, templateId, redirect })
 
-    // Registrar evento de click con campos requeridos
+    // 🛡️ DEDUPLICACIÓN: Evitar registros duplicados de clicks
     if (userId) {
-      // Obtener información del usuario para el tracking
-      const { data: userProfile } = await supabase
-        .from('user_profiles')
-        .select('email')
-        .eq('id', userId)
-        .single()
+      // Verificar si ya se registró un click similar en los últimos 2 minutos
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+      
+      const { data: recentClicks } = await supabase
+        .from('email_events')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('event_type', 'clicked')
+        .eq('email_type', type)
+        .gte('created_at', twoMinutesAgo)
+        .limit(1)
 
-      await supabase.from('email_events').insert({
-        user_id: userId,
-        event_type: 'clicked',
-        email_type: type, // ✅ FIX: Usar el tipo real del email
-        email_address: userProfile?.email || 'unknown@tracking.vence.es',
-        subject: `${type} Email - Clicked`,
-        template_id: templateId || type,
-        email_content_preview: `${type} email link clicked: ${action} -> ${redirect}`,
-        created_at: new Date().toISOString()
-      })
+      if (recentClicks && recentClicks.length > 0) {
+        console.log('⏸️ Click duplicado ignorado - cooldown de 2 minutos activo')
+      } else {
+        // Obtener información del usuario para el tracking
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('email')
+          .eq('id', userId)
+          .single()
+
+        await supabase.from('email_events').insert({
+          user_id: userId,
+          event_type: 'clicked',
+          email_type: type, // ✅ FIX: Usar el tipo real del email
+          email_address: userProfile?.email || 'unknown@tracking.vence.es',
+          subject: `${type} Email - Clicked`,
+          template_id: templateId || type,
+          email_content_preview: `${type} email link clicked: ${action} -> ${redirect}`,
+          created_at: new Date().toISOString()
+        })
+        
+        console.log('✅ Evento de click registrado con deduplicación')
+      }
     }
 
     // Redirigir al destino final

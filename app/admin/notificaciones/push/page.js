@@ -44,7 +44,14 @@ export default function PushDetailPage() {
     }
 
     checkAdminAccess()
-  }, [user, authLoading, supabase, timeRange])
+  }, [user, authLoading, supabase])
+
+  // 🔧 FIX: Separate effect for timeRange changes
+  useEffect(() => {
+    if (isAdmin && !authLoading) {
+      loadPushData()
+    }
+  }, [timeRange, isAdmin])
 
   const loadPushData = async () => {
     try {

@@ -35,6 +35,18 @@ export default function TestOposicionesPage() {
       articles: '1-133',
       priority: 2,
       tags: ['LPAC', 'AGE', 'Administrativo', 'Local']
+    },
+    {
+      id: 'procedimiento-administrativo',
+      title: 'Procedimiento Administrativo',
+      description: 'Contenido organizado por materias del procedimiento administrativo común. Conceptos generales, actos administrativos, recursos y jurisdicción contencioso-administrativa.',
+      slug: 'procedimiento-administrativo',
+      image: '📋',
+      color: 'from-teal-600 to-emerald-700',
+      sections: 10,
+      articles: 'Múltiples leyes',
+      priority: 3,
+      tags: ['Procedimiento', 'Temático', 'Completo']
     }
   ]
 

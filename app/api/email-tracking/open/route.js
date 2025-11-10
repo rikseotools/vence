@@ -17,25 +17,43 @@ export async function GET(request) {
     
     console.log('📧 Email abierto:', { emailId, userId, type, templateId })
 
-    // Registrar evento de apertura con campos requeridos
+    // 🛡️ DEDUPLICACIÓN: Evitar registros duplicados en corto tiempo
     if (userId) {
-      // Obtener información del usuario para el tracking
-      const { data: userProfile } = await supabase
-        .from('user_profiles')
-        .select('email')
-        .eq('id', userId)
-        .single()
+      // Verificar si ya se registró una apertura en los últimos 5 minutos
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+      
+      const { data: recentOpens } = await supabase
+        .from('email_events')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('event_type', 'opened')
+        .eq('email_type', type)
+        .gte('created_at', fiveMinutesAgo)
+        .limit(1)
 
-      await supabase.from('email_events').insert({
-        user_id: userId,
-        event_type: 'opened',
-        email_type: type, // ✅ FIX: Usar el tipo real del email
-        email_address: userProfile?.email || 'unknown@tracking.vence.es',
-        subject: `${type} Email - Opened`,
-        template_id: templateId || type,
-        email_content_preview: `${type} email opened - tracking event`,
-        created_at: new Date().toISOString()
-      })
+      if (recentOpens && recentOpens.length > 0) {
+        console.log('⏸️ Apertura duplicada ignorada - cooldown de 5 minutos activo')
+      } else {
+        // Obtener información del usuario para el tracking
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('email')
+          .eq('id', userId)
+          .single()
+
+        await supabase.from('email_events').insert({
+          user_id: userId,
+          event_type: 'opened',
+          email_type: type, // ✅ FIX: Usar el tipo real del email
+          email_address: userProfile?.email || 'unknown@tracking.vence.es',
+          subject: `${type} Email - Opened`,
+          template_id: templateId || type,
+          email_content_preview: `${type} email opened - tracking event`,
+          created_at: new Date().toISOString()
+        })
+        
+        console.log('✅ Evento de apertura registrado con deduplicación')
+      }
     }
 
     // Devolver pixel transparente 1x1

@@ -13,7 +13,8 @@ import {
   fetchArticulosDirigido,      // 🆕 NUEVO: Para artículos dirigidos
   fetchMantenerRacha,          // 🆕 NUEVO: Para mantener rachas
   fetchExplorarContenido,      // 🆕 NUEVO: Para explorar contenido
-  fetchAleatorioMultiTema      // 🎲 NUEVO: Para tests aleatorios con múltiples temas
+  fetchAleatorioMultiTema,     // 🎲 NUEVO: Para tests aleatorios con múltiples temas
+  fetchContentScopeQuestions   // 📋 NUEVO: Para content_scope
 } from '../lib/testFetchers'
 
 export default function TestPageWrapper({
@@ -38,6 +39,9 @@ export default function TestPageWrapper({
   
   // 🎲 NUEVA PROP PARA TESTS ALEATORIOS MULTI-TEMA
   themes, // Array de IDs de temas para tests aleatorios
+  
+  // 📋 NUEVA PROP PARA CONTENT_SCOPE
+  contentScopeConfig, // Configuración de content_scope
   
   // 🎯 Props de UI (opcionales)
   loadingMessage,
@@ -144,6 +148,15 @@ export default function TestPageWrapper({
         icon: "🔍",
         subtitle: "Descubre las últimas preguntas",
         fetcher: fetchExplorarContenido
+      },
+      // 📋 NUEVO TIPO PARA CONTENT_SCOPE
+      'content_scope': {
+        name: "Test Content Scope",
+        description: "Preguntas específicas por materia",
+        color: "from-emerald-500 to-teal-600",
+        icon: "📋",
+        subtitle: "Test basado en artículos específicos",
+        fetcher: fetchContentScopeQuestions
       }
     }
 
@@ -174,7 +187,9 @@ export default function TestPageWrapper({
       // 🆕 NUEVOS NÚMEROS PARA NOTIFICACIONES
       'articulos-dirigido': 88,
       'mantener-racha': 87,
-      'explorar': 86
+      'explorar': 86,
+      // 📋 NUEVO NÚMERO PARA CONTENT_SCOPE
+      'content_scope': 85
     }
     return testNumbers[testType] || 1
   }
@@ -230,6 +245,16 @@ export default function TestPageWrapper({
 
         // Llamar fetchAleatorioMultiTema con temas específicos
         questions = await fetchAleatorioMultiTema(themes, finalSearchParams, testConfig)
+      } else if (testType === 'content_scope') {
+        // 📋 MANEJAR CONTENT_SCOPE DE FORMA ESPECIAL
+        console.log('📋 Cargando test content_scope con config:', contentScopeConfig)
+        
+        if (!contentScopeConfig) {
+          throw new Error('No se proporcionó configuración de content_scope')
+        }
+        
+        // Llamar fetchContentScopeQuestions con configuración específica
+        questions = await fetchContentScopeQuestions(testConfig, contentScopeConfig)
       } else {
         // Para otros tipos de test, usar el fetcher normal
         let finalTestConfig = testConfig
