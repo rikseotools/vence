@@ -29,37 +29,30 @@ export function useTopicUnlock() {
     try {
       setLoading(true)
 
-      // 🔥 USAR USER_PROGRESS MIGRADA - MÁS EFICIENTE Y PRECISA
-      const { data: userProgressData, error } = await supabase
-        .from('user_progress')
-        .select(`
-          total_attempts,
-          correct_attempts,
-          accuracy_percentage,
-          last_attempt_date,
-          needs_review,
-          topics!inner(topic_number, title)
-        `)
-        .eq('user_id', user.id)
+      // 🔥 USAR MISMA FUNCIÓN QUE LA PÁGINA DE TESTS - get_user_theme_stats
+      const { data: themeStatsData, error } = await supabase
+        .rpc('get_user_theme_stats', { p_user_id: user.id })
 
       if (error) {
-        console.error('Error loading user progress:', error)
+        console.error('Error loading user theme stats:', error)
         setUnlockedTopics(new Set([1]))
         setTopicProgress({})
         return
       }
 
-      console.log('🎯 Cargando progreso desde user_progress:', userProgressData)
+      console.log('🎯 Cargando progreso desde get_user_theme_stats:', themeStatsData?.length || 0, 'temas')
 
-      // Procesar progreso por tema usando datos migrados
+      // Procesar progreso por tema usando la misma lógica que la página de tests
       const progress = {}
       const unlockedSet = new Set([1]) // Tema 1 siempre desbloqueado
 
-      if (userProgressData && userProgressData.length > 0) {
-        userProgressData.forEach(record => {
-          const temaNumber = record.topics.topic_number
-          const accuracy = Math.round(record.accuracy_percentage || 0)
-          const questionsAnswered = record.total_attempts || 0
+      if (themeStatsData && themeStatsData.length > 0) {
+        themeStatsData.forEach(row => {
+          const temaNumber = row.tema_number
+          if (!temaNumber) return
+
+          const accuracy = parseInt(row.accuracy) || 0
+          const questionsAnswered = parseInt(row.total) || 0
           
           progress[temaNumber] = {
             accuracy,
@@ -67,8 +60,8 @@ export function useTopicUnlock() {
             masteryLevel: accuracy >= 90 ? 'expert' : accuracy >= 70 ? 'good' : 'beginner',
             isUnlocked: temaNumber === 1 || accuracy >= UNLOCK_THRESHOLD,
             meetsThreshold: accuracy >= UNLOCK_THRESHOLD,
-            lastStudy: record.last_attempt_date ? new Date(record.last_attempt_date) : null,
-            needsReview: record.needs_review
+            lastStudy: row.last_study ? new Date(row.last_study) : null,
+            needsReview: accuracy < UNLOCK_THRESHOLD
           }
 
           // Si este tema cumple el threshold, desbloquear el siguiente
