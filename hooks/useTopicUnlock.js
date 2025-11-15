@@ -49,16 +49,20 @@ export function useTopicUnlock() {
       if (themeStatsData && themeStatsData.length > 0) {
         themeStatsData.forEach(row => {
           const temaNumber = row.tema_number
-          if (!temaNumber) return
+          // CRÍTICO: tema_number es 0-indexed, donde 0 = Tema 1
+          if (typeof temaNumber !== 'number') return
+          
+          // Convertir de 0-indexed a 1-indexed
+          const actualTemaNumber = temaNumber + 1
 
           const accuracy = parseInt(row.accuracy) || 0
           const questionsAnswered = parseInt(row.total) || 0
           
-          progress[temaNumber] = {
+          progress[actualTemaNumber] = {
             accuracy,
             questionsAnswered,
             masteryLevel: accuracy >= 90 ? 'expert' : accuracy >= 70 ? 'good' : 'beginner',
-            isUnlocked: temaNumber === 1 || accuracy >= UNLOCK_THRESHOLD,
+            isUnlocked: actualTemaNumber === 1 || accuracy >= UNLOCK_THRESHOLD,
             meetsThreshold: accuracy >= UNLOCK_THRESHOLD,
             lastStudy: row.last_study ? new Date(row.last_study) : null,
             needsReview: accuracy < UNLOCK_THRESHOLD
@@ -66,8 +70,8 @@ export function useTopicUnlock() {
 
           // Si este tema cumple el threshold, desbloquear el siguiente
           if (accuracy >= UNLOCK_THRESHOLD && questionsAnswered >= 10) {
-            unlockedSet.add(temaNumber)
-            unlockedSet.add(temaNumber + 1) // Desbloquear siguiente tema
+            unlockedSet.add(actualTemaNumber)
+            unlockedSet.add(actualTemaNumber + 1) // Desbloquear siguiente tema
           }
         })
       }
