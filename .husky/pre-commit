@@ -1,0 +1,24 @@
+#!/bin/sh
+# .husky/pre-commit
+# Hook para ejecutar tests antes de commit
+
+echo "🧪 Ejecutando tests antes del commit..."
+
+# Ejecutar tests con coverage
+npm run test:ci
+
+# Capturar código de salida
+TEST_EXIT_CODE=$?
+
+if [ $TEST_EXIT_CODE -ne 0 ]; then
+  echo "❌ Tests fallaron. Commit cancelado."
+  echo ""
+  echo "💡 Para solucionar:"
+  echo "   1. Revisa los tests que fallan con: npm test"
+  echo "   2. Corrige los problemas"
+  echo "   3. Intenta el commit nuevamente"
+  echo ""
+  exit 1
+fi
+
+echo "✅ Todos los tests pasaron. Continuando con el commit..."
