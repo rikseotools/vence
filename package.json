@@ -8,6 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "test:system": "node scripts/check-system.js",
     "test:full": "node scripts/validate-critical-paths.js",
     "db:clean": "node scripts/clean-database.js",
@@ -41,9 +44,11 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@jest/globals": "^29.7.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
+    "jest": "^29.7.0",
     "postcss": "^8.5.4",
     "tailwindcss": "^3.4.16"
   },

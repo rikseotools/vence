@@ -170,18 +170,114 @@ export default function ArticleModal({ isOpen, onClose, articleNumber, lawSlug }
                 <span className="text-gray-600 dark:text-gray-400">Cargando artículo...</span>
               </div>
             ) : error ? (
-              <div className="text-center py-12">
-                <div className="text-red-600 text-lg mb-3">❌</div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+              <div className="text-center py-12 px-6">
+                <div className="text-red-600 text-6xl mb-4">❌</div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
                   Error cargando el artículo
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Cerrar
-                </button>
+                
+                {/* Información específica del error */}
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4 text-left">
+                  <div className="text-sm space-y-2">
+                    <div>
+                      <span className="font-semibold text-red-800 dark:text-red-300">Artículo:</span>
+                      <span className="ml-2 text-red-700 dark:text-red-400">Art. {articleNumber}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-red-800 dark:text-red-300">Ley:</span>
+                      <span className="ml-2 text-red-700 dark:text-red-400">{lawSlug || 'No especificada'}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-red-800 dark:text-red-300">URL:</span>
+                      <span className="ml-2 text-red-700 dark:text-red-400 break-all text-xs">{window.location.href}</span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-red-800 dark:text-red-300">Error:</span>
+                      <span className="ml-2 text-red-700 dark:text-red-400">{error}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Botones de acción */}
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={onClose}
+                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        // Crear mensaje de feedback automático
+                        const feedbackMessage = `🚨 ERROR AL CARGAR ARTÍCULO
+
+📄 **Artículo:** ${articleNumber}
+⚖️ **Ley:** ${lawSlug}
+🌐 **URL:** ${window.location.href}
+🎯 **Acción del usuario:** Clic en "Ver artículo" desde modal
+❌ **Error técnico:** ${error}
+
+**Descripción del problema:**
+El usuario intentó ver el contenido del artículo desde el modal pero recibió un error 404. Todos los datos parecen correctos pero el artículo no se pudo cargar.
+
+**Información técnica adicional:**
+- Navegador: ${navigator.userAgent}
+- Fecha/hora: ${new Date().toLocaleString('es-ES')}
+- Viewport: ${window.innerWidth}x${window.innerHeight}`
+
+                        // Enviar feedback automáticamente usando el sistema existente
+                        const { data: feedbackResult, error: submitError } = await supabase
+                          .from('user_feedback')
+                          .insert({
+                            user_id: user?.id || null,
+                            email: user?.email || null,
+                            type: 'bug',
+                            message: feedbackMessage,
+                            url: window.location.href,
+                            user_agent: navigator.userAgent,
+                            viewport: `${window.innerWidth}x${window.innerHeight}`,
+                            referrer: document.referrer || null,
+                            wants_response: false,
+                            status: 'pending',
+                            priority: 'high' // Alta prioridad para errores de carga
+                          })
+                          .select()
+
+                        if (submitError) {
+                          console.error('Error enviando feedback:', submitError)
+                          alert('Error enviando el reporte. Por favor, inténtalo manualmente.')
+                          return
+                        }
+
+                        // Crear conversación de chat automáticamente
+                        if (feedbackResult && feedbackResult[0]) {
+                          await supabase
+                            .from('feedback_conversations')
+                            .insert({
+                              feedback_id: feedbackResult[0].id,
+                              user_id: user?.id || null,
+                              status: 'waiting_admin'
+                            })
+                        }
+
+                        // Mostrar confirmación
+                        alert('✅ Error reportado automáticamente. Nos pondremos en contacto contigo pronto.')
+                        onClose()
+                      } catch (err) {
+                        console.error('Error reportando:', err)
+                        alert('Error enviando el reporte. Por favor, contacta al soporte manualmente.')
+                      }
+                    }}
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                  >
+                    🚨 Notificar Error
+                  </button>
+                </div>
+                
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+                  Al hacer clic en "Notificar Error" se enviará automáticamente un reporte con toda la información técnica necesaria.
+                </p>
               </div>
             ) : articleData ? (
               <div className="max-w-none">

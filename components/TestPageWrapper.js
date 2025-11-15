@@ -1,6 +1,6 @@
 // components/TestPageWrapper.js - ACTUALIZACIÓN PARA ARTICULOS-DIRIGIDO
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
@@ -52,6 +52,10 @@ export default function TestPageWrapper({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [config, setConfig] = useState(null)
+  
+  // 🔒 Control de ejecución única para prevenir double-fetch
+  const [loadingKey, setLoadingKey] = useState('')
+  const loadingRef = useRef(false)
 
   // 🆕 USAR searchParams desde props si es de notificación, sino usar hook
   const hookSearchParams = useSearchParams()
@@ -196,11 +200,22 @@ export default function TestPageWrapper({
 
   // 🚀 Función principal de carga
   const loadQuestions = async () => {
+    // 🔒 Generar clave única para esta ejecución
+    const currentKey = `${tema}-${testType}-${Date.now()}`
+    
+    // 🔒 Prevenir ejecuciones múltiples simultáneas
+    if (loadingRef.current) {
+      console.log('🔒 TestPageWrapper: Ejecución ya en progreso, ignorando...')
+      return
+    }
+
     try {
+      loadingRef.current = true
+      setLoadingKey(currentKey)
       setLoading(true)
       setError(null)
 
-      console.log('🚀 TestPageWrapper: Cargando test', testType, 'para tema', tema)
+      console.log(`🚀 TestPageWrapper: Cargando test ${testType} para tema ${tema} [KEY: ${currentKey}]`)
 
       const testConfig = getTestConfig()
       // console.log('🔧 Config generado:', testConfig)
@@ -314,10 +329,13 @@ export default function TestPageWrapper({
       console.log('✅ Config final aplicado:', testConfig)
 
     } catch (err) {
-      console.error('❌ TestPageWrapper: Error cargando test:', err)
+      console.error(`❌ TestPageWrapper: Error cargando test [KEY: ${currentKey}]:`, err)
       setError(err.message || 'Error cargando el test')
     } finally {
+      // 🔒 Liberar lock de ejecución
+      loadingRef.current = false
       setLoading(false)
+      console.log(`🔓 TestPageWrapper: Carga finalizada [KEY: ${currentKey}]`)
     }
   }
 
