@@ -56,10 +56,24 @@ export default function ArticleModal({ isOpen, onClose, articleNumber, lawSlug }
           params.append('userOposicion', userOposicion)
         }
         
-        const response = await fetch(`/api/teoria/${lawSlug}/${articleNumber}?${params}`)
+        const apiUrl = `/api/teoria/${lawSlug}/${articleNumber}?${params}`
+        console.log('🌐 API Call:', apiUrl)
+        
+        const response = await fetch(apiUrl)
         
         if (!response.ok) {
-          throw new Error(`Error ${response.status}: No se pudo cargar el artículo`)
+          // Capturar más detalles del error
+          let errorDetails = `${response.status} ${response.statusText}`
+          try {
+            const errorBody = await response.text()
+            if (errorBody) {
+              errorDetails += ` - ${errorBody}`
+            }
+          } catch (e) {
+            // Si no se puede leer el cuerpo, ignorar
+          }
+          
+          throw new Error(`API Error: ${errorDetails} | URL: ${apiUrl}`)
         }
         
         const articleData = await response.json()
@@ -176,55 +190,117 @@ export default function ArticleModal({ isOpen, onClose, articleNumber, lawSlug }
                   Error cargando el artículo
                 </h3>
                 
-                {/* Información específica del error */}
+                {/* Información específica del error - MUY DETALLADA */}
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4 text-left">
                   <div className="text-sm space-y-2">
-                    <div>
-                      <span className="font-semibold text-red-800 dark:text-red-300">Artículo:</span>
-                      <span className="ml-2 text-red-700 dark:text-red-400">Art. {articleNumber}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <span className="font-semibold text-red-800 dark:text-red-300">📄 Artículo:</span>
+                        <span className="ml-2 text-red-700 dark:text-red-400">Art. {articleNumber}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-red-800 dark:text-red-300">⚖️ Ley slug:</span>
+                        <span className="ml-2 text-red-700 dark:text-red-400 font-mono text-xs">{lawSlug}</span>
+                      </div>
                     </div>
+                    
                     <div>
-                      <span className="font-semibold text-red-800 dark:text-red-300">Ley:</span>
-                      <span className="ml-2 text-red-700 dark:text-red-400">{lawSlug || 'No especificada'}</span>
-                    </div>
-                    <div>
-                      <span className="font-semibold text-red-800 dark:text-red-300">URL:</span>
+                      <span className="font-semibold text-red-800 dark:text-red-300">🌐 Página actual:</span>
                       <span className="ml-2 text-red-700 dark:text-red-400 break-all text-xs">{window.location.href}</span>
                     </div>
+                    
                     <div>
-                      <span className="font-semibold text-red-800 dark:text-red-300">Error:</span>
+                      <span className="font-semibold text-red-800 dark:text-red-300">🔗 API que falló:</span>
+                      <span className="ml-2 text-red-700 dark:text-red-400 break-all text-xs font-mono">
+                        /api/teoria/{lawSlug}/{articleNumber}?includeOfficialExams=true{userOposicion ? `&userOposicion=${userOposicion}` : ''}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <span className="font-semibold text-red-800 dark:text-red-300">❌ Error técnico:</span>
                       <span className="ml-2 text-red-700 dark:text-red-400">{error}</span>
                     </div>
+                    
+                    <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-700 rounded">
+                      <div className="font-semibold text-blue-800 dark:text-blue-300 mb-2">📋 Para reproducir el error:</div>
+                      <ol className="text-blue-700 dark:text-blue-400 text-xs space-y-1 list-decimal list-inside">
+                        <li>Ir a: <span className="font-mono break-all">{window.location.href}</span></li>
+                        <li>Buscar pregunta que mencione "Artículo {articleNumber}"</li>
+                        <li>Hacer clic en enlace "Ver artículo"</li>
+                        <li>Modal se abre pero falla con error: <span className="font-mono">{error.split('|')[0]}</span></li>
+                      </ol>
+                    </div>
+                    
+                    {lawSlug.includes('/') && (
+                      <div className="mt-3 p-2 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded">
+                        <span className="font-semibold text-yellow-800 dark:text-yellow-300">⚠️ Problema detectado:</span>
+                        <span className="ml-2 text-yellow-700 dark:text-yellow-400 text-xs">
+                          El slug contiene "/" - esto puede causar errores 404. Verificar openArticleModal() en tema/[numero]/page.js línea 723
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 
-                {/* Botones de acción */}
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <button
-                    onClick={onClose}
-                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Cerrar
-                  </button>
+                {/* Botón de acción - Solo notificar error */}
+                <div className="flex justify-center">
                   <button
                     onClick={async () => {
                       try {
-                        // Crear mensaje de feedback automático
-                        const feedbackMessage = `🚨 ERROR AL CARGAR ARTÍCULO
+                        // Crear mensaje de feedback automático MUY DETALLADO
+                        const currentUrl = window.location.href
+                        const apiUrl = `/api/teoria/${lawSlug}/${articleNumber}?${new URLSearchParams({
+                          includeOfficialExams: 'true',
+                          ...(userOposicion ? { userOposicion } : {})
+                        })}`
+                        
+                        const feedbackMessage = `🚨 ERROR CARGA ARTÍCULO - REPORTE TÉCNICO DETALLADO
 
-📄 **Artículo:** ${articleNumber}
-⚖️ **Ley:** ${lawSlug}
-🌐 **URL:** ${window.location.href}
-🎯 **Acción del usuario:** Clic en "Ver artículo" desde modal
-❌ **Error técnico:** ${error}
+📋 **DATOS DEL ERROR:**
+• **Artículo:** ${articleNumber}
+• **Ley (original):** ${lawSlug}
+• **Error técnico:** ${error}
 
-**Descripción del problema:**
-El usuario intentó ver el contenido del artículo desde el modal pero recibió un error 404. Todos los datos parecen correctos pero el artículo no se pudo cargar.
+🌐 **URLs Y NAVEGACIÓN:**
+• **Página actual:** ${currentUrl}
+• **API que falló:** ${apiUrl}
+• **Referrer:** ${document.referrer || 'Ninguno'}
 
-**Información técnica adicional:**
-- Navegador: ${navigator.userAgent}
-- Fecha/hora: ${new Date().toLocaleString('es-ES')}
-- Viewport: ${window.innerWidth}x${window.innerHeight}`
+🔍 **CONTEXTO Y FLUJO DE REPRODUCCIÓN:**
+• **Página origen:** ${currentUrl.includes('/tema/') ? 'Página de Tema' : 'Otra página'}
+• **Tema número:** ${currentUrl.match(/tema\/(\d+)/)?.[1] || 'No detectado'}
+• **Acción exacta:** Usuario hizo clic en "Ver artículo" desde una pregunta o enlace
+• **Modal:** ArticleModal.js activado con props articleNumber=${articleNumber}, lawSlug=${lawSlug}
+• **User ID:** ${user?.id || 'No autenticado'}
+• **Email:** ${user?.email || 'No disponible'}
+• **Oposición:** ${userOposicion || 'No establecida'}
+
+📋 **PASOS PARA REPRODUCIR:**
+1. Ir a: ${currentUrl}
+2. Buscar pregunta de "Artículo ${articleNumber}" de "${lawSlug}"
+3. Hacer clic en enlace "Ver artículo" 
+4. Modal se abre pero falla al cargar contenido
+5. Error aparece: ${error.substring(0, 100)}...
+
+🎯 **COMPONENTES INVOLUCRADOS:**
+• **Origen:** /app/auxiliar-administrativo-estado/test/tema/[numero]/page.js función openArticleModal()
+• **Modal:** /components/ArticleModal.js useEffect loadArticleData()
+• **API:** /app/api/teoria/[law]/[articleNumber]/route.js
+• **Fetchers:** /lib/teoriaFetchers.js fetchArticleContent()
+
+⚙️ **INFORMACIÓN DEL NAVEGADOR:**
+• **User Agent:** ${navigator.userAgent}
+• **Viewport:** ${window.innerWidth}x${window.innerHeight}
+• **Fecha/hora:** ${new Date().toISOString()}
+• **Timezone:** ${Intl.DateTimeFormat().resolvedOptions().timeZone}
+
+🐛 **DEBUGGING INFO:**
+• **Law Slug generado:** "${lawSlug}"
+• **Contiene '/':** ${lawSlug.includes('/') ? 'SÍ (PROBLEMA POTENCIAL)' : 'No'}
+• **Params API:** includeOfficialExams=true${userOposicion ? `, userOposicion=${userOposicion}` : ''}
+
+**DESCRIPCIÓN:**
+Error al cargar artículo desde modal. Verificar si el slug de la ley es correcto y si la API responde adecuadamente.`
 
                         // Enviar feedback automáticamente usando el sistema existente
                         const { data: feedbackResult, error: submitError } = await supabase

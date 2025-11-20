@@ -719,8 +719,8 @@ export default function TemaPage({ params }) {
 
   // ✅ FUNCIÓN: Abrir modal de artículo
   function openArticleModal(articleNumber, lawName) {
-    // Convertir nombre de ley a slug
-    const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-') || 'ley-desconocida'
+    // Convertir nombre de ley a slug (espacios a guiones, barras a guiones)
+    const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
     setSelectedArticle({ number: articleNumber, lawSlug })
     setModalOpen(true)
   }
