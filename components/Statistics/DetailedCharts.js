@@ -313,9 +313,16 @@ export default function DetailedCharts({ weeklyProgress, difficultyBreakdown, th
     }
   }) || []
 
+  // Formatear nombre de tema (101 → "B2-T1", 1 → "B1-T1")
+  const formatThemeLabel = (num) => {
+    if (num >= 101 && num <= 112) return `B2-T${num - 100}`
+    if (num >= 1 && num <= 16) return `B1-T${num}`
+    return `T${num}`
+  }
+
   // Preparar datos para top 5 temas
   const topThemes = themePerformance?.slice(0, 5).map(theme => ({
-    label: `T${theme.theme}`,
+    label: formatThemeLabel(theme.theme),
     value: theme.accuracy
   })) || []
 

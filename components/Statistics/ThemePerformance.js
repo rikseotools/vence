@@ -19,6 +19,13 @@ const getScoreBg = (percentage) => {
   return 'bg-red-50 border-red-200'
 }
 
+// Formatear número de tema para mostrar al usuario
+const formatThemeName = (num) => {
+  if (num >= 101 && num <= 112) return `Bloque II Tema ${num - 100}`
+  if (num >= 1 && num <= 16) return `Bloque I Tema ${num}`
+  return `Tema ${num}`
+}
+
 export default function ThemePerformance({ themePerformance, articlePerformance }) {
   const [selectedTheme, setSelectedTheme] = useState(null)
   const [modalState, setModalState] = useState({
@@ -86,7 +93,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance 
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-xl font-bold text-gray-800">
-              📖 {themeData.title || `Tema ${selectedTheme}`} - Artículos
+              📖 {themeData.title || formatThemeName(selectedTheme)} - Artículos
             </h3>
             <p className="text-gray-600">Rendimiento detallado por artículo</p>
           </div>
@@ -128,7 +135,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance 
         {/* Lista de artículos */}
         {themeArticles.length > 0 ? (
           <div className="space-y-3">
-            <h4 className="font-bold text-gray-800 mb-3">📋 Artículos del Tema {selectedTheme}</h4>
+            <h4 className="font-bold text-gray-800 mb-3">📋 Artículos del {formatThemeName(selectedTheme)}</h4>
             {themeArticles.map((article, index) => {
               // Preparar datos para el modal del artículo
               const lawName = article.law || 'Ley desconocida'
