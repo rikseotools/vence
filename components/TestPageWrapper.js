@@ -473,21 +473,24 @@ export default function TestPageWrapper({
                 </>
               )}
               
-              {testType === 'personalizado' && (
-                <a 
-                  href={`/auxiliar-administrativo-estado/test/tema-${tema}`}
+              {testType === 'personalizado' && tema && (
+                <a
+                  href={`/auxiliar-administrativo-estado/test/tema/${tema}`}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm inline-block w-full text-center"
                 >
                   🎛️ Cambiar configuración
                 </a>
               )}
-              
-              <a 
-                href="/test/rapido"
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
-              >
-                🎲 Test rápido general
-              </a>
+
+              {/* Solo mostrar test rápido general si no es un test de tema específico */}
+              {!tema && (
+                <a
+                  href="/test/rapido"
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
+                >
+                  🎲 Test rápido general
+                </a>
+              )}
               
               <a 
                 href="/auxiliar-administrativo-estado/test"
