@@ -425,7 +425,7 @@ export default function EstadisticasRevolucionarias() {
         // Formatear título del tema correctamente (T102 → Bloque II Tema 2)
         const formatThemeTitle = (num) => {
           if (num === 0) return 'Tests aleatorios'
-          if (num >= 101 && num <= 116) return `Bloque II Tema ${num - 100}`
+          if (num >= 101 && num <= 112) return `Bloque II Tema ${num - 100}`
           if (num >= 1 && num <= 16) return `Bloque I Tema ${num}`
           return `Tema ${num}`
         }
@@ -793,12 +793,12 @@ export default function EstadisticasRevolucionarias() {
     // PREDICCIÓN EXAMEN MARZO 2025 - CÁLCULO COMPLETO
     const examPredictionMarch2025 = totalQuestions >= 20 ? (() => {
       // Fecha objetivo del examen
-      const examDate = new Date('2026-02-01') // Estimación febrero 2026
+      const examDate = new Date('2026-07-01') // Estimación julio 2026
       const today = new Date()
       const daysRemaining = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24))
       
       // 1. COBERTURA DEL TEMARIO
-      const totalThemes = 16 // Ajustar según el temario real
+      const totalThemes = 28 // 16 Bloque I + 12 Bloque II
       const studiedThemes = themePerformance?.length || 0
       const coveragePercentage = Math.round((studiedThemes / totalThemes) * 100)
       
@@ -875,7 +875,7 @@ export default function EstadisticasRevolucionarias() {
         specificRecommendations.push({
           priority: 'high',
           title: 'Acelerar Preparación',
-          description: `Al ritmo actual no estarás listo para febrero 2026`,
+          description: `Al ritmo actual no estarás listo para julio 2026`,
           action: `Aumentar intensidad de estudio para reducir ${daysToReady - daysRemaining} días de retraso`,
           icon: '🚨'
         })

@@ -50,7 +50,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-2xl font-bold text-gray-800 flex items-center">
-            🎯 Predicción Examen febrero 2026
+            🎯 Predicción Examen julio 2026
           </h3>
           <p className="text-gray-600">Análisis predictivo basado en tu progreso actual</p>
         </div>
@@ -78,7 +78,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
             {examPrediction.readinessScore}%
           </div>
           <div className="text-lg font-semibold text-gray-700 mb-2">
-            Preparación Estimada para febrero 2026
+            Preparación Estimada para julio 2026
           </div>
           <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${
             examPrediction.readinessLevel === 'excellent' ? 'bg-green-100 text-green-700' :
@@ -303,7 +303,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
                 <li>• Esta predicción se basa en tu progreso histórico</li>
                 <li>• Los resultados pueden variar según tu dedicación futura</li>
                 <li>• Se recomienda mantener un ritmo constante de estudio</li>
-                <li>• La fecha del examen es una estimación (febero 2026)</li>
+                <li>• La fecha del examen es una estimación (julio 2026)</li>
               </ul>
             </div>
           </div>
