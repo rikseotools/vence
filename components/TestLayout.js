@@ -1271,10 +1271,10 @@ export default function TestLayout({
                       )}
 
                     {/*Componente de impugnación */}
-                    <QuestionDispute 
-                      questionId={currentQuestionUuid}
-                      user={user} 
-                      supabase={supabase} 
+                    <QuestionDispute
+                      questionId={currentQuestionUuid || questions[currentQuestion]?.id}
+                      user={user}
+                      supabase={supabase}
                     />
 
                     {/* Notificación de artículo hot */}
