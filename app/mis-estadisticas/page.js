@@ -421,8 +421,8 @@ export default function EstadisticasRevolucionarias() {
       console.log('🎯 Analizando temas desde', responses.length, 'respuestas')
       
       responses.forEach((response, index) => {
-        const theme = response.tema_number || response.theme_number
-        const themeTitle = response.theme_title || response.tema_title || `Tema ${theme}`
+        const theme = response.tema_number ?? response.theme_number ?? 0
+        const themeTitle = response.theme_title || response.tema_title || (theme === 0 ? 'Tests aleatorios' : `Tema ${theme}`)
         
         if (index < 10) { // Debug primeras 10 respuestas
           console.log(`Response ${index}:`, {
@@ -433,7 +433,7 @@ export default function EstadisticasRevolucionarias() {
           })
         }
         
-        if (!theme) {
+        if (theme === null || theme === undefined) {
           console.log('⚠️ Respuesta sin tema:', response)
           return // Skip si no hay tema
         }
