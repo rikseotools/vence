@@ -422,7 +422,14 @@ export default function EstadisticasRevolucionarias() {
       
       responses.forEach((response, index) => {
         const theme = response.tema_number ?? response.theme_number ?? 0
-        const themeTitle = response.theme_title || response.tema_title || (theme === 0 ? 'Tests aleatorios' : `Tema ${theme}`)
+        // Formatear título del tema correctamente (T102 → Bloque II Tema 2)
+        const formatThemeTitle = (num) => {
+          if (num === 0) return 'Tests aleatorios'
+          if (num >= 101 && num <= 116) return `Bloque II Tema ${num - 100}`
+          if (num >= 1 && num <= 16) return `Bloque I Tema ${num}`
+          return `Tema ${num}`
+        }
+        const themeTitle = response.theme_title || response.tema_title || formatThemeTitle(theme)
         
         if (index < 10) { // Debug primeras 10 respuestas
           console.log(`Response ${index}:`, {
