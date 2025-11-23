@@ -342,10 +342,10 @@ export default function HeaderES() {
                     }, 100)
                   }}
                   className={`flex items-center justify-center hover:opacity-80 transition-opacity ${userStreak === 0 ? 'opacity-60' : ''}`}
-                  title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak > 30 ? '30+' : userStreak} días consecutivos`}
+                  title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak} días consecutivos`}
                 >
                   <span className={`text-sm ${userStreak === 0 ? 'grayscale' : ''}`}>🔥</span>
-                  <span className="text-sm font-bold ml-0.5">{userStreak > 30 ? '30+' : userStreak}</span>
+                  <span className="text-sm font-bold ml-0.5">{userStreak}</span>
                 </button>
                 
                 {/* ⚖️ ICONO DE LEYES */}
@@ -521,10 +521,10 @@ export default function HeaderES() {
                   }}
                   className={`hidden lg:flex items-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors ${userStreak === 0 ? 'opacity-60' : ''}`}
                   aria-label="Ver ranking de rachas"
-                  title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak > 30 ? '30+' : userStreak} días consecutivos`}
+                  title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak} días consecutivos`}
                 >
                   <span className={`text-lg ${userStreak === 0 ? 'grayscale' : ''}`}>🔥</span>
-                  <span className="text-sm font-bold ml-1">{userStreak > 30 ? '30+' : userStreak}</span>
+                  <span className="text-sm font-bold ml-1">{userStreak}</span>
                 </button>
               )}
 
