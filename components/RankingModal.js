@@ -34,120 +34,67 @@ export default function RankingModal({ isOpen, onClose }) {
 
   const loadRanking = async () => {
     setLoading(true)
+    // Limpiar estado anterior para evitar mostrar datos viejos
+    setRanking([])
+    setCurrentUserRank(null)
+
     try {
-      let dateFilter = ''
+      // ⚡ OPTIMIZADO: Calcular fechas usando UTC consistentemente (arregla bug #1)
+      let startDate, endDate = null
       const now = new Date()
-      
+
       if (timeFilter === 'yesterday') {
-        // Solo ayer - desde las 00:00 de ayer hasta las 23:59 de ayer
         const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        yesterday.setHours(0, 0, 0, 0)
-        const yesterdayEnd = new Date()
-        yesterdayEnd.setDate(yesterdayEnd.getDate() - 1)
-        yesterdayEnd.setHours(23, 59, 59, 999)
-        
-        dateFilter = { start: yesterday.toISOString(), end: yesterdayEnd.toISOString() }
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1)
+        yesterday.setUTCHours(0, 0, 0, 0)
+        startDate = yesterday.toISOString()
+
+        const yesterdayEnd = new Date(yesterday)
+        yesterdayEnd.setUTCHours(23, 59, 59, 999)
+        endDate = yesterdayEnd.toISOString()
       } else if (timeFilter === 'today') {
-        // Solo hoy - desde las 00:00 hasta las 23:59 de hoy
         const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const todayEnd = new Date()
-        todayEnd.setHours(23, 59, 59, 999)
-        dateFilter = { start: today.toISOString(), end: todayEnd.toISOString() }
+        today.setUTCHours(0, 0, 0, 0)
+        startDate = today.toISOString()
+
+        const todayEnd = new Date(today)
+        todayEnd.setUTCHours(23, 59, 59, 999)
+        endDate = todayEnd.toISOString()
       } else if (timeFilter === 'week') {
-        // Esta semana - desde el lunes 0:00
+        // Esta semana - desde el lunes 0:00 UTC (arregla bug #1)
         const monday = new Date()
-        const dayOfWeek = monday.getDay() === 0 ? 6 : monday.getDay() - 1 // Domingo = 6, Lunes = 0
-        monday.setDate(monday.getDate() - dayOfWeek)
-        monday.setHours(0, 0, 0, 0)
-        dateFilter = monday.toISOString()
+        const dayOfWeek = monday.getUTCDay() === 0 ? 6 : monday.getUTCDay() - 1
+        monday.setUTCDate(monday.getUTCDate() - dayOfWeek)
+        monday.setUTCHours(0, 0, 0, 0)
+        startDate = monday.toISOString()
+        // endDate = null → hasta ahora
       } else if (timeFilter === 'month') {
-        // Este mes - desde el día 1 del mes actual (en UTC)
-        const firstDayOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0))
-        dateFilter = firstDayOfMonth.toISOString()
+        // Este mes - desde el día 1 del mes actual en UTC
+        const firstDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0))
+        startDate = firstDay.toISOString()
+        // endDate = null → hasta ahora
       }
 
-      // Consulta para obtener ranking de usuarios - SIN USER_PROFILES (RLS bloqueado)
-      // Cuenta TODAS las preguntas (de tests completos E incompletos)
-      let query = supabase
-        .from('test_questions')
-        .select(`
-          tests!inner(user_id),
-          is_correct,
-          created_at
-        `)
-        .order('created_at', { ascending: false })
+      console.log(`🔍 Cargando ranking ${timeFilter}:`, { startDate, endDate })
 
-      if (dateFilter) {
-        if (typeof dateFilter === 'object' && dateFilter.start && dateFilter.end) {
-          // For "today" filter with start and end range
-          query = query.gte('created_at', dateFilter.start).lte('created_at', dateFilter.end)
-        } else {
-          // For other filters with just a start date
-          query = query.gte('created_at', dateFilter)
-        }
-      }
-
-      const { data: responses, error } = await query.limit(100000)
+      // ⚡ OPTIMIZADO: Usar función RPC en lugar de procesar 100k respuestas (arregla bug #3)
+      const { data: rankingData, error } = await supabase.rpc('get_ranking_for_period', {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_min_questions: 5,
+        p_limit: 100
+      })
 
       if (error) {
         console.error('Error loading ranking:', error)
         return
       }
 
-      // Procesar datos para calcular estadísticas por usuario
-      const userStats = {}
-      let processedResponses = 0
-      let skippedResponses = 0
-      
-      responses?.forEach(response => {
-        const userId = response.tests?.user_id
-        if (!userId) {
-          skippedResponses++
-          return
-        }
-        
-        processedResponses++
-        if (!userStats[userId]) {
-          userStats[userId] = {
-            userId,
-            totalQuestions: 0,
-            correctAnswers: 0,
-            accuracy: 0
-          }
-        }
-        
-        userStats[userId].totalQuestions++
-        if (response.is_correct) {
-          userStats[userId].correctAnswers++
-        }
-      })
-
-      console.log(`🔍 DEBUG ${timeFilter} - PROCESSING DETAILS:`, {
-        totalResponsesReceived: responses?.length,
-        processedResponses,
-        skippedResponses,
-        uniqueUsersInStats: Object.keys(userStats).length,
-        sampleResponse: responses?.[0]
-      })
-
-      // Calcular accuracy y filtrar usuarios con al menos 1 pregunta
-      const rankingData = Object.values(userStats)
-        .filter(user => user.totalQuestions >= 1)
-        .map(user => ({
-          ...user,
-          accuracy: Math.round((user.correctAnswers / user.totalQuestions) * 100)
-        }))
-        .sort((a, b) => {
-          // Ordenar por accuracy, luego por total de preguntas
-          if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy
-          return b.totalQuestions - a.totalQuestions
-        })
+      console.log(`📊 Ranking ${timeFilter} obtenido:`, rankingData?.length, 'usuarios')
 
       // Obtener nombres de usuarios - todos los usuarios del ranking
-      const topUsers = rankingData // Mostrar todos, no limitar a 10
-      const userIds = topUsers.map(u => u.userId)
+      const topUsers = rankingData || []
+      const userIds = topUsers.map(u => u.user_id)
       
       // Incluir usuario actual si no está en el ranking
       if (user && !userIds.includes(user.id)) {
@@ -219,26 +166,53 @@ export default function RankingModal({ isOpen, onClose }) {
       // Combinar datos con nombres reales
       const finalRanking = topUsers.map((stats, index) => {
         return {
-          ...stats,
+          userId: stats.user_id,
+          totalQuestions: Number(stats.total_questions),
+          correctAnswers: Number(stats.correct_answers),
+          accuracy: Number(stats.accuracy),
           rank: index + 1,
-          name: getDisplayName(stats.userId),
-          isCurrentUser: stats.userId === user?.id
+          name: getDisplayName(stats.user_id),
+          isCurrentUser: stats.user_id === user?.id
         }
       })
 
       setRanking(finalRanking)
-      
-      // Encontrar posición del usuario actual en todo el ranking
-      const allRankingUserRank = rankingData.findIndex(u => u.userId === user?.id) + 1
-      if (allRankingUserRank > 0) {
-        const userStats = rankingData.find(u => u.userId === user?.id)
-        const userDisplayName = getDisplayName(user?.id)
-        setCurrentUserRank({
-          ...userStats,
-          rank: allRankingUserRank,
-          name: userDisplayName,
-          isCurrentUser: true
+
+      // Obtener posición del usuario actual (incluso si no está en top 100)
+      const userInRanking = finalRanking.find(u => u.userId === user?.id)
+      if (userInRanking) {
+        setCurrentUserRank(userInRanking)
+      } else if (user) {
+        // Usuario no está en top 100, usar función RPC para obtener su posición exacta
+        const { data: userPosition, error: positionError } = await supabase.rpc('get_user_ranking_position', {
+          p_user_id: user.id,
+          p_start_date: startDate,
+          p_end_date: endDate,
+          p_min_questions: 5
         })
+
+        if (positionError) {
+          console.error('Error getting user position:', positionError)
+          // Limpiar estado antiguo cuando hay error
+          setCurrentUserRank(null)
+        } else if (userPosition && userPosition.length > 0) {
+          const pos = userPosition[0]
+          setCurrentUserRank({
+            userId: user.id,
+            totalQuestions: Number(pos.total_questions),
+            correctAnswers: Number(pos.correct_answers),
+            accuracy: Number(pos.accuracy),
+            rank: Number(pos.user_rank),
+            name: getDisplayName(user.id),
+            isCurrentUser: true
+          })
+        } else {
+          // Usuario no califica para el ranking (< 5 preguntas)
+          setCurrentUserRank(null)
+        }
+      } else {
+        // No hay usuario logueado
+        setCurrentUserRank(null)
       }
 
     } catch (error) {
