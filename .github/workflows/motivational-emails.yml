@@ -1,7 +1,8 @@
-name: 📧 Motivational Emails Scheduler
+name: 📧 Motivational Emails Scheduler (DESACTIVADO)
 on:
-  schedule:
-    - cron: '0 */6 * * *'
+  # 🚫 DESACTIVADO: Solo avisos en campana, no correos automáticos
+  # schedule:
+  #   - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       reason:

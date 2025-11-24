@@ -1560,55 +1560,12 @@ export function useIntelligentNotifications() {
         return true
       })
 
-      // Filtrar notificaciones leídas y descartadas  
+      // Filtrar notificaciones leídas y descartadas
       const unreadMotivationalNotifs = filterUnreadNotifications(motivationalNotifsWithoutCooldown)
-      
-      // 🆕 ENVIAR AUTOMÁTICAMENTE LAS NOTIFICACIONES NUEVAS (push + email fallback)
-      for (const notification of unreadMotivationalNotifs) {
-        // Solo enviar si es realmente nueva (no la hemos visto antes)
-        const notificationId = `${notification.type}-${notification.timestamp || Date.now()}`
-        const hasBeenSent = localStorage.getItem(`sent_notification_${notificationId}`)
-        
-        if (!hasBeenSent) {
-          // Validar que la notificación tiene todos los campos requeridos
-          if (!notification?.type || !notification?.title || !notification?.body) {
-            const errorData = {
-              type: notification?.type || 'MISSING',
-              title: notification?.title || 'MISSING', 
-              body: notification?.body || 'MISSING',
-              userId: user.id,
-              userEmail: user.email
-            }
-            
-            console.warn('⚠️ Notificación incompleta, saltando:', errorData)
-            
-            // 🚨 ENVIAR LOG DE ERROR A VERCEL para monitoreo
-            try {
-              await fetch('/api/log-notification-error', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  error: 'INCOMPLETE_NOTIFICATION',
-                  details: errorData,
-                  timestamp: new Date().toISOString()
-                })
-              })
-            } catch (logError) {
-              console.error('Error logging to Vercel:', logError)
-            }
-            
-            continue
-          }
-          
-          try {
-            await sendNotificationWithFallback(user, notification)
-            // Marcar como enviada para no repetir
-            localStorage.setItem(`sent_notification_${notificationId}`, 'true')
-          } catch (error) {
-            console.error('❌ Error enviando notificación motivacional:', error)
-          }
-        }
-      }
+
+      // 🚫 DESACTIVADO: No enviar emails automáticamente - solo mostrar en campana
+      // Las notificaciones motivacionales ahora son SOLO avisos en la interfaz
+      console.log(`📢 ${unreadMotivationalNotifs.length} notificaciones motivacionales generadas (solo campana, sin emails)`)
       
       setMotivationalNotifications(unreadMotivationalNotifs)
       return unreadMotivationalNotifs
