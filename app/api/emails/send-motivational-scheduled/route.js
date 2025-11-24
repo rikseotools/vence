@@ -150,11 +150,23 @@ console.log('🔐 Environment check:', {
 
 export async function POST(request) {
   try {
+    // 🚫 DESACTIVADO PERMANENTEMENTE: Sistema de emails motivacionales deshabilitado
+    // Las notificaciones motivacionales ahora SOLO aparecen en la campana de la interfaz
+    console.log('🚫 Endpoint de emails motivacionales DESACTIVADO - sin emails automáticos')
+    return NextResponse.json({
+      success: true,
+      disabled: true,
+      message: '🚫 Sistema de emails motivacionales desactivado. Solo notificaciones en campana.',
+      results: { usersAnalyzed: 0, emailsSent: 0, errors: [], notifications: [] }
+    })
+
+    // 🚨 CÓDIGO ANTIGUO DESACTIVADO - TODO EL RESTO DEL ENDPOINT INACCESIBLE
+    /*
     // 🚨 PAUSA TEMPORAL: Evitar spam mientras solucionamos
     if (process.env.PAUSE_MOTIVATIONAL_EMAILS === 'true') {
       console.log('⏸️ Emails motivacionales pausados temporalmente')
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: 'Emails motivacionales pausados por mantenimiento',
         results: { usersAnalyzed: 0, emailsSent: 0, errors: [], notifications: [] }
       })
@@ -661,5 +673,16 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
   } catch (error) {
     console.error('❌ Error en sendMotivationalEmail:', error)
     return { success: false, error: error.message }
+  }
+}
+*/
+  } catch (error) {
+    console.error('❌ Error en endpoint desactivado:', error)
+    return NextResponse.json({
+      success: true,
+      disabled: true,
+      message: '🚫 Endpoint desactivado',
+      error: error.message
+    })
   }
 }

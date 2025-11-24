@@ -10,8 +10,18 @@ const supabase = createClient(
 
 export async function POST(request) {
   try {
+    // 🚫 DESACTIVADO PERMANENTEMENTE: Emails motivacionales ahora SOLO aparecen en campana
+    console.log('🚫 API send-motivational-email DESACTIVADA - sin emails automáticos')
+    return NextResponse.json({
+      success: false,
+      disabled: true,
+      message: '🚫 Sistema de emails motivacionales desactivado. Solo notificaciones en campana.'
+    }, { status: 200 })
+
+    // 🚨 CÓDIGO ANTIGUO DESACTIVADO - TODO EL RESTO INACCESIBLE
+    /*
     console.log('🎯 API send-motivational-email iniciada')
-    
+
     const body = await request.json()
     console.log('📧 Datos recibidos:', JSON.stringify(body, null, 2))
     
@@ -316,5 +326,16 @@ function generateActionUrl(actionType, messageType, userId = null) {
     // Por defecto
     default:
       return 'https://vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
+  }
+}
+*/
+  } catch (error) {
+    console.error('❌ Error en endpoint desactivado:', error)
+    return NextResponse.json({
+      success: false,
+      disabled: true,
+      message: '🚫 Endpoint desactivado',
+      error: error.message
+    }, { status: 200 })
   }
 }
