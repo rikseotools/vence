@@ -159,8 +159,18 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
     if (!file) return
 
     // Validar tipo de archivo
-    if (!file.type.startsWith('image/')) {
-      alert('Por favor selecciona una imagen válida')
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    const fileType = file.type.toLowerCase()
+
+    if (!allowedTypes.includes(fileType)) {
+      // Si es AVIF o HEIC, dar mensaje específico
+      if (fileType === 'image/avif' || fileType === 'image/heic' || fileType === 'image/heif') {
+        alert('Este formato de imagen aún no está soportado. Por favor usa JPG, PNG o GIF.')
+      } else if (!fileType.startsWith('image/')) {
+        alert('Por favor selecciona una imagen válida')
+      } else {
+        alert(`Formato no soportado (${fileType}). Por favor usa JPG, PNG o GIF.`)
+      }
       return
     }
 
