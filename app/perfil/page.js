@@ -57,23 +57,108 @@ function PerfilPageContent() {
     daily_study_hours: ''
   })
 
-  // Oposiciones disponibles
+  // Oposiciones disponibles - SINCRONIZADO CON ONBOARDING MODAL
   const oposiciones = [
     { value: '', label: 'Ninguna seleccionada' },
-    { 
-      value: 'auxiliar-administrativo-estado', 
+    // TOP MÁS POPULARES
+    {
+      value: 'auxiliar_administrativo_estado',
       label: 'Auxiliar Administrativo del Estado',
       data: {
         name: 'Auxiliar Administrativo del Estado',
-        slug: 'auxiliar-administrativo-estado'
+        slug: 'auxiliar-administrativo-estado',
+        categoria: 'C2',
+        administracion: 'Estado'
       }
     },
-    { 
-      value: 'auxiliar_administrativo_estado', 
-      label: 'Auxiliar Administrativo del Estado (BD)',
+    {
+      value: 'auxiliar_enfermeria',
+      label: 'Auxiliar de Enfermería (TCAE)',
       data: {
-        name: 'Auxiliar Administrativo del Estado',
-        slug: 'auxiliar-administrativo-estado'
+        name: 'Auxiliar de Enfermería (TCAE)',
+        slug: 'auxiliar-enfermeria',
+        categoria: 'C2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
+      value: 'administrativo_estado',
+      label: 'Administrativo del Estado',
+      data: {
+        name: 'Administrativo del Estado',
+        slug: 'administrativo-estado',
+        categoria: 'C1',
+        administracion: 'Estado'
+      }
+    },
+    {
+      value: 'maestro_primaria',
+      label: 'Maestro de Educación Primaria',
+      data: {
+        name: 'Maestro de Educación Primaria',
+        slug: 'maestro-primaria',
+        categoria: 'A2',
+        administracion: 'Educación'
+      }
+    },
+    {
+      value: 'maestro_infantil',
+      label: 'Maestro de Educación Infantil',
+      data: {
+        name: 'Maestro de Educación Infantil',
+        slug: 'maestro-infantil',
+        categoria: 'A2',
+        administracion: 'Educación'
+      }
+    },
+    {
+      value: 'policia_nacional',
+      label: 'Policía Nacional (Escala Básica)',
+      data: {
+        name: 'Policía Nacional (Escala Básica)',
+        slug: 'policia-nacional',
+        categoria: 'C1',
+        administracion: 'Estado'
+      }
+    },
+    {
+      value: 'guardia_civil',
+      label: 'Guardia Civil',
+      data: {
+        name: 'Guardia Civil',
+        slug: 'guardia-civil',
+        categoria: 'C1',
+        administracion: 'Estado'
+      }
+    },
+    {
+      value: 'enfermero',
+      label: 'Enfermero/a',
+      data: {
+        name: 'Enfermero/a',
+        slug: 'enfermero',
+        categoria: 'A2',
+        administracion: 'Sanitaria'
+      }
+    },
+    {
+      value: 'tramitacion_procesal',
+      label: 'Tramitación Procesal y Administrativa',
+      data: {
+        name: 'Tramitación Procesal y Administrativa',
+        slug: 'tramitacion-procesal',
+        categoria: 'C2',
+        administracion: 'Justicia'
+      }
+    },
+    {
+      value: 'gestion_procesal',
+      label: 'Gestión Procesal y Administrativa',
+      data: {
+        name: 'Gestión Procesal y Administrativa',
+        slug: 'gestion-procesal',
+        categoria: 'C1',
+        administracion: 'Justicia'
       }
     }
   ]
@@ -222,7 +307,11 @@ function PerfilPageContent() {
           setProfile(profile)
 
           // ✅ SINCRONIZAR CON userOposicion del hook
-          const currentOposicion = userOposicion?.slug || profile.target_oposicion || ''
+          // Migrar valor antiguo si es necesario
+          let currentOposicion = userOposicion?.slug || profile.target_oposicion || ''
+          if (currentOposicion === 'auxiliar-administrativo-estado') {
+            currentOposicion = 'auxiliar_administrativo_estado' // Migrar al nuevo formato
+          }
 
           setFormData({
             nickname: profile.nickname || getFirstName(user.user_metadata?.full_name),
