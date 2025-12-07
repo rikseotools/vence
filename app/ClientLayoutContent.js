@@ -4,8 +4,10 @@ import HeaderES from './Header'
 import FooterES from './Footer'
 import Breadcrumbs from '../components/Breadcrumbs'
 import PushNotificationManager from '../components/PushNotificationManager'
+import OnboardingModal from '../components/OnboardingModal'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
+import { useOnboarding } from '../hooks/useOnboarding'
 
 // Configuración de temas para breadcrumbs dinámicos
 const TEMAS_CONFIG = {
@@ -35,7 +37,8 @@ const TEMAS_CONFIG = {
 export default function ClientLayoutContent({ children }) {
   const { user, loading } = useAuth()
   const pathname = usePathname()
-  
+  const { showModal, handleComplete, handleSkip } = useOnboarding()
+
   // Función para generar labels dinámicos de breadcrumbs
   const getBreadcrumbLabels = () => {
     return {
@@ -56,21 +59,31 @@ export default function ClientLayoutContent({ children }) {
     <>
       <HeaderES />
       {/* Breadcrumbs solo para usuarios no logueados Y solo en páginas que no tengan breadcrumbs específicos */}
-      {!user && !loading && 
-       !pathname.startsWith('/leyes') && 
-       !pathname.startsWith('/teoria') && 
-       !pathname.includes('/constitucion-titulos') && 
+      {!user && !loading &&
+       !pathname.startsWith('/leyes') &&
+       !pathname.startsWith('/teoria') &&
+       !pathname.includes('/constitucion-titulos') &&
        !pathname.includes('/test-de-la-constitucion-espanola-de-1978') && (
-        <Breadcrumbs 
+        <Breadcrumbs
           pathname={pathname}
           getBreadcrumbLabels={getBreadcrumbLabels}
         />
       )}
       {children}
       <FooterES />
-      
+
       {/* Manager de notificaciones solo para usuarios logueados */}
       {user && <PushNotificationManager />}
+
+      {/* Modal de Onboarding solo para usuarios logueados */}
+      {user && (
+        <OnboardingModal
+          isOpen={showModal}
+          onComplete={handleComplete}
+          onSkip={handleSkip}
+          user={user}
+        />
+      )}
     </>
   )
 }
