@@ -254,6 +254,75 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                   </div>
                 </div>
 
+                {/* Evolución de precisión */}
+                {(profileData.accuracy_this_week || profileData.accuracy_last_month || profileData.accuracy_three_months_ago) && (
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                    <h4 className="font-bold text-gray-900 dark:text-white mb-3">📈 Evolución de Precisión</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="text-center">
+                        <p className="text-lg font-bold">
+                          {profileData.accuracy_this_week ? (
+                            <span className="text-blue-600">{profileData.accuracy_this_week}%</span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500">Esta semana</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold">
+                          {profileData.accuracy_last_month ? (
+                            <span className={
+                              profileData.accuracy_last_month < profileData.accuracy_this_week
+                                ? "text-green-600"
+                                : "text-gray-600"
+                            }>
+                              {profileData.accuracy_last_month}%
+                              {profileData.accuracy_this_week && (
+                                <span className="text-xs ml-1">
+                                  {profileData.accuracy_this_week > profileData.accuracy_last_month ? '↑' :
+                                   profileData.accuracy_this_week < profileData.accuracy_last_month ? '↓' : ''}
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500">Mes pasado</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-bold">
+                          {profileData.accuracy_three_months_ago ? (
+                            <span className="text-gray-600">{profileData.accuracy_three_months_ago}%</span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500">Hace 3 meses</p>
+                      </div>
+                    </div>
+                    {/* Indicador de tendencia */}
+                    {profileData.accuracy_this_week && profileData.accuracy_last_month && (
+                      <div className="mt-3 text-center">
+                        <p className="text-xs text-gray-600">
+                          {profileData.accuracy_this_week > profileData.accuracy_last_month ? (
+                            <span className="text-green-600 font-medium">
+                              📈 Mejorando (+{(profileData.accuracy_this_week - profileData.accuracy_last_month).toFixed(1)}%)
+                            </span>
+                          ) : profileData.accuracy_this_week < profileData.accuracy_last_month ? (
+                            <span className="text-red-600 font-medium">
+                              📉 Bajando ({(profileData.accuracy_this_week - profileData.accuracy_last_month).toFixed(1)}%)
+                            </span>
+                          ) : (
+                            <span className="text-gray-600">➡️ Estable</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Actividad de hoy */}
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                   <h4 className="font-bold text-gray-900 dark:text-white mb-3">📚 Actividad de Hoy</h4>
