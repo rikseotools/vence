@@ -65,14 +65,60 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
       improvement_during_test: allAnswers.length >= 6 ? allAnswers.slice(-3).filter(a => a.isCorrect).length > allAnswers.slice(0, 3).filter(a => a.isCorrect).length : false,
       interaction_efficiency: allAnswers.length > 0 ? Math.round((allAnswers.filter(a => (a.interactions || 1) === 1).length / allAnswers.length) * 100) : 0
     }
-    
+
+    // 🔴 NUEVA VALIDACIÓN: Verificar que todas las preguntas se guardaron antes de completar
+    const { data: savedQuestions, error: verifyError } = await supabase
+      .from('test_questions')
+      .select('question_order')
+      .eq('test_id', testId)
+
+    if (verifyError) {
+      console.error('❌ Error verificando preguntas guardadas:', verifyError)
+    }
+
+    const savedCount = savedQuestions?.length || 0
+    const expectedCount = questions.length
+
+    // 🔴 Detectar si hay preguntas perdidas
+    if (savedCount < expectedCount) {
+      console.warn('⚠️ TEST INCOMPLETO DETECTADO', {
+        testId,
+        preguntasGuardadas: savedCount,
+        preguntasEsperadas: expectedCount,
+        preguntasPerdidas: expectedCount - savedCount,
+        porcentajePerdido: Math.round(((expectedCount - savedCount) / expectedCount) * 100) + '%'
+      })
+
+      // Identificar exactamente qué preguntas faltan
+      const savedOrders = new Set(savedQuestions?.map(q => q.question_order) || [])
+      const missingOrders = []
+      for (let i = 1; i <= expectedCount; i++) {
+        if (!savedOrders.has(i)) {
+          missingOrders.push(i)
+        }
+      }
+
+      if (missingOrders.length > 0) {
+        console.error('❌ Números de pregunta faltantes:', missingOrders)
+
+        // TODO: Aquí podríamos intentar recuperar las preguntas desde localStorage
+        // if (typeof window !== 'undefined') {
+        //   const backup = new TestBackupSystem(testId)
+        //   const unsynced = backup.getUnsyncedAnswers()
+        //   if (unsynced.length > 0) {
+        //     console.log('💾 Intentando recuperar desde backup local...')
+        //   }
+        // }
+      }
+    }
+
     const { error } = await supabase
       .from('tests')
       .update({
         score: finalScore,
-        total_questions: questions.length, // 🐛 FIX: Actualizar total_questions con el valor real
+        total_questions: savedCount, // 🔴 FIX: Usar el número real de preguntas guardadas, no las esperadas
         completed_at: new Date().toISOString(),
-        is_completed: true,
+        is_completed: savedCount >= expectedCount, // 🔴 FIX: Solo marcar como completado si se guardaron todas
         total_time_seconds: totalTime,
         average_time_per_question: avgTimePerQuestion,
         detailed_analytics: JSON.stringify({

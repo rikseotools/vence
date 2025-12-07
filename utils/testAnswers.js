@@ -1,6 +1,7 @@
-// utils/testAnswers.js - ACTUALIZADO CON FIX ANTI-DUPLICADOS
+// utils/testAnswers.js - ACTUALIZADO CON FIX ANTI-DUPLICADOS Y SISTEMA DE REINTENTOS
 import { getSupabaseClient } from '../lib/supabase'
 import { getDeviceInfo } from './testSession.js'
+import { TestBackupSystem } from './testBackup'
 
 const supabase = getSupabaseClient()
 
@@ -280,4 +281,152 @@ export const createDetailedAnswer = (currentQuestion, answerIndex, correctAnswer
     confidence: confidence,
     interactions: interactions
   }
+}
+
+// 🔄 NUEVA FUNCIÓN: Guardar con reintentos automáticos
+export const saveDetailedAnswerWithRetry = async (params, maxRetries = 3) => {
+  const {
+    sessionId,
+    questionData,
+    answerData,
+    tema,
+    confidenceLevel,
+    interactionCount,
+    questionStartTime,
+    firstInteractionTime,
+    interactionEvents,
+    mouseEvents,
+    scrollEvents
+  } = params;
+
+  let attempts = 0;
+  let lastError = null;
+  let testBackup = null;
+
+  // Inicializar sistema de backup si tenemos un sessionId
+  if (sessionId && typeof window !== 'undefined') {
+    testBackup = new TestBackupSystem(sessionId);
+
+    // Guardar en local primero (como respaldo)
+    const backupData = {
+      questionData,
+      answerData,
+      tema,
+      confidenceLevel,
+      interactionCount,
+      timeData: {
+        questionStartTime,
+        firstInteractionTime
+      }
+    };
+
+    testBackup.saveLocally(answerData.questionIndex + 1, backupData);
+    console.log('💾 Respuesta guardada localmente como respaldo');
+  }
+
+  while (attempts < maxRetries) {
+    try {
+      const result = await saveDetailedAnswer(
+        sessionId,
+        questionData,
+        answerData,
+        tema,
+        confidenceLevel,
+        interactionCount,
+        questionStartTime,
+        firstInteractionTime,
+        interactionEvents,
+        mouseEvents,
+        scrollEvents
+      );
+
+      if (result.success === true) {
+        // Marcar como sincronizado en el backup local
+        if (testBackup) {
+          testBackup.markAsSynced(answerData.questionIndex + 1);
+        }
+        console.log('✅ Respuesta guardada exitosamente en intento', attempts + 1);
+        return result;
+      }
+
+      // Si es duplicado, no reintentar
+      if (result.action === 'prevented_duplicate') {
+        console.warn('⚠️ Respuesta duplicada detectada, no se reintentará');
+        return result;
+      }
+
+      lastError = result;
+      attempts++;
+
+      if (attempts < maxRetries) {
+        // Backoff exponencial: 1s, 2s, 4s
+        const delay = Math.pow(2, attempts - 1) * 1000;
+        console.log(`🔄 Reintentando guardado (${attempts}/${maxRetries}) en ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+    } catch (error) {
+      lastError = error;
+      attempts++;
+      console.error(`❌ Error en intento ${attempts}:`, error);
+
+      if (attempts < maxRetries) {
+        const delay = Math.pow(2, attempts - 1) * 1000;
+        console.log(`🔄 Reintentando después de error (${attempts}/${maxRetries}) en ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  // Si todos los reintentos fallan
+  console.error('❌ Todos los reintentos fallaron después de', attempts, 'intentos');
+  return {
+    success: false,
+    error: lastError,
+    attempts: attempts,
+    action: 'all_retries_failed',
+    hasLocalBackup: testBackup !== null
+  };
+}
+
+// 🔄 NUEVA FUNCIÓN: Sincronizar respuestas pendientes desde backup local
+export const syncPendingAnswers = async (sessionId) => {
+  if (typeof window === 'undefined' || !sessionId) {
+    return { success: false, error: 'No se puede sincronizar en el servidor' };
+  }
+
+  const testBackup = new TestBackupSystem(sessionId);
+  const stats = testBackup.getStats();
+
+  if (stats.unsynced === 0) {
+    console.log('✅ No hay respuestas pendientes de sincronizar');
+    return { success: true, synced: 0 };
+  }
+
+  console.log(`🔄 Sincronizando ${stats.unsynced} respuestas pendientes...`);
+
+  const results = await testBackup.syncPending(async (answer) => {
+    // Reconstruir los parámetros desde el backup
+    return await saveDetailedAnswer(
+      sessionId,
+      answer.questionData,
+      answer.answerData,
+      answer.tema,
+      answer.confidenceLevel,
+      answer.interactionCount,
+      answer.timeData?.questionStartTime,
+      answer.timeData?.firstInteractionTime,
+      [], // No tenemos eventos guardados
+      [],
+      []
+    );
+  });
+
+  console.log(`✅ Sincronización completa: ${results.success} exitosas, ${results.failed} fallidas`);
+
+  if (results.failed > 0) {
+    console.warn('⚠️ Algunas respuestas no pudieron sincronizarse:', results.errors);
+  }
+
+  return results;
 }

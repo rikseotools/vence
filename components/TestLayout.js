@@ -499,19 +499,20 @@ export default function TestLayout({
           if (session) {
             console.log('💾 Guardando respuesta ÚNICA en sesión:', session.id)
             const saveSuccess = await saveDetailedAnswer(
-              session.id, 
-              currentQ, 
-              detailedAnswer, 
-              tema, 
-              newConfidence, 
-              interactionCount, 
-              questionStartTime, 
-              firstInteractionTime, 
+              session.id,
+              currentQ,
+              detailedAnswer,
+              tema,
+              newConfidence,
+              interactionCount,
+              questionStartTime,
+              firstInteractionTime,
               testTracker.interactionEvents,
               testTracker.mouseEvents,
               testTracker.scrollEvents
             )
-            if (saveSuccess && saveSuccess.question_id) {
+            // 🔴 FIX CRÍTICO: Verificar success === true, no solo question_id
+            if (saveSuccess && saveSuccess.success === true && saveSuccess.question_id) {
               setCurrentQuestionUuid(saveSuccess.question_id)
               // Guardar en localStorage para detección de feedback
               try {
@@ -522,7 +523,20 @@ export default function TestLayout({
               await updateTestScore(session.id, newScore)
               console.log('✅ Respuesta ÚNICA guardada y puntuación actualizada')
             } else {
-              console.error('❌ Error guardando respuesta')
+              // 🔴 NUEVO: Manejo mejorado de errores
+              console.error('❌ Error guardando respuesta:', {
+                success: saveSuccess?.success,
+                action: saveSuccess?.action,
+                error: saveSuccess?.error
+              })
+
+              // Si fue un duplicado, no es un error grave
+              if (saveSuccess?.action === 'prevented_duplicate') {
+                console.warn('⚠️ Respuesta duplicada detectada, continuando...')
+              } else {
+                // TODO: Aquí podríamos mostrar el modal de error
+                console.error('❌ Fallo crítico al guardar respuesta')
+              }
             }
           } else {
             console.error('❌ No se pudo crear/obtener sesión de test')
