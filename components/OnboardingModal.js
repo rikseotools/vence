@@ -557,7 +557,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
 
   // 💾 FUNCIÓN CLAVE: Guardar campo individual progresivamente
   const saveField = async (fieldName, value) => {
-    if (!user?.id || !profileLoaded) return
+    if (!user?.id || !profileLoaded) return false
 
     try {
       setSaving(fieldName)
@@ -578,9 +578,11 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       if (error) throw error
 
       console.log(`✅ ${fieldName} guardado exitosamente`)
+      return true // ✅ Devolver true si tuvo éxito
     } catch (err) {
       console.error(`Error guardando ${fieldName}:`, err)
       // No mostrar error al usuario, es guardado en background
+      return false // ❌ Devolver false si falló
     } finally {
       setSaving(null)
     }
@@ -733,16 +735,16 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       parseInt(formData.age) >= 16 &&
       parseInt(formData.age) <= 100 &&
       formData.gender &&
-      formData.daily_study_hours &&
+      // formData.daily_study_hours && // ❌ REMOVIDO - Campo opcional
       formData.ciudad &&
       formData.ciudad.trim().length > 0
     )
   }
 
-  // Completar onboarding - Solo marca como completado (los datos ya están guardados)
+  // Completar onboarding - MEJORADO: Verifica que todos los campos estén guardados
   const handleComplete = async () => {
     if (!isFormValid()) {
-      setError('Por favor, completa todos los campos')
+      setError('Por favor, completa todos los campos obligatorios')
       return
     }
 
@@ -750,7 +752,72 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       setLoading(true)
       setError(null)
 
-      // Solo marcar onboarding como completado
+      // 🔴 NUEVO: Verificar que los campos críticos estén en BD antes de marcar completado
+      const { data: currentProfile, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('target_oposicion, age, gender, ciudad')
+        .eq('id', user.id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      // Validar que los campos obligatorios estén guardados
+      const missingFields = []
+      if (!currentProfile.target_oposicion) missingFields.push('oposición')
+      if (!currentProfile.age) missingFields.push('edad')
+      if (!currentProfile.gender) missingFields.push('género')
+      if (!currentProfile.ciudad) missingFields.push('ciudad')
+
+      if (missingFields.length > 0) {
+        console.error('❌ Campos faltantes en BD:', missingFields)
+        setError(`Error: No se guardaron algunos campos (${missingFields.join(', ')}). Por favor, intenta nuevamente.`)
+
+        // 🔴 NUEVO: Intentar guardar los campos faltantes
+        const updates = {}
+        if (!currentProfile.target_oposicion && formData.selectedOposicion) {
+          updates.target_oposicion = formData.selectedOposicion
+          updates.target_oposicion_data = formData.oposicionData
+        }
+        if (!currentProfile.age && formData.age) {
+          updates.age = parseInt(formData.age)
+        }
+        if (!currentProfile.gender && formData.gender) {
+          updates.gender = formData.gender
+        }
+        if (!currentProfile.ciudad && formData.ciudad) {
+          updates.ciudad = formData.ciudad
+        }
+
+        // Si hay campos para actualizar, intentar guardarlos
+        if (Object.keys(updates).length > 0) {
+          console.log('🔄 Intentando guardar campos faltantes:', Object.keys(updates))
+          const { error: updateError } = await supabase
+            .from('user_profiles')
+            .update(updates)
+            .eq('id', user.id)
+
+          if (updateError) {
+            console.error('❌ Error guardando campos faltantes:', updateError)
+            throw new Error('No se pudieron guardar todos los datos. Por favor, recarga la página e intenta nuevamente.')
+          }
+          console.log('✅ Campos faltantes guardados exitosamente')
+        }
+      }
+
+      // Guardar daily_study_hours si está presente (opcional)
+      if (formData.daily_study_hours) {
+        const { error: hoursError } = await supabase
+          .from('user_profiles')
+          .update({ daily_study_hours: formData.daily_study_hours })
+          .eq('id', user.id)
+
+        if (hoursError) {
+          console.warn('⚠️ No se pudo guardar horas de estudio (opcional):', hoursError)
+          // No es crítico, continuar
+        }
+      }
+
+      // Ahora sí marcar onboarding como completado
       const { error } = await supabase
         .from('user_profiles')
         .update({
@@ -760,7 +827,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
 
       if (error) throw error
 
-      console.log('✅ Onboarding completado!')
+      console.log('✅ Onboarding completado con todos los campos verificados!')
       onComplete()
     } catch (err) {
       console.error('Error completando onboarding:', err)
@@ -1050,10 +1117,11 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
               )}
             </div>
 
-            {/* Horas de estudio */}
+            {/* Horas de estudio - OPCIONAL */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Horas de estudio al día *
+                Horas de estudio al día
+                <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
               </label>
               {formData.daily_study_hours && formData.daily_study_hours >= 1 && formData.daily_study_hours <= 12 && !editingHoras ? (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-2">

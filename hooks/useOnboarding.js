@@ -47,11 +47,12 @@ export function useOnboarding() {
       }
 
       // Verificar si necesita onboarding
+      // NOTA: daily_study_hours es OPCIONAL ahora
       const needsIt = !profile.target_oposicion ||
                       !profile.onboarding_completed_at ||
                       !profile.age ||
                       !profile.gender ||
-                      !profile.daily_study_hours ||
+                      // !profile.daily_study_hours || // ❌ REMOVIDO - Campo opcional
                       !profile.ciudad
 
       console.log('🎯 Onboarding check:', {
