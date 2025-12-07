@@ -1,6 +1,6 @@
 // app/perfil/page.js - CON PESTAÑAS Y EMAIL PREFERENCES
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AvatarChanger from '@/components/AvatarChanger'
@@ -56,6 +56,10 @@ function PerfilPageContent() {
     ciudad: '',
     daily_study_hours: ''
   })
+
+  // Estados para el selector de oposición con buscador
+  const [showOposicionSelector, setShowOposicionSelector] = useState(false)
+  const [oposicionSearchTerm, setOposicionSearchTerm] = useState('')
 
   // Oposiciones disponibles - SINCRONIZADO CON ONBOARDING MODAL
   const oposiciones = [
@@ -162,6 +166,19 @@ function PerfilPageContent() {
       }
     }
   ]
+
+  // Filtrar oposiciones por búsqueda
+  const filteredOposiciones = useMemo(() => {
+    const term = oposicionSearchTerm.toLowerCase().trim()
+    if (!term) return oposiciones.filter(op => op.value) // Excluir la opción vacía
+
+    return oposiciones.filter(op => {
+      if (!op.value) return false // Excluir la opción vacía
+      return op.label.toLowerCase().includes(term) ||
+             (op.data?.categoria && op.data.categoria.toLowerCase().includes(term)) ||
+             (op.data?.administracion && op.data.administracion.toLowerCase().includes(term))
+    })
+  }, [oposicionSearchTerm])
 
   // 🆕 DETECTAR TAB DESDE URL
   useEffect(() => {
@@ -1397,38 +1414,121 @@ function PerfilPageContent() {
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             🎯 Oposición Objetivo
                           </label>
-                          <select
-                            name="target_oposicion"
-                            value={formData.target_oposicion}
-                            onChange={handleInputChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          >
-                            {oposiciones.map(oposicion => (
-                              <option key={oposicion.value} value={oposicion.value}>
-                                {oposicion.label}
-                              </option>
-                            ))}
-                          </select>
+
+                          {/* Oposición seleccionada */}
+                          {formData.target_oposicion && !showOposicionSelector ? (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="text-blue-600 font-semibold text-sm">
+                                    ✓ {getSelectedOposicionName()}
+                                  </div>
+                                  {(() => {
+                                    const selectedOp = oposiciones.find(op => op.value === formData.target_oposicion)
+                                    return selectedOp?.data?.categoria && selectedOp?.data?.administracion ? (
+                                      <div className="text-xs text-gray-600 mt-1">
+                                        {selectedOp.data.categoria} · {selectedOp.data.administracion}
+                                      </div>
+                                    ) : null
+                                  })()}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowOposicionSelector(true)
+                                    setOposicionSearchTerm('')
+                                  }}
+                                  className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                                >
+                                  Cambiar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {/* Buscador */}
+                              <input
+                                type="text"
+                                placeholder="🔍 Buscar oposición..."
+                                value={oposicionSearchTerm}
+                                onChange={(e) => setOposicionSearchTerm(e.target.value)}
+                                className="w-full px-4 py-2 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              />
+
+                              {/* Lista de oposiciones */}
+                              <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                                {filteredOposiciones.length === 0 ? (
+                                  <div className="text-center py-4 text-gray-500">
+                                    No se encontraron oposiciones
+                                  </div>
+                                ) : (
+                                  <>
+                                    {/* Opción para quitar selección */}
+                                    {!formData.target_oposicion && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setFormData({...formData, target_oposicion: ''})
+                                          setShowOposicionSelector(false)
+                                          setOposicionSearchTerm('')
+                                        }}
+                                        className="w-full text-left p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all text-sm"
+                                      >
+                                        <div className="text-gray-600">
+                                          ❌ Ninguna seleccionada
+                                        </div>
+                                      </button>
+                                    )}
+
+                                    {/* Lista de oposiciones */}
+                                    {filteredOposiciones.map((op) => (
+                                      <button
+                                        key={op.value}
+                                        type="button"
+                                        onClick={() => {
+                                          setFormData({...formData, target_oposicion: op.value})
+                                          setShowOposicionSelector(false)
+                                          setOposicionSearchTerm('')
+                                        }}
+                                        className={`w-full text-left p-2 border rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-sm ${
+                                          formData.target_oposicion === op.value
+                                            ? 'border-blue-500 bg-blue-50'
+                                            : 'border-gray-200'
+                                        }`}
+                                      >
+                                        <div className="font-medium text-gray-900">
+                                          {op.label}
+                                        </div>
+                                        {op.data?.categoria && op.data?.administracion && (
+                                          <div className="text-xs text-gray-500 mt-1">
+                                            {op.data.categoria} · {op.data.administracion}
+                                          </div>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Cancelar si ya había una selección */}
+                              {formData.target_oposicion && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowOposicionSelector(false)
+                                    setOposicionSearchTerm('')
+                                  }}
+                                  className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                >
+                                  Cancelar
+                                </button>
+                              )}
+                            </>
+                          )}
+
                           <p className="text-xs text-gray-500 mt-1">
                             Selecciona la oposición que estás preparando
                           </p>
-
-                          {/* Mostrar oposición actual si está seleccionada */}
-                          {formData.target_oposicion && (
-                            <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-emerald-600">🎯</span>
-                                <div>
-                                  <div className="text-sm font-medium text-emerald-800">
-                                    Estudiando actualmente
-                                  </div>
-                                  <div className="text-sm text-emerald-700">
-                                    {getSelectedOposicionName()}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          )}
                         </div>
 
                         <div>
