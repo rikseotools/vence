@@ -362,9 +362,15 @@ function PerfilPageContent() {
 
   // DETECCIÓN DE CAMBIOS - Sin guardado automático
   useEffect(() => {
-    // No detectar cambios en la carga inicial
-    if (isInitialLoad.current || !user || !profile) return
-    
+    // No detectar cambios si no hay perfil cargado
+    if (!user || !profile) return
+
+    // Si es la carga inicial, esperar un poco antes de detectar cambios
+    if (isInitialLoad.current) {
+      setHasChanges(false)
+      return
+    }
+
     // Verificar si hay cambios REALES
     const currentNickname = profile.nickname || ''
     const currentStudyGoal = profile.study_goal || 25
@@ -382,9 +388,9 @@ function PerfilPageContent() {
       formData.gender !== currentGender ||
       formData.ciudad.trim() !== currentCiudad ||
       formData.daily_study_hours !== currentDailyHours
-    
+
     setHasChanges(hasRealChanges)
-  }, [formData.nickname, formData.study_goal, formData.target_oposicion, formData.age, formData.gender, formData.ciudad, formData.daily_study_hours, user, profile])
+  }, [formData, user, profile, isInitialLoad.current]) // Escuchar todo formData y isInitialLoad
 
   // 🆕 GUARDAR EMAIL PREFERENCES - SIMPLIFICADO
   const saveEmailPreferences = async (newPreferences) => {
@@ -720,6 +726,14 @@ function PerfilPageContent() {
   // MANEJADOR DE CAMBIOS - Solo actualiza estado local
   const handleInputChange = (e) => {
     const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  // Función auxiliar para cambios directos (no desde eventos)
+  const handleDirectChange = (name, value) => {
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -1468,7 +1482,7 @@ function PerfilPageContent() {
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          setFormData({...formData, target_oposicion: ''})
+                                          handleDirectChange('target_oposicion', '')
                                           setShowOposicionSelector(false)
                                           setOposicionSearchTerm('')
                                         }}
@@ -1486,7 +1500,7 @@ function PerfilPageContent() {
                                         key={op.value}
                                         type="button"
                                         onClick={() => {
-                                          setFormData({...formData, target_oposicion: op.value})
+                                          handleDirectChange('target_oposicion', op.value)
                                           setShowOposicionSelector(false)
                                           setOposicionSearchTerm('')
                                         }}
