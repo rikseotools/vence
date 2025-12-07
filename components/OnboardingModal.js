@@ -470,6 +470,15 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
     ciudad: ''
   })
 
+  // Estado para rastrear qué campos ya estaban completos
+  const [completedFields, setCompletedFields] = useState({
+    oposicion: false,
+    age: false,
+    gender: false,
+    ciudad: false,
+    daily_study_hours: false
+  })
+
   // Datos para crear oposición custom
   const [customOposicionData, setCustomOposicionData] = useState({
     nombre: '',
@@ -505,6 +514,15 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
         console.log('📋 Perfil existente cargado:', data)
         console.log('📋 target_oposicion_data:', data.target_oposicion_data)
 
+        // Rastrear qué campos ya están completos
+        const completed = {
+          oposicion: !!data.target_oposicion_data,
+          age: !!data.age,
+          gender: !!data.gender,
+          ciudad: !!data.ciudad,
+          daily_study_hours: !!data.daily_study_hours
+        }
+
         // Pre-rellenar con datos existentes
         setFormData(prev => ({
           ...prev,
@@ -515,6 +533,8 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
           ciudad: data.ciudad || ''
         }))
 
+        setCompletedFields(completed)
+        console.log('📋 Campos completados:', completed)
         console.log('📋 selectedOposicion final:', data.target_oposicion_data)
       }
 
@@ -862,6 +882,45 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
             </div>
           )}
 
+          {/* Resumen de campos completados (solo si hay algunos completos) */}
+          {Object.values(completedFields).some(v => v) && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3">
+              <p className="text-green-800 dark:text-green-300 text-sm font-medium mb-2">
+                ✅ Ya tenemos estos datos:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {completedFields.oposicion && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
+                    🎯 Oposición
+                  </span>
+                )}
+                {completedFields.age && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
+                    🎂 Edad
+                  </span>
+                )}
+                {completedFields.gender && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
+                    👤 Género
+                  </span>
+                )}
+                {completedFields.ciudad && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
+                    📍 Ciudad
+                  </span>
+                )}
+                {completedFields.daily_study_hours && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
+                    ⏰ Horas de estudio
+                  </span>
+                )}
+              </div>
+              <p className="text-green-700 dark:text-green-400 text-xs mt-2">
+                Solo necesitamos completar los campos faltantes
+              </p>
+            </div>
+          )}
+
           {/* Modal crear oposición custom */}
           {showCreateForm && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -932,7 +991,8 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
             </div>
           )}
 
-          {/* Sección: Oposición */}
+          {/* Sección: Oposición - Solo mostrar si no está completa */}
+          {!completedFields.oposicion && (
           <div>
             <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100 mb-2">
               ¿Qué oposición estás preparando? *
@@ -1032,17 +1092,22 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
               </>
             )}
           </div>
+          )}
 
-          {/* Divisor */}
-          <div className="border-t border-gray-200 dark:border-gray-700"></div>
+          {/* Divisor - solo si hay campos para mostrar */}
+          {(!completedFields.age || !completedFields.gender || !completedFields.ciudad) && (
+            <div className="border-t border-gray-200 dark:border-gray-700"></div>
+          )}
 
-          {/* Sección: Datos Personales */}
+          {/* Sección: Datos Personales - solo si falta algún campo */}
+          {(!completedFields.age || !completedFields.gender || !completedFields.ciudad) && (
           <div className="space-y-3 sm:space-y-4">
             <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-gray-100">
               Información personal
             </h3>
 
-            {/* Edad */}
+            {/* Edad - solo si no está completa */}
+            {!completedFields.age && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Edad *
@@ -1073,8 +1138,10 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
                 />
               )}
             </div>
+            )}
 
-            {/* Género */}
+            {/* Género - solo si no está completo */}
+            {!completedFields.gender && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Género *
@@ -1116,8 +1183,10 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
                 </div>
               )}
             </div>
+            )}
 
-            {/* Horas de estudio - OPCIONAL */}
+            {/* Horas de estudio - OPCIONAL - No mostrar si ya está completo */}
+            {!completedFields.daily_study_hours && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Horas de estudio al día
@@ -1168,8 +1237,10 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
                 </div>
               )}
             </div>
+            )}
 
-            {/* Ciudad */}
+            {/* Ciudad - solo si no está completa */}
+            {!completedFields.ciudad && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Ciudad *
@@ -1217,7 +1288,9 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
                 </div>
               )}
             </div>
+            )}
           </div>
+          )}
 
           {/* Botón Continuar */}
           <button
