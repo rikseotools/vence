@@ -1139,20 +1139,12 @@ function PerfilPageContent() {
             </div>
           </div>
 
-          {/* Barra de estado flotante */}
-          {(message || saving || emailPrefSaving || pushSaving) && (
+          {/* Barra de estado flotante - Solo para email y push */}
+          {(emailPrefSaving || pushSaving) && (
             <div className="fixed top-4 right-4 z-50">
-              <div className={`px-4 py-2 rounded-lg shadow-lg ${
-                message.includes('✅') 
-                  ? 'bg-green-500 text-white'
-                  : (saving || emailPrefSaving || pushSaving)
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-red-500 text-white'
-              }`}>
-                {saving ? '💾 Guardando perfil...' : 
-                 emailPrefSaving ? '📧 Guardando preferencias...' :
-                 pushSaving ? '🔔 Configurando notificaciones...' :
-                 message}
+              <div className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg">
+                {emailPrefSaving ? '📧 Guardando preferencias...' :
+                 pushSaving ? '🔔 Configurando notificaciones...' : ''}
               </div>
             </div>
           )}
@@ -1258,29 +1250,10 @@ function PerfilPageContent() {
               {/* CONTENIDO DE LAS PESTAÑAS */}
               {activeTab === 'general' && (
                 <div>
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="mb-6">
                     <h2 className="text-2xl font-bold text-gray-800">
                       ⚙️ Configuración del Perfil
                     </h2>
-                    {hasChanges && (
-                      <button
-                        onClick={saveProfile}
-                        disabled={saving}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-                      >
-                        {saving ? (
-                          <span className="flex items-center space-x-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            <span>Guardando...</span>
-                          </span>
-                        ) : (
-                          <span className="flex items-center space-x-2">
-                            <span>💾</span>
-                            <span>Guardar Cambios</span>
-                          </span>
-                        )}
-                      </button>
-                    )}
                   </div>
 
                   <div className="space-y-6">
@@ -1615,16 +1588,45 @@ function PerfilPageContent() {
                       </div>
                     </div>
 
-                    {/* Indicador de cambios sin guardar */}
-                    {hasChanges && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <div className="flex items-center space-x-2 text-amber-800">
-                          <span>⚠️</span>
-                          <span className="font-medium">Cambios sin guardar</span>
+                    {/* Botón Guardar y Feedback */}
+                    {(hasChanges || message) && (
+                      <div className="mt-8 pt-6 border-t border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            {hasChanges && !saving && !message && (
+                              <div className="text-amber-600 text-sm">
+                                ⚠️ Tienes cambios pendientes sin guardar
+                              </div>
+                            )}
+                            {message && (
+                              <div className={`text-sm font-medium ${
+                                message.includes('✅') ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {message}
+                              </div>
+                            )}
+                          </div>
+
+                          {hasChanges && (
+                            <button
+                              onClick={saveProfile}
+                              disabled={saving}
+                              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-50 shadow-lg hover:shadow-xl"
+                            >
+                              {saving ? (
+                                <span className="flex items-center space-x-2">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                  <span>Guardando...</span>
+                                </span>
+                              ) : (
+                                <span className="flex items-center space-x-2">
+                                  <span>💾</span>
+                                  <span>Guardar Cambios</span>
+                                </span>
+                              )}
+                            </button>
+                          )}
                         </div>
-                        <p className="text-amber-700 text-sm mt-1">
-                          Tienes cambios pendientes. Haz clic en "Guardar Cambios" para aplicarlos.
-                        </p>
                       </div>
                     )}
                   </div>
