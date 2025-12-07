@@ -1069,17 +1069,13 @@ export default function TestLayout({
               <div className="mb-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
-                    <h2 
+                    <h2
                       ref={questionHeaderRef}
                       className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2"
                     >
                       Pregunta {currentQuestion + 1}
                     </h2>
-                    {currentQ?.article && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        📚 {currentQ.article.display_number} - {currentQ.article.title}
-                      </div>
-                    )}
+                    {/* 🚫 ELIMINADO: No mostrar artículo antes de responder (da pistas) */}
                   </div>
                 </div>
                 
