@@ -1,35 +1,114 @@
 // components/AvatarChanger.js - CON ACTUALIZACIÓN AUTOMÁTICA DEL HEADER
 'use client'
 import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { useAuth } from '@/contexts/AuthContext'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
-
-// 🎨 Avatares básicos para probar
-const PREDEFINED_AVATARS = [
-  { id: 'student', emoji: '🎓', name: 'Estudiante', color: 'from-blue-500 to-blue-600' },
-  { id: 'lawyer', emoji: '⚖️', name: 'Abogado/a', color: 'from-gray-600 to-gray-700' },
-  { id: 'admin', emoji: '👨‍💼', name: 'Administrativo', color: 'from-green-500 to-green-600' },
-  { id: 'police', emoji: '👮‍♂️', name: 'Policía', color: 'from-blue-600 to-indigo-600' },
-  { id: 'guard', emoji: '🛡️', name: 'Guardia Civil', color: 'from-green-600 to-green-700' },
-  { id: 'judge', emoji: '👨‍⚖️', name: 'Juez/a', color: 'from-purple-500 to-purple-600' },
-  { id: 'teacher', emoji: '👨‍🏫', name: 'Professor/a', color: 'from-teal-500 to-teal-600' },
-  { id: 'doctor', emoji: '👨‍⚕️', name: 'Doctor/a', color: 'from-red-500 to-pink-500' },
-  { id: 'cat', emoji: '🐱', name: 'Gato', color: 'from-orange-400 to-yellow-400' },
-  { id: 'dog', emoji: '🐶', name: 'Perro', color: 'from-brown-400 to-yellow-600' },
-  { id: 'lion', emoji: '🦁', name: 'León', color: 'from-yellow-500 to-orange-500' },
-  { id: 'pizza', emoji: '🍕', name: 'Pizza', color: 'from-red-500 to-yellow-500' },
-  { id: 'rocket', emoji: '🚀', name: 'Cohete', color: 'from-blue-600 to-purple-600' },
-  { id: 'star', emoji: '⭐', name: 'Estrella', color: 'from-yellow-400 to-yellow-500' },
-  { id: 'happy', emoji: '😄', name: 'Feliz', color: 'from-yellow-400 to-orange-400' },
-  { id: 'cool', emoji: '😎', name: 'Genial', color: 'from-blue-500 to-purple-500' }
-]
+// 🎨 Avatares organizados por categorías
+const AVATAR_CATEGORIES = {
+  animals: {
+    title: '🐾 Animales',
+    avatars: [
+      { id: 'cat', emoji: '🐱', name: 'Gato', color: 'from-orange-400 to-yellow-400' },
+      { id: 'dog', emoji: '🐶', name: 'Perro', color: 'from-yellow-600 to-orange-500' },
+      { id: 'lion', emoji: '🦁', name: 'León', color: 'from-yellow-500 to-orange-500' },
+      { id: 'tiger', emoji: '🐯', name: 'Tigre', color: 'from-orange-500 to-red-500' },
+      { id: 'horse', emoji: '🐴', name: 'Caballo', color: 'from-brown-500 to-orange-600' },
+      { id: 'unicorn', emoji: '🦄', name: 'Unicornio', color: 'from-pink-400 to-purple-500' },
+      { id: 'cow', emoji: '🐮', name: 'Vaca', color: 'from-gray-500 to-pink-300' },
+      { id: 'pig', emoji: '🐷', name: 'Cerdo', color: 'from-pink-400 to-pink-500' },
+      { id: 'rabbit', emoji: '🐰', name: 'Conejo', color: 'from-gray-300 to-pink-300' },
+      { id: 'bear', emoji: '🐻', name: 'Oso', color: 'from-brown-400 to-brown-500' },
+      { id: 'panda', emoji: '🐼', name: 'Panda', color: 'from-gray-700 to-gray-400' },
+      { id: 'koala', emoji: '🐨', name: 'Koala', color: 'from-gray-400 to-gray-500' },
+      { id: 'monkey', emoji: '🐵', name: 'Mono', color: 'from-yellow-600 to-brown-500' },
+      { id: 'chicken', emoji: '🐔', name: 'Pollo', color: 'from-yellow-300 to-orange-400' },
+      { id: 'penguin', emoji: '🐧', name: 'Pingüino', color: 'from-gray-800 to-gray-600' },
+      { id: 'bird', emoji: '🐦', name: 'Pájaro', color: 'from-blue-400 to-blue-500' },
+      { id: 'eagle', emoji: '🦅', name: 'Águila', color: 'from-brown-600 to-yellow-600' },
+      { id: 'duck', emoji: '🦆', name: 'Pato', color: 'from-yellow-400 to-green-400' },
+      { id: 'owl', emoji: '🦉', name: 'Búho', color: 'from-brown-500 to-gray-500' },
+      { id: 'flamingo', emoji: '🦩', name: 'Flamenco', color: 'from-pink-500 to-pink-400' },
+      { id: 'peacock', emoji: '🦚', name: 'Pavo Real', color: 'from-blue-500 to-green-500' },
+      { id: 'parrot', emoji: '🦜', name: 'Loro', color: 'from-green-500 to-red-500' },
+      { id: 'frog', emoji: '🐸', name: 'Rana', color: 'from-green-400 to-green-500' },
+      { id: 'turtle', emoji: '🐢', name: 'Tortuga', color: 'from-green-600 to-green-700' },
+      { id: 'lizard', emoji: '🦎', name: 'Lagarto', color: 'from-green-500 to-yellow-500' },
+      { id: 'snake', emoji: '🐍', name: 'Serpiente', color: 'from-green-600 to-green-800' },
+      { id: 'dragon', emoji: '🐲', name: 'Dragón', color: 'from-red-500 to-purple-600' },
+      { id: 'whale', emoji: '🐋', name: 'Ballena', color: 'from-blue-600 to-blue-700' },
+      { id: 'dolphin', emoji: '🐬', name: 'Delfín', color: 'from-blue-400 to-blue-500' },
+      { id: 'fish', emoji: '🐠', name: 'Pez', color: 'from-blue-400 to-yellow-400' },
+      { id: 'octopus', emoji: '🐙', name: 'Pulpo', color: 'from-purple-500 to-pink-500' },
+      { id: 'crab', emoji: '🦀', name: 'Cangrejo', color: 'from-red-500 to-orange-500' },
+      { id: 'lobster', emoji: '🦞', name: 'Langosta', color: 'from-red-600 to-red-500' },
+      { id: 'shrimp', emoji: '🦐', name: 'Camarón', color: 'from-orange-400 to-red-400' },
+      { id: 'snail', emoji: '🐌', name: 'Caracol', color: 'from-brown-400 to-green-400' },
+      { id: 'butterfly', emoji: '🦋', name: 'Mariposa', color: 'from-blue-400 to-purple-400' },
+      { id: 'bee', emoji: '🐝', name: 'Abeja', color: 'from-yellow-400 to-black' },
+      { id: 'ladybug', emoji: '🐞', name: 'Mariquita', color: 'from-red-500 to-black' },
+      { id: 'spider', emoji: '🕷️', name: 'Araña', color: 'from-gray-800 to-gray-900' },
+      { id: 'scorpion', emoji: '🦂', name: 'Escorpión', color: 'from-orange-600 to-brown-600' },
+      { id: 'fox', emoji: '🦊', name: 'Zorro', color: 'from-orange-500 to-red-500' },
+      { id: 'wolf', emoji: '🐺', name: 'Lobo', color: 'from-gray-600 to-gray-700' },
+      { id: 'zebra', emoji: '🦓', name: 'Cebra', color: 'from-gray-300 to-gray-800' },
+      { id: 'giraffe', emoji: '🦒', name: 'Jirafa', color: 'from-yellow-500 to-orange-600' },
+      { id: 'elephant', emoji: '🐘', name: 'Elefante', color: 'from-gray-500 to-gray-600' },
+      { id: 'rhino', emoji: '🦏', name: 'Rinoceronte', color: 'from-gray-600 to-gray-700' },
+      { id: 'hippo', emoji: '🦛', name: 'Hipopótamo', color: 'from-purple-400 to-gray-500' },
+      { id: 'kangaroo', emoji: '🦘', name: 'Canguro', color: 'from-orange-400 to-brown-400' }
+    ]
+  },
+  professions: {
+    title: '💼 Profesiones',
+    avatars: [
+      { id: 'student', emoji: '🎓', name: 'Estudiante', color: 'from-blue-500 to-blue-600' },
+      { id: 'lawyer', emoji: '⚖️', name: 'Abogado/a', color: 'from-gray-600 to-gray-700' },
+      { id: 'admin', emoji: '👨‍💼', name: 'Administrativo', color: 'from-green-500 to-green-600' },
+      { id: 'police', emoji: '👮', name: 'Policía', color: 'from-blue-600 to-indigo-600' },
+      { id: 'guard', emoji: '🛡️', name: 'Guardia Civil', color: 'from-green-600 to-green-700' },
+      { id: 'judge', emoji: '👨‍⚖️', name: 'Juez/a', color: 'from-purple-500 to-purple-600' },
+      { id: 'teacher', emoji: '👨‍🏫', name: 'Profesor/a', color: 'from-teal-500 to-teal-600' },
+      { id: 'doctor', emoji: '👨‍⚕️', name: 'Doctor/a', color: 'from-red-500 to-pink-500' },
+      { id: 'nurse', emoji: '👩‍⚕️', name: 'Enfermero/a', color: 'from-pink-400 to-red-400' },
+      { id: 'firefighter', emoji: '👨‍🚒', name: 'Bombero/a', color: 'from-red-500 to-orange-500' },
+      { id: 'astronaut', emoji: '👨‍🚀', name: 'Astronauta', color: 'from-blue-700 to-purple-700' },
+      { id: 'pilot', emoji: '👨‍✈️', name: 'Piloto', color: 'from-sky-500 to-blue-600' }
+    ]
+  },
+  emojis: {
+    title: '😊 Emociones',
+    avatars: [
+      { id: 'happy', emoji: '😄', name: 'Feliz', color: 'from-yellow-400 to-orange-400' },
+      { id: 'cool', emoji: '😎', name: 'Genial', color: 'from-blue-500 to-purple-500' },
+      { id: 'love', emoji: '😍', name: 'Enamorado', color: 'from-pink-400 to-red-400' },
+      { id: 'wink', emoji: '😉', name: 'Guiño', color: 'from-yellow-400 to-orange-400' },
+      { id: 'think', emoji: '🤔', name: 'Pensativo', color: 'from-gray-400 to-gray-500' },
+      { id: 'nerd', emoji: '🤓', name: 'Estudioso', color: 'from-blue-400 to-blue-500' },
+      { id: 'star-eyes', emoji: '🤩', name: 'Emocionado', color: 'from-yellow-400 to-pink-400' }
+    ]
+  },
+  objects: {
+    title: '🎯 Objetos',
+    avatars: [
+      { id: 'rocket', emoji: '🚀', name: 'Cohete', color: 'from-blue-600 to-purple-600' },
+      { id: 'star', emoji: '⭐', name: 'Estrella', color: 'from-yellow-400 to-yellow-500' },
+      { id: 'fire', emoji: '🔥', name: 'Fuego', color: 'from-red-500 to-orange-500' },
+      { id: 'rainbow', emoji: '🌈', name: 'Arcoíris', color: 'from-purple-400 to-pink-400' },
+      { id: 'sun', emoji: '☀️', name: 'Sol', color: 'from-yellow-400 to-orange-400' },
+      { id: 'moon', emoji: '🌙', name: 'Luna', color: 'from-gray-600 to-blue-600' },
+      { id: 'planet', emoji: '🪐', name: 'Planeta', color: 'from-orange-400 to-purple-500' },
+      { id: 'diamond', emoji: '💎', name: 'Diamante', color: 'from-blue-400 to-cyan-400' },
+      { id: 'crown', emoji: '👑', name: 'Corona', color: 'from-yellow-500 to-yellow-600' },
+      { id: 'trophy', emoji: '🏆', name: 'Trofeo', color: 'from-yellow-500 to-yellow-600' }
+    ]
+  }
+}
 
 export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState('animals')
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const { supabase } = useAuth() // Obtener supabase del contexto
 
   // 🎨 Seleccionar avatar predefinido
   const handleSelectPredefinedAvatar = async (avatar) => {
@@ -74,6 +153,81 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
     }
   }
 
+  // 📸 Subir imagen propia
+  const handleUploadImage = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      alert('Por favor selecciona una imagen válida')
+      return
+    }
+
+    // Validar tamaño (máximo 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('La imagen no debe superar los 2MB')
+      return
+    }
+
+    setUploadingImage(true)
+    try {
+      // Generar nombre único para el archivo
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      // Subir imagen a Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('user-avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        })
+
+      if (uploadError) throw uploadError
+
+      // Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-avatars')
+        .getPublicUrl(filePath)
+
+      // Actualizar metadata del usuario
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          avatar_type: 'custom',
+          avatar_url: publicUrl
+        }
+      })
+
+      if (updateError) throw updateError
+
+      // Actualizar estado local
+      const avatarData = {
+        type: 'custom',
+        url: publicUrl
+      }
+
+      window.dispatchEvent(new CustomEvent('avatarChanged', {
+        detail: { avatarData }
+      }))
+
+      setTimeout(() => {
+        window.location.reload()
+      }, 100)
+
+      onAvatarChange(avatarData)
+      setIsOpen(false)
+
+      console.log('✅ Imagen de avatar subida correctamente')
+    } catch (error) {
+      console.error('❌ Error subiendo imagen:', error)
+      alert('Error al subir la imagen. Por favor intenta de nuevo.')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
   // 🔄 Resetear a inicial por defecto
   const handleResetToDefault = async () => {
     try {
@@ -110,9 +264,21 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
 
   // 🎨 Renderizar avatar actual
   const renderCurrentAvatar = () => {
-    const userInitial = user.user_metadata?.full_name?.charAt(0).toUpperCase() || 
+    const userInitial = user.user_metadata?.full_name?.charAt(0).toUpperCase() ||
                        user.email?.charAt(0).toUpperCase() || '?'
 
+    // Avatar personalizado (imagen subida)
+    if (currentAvatar?.type === 'custom' && currentAvatar.url) {
+      return (
+        <img
+          src={currentAvatar.url}
+          alt="Avatar personalizado"
+          className="w-24 h-24 rounded-full object-cover"
+        />
+      )
+    }
+
+    // Avatar predefinido (emoji)
     if (currentAvatar?.type === 'predefined' && currentAvatar.emoji) {
       return (
         <div className={`w-24 h-24 bg-gradient-to-r ${currentAvatar.color} rounded-full flex items-center justify-center text-white text-4xl`}>
@@ -191,28 +357,85 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
             </div>
 
             {/* Contenido */}
-            <div className="p-6" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-              <h4 className="font-medium text-gray-800 mb-4">
-                Selecciona un avatar (se actualizará automáticamente):
-              </h4>
-              <div className="grid grid-cols-4 gap-3">
-                {PREDEFINED_AVATARS.map((avatar) => (
+            <div className="p-6">
+              {/* Pestañas de categorías */}
+              <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-200 pb-3">
+                {Object.entries(AVATAR_CATEGORIES).map(([key, category]) => (
                   <button
-                    key={avatar.id}
-                    onClick={() => handleSelectPredefinedAvatar(avatar)}
-                    className="group relative p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                    title={avatar.name}
+                    key={key}
+                    onClick={() => setSelectedCategory(key)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedCategory === key
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                   >
-                    <div 
-                      className={`w-16 h-16 bg-gradient-to-r ${avatar.color} rounded-full flex items-center justify-center text-white text-2xl hover:scale-105 transition-transform shadow-lg`}
-                    >
-                      {avatar.emoji}
-                    </div>
-                    <div className="text-xs text-gray-600 mt-1 text-center">
-                      {avatar.name}
-                    </div>
+                    {category.title}
                   </button>
                 ))}
+                <button
+                  onClick={() => setSelectedCategory('upload')}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    selectedCategory === 'upload'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  📸 Subir Imagen
+                </button>
+              </div>
+
+              {/* Contenido de avatares o subida */}
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                {selectedCategory === 'upload' ? (
+                  <div className="text-center py-8">
+                    <div className="mb-4">
+                      <div className="w-32 h-32 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
+                        {uploadingImage ? (
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        ) : (
+                          <span className="text-4xl text-gray-400">📷</span>
+                        )}
+                      </div>
+                    </div>
+                    <h4 className="font-medium text-gray-800 mb-2">
+                      Sube tu propia imagen
+                    </h4>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Máximo 2MB • JPG, PNG o GIF
+                    </p>
+                    <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors">
+                      <span>Seleccionar imagen</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleUploadImage}
+                        disabled={uploadingImage}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+                    {AVATAR_CATEGORIES[selectedCategory]?.avatars.map((avatar) => (
+                      <button
+                        key={avatar.id}
+                        onClick={() => handleSelectPredefinedAvatar(avatar)}
+                        className="group relative p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                        title={avatar.name}
+                      >
+                        <div
+                          className={`w-14 h-14 bg-gradient-to-r ${avatar.color} rounded-full flex items-center justify-center text-white text-2xl hover:scale-110 transition-transform shadow-lg`}
+                        >
+                          {avatar.emoji}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1 text-center truncate">
+                          {avatar.name}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 

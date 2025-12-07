@@ -670,6 +670,15 @@ function PerfilPageContent() {
   const extractAvatarData = (metadata) => {
     if (!metadata) return { type: 'default' }
 
+    // Avatar personalizado (imagen subida)
+    if (metadata.avatar_type === 'custom' && metadata.avatar_url) {
+      return {
+        type: 'custom',
+        url: metadata.avatar_url
+      }
+    }
+
+    // Avatar predefinido (emoji)
     if (metadata.avatar_type === 'predefined' && metadata.avatar_emoji) {
       return {
         type: 'predefined',
