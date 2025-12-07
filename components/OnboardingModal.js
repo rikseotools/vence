@@ -466,7 +466,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
     selectedOposicion: null,
     age: '',
     gender: '',
-    daily_study_hours: 2,
+    daily_study_hours: '', // Sin valor por defecto - campo opcional
     ciudad: ''
   })
 
@@ -511,7 +511,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
           selectedOposicion: data.target_oposicion_data || null,
           age: data.age?.toString() || '',
           gender: data.gender || '',
-          daily_study_hours: data.daily_study_hours || 2,
+          daily_study_hours: data.daily_study_hours || '', // Sin valor por defecto
           ciudad: data.ciudad || ''
         }))
 
@@ -1148,7 +1148,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
                     max="12"
                     value={horasTemp}
                     onChange={(e) => setHorasTemp(e.target.value)}
-                    placeholder="Ej: 2"
+                    placeholder="Opcional"
                     className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   />
                   <button
