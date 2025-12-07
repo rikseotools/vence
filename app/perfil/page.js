@@ -1315,10 +1315,6 @@ function PerfilPageContent() {
 
                     {/* Datos Demográficos (Onboarding) */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                        📊 Datos Demográficos
-                      </h3>
-
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
