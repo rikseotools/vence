@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import UserProfileModal from './UserProfileModal'
 // import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 
 export default function RankingModal({ isOpen, onClose }) {
@@ -8,6 +9,8 @@ export default function RankingModal({ isOpen, onClose }) {
   const [ranking, setRanking] = useState([])
   const [streakRanking, setStreakRanking] = useState([])
   const [loading, setLoading] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
   const [currentUserRank, setCurrentUserRank] = useState(null)
   const [timeFilter, setTimeFilter] = useState('week') // 'yesterday', 'today', 'week', 'month'
   const [activeTab, setActiveTab] = useState('ranking') // 'ranking', 'rachas'
@@ -358,6 +361,17 @@ export default function RankingModal({ isOpen, onClose }) {
     return 'text-gray-400'
   }
 
+  const handleUserClick = (userInfo) => {
+    // No abrir perfil si es el usuario actual
+    if (userInfo.isCurrentUser) return
+
+    setSelectedUser({
+      userId: userInfo.userId,
+      userName: userInfo.name
+    })
+    setShowProfileModal(true)
+  }
+
   // Función de cálculo de racha movida a utils/streakCalculator.js para evitar duplicación
 
   // Function to calculate consecutive days streak - ANTIGUA (ELIMINAR DESPUÉS)
@@ -557,10 +571,11 @@ export default function RankingModal({ isOpen, onClose }) {
                       ranking.map((user) => (
                         <div
                           key={user.userId}
+                          onClick={() => handleUserClick(user)}
                           className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                            user.isCurrentUser 
-                              ? 'bg-blue-50 border border-blue-200' 
-                              : 'bg-gray-50 hover:bg-gray-100'
+                            user.isCurrentUser
+                              ? 'bg-blue-50 border border-blue-200'
+                              : 'bg-gray-50 hover:bg-gray-100 cursor-pointer'
                           }`}
                         >
                           <div className="flex items-center space-x-3">
@@ -608,10 +623,11 @@ export default function RankingModal({ isOpen, onClose }) {
                     streakRanking.map((user) => (
                       <div
                         key={user.userId}
+                        onClick={() => handleUserClick(user)}
                         className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                          user.isCurrentUser 
-                            ? 'bg-orange-50 border border-orange-200' 
-                            : 'bg-gray-50 hover:bg-gray-100'
+                          user.isCurrentUser
+                            ? 'bg-orange-50 border border-orange-200'
+                            : 'bg-gray-50 hover:bg-gray-100 cursor-pointer'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
@@ -657,6 +673,19 @@ export default function RankingModal({ isOpen, onClose }) {
         </div>
         </div>
       </div>
+
+      {/* Modal de perfil de usuario */}
+      {selectedUser && (
+        <UserProfileModal
+          isOpen={showProfileModal}
+          onClose={() => {
+            setShowProfileModal(false)
+            setSelectedUser(null)
+          }}
+          userId={selectedUser.userId}
+          userName={selectedUser.userName}
+        />
+      )}
     </div>
   )
 }
