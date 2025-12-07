@@ -100,10 +100,19 @@ export default function TestLayout({
   const isTestOposicionesSection = pathname?.startsWith('/test-oposiciones/')
 
   // ✅ MOVER CÁLCULO DE ESTADOS DERIVADOS DESPUÉS DE DECLARACIONES
-  // Estados calculados - MOVIDO AQUÍ PARA EVITAR ERRORES DE ORDEN  
+  // Estados calculados - MOVIDO AQUÍ PARA EVITAR ERRORES DE ORDEN
   const effectiveQuestions = adaptiveMode ? activeQuestions : questions
   const isTestCompleted = isExplicitlyCompleted || (currentQuestion === effectiveQuestions?.length - 1 && showResult)
   const currentQ = effectiveQuestions?.[currentQuestion]
+
+  // Helper para formatear nombre de tema (101 → "Bloque II - Tema 1", 1 → "Tema 1")
+  const formatTemaName = (temaNumber) => {
+    if (!temaNumber) return 'Tema'
+    if (temaNumber >= 101) {
+      return `Bloque II - Tema ${temaNumber - 100}`
+    }
+    return `Tema ${temaNumber}`
+  }
 
   // 🧠 CONFIGURAR CATÁLOGO ADAPTATIVO SI ESTÁ DISPONIBLE
   useEffect(() => {
@@ -1473,7 +1482,7 @@ export default function TestLayout({
                                   className={`px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 sm:space-x-3 text-sm sm:text-base w-full sm:w-auto`}
                                 >
                                   <span>📚</span>
-                                  <span>Volver al Tema {tema}</span>
+                                  <span>Volver al {formatTemaName(tema)}</span>
                                 </Link>
                                 
                                 {/* Botón secundario: Ir a Otros Temas */}
