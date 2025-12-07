@@ -320,7 +320,17 @@ export default function UserAvatar() {
             {/* User header */}
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                {avatarDisplay.elementLarge}
+                <Link
+                  href="/perfil"
+                  className="relative group hover:opacity-80 transition-opacity cursor-pointer"
+                  title="Cambiar avatar"
+                  onClick={() => setShowDropdown(false)}
+                >
+                  {avatarDisplay.elementLarge}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-full transition-all flex items-center justify-center">
+                    <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">✏️</span>
+                  </div>
+                </Link>
                 <div>
                   <div className="font-semibold text-gray-900">
                     {getDisplayName()}
