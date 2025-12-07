@@ -101,7 +101,7 @@ export default function RankingModal({ isOpen, onClose }) {
         userIds.push(user.id)
       }
 
-      // Obtener nombres desde admin_users_with_roles (sin RLS)
+      // Obtener nombres y ciudades desde admin_users_with_roles (sin RLS)
       console.log('🔍 Loading admin profiles for userIds:', userIds)
       const { data: adminProfiles, error: adminProfilesError } = await supabase
         .from('admin_users_with_roles')
@@ -115,14 +115,23 @@ export default function RankingModal({ isOpen, onClose }) {
         console.error('Error loading admin user profiles:', adminProfilesError)
       }
 
-      // También intentar obtener display_names personalizados
+      // También intentar obtener display_names y ciudades desde public_user_profiles
       const { data: customProfiles, error: customProfileError } = await supabase
         .from('public_user_profiles')
-        .select('id, display_name')
+        .select('id, display_name, ciudad')
         .in('id', userIds)
 
       if (customProfileError) {
         console.warn('Custom profiles not accessible (RLS):', customProfileError)
+      }
+
+      console.log('🏙️ Public profiles with cities:', customProfiles?.length || 0)
+      console.log('🏙️ Public profiles data:', customProfiles)
+
+      // Función para obtener ciudad del usuario desde public_user_profiles
+      const getUserCity = (userId) => {
+        const userProfile = customProfiles?.find(p => p.id === userId)
+        return userProfile?.ciudad || null
       }
 
       // Función para obtener nombre a mostrar
@@ -172,6 +181,7 @@ export default function RankingModal({ isOpen, onClose }) {
           accuracy: Number(stats.accuracy),
           rank: index + 1,
           name: getDisplayName(stats.user_id),
+          ciudad: getUserCity(stats.user_id),
           isCurrentUser: stats.user_id === user?.id
         }
       })
@@ -204,6 +214,7 @@ export default function RankingModal({ isOpen, onClose }) {
             accuracy: Number(pos.accuracy),
             rank: Number(pos.user_rank),
             name: getDisplayName(user.id),
+            ciudad: getUserCity(user.id),
             isCurrentUser: true
           })
         } else {
@@ -264,11 +275,19 @@ export default function RankingModal({ isOpen, onClose }) {
 
       const { data: customProfiles, error: customProfileError } = await supabase
         .from('public_user_profiles')
-        .select('id, display_name')
+        .select('id, display_name, ciudad')
         .in('id', userIds)
 
       if (customProfileError) {
         console.warn('Custom profiles not accessible (RLS):', customProfileError)
+      }
+
+      console.log('🏙️ Streak - Public profiles with cities:', customProfiles?.length || 0)
+
+      // Función para obtener ciudad del usuario desde public_user_profiles
+      const getUserCity = (userId) => {
+        const userProfile = customProfiles?.find(p => p.id === userId)
+        return userProfile?.ciudad || null
       }
 
       // Función para obtener nombre a mostrar
@@ -309,6 +328,7 @@ export default function RankingModal({ isOpen, onClose }) {
           ...streakUser,
           rank: index + 1,
           name: getDisplayName(streakUser.userId),
+          ciudad: getUserCity(streakUser.userId),
           isCurrentUser: streakUser.userId === user?.id
         }
       })
@@ -506,7 +526,10 @@ export default function RankingModal({ isOpen, onClose }) {
                         <div className="flex items-center space-x-3">
                           <span className="text-2xl">{getRankIcon(currentUserRank.rank)}</span>
                           <div>
-                            <p className="font-bold text-blue-700">Tu posición: #{currentUserRank.rank}</p>
+                            <p className="font-bold text-blue-700">
+                              Tu posición: #{currentUserRank.rank}
+                              {currentUserRank.ciudad && <span className="text-gray-500 text-sm ml-1">• {currentUserRank.ciudad}</span>}
+                            </p>
                             <p className="text-sm text-blue-600">{currentUserRank.accuracy}% de aciertos</p>
                           </div>
                         </div>
@@ -547,6 +570,7 @@ export default function RankingModal({ isOpen, onClose }) {
                             <div>
                               <p className={`font-medium ${user.isCurrentUser ? 'text-blue-700' : 'text-gray-800'}`}>
                                 {user.name}
+                                {user.ciudad && <span className="text-gray-500 text-sm ml-1">• {user.ciudad}</span>}
                                 {user.isCurrentUser && <span className="ml-1 text-blue-600 text-sm">(Tú)</span>}
                               </p>
                               <p className="text-xs text-gray-500">
@@ -601,6 +625,7 @@ export default function RankingModal({ isOpen, onClose }) {
                           <div>
                             <p className={`font-medium ${user.isCurrentUser ? 'text-orange-700' : 'text-gray-800'}`}>
                               {user.name}
+                              {user.ciudad && <span className="text-gray-500 text-sm ml-1">• {user.ciudad}</span>}
                               {user.isCurrentUser && <span className="ml-1 text-orange-600 text-sm">(Tú)</span>}
                             </p>
                             <p className="text-xs text-gray-500">

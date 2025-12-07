@@ -28,7 +28,7 @@ export default function HeaderES() {
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
-  
+
   const { user, loading: authLoading, supabase } = useAuth()
   const oposicionContext = useOposicion()
   const adminNotifications = useAdminNotifications()
@@ -81,6 +81,7 @@ export default function HeaderES() {
 
     loadUserStreak()
   }, [user, supabase])
+
 
   // Función de cálculo de racha movida a utils/streakCalculator.js para evitar duplicación
 
@@ -327,7 +328,7 @@ export default function HeaderES() {
             
             {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES + SOPORTE */}
             {user && (
-              <div className="lg:hidden absolute top-full right-52 flex items-center gap-4 mt-1 mb-2">
+              <div className="lg:hidden absolute top-full left-0 flex items-center gap-4 mt-1 mb-2 pl-4">
                 {/* 🔥 ICONO DE RACHA */}
                 <button
                   onClick={() => {
