@@ -49,7 +49,12 @@ function PerfilPageContent() {
   const [formData, setFormData] = useState({
     nickname: '',
     study_goal: 25,
-    target_oposicion: ''
+    target_oposicion: '',
+    // Campos del onboarding
+    age: '',
+    gender: '',
+    ciudad: '',
+    daily_study_hours: ''
   })
 
   // Oposiciones disponibles
@@ -215,14 +220,19 @@ function PerfilPageContent() {
           console.error('Error cargando perfil:', profileError)
         } else if (profile) {
           setProfile(profile)
-          
+
           // ✅ SINCRONIZAR CON userOposicion del hook
           const currentOposicion = userOposicion?.slug || profile.target_oposicion || ''
-          
+
           setFormData({
             nickname: profile.nickname || getFirstName(user.user_metadata?.full_name),
             study_goal: profile.study_goal || 25,
-            target_oposicion: currentOposicion
+            target_oposicion: currentOposicion,
+            // Campos del onboarding
+            age: profile.age?.toString() || '',
+            gender: profile.gender || '',
+            ciudad: profile.ciudad || '',
+            daily_study_hours: profile.daily_study_hours?.toString() || ''
           })
           
         } else {
@@ -253,14 +263,22 @@ function PerfilPageContent() {
     const currentNickname = profile.nickname || ''
     const currentStudyGoal = profile.study_goal || 25
     const currentOposicion = profile.target_oposicion || ''
-    
-    const hasRealChanges = 
+    const currentAge = profile.age?.toString() || ''
+    const currentGender = profile.gender || ''
+    const currentCiudad = profile.ciudad || ''
+    const currentDailyHours = profile.daily_study_hours?.toString() || ''
+
+    const hasRealChanges =
       formData.nickname.trim() !== currentNickname ||
       parseInt(formData.study_goal) !== currentStudyGoal ||
-      formData.target_oposicion !== currentOposicion
+      formData.target_oposicion !== currentOposicion ||
+      formData.age !== currentAge ||
+      formData.gender !== currentGender ||
+      formData.ciudad.trim() !== currentCiudad ||
+      formData.daily_study_hours !== currentDailyHours
     
     setHasChanges(hasRealChanges)
-  }, [formData.nickname, formData.study_goal, formData.target_oposicion, user, profile])
+  }, [formData.nickname, formData.study_goal, formData.target_oposicion, formData.age, formData.gender, formData.ciudad, formData.daily_study_hours, user, profile])
 
   // 🆕 GUARDAR EMAIL PREFERENCES - SIMPLIFICADO
   const saveEmailPreferences = async (newPreferences) => {
@@ -499,6 +517,11 @@ function PerfilPageContent() {
         study_goal: parseInt(formData.study_goal),
         target_oposicion: formData.target_oposicion,
         target_oposicion_data: oposicionData,
+        // Campos del onboarding
+        age: formData.age ? parseInt(formData.age) : null,
+        gender: formData.gender || null,
+        ciudad: formData.ciudad.trim() || null,
+        daily_study_hours: formData.daily_study_hours ? parseInt(formData.daily_study_hours) : null,
         updated_at: new Date().toISOString()
       }
 
@@ -577,7 +600,11 @@ function PerfilPageContent() {
       setFormData({
         nickname: data.nickname || getFirstName(user.user_metadata?.full_name),
         study_goal: data.study_goal || 25,
-        target_oposicion: data.target_oposicion || ''
+        target_oposicion: data.target_oposicion || '',
+        age: data.age?.toString() || '',
+        gender: data.gender || '',
+        ciudad: data.ciudad || '',
+        daily_study_hours: data.daily_study_hours?.toString() || ''
       })
     } catch (error) {
       console.error('Error creando perfil:', error)
@@ -1189,6 +1216,83 @@ function PerfilPageContent() {
                             disabled
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
                           />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Datos Demográficos (Onboarding) */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                        📊 Datos Demográficos
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            🎂 Edad
+                          </label>
+                          <input
+                            type="number"
+                            name="age"
+                            value={formData.age}
+                            onChange={handleInputChange}
+                            min="16"
+                            max="100"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Tu edad"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            👤 Género
+                          </label>
+                          <select
+                            name="gender"
+                            value={formData.gender}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="">Sin especificar</option>
+                            <option value="male">Masculino</option>
+                            <option value="female">Femenino</option>
+                            <option value="other">Otro</option>
+                            <option value="prefer_not_say">Prefiero no decir</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            📍 Ciudad
+                          </label>
+                          <input
+                            type="text"
+                            name="ciudad"
+                            value={formData.ciudad}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Tu ciudad"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            ⏰ Horas de estudio diarias
+                            <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
+                          </label>
+                          <input
+                            type="number"
+                            name="daily_study_hours"
+                            value={formData.daily_study_hours}
+                            onChange={handleInputChange}
+                            min="1"
+                            max="12"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Opcional"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Número aproximado de horas que estudias al día
+                          </p>
                         </div>
                       </div>
                     </div>
