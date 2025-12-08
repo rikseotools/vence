@@ -64,12 +64,15 @@ export default function RankingModal({ isOpen, onClose }) {
         todayEnd.setUTCHours(23, 59, 59, 999)
         endDate = todayEnd.toISOString()
       } else if (timeFilter === 'week') {
-        // Esta semana - desde el lunes 0:00 UTC (arregla bug #1)
-        const monday = new Date()
-        const dayOfWeek = monday.getUTCDay() === 0 ? 6 : monday.getUTCDay() - 1
-        monday.setUTCDate(monday.getUTCDate() - dayOfWeek)
-        monday.setUTCHours(0, 0, 0, 0)
-        startDate = monday.toISOString()
+        // Esta semana - últimos 7 días
+        console.log('🔍 Calculando fecha para "Esta semana"')
+        const now = new Date()
+        console.log('   Fecha actual:', now.toISOString())
+        const sevenDaysAgo = new Date()
+        sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7)
+        sevenDaysAgo.setUTCHours(0, 0, 0, 0)
+        startDate = sevenDaysAgo.toISOString()
+        console.log('   Fecha hace 7 días:', startDate)
         // endDate = null → hasta ahora
       } else if (timeFilter === 'month') {
         // Este mes - desde el día 1 del mes actual en UTC
@@ -88,6 +91,15 @@ export default function RankingModal({ isOpen, onClose }) {
         p_limit: 100
       })
 
+      console.log(`📊 RPC get_ranking_for_period respondió:`)
+      console.log(`   - Filtro: ${timeFilter}`)
+      console.log(`   - StartDate enviado: ${startDate}`)
+      console.log(`   - EndDate enviado: ${endDate}`)
+      console.log(`   - Usuarios recibidos: ${rankingData?.length || 0}`)
+      if (rankingData && rankingData.length > 0) {
+        console.log(`   - Primer usuario:`, rankingData[0])
+      }
+
       if (error) {
         console.error('Error loading ranking:', error)
         return
@@ -105,23 +117,28 @@ export default function RankingModal({ isOpen, onClose }) {
       }
 
       // Obtener nombres y ciudades desde admin_users_with_roles (sin RLS)
-      console.log('🔍 Loading admin profiles for userIds:', userIds)
+      console.log('🔍 Loading admin profiles for userIds:', userIds.length, 'usuarios')
+      console.log('   UserIds:', userIds.slice(0, 5), '...') // Mostrar solo primeros 5
       const { data: adminProfiles, error: adminProfilesError } = await supabase
         .from('admin_users_with_roles')
         .select('user_id, full_name, email')
         .in('user_id', userIds)
 
-      console.log('📊 Admin profiles loaded:', adminProfiles?.length)
-      console.log('❌ Admin profile error:', adminProfilesError)
+      console.log('📊 Admin profiles loaded:', adminProfiles?.length || 0, 'perfiles')
+      if (adminProfilesError) {
+        console.log('❌ Admin profile error:', adminProfilesError)
+      } else if (!adminProfiles || adminProfiles.length === 0) {
+        console.log('⚠️ No se pudieron obtener perfiles de admin_users_with_roles')
+      }
 
       if (adminProfilesError) {
         console.error('Error loading admin user profiles:', adminProfilesError)
       }
 
-      // También intentar obtener display_names y ciudades desde public_user_profiles
+      // También intentar obtener display_names, ciudades y avatares desde public_user_profiles
       const { data: customProfiles, error: customProfileError } = await supabase
         .from('public_user_profiles')
-        .select('id, display_name, ciudad')
+        .select('id, display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url')
         .in('id', userIds)
 
       if (customProfileError) {
@@ -137,42 +154,107 @@ export default function RankingModal({ isOpen, onClose }) {
         return userProfile?.ciudad || null
       }
 
+      // Función para obtener avatar del usuario
+      const getUserAvatar = (userId) => {
+        const userProfile = customProfiles?.find(p => p.id === userId)
+
+        if (!userProfile) {
+          // Si es el usuario actual, usar datos del contexto
+          if (userId === user?.id && user?.user_metadata) {
+            const meta = user.user_metadata
+            if (meta.avatar_type === 'predefined' && meta.avatar_emoji) {
+              return {
+                type: 'predefined',
+                emoji: meta.avatar_emoji,
+                color: meta.avatar_color
+              }
+            }
+            if (meta.avatar_type === 'uploaded' && meta.avatar_url) {
+              return {
+                type: 'uploaded',
+                url: meta.avatar_url
+              }
+            }
+            if (meta.avatar_url || meta.picture) {
+              return {
+                type: 'google',
+                url: meta.avatar_url || meta.picture
+              }
+            }
+          }
+          return null
+        }
+
+        // Usar datos del perfil público
+        if (userProfile.avatar_type === 'predefined' && userProfile.avatar_emoji) {
+          return {
+            type: 'predefined',
+            emoji: userProfile.avatar_emoji,
+            color: userProfile.avatar_color
+          }
+        }
+        if (userProfile.avatar_type === 'uploaded' && userProfile.avatar_url) {
+          return {
+            type: 'uploaded',
+            url: userProfile.avatar_url
+          }
+        }
+        return null
+      }
+
       // Función para obtener nombre a mostrar
       const getDisplayName = (userId) => {
-        // 1. Buscar display_name personalizado
+        // 1. Buscar display_name personalizado (pero ignorar si es "Usuario")
         const customProfile = customProfiles?.find(p => p.id === userId)
-        if (customProfile?.display_name) {
+        if (customProfile?.display_name && customProfile.display_name !== 'Usuario') {
           return customProfile.display_name
         }
-        
+
         // 2. Buscar en admin_users_with_roles
         const adminProfile = adminProfiles?.find(p => p.user_id === userId)
-        
+
+        // Debug: Ver qué datos tenemos para usuarios problemáticos
+        if (customProfile?.display_name === 'Usuario' || adminProfile?.full_name === 'Usuario' || !adminProfile?.full_name) {
+          console.log(`🔍 Usuario con nombre genérico:`, {
+            userId: userId.substring(0, 8),
+            full_name: adminProfile?.full_name,
+            email: adminProfile?.email,
+            display_name: customProfile?.display_name
+          })
+        }
+
         // 3. Si es el usuario actual y no hay perfil, usar datos del contexto
         if (userId === user?.id) {
-          if (user?.user_metadata?.full_name) {
+          if (user?.user_metadata?.full_name && user.user_metadata.full_name !== 'Usuario') {
             const firstName = user.user_metadata.full_name.split(' ')[0]
-            if (firstName?.trim()) return firstName.trim()
+            if (firstName?.trim() && firstName !== 'Usuario') return firstName.trim()
           }
           if (user?.email) {
             return user.email.split('@')[0]
           }
           return 'Tú'
         }
-        
-        // 4. Para otros usuarios, usar primer nombre del admin profile
-        if (adminProfile?.full_name) {
+
+        // 4. Para otros usuarios, usar primer nombre del admin profile (si no es genérico)
+        if (adminProfile?.full_name && adminProfile.full_name !== 'Usuario') {
           const firstName = adminProfile.full_name.split(' ')[0]
-          if (firstName?.trim()) return firstName.trim()
+          if (firstName?.trim() && firstName !== 'Usuario') return firstName.trim()
         }
-        
+
         // 5. Fallback a email sin dominio del admin profile
         if (adminProfile?.email) {
-          return adminProfile.email.split('@')[0]
+          const emailName = adminProfile.email.split('@')[0]
+          // Limpiar números y caracteres especiales del email para que sea más legible
+          const cleanName = emailName.replace(/[0-9]+/g, '').replace(/[._-]/g, ' ').trim()
+          if (cleanName) {
+            // Capitalizar primera letra
+            return cleanName.charAt(0).toUpperCase() + cleanName.slice(1)
+          }
+          return emailName
         }
-        
+
         // 6. Último recurso: nombre genérico sin números
-        return 'Usuario anónimo'
+        return 'Anónimo'
       }
 
       // Combinar datos con nombres reales
@@ -185,11 +267,18 @@ export default function RankingModal({ isOpen, onClose }) {
           rank: index + 1,
           name: getDisplayName(stats.user_id),
           ciudad: getUserCity(stats.user_id),
+          avatar: getUserAvatar(stats.user_id),
           isCurrentUser: stats.user_id === user?.id
         }
       })
 
       setRanking(finalRanking)
+      console.log(`✅ RANKING FINAL ESTABLECIDO:`)
+      console.log(`   - Filtro: ${timeFilter}`)
+      console.log(`   - Usuarios en ranking: ${finalRanking.length}`)
+      if (finalRanking.length < 10) {
+        console.log(`   - Usuarios completos:`, finalRanking)
+      }
 
       // Obtener posición del usuario actual (incluso si no está en top 100)
       const userInRanking = finalRanking.find(u => u.userId === user?.id)
@@ -218,6 +307,7 @@ export default function RankingModal({ isOpen, onClose }) {
             rank: Number(pos.user_rank),
             name: getDisplayName(user.id),
             ciudad: getUserCity(user.id),
+            avatar: getUserAvatar(user.id),
             isCurrentUser: true
           })
         } else {
@@ -240,6 +330,8 @@ export default function RankingModal({ isOpen, onClose }) {
     setLoading(true)
     try {
       // ⚡ SÚPER OPTIMIZADO: Obtener todas las rachas directamente desde user_streaks
+      console.log('🔥 RankingModal: Cargando ranking de rachas...')
+
       const { data: streakData, error } = await supabase
         .from('user_streaks')
         .select('user_id, current_streak')
@@ -247,8 +339,10 @@ export default function RankingModal({ isOpen, onClose }) {
         .order('current_streak', { ascending: false })
         .limit(20) // Top 20 rachas
 
+      console.log('🔥 RankingModal: Rachas obtenidas:', streakData?.length || 0, streakData)
+
       if (error) {
-        console.error('Error loading streak ranking:', error)
+        console.error('❌ RankingModal: Error loading streak ranking:', error)
         return
       }
 
@@ -278,7 +372,7 @@ export default function RankingModal({ isOpen, onClose }) {
 
       const { data: customProfiles, error: customProfileError } = await supabase
         .from('public_user_profiles')
-        .select('id, display_name, ciudad')
+        .select('id, display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url')
         .in('id', userIds)
 
       if (customProfileError) {
@@ -291,6 +385,54 @@ export default function RankingModal({ isOpen, onClose }) {
       const getUserCity = (userId) => {
         const userProfile = customProfiles?.find(p => p.id === userId)
         return userProfile?.ciudad || null
+      }
+
+      // Función para obtener avatar del usuario
+      const getUserAvatar = (userId) => {
+        const userProfile = customProfiles?.find(p => p.id === userId)
+
+        if (!userProfile) {
+          // Si es el usuario actual, usar datos del contexto
+          if (userId === user?.id && user?.user_metadata) {
+            const meta = user.user_metadata
+            if (meta.avatar_type === 'predefined' && meta.avatar_emoji) {
+              return {
+                type: 'predefined',
+                emoji: meta.avatar_emoji,
+                color: meta.avatar_color
+              }
+            }
+            if (meta.avatar_type === 'uploaded' && meta.avatar_url) {
+              return {
+                type: 'uploaded',
+                url: meta.avatar_url
+              }
+            }
+            if (meta.avatar_url || meta.picture) {
+              return {
+                type: 'google',
+                url: meta.avatar_url || meta.picture
+              }
+            }
+          }
+          return null
+        }
+
+        // Usar datos del perfil público
+        if (userProfile.avatar_type === 'predefined' && userProfile.avatar_emoji) {
+          return {
+            type: 'predefined',
+            emoji: userProfile.avatar_emoji,
+            color: userProfile.avatar_color
+          }
+        }
+        if (userProfile.avatar_type === 'uploaded' && userProfile.avatar_url) {
+          return {
+            type: 'uploaded',
+            url: userProfile.avatar_url
+          }
+        }
+        return null
       }
 
       // Función para obtener nombre a mostrar
@@ -332,9 +474,12 @@ export default function RankingModal({ isOpen, onClose }) {
           rank: index + 1,
           name: getDisplayName(streakUser.userId),
           ciudad: getUserCity(streakUser.userId),
+          avatar: getUserAvatar(streakUser.userId),
           isCurrentUser: streakUser.userId === user?.id
         }
       })
+
+      console.log('🔥 RankingModal: Ranking final de rachas:', finalStreakRanking.length, finalStreakRanking)
 
       setStreakRanking(finalStreakRanking)
       
@@ -361,10 +506,55 @@ export default function RankingModal({ isOpen, onClose }) {
     return 'text-gray-400'
   }
 
-  const handleUserClick = (userInfo) => {
-    // No abrir perfil si es el usuario actual
-    if (userInfo.isCurrentUser) return
+  const renderAvatar = (avatar, name) => {
+    if (!avatar) {
+      // Avatar por defecto con inicial
+      const initial = name?.charAt(0).toUpperCase() || 'U'
+      return (
+        <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+          {initial}
+        </div>
+      )
+    }
 
+    if (avatar.type === 'predefined') {
+      return (
+        <div className={`w-8 h-8 bg-gradient-to-r ${avatar.color} rounded-full flex items-center justify-center text-white text-base`}>
+          {avatar.emoji}
+        </div>
+      )
+    }
+
+    if (avatar.type === 'uploaded' || avatar.type === 'google') {
+      return (
+        <img
+          src={avatar.url}
+          alt={name}
+          className="w-8 h-8 rounded-full object-cover"
+          onError={(e) => {
+            // Si falla la imagen, mostrar inicial
+            e.target.style.display = 'none'
+            const initial = name?.charAt(0).toUpperCase() || 'U'
+            const fallback = document.createElement('div')
+            fallback.className = 'w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm'
+            fallback.textContent = initial
+            e.target.parentNode.replaceChild(fallback, e.target)
+          }}
+        />
+      )
+    }
+
+    // Fallback por defecto
+    const initial = name?.charAt(0).toUpperCase() || 'U'
+    return (
+      <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+        {initial}
+      </div>
+    )
+  }
+
+  const handleUserClick = (userInfo) => {
+    // Ahora sí permitimos abrir el perfil propio
     setSelectedUser({
       userId: userInfo.userId,
       userName: userInfo.name
@@ -539,6 +729,7 @@ export default function RankingModal({ isOpen, onClose }) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <span className="text-2xl">{getRankIcon(currentUserRank.rank)}</span>
+                          {renderAvatar(currentUserRank.avatar, currentUserRank.name)}
                           <div>
                             <p className="font-bold text-blue-700">
                               Tu posición: #{currentUserRank.rank}
@@ -568,20 +759,22 @@ export default function RankingModal({ isOpen, onClose }) {
                         <p className="text-sm text-gray-500">Responde al menos 5 preguntas para aparecer</p>
                       </div>
                     ) : (
+                      console.log(`🎨 RENDERIZANDO ${activeTab} - ${timeFilter}: ${ranking.length} usuarios`) ||
                       ranking.map((user) => (
                         <div
                           key={user.userId}
                           onClick={() => handleUserClick(user)}
-                          className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                          className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${
                             user.isCurrentUser
-                              ? 'bg-blue-50 border border-blue-200'
-                              : 'bg-gray-50 hover:bg-gray-100 cursor-pointer'
+                              ? 'bg-blue-50 border border-blue-200 hover:bg-blue-100'
+                              : 'bg-gray-50 hover:bg-gray-100'
                           }`}
                         >
                           <div className="flex items-center space-x-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${getRankColor(user.rank)}`}>
                               {user.rank <= 3 ? getRankIcon(user.rank) : `#${user.rank}`}
                             </div>
+                            {renderAvatar(user.avatar, user.name)}
                             <div>
                               <p className={`font-medium ${user.isCurrentUser ? 'text-blue-700' : 'text-gray-800'}`}>
                                 {user.name}
@@ -624,20 +817,21 @@ export default function RankingModal({ isOpen, onClose }) {
                       <div
                         key={user.userId}
                         onClick={() => handleUserClick(user)}
-                        className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                        className={`flex items-center justify-between p-3 rounded-lg transition-colors cursor-pointer ${
                           user.isCurrentUser
-                            ? 'bg-orange-50 border border-orange-200'
-                            : 'bg-gray-50 hover:bg-gray-100 cursor-pointer'
+                            ? 'bg-orange-50 border border-orange-200 hover:bg-orange-100'
+                            : 'bg-gray-50 hover:bg-gray-100'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${
-                            user.rank === 1 ? 'text-yellow-600' : 
-                            user.rank === 2 ? 'text-gray-500' : 
+                            user.rank === 1 ? 'text-yellow-600' :
+                            user.rank === 2 ? 'text-gray-500' :
                             user.rank === 3 ? 'text-amber-600' : 'text-gray-400'
                           }`}>
                             {user.rank <= 3 ? getRankIcon(user.rank) : `#${user.rank}`}
                           </div>
+                          {renderAvatar(user.avatar, user.name)}
                           <div>
                             <p className={`font-medium ${user.isCurrentUser ? 'text-orange-700' : 'text-gray-800'}`}>
                               {user.name}

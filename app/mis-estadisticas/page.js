@@ -247,12 +247,7 @@ export default function EstadisticasRevolucionarias() {
       // 1B. ✅ TESTS COMPLETADOS (para análisis de rendimiento)
       const { data: tests, error: testsError } = await supabase
         .from('tests')
-        .select(`
-          *,
-          detailed_analytics,
-          performance_metrics,
-          questions_metadata
-        `)
+        .select('*')
         .eq('user_id', userId)
         .eq('is_completed', true)
         .not('completed_at', 'is', null)
@@ -271,10 +266,7 @@ export default function EstadisticasRevolucionarias() {
         .from('test_questions')
         .select(`
           *,
-          tests!inner(user_id),
-          full_question_context,
-          user_behavior_data,
-          learning_analytics
+          tests!inner(user_id)
         `)
         .eq('tests.user_id', userId)
         .order('created_at', { ascending: false })

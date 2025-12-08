@@ -132,6 +132,26 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
 
       if (error) throw error
 
+      // IMPORTANTE: También actualizar public_user_profiles para que se vea en el ranking
+      const { error: profileError } = await supabase
+        .from('public_user_profiles')
+        .upsert({
+          id: user.id,
+          avatar_type: 'predefined',
+          avatar_emoji: avatar.emoji,
+          avatar_color: avatar.color,
+          avatar_name: avatar.name,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        })
+
+      if (profileError) {
+        console.warn('Error actualizando perfil público:', profileError)
+      } else {
+        console.log('✅ Avatar actualizado en public_user_profiles')
+      }
+
       // 🔄 NUEVO: Forzar actualización del Header
       // Método 1: Disparar evento personalizado
       window.dispatchEvent(new CustomEvent('avatarChanged', {
@@ -212,6 +232,27 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
 
       if (updateError) throw updateError
 
+      // IMPORTANTE: También actualizar public_user_profiles para que se vea en el ranking
+      const { error: profileError } = await supabase
+        .from('public_user_profiles')
+        .upsert({
+          id: user.id,
+          avatar_type: 'uploaded',
+          avatar_url: publicUrl,
+          avatar_emoji: null,
+          avatar_color: null,
+          avatar_name: null,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        })
+
+      if (profileError) {
+        console.warn('Error actualizando perfil público con imagen:', profileError)
+      } else {
+        console.log('✅ Imagen actualizada en public_user_profiles')
+      }
+
       // Actualizar estado local
       const avatarData = {
         type: 'custom',
@@ -251,6 +292,27 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
       })
 
       if (error) throw error
+
+      // IMPORTANTE: También resetear en public_user_profiles
+      const { error: profileError } = await supabase
+        .from('public_user_profiles')
+        .upsert({
+          id: user.id,
+          avatar_type: null,
+          avatar_url: null,
+          avatar_emoji: null,
+          avatar_color: null,
+          avatar_name: null,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        })
+
+      if (profileError) {
+        console.warn('Error reseteando avatar en perfil público:', profileError)
+      } else {
+        console.log('✅ Avatar reseteado en public_user_profiles')
+      }
 
       // 🔄 NUEVO: Forzar actualización del Header
       window.dispatchEvent(new CustomEvent('avatarChanged', {

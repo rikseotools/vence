@@ -33,13 +33,13 @@ export default function UserAvatar() {
     }
   }, [user, authLoading, supabase]) // Context dependencies
 
-  // Load user statistics
+  // Load user statistics using RPC function
   const loadUserStats = async (userId) => {
     if (statsLoading) return // Prevenir cargas concurrentes
-    
+
     try {
       setStatsLoading(true)
-      
+
       // Verify we have the user before proceeding
       if (!user || !user.created_at) {
         return
@@ -47,28 +47,18 @@ export default function UserAvatar() {
 
       // Get user registration date
       const userCreatedAt = new Date(user.created_at)
-      
-      // Calcular lunes de esta semana (igual que en estadísticas)
-      const now = new Date()
-      const dayOfWeek = now.getDay()
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // domingo = 0, lunes = 1
-      const mondayThisWeek = new Date(now)
-      mondayThisWeek.setDate(now.getDate() - daysToMonday)
-      mondayThisWeek.setHours(0, 0, 0, 0)
 
+      console.log('🔍 UserAvatar: Loading stats for userId:', userId)
 
-      // 1. Get user's test IDs first
-      const { data: userTests, error: userTestsError } = await supabase
-        .from('tests')
-        .select('id')
-        .eq('user_id', userId)
+      // Usar función RPC que consolida todas las fuentes de datos
+      const { data: rpcStats, error: rpcError } = await supabase.rpc('get_user_public_stats', {
+        p_user_id: userId
+      })
 
-      if (userTestsError) {
-        console.warn('Error loading user tests:', userTestsError)
-        return
-      }
+      console.log('🔍 UserAvatar: RPC Response:', { rpcStats, rpcError })
 
-      if (!userTests || userTests.length === 0) {
+      if (rpcError) {
+        console.error('❌ UserAvatar: Error loading user stats from RPC:', rpcError)
         setUserStats({
           streak: 0,
           accuracy: 0,
@@ -79,66 +69,26 @@ export default function UserAvatar() {
         return
       }
 
-      // Obtener IDs de tests del usuario para las consultas de conteo
-      const testIds = userTests.map(test => test.id)
+      const stats = rpcStats?.[0] || {}
+      console.log('🔍 UserAvatar: Stats object:', stats)
 
-      // 2. ⚡ OPTIMIZADO: Contar preguntas desde lunes de esta semana usando test_id IN
-      const { count: weeklyQuestions, error: weeklyError } = await supabase
-        .from('test_questions')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', mondayThisWeek.toISOString())
-        .in('test_id', testIds)
+      // Usar questions_this_week si está disponible (nueva RPC), si no usar today_questions como fallback
+      const weeklyQuestions = stats.questions_this_week || stats.today_questions || 0
 
-      if (weeklyError) {
-        console.warn('Error loading weekly questions:', weeklyError)
-      }
-
-      // 3. ⚡ OPTIMIZADO: Contar TODAS las preguntas usando test_id IN
-      const { count: totalQuestions, error: totalError } = await supabase
-        .from('test_questions')
-        .select('*', { count: 'exact', head: true })
-        .in('test_id', testIds)
-
-      // 4. ⚡ OPTIMIZADO: Contar solo preguntas correctas usando test_id IN
-      const { count: correctAnswers, error: correctError } = await supabase
-        .from('test_questions')
-        .select('*', { count: 'exact', head: true })
-        .in('test_id', testIds)
-        .eq('is_correct', true)
-
-      if (totalError || correctError) {
-        console.warn('Error loading question counts:', totalError || correctError)
-      }
-
-      // 5. ⚡ OPTIMIZADO: Obtener racha desde tabla user_streaks
-      const { data: streakData, error: streakError } = await supabase
-        .from('user_streaks')
-        .select('current_streak')
-        .eq('user_id', userId)
-        .single()
-
-      let streak = 0
-      if (streakError) {
-        if (streakError.code === 'PGRST116') {
-          // No existe registro, la racha es 0
-          streak = 0
-        } else {
-          console.warn('Error loading user streak:', streakError)
-          streak = 0
-        }
-      } else {
-        streak = streakData?.current_streak || 0
-      }
-
-      // ⚡ Calculate accuracy from count queries (OPTIMIZED)
-      const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
-
+      console.log('🔍 UserAvatar: Calculated values:', {
+        current_streak: stats.current_streak,
+        global_accuracy: stats.global_accuracy,
+        questions_this_week: stats.questions_this_week,
+        today_questions: stats.today_questions,
+        weeklyQuestions: weeklyQuestions,
+        total_questions: stats.total_questions
+      })
 
       setUserStats({
-        streak: streak,
-        accuracy: accuracy,
-        weeklyQuestions: weeklyQuestions || 0,
-        totalQuestions: totalQuestions || 0,
+        streak: Number(stats.current_streak) || 0,
+        accuracy: Number(stats.global_accuracy) || 0,
+        weeklyQuestions: weeklyQuestions,
+        totalQuestions: Number(stats.total_questions) || 0,
         userRegisteredDate: userCreatedAt
       })
     } catch (error) {
