@@ -6,6 +6,44 @@ import { getSupabaseClient } from '../lib/supabase'
 
 const supabase = getSupabaseClient()
 
+// Función para normalizar nombres de oposiciones (quitar acentos, minúsculas)
+const normalizeOposicionName = (name) => {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
+    .replace(/[^a-z0-9\s]/g, ' ') // Reemplazar caracteres especiales con espacios
+    .replace(/\s+/g, ' ') // Normalizar espacios múltiples
+    .trim()
+}
+
+// Función para detectar si una oposición personalizada coincide con una oficial
+const findMatchingOfficialOposicion = (customName) => {
+  const normalizedCustom = normalizeOposicionName(customName)
+  const customWords = normalizedCustom.split(' ').filter(w => w.length > 0)
+
+  return OFFICIAL_OPOSICIONES.find(official => {
+    const normalizedOfficial = normalizeOposicionName(official.nombre)
+
+    // Coincidencia exacta después de normalizar
+    if (normalizedCustom === normalizedOfficial) return true
+
+    // Coincidencia parcial: al menos 70% de las palabras del usuario deben estar en la oficial
+    const officialWords = normalizedOfficial.split(' ').filter(w => w.length > 0)
+    const matchingWords = customWords.filter(word =>
+      officialWords.some(officialWord =>
+        // Coincidencia exacta de palabra o palabra oficial contiene la del usuario
+        officialWord === word || officialWord.includes(word) || word.includes(officialWord)
+      )
+    )
+
+    const matchPercentage = matchingWords.length / customWords.length
+
+    // Si al menos 70% de las palabras coinciden, considerarlo un match
+    return matchPercentage >= 0.7
+  })
+}
+
 // Oposiciones oficiales ordenadas por POPULARIDAD (más demandadas primero)
 const OFFICIAL_OPOSICIONES = [
   // === TOP 10 MÁS POPULARES ===
@@ -700,6 +738,27 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       return
     }
 
+    // 🔍 DETECCIÓN DE DUPLICADOS: Verificar si coincide con una oficial
+    const matchingOfficial = findMatchingOfficialOposicion(customOposicionData.nombre)
+
+    if (matchingOfficial) {
+      // Mostrar alerta y sugerir usar la oficial
+      const useOfficial = window.confirm(
+        `⚠️ Ya existe una oposición oficial similar: "${matchingOfficial.nombre}"\n\n` +
+        `¿Quieres usar la oposición oficial en lugar de crear una personalizada?\n\n` +
+        `Recomendamos usar la oficial para acceder a todas las funcionalidades.`
+      )
+
+      if (useOfficial) {
+        // Usar la oposición oficial
+        handleSelectOposicion(matchingOfficial)
+        setShowCreateForm(false)
+        setCustomOposicionData({ nombre: '', categoria: '', administracion: '' })
+        return
+      }
+      // Si dice que no, continuar creando la personalizada
+    }
+
     try {
       setLoading(true)
       setError(null)
@@ -730,7 +789,8 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
         selectedOposicion: oposicionData
       })
 
-      // 💾 Guardar inmediatamente
+      // 💾 Guardar inmediatamente - NOTA: Para custom seguimos guardando UUID
+      // porque no hay un slug oficial para oposiciones personalizadas
       saveField('target_oposicion', data.oposicion_id)
       saveField('target_oposicion_data', oposicionData)
 
