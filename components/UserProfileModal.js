@@ -273,6 +273,25 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                       <p className="font-medium">{profileData.streak} días</p>
                     </div>
                   </div>
+
+                  {/* Indicador descriptivo de método de estudio */}
+                  {profileData.target_oposicion === 'auxiliar_administrativo_estado' && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="text-center">
+                        {(profileData.mastered_topics || 0) > 1 ? (
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <span className="font-medium text-purple-600 dark:text-purple-400">📚 Estudia por temas</span>
+                            <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <span className="font-medium text-blue-600 dark:text-blue-400">🎲 Hace tests aleatorios principalmente</span>
+                            <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Estadísticas generales */}
@@ -299,8 +318,10 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                       </p>
                       <p className="text-xs text-gray-500">Mejor racha</p>
                     </div>
-                    {/* Solo mostrar temas dominados para auxiliar_administrativo_estado */}
-                    {profileData.target_oposicion === 'auxiliar_administrativo_estado' ? (
+                    {/* Solo mostrar temas dominados si tiene oposición auxiliar_administrativo_estado
+                        Y si realmente estudia por temas (más de 1 tema dominado).
+                        Si solo tiene 0-1 temas, probablemente hace tests aleatorios */}
+                    {profileData.target_oposicion === 'auxiliar_administrativo_estado' && (profileData.mastered_topics || 0) > 1 ? (
                       <div className="text-center">
                         <p className="text-2xl font-bold text-purple-600">
                           {profileData.mastered_topics || 0}
