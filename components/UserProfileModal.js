@@ -292,8 +292,27 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                     <div className="text-center">
                       <p className="text-2xl font-bold text-purple-600">
                         {profileData.mastered_topics || 0}
+                        {(() => {
+                          // Definir total de temas según la oposición
+                          const temasTotales = {
+                            'auxiliar_administrativo_estado': 28, // 16 Bloque I + 12 Bloque II
+                            'administrativo_estado': 45,
+                            'gestion_estado': 60,
+                            'tramitacion_procesal': 31,
+                            'auxilio_judicial': 26,
+                            'gestion_procesal': 68
+                          }
+                          const total = temasTotales[profileData.target_oposicion] || 28
+                          const porcentaje = total > 0 ? Math.round((profileData.mastered_topics / total) * 100) : 0
+                          return (
+                            <>
+                              <span className="text-base text-gray-500 ml-1">/{total}</span>
+                              <span className="text-xs text-gray-400 block">({porcentaje}%)</span>
+                            </>
+                          )
+                        })()}
                       </p>
-                      <p className="text-xs text-gray-500">Temas dominados</p>
+                      <p className="text-xs text-gray-500 mt-1">Temas dominados</p>
                     </div>
                   </div>
                 </div>
