@@ -10,6 +10,7 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
 
   useEffect(() => {
     if (isOpen && userId && supabase) {
+      console.log('🔍 Cargando perfil de usuario:', userId)
       loadUserProfile()
     }
   }, [isOpen, userId, supabase])
@@ -119,7 +120,7 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
       }
 
       // Combinar todos los datos (la nueva RPC trae todo)
-      setProfileData({
+      const finalData = {
         ...stats?.[0],
         display_name: displayName,
         ciudad: publicProfile?.ciudad,
@@ -127,7 +128,15 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         time_in_vence: timeInVence,
         mastered_topics: stats?.[0]?.mastered_topics || 0,
         study_method: studyMethodData.studyMethod
+      }
+
+      console.log('✅ ProfileData establecido:', {
+        display_name: displayName,
+        mastered_topics: finalData.mastered_topics,
+        time_in_vence: finalData.time_in_vence
       })
+
+      setProfileData(finalData)
 
       setTodayActivity({
         tests: todayTests || [],
@@ -327,7 +336,19 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                     {/* Solo mostrar temas dominados si tiene oposición auxiliar_administrativo_estado
                         Y si realmente estudia por temas (más de 1 tema dominado).
                         Si solo tiene 0-1 temas, probablemente hace tests aleatorios */}
-                    {profileData.target_oposicion === 'auxiliar_administrativo_estado' && (profileData.mastered_topics || 0) > 1 ? (
+                    {(() => {
+                      const normalizedOposicion = profileData.target_oposicion?.replace(/-/g, '_')
+                      const isAuxiliar = normalizedOposicion === 'auxiliar_administrativo_estado'
+                      console.log('🔍 Evaluando condición temas dominados:', {
+                        target_oposicion: profileData.target_oposicion,
+                        normalized: normalizedOposicion,
+                        mastered_topics: profileData.mastered_topics,
+                        isAuxiliar,
+                        condition: isAuxiliar && (profileData.mastered_topics || 0) > 1
+                      })
+                      return null
+                    })()}
+                    {profileData.target_oposicion?.replace(/-/g, '_') === 'auxiliar_administrativo_estado' && (profileData.mastered_topics || 0) > 1 ? (
                       <div className="text-center">
                         <p className="text-2xl font-bold text-purple-600">
                           {profileData.mastered_topics || 0}
@@ -357,10 +378,22 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                             return 1
                           })() : 30
 
+                          console.log('📅 Predicción temario:', {
+                            temasDominados,
+                            temasPendientes,
+                            diasEnVence,
+                            timeInVence: profileData.time_in_vence
+                          })
+
                           // Si hay temas dominados, calcular ritmo
                           if (temasDominados > 0 && temasPendientes > 0) {
                             const temasPoSemana = (temasDominados / diasEnVence) * 7
                             const semanasNecesarias = Math.ceil(temasPendientes / temasPoSemana)
+
+                            console.log('📊 Cálculo ritmo:', {
+                              temasPoSemana,
+                              semanasNecesarias
+                            })
 
                             // Calcular fecha proyectada
                             const fechaProyectada = new Date()
