@@ -70,6 +70,39 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         .gte('created_at', today.toISOString())
         .lt('created_at', tomorrow.toISOString())
 
+      // 3.5. Analizar método de estudio (más fiable)
+      const { data: userTests } = await supabase
+        .from('tests')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('is_completed', true)
+
+      let studyMethodData = {
+        uniqueArticlesCount: 0,
+        articlePercentage: 0,
+        tema0Percentage: 0
+      }
+
+      if (userTests && userTests.length > 0) {
+        const { data: questionsData } = await supabase
+          .from('test_questions')
+          .select('article_id, tema_number')
+          .in('test_id', userTests.map(t => t.id))
+
+        if (questionsData && questionsData.length > 0) {
+          const totalQuestions = questionsData.length
+          const withArticle = questionsData.filter(q => q.article_id !== null).length
+          const tema0 = questionsData.filter(q => q.tema_number === 0 || q.tema_number === null).length
+          const uniqueArticles = new Set(questionsData.filter(q => q.article_id).map(q => q.article_id))
+
+          studyMethodData = {
+            uniqueArticlesCount: uniqueArticles.size,
+            articlePercentage: Math.round((withArticle / totalQuestions) * 100),
+            tema0Percentage: Math.round((tema0 / totalQuestions) * 100)
+          }
+        }
+      }
+
       // 4. Calcular tiempo en Vence
       const createdAt = new Date(stats?.[0]?.user_created_at)
       const timeInVence = calculateTimeInVence(createdAt)
@@ -118,7 +151,10 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         ciudad: publicProfile?.ciudad,
         streak: stats?.[0]?.current_streak || 0,
         time_in_vence: timeInVence,
-        mastered_topics: stats?.[0]?.mastered_topics || 0
+        mastered_topics: stats?.[0]?.mastered_topics || 0,
+        unique_articles_count: studyMethodData.uniqueArticlesCount,
+        article_percentage: studyMethodData.articlePercentage,
+        tema0_percentage: studyMethodData.tema0Percentage
       })
 
       setTodayActivity({
@@ -275,23 +311,26 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                   </div>
 
                   {/* Indicador descriptivo de método de estudio */}
-                  {profileData.target_oposicion === 'auxiliar_administrativo_estado' && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                      <div className="text-center">
-                        {(profileData.mastered_topics || 0) > 1 ? (
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            <span className="font-medium text-purple-600 dark:text-purple-400">📚 {profileData.display_name || 'Usuario'} estudia por temas</span>
-                            <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
-                          </p>
-                        ) : (
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
-                            <span className="font-medium text-blue-600 dark:text-blue-400">🎲 {profileData.display_name || 'Usuario'} hace tests aleatorios principalmente</span>
-                            <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
-                          </p>
-                        )}
-                      </div>
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <div className="text-center">
+                      {(profileData.mastered_topics || 0) > 1 ? (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="font-medium text-purple-600 dark:text-purple-400">📚 {profileData.display_name || 'Usuario'} estudia por temas</span>
+                          <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
+                        </p>
+                      ) : (profileData.tema0_percentage || 0) > 80 && (profileData.article_percentage || 0) > 70 ? (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="font-medium text-orange-600 dark:text-orange-400">⚖️ {profileData.display_name || 'Usuario'} estudia por leyes/artículos</span>
+                          <span className="text-gray-500 dark:text-gray-400"> ({profileData.unique_articles_count} artículos diferentes)</span>
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                          <span className="font-medium text-blue-600 dark:text-blue-400">🎲 {profileData.display_name || 'Usuario'} hace tests aleatorios principalmente</span>
+                          <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
+                        </p>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Estadísticas generales */}
