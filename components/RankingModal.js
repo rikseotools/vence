@@ -435,36 +435,49 @@ export default function RankingModal({ isOpen, onClose }) {
         return null
       }
 
-      // Función para obtener nombre a mostrar
+      // Función para obtener nombre a mostrar (igual que en ranking general)
       const getDisplayName = (userId) => {
+        // 1. Buscar display_name personalizado (pero ignorar si es "Usuario")
         const customProfile = customProfiles?.find(p => p.id === userId)
-        if (customProfile?.display_name) {
+        if (customProfile?.display_name && customProfile.display_name !== 'Usuario') {
           return customProfile.display_name
         }
-        
+
+        // 2. Buscar en admin_users_with_roles
         const adminProfile = adminProfiles?.find(p => p.user_id === userId)
-        
+
+        // 3. Si es el usuario actual y no hay perfil, usar datos del contexto
         if (userId === user?.id) {
-          if (user?.user_metadata?.full_name) {
+          if (user?.user_metadata?.full_name && user.user_metadata.full_name !== 'Usuario') {
             const firstName = user.user_metadata.full_name.split(' ')[0]
-            if (firstName?.trim()) return firstName.trim()
+            if (firstName?.trim() && firstName !== 'Usuario') return firstName.trim()
           }
           if (user?.email) {
             return user.email.split('@')[0]
           }
           return 'Tú'
         }
-        
-        if (adminProfile?.full_name) {
+
+        // 4. Para otros usuarios, usar primer nombre del admin profile (si no es genérico)
+        if (adminProfile?.full_name && adminProfile.full_name !== 'Usuario') {
           const firstName = adminProfile.full_name.split(' ')[0]
-          if (firstName?.trim()) return firstName.trim()
+          if (firstName?.trim() && firstName !== 'Usuario') return firstName.trim()
         }
-        
+
+        // 5. Fallback a email sin dominio del admin profile
         if (adminProfile?.email) {
-          return adminProfile.email.split('@')[0]
+          const emailName = adminProfile.email.split('@')[0]
+          // Limpiar números y caracteres especiales del email para que sea más legible
+          const cleanName = emailName.replace(/[0-9]+/g, '').replace(/[._-]/g, ' ').trim()
+          if (cleanName) {
+            // Capitalizar primera letra
+            return cleanName.charAt(0).toUpperCase() + cleanName.slice(1)
+          }
+          return emailName
         }
-        
-        return 'Usuario anónimo'
+
+        // 6. Último recurso: nombre genérico sin números
+        return 'Anónimo'
       }
 
       // Combinar datos con nombres
