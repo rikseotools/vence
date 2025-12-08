@@ -280,12 +280,12 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                       <div className="text-center">
                         {(profileData.mastered_topics || 0) > 1 ? (
                           <p className="text-sm text-gray-700 dark:text-gray-300">
-                            <span className="font-medium text-purple-600 dark:text-purple-400">📚 Estudia por temas</span>
+                            <span className="font-medium text-purple-600 dark:text-purple-400">📚 {profileData.display_name || 'Usuario'} estudia por temas</span>
                             <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
                           </p>
                         ) : (
                           <p className="text-sm text-gray-700 dark:text-gray-300">
-                            <span className="font-medium text-blue-600 dark:text-blue-400">🎲 Hace tests aleatorios principalmente</span>
+                            <span className="font-medium text-blue-600 dark:text-blue-400">🎲 {profileData.display_name || 'Usuario'} hace tests aleatorios principalmente</span>
                             <span className="text-gray-500 dark:text-gray-400"> ({profileData.total_tests_completed || 0} tests completados)</span>
                           </p>
                         )}
