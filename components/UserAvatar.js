@@ -347,9 +347,8 @@ export default function UserAvatar() {
               >
                 <span>👤</span>
                 <span>Mi Perfil</span>
-                <span className="ml-auto text-xs text-gray-400">Cambiar avatar</span>
               </Link>
-              
+
               <Link
                 href="/mis-estadisticas"
                 onClick={handleLinkClick}
@@ -357,9 +356,8 @@ export default function UserAvatar() {
               >
                 <span>📊</span>
                 <span>Mis Estadísticas</span>
-                <span className="ml-auto text-xs text-gray-400">Completas</span>
               </Link>
-              
+
               <Link
                 href="/soporte"
                 onClick={handleLinkClick}
@@ -367,7 +365,6 @@ export default function UserAvatar() {
               >
                 <span>💬</span>
                 <span>Soporte</span>
-                <span className="ml-auto text-xs text-gray-400">Ayuda</span>
               </Link>
               
               <hr className="my-2" />
