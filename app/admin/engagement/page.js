@@ -24,18 +24,30 @@ export default function EngagementPage() {
       }
       
       console.log('🔍 Starting engagement stats fetch...')
-      
-      try {
-        
-        // Crear cliente con service role para bypass RLS
-        const { createClient } = await import('@supabase/supabase-js')
-        const adminSupabase = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
-        )
 
-        // Obtener todos los tests completados (bypass RLS) - Ordenados por fecha
-        const { data: completedTests, error: testsError } = await adminSupabase
+      try {
+        // Primero intentar obtener métricas vía RPC (sin límites RLS)
+        const { data: metricsRPC, error: metricsError } = await supabase
+          .rpc('get_engagement_metrics')
+
+        if (metricsRPC && metricsRPC.length > 0) {
+          console.log('📊 Métricas obtenidas vía RPC:', metricsRPC[0])
+        }
+
+        // También obtener datos de tests para análisis detallado
+        const { data: recentTestsRPC, error: recentTestsError } = await supabase
+          .rpc('get_recent_tests_data', { days_back: 30 })
+
+        console.log('📊 Tests recientes vía RPC:', {
+          count: recentTestsRPC?.length || 0,
+          error: recentTestsError
+        })
+
+        // Usar los datos RPC si están disponibles
+        const useRPCData = metricsRPC && metricsRPC.length > 0 && !metricsError
+
+        // Obtener todos los tests completados - Ordenados por fecha (fallback)
+        const { data: completedTests, error: testsError } = await supabase
           .from('tests')
           .select('user_id, completed_at, is_completed')
           .eq('is_completed', true)
@@ -48,17 +60,20 @@ export default function EngagementPage() {
           throw testsError
         }
         
-        console.log('🧪 Tests query result (admin):', { 
-          count: completedTests?.length || 0, 
+        console.log('🧪 Tests query result (admin):', {
+          count: completedTests?.length || 0,
           error: testsError,
-          sampleTests: completedTests?.slice(0, 3) 
+          sampleTests: completedTests?.slice(0, 3),
+          oldestTest: completedTests?.length > 0 ? completedTests[completedTests.length - 1].completed_at : 'No tests',
+          newestTest: completedTests?.length > 0 ? completedTests[0].completed_at : 'No tests'
         })
 
-        // Obtener usuarios registrados (bypass RLS) - Con límite alto
-        const { data: users, error: usersError } = await adminSupabase
+        // Obtener usuarios registrados - Sin límite usando order
+        const { data: users, error: usersError } = await supabase
           .from('user_profiles')
           .select('id, created_at')
-          .range(0, 9999) // Obtener hasta 10000 usuarios
+          .order('created_at', { ascending: false })
+          .limit(10000) // Usar limit en lugar de range
         
         if (usersError) {
           console.error('❌ Error en user_profiles:', usersError)
@@ -74,48 +89,84 @@ export default function EngagementPage() {
         const totalUsers = users.length
         const now = new Date()
 
-        // Filtrar tests válidos (existen usuarios)
-        const existingUserIds = new Set(users.map(u => u.id))
-        const validCompletedTests = completedTests.filter(t => existingUserIds.has(t.user_id))
+        // Si tenemos datos RPC, úsalos directamente
+        let averageDAU, MAU, dauMauRatio, registeredActiveRatio
 
-        // 📊 CÁLCULO DAU/MAU 
-        const last7DaysTests = validCompletedTests.filter(t => {
-          const testDate = new Date(t.completed_at)
-          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          return testDate >= sevenDaysAgo
-        })
-        
-        const dailyActiveUsers = {}
-        for (let i = 0; i < 7; i++) {
-          const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
-          const dateKey = date.toISOString().split('T')[0]
-          dailyActiveUsers[dateKey] = new Set()
+        if (useRPCData && metricsRPC[0]) {
+          const metrics = metricsRPC[0]
+          averageDAU = parseInt(metrics.dau) || 0
+          MAU = parseInt(metrics.mau) || 0
+          dauMauRatio = parseInt(metrics.dau_mau_ratio) || 0
+          registeredActiveRatio = parseInt(metrics.activation_rate) || 0
+
+          console.log('✅ Usando métricas RPC:', {
+            averageDAU,
+            MAU,
+            dauMauRatio,
+            registeredActiveRatio,
+            totalTests: metrics.total_tests,
+            last30DaysTests: metrics.last_30_days_tests
+          })
         }
-        
-        last7DaysTests.forEach(test => {
-          const testDate = new Date(test.completed_at)
-          const dateKey = testDate.toISOString().split('T')[0]
-          if (dailyActiveUsers[dateKey]) {
-            dailyActiveUsers[dateKey].add(test.user_id)
-          }
-        })
-        
-        const dailyActiveUsersArray = Object.values(dailyActiveUsers).map(set => set.size)
-        const averageDAU = dailyActiveUsersArray.length > 0 ? 
-          Math.round(dailyActiveUsersArray.reduce((sum, dau) => sum + dau, 0) / dailyActiveUsersArray.length) : 0
-        
-        // MAU = Usuarios activos en los últimos 30 días
-        const last30DaysTests = validCompletedTests.filter(t => {
-          const testDate = new Date(t.completed_at)
-          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          return testDate >= thirtyDaysAgo
-        })
-        const MAU = new Set(last30DaysTests.map(t => t.user_id)).size
-        
-        const dauMauRatio = MAU > 0 ? Math.round((averageDAU / MAU) * 100) : 0
 
-        // 📈 MÉTRICA ESPECÍFICA PARA APPS PEQUEÑAS: % Usuarios Registrados Activos
-        const registeredActiveRatio = totalUsers > 0 ? Math.round((MAU / totalUsers) * 100) : 0
+        // Filtrar tests válidos (existen usuarios) - para cálculos de detalle
+        const existingUserIds = new Set(users.map(u => u.id))
+        const validCompletedTests = useRPCData && recentTestsRPC ? recentTestsRPC : completedTests.filter(t => existingUserIds.has(t.user_id))
+
+        // 📊 CÁLCULO DAU/MAU - Solo si no tenemos datos RPC
+        let last30DaysTests = [] // Inicializar como array vacío
+        let last7DaysTests = [] // Declarar aquí para que esté disponible siempre
+
+        if (!useRPCData || !metricsRPC[0]) {
+          last7DaysTests = validCompletedTests.filter(t => {
+            const testDate = new Date(t.completed_at)
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            return testDate >= sevenDaysAgo
+          })
+
+          const dailyActiveUsers = {}
+          for (let i = 0; i < 7; i++) {
+            const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+            const dateKey = date.toISOString().split('T')[0]
+            dailyActiveUsers[dateKey] = new Set()
+          }
+
+          last7DaysTests.forEach(test => {
+            const testDate = new Date(test.completed_at)
+            const dateKey = testDate.toISOString().split('T')[0]
+            if (dailyActiveUsers[dateKey]) {
+              dailyActiveUsers[dateKey].add(test.user_id)
+            }
+          })
+
+          const dailyActiveUsersArray = Object.values(dailyActiveUsers).map(set => set.size)
+          averageDAU = dailyActiveUsersArray.length > 0 ?
+            Math.round(dailyActiveUsersArray.reduce((sum, dau) => sum + dau, 0) / dailyActiveUsersArray.length) : 0
+
+          // MAU = Usuarios activos en los últimos 30 días
+          last30DaysTests = validCompletedTests.filter(t => {
+            const testDate = new Date(t.completed_at)
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            return testDate >= thirtyDaysAgo
+          })
+          MAU = new Set(last30DaysTests.map(t => t.user_id)).size
+
+          dauMauRatio = MAU > 0 ? Math.round((averageDAU / MAU) * 100) : 0
+          registeredActiveRatio = totalUsers > 0 ? Math.round((MAU / totalUsers) * 100) : 0
+
+          console.log('⚠️ Usando cálculo manual (fallback):', {
+            totalTests: completedTests?.length,
+            validTests: validCompletedTests.length,
+            last7DaysTests: last7DaysTests.length,
+            last30DaysTests: last30DaysTests.length,
+            averageDAU,
+            MAU,
+            totalUsers
+          })
+        } else {
+          // Si tenemos datos RPC, usar esos para last30DaysTests
+          last30DaysTests = validCompletedTests
+        }
 
         // 📊 DATOS HISTÓRICOS - Buscar el período con datos más reciente
         const dauMauHistory = []
@@ -576,12 +627,26 @@ export default function EngagementPage() {
           })
         }
 
+        // Opcionalmente, obtener métricas MAU más precisas desde la API route
+        // (útil si hay limitaciones de RLS en las consultas directas)
+        let apiMauStats = null
+        try {
+          const response = await fetch('/api/admin/engagement-stats')
+          if (response.ok) {
+            apiMauStats = await response.json()
+            console.log('📊 API MAU Stats:', apiMauStats)
+          }
+        } catch (apiError) {
+          console.log('⚠️ Could not fetch API MAU stats (using direct queries):', apiError.message)
+        }
+
         console.log('📊 Engagement Stats Debug:')
         console.table({
           totalUsers,
           averageDAU,
           MAU,
           dauMauRatio,
+          apiMauStats,
           dauMauHistoryLength: dauMauHistory.length,
           sampleDay: dauMauHistory[dauMauHistory.length - 1],
           validCompletedTestsCount: validCompletedTests.length,
@@ -1736,7 +1801,7 @@ export default function EngagementPage() {
                   const day30Value = Math.min(point.day30Retention, 100)
                   
                   return (
-                    <g key={point.period}>
+                    <g key={`retention-${index}`}>
                       {/* Puntos con valores */}
                       <circle
                         cx={x}
