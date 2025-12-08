@@ -313,6 +313,67 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                         })()}
                       </p>
                       <p className="text-xs text-gray-500 mt-1">Temas dominados</p>
+                      {(() => {
+                        // Calcular proyección de finalización
+                        const temasTotales = {
+                          'auxiliar_administrativo_estado': 28,
+                          'administrativo_estado': 45,
+                          'gestion_estado': 60,
+                          'tramitacion_procesal': 31,
+                          'auxilio_judicial': 26,
+                          'gestion_procesal': 68
+                        }
+                        const total = temasTotales[profileData.target_oposicion] || 28
+                        const temasDominados = profileData.mastered_topics || 0
+                        const temasPendientes = total - temasDominados
+
+                        // Calcular ritmo de progreso basado en tiempo en Vence
+                        const diasEnVence = profileData.time_in_vence ? (() => {
+                          const timeStr = profileData.time_in_vence
+                          if (timeStr.includes('año')) {
+                            const years = parseInt(timeStr.match(/(\d+)\s+año/)?.[1] || 0)
+                            const months = parseInt(timeStr.match(/(\d+)\s+mes/)?.[1] || 0)
+                            return years * 365 + months * 30
+                          } else if (timeStr.includes('mes')) {
+                            const months = parseInt(timeStr.match(/(\d+)\s+mes/)?.[1] || 0)
+                            return months * 30
+                          } else if (timeStr.includes('día')) {
+                            return parseInt(timeStr.match(/(\d+)\s+día/)?.[1] || 1)
+                          }
+                          return 1
+                        })() : 30
+
+                        // Si hay temas dominados, calcular ritmo
+                        if (temasDominados > 0 && temasPendientes > 0) {
+                          const temasPoSemana = (temasDominados / diasEnVence) * 7
+                          const semanasNecesarias = Math.ceil(temasPendientes / temasPoSemana)
+
+                          // Calcular fecha proyectada
+                          const fechaProyectada = new Date()
+                          fechaProyectada.setDate(fechaProyectada.getDate() + (semanasNecesarias * 7))
+
+                          // Formatear fecha
+                          const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+                          const fechaFormateada = `${fechaProyectada.getDate()} ${meses[fechaProyectada.getMonth()]} ${fechaProyectada.getFullYear()}`
+
+                          // Solo mostrar si es una proyección razonable (menos de 2 años)
+                          if (semanasNecesarias < 104) {
+                            return (
+                              <p className="text-xs text-green-600 mt-2">
+                                📅 A este ritmo, {profileData.display_name || 'dominarás'} {profileData.display_name ? 'dominará' : ''} todo el temario para el <span className="font-bold">{fechaFormateada}</span>
+                              </p>
+                            )
+                          }
+                        } else if (temasDominados === total) {
+                          return (
+                            <p className="text-xs text-green-600 mt-2">
+                              ✅ ¡Felicidades! Has dominado todo el temario
+                            </p>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                   </div>
                 </div>
