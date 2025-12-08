@@ -34,12 +34,14 @@ export default function EngagementPage() {
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
         )
 
-        // Obtener todos los tests completados (bypass RLS)
+        // Obtener todos los tests completados (bypass RLS) - Ordenados por fecha
         const { data: completedTests, error: testsError } = await adminSupabase
           .from('tests')
           .select('user_id, completed_at, is_completed')
           .eq('is_completed', true)
           .not('completed_at', 'is', null)
+          .order('completed_at', { ascending: false }) // Más recientes primero
+          .limit(5000) // Obtener hasta 5000 tests más recientes
         
         if (testsError) {
           console.error('❌ Error en tests:', testsError)
@@ -52,10 +54,11 @@ export default function EngagementPage() {
           sampleTests: completedTests?.slice(0, 3) 
         })
 
-        // Obtener usuarios registrados (bypass RLS)
+        // Obtener usuarios registrados (bypass RLS) - Con límite alto
         const { data: users, error: usersError } = await adminSupabase
           .from('user_profiles')
           .select('id, created_at')
+          .range(0, 9999) // Obtener hasta 10000 usuarios
         
         if (usersError) {
           console.error('❌ Error en user_profiles:', usersError)

@@ -26,20 +26,41 @@ export default function AdminDashboard() {
         console.log('📊 Cargando datos del dashboard...')
 
         // 1. Estadísticas generales de usuarios - CORREGIDO: usar vista admin
-        const { data: generalStats, error: statsError } = await supabase
+        const { data: generalStats, error: generalStatsError } = await supabase
           .from('admin_users_with_roles')
           .select('user_id, is_active_student, user_created_at, registration_source')
 
-        if (statsError) throw statsError
+        if (generalStatsError) throw generalStatsError
 
-        // 2. Tests completados últimos 30 días
+        // 2. Tests completados últimos 30 días - Ordenados por fecha
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
         const { data: recentTests, error: testsError } = await supabase
           .from('tests')
           .select('id, is_completed, created_at, completed_at, user_id, score, total_questions')
           .gte('created_at', thirtyDaysAgo)
+          .order('created_at', { ascending: false }) // Más recientes primero
+          .limit(5000) // Obtener hasta 5000 tests
 
         if (testsError) throw testsError
+
+        // 2b. NUEVO: Usar RPC para obtener estadísticas reales sin límites
+        console.log('🔍 FETCH: Obteniendo estadísticas del dashboard vía RPC...')
+        const { data: dashboardStats, error: dashboardRpcError } = await supabase
+          .rpc('get_dashboard_stats')
+
+        if (dashboardRpcError) {
+          console.error('❌ Error obteniendo estadísticas:', dashboardRpcError)
+          throw dashboardRpcError
+        }
+
+        console.log('✅ Estadísticas del dashboard:', dashboardStats)
+
+        // Para mantener compatibilidad, crear un array fake con los user_ids
+        // (solo para que el resto del código funcione)
+        const allCompletedTests = dashboardStats?.[0]?.users_with_tests ?
+          Array(dashboardStats[0].users_with_tests).fill({}).map((_, i) => ({
+            user_id: `user_${i}`
+          })) : []
 
         // 3. Estadísticas de emails de esta semana (desde el lunes)
         const now = new Date()
@@ -112,7 +133,7 @@ export default function AdminDashboard() {
         console.log('🔍 DEBUG: Final activity array length:', finalTodayActivity.length)
         console.log('🔍 DEBUG: Final activity estructura completa:', finalTodayActivity)
         
-        const processedStats = processStatistics(generalStats, recentTests, finalTodayActivity)
+        const processedStats = processStatistics(generalStats, recentTests, finalTodayActivity, allCompletedTests, dashboardStats)
         const processedEmailStats = processEmailStatistics(emailData)
 
         setStats(processedStats)
@@ -144,48 +165,45 @@ export default function AdminDashboard() {
     loadDashboardData()
   }, [supabase])
 
-  function processStatistics(users, tests, todayTests) {
+  function processStatistics(users, tests, todayTests, allCompletedTests, dashboardStats) {
     console.log('🔍 Procesando estadísticas RAW:')
     console.log('- users array:', users)
     console.log('- tests array:', tests)
     console.log('- todayTests array:', todayTests)
+    console.log('- allCompletedTests array:', allCompletedTests?.length)
+    console.log('- dashboardStats:', dashboardStats)
 
-    const totalUsers = users?.length || 0
+    // Usar datos del RPC para estadísticas principales
+    const totalUsers = dashboardStats?.[0]?.total_users || users?.length || 0
+    const usersWhoCompletedTests = dashboardStats?.[0]?.users_with_tests || 0
+    const engagementRate = dashboardStats?.[0]?.engagement_percentage || 0
+
     const activeUsers = users?.filter(u => u.is_active_student).length || 0
-    
+
     // Filtrar solo tests válidos y completados - CORREGIDO PARA SCORES COMO PORCENTAJE
-    const validCompletedTests = (tests || []).filter(t => 
-      t.is_completed === true && 
-      t.completed_at && 
-      t.score !== null && 
+    const validCompletedTests = (tests || []).filter(t =>
+      t.is_completed === true &&
+      t.completed_at &&
+      t.score !== null &&
       t.total_questions > 0 &&
       !isNaN(t.score) &&
       !isNaN(t.total_questions) &&
       t.score >= 0  // Solo verificamos que score sea positivo, no que sea <= total_questions
     )
-    
+
     console.log('✅ Tests válidos completados:', validCompletedTests.length)
     console.log('📊 Sample test:', validCompletedTests[0])
-    
-    // Engagement Rate = % de usuarios EXISTENTES que han completado al menos 1 test VÁLIDO
-    const userIdsFromTests = new Set(validCompletedTests.map(t => t.user_id))
+
+    // Para estadísticas de 30 días (mantener para otras métricas)
     const existingUserIds = new Set(users.map(u => u.user_id)) // CORREGIDO: usar user_id de la vista admin
+    const userIdsFromRecentTests = new Set(validCompletedTests.map(t => t.user_id))
     
-    // Solo contar usuarios que existen tanto en tests como en user_profiles
-    const usersWhoCompletedTests = new Set(
-      [...userIdsFromTests].filter(userId => existingUserIds.has(userId))
-    ).size
-    
-    // CLAMPING para evitar porcentajes imposibles
-    const engagementRate = totalUsers > 0 ? 
-      Math.min(100, Math.max(0, Math.round((usersWhoCompletedTests / totalUsers) * 100))) : 0
-    
-    console.log(`🎯 Engagement CORREGIDO:`)
-    console.log(`- Usuarios únicos en tests: ${userIdsFromTests.size}`)
+    console.log(`🎯 Engagement CORREGIDO (desde RPC):`)
+    console.log(`- Usuarios únicos en últimos 30 días: ${userIdsFromRecentTests.size}`)
     console.log(`- Usuarios existentes: ${existingUserIds.size}`)
-    console.log(`- Usuarios válidos que completaron tests: ${usersWhoCompletedTests}`)
-    console.log(`- Total usuarios: ${totalUsers}`)
-    console.log(`- Engagement final: ${engagementRate}%`)
+    console.log(`- Usuarios que completaron tests (desde RPC): ${usersWhoCompletedTests}`)
+    console.log(`- Total usuarios (desde RPC): ${totalUsers}`)
+    console.log(`- Engagement final (desde RPC): ${engagementRate}%`)
     
     // Cálculo de semana actual (lunes a domingo)
     const now = new Date()
@@ -609,7 +627,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                  Tests Hoy
+                  Tests Completos Hoy
                 </p>
                 <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats.testsCompletedToday}</p>
                 <p className="text-xs text-gray-500 mt-1">
@@ -621,7 +639,7 @@ export default function AdminDashboard() {
                         const remaining = uniqueUsers.length - 2
                         return remaining > 0 ? `Por ${first2} y ${remaining} más` : `Por ${first2}`
                       })()
-                    : 'Sin actividad hoy'
+                    : 'Ninguno completado'
                   }
                 </p>
               </div>

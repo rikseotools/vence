@@ -39,7 +39,7 @@ export default function UsuariosManagementPage() {
 
       if (usersError) throw usersError
 
-      // 2. Obtener estadísticas de tests por usuario
+      // 2. Obtener estadísticas de tests por usuario - Con límite alto
       const { data: testStats, error: testStatsError } = await supabase
         .from('tests')
         .select(`
@@ -50,14 +50,16 @@ export default function UsuariosManagementPage() {
           created_at,
           completed_at
         `)
+        .range(0, 9999) // Obtener hasta 10000 tests
 
       if (testStatsError) throw testStatsError
 
-      // 3. Obtener última actividad de sesiones
+      // 3. Obtener última actividad de sesiones - Con límite alto
       const { data: lastSessions, error: sessionsError } = await supabase
         .from('user_sessions')
         .select('user_id, session_start')
         .order('session_start', { ascending: false })
+        .range(0, 9999) // Obtener hasta 10000 sesiones
 
       if (sessionsError) throw sessionsError
 
