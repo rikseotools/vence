@@ -86,14 +86,23 @@ export default function AdminDashboard() {
 
         if (usersError) throw usersError
 
-        // 5. Tests completados HOY - Usar admin_users_with_roles (sin RLS)
+        // 5. Tests completados HOY - Usar zona horaria de Madrid
         console.log('🕐 Consultando tests de hoy...')
-        
+
+        // Calcular inicio del día en Madrid (00:00:00 Madrid = 23:00:00 UTC del día anterior)
+        const nowMadrid = new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' })
+        const madridDate = new Date(nowMadrid)
+        const startOfDayMadrid = new Date(madridDate)
+        startOfDayMadrid.setHours(0, 0, 0, 0)
+
+        console.log('📅 Fecha Madrid:', madridDate.toLocaleDateString('es-ES'))
+        console.log('🕐 Inicio día Madrid (UTC):', startOfDayMadrid.toISOString())
+
         const { data: todayTests, error: todayTestsError } = await supabase
           .from('tests')
           .select('id, completed_at, score, total_questions, user_id')
           .eq('is_completed', true)
-          .gte('completed_at', new Date().toISOString().split('T')[0])
+          .gte('completed_at', startOfDayMadrid.toISOString())
           .order('completed_at', { ascending: false })
           .limit(10)
 
