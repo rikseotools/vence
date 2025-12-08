@@ -261,7 +261,29 @@ export default function EstadisticasRevolucionarias() {
       console.log('🔍 Todos los tests:', allTests?.length, '| Tests completados:', tests?.length)
       console.log('🔍 Primeros 3 tests completados:', tests?.slice(0, 3))
 
-      // 2. ✅ RESPUESTAS DETALLADAS CON IA desde test_questions
+      // 2. ✅ RESPUESTAS DETALLADAS - Usar RPC para evitar timeouts
+      // Primero obtener estadísticas completas via RPC (más eficiente)
+      const { data: completeStats, error: statsError } = await supabase
+        .rpc('get_user_complete_stats', { p_user_id: userId })
+
+      if (statsError) {
+        console.warn('RPC no disponible, usando método tradicional con límite:', statsError)
+        // Fallback: cargar datos limitados si la RPC no existe
+        const { data: responses, error: responsesError } = await supabase
+          .from('test_questions')
+          .select(`
+            *,
+            tests!inner(user_id)
+          `)
+          .eq('tests.user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(5000)
+
+        if (responsesError) throw responsesError
+        return { responses, completeStats: null }
+      }
+
+      // Para el detalle visual, cargar solo los últimos 1000 registros
       const { data: responses, error: responsesError } = await supabase
         .from('test_questions')
         .select(`
@@ -270,7 +292,7 @@ export default function EstadisticasRevolucionarias() {
         `)
         .eq('tests.user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(15000) // ✅ Límite alto para estadísticas completas
+        .limit(1000) // Solo para visualización, las estadísticas vienen de la RPC
 
       if (responsesError) throw responsesError
 

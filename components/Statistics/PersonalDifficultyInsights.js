@@ -7,7 +7,6 @@ import { useAuth } from '@/contexts/AuthContext'
 
 export default function PersonalDifficultyInsights() {
   const { user, supabase } = useAuth()
-  const [localUser, setLocalUser] = useState(null)
   const [metrics, setMetrics] = useState(null)
   const [trends, setTrends] = useState(null)
   const [strugglingQuestions, setStrugglingQuestions] = useState([])
@@ -19,16 +18,14 @@ export default function PersonalDifficultyInsights() {
 
   useEffect(() => {
     const initializeData = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        setUser(user)
         await loadAllData(user.id)
       }
       setIsLoading(false)
     }
-    
+
     initializeData()
-  }, [])
+  }, [user])
 
   const loadAllData = async (userId) => {
     try {
