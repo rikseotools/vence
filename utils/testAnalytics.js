@@ -70,7 +70,7 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     const { data: savedQuestions, error: verifyError } = await supabase
       .from('test_questions')
       .select('question_order')
-      .eq('test_id', testId)
+      .eq('test_id', sessionId)
 
     if (verifyError) {
       console.error('❌ Error verificando preguntas guardadas:', verifyError)
@@ -82,7 +82,7 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     // 🔴 Detectar si hay preguntas perdidas
     if (savedCount < expectedCount) {
       console.warn('⚠️ TEST INCOMPLETO DETECTADO', {
-        testId,
+        testId: sessionId,
         preguntasGuardadas: savedCount,
         preguntasEsperadas: expectedCount,
         preguntasPerdidas: expectedCount - savedCount,

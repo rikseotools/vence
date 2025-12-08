@@ -562,12 +562,12 @@ export default function TestLayout({
             setSaveStatus('saving')
             console.log('💾 Completando test final...')
             const result = await completeDetailedTest(
-              currentTestSession.id, 
-              newScore, 
-              newDetailedAnswers, 
-              questions, 
-              startTime, 
-              testTracker.interactionEvents, 
+              currentTestSession.id,
+              newScore,
+              newDetailedAnswers,
+              effectiveQuestions,
+              startTime,
+              testTracker.interactionEvents,
               userSession
             )
             setSaveStatus(result.status)
