@@ -180,15 +180,25 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
   }
 
   const getOposicionName = (oposicion) => {
+    // Si es un UUID, devolver valor por defecto
+    if (oposicion?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      return 'Auxiliar Administrativo del Estado'
+    }
+
+    // Normalizar el valor (quitar guiones para comparar)
+    const normalized = oposicion?.replace(/-/g, '_')
+
     const oposiciones = {
       'auxiliar_administrativo_estado': 'Auxiliar Administrativo del Estado',
       'administrativo_estado': 'Administrativo del Estado',
       'gestion_estado': 'Gestión del Estado',
       'tramitacion_procesal': 'Tramitación Procesal',
       'auxilio_judicial': 'Auxilio Judicial',
-      'gestion_procesal': 'Gestión Procesal'
+      'gestion_procesal': 'Gestión Procesal',
+      'auxiliar_ayuntamiento': 'Auxiliar de Ayuntamiento'
     }
-    return oposiciones[oposicion] || oposicion || 'No especificada'
+
+    return oposiciones[normalized] || 'Auxiliar Administrativo del Estado'
   }
 
   if (!isOpen) return null

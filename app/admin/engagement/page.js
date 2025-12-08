@@ -228,31 +228,31 @@ export default function EngagementPage() {
           
           cohortUsers.forEach(user => {
             const registrationDate = new Date(user.created_at)
-            
-            // Day 1: ¿Hizo test entre día 1-2 después del registro?
+
+            // Day 1: ¿Hizo test el día después del registro?
             const day1Start = new Date(registrationDate.getTime() + 24 * 60 * 60 * 1000)
             const day1End = new Date(registrationDate.getTime() + 2 * 24 * 60 * 60 * 1000)
             const hasDay1Activity = validCompletedTests.some(t => {
               const testDate = new Date(t.completed_at)
-              return t.user_id === user.id && testDate >= day1Start && testDate <= day1End
+              return t.user_id === user.id && testDate >= day1Start && testDate < day1End
             })
             if (hasDay1Activity) day1Retained++
-            
-            // Day 7: ¿Hizo test entre día 2-7 después del registro?
-            const day7Start = new Date(registrationDate.getTime() + 2 * 24 * 60 * 60 * 1000)
-            const day7End = new Date(registrationDate.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+            // Day 7: ¿Hizo test alrededor del día 7? (días 6-8)
+            const day7Start = new Date(registrationDate.getTime() + 6 * 24 * 60 * 60 * 1000)
+            const day7End = new Date(registrationDate.getTime() + 9 * 24 * 60 * 60 * 1000)
             const hasDay7Activity = validCompletedTests.some(t => {
               const testDate = new Date(t.completed_at)
-              return t.user_id === user.id && testDate >= day7Start && testDate <= day7End
+              return t.user_id === user.id && testDate >= day7Start && testDate < day7End
             })
             if (hasDay7Activity) day7Retained++
-            
-            // Day 30: ¿Hizo test entre día 7-30 después del registro?
-            const day30Start = new Date(registrationDate.getTime() + 7 * 24 * 60 * 60 * 1000)
-            const day30End = new Date(registrationDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+            // Day 30: ¿Hizo test alrededor del día 30? (días 27-33)
+            const day30Start = new Date(registrationDate.getTime() + 27 * 24 * 60 * 60 * 1000)
+            const day30End = new Date(registrationDate.getTime() + 33 * 24 * 60 * 60 * 1000)
             const hasDay30Activity = validCompletedTests.some(t => {
               const testDate = new Date(t.completed_at)
-              return t.user_id === user.id && testDate >= day30Start && testDate <= day30End
+              return t.user_id === user.id && testDate >= day30Start && testDate < day30End
             })
             if (hasDay30Activity) day30Retained++
           })
