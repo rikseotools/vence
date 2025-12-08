@@ -776,10 +776,10 @@ function PerfilPageContent() {
     return (
       <div className="space-y-8">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
             🔔 Configuración de Notificaciones
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
             Gestiona todas tus notificaciones en un solo lugar. Configura tanto las notificaciones push del navegador como los emails automáticos.
           </p>
         </div>
@@ -789,8 +789,8 @@ function PerfilPageContent() {
           <div className="flex items-center space-x-3 mb-4">
             <span className="text-2xl">📱</span>
             <div>
-              <h4 className="text-lg font-semibold text-gray-800">Notificaciones Push</h4>
-              <p className="text-sm text-gray-600">Recordatorios directos en tu navegador</p>
+              <h4 className="text-lg font-semibold text-gray-800 dark:text-white">Notificaciones Push</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Recordatorios directos en tu navegador</p>
             </div>
           </div>
 
@@ -807,13 +807,13 @@ function PerfilPageContent() {
           ) : (
             <div className="space-y-4">
               {/* Estado actual */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:border-gray-600 rounded-lg dark:bg-gray-700 p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h5 className="font-medium text-gray-800">
                       Notificaciones Push
                     </h5>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
                       {pushNotifications.enabled 
                         ? 'Recibirás recordatorios para mantener tu racha de estudio'
                         : 'No recibirás notificaciones push en este navegador'
@@ -858,18 +858,18 @@ function PerfilPageContent() {
             <span className="text-2xl">📧</span>
             <div>
               <h4 className="text-lg font-semibold text-gray-800">Emails de Vence</h4>
-              <p className="text-sm text-gray-600">Recibe alertas y noticias para tu oposición</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Recibe alertas y noticias para tu oposición</p>
             </div>
           </div>
 
           {/* Opción única simplificada */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:border-gray-600 rounded-lg dark:bg-gray-700 p-4 mb-4">
             <div className="flex items-center justify-between">
               <div>
                 <h5 className="font-medium text-gray-800">
                   Emails de Vence
                 </h5>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   {emailPreferences.receive_emails ? (
                     <>Recibes todos los tipos: bienvenida, reactivación, urgentes, resumenes semanales y noticias</>
                   ) : (
@@ -899,13 +899,13 @@ function PerfilPageContent() {
           </div>
 
           {/* Opción específica para emails de soporte */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:border-gray-600 rounded-lg dark:bg-gray-700 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <h5 className="font-medium text-gray-800">
                   💬 Emails de Soporte
                 </h5>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
                   {emailPreferences.support_emails ? (
                     <>Recibes emails cuando el equipo responde a tus consultas</>
                   ) : (
@@ -962,20 +962,20 @@ function PerfilPageContent() {
     return (
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
             📧 Configuración de Emails
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
             Gestiona qué emails quieres recibir de iLoveTest. Puedes desactivar todos o configurar cada tipo por separado.
           </p>
         </div>
 
         {/* Desactivar todos los emails */}
-        <div className="bg-gray-50 rounded-lg p-4">
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-medium text-gray-800">🚫 Desactivar todos los emails</h4>
-              <p className="text-sm text-gray-600">No recibirás ningún email automático de iLoveTest</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">No recibirás ningún email automático de iLoveTest</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -995,13 +995,13 @@ function PerfilPageContent() {
           <h4 className="font-medium text-gray-800">📋 Configuración por tipo de email</h4>
           
           {/* Email de reactivación */}
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700">
             <div className="flex-1">
               <div className="flex items-center space-x-2">
                 <span className="text-blue-500">🔄</span>
                 <h5 className="font-medium text-gray-800">Emails de Reactivación</h5>
               </div>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                 Te recordamos volver cuando llevas 7-13 días sin estudiar
               </p>
             </div>
@@ -1018,13 +1018,13 @@ function PerfilPageContent() {
           </div>
 
           {/* Email urgente */}
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700">
             <div className="flex-1">
               <div className="flex items-center space-x-2">
                 <span className="text-red-500">🚨</span>
                 <h5 className="font-medium text-gray-800">Emails Urgentes</h5>
               </div>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                 Recordatorio más fuerte cuando llevas 14+ días sin estudiar
               </p>
             </div>
@@ -1041,13 +1041,13 @@ function PerfilPageContent() {
           </div>
 
           {/* Email de bienvenida motivacional */}
-          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700">
             <div className="flex-1">
               <div className="flex items-center space-x-2">
                 <span className="text-green-500">🚀</span>
                 <h5 className="font-medium text-gray-800">Emails de Motivación</h5>
               </div>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                 Te ayudamos a dar el primer paso si te registraste pero no has empezado
               </p>
             </div>
@@ -1106,10 +1106,10 @@ function PerfilPageContent() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
           <div className="text-6xl mb-4">🔒</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
             Acceso Requerido
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
             Para ver tu perfil necesitas estar registrado.
           </p>
           <div className="space-y-3">
@@ -1132,17 +1132,17 @@ function PerfilPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
         
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-4xl font-bold text-gray-800 mb-2">
+              <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">
                 👤 Mi Perfil
               </h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 dark:text-gray-300">
                 Gestiona tu información personal y preferencias
               </p>
             </div>
@@ -1163,7 +1163,7 @@ function PerfilPageContent() {
           
           {/* Columna izquierda - Info del usuario */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
               <div className="text-center">
                 {/* Avatar con cambio de avatar */}
                 <div className="mb-4">
@@ -1174,10 +1174,10 @@ function PerfilPageContent() {
                   />
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
                   {formData.nickname || getFirstName(user.user_metadata?.full_name) || 'Usuario'}
                 </h3>
-                <p className="text-gray-600 mb-4">{user.email}</p>
+                <p className="text-gray-600 dark:text-gray-300 mb-4">{user.email}</p>
                 
                 {/* Estadísticas básicas */}
                 <div className="grid grid-cols-2 gap-4 text-center">
@@ -1198,26 +1198,26 @@ function PerfilPageContent() {
             </div>
 
             {/* Enlaces rápidos */}
-            <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
-              <h4 className="font-bold text-gray-800 mb-4">🔗 Enlaces Rápidos</h4>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mt-6">
+              <h4 className="font-bold text-gray-800 dark:text-white mb-4">🔗 Enlaces Rápidos</h4>
               <div className="space-y-2">
-                <Link 
+                <Link
                   href="/mis-estadisticas"
-                  className="flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                  className="flex items-center space-x-3 p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   <span>📊</span>
                   <span>Mis Estadísticas</span>
                 </Link>
-                <Link 
+                <Link
                   href="/auxiliar-administrativo-estado/test"
-                  className="flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                  className="flex items-center space-x-3 p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   <span>🎯</span>
                   <span>Hacer Tests</span>
                 </Link>
-                <Link 
+                <Link
                   href="/auxiliar-administrativo-estado/temario"
-                  className="flex items-center space-x-3 p-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+                  className="flex items-center space-x-3 p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
                 >
                   <span>📚</span>
                   <span>Ver Temario</span>
@@ -1228,17 +1228,17 @@ function PerfilPageContent() {
 
           {/* Columna derecha - Pestañas */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
               
               {/* 🆕 SISTEMA DE PESTAÑAS */}
-              <div className="border-b border-gray-200 mb-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                 <nav className="flex space-x-8">
                   <button
                     onClick={() => setActiveTab('general')}
                     className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'general'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
                   >
                     ⚙️ General
@@ -1247,8 +1247,8 @@ function PerfilPageContent() {
                     onClick={() => setActiveTab('notificaciones')}
                     className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'notificaciones'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
                   >
                     🔔 Notificaciones
@@ -1260,37 +1260,37 @@ function PerfilPageContent() {
               {activeTab === 'general' && (
                 <div>
                   <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
                       ⚙️ Configuración del Perfil
                     </h2>
                   </div>
 
                   <div className="space-y-6">
-                    
+
                     {/* Información Personal */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
                         👤 Información Personal
                       </h3>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             Nombre Completo (Google)
                           </label>
                           <input
                             type="text"
                             value={user.user_metadata?.full_name || 'No disponible'}
                             disabled
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
                           />
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Este es tu nombre de Google y no se puede editar
                           </p>
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             Nickname (Nombre para mostrar)
                           </label>
                           <input
@@ -1298,10 +1298,10 @@ function PerfilPageContent() {
                             name="nickname"
                             value={formData.nickname}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder={`Por ejemplo: ${getFirstName(user.user_metadata?.full_name) || 'Tu nombre preferido'}`}
                           />
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Si no lo completas, usaremos "{getFirstName(user.user_metadata?.full_name) || 'tu primer nombre'}"
                           </p>
                         </div>
@@ -1309,14 +1309,14 @@ function PerfilPageContent() {
                       
                       <div className="mt-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             Email (No editable)
                           </label>
                           <input
                             type="email"
                             value={user.email}
                             disabled
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
                           />
                         </div>
                       </div>
@@ -1326,7 +1326,7 @@ function PerfilPageContent() {
                     <div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             🎂 Edad
                           </label>
                           <input
@@ -1336,20 +1336,20 @@ function PerfilPageContent() {
                             onChange={handleInputChange}
                             min="16"
                             max="100"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Tu edad"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             👤 Género
                           </label>
                           <select
                             name="gender"
                             value={formData.gender}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           >
                             <option value="">Sin especificar</option>
                             <option value="male">Masculino</option>
@@ -1360,7 +1360,7 @@ function PerfilPageContent() {
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             📍 Ciudad
                           </label>
                           <input
@@ -1368,13 +1368,13 @@ function PerfilPageContent() {
                             name="ciudad"
                             value={formData.ciudad}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Tu ciudad"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             ⏰ Horas de estudio diarias
                             <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
                           </label>
@@ -1385,10 +1385,10 @@ function PerfilPageContent() {
                             onChange={handleInputChange}
                             min="1"
                             max="12"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Opcional"
                           />
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Número aproximado de horas que estudias al día
                           </p>
                         </div>
@@ -1397,13 +1397,13 @@ function PerfilPageContent() {
 
                     {/* Preferencias de Estudio */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
                         📚 Preferencias de Estudio
                       </h3>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             🎯 Oposición Objetivo
                           </label>
 
@@ -1444,11 +1444,11 @@ function PerfilPageContent() {
                                 placeholder="🔍 Buscar oposición..."
                                 value={oposicionSearchTerm}
                                 onChange={(e) => setOposicionSearchTerm(e.target.value)}
-                                className="w-full px-4 py-2 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-4 py-2 mb-3 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               />
 
                               {/* Lista de oposiciones */}
-                              <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                              <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 p-2">
                                 {filteredOposiciones.length === 0 ? (
                                   <div className="text-center py-4 text-gray-500">
                                     No se encontraron oposiciones
@@ -1464,7 +1464,7 @@ function PerfilPageContent() {
                                           setShowOposicionSelector(false)
                                           setOposicionSearchTerm('')
                                         }}
-                                        className="w-full text-left p-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all text-sm"
+                                        className="w-full text-left p-2 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700 hover:bg-gray-50 transition-all text-sm"
                                       >
                                         <div className="text-gray-600">
                                           ❌ Ninguna seleccionada
@@ -1488,11 +1488,11 @@ function PerfilPageContent() {
                                             : 'border-gray-200'
                                         }`}
                                       >
-                                        <div className="font-medium text-gray-900">
+                                        <div className="font-medium text-gray-900 dark:text-white">
                                           {op.label}
                                         </div>
                                         {op.data?.categoria && op.data?.administracion && (
-                                          <div className="text-xs text-gray-500 mt-1">
+                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                             {op.data.categoria} · {op.data.administracion}
                                           </div>
                                         )}
@@ -1510,7 +1510,7 @@ function PerfilPageContent() {
                                     setShowOposicionSelector(false)
                                     setOposicionSearchTerm('')
                                   }}
-                                  className="mt-2 text-sm text-gray-600 hover:text-gray-800"
+                                  className="mt-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800"
                                 >
                                   Cancelar
                                 </button>
@@ -1518,13 +1518,13 @@ function PerfilPageContent() {
                             </>
                           )}
 
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Selecciona la oposición que estás preparando
                           </p>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 dark:text-gray-300 mb-2">
                             📊 Meta Diaria (preguntas)
                           </label>
                           <input
@@ -1534,9 +1534,9 @@ function PerfilPageContent() {
                             onChange={handleInputChange}
                             min="5"
                             max="100"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           />
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             Número de preguntas que quieres responder cada día
                           </p>
                         </div>
@@ -1545,7 +1545,7 @@ function PerfilPageContent() {
 
                     {/* Avatar Actual */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
                         🎨 Avatar Actual
                       </h3>
                       <div className="bg-gray-50 p-4 rounded-lg">
@@ -1568,21 +1568,21 @@ function PerfilPageContent() {
 
                     {/* Información de Cuenta */}
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
                         🔐 Información de Cuenta
                       </h3>
                       
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           <div>
-                            <span className="font-medium text-gray-700">Registrado:</span>
-                            <span className="text-gray-600 ml-2">
+                            <span className="font-medium text-gray-700 dark:text-gray-300">Registrado:</span>
+                            <span className="text-gray-600 dark:text-gray-300 ml-2">
                               {new Date(user.created_at).toLocaleDateString('es-ES')}
                             </span>
                           </div>
                           <div>
-                            <span className="font-medium text-gray-700">Última actualización:</span>
-                            <span className="text-gray-600 ml-2">
+                            <span className="font-medium text-gray-700 dark:text-gray-300">Última actualización:</span>
+                            <span className="text-gray-600 dark:text-gray-300 ml-2">
                               {profile?.updated_at ? 
                                 new Date(profile.updated_at).toLocaleDateString('es-ES') : 
                                 'Nunca'
