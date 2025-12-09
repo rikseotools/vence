@@ -165,6 +165,42 @@ git push origin main
 - Para verificar estructura de tablas, consultar `docs/database/tablas.md` antes de hacer queries
 - Evita asumir nombres de columnas, siempre verificar con `information_schema.columns` o el README
 
+### Consultas a Base de Datos desde Claude Code
+Claude puede consultar la base de datos Supabase directamente usando Node.js con `@supabase/supabase-js`:
+
+```bash
+node -e "
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+(async () => {
+  const { data, error } = await supabase
+    .from('questions')
+    .select('id, difficulty, global_difficulty')
+    .eq('is_active', true)
+    .limit(5);
+
+  if (error) console.error('❌ Error:', error);
+  else console.log('✅ Resultados:', data);
+})();
+"
+```
+
+**Ventajas:**
+- ✅ 100% confiable (usa las mismas credenciales que la app)
+- ✅ No requiere contraseña de Postgres (usa ANON_KEY)
+- ✅ Respeta RLS policies automáticamente
+- ✅ Sintaxis familiar (igual que en el código de la app)
+
+**Notas importantes:**
+- MCP NO funciona con Supabase (ver docs/MCP-POSTGRES-SUPABASE.md en otros proyectos)
+- Variables de entorno se cargan automáticamente de `.env.local`
+- Útil para debugging, verificación de datos, y análisis de queries complejas
+
 ### ⚠️ CRÍTICO: Verificación de Contenido Legal
 - **NUNCA crear estructuras de leyes sin verificar primero con BOE oficial**
 - **SIEMPRE consultar fuentes oficiales ANTES de crear contenido normativo**
