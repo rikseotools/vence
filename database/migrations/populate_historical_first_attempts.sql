@@ -89,17 +89,17 @@ BEGIN
     SELECT question_id
     FROM question_first_attempts
     GROUP BY question_id
-    HAVING COUNT(*) >= 10
+    HAVING COUNT(*) >= 3
   ) q;
 
-  RAISE NOTICE '📊 Actualizando dificultad de % preguntas con 10+ primeros intentos...', v_total_to_update;
+  RAISE NOTICE '📊 Actualizando dificultad de % preguntas con 3+ primeros intentos...', v_total_to_update;
 
   -- Actualizar cada pregunta
   FOR v_question_record IN
     SELECT question_id, COUNT(*) as sample_size
     FROM question_first_attempts
     GROUP BY question_id
-    HAVING COUNT(*) >= 10
+    HAVING COUNT(*) >= 3
     ORDER BY COUNT(*) DESC
   LOOP
     PERFORM update_question_global_difficulty(v_question_record.question_id);

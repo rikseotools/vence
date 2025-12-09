@@ -64,8 +64,8 @@ BEGIN
   FROM question_first_attempts
   WHERE question_id = p_question_id;
 
-  -- Necesita al menos 10 primeros intentos para ser confiable
-  IF v_first_attempts_count < 10 THEN
+  -- Necesita al menos 3 primeros intentos para ser confiable
+  IF v_first_attempts_count < 3 THEN
     RETURN NULL;
   END IF;
 
@@ -105,7 +105,7 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION calculate_question_global_difficulty IS 'Calcula dificultad global de una pregunta basándose SOLO en primeros intentos de usuarios (mínimo 10 para ser confiable)';
+COMMENT ON FUNCTION calculate_question_global_difficulty IS 'Calcula dificultad global de una pregunta basándose SOLO en primeros intentos de usuarios (mínimo 3 para ser confiable)';
 
 -- =====================================================
 -- FASE 3: FUNCIÓN PARA ACTUALIZAR DIFICULTAD
