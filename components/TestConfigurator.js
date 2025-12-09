@@ -937,7 +937,7 @@ const TestConfigurator = ({
       focusEssentialArticles: focusEssentialArticles,
       excludeRecent: false, // Por defecto no excluir preguntas recientes
       recentDays: 30, // Valor por defecto para días recientes
-      focusWeakAreas: false, // Por defecto no enfocar en áreas débiles
+      focusWeakAreas: adaptiveMode, // ✨ Activar con modo adaptativo
       adaptiveMode: adaptiveMode, // ✨ Incluir modo adaptativo
       onlyFailedQuestions: onlyFailedQuestions, // 🆕 Solo preguntas falladas alguna vez
       // 🆕 FILTRO DE LEYES
