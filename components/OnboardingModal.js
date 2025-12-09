@@ -951,7 +951,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
               <div className="flex flex-wrap gap-2">
                 {completedFields.oposicion && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200">
-                    🎯 Oposición
+                    🎯 {formData.selectedOposicion?.nombre || 'Oposición'}
                   </span>
                 )}
                 {completedFields.age && (
