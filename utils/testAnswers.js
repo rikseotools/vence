@@ -5,11 +5,23 @@ import { TestBackupSystem } from './testBackup'
 
 const supabase = getSupabaseClient()
 
-// 🛡️ INICIALIZAR MAP GLOBAL PARA TRACKEAR SAVES
-if (typeof window !== 'undefined') {
-  if (!window.activeSaves) {
-    window.activeSaves = new Map()
+// 🛡️ CACHE DE USUARIO (evitar múltiples llamadas a getUser)
+let cachedUser = null
+let userCacheTime = 0
+const USER_CACHE_TTL = 60000 // 1 minuto
+
+async function getCachedUser() {
+  const now = Date.now()
+  if (cachedUser && (now - userCacheTime) < USER_CACHE_TTL) {
+    return cachedUser
   }
+
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (!error && user) {
+    cachedUser = user
+    userCacheTime = now
+  }
+  return user
 }
 
 // 🔧 FUNCIÓN PARA GENERAR question_id CONSISTENTE
@@ -60,57 +72,43 @@ const generateArticleId = (questionData, tema) => {
   return `tema-${tema}-article-unknown`
 }
 
-// 🛡️ GUARDAR RESPUESTA CON PROTECCIÓN ANTI-DUPLICADOS
+// 🛡️ GUARDAR RESPUESTA (SIMPLIFICADO Y PROFESIONAL)
 export const saveDetailedAnswer = async (sessionId, questionData, answerData, tema, confidenceLevel, interactionCount, questionStartTime, firstInteractionTime, interactionEvents, mouseEvents, scrollEvents) => {
   try {
-    // ✅ CREAR CLAVE ÚNICA PARA ESTA RESPUESTA
-    const saveKey = `${sessionId}-${answerData.questionIndex}-${answerData.selectedAnswer}-${answerData.timeSpent}`
-    
-    // ✅ VERIFICAR SI YA SE ESTÁ GUARDANDO ESTA RESPUESTA
-    if (typeof window !== 'undefined' && window.activeSaves?.has(saveKey)) {
-      console.log('🚫 DUPLICADO BLOQUEADO: Ya guardando', saveKey)
-      return window.activeSaves.get(saveKey) // Devolver la promise existente
-    }
-    
-    console.log('💾 [PROTEGIDO] Guardando respuesta única...', {
-      saveKey,
+    console.log('💾 Guardando respuesta...', {
       sessionId,
       questionIndex: answerData.questionIndex,
-      selectedAnswer: answerData.selectedAnswer,
+      questionOrder: (answerData.questionIndex || 0) + 1,
       isCorrect: answerData.isCorrect
     })
-    
+
     if (!sessionId || !questionData || !answerData) {
       console.error('❌ No se puede guardar: datos faltantes')
       return { success: false, error: 'Datos faltantes' }
     }
-    
-    // ✅ CREAR PROMISE DE GUARDADO
+
     // 🎯 CALCULAR TEMA ANTES DE USAR
     const calculatedTema = parseInt(questionData?.tema || tema) || 0
-    
-    const savePromise = (async () => {
-      try {
-        const hesitationTime = firstInteractionTime ? 
-          Math.max(0, firstInteractionTime - questionStartTime) : 0
+
+    const hesitationTime = firstInteractionTime ?
+      Math.max(0, firstInteractionTime - questionStartTime) : 0
+
+    // ✅ USAR ID REAL DE LA BASE DE DATOS O GENERAR COMO FALLBACK
+    const questionId = questionData.id || generateQuestionId(questionData, tema, answerData.questionIndex)
+    const articleId = questionData.article?.id || generateArticleId(questionData, tema)
+
+    // ✅ OBTENER USUARIO (CON CACHE)
+    const user = await getCachedUser()
+    if (!user) {
+      console.error('❌ No se puede obtener usuario autenticado')
+      throw new Error('Usuario no autenticado')
+    }
         
-        // ✅ USAR ID REAL DE LA BASE DE DATOS O GENERAR COMO FALLBACK
-        const questionId = questionData.id || generateQuestionId(questionData, tema, answerData.questionIndex)
-        const articleId = questionData.article?.id || generateArticleId(questionData, tema)
-        
-        
-        // ✅ OBTENER USUARIO AUTENTICADO
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
-          console.error('❌ No se puede obtener usuario autenticado:', userError)
-          throw new Error('Usuario no autenticado')
-        }
-        
-        // ✅ OBTENER INFO DE DISPOSITIVO CORRECTAMENTE
-        const deviceInfo = getDeviceInfo()
-        
-        // ✅ DATOS CON NOMBRES EXACTOS DE LA BD Y CORRECCIONES
-        const insertData = {
+    // ✅ OBTENER INFO DE DISPOSITIVO CORRECTAMENTE
+    const deviceInfo = getDeviceInfo()
+
+    // ✅ DATOS CON NOMBRES EXACTOS DE LA BD Y CORRECCIONES
+    const insertData = {
           // Campos obligatorios
           test_id: sessionId,
           question_order: (answerData.questionIndex || 0) + 1,
@@ -183,80 +181,61 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
             interaction_pattern: (interactionCount || 1) > 2 ? 'hesitant' : 
                                 (interactionCount || 1) === 1 ? 'decisive' : 'normal'
           }
-        }
+    }
 
-        const { error } = await supabase
-          .from('test_questions')
-          .insert(insertData)
+    const { error } = await supabase
+      .from('test_questions')
+      .insert(insertData)
 
-        if (error) {
-          // ✅ MANEJAR ERROR DE CONSTRAINT ÚNICO (AHORA CON MÁS DETALLE)
-          if (error.code === '23505') { // unique constraint violation
-            console.warn('⚠️ CONSTRAINT ÚNICO VIOLADO - Respuesta duplicada detectada:', {
-              question_id: questionId,
-              saveKey,
-              error_detail: error.details,
-              constraint: error.constraint
-            })
-            return { 
-              success: false, // ❌ CAMBIAR A FALSE para detectar problema
-              question_id: questionId, 
-              action: 'prevented_duplicate',
-              error: 'Duplicate constraint violation'
-            }
-          }
-          
-          console.error('❌ Error guardando respuesta:', {
-            error_code: error.code,
-            error_message: error.message,
-            error_details: error.details,
-            saveKey,
-            question_id: questionId
-          })
-          throw error
-        }
-        
-        console.log('✅ [PROTEGIDO] Respuesta única guardada exitosamente')
-        console.log('🎯 question_id asignado:', questionId)
-        console.log('🎯 Trigger debería ejecutarse automáticamente...')
-        
+    if (error) {
+      // ✅ MANEJAR ERROR DE CONSTRAINT ÚNICO
+      if (error.code === '23505') { // unique constraint violation
+        console.warn('⚠️ Respuesta duplicada (ya guardada):', {
+          test_id: sessionId,
+          question_order: insertData.question_order,
+          constraint: error.constraint
+        })
+        // Devolver success=true porque la respuesta YA está guardada
         return {
           success: true,
           question_id: questionId,
-          action: 'saved_new'
+          action: 'already_saved'
         }
-
-      } catch (error) {
-        console.error('❌ Error en savePromise:', error)
-        return { 
-          success: false, 
-          error: error.message,
-          action: 'error'
-        }
-      } finally {
-        // ✅ LIMPIAR DEL MAP DESPUÉS DE 2 SEGUNDOS
-        setTimeout(() => {
-          if (typeof window !== 'undefined') {
-            window.activeSaves?.delete(saveKey)
-            console.log('🧹 Limpiado save key:', saveKey)
-          }
-        }, 2000)
       }
-    })()
-    
-    // ✅ GUARDAR LA PROMISE EN EL MAP PARA EVITAR DUPLICADOS
-    if (typeof window !== 'undefined') {
-      window.activeSaves?.set(saveKey, savePromise)
+
+      console.error('❌ Error guardando respuesta:', {
+        error_code: error.code,
+        error_message: error.message,
+        test_id: sessionId,
+        question_order: insertData.question_order
+      })
+
+      // Guardar en localStorage para retry posterior
+      try {
+        const backupKey = `failed_save_${sessionId}_${insertData.question_order}`
+        localStorage.setItem(backupKey, JSON.stringify(insertData))
+        console.log('💾 Respuesta guardada en localStorage para retry')
+      } catch (e) {
+        console.warn('⚠️ No se pudo guardar backup en localStorage')
+      }
+
+      throw error
     }
-    
-    return savePromise
+
+    console.log('✅ Respuesta guardada exitosamente')
+
+    return {
+      success: true,
+      question_id: questionId,
+      action: 'saved_new'
+    }
 
   } catch (error) {
     console.error('❌ Error en saveDetailedAnswer:', error)
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error.message,
-      action: 'outer_error'
+      action: 'error'
     }
   }
 }
