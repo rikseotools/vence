@@ -358,6 +358,7 @@ export default function TemaPage({ params }) {
         const { data: questions, error } = await supabase
           .from('questions')
           .select(`
+            global_difficulty,
             difficulty,
             articles!inner(
               laws!inner(short_name)
@@ -366,15 +367,34 @@ export default function TemaPage({ params }) {
           .eq('is_active', true)
           .eq('articles.laws.short_name', mapping.laws.short_name)
           .in('articles.article_number', mapping.article_numbers)
-        
+
         if (!error && questions) {
           allQuestions = [...allQuestions, ...questions]
         }
       }
-      
+
       // 3️⃣ PROCESAR TODAS LAS PREGUNTAS JUNTAS
+      // Usar global_difficulty (calculada) si existe, sino difficulty (estática)
       const diffCount = allQuestions.reduce((acc, q) => {
-        acc[q.difficulty] = (acc[q.difficulty] || 0) + 1
+        let difficultyLevel
+
+        if (q.global_difficulty !== null && q.global_difficulty !== undefined) {
+          // Convertir dificultad numérica (0-100) a categoría
+          if (q.global_difficulty < 25) {
+            difficultyLevel = 'easy'
+          } else if (q.global_difficulty < 50) {
+            difficultyLevel = 'medium'
+          } else if (q.global_difficulty < 75) {
+            difficultyLevel = 'hard'
+          } else {
+            difficultyLevel = 'extreme'
+          }
+        } else {
+          // Fallback a dificultad estática
+          difficultyLevel = q.difficulty
+        }
+
+        acc[difficultyLevel] = (acc[difficultyLevel] || 0) + 1
         return acc
       }, {})
       
@@ -952,16 +972,27 @@ export default function TemaPage({ params }) {
             </h2>
             
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 text-lg">👤 Rendimiento Personal</h3>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-600">{userStats.overallAccuracy.toFixed(1)}%</div>
-                  <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}</div>
-                  {userStats.isRealData && (
-                    <div className="text-xs text-green-600 font-medium">✅ Datos reales</div>
-                  )}
+              {/* Si no hay datos del tema, mostrar mensaje motivacional */}
+              {userStats.totalAnswers === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-6xl mb-4">🎯</div>
+                  <h3 className="font-bold text-gray-800 text-xl mb-2">¡Empieza tu primer test del {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}!</h3>
+                  <p className="text-gray-600">
+                    Completa preguntas para ver tus estadísticas personales y análisis de rendimiento.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-gray-800 text-lg">👤 Rendimiento Personal</h3>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-blue-600">{userStats.overallAccuracy.toFixed(1)}%</div>
+                      <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}</div>
+                      {userStats.isRealData && (
+                        <div className="text-xs text-green-600 font-medium">✅ Datos reales</div>
+                      )}
+                    </div>
+                  </div>
               
               {/* ✅ MÉTRICAS ÚTILES DINÁMICAS */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -1057,6 +1088,8 @@ export default function TemaPage({ params }) {
                   openArticleModal={openArticleModal}
                 />
               </div>
+                </>
+              )}
             </div>
           </section>
         )}
