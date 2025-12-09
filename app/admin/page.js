@@ -100,36 +100,35 @@ export default function AdminDashboard() {
 
         const { data: todayTests, error: todayTestsError } = await supabase
           .from('tests')
-          .select('id, completed_at, score, total_questions, user_id')
+          .select('id, completed_at, score, total_questions, user_id, created_at')
           .eq('is_completed', true)
-          .gte('completed_at', startOfDayMadrid.toISOString())
+          .gte('created_at', startOfDayMadrid.toISOString())
           .order('completed_at', { ascending: false })
-          .limit(10)
 
         if (todayTestsError) {
           console.error('❌ Error consultando tests de hoy:', todayTestsError)
           throw todayTestsError
         }
 
-        // 6. Hacer JOIN manual con admin_users_with_roles (evita RLS)
+        // 6. Hacer JOIN con user_profiles (TODOS los usuarios, no solo admins)
         let finalTodayActivity = []
-        
+
         if (todayTests && todayTests.length > 0) {
           const userIds = [...new Set(todayTests.map(t => t.user_id))]
-          console.log('🔍 Buscando perfiles admin para:', userIds)
-          
-          const { data: adminProfiles, error: adminProfilesError } = await supabase
-            .from('admin_users_with_roles')
-            .select('user_id, full_name, email')
-            .in('user_id', userIds)
+          console.log('🔍 Buscando perfiles de usuario para:', userIds)
 
-          if (adminProfilesError) {
-            console.error('❌ Error cargando perfiles admin:', adminProfilesError)
+          const { data: userProfiles, error: userProfilesError } = await supabase
+            .from('user_profiles')
+            .select('id, full_name, email')
+            .in('id', userIds)
+
+          if (userProfilesError) {
+            console.error('❌ Error cargando perfiles:', userProfilesError)
             finalTodayActivity = todayTests.map(test => ({ ...test, user_profiles: null }))
           } else {
-            console.log('✅ Perfiles admin encontrados:', adminProfiles?.length)
+            console.log('✅ Perfiles encontrados:', userProfiles?.length)
             finalTodayActivity = todayTests.map(test => {
-              const profile = adminProfiles?.find(p => p.user_id === test.user_id)
+              const profile = userProfiles?.find(p => p.id === test.user_id)
               return {
                 ...test,
                 user_profiles: profile ? { full_name: profile.full_name, email: profile.email } : null

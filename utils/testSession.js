@@ -244,6 +244,7 @@ export const createDetailedTestSession = async (userId, tema, testNumber, questi
       user_id: userId,
       title: safeTitle,
       test_type: 'practice',
+      test_url: typeof window !== 'undefined' ? window.location.pathname : null,
       total_questions: questions.length,
       score: 0,
       tema_number: parseInt(tema) || null,
