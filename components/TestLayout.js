@@ -81,6 +81,7 @@ export default function TestLayout({
   const [currentDifficulty, setCurrentDifficulty] = useState('medium')
   const [showCuriosityDetails, setShowCuriosityDetails] = useState(false)
   const [currentQuestionUuid, setCurrentQuestionUuid] = useState(null)
+  const [lastAdaptedQuestion, setLastAdaptedQuestion] = useState(-999) // 🔥 Evitar adaptaciones múltiples seguidas
 
   // Estados anti-duplicados
   const [processingAnswer, setProcessingAnswer] = useState(false)
@@ -443,22 +444,38 @@ export default function TestLayout({
           const totalAnswered = newAnsweredQuestions.length
           const totalCorrect = newAnsweredQuestions.filter(q => q.correct).length
           const currentAccuracy = totalAnswered > 0 ? (totalCorrect / totalAnswered) * 100 : 100
-          
+
           console.log(`🧠 Accuracy actual: ${currentAccuracy.toFixed(1)}% (${totalCorrect}/${totalAnswered})`)
-          
-          // 🧠 SMART LOGIC: Mostrar indicador solo cuando está adaptando activamente
+
+          // 🔥 NUEVO: Calcular preguntas desde última adaptación
+          const questionsSinceLastAdaptation = currentQuestion - lastAdaptedQuestion
+          console.log(`🔍 Preguntas desde última adaptación: ${questionsSinceLastAdaptation}`)
+
+          // 🧠 SMART LOGIC: Solo adaptar si el usuario va MAL (< 60%)
+          // Si va bien, dejarlo con las preguntas que tiene (no castigar)
           if (currentAccuracy < 60 && totalAnswered >= 3) { // Mínimo 3 respuestas para evaluar
-            console.log('🧠 Accuracy < 60%, adaptando a preguntas más fáciles...')
-            setIsAdaptiveMode(true) // 🔥 MOSTRAR: Se está adaptando
-            adaptDifficulty('easier')
-          } else if (currentAccuracy > 70 && totalAnswered >= 5) { // Mínimo 5 respuestas
-            console.log('🧠 Accuracy > 70%, volviendo a dificultad normal...')
-            setIsAdaptiveMode(true) // 🔥 MOSTRAR: Se está adaptando
-            adaptDifficulty('harder')
-          } else if (currentAccuracy >= 65 && totalAnswered >= 3 && isAdaptiveMode) {
-            // 🎯 OCULTAR: Si accuracy se estabiliza en buen nivel (65%+)
-            console.log(`🎯 Accuracy estable en ${currentAccuracy.toFixed(1)}%, ocultando indicador adaptativo`)
-            setIsAdaptiveMode(false) // 🔥 OCULTAR: Ya no necesita adaptación
+
+            // 🔥 NUEVO: Solo adaptar si han pasado al menos 3 preguntas desde la última adaptación
+            if (questionsSinceLastAdaptation >= 3) {
+              console.log('🧠 Accuracy < 60%, adaptando a preguntas más fáciles...')
+              console.log(`🔍 Preguntas actuales antes de adaptar: ${effectiveQuestions.map(q => q.id).join(', ')}`)
+
+              setIsAdaptiveMode(true) // 🔥 MOSTRAR: Se está adaptando
+              adaptDifficulty('easier')
+              setLastAdaptedQuestion(currentQuestion) // 🔥 Guardar que adaptamos ahora
+
+              console.log('✅ MENSAJE VISUAL ACTIVADO: "✨ Adaptándose a tu nivel"')
+
+              // Ocultar mensaje después de 4 segundos
+              setTimeout(() => {
+                setIsAdaptiveMode(false)
+                console.log('🔕 Mensaje visual desactivado')
+              }, 4000)
+            } else {
+              console.log(`⏸️  Adaptación en cooldown (faltan ${3 - questionsSinceLastAdaptation} preguntas)`)
+            }
+          } else if (currentAccuracy >= 60) {
+            console.log(`✅ Accuracy OK (${currentAccuracy.toFixed(1)}%), manteniendo preguntas actuales`)
           }
         }
         
@@ -806,78 +823,93 @@ export default function TestLayout({
         console.log('🧠 Sin catálogo adaptativo - usando sistema legacy')
         return adaptDifficultyLegacy(direction)
       }
-      
+
       const remainingQuestions = effectiveQuestions.length - currentQuestion - 1
       if (remainingQuestions <= 0) {
         console.log('🧠 No hay preguntas restantes para adaptar')
         return
       }
-      
+
+      // 🔥 CRÍTICO: Obtener IDs de preguntas ya en activeQuestions para excluirlas
+      const existingQuestionIds = new Set(effectiveQuestions.map(q => q.id))
+      console.log(`🔍 Preguntas ya en test: ${existingQuestionIds.size} IDs`)
+
       // Determinar dificultad objetivo
       let targetDifficulty = direction === 'easier' ? 'easy' : 'medium'
-      
+
       console.log(`🧠 ADAPTACIÓN INTELIGENTE: Necesita preguntas ${targetDifficulty}`)
-      
-      // 🎯 PRIORIDAD 1: Nunca vistas de la dificultad objetivo
-      const neverSeenTarget = adaptiveCatalog.neverSeen[targetDifficulty] || []
-      console.log(`   👁️ Nunca vistas ${targetDifficulty}: ${neverSeenTarget.length}`)
-      
+
+      // 🎯 PRIORIDAD 1: Nunca vistas de la dificultad objetivo (filtrar duplicados)
+      const neverSeenTarget = (adaptiveCatalog.neverSeen[targetDifficulty] || [])
+        .filter(q => !existingQuestionIds.has(q.id))
+      console.log(`   👁️ Nunca vistas ${targetDifficulty} (sin duplicados): ${neverSeenTarget.length}`)
+
       if (neverSeenTarget.length >= remainingQuestions) {
         console.log(`✅ PERFECTO: Suficientes nunca vistas ${targetDifficulty}`)
         const selectedQuestions = neverSeenTarget.slice(0, remainingQuestions)
-        
+
+        console.log(`📋 Preguntas seleccionadas (IDs): ${selectedQuestions.map(q => q.id).join(', ')}`)
+        console.log(`📋 Preguntas seleccionadas (primeras palabras): ${selectedQuestions.map(q => q.question?.substring(0, 30) + '...').join(' | ')}`)
+
         const newActiveQuestions = [
           ...effectiveQuestions.slice(0, currentQuestion + 1),
           ...selectedQuestions
         ]
-        
+
         setActiveQuestions(newActiveQuestions)
         setCurrentDifficulty(targetDifficulty)
         console.log(`🧠 Adaptación exitosa: ${selectedQuestions.length} preguntas nunca vistas ${targetDifficulty}`)
+        console.log(`🔍 Total preguntas después de adaptar: ${newActiveQuestions.length}`)
         return
       }
       
-      // 🎯 PRIORIDAD 2: Combinar nunca vistas de diferentes dificultades
+      // 🎯 PRIORIDAD 2: Combinar nunca vistas de diferentes dificultades (filtrar duplicados)
       console.log(`⚠️ Solo ${neverSeenTarget.length} nunca vistas ${targetDifficulty}, combinando...`)
-      
+
+      const secondaryDifficulty = direction === 'easier' ? 'medium' : 'easy'
+      const neverSeenSecondary = (adaptiveCatalog.neverSeen[secondaryDifficulty] || [])
+        .filter(q => !existingQuestionIds.has(q.id))
+
       const allNeverSeen = [
         ...neverSeenTarget,
-        ...(direction === 'easier' ? adaptiveCatalog.neverSeen.medium || [] : adaptiveCatalog.neverSeen.easy || [])
+        ...neverSeenSecondary
       ]
-      
-      console.log(`   📊 Total nunca vistas combinadas: ${allNeverSeen.length}`)
-      
+
+      console.log(`   📊 Total nunca vistas combinadas (sin duplicados): ${allNeverSeen.length}`)
+
       if (allNeverSeen.length >= remainingQuestions) {
         console.log(`✅ BUENA OPCIÓN: Suficientes nunca vistas combinadas`)
         const selectedQuestions = allNeverSeen.slice(0, remainingQuestions)
-        
+
         const newActiveQuestions = [
           ...effectiveQuestions.slice(0, currentQuestion + 1),
           ...selectedQuestions
         ]
-        
+
         setActiveQuestions(newActiveQuestions)
         setCurrentDifficulty(targetDifficulty)
         console.log(`🧠 Adaptación combinada: ${selectedQuestions.length} preguntas nunca vistas mixtas`)
         return
       }
-      
-      // 🎯 PRIORIDAD 3: Solo como último recurso - ya respondidas
+
+      // 🎯 PRIORIDAD 3: Solo como último recurso - ya respondidas (filtrar duplicados)
       console.log(`⚠️ FALLBACK: Incluyendo algunas preguntas ya respondidas`)
-      const answeredTarget = adaptiveCatalog.answered[targetDifficulty] || []
+      const answeredTarget = (adaptiveCatalog.answered[targetDifficulty] || [])
+        .filter(q => !existingQuestionIds.has(q.id))
+
       const finalSelection = [
         ...allNeverSeen,
         ...answeredTarget.slice(0, remainingQuestions - allNeverSeen.length)
       ]
-      
+
       const newActiveQuestions = [
         ...effectiveQuestions.slice(0, currentQuestion + 1),
         ...finalSelection.slice(0, remainingQuestions)
       ]
-      
+
       setActiveQuestions(newActiveQuestions)
       setCurrentDifficulty(targetDifficulty)
-      
+
       console.log(`🧠 Adaptación con fallback: ${allNeverSeen.length} nunca vistas + ${finalSelection.length - allNeverSeen.length} ya respondidas`)
       
     } catch (error) {
