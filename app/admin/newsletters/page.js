@@ -2282,14 +2282,26 @@ export default function NewslettersPage() {
           <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
             📧 Enviando Newsletter
           </h3>
-          
+
+          {/* Warning - Do not close */}
+          {!sendingProgress.phase.includes('Completado') && !sendingProgress.phase.includes('Error') && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-500 rounded-lg animate-pulse">
+              <p className="text-sm text-red-800 dark:text-red-300 font-bold text-center">
+                ⚠️ NO CIERRES ESTA VENTANA
+              </p>
+              <p className="text-xs text-red-700 dark:text-red-400 text-center mt-1">
+                El envío se detendrá si cierras la pestaña
+              </p>
+            </div>
+          )}
+
           <div className="mb-4">
             <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
               <span>{sendingProgress.phase}</span>
               <span>{sendingProgress.sent}/{sendingProgress.total}</span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div 
+              <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{
                   width: `${sendingProgress.total > 0 ? (sendingProgress.sent / sendingProgress.total) * 100 : 0}%`
@@ -2297,15 +2309,27 @@ export default function NewslettersPage() {
               />
             </div>
           </div>
-          
-          {sendingProgress.current && (
+
+          {/* Estimated time */}
+          {!sendingProgress.phase.includes('Completado') && !sendingProgress.phase.includes('Error') && sendingProgress.total > 0 && (
             <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+              <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
+                ⏳ Tiempo estimado: {Math.ceil(sendingProgress.total * 1.2 / 60)} minutos
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 text-center mt-1">
+                (Aproximadamente 1 segundo por usuario)
+              </p>
+            </div>
+          )}
+
+          {sendingProgress.current && (
+            <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
+              <p className="text-sm text-gray-800 dark:text-gray-300 font-medium">
                 📤 {sendingProgress.current}
               </p>
             </div>
           )}
-          
+
           <div className="flex justify-center">
             {sendingProgress.phase.includes('Completado') || sendingProgress.phase.includes('Error') ? (
               <div className="flex items-center space-x-2">
@@ -2330,11 +2354,17 @@ export default function NewslettersPage() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                <span className="text-gray-600 dark:text-gray-400 text-sm">
-                  Procesando...
-                </span>
+              <div className="flex flex-col items-center space-y-2">
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                  <span className="text-gray-700 dark:text-gray-300 text-sm font-medium">
+                    Enviando emails...
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-500 text-center">
+                  Este proceso puede tardar varios minutos.<br/>
+                  Por favor, mantén esta ventana abierta.
+                </p>
               </div>
             )}
           </div>
