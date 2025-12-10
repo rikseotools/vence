@@ -15,9 +15,10 @@ export async function GET(request) {
     const action = searchParams.get('action') || 'unknown'
     const type = searchParams.get('type') || 'motivation'
     const templateId = searchParams.get('template_id')
+    const campaignId = searchParams.get('campaign_id') // ✅ Capturar campaign_id
     const redirect = searchParams.get('redirect')
-    
-    console.log('🖱️ Email click:', { emailId, userId, action, type, templateId, redirect })
+
+    console.log('🖱️ Email click:', { emailId, userId, action, type, templateId, campaignId, redirect })
 
     // 🛡️ DEDUPLICACIÓN: Evitar registros duplicados de clicks
     if (userId) {
@@ -50,6 +51,7 @@ export async function GET(request) {
           email_address: userProfile?.email || 'unknown@tracking.vence.es',
           subject: `${type} Email - Clicked`,
           template_id: templateId || type,
+          campaign_id: campaignId, // ✅ CRÍTICO: Guardar campaign_id para asociar clicks con sends
           email_content_preview: `${type} email link clicked: ${action} -> ${redirect}`,
           created_at: new Date().toISOString()
         })

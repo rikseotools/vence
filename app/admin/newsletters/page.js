@@ -53,6 +53,20 @@ export default function NewslettersPage() {
     isActive: false
   })
 
+  // 📑 Tab state
+  const [activeTab, setActiveTab] = useState('enviar') // 'enviar' | 'historial'
+
+  // 📊 History state
+  const [history, setHistory] = useState([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [selectedNewsletter, setSelectedNewsletter] = useState(null)
+
+  // 👥 Users modal state
+  const [showUsersModal, setShowUsersModal] = useState(false)
+  const [usersModalData, setUsersModalData] = useState({ users: [], eventType: '', campaignId: '' })
+  const [loadingUsers_modal, setLoadingUsersModal] = useState(false)
+  const [usersSearchQuery, setUsersSearchQuery] = useState('')
+
   // Cargar estadísticas de audiencia al montar
   useEffect(() => {
     loadAudienceStats()
@@ -96,6 +110,62 @@ export default function NewslettersPage() {
       console.error('Error cargando estadísticas:', error)
     }
   }
+
+  const loadHistory = async () => {
+    setLoadingHistory(true)
+    try {
+      const response = await fetch('/api/admin/newsletters/history')
+      const data = await response.json()
+
+      if (data.success) {
+        setHistory(data.newsletters)
+      } else {
+        console.error('Error cargando historial:', data.error)
+      }
+    } catch (error) {
+      console.error('Error cargando historial:', error)
+    }
+    setLoadingHistory(false)
+  }
+
+  // Cargar usuarios de una campaña específica
+  const loadCampaignUsers = async (newsletter, eventType, eventLabel) => {
+    setLoadingUsersModal(true)
+    setShowUsersModal(true)
+    setUsersSearchQuery('')
+
+    try {
+      // Extraer template_id y fecha del newsletter
+      const sentDate = new Date(newsletter.sentAt)
+      const dateKey = `${sentDate.getFullYear()}-${String(sentDate.getMonth() + 1).padStart(2, '0')}-${String(sentDate.getDate()).padStart(2, '0')}`
+
+      const response = await fetch(
+        `/api/admin/newsletters/history?templateId=${encodeURIComponent(newsletter.templateId)}&date=${dateKey}&eventType=${eventType}`
+      )
+      const data = await response.json()
+
+      if (data.success) {
+        setUsersModalData({
+          users: data.users,
+          eventType: eventLabel,
+          campaignId: newsletter.campaignId,
+          total: data.total
+        })
+      } else {
+        console.error('Error cargando usuarios:', data.error)
+      }
+    } catch (error) {
+      console.error('Error cargando usuarios:', error)
+    }
+    setLoadingUsersModal(false)
+  }
+
+  // Cargar historial cuando se cambia al tab de historial
+  useEffect(() => {
+    if (activeTab === 'historial' && history.length === 0) {
+      loadHistory()
+    }
+  }, [activeTab])
 
   const loadTemplateStats = async () => {
     setLoadingStats(true)
@@ -542,14 +612,45 @@ export default function NewslettersPage() {
         
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">
             📧 Sistema de Newsletters
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-400">
             Envía comunicaciones masivas a tus usuarios con control total
           </p>
         </div>
 
+        {/* Tabs */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200 dark:border-gray-700">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('enviar')}
+                className={`${
+                  activeTab === 'enviar'
+                    ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-500'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+              >
+                📤 Enviar Newsletter
+              </button>
+              <button
+                onClick={() => setActiveTab('historial')}
+                className={`${
+                  activeTab === 'historial'
+                    ? 'border-blue-600 text-blue-600 dark:border-blue-500 dark:text-blue-500'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors`}
+              >
+                📊 Historial de Envíos
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content: Enviar */}
+        {activeTab === 'enviar' && (
+          <>
         {/* Stats Cards */}
         {audienceStats && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
@@ -2273,7 +2374,304 @@ export default function NewslettersPage() {
             </div>
           </div>
         </div>
-      </div>
+        </>
+        )}
+
+        {/* Tab Content: Historial */}
+        {activeTab === 'historial' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                📊 Historial de Newsletters Enviadas
+              </h2>
+              <button
+                onClick={loadHistory}
+                disabled={loadingHistory}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm transition-colors"
+              >
+                {loadingHistory ? 'Cargando...' : '🔄 Actualizar'}
+              </button>
+            </div>
+
+            {loadingHistory ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">
+                  No se han enviado newsletters aún
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Fecha
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Asunto
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Plantilla
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Enviados
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Abiertos
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Open Rate
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        CTR
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Acciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {history.map((newsletter) => (
+                      <tr key={newsletter.campaignId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          {new Date(newsletter.sentAt).toLocaleDateString('es-ES', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+                          {newsletter.subject}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <span className="px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                            {newsletter.templateId || 'Personalizada'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center font-medium">
+                          <button
+                            onClick={() => loadCampaignUsers(newsletter, 'sent', 'Enviados')}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium"
+                          >
+                            {newsletter.stats.sent}
+                          </button>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                          <button
+                            onClick={() => loadCampaignUsers(newsletter, 'opened', 'Abiertos')}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:underline font-medium"
+                            disabled={newsletter.stats.opened === 0}
+                          >
+                            {newsletter.stats.opened}
+                          </button>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                          <span className={`font-semibold ${
+                            parseFloat(newsletter.stats.openRate) > 20 ? 'text-green-600 dark:text-green-400' :
+                            parseFloat(newsletter.stats.openRate) > 10 ? 'text-yellow-600 dark:text-yellow-400' :
+                            'text-red-600 dark:text-red-400'
+                          }`}>
+                            {newsletter.stats.openRate}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                          <span className={`font-semibold ${
+                            parseFloat(newsletter.stats.clickRate) > 5 ? 'text-green-600 dark:text-green-400' :
+                            parseFloat(newsletter.stats.clickRate) > 2 ? 'text-yellow-600 dark:text-yellow-400' :
+                            'text-gray-600 dark:text-gray-400'
+                          }`}>
+                            {newsletter.stats.clickRate}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
+                          <button
+                            onClick={() => setSelectedNewsletter(newsletter)}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                          >
+                            Ver newsletter
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Modal: Ver newsletter */}
+        {selectedNewsletter && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      {selectedNewsletter.subject}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Enviado el {new Date(selectedNewsletter.sentAt).toLocaleString('es-ES')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedNewsletter(null)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {/* Vista previa HTML del email */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Vista previa del email</p>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 p-6">
+                    {selectedNewsletter.emailContent ? (
+                      <div
+                        className="prose dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{ __html: selectedNewsletter.emailContent }}
+                      />
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400">No hay vista previa disponible</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal: Lista de usuarios (Enviados/Abiertos/Clicks) */}
+        {showUsersModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                      👥 {usersModalData.eventType}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {usersModalData.total || 0} usuarios
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowUsersModal(false)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Buscador */}
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre o email..."
+                  value={usersSearchQuery}
+                  onChange={(e) => setUsersSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Lista de usuarios */}
+              <div className="flex-1 overflow-y-auto p-6">
+                {loadingUsers_modal ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {usersModalData.users
+                      .filter(user => {
+                        if (!usersSearchQuery) return true
+                        const query = usersSearchQuery.toLowerCase()
+                        return (
+                          user.email?.toLowerCase().includes(query) ||
+                          user.fullName?.toLowerCase().includes(query)
+                        )
+                      })
+                      .map((user, index) => (
+                        <div
+                          key={user.userId || index}
+                          className="flex items-center justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                              {user.fullName || 'Sin nombre'}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-3 text-xs">
+                            {/* % Aciertos */}
+                            <div className="text-center">
+                              <div className={`font-bold ${
+                                user.avgScore >= 70 ? 'text-green-600 dark:text-green-400' :
+                                user.avgScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                'text-red-600 dark:text-red-400'
+                              }`}>
+                                {user.avgScore ? user.avgScore.toFixed(0) + '%' : 'N/A'}
+                              </div>
+                              <div className="text-gray-500 dark:text-gray-400">Aciertos</div>
+                            </div>
+
+                            {/* Antigüedad */}
+                            {user.accountAgeDays !== null && (
+                              <div className="text-center">
+                                <div className="font-bold text-blue-600 dark:text-blue-400">
+                                  {user.accountAgeDays}d
+                                </div>
+                                <div className="text-gray-500 dark:text-gray-400">Antigüedad</div>
+                              </div>
+                            )}
+
+                            {/* Timestamp */}
+                            {user.timestamp && (
+                              <div className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {new Date(user.timestamp).toLocaleString('es-ES', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {!loadingUsers_modal && usersModalData.users.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 dark:text-gray-400">
+                      No hay usuarios para mostrar
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* 📧 Progress Modal */}
     {sendingProgress.isActive && (
@@ -2382,6 +2780,7 @@ export default function NewslettersPage() {
         </div>
       </div>
     )}
+      </div>
     </div>
   )
 }

@@ -14,8 +14,9 @@ export async function GET(request) {
     const userId = searchParams.get('user_id')
     const type = searchParams.get('type') || 'motivation'
     const templateId = searchParams.get('template_id')
-    
-    console.log('📧 Email abierto:', { emailId, userId, type, templateId })
+    const campaignId = searchParams.get('campaign_id') // ✅ Capturar campaign_id del tracking pixel
+
+    console.log('📧 Email abierto:', { emailId, userId, type, templateId, campaignId })
 
     // 🛡️ DEDUPLICACIÓN: Evitar registros duplicados en corto tiempo
     if (userId) {
@@ -48,6 +49,7 @@ export async function GET(request) {
           email_address: userProfile?.email || 'unknown@tracking.vence.es',
           subject: `${type} Email - Opened`,
           template_id: templateId || type,
+          campaign_id: campaignId, // ✅ CRÍTICO: Guardar campaign_id para asociar opens con sends
           email_content_preview: `${type} email opened - tracking event`,
           created_at: new Date().toISOString()
         })

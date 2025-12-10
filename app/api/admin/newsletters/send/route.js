@@ -132,6 +132,10 @@ export async function POST(request) {
     let failed = 0
     const errors = []
 
+    // Generar UN SOLO campaign_id para todo el envío masivo
+    const campaignId = `${templateId || 'newsletter'}_${Date.now()}`
+    console.log(`📧 Campaign ID para este envío: ${campaignId}`)
+
     // Enviar emails con rate limiting
     for (let i = 0; i < users.length; i++) {
       const user = users[i]
@@ -151,8 +155,8 @@ export async function POST(request) {
 
         // Añadir tracking pixel para detectar aperturas (solo en modo real)
         if (!testMode) {
-          console.log(`🔍 Generando tracking para ${user.email} con templateId:`, templateId)
-          const trackingPixel = `<img src="https://www.vence.es/api/email-tracking/open?user_id=${user.id}&email_id=newsletter_${Date.now()}&type=newsletter&template_id=${templateId || 'newsletter'}" width="1" height="1" style="display:none;" alt="">`
+          console.log(`🔍 Generando tracking para ${user.email} con campaignId:`, campaignId)
+          const trackingPixel = `<img src="https://www.vence.es/api/email-tracking/open?user_id=${user.id}&email_id=${campaignId}&type=newsletter&template_id=${templateId || 'newsletter'}&campaign_id=${campaignId}" width="1" height="1" style="display:none;" alt="">`
           personalizedHtml = personalizedHtml.replace('</body>', `${trackingPixel}</body>`)
         }
 
@@ -161,7 +165,7 @@ export async function POST(request) {
           // Reemplazar enlaces que apuntan a vence.es con tracking
           personalizedHtml = personalizedHtml.replace(
             /href="(https?:\/\/(?:www\.)?vence\.es[^"]*)"/g,
-            `href="https://www.vence.es/api/email-tracking/click?user_id=${user.id}&type=newsletter&action=newsletter_link&template_id=${templateId || 'newsletter'}&redirect=$1"`
+            `href="https://www.vence.es/api/email-tracking/click?user_id=${user.id}&type=newsletter&action=newsletter_link&template_id=${templateId || 'newsletter'}&campaign_id=${campaignId}&redirect=$1"`
           )
         }
 
@@ -225,8 +229,8 @@ export async function POST(request) {
                   email_address: user.email,
                   subject: subject,
                   template_id: templateId || 'newsletter',
-                  campaign_id: `${templateId || 'newsletter'}_${Date.now()}`,
-                  email_content_preview: htmlContent.substring(0, 200)
+                  campaign_id: campaignId, // Usar el MISMO campaign_id para todo el envío
+                  email_content_preview: htmlContent // Guardar HTML completo para vista previa
                 })
                 
                 if (eventError) {
