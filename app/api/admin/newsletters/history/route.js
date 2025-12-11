@@ -98,6 +98,32 @@ export async function GET(request) {
       }
     })
 
+    // Obtener información de actividad de todos los usuarios únicos
+    const allUserIds = [...new Set(events.map(e => e.user_id))]
+    const { data: userActivity, error: activityError } = await supabaseAdmin
+      .from('admin_users_with_roles')
+      .select('user_id, last_test_date')
+      .in('user_id', allUserIds)
+
+    // Crear mapa de actividad por usuario
+    const userActivityMap = new Map()
+    if (!activityError && userActivity) {
+      const now = Date.now()
+      userActivity.forEach(u => {
+        const daysSinceLastTest = u.last_test_date
+          ? Math.floor((now - new Date(u.last_test_date).getTime()) / (1000 * 60 * 60 * 24))
+          : null
+
+        let activityLevel = 'dormant'
+        if (daysSinceLastTest !== null) {
+          if (daysSinceLastTest <= 30) activityLevel = 'very_active'
+          else if (daysSinceLastTest <= 90) activityLevel = 'active'
+        }
+
+        userActivityMap.set(u.user_id, activityLevel)
+      })
+    }
+
     // Convertir a array y calcular métricas
     const newsletters = Array.from(newsletterMap.values())
       .filter(newsletter => newsletter.stats.sent.size > 0) // SOLO mostrar envíos reales (con al menos 1 sent)
@@ -111,6 +137,12 @@ export async function GET(request) {
         const clickedCount = newsletter.stats.clicked.size
         const bouncedCount = newsletter.stats.bounced.size
 
+        // Calcular usuarios activos que abrieron
+        const openedUsers = Array.from(newsletter.stats.opened)
+        const veryActiveOpened = openedUsers.filter(userId => userActivityMap.get(userId) === 'very_active').length
+        const activeOpened = openedUsers.filter(userId => userActivityMap.get(userId) === 'active').length
+        const totalActiveOpened = veryActiveOpened + activeOpened
+
         return {
           campaignId: newsletter.campaignId,
           subject: newsletter.subject,
@@ -123,7 +155,11 @@ export async function GET(request) {
             clicked: clickedCount,
             bounced: bouncedCount,
             openRate: sentCount > 0 ? ((openedCount / sentCount) * 100).toFixed(1) : '0.0',
-            clickRate: sentCount > 0 ? ((clickedCount / sentCount) * 100).toFixed(1) : '0.0'
+            clickRate: sentCount > 0 ? ((clickedCount / sentCount) * 100).toFixed(1) : '0.0',
+            veryActiveOpened: veryActiveOpened,
+            activeOpened: activeOpened,
+            totalActiveOpened: totalActiveOpened,
+            activeOpenRate: openedCount > 0 ? ((totalActiveOpened / openedCount) * 100).toFixed(1) : '0.0'
           },
           recipientCount: newsletter.recipients.size
         }
@@ -187,7 +223,7 @@ async function getCampaignUsers(templateId, date, eventType) {
 
     const { data: userStats, error: profileError } = await supabaseAdmin
       .from('admin_users_with_roles')
-      .select('user_id, email, full_name, avg_score_30d, user_created_at')
+      .select('user_id, email, full_name, avg_score_30d, user_created_at, last_test_date')
       .in('user_id', userIds)
 
     if (profileError) {
@@ -198,12 +234,25 @@ async function getCampaignUsers(templateId, date, eventType) {
     const profileMap = new Map()
     userStats?.forEach(p => profileMap.set(p.user_id, p))
 
-    // Combinar datos
+    // Combinar datos y calcular nivel de actividad
+    const now = Date.now()
     const users = events.map(event => {
       const profile = profileMap.get(event.user_id)
       const accountAge = profile?.user_created_at
-        ? Math.floor((Date.now() - new Date(profile.user_created_at).getTime()) / (1000 * 60 * 60 * 24))
+        ? Math.floor((now - new Date(profile.user_created_at).getTime()) / (1000 * 60 * 60 * 24))
         : null
+
+      // Calcular días desde último test
+      const daysSinceLastTest = profile?.last_test_date
+        ? Math.floor((now - new Date(profile.last_test_date).getTime()) / (1000 * 60 * 60 * 24))
+        : null
+
+      // Clasificar nivel de actividad
+      let activityLevel = 'dormant' // Por defecto: dormido
+      if (daysSinceLastTest !== null) {
+        if (daysSinceLastTest <= 30) activityLevel = 'very_active' // Muy activo: último mes
+        else if (daysSinceLastTest <= 90) activityLevel = 'active' // Activo: último trimestre
+      }
 
       return {
         userId: event.user_id,
@@ -211,7 +260,10 @@ async function getCampaignUsers(templateId, date, eventType) {
         fullName: profile?.full_name || null,
         timestamp: event.created_at,
         avgScore: profile?.avg_score_30d || 0,
-        accountAgeDays: accountAge
+        accountAgeDays: accountAge,
+        lastTestDate: profile?.last_test_date || null,
+        activityLevel: activityLevel,
+        daysSinceLastTest: daysSinceLastTest
       }
     })
 
@@ -226,12 +278,24 @@ async function getCampaignUsers(templateId, date, eventType) {
       }
     })
 
-    console.log(`✅ Encontrados ${uniqueUsers.length} usuarios únicos`)
+    // Calcular métricas de actividad
+    const veryActiveCount = uniqueUsers.filter(u => u.activityLevel === 'very_active').length
+    const activeCount = uniqueUsers.filter(u => u.activityLevel === 'active').length
+    const totalActive = veryActiveCount + activeCount
+
+    console.log(`✅ Encontrados ${uniqueUsers.length} usuarios únicos (${veryActiveCount} muy activos, ${activeCount} activos)`)
 
     return NextResponse.json({
       success: true,
       users: uniqueUsers,
       total: uniqueUsers.length,
+      metrics: {
+        veryActive: veryActiveCount,
+        active: activeCount,
+        totalActive: totalActive,
+        veryActivePercentage: uniqueUsers.length > 0 ? ((veryActiveCount / uniqueUsers.length) * 100).toFixed(1) : '0.0',
+        activePercentage: uniqueUsers.length > 0 ? ((totalActive / uniqueUsers.length) * 100).toFixed(1) : '0.0'
+      },
       templateId,
       date,
       eventType

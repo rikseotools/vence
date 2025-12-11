@@ -129,7 +129,7 @@ export default function NewslettersPage() {
   }
 
   // Cargar usuarios de una campaña específica
-  const loadCampaignUsers = async (newsletter, eventType, eventLabel) => {
+  const loadCampaignUsers = async (newsletter, eventType, eventLabel, activityFilter = null) => {
     setLoadingUsersModal(true)
     setShowUsersModal(true)
     setUsersSearchQuery('')
@@ -145,11 +145,18 @@ export default function NewslettersPage() {
       const data = await response.json()
 
       if (data.success) {
+        // Filtrar usuarios por nivel de actividad si se especifica
+        let filteredUsers = data.users
+        if (activityFilter) {
+          filteredUsers = data.users.filter(user => user.activityLevel === activityFilter)
+        }
+
         setUsersModalData({
-          users: data.users,
+          users: filteredUsers,
           eventType: eventLabel,
           campaignId: newsletter.campaignId,
-          total: data.total
+          total: filteredUsers.length,
+          metrics: data.metrics || null
         })
       } else {
         console.error('Error cargando usuarios:', data.error)
@@ -2424,6 +2431,40 @@ export default function NewslettersPage() {
                         Abiertos
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Muy Activos</span>
+                          <div className="group relative">
+                            <button className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 text-white text-xs flex items-center justify-center hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors">
+                              ?
+                            </button>
+                            <div className="invisible group-hover:visible absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg">
+                              <div className="font-semibold mb-1">Muy Activos (30 días)</div>
+                              <div className="text-gray-300 dark:text-gray-200">
+                                Usuarios que hicieron al menos un test en los últimos 30 días
+                              </div>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <div className="flex items-center justify-center gap-1">
+                          <span>Activos</span>
+                          <div className="group relative">
+                            <button className="w-4 h-4 rounded-full bg-gray-300 dark:bg-gray-600 text-white text-xs flex items-center justify-center hover:bg-gray-400 dark:hover:bg-gray-500 transition-colors">
+                              ?
+                            </button>
+                            <div className="invisible group-hover:visible absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg">
+                              <div className="font-semibold mb-1">Activos (90 días)</div>
+                              <div className="text-gray-300 dark:text-gray-200">
+                                Usuarios que hicieron al menos un test en los últimos 90 días
+                              </div>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Open Rate
                       </th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -2469,6 +2510,24 @@ export default function NewslettersPage() {
                             disabled={newsletter.stats.opened === 0}
                           >
                             {newsletter.stats.opened}
+                          </button>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                          <button
+                            onClick={() => loadCampaignUsers(newsletter, 'opened', 'Muy activos', 'very_active')}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 hover:underline font-medium"
+                            disabled={!newsletter.stats.veryActiveOpened || newsletter.stats.veryActiveOpened === 0}
+                          >
+                            {newsletter.stats.veryActiveOpened || 0}
+                          </button>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                          <button
+                            onClick={() => loadCampaignUsers(newsletter, 'opened', 'Activos', 'active')}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline font-medium"
+                            disabled={!newsletter.stats.activeOpened || newsletter.stats.activeOpened === 0}
+                          >
+                            {newsletter.stats.activeOpened || 0}
                           </button>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
@@ -2579,6 +2638,47 @@ export default function NewslettersPage() {
                 </div>
               </div>
 
+              {/* Métricas de actividad */}
+              {usersModalData.metrics && (
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {usersModalData.metrics.veryActive}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        Muy activos (30d)
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500">
+                        {usersModalData.metrics.veryActivePercentage}%
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {usersModalData.metrics.active}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        Activos (90d)
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500">
+                        {((usersModalData.metrics.active / usersModalData.total) * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {usersModalData.metrics.totalActive}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        Total activos
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-500">
+                        {usersModalData.metrics.activePercentage}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Buscador */}
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <input
@@ -2607,57 +2707,97 @@ export default function NewslettersPage() {
                           user.fullName?.toLowerCase().includes(query)
                         )
                       })
-                      .map((user, index) => (
-                        <div
-                          key={user.userId || index}
-                          className="flex items-center justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                              {user.fullName || 'Sin nombre'}
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                              {user.email}
-                            </p>
-                          </div>
+                      .map((user, index) => {
+                        // Calcular tiempo relativo desde última conexión
+                        const getRelativeTime = (date) => {
+                          if (!date) return 'Nunca'
+                          const days = Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
+                          if (days === 0) return 'Hoy'
+                          if (days === 1) return 'Ayer'
+                          if (days < 30) return `Hace ${days}d`
+                          const months = Math.floor(days / 30)
+                          return `Hace ${months}m`
+                        }
 
-                          <div className="flex items-center gap-3 text-xs">
-                            {/* % Aciertos */}
-                            <div className="text-center">
-                              <div className={`font-bold ${
-                                user.avgScore >= 70 ? 'text-green-600 dark:text-green-400' :
-                                user.avgScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                                'text-red-600 dark:text-red-400'
-                              }`}>
-                                {user.avgScore ? user.avgScore.toFixed(0) + '%' : 'N/A'}
+                        return (
+                          <div
+                            key={user.userId || index}
+                            className="flex items-center justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                  {user.fullName || 'Sin nombre'}
+                                </p>
+                                {/* Badge de actividad */}
+                                {user.activityLevel === 'very_active' && (
+                                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                                    Muy activo
+                                  </span>
+                                )}
+                                {user.activityLevel === 'active' && (
+                                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                                    Activo
+                                  </span>
+                                )}
+                                {user.activityLevel === 'dormant' && (
+                                  <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+                                    Inactivo
+                                  </span>
+                                )}
                               </div>
-                              <div className="text-gray-500 dark:text-gray-400">Aciertos</div>
+                              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                {user.email}
+                              </p>
                             </div>
 
-                            {/* Antigüedad */}
-                            {user.accountAgeDays !== null && (
+                            <div className="flex items-center gap-3 text-xs">
+                              {/* % Aciertos 30d */}
                               <div className="text-center">
-                                <div className="font-bold text-blue-600 dark:text-blue-400">
-                                  {user.accountAgeDays}d
+                                <div className={`font-bold ${
+                                  user.avgScore >= 70 ? 'text-green-600 dark:text-green-400' :
+                                  user.avgScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                  user.avgScore > 0 ? 'text-red-600 dark:text-red-400' :
+                                  'text-gray-400 dark:text-gray-500'
+                                }`}>
+                                  {user.avgScore ? user.avgScore.toFixed(0) + '%' : 'Sin completar'}
                                 </div>
-                                <div className="text-gray-500 dark:text-gray-400">Antigüedad</div>
+                                <div className="text-gray-500 dark:text-gray-400">Aciertos 30d</div>
                               </div>
-                            )}
 
-                            {/* Timestamp */}
-                            {user.timestamp && (
-                              <div className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                                {new Date(user.timestamp).toLocaleString('es-ES', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                              {/* Antigüedad */}
+                              {user.accountAgeDays !== null && (
+                                <div className="text-center">
+                                  <div className="font-bold text-blue-600 dark:text-blue-400">
+                                    {user.accountAgeDays}d
+                                  </div>
+                                  <div className="text-gray-500 dark:text-gray-400">Antigüedad</div>
+                                </div>
+                              )}
+
+                              {/* Último test */}
+                              <div className="text-center">
+                                <div className="font-bold text-purple-600 dark:text-purple-400">
+                                  {getRelativeTime(user.lastTestDate)}
+                                </div>
+                                <div className="text-gray-500 dark:text-gray-400">Último test</div>
                               </div>
-                            )}
+
+                              {/* Timestamp del evento */}
+                              {user.timestamp && (
+                                <div className="text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                  {new Date(user.timestamp).toLocaleString('es-ES', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                   </div>
                 )}
 

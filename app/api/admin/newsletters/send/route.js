@@ -230,7 +230,7 @@ export async function POST(request) {
                   subject: subject,
                   template_id: templateId || 'newsletter',
                   campaign_id: campaignId, // Usar el MISMO campaign_id para todo el envío
-                  email_content_preview: htmlContent // Guardar HTML completo para vista previa
+                  email_content_preview: personalizedHtml // Guardar HTML personalizado completo (con tracking, footer, etc.)
                 })
                 
                 if (eventError) {
