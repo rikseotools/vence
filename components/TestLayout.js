@@ -210,10 +210,11 @@ export default function TestLayout({
       }
       
       sessionCreationRef.current.add(sessionKey)
-      
+
       try {
-        // Crear sesión de test
-        const session = await createDetailedTestSession(userId, tema, testNumber, questions, config, startTime, pageLoadTime.current)
+        // Crear sesión de test - usar activeQuestions si es modo adaptativo
+        const questionsToSave = questions.isAdaptive ? questions.activeQuestions : questions
+        const session = await createDetailedTestSession(userId, tema, testNumber, questionsToSave, config, startTime, pageLoadTime.current)
         if (!session) {
           console.error('❌ No se pudo crear sesión para respuestas previas')
           return false
