@@ -550,16 +550,16 @@ export default function TestPageWrapper({
     <>
       <OposicionDetector />
 
-      
+
       {/* ✅ DEBUGGER: Mostrar valores actuales */}
-      {console.log('🔍 TestPageWrapper debug:', { 
-        tema: tema || 0, 
-        testNumber: getTestNumber(testType), 
-        config, 
+      {console.log('🔍 TestPageWrapper debug:', {
+        tema: tema || 0,
+        testNumber: getTestNumber(testType),
+        config,
         questionsLength: questions.length,
-        testType 
+        testType
       })}
-      
+
       <TestLayout
         tema={tema || 0}
         testNumber={getTestNumber(testType)}

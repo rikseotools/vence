@@ -17,7 +17,8 @@ function TestPersonalizadoAleatorioContent() {
     onlyOfficialQuestions: searchParams.get('official_only') === 'true',
     focusEssentialArticles: searchParams.get('focus_essential') === 'true',
     focusWeakAreas: searchParams.get('focus_weak') === 'true',
-    timeLimit: null // Sin límite de tiempo por defecto para tests aleatorios
+    timeLimit: null, // Sin límite de tiempo por defecto para tests aleatorios
+    testMode: searchParams.get('test_mode') || 'practice' // 'practice' o 'exam'
   }
 
   const themeNames = {

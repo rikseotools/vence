@@ -27,6 +27,7 @@ export default function TestAleatorioPage() {
   const [detailedStats, setDetailedStats] = useState({})
   const [loadingDetailedStatsPerTheme, setLoadingDetailedStatsPerTheme] = useState({}) // Por tema: {1: true}
   const [loadingThemeCounts, setLoadingThemeCounts] = useState(true)
+  const [testMode, setTestMode] = useState('practice') // 'practice' o 'exam'
   
   const router = useRouter()
 
@@ -103,9 +104,11 @@ export default function TestAleatorioPage() {
           }
           
           return { themeId: theme.id, count: totalCount }
-          
+
         } catch (error) {
-          console.error(`Error contando tema ${theme.id}:`, error)
+          if (process.env.NODE_ENV === 'development') {
+            console.error(`Error contando tema ${theme.id}:`, error)
+          }
           // No usar fallback hardcoded, usar 0 para forzar recálculo
           setThemeTotalQuestions(prev => ({ ...prev, [theme.id]: 0 }))
           return { themeId: theme.id, count: 0 }
@@ -115,7 +118,9 @@ export default function TestAleatorioPage() {
       // Esperar a que todos los temas terminen para finalizar el estado de carga
       await Promise.all(themePromises)
     } catch (error) {
-      console.error('Error cargando conteos de temas:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error cargando conteos de temas:', error)
+      }
       // Fallback a valores hardcodeados si falla
       const fallbackCounts = {}
       for (const theme of themes) {
@@ -147,9 +152,11 @@ export default function TestAleatorioPage() {
         .from('test_questions')
         .select('tema_number, is_correct, created_at, question_id, tests!inner(user_id)')
         .eq('tests.user_id', userId)
-      
+
       if (allError) {
-        console.error('❌ Error obteniendo respuestas:', allError)
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Error obteniendo respuestas:', allError)
+        }
         return
       }
       
@@ -186,7 +193,9 @@ export default function TestAleatorioPage() {
       setUserStats(themeStats)
       
     } catch (error) {
-      console.error('Error loading user stats:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error loading user stats:', error)
+      }
     } finally {
       setStatsLoading(false)
     }
@@ -265,7 +274,9 @@ export default function TestAleatorioPage() {
       console.log(`📊 Stats detalladas T${themeId}: ${totalQuestions} total, ${answeredCount} vistas, ${neverSeenCount} nunca vistas`)
       
     } catch (error) {
-      console.error(`Error calculando detailed stats tema ${themeId}:`, error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error(`Error calculando detailed stats tema ${themeId}:`, error)
+      }
       setDetailedStats(prev => ({ ...prev, [themeId]: { total: 0, answered: 0, neverSeen: 0 } }))
     } finally {
       // Quitar el estado de "cargando" para este tema
@@ -456,14 +467,18 @@ export default function TestAleatorioPage() {
             }
           }
         } catch (error) {
-          console.error(`Error procesando tema ${tema}:`, error)
+          if (process.env.NODE_ENV === 'development') {
+            console.error(`Error procesando tema ${tema}:`, error)
+          }
         }
       }
 
       setAvailableQuestions(totalQuestions)
-      
+
     } catch (error) {
-      console.error('Error verificando preguntas disponibles:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error verificando preguntas disponibles:', error)
+      }
       const fallback = selectedThemes.length * (onlyOfficialQuestions ? 10 : focusEssentialArticles ? 8 : 50)
       setAvailableQuestions(fallback)
     } finally {
@@ -501,9 +516,13 @@ export default function TestAleatorioPage() {
         testParams.append('adaptive', 'true')
       }
 
-      router.push(`/auxiliar-administrativo-estado/test/test-personalizado?${testParams.toString()}`)
+      // 🆕 REDIRIGIR SEGÚN EL MODO SELECCIONADO
+      const testPath = testMode === 'exam' ? 'test-aleatorio-examen' : 'test-personalizado'
+      router.push(`/auxiliar-administrativo-estado/test/${testPath}?${testParams.toString()}`)
     } catch (error) {
-      console.error('Error generating random test:', error)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error generating random test:', error)
+      }
       alert('Error al generar el test aleatorio. Inténtalo de nuevo.')
     } finally {
       setGenerating(false)
@@ -1037,6 +1056,7 @@ export default function TestAleatorioPage() {
                   <div className="text-sm text-blue-700 space-y-1">
                     <p>• <strong>{selectedThemes.length}</strong> temas seleccionados</p>
                     <p>• <strong>{numQuestions}</strong> preguntas totales</p>
+                    <p>• Modo: <strong>{testMode === 'practice' ? '📚 Práctica' : '📝 Examen'}</strong></p>
                     <p>• Dificultad: <strong>{
                       difficulty === 'mixed' ? 'Mixto' :
                       difficulty === 'easy' ? 'Fácil' :
@@ -1125,6 +1145,102 @@ export default function TestAleatorioPage() {
                       )}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Selector de Modo: Práctica vs Examen */}
+            {selectedThemes.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                  🎯 Selecciona el modo de test
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Modo Práctica */}
+                  <div
+                    onClick={() => setTestMode('practice')}
+                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      testMode === 'practice'
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center mb-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 ${
+                        testMode === 'practice'
+                          ? 'border-blue-500 bg-blue-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {testMode === 'practice' && (
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        )}
+                      </div>
+                      <h4 className="font-bold text-gray-800 flex items-center">
+                        <span className="mr-2">📚</span>
+                        Modo Práctica
+                      </h4>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Corrección inmediata después de cada pregunta. Ideal para aprender y consolidar conocimientos.
+                    </p>
+                    <div className="space-y-2 text-xs text-gray-500">
+                      <div className="flex items-center">
+                        <span className="text-green-600 mr-2">✓</span>
+                        <span>Retroalimentación instantánea</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-green-600 mr-2">✓</span>
+                        <span>Explicación detallada de cada respuesta</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-green-600 mr-2">✓</span>
+                        <span>Aprendizaje progresivo</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modo Examen */}
+                  <div
+                    onClick={() => setTestMode('exam')}
+                    className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      testMode === 'exam'
+                        ? 'border-orange-500 bg-orange-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center mb-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 ${
+                        testMode === 'exam'
+                          ? 'border-orange-500 bg-orange-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {testMode === 'exam' && (
+                          <div className="w-2 h-2 bg-white rounded-full"></div>
+                        )}
+                      </div>
+                      <h4 className="font-bold text-gray-800 flex items-center">
+                        <span className="mr-2">📝</span>
+                        Modo Examen
+                      </h4>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Todas las preguntas de una vez, corrección al final. Simula las condiciones del examen real.
+                    </p>
+                    <div className="space-y-2 text-xs text-gray-500">
+                      <div className="flex items-center">
+                        <span className="text-orange-600 mr-2">✓</span>
+                        <span>Experiencia real de examen</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-orange-600 mr-2">✓</span>
+                        <span>Cronómetro de tiempo transcurrido</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="text-orange-600 mr-2">✓</span>
+                        <span>Evalúa tu preparación global</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
