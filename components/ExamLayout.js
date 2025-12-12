@@ -244,15 +244,10 @@ export default function ExamLayout({
         const correctOptionLetter = String.fromCharCode(97 + correctIndex)
         const isCorrect = selectedOption ? selectedOption === correctOptionLetter : false
 
-        console.log(`───────────────────────────────────────────`)
         console.log(`📝 PREGUNTA ${i + 1}/${questions.length}`)
-        console.log(`   Question ID: ${question.id}`)
-        console.log(`   Texto: "${question.question_text.substring(0, 60)}..."`)
-        console.log(`   Artículo: ${question.articles?.article_number || 'N/A'} - ${question.articles?.laws?.short_name || 'N/A'}`)
         console.log(`   Respuesta usuario: ${selectedOption ? selectedOption.toUpperCase() : 'NO RESPONDIDA'} (índice: ${answerIndex})`)
         console.log(`   Respuesta correcta: ${correctOptionLetter.toUpperCase()} (índice: ${correctIndex})`)
         console.log(`   ¿Correcta?: ${isCorrect ? 'SÍ ✅' : 'NO ❌'}`)
-        console.log(`   Confidence: ${selectedOption ? 'sure' : 'guessing'}`)
         console.log(`   Tiempo: ${timePerQuestion}s`)
 
         const questionData = {
