@@ -113,7 +113,9 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
           test_id: sessionId,
           question_order: (answerData.questionIndex || 0) + 1,
           question_text: questionData.question || 'Pregunta sin texto',
-          user_answer: String.fromCharCode(65 + (answerData.selectedAnswer || 0)),
+          user_answer: answerData.selectedAnswer === -1
+            ? String.fromCharCode(65 + ((answerData.correctAnswer + 1) % 4)) // 🆕 Respuesta incorrecta para no respondidas
+            : String.fromCharCode(65 + (answerData.selectedAnswer || 0)),
           correct_answer: String.fromCharCode(65 + (answerData.correctAnswer || 0)),
           is_correct: answerData.isCorrect || false,
           
@@ -206,8 +208,24 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
       console.error('❌ Error guardando respuesta:', {
         error_code: error.code,
         error_message: error.message,
+        error_details: error.details,
+        error_hint: error.hint,
         test_id: sessionId,
-        question_order: insertData.question_order
+        question_order: insertData.question_order,
+        full_error: error
+      })
+
+      // 🔍 LOG DETALLADO DE LOS DATOS QUE INTENTAMOS INSERTAR
+      console.error('📋 Datos que intentamos insertar:', {
+        question_id: insertData.question_id,
+        article_id: insertData.article_id,
+        user_answer: insertData.user_answer,
+        correct_answer: insertData.correct_answer,
+        confidence_level: insertData.confidence_level,
+        device_type: insertData.device_type,
+        full_question_context_keys: Object.keys(insertData.full_question_context || {}),
+        user_behavior_data_keys: Object.keys(insertData.user_behavior_data || {}),
+        learning_analytics_keys: Object.keys(insertData.learning_analytics || {})
       })
 
       // Guardar en localStorage para retry posterior

@@ -178,10 +178,10 @@ export const getOrCreateUserSession = async (userId) => {
 }
 
 // ✅ MEJORADO: Crear sesión de test SIN VARIABLES GLOBALES
-export const createDetailedTestSession = async (userId, tema, testNumber, questions, config, startTime, pageLoadTime, userSession = null) => {
+export const createDetailedTestSession = async (userId, tema, testNumber, questions, config, startTime, pageLoadTime, userSession = null, testType = 'practice') => {
   try {
-    console.log('🆕 Creando sesión de test...')
-    
+    console.log(`🆕 Creando sesión de test (tipo: ${testType})...`)
+
     if (!questions || questions.length === 0) {
       console.error('❌ No se puede crear sesión: No hay preguntas disponibles')
       return null
@@ -192,44 +192,53 @@ export const createDetailedTestSession = async (userId, tema, testNumber, questi
       return null
     }
 
-    // Verificar cache primero
-    const cacheKey = `test_session_${userId}_${tema}_${testNumber}`
-    if (sessionCache.has(cacheKey)) {
-      const cachedSession = sessionCache.get(cacheKey)
-      console.log('✅ Reutilizando sesión de test de cache:', cachedSession.id)
-      return cachedSession
-    }
+    // Definir cacheKey fuera del bloque para usarlo después
+    const cacheKey = `test_session_${userId}_${tema}_${testNumber}_${testType}_${Date.now()}`
 
-    // Buscar test activo reciente (últimos 30 minutos)
-    const thirtyMinutesAgo = new Date()
-    thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30)
-    
-    const { data: activeTests } = await supabase
-      .from('tests')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('tema_number', parseInt(tema))
-      .eq('test_number', parseInt(testNumber))
-      .eq('is_completed', false)
-      .gte('started_at', thirtyMinutesAgo.toISOString())
-      .order('started_at', { ascending: false })
-      .limit(1)
+    // 🎯 MODO EXAMEN: Siempre crear nuevo test (no reutilizar)
+    if (testType === 'exam') {
+      console.log('🆕 Modo examen detectado - creando test nuevo (no se reutiliza)')
+    } else {
+      // Solo para tests de práctica: verificar cache y tests activos
+      const practiceCacheKey = `test_session_${userId}_${tema}_${testNumber}_${testType}`
+      if (sessionCache.has(practiceCacheKey)) {
+        const cachedSession = sessionCache.get(practiceCacheKey)
+        console.log('✅ Reutilizando sesión de test de cache:', cachedSession.id)
+        return cachedSession
+      }
 
-    if (activeTests && activeTests.length > 0) {
-      const activeTest = activeTests[0]
-      console.log('✅ Reutilizando test activo:', activeTest.id)
-      sessionCache.set(cacheKey, activeTest)
-      return activeTest
+      // Buscar test activo reciente (últimos 30 minutos)
+      const thirtyMinutesAgo = new Date()
+      thirtyMinutesAgo.setMinutes(thirtyMinutesAgo.getMinutes() - 30)
+
+      const { data: activeTests } = await supabase
+        .from('tests')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('tema_number', parseInt(tema))
+        .eq('test_number', parseInt(testNumber))
+        .eq('test_type', testType)
+        .eq('is_completed', false)
+        .gte('started_at', thirtyMinutesAgo.toISOString())
+        .order('started_at', { ascending: false })
+        .limit(1)
+
+      if (activeTests && activeTests.length > 0) {
+        const activeTest = activeTests[0]
+        console.log('✅ Reutilizando test activo de práctica:', activeTest.id)
+        sessionCache.set(practiceCacheKey, activeTest)
+        return activeTest
+      }
     }
 
     const safeTitle = `Test Tema ${tema || 'X'} - ${testNumber || '1'}`.substring(0, 100)
-    
+
     // Validar que questions sea un array
     if (!Array.isArray(questions)) {
       console.error('❌ ERROR: questions no es un array:', typeof questions, questions)
       throw new Error(`Questions debe ser un array, recibido: ${typeof questions}`)
     }
-    
+
     const questionsMetadata = {
       question_ids: questions.map(q => q.metadata?.id || `temp_${Date.now()}_${Math.random()}`),
       article_ids: questions.map(q => q.article?.id || null),
@@ -239,11 +248,11 @@ export const createDetailedTestSession = async (userId, tema, testNumber, questi
       total_questions: questions.length,
       estimated_duration: questions.length * 60
     }
-    
+
     const insertData = {
       user_id: userId,
       title: safeTitle,
-      test_type: 'practice',
+      test_type: testType,
       test_url: typeof window !== 'undefined' ? window.location.pathname : null,
       total_questions: questions.length,
       score: 0,
@@ -261,19 +270,55 @@ export const createDetailedTestSession = async (userId, tema, testNumber, questi
         load_time: Date.now() - pageLoadTime
       })
     }
-    
+
+    console.log('📤 Intentando INSERT en tabla tests...')
+    console.log('   Datos a insertar:', {
+      user_id: insertData.user_id,
+      title: insertData.title,
+      test_type: insertData.test_type,
+      test_url: insertData.test_url,
+      total_questions: insertData.total_questions,
+      tema_number: insertData.tema_number,
+      test_number: insertData.test_number
+    })
+
     const { data, error } = await supabase
       .from('tests')
       .insert(insertData)
       .select()
       .single()
 
+    console.log('📥 Respuesta del INSERT:')
+    console.log('   - data:', data)
+    console.log('   - error:', error)
+
     if (error) {
-      console.error('❌ Error creando sesión de test:', error.message, error)
+      console.error('❌ ERROR CRÍTICO creando sesión de test:')
+      console.error('   - Message:', error.message)
+      console.error('   - Code:', error.code)
+      console.error('   - Details:', error.details)
+      console.error('   - Hint:', error.hint)
+      console.error('   - Full error object:', JSON.stringify(error, null, 2))
       return null
     }
-    
-    console.log('✅ Sesión de test creada exitosamente:', data.id)
+
+    if (!data) {
+      console.error('❌ ERROR: INSERT no devolvió error pero data es null/undefined')
+      console.error('   Esto no debería pasar nunca')
+      return null
+    }
+
+    if (!data.id) {
+      console.error('❌ ERROR: data existe pero no tiene ID')
+      console.error('   Full data object:', JSON.stringify(data, null, 2))
+      return null
+    }
+
+    console.log('✅ Sesión de test creada exitosamente:')
+    console.log('   - ID:', data.id)
+    console.log('   - Title:', data.title)
+    console.log('   - Type:', data.test_type)
+    console.log('   - Total questions:', data.total_questions)
     
     // Guardar en cache
     sessionCache.set(cacheKey, data)
