@@ -87,6 +87,10 @@ export default function TestLayout({
   const [processingAnswer, setProcessingAnswer] = useState(false)
   const [lastProcessedAnswer, setLastProcessedAnswer] = useState(null)
 
+  // Estado para configuración de scroll automático
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true)
+  const [showScrollFeedback, setShowScrollFeedback] = useState(false)
+
   // Refs para tracking y control
   const pageLoadTime = useRef(Date.now())
   const explanationRef = useRef(null)
@@ -115,13 +119,21 @@ export default function TestLayout({
     return `Tema ${temaNumber}`
   }
 
+  // 🎯 Cargar preferencia de scroll automático desde localStorage
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('autoScrollEnabled')
+    if (savedPreference !== null) {
+      setAutoScrollEnabled(savedPreference === 'true')
+    }
+  }, [])
+
   // 🧠 CONFIGURAR CATÁLOGO ADAPTATIVO SI ESTÁ DISPONIBLE
   useEffect(() => {
     if (questions?.adaptiveCatalog && questions?.isAdaptive) {
       console.log('🧠 DETECTADO CATÁLOGO ADAPTATIVO - Configurando sistema inteligente')
       setAdaptiveCatalog(questions.adaptiveCatalog)
       setAdaptiveMode(true)
-      
+
       console.log('🧠 Catálogo recibido:', {
         neverSeenEasy: questions.adaptiveCatalog.neverSeen.easy.length,
         neverSeenMedium: questions.adaptiveCatalog.neverSeen.medium.length,
@@ -336,16 +348,32 @@ export default function TestLayout({
 
   // Función para hacer scroll suave al resultado
   const scrollToResult = () => {
+    if (!autoScrollEnabled) return // 🎯 Respetar preferencia del usuario
+
     setTimeout(() => {
       if (explanationRef.current) {
         const element = explanationRef.current
         const offsetTop = element.offsetTop - 100
-        window.scrollTo({ 
-          top: offsetTop, 
-          behavior: 'smooth' 
+        window.scrollTo({
+          top: offsetTop,
+          behavior: 'smooth'
         })
       }
     }, 150)
+  }
+
+  // 🎯 Toggle para activar/desactivar scroll automático
+  const toggleAutoScroll = () => {
+    const newValue = !autoScrollEnabled
+    setAutoScrollEnabled(newValue)
+    localStorage.setItem('autoScrollEnabled', String(newValue))
+    console.log('🎯 Scroll automático:', newValue ? 'ACTIVADO' : 'DESACTIVADO')
+
+    // 🎯 Mostrar feedback temporal
+    setShowScrollFeedback(true)
+    setTimeout(() => {
+      setShowScrollFeedback(false)
+    }, 3000)
   }
 
   // 🔄 NUEVA FUNCIÓN: Guardar respuestas faltantes en segundo plano
@@ -799,16 +827,18 @@ export default function TestLayout({
       setHotArticleInfo(null)
       setShowCuriosityDetails(false)
       
-      // Scroll específico al header de la nueva pregunta
-      setTimeout(() => {
-        if (questionHeaderRef.current) {
-          const headerTop = questionHeaderRef.current.offsetTop - 100
-          window.scrollTo({ 
-            top: headerTop, 
-            behavior: 'smooth' 
-          })
-        }
-      }, 150)
+      // 🎯 Scroll específico al header de la nueva pregunta (solo si está habilitado)
+      if (autoScrollEnabled) {
+        setTimeout(() => {
+          if (questionHeaderRef.current) {
+            const headerTop = questionHeaderRef.current.offsetTop - 100
+            window.scrollTo({
+              top: headerTop,
+              behavior: 'smooth'
+            })
+          }
+        }, 150)
+      }
     } else {
       console.warn('⚠️ Intentando navegar más allá de la última pregunta')
       setIsExplicitlyCompleted(true)
@@ -1213,6 +1243,33 @@ export default function TestLayout({
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {Math.round(((currentQuestion + (showResult ? 1 : 0)) / effectiveQuestions.length) * 100)}%
                   </span>
+                  {/* 🎯 Botón de configuración de scroll automático */}
+                  <div className="relative">
+                    <button
+                      onClick={toggleAutoScroll}
+                      title={autoScrollEnabled ? 'Desactivar scroll automático' : 'Activar scroll automático'}
+                      className={`p-2 rounded-lg text-xs font-medium transition-all flex items-center space-x-1 ${
+                        autoScrollEnabled
+                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/40'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <span>{autoScrollEnabled ? '📜' : '🚫'}</span>
+                      <span className="hidden sm:inline">{autoScrollEnabled ? 'Scroll ON' : 'Scroll OFF'}</span>
+                    </button>
+                    {/* 🎯 Feedback temporal */}
+                    {showScrollFeedback && (
+                      <div className={`absolute top-full mt-2 right-0 px-3 py-2 rounded-lg shadow-lg text-xs font-medium whitespace-nowrap z-50 ${
+                        autoScrollEnabled
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-700 text-white'
+                      }`}>
+                        {autoScrollEnabled
+                          ? '✅ Scroll automático activado'
+                          : '⏸️ No scroll al responder'}
+                      </div>
+                    )}
+                  </div>
                   {!isTestCompleted && (
                     <button
                       onClick={() => {
