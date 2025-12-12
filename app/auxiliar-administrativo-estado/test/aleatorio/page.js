@@ -132,6 +132,20 @@ export default function TestAleatorioPage() {
     }
   }
 
+  // Cargar preferencia de modo desde localStorage
+  useEffect(() => {
+    const savedMode = localStorage.getItem('preferredTestMode')
+    if (savedMode === 'practice' || savedMode === 'exam') {
+      setTestMode(savedMode)
+    }
+  }, [])
+
+  // Función helper para cambiar modo y guardar preferencia
+  const handleTestModeChange = (newMode) => {
+    setTestMode(newMode)
+    localStorage.setItem('preferredTestMode', newMode)
+  }
+
   // Verificar preguntas disponibles cuando cambien los criterios
   useEffect(() => {
     if (selectedThemes.length > 0) {
@@ -1158,7 +1172,7 @@ export default function TestAleatorioPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Modo Práctica */}
                   <div
-                    onClick={() => setTestMode('practice')}
+                    onClick={() => handleTestModeChange('practice')}
                     className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
                       testMode === 'practice'
                         ? 'border-blue-500 bg-blue-50'
@@ -1201,7 +1215,7 @@ export default function TestAleatorioPage() {
 
                   {/* Modo Examen */}
                   <div
-                    onClick={() => setTestMode('exam')}
+                    onClick={() => handleTestModeChange('exam')}
                     className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
                       testMode === 'exam'
                         ? 'border-orange-500 bg-orange-50'
