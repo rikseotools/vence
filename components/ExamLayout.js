@@ -37,6 +37,7 @@ export default function ExamLayout({
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [score, setScore] = useState(0)
   const [startTime] = useState(Date.now())
+  const [elapsedTime, setElapsedTime] = useState(0) // Tiempo transcurrido en segundos
 
   // Estados de sesión
   const [currentTestSession, setCurrentTestSession] = useState(null)
@@ -57,6 +58,17 @@ export default function ExamLayout({
   const pageLoadTime = useRef(Date.now())
   const sessionCreationRef = useRef(false) // ✅ Cambiar a boolean simple
   const currentTestSessionRef = useRef(null) // ✅ Ref para mantener el test ID
+
+  // ✅ CRONÓMETRO: Actualizar cada segundo
+  useEffect(() => {
+    if (isSubmitted) return // No actualizar si ya terminó
+
+    const interval = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000))
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [isSubmitted, startTime])
 
   // ✅ INICIALIZAR SESIÓN AL MONTAR
   useEffect(() => {
@@ -380,6 +392,18 @@ export default function ExamLayout({
     setSelectedArticle({ number: null, lawSlug: null })
   }
 
+  // ✅ FUNCIÓN: Formatear tiempo para el cronómetro
+  function formatElapsedTime(seconds) {
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
   // ✅ LOADING STATE
   if (!questions || questions.length === 0) {
     return (
@@ -412,15 +436,27 @@ export default function ExamLayout({
       <div className="max-w-4xl mx-auto px-3 py-6">
 
         {/* ✅ HEADER DEL EXAMEN */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">📝 Modo Examen</h1>
-              <p className="text-sm text-gray-600">Tema {tema} - {totalQuestions} preguntas</p>
+        <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
+          {/* Título */}
+          <div className="mb-4">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">📝 Modo Examen</h1>
+            <p className="text-sm text-gray-600">Tema {tema} - {totalQuestions} preguntas</p>
+          </div>
+
+          {/* Grid de métricas: Cronómetro + Respondidas (responsive) */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* ⏱️ CRONÓMETRO */}
+            <div className="text-center px-3 py-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="text-xs text-purple-600 font-medium mb-1">⏱️ Tiempo</div>
+              <div className="text-xl sm:text-2xl font-bold text-purple-700 font-mono">
+                {formatElapsedTime(elapsedTime)}
+              </div>
             </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-600">Respondidas</div>
-              <div className="text-2xl font-bold text-blue-600">
+
+            {/* 📝 RESPONDIDAS */}
+            <div className="text-center px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="text-xs text-blue-600 font-medium mb-1">📝 Respondidas</div>
+              <div className="text-xl sm:text-2xl font-bold text-blue-700">
                 {answeredCount}/{totalQuestions}
               </div>
             </div>
@@ -453,6 +489,19 @@ export default function ExamLayout({
                   </div>
                   <div className="text-sm text-gray-500 mt-2">
                     (Cada 3 fallos restan 1 correcta)
+                  </div>
+                </div>
+
+                {/* ⏱️ TIEMPO EMPLEADO */}
+                <div className="bg-white rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-purple-600 font-medium">⏱️ Tiempo empleado:</span>
+                    <span className="text-2xl font-bold text-purple-700 font-mono">
+                      {formatElapsedTime(elapsedTime)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 text-center mt-2">
+                    Promedio: {Math.round(elapsedTime / totalQuestions)}s por pregunta
                   </div>
                 </div>
               </div>
