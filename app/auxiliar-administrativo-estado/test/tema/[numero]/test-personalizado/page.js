@@ -109,7 +109,7 @@ function TestPersonalizadoContent({ params }) {
       customTitle={`Test Personalizado - Tema ${displayTemaNumber}${bloqueInfo}`}
       customDescription={`Test personalizado con ${testConfig.numQuestions} preguntas`}
       customIcon="✨"
-      customColor="from-purple-500 to-indigo-600"
+      customColor="from-blue-600 to-blue-700"
     />
   )
 }

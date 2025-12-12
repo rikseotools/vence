@@ -29,10 +29,13 @@ export default function TemaPage({ params }) {
   const [testLoading, setTestLoading] = useState(false)
   const [userRecentStats, setUserRecentStats] = useState(null)
   const [userAnswers, setUserAnswers] = useState([])
-  
+
   // ✅ ESTADOS PARA MODAL DE ARTÍCULO
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
+
+  // 🆕 ESTADO PARA MODO PRÁCTICA/EXAMEN
+  const [testMode, setTestMode] = useState('practica') // 'practica' o 'examen'
 
   // 🔄 REFRESH STATS WHEN PAGE BECOMES VISIBLE (user returns from completed test)
   useEffect(() => {
@@ -754,7 +757,7 @@ export default function TemaPage({ params }) {
   // ✅ FUNCIÓN: Manejar configuración del test personalizado
   async function handleStartCustomTest(config) {
     setTestLoading(true)
-    
+
     try {
       // Construir la URL con los parámetros de configuración
       const params = new URLSearchParams({
@@ -772,23 +775,29 @@ export default function TemaPage({ params }) {
         ...(config.failedQuestionsOrder && { failed_questions_order: config.failedQuestionsOrder }), // 🆕 Tipo de orden
         ...(config.timeLimit && { time_limit: config.timeLimit.toString() })
       })
-      
+
       // 🆕 AGREGAR FILTROS DE LEYES Y ARTÍCULOS
       if (config.selectedLaws && config.selectedLaws.length > 0) {
         params.set('selected_laws', JSON.stringify(config.selectedLaws))
       }
-      
+
       if (config.selectedArticlesByLaw && Object.keys(config.selectedArticlesByLaw).length > 0) {
         params.set('selected_articles_by_law', JSON.stringify(config.selectedArticlesByLaw))
       }
 
-      // Redirigir al test personalizado del tema dinámico
-      const testUrl = `/auxiliar-administrativo-estado/test/tema/${temaNumber}/test-personalizado?${params.toString()}`
+      // 🆕 REDIRIGIR SEGÚN EL MODO SELECCIONADO
+      const testPath = testMode === 'examen' ? 'test-examen' : 'test-personalizado'
+      const testUrl = `/auxiliar-administrativo-estado/test/tema/${temaNumber}/${testPath}?${params.toString()}`
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🎯 Iniciando test en modo ${testMode}:`, testUrl)
+      }
+
       window.location.href = testUrl
 
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error(`❌ Error iniciando test personalizado tema ${temaNumber}:`, error)
+        console.error(`❌ Error iniciando test tema ${temaNumber}:`, error)
       }
       setTestLoading(false)
     }
@@ -950,6 +959,65 @@ export default function TemaPage({ params }) {
           </div>
         </div>
 
+        {/* 🆕 TOGGLE MODO PRÁCTICA/EXAMEN */}
+        <section className="mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+              Selecciona el modo de estudio
+            </h2>
+
+            {/* Toggle buttons */}
+            <div className="flex gap-3 mb-4">
+              <button
+                onClick={() => setTestMode('practica')}
+                className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                  testMode === 'practica'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-blue-300'
+                }`}
+              >
+                <div className="text-3xl mb-2">📚</div>
+                <div className="font-bold text-gray-800 mb-1">Práctica</div>
+                <div className="text-sm text-gray-600">
+                  Preguntas una a una con feedback inmediato
+                </div>
+              </button>
+
+              <button
+                onClick={() => setTestMode('examen')}
+                className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+                  testMode === 'examen'
+                    ? 'border-purple-500 bg-purple-50'
+                    : 'border-gray-200 bg-white hover:border-purple-300'
+                }`}
+              >
+                <div className="text-3xl mb-2">📝</div>
+                <div className="font-bold text-gray-800 mb-1">Examen</div>
+                <div className="text-sm text-gray-600">
+                  Todas las preguntas de una vez, corrección al final
+                </div>
+              </button>
+            </div>
+
+            {/* Descripción del modo seleccionado */}
+            <div className={`p-4 rounded-lg ${testMode === 'practica' ? 'bg-blue-50 border border-blue-200' : 'bg-purple-50 border border-purple-200'}`}>
+              <div className="text-sm">
+                {testMode === 'practica' ? (
+                  <>
+                    <span className="font-semibold text-blue-800">Modo Práctica:</span>
+                    <span className="text-blue-700"> Verás una pregunta a la vez con explicación inmediata. Ideal para aprender, repasar y consolidar conocimientos con el sistema adaptativo.</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-purple-800">Modo Examen:</span>
+                    <span className="text-purple-700"> Verás todas las preguntas en un scroll continuo. Responde todas y al final haz clic en "Corregir" para ver tu resultado. Ideal para simular exámenes reales.</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ✅ 1️⃣ CONFIGURADOR AVANZADO DINÁMICO */}
         <section className="mb-8">
           <TestConfigurator
@@ -961,6 +1029,7 @@ export default function TemaPage({ params }) {
             currentUser={currentUser}
             lawsData={articlesCountByLaw}
             officialQuestionsCount={officialQuestionsCount}
+            testMode={testMode}
           />
         </section>
 

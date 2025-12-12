@@ -6,9 +6,9 @@ import SectionFilterModal from './SectionFilterModal';
 import { fetchLawSections } from '../lib/teoriaFetchers';
 import { getCanonicalSlug } from '../lib/lawMappingUtils';
 
-const TestConfigurator = ({ 
+const TestConfigurator = ({
   tema = 7,
-  totalQuestions = 100, 
+  totalQuestions = 100,
   onStartTest,
   userStats = null,
   loading = false,
@@ -17,7 +17,8 @@ const TestConfigurator = ({
   preselectedLaw = null,
   hideOfficialQuestions = false,
   hideEssentialArticles = false,
-  officialQuestionsCount = 0
+  officialQuestionsCount = 0,
+  testMode = 'practica' // 🆕 'practica' o 'examen'
 }) => {
   const supabase = getSupabaseClient();
 
@@ -1458,6 +1459,7 @@ const TestConfigurator = ({
           </div>
 
           {/* ✨ MODO ADAPTATIVO */}
+          {testMode === 'practica' && (
           <div className="border-t border-gray-200 pt-4">
             <label className="flex items-center space-x-2">
               <input
@@ -1471,7 +1473,7 @@ const TestConfigurator = ({
                 <span className="text-xs text-blue-600 ml-1">(recomendado)</span>
               </span>
             </label>
-            
+
             {/* Información sobre el modo adaptativo */}
             <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-xs text-blue-700 mb-1">
@@ -1482,9 +1484,10 @@ const TestConfigurator = ({
               </p>
             </div>
           </div>
+          )}
 
           {/* 🎯 SOLO PREGUNTAS FALLADAS */}
-          {currentUser && (
+          {currentUser && testMode === 'practica' && (
             <div className="border-t border-gray-200 pt-4">
               <label className="flex items-center space-x-2">
                 <input
@@ -1505,7 +1508,7 @@ const TestConfigurator = ({
                   <span className="text-xs text-red-600 ml-1">(repaso)</span>
                 </span>
               </label>
-              
+
               {/* Información sobre preguntas falladas */}
               <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-xs text-red-700 mb-1">
@@ -1521,44 +1524,58 @@ const TestConfigurator = ({
 
 
         {/* 5. Resumen de Configuración */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h4 className="font-bold text-blue-800 mb-2 text-sm">📋 Resumen de tu Test:</h4>
+        <div className={`mb-6 p-4 rounded-lg border ${testMode === 'examen' ? 'bg-purple-50 border-purple-200' : 'bg-blue-50 border-blue-200'}`}>
+          <h4 className={`font-bold mb-2 text-sm ${testMode === 'examen' ? 'text-purple-800' : 'text-blue-800'}`}>
+            📋 Resumen de tu Test:
+          </h4>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <span className="text-blue-600">📝 Preguntas:</span>
-              <span className="font-bold text-blue-800 ml-1">
+              <span className={testMode === 'examen' ? 'text-purple-600' : 'text-blue-600'}>📝 Preguntas:</span>
+              <span className={`font-bold ml-1 ${testMode === 'examen' ? 'text-purple-800' : 'text-blue-800'}`}>
                 {maxQuestions} {onlyOfficialQuestions ? '🏛️' : ''}
               </span>
             </div>
             <div>
-              <span className="text-blue-600">🎯 Dificultad:</span>
-              <span className="font-bold text-blue-800 ml-1">
+              <span className={testMode === 'examen' ? 'text-purple-600' : 'text-blue-600'}>🎯 Dificultad:</span>
+              <span className={`font-bold ml-1 ${testMode === 'examen' ? 'text-purple-800' : 'text-blue-800'}`}>
                 {difficultyMode}
               </span>
             </div>
-            <div>
-              <span className="text-blue-600">✨ Priorización:</span>
-              <span className="font-bold text-blue-800 ml-1">
-                Inteligente
-              </span>
-            </div>
-            <div>
-              <span className="text-blue-600">⭐ Artículos clave:</span>
-              <span className="font-bold text-blue-800 ml-1">
-                {focusEssentialArticles ? 'Sí' : 'No'}
-              </span>
-            </div>
-            <div>
-              <span className="text-blue-600">✨ Modo adaptativo:</span>
-              <span className="font-bold text-blue-800 ml-1">
-                {adaptiveMode ? 'Activo' : 'Desactivado'}
-              </span>
-            </div>
-            {currentUser && onlyFailedQuestions && (
+            {testMode === 'practica' && (
+              <>
+                <div>
+                  <span className="text-blue-600">✨ Priorización:</span>
+                  <span className="font-bold text-blue-800 ml-1">
+                    Inteligente
+                  </span>
+                </div>
+                <div>
+                  <span className="text-blue-600">⭐ Artículos clave:</span>
+                  <span className="font-bold text-blue-800 ml-1">
+                    {focusEssentialArticles ? 'Sí' : 'No'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-blue-600">✨ Modo adaptativo:</span>
+                  <span className="font-bold text-blue-800 ml-1">
+                    {adaptiveMode ? 'Activo' : 'Desactivado'}
+                  </span>
+                </div>
+                {currentUser && onlyFailedQuestions && (
+                  <div className="col-span-2">
+                    <span className="text-red-600">❌ Tipo:</span>
+                    <span className="font-bold text-red-800 ml-1">
+                      Solo preguntas falladas
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+            {testMode === 'examen' && (
               <div className="col-span-2">
-                <span className="text-red-600">❌ Tipo:</span>
-                <span className="font-bold text-red-800 ml-1">
-                  Solo preguntas falladas
+                <span className="text-purple-600">📝 Modo:</span>
+                <span className="font-bold text-purple-800 ml-1">
+                  Examen (todas las preguntas de una vez)
                 </span>
               </div>
             )}
@@ -1583,17 +1600,21 @@ const TestConfigurator = ({
             <button
               onClick={handleStartTest}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-6 rounded-xl text-lg font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 leading-relaxed"
+              className={`w-full bg-gradient-to-r ${
+                testMode === 'examen'
+                  ? 'from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+                  : 'from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+              } text-white py-4 px-6 rounded-xl text-lg font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 leading-relaxed`}
             >
               {loading ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Preparando Test...</span>
+                  <span>Preparando {testMode === 'examen' ? 'Examen' : 'Test'}...</span>
                 </div>
               ) : (
                 <div className="text-center">
-                  🚀 Empezar Test Personalizado<br />
-                  ({maxQuestions} preguntas{onlyOfficialQuestions ? ' oficiales' : ''}{focusEssentialArticles ? ' + artículos clave' : ''}{adaptiveMode ? ' ✨' : ''})
+                  {testMode === 'examen' ? '📝' : '🚀'} Empezar {testMode === 'examen' ? 'Examen' : 'Test Personalizado'}<br />
+                  ({maxQuestions} preguntas{onlyOfficialQuestions ? ' oficiales' : ''}{testMode === 'practica' && focusEssentialArticles ? ' + artículos clave' : ''}{testMode === 'practica' && adaptiveMode ? ' ✨' : ''})
                 </div>
               )}
             </button>

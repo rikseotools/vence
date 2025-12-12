@@ -52,7 +52,11 @@ export default function TestPageWrapper({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [config, setConfig] = useState(null)
-  
+
+  // 🎯 Estados para loading dinámico
+  const [loadedCount, setLoadedCount] = useState(0)
+  const [totalToLoad, setTotalToLoad] = useState(0)
+
   // 🔒 Control de ejecución única para prevenir double-fetch
   const [loadingKey, setLoadingKey] = useState('')
   const loadingRef = useRef(false)
@@ -106,9 +110,9 @@ export default function TestPageWrapper({
         fetcher: getFetcherForTema(tema, 'aleatorio', false) // 🎯 DETECCIÓN AUTOMÁTICA
       },
       personalizado: {
-        name: "Test Personalizado", 
+        name: "Test Personalizado",
         description: " ",
-        color: "from-purple-500 to-indigo-600",
+        color: "from-blue-600 to-blue-700",
         icon: "✨",
         fetcher: getFetcherForTema(tema, 'personalizado', !!(defaultConfig?.selectedLaws?.length)) // 🎯 DETECCIÓN AUTOMÁTICA
       },
@@ -214,6 +218,21 @@ export default function TestPageWrapper({
       setLoadingKey(currentKey)
       setLoading(true)
       setError(null)
+
+      // 🎯 Inicializar progreso de carga
+      const numQuestions = parseInt(finalSearchParams?.get?.('n')) || parseInt(defaultConfig?.numQuestions) || 10
+      setTotalToLoad(numQuestions)
+      setLoadedCount(0)
+
+      // 🎯 Simular progreso de carga dinámico
+      const loadingInterval = setInterval(() => {
+        setLoadedCount(prev => {
+          if (prev < numQuestions) {
+            return Math.min(prev + 1, numQuestions)
+          }
+          return prev
+        })
+      }, 100) // Incrementar cada 100ms
 
       console.log(`🚀 TestPageWrapper: Cargando test ${testType} para tema ${tema} [KEY: ${currentKey}]`)
 
@@ -328,9 +347,17 @@ export default function TestPageWrapper({
       }
       console.log('✅ Config final aplicado:', testConfig)
 
+      // 🎯 Detener interval y completar progreso
+      clearInterval(loadingInterval)
+      setLoadedCount(numQuestions)
+
     } catch (err) {
       console.error(`❌ TestPageWrapper: Error cargando test [KEY: ${currentKey}]:`, err)
       setError(err.message || 'Error cargando el test')
+      // Limpiar interval en caso de error
+      if (typeof loadingInterval !== 'undefined') {
+        clearInterval(loadingInterval)
+      }
     } finally {
       // 🔒 Liberar lock de ejecución
       loadingRef.current = false
@@ -349,19 +376,32 @@ export default function TestPageWrapper({
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"></div>
-          <p className="text-gray-600 dark:text-gray-300 text-sm">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
+          <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">
             {loadingMessage || `🔄 Preparando ${config?.name || 'test'}...`}
           </p>
+
+          {/* 🎯 Contador dinámico de preguntas */}
+          {totalToLoad > 0 && (
+            <div className="mt-3">
+              <p className="text-blue-600 dark:text-blue-400 font-bold text-lg">
+                {loadedCount}/{totalToLoad}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {loadedCount < totalToLoad ? '📥 Cargando preguntas...' : '✅ Preguntas listas'}
+              </p>
+            </div>
+          )}
+
           {config && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               {config.icon} {config.name}
             </p>
           )}
-          
+
           {/* Información específica según tipo */}
           {testType === 'personalizado' && (
-            <div className="mt-3 space-y-1 text-xs text-blue-600 dark:text-blue-400">
+            <div className="mt-3 space-y-1 text-xs text-gray-600 dark:text-gray-400">
               {finalSearchParams?.get?.('exclude_recent') === 'true' && (
                 <p>🚫 Excluyendo preguntas de últimos {finalSearchParams?.get?.('recent_days') || 15} días</p>
               )}

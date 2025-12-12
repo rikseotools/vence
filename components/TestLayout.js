@@ -1224,7 +1224,8 @@ export default function TestLayout({
 
             {/* Barra de progreso con dark mode */}
             <div className="mb-8">
-              <div className="flex justify-between items-center mb-2">
+              {/* Primera fila: Info de pregunta */}
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Pregunta {currentQuestion + 1} de {effectiveQuestions.length}
                   {user && currentTestSession && (
@@ -1239,51 +1240,54 @@ export default function TestLayout({
                     </span>
                   )}
                 </span>
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {Math.round(((currentQuestion + (showResult ? 1 : 0)) / effectiveQuestions.length) * 100)}%
-                  </span>
-                  {/* 🎯 Botón de configuración de scroll automático */}
-                  <div className="relative">
-                    <button
-                      onClick={toggleAutoScroll}
-                      title={autoScrollEnabled ? 'Desactivar scroll automático' : 'Activar scroll automático'}
-                      className={`p-2 rounded-lg text-xs font-medium transition-all flex items-center space-x-1 ${
-                        autoScrollEnabled
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800/40'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <span>{autoScrollEnabled ? '📜' : '🚫'}</span>
-                      <span className="hidden sm:inline">{autoScrollEnabled ? 'Scroll ON' : 'Scroll OFF'}</span>
-                    </button>
-                    {/* 🎯 Feedback temporal */}
-                    {showScrollFeedback && (
-                      <div className={`absolute top-full mt-2 right-0 px-3 py-2 rounded-lg shadow-lg text-xs font-medium whitespace-nowrap z-50 ${
-                        autoScrollEnabled
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 text-white'
-                      }`}>
-                        {autoScrollEnabled
-                          ? '✅ Scroll automático activado'
-                          : '⏸️ No scroll al responder'}
-                      </div>
-                    )}
-                  </div>
-                  {!isTestCompleted && (
-                    <button
-                      onClick={() => {
-                        if (config.customNavigationLinks?.backToLaw) {
-                          window.location.href = config.customNavigationLinks.backToLaw.href
-                        } else {
-                          window.location.href = config.isLawTest ? '/leyes' : '/auxiliar-administrativo-estado/test'
-                        }
-                      }}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-xs font-medium transition-colors flex items-center space-x-1"
-                    >
-                      <span>←</span>
-                      <span>{config.customNavigationLinks?.backToLaw?.text || 'Volver a Tests'}</span>
-                    </button>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {Math.round(((currentQuestion + (showResult ? 1 : 0)) / effectiveQuestions.length) * 100)}%
+                </span>
+              </div>
+
+              {/* Segunda fila: Botones de acción */}
+              <div className="flex items-center gap-2 mb-2 w-full">
+                {/* Botón "Volver a Tests" a la izquierda */}
+                {!isTestCompleted && (
+                  <button
+                    onClick={() => {
+                      if (config.customNavigationLinks?.backToLaw) {
+                        window.location.href = config.customNavigationLinks.backToLaw.href
+                      } else {
+                        window.location.href = config.isLawTest ? '/leyes' : '/auxiliar-administrativo-estado/test'
+                      }
+                    }}
+                    className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm border border-gray-700"
+                  >
+                    <span>←</span>
+                    <span>{config.customNavigationLinks?.backToLaw?.text || 'Volver a Tests'}</span>
+                  </button>
+                )}
+                {/* 🎯 Botón de configuración de scroll automático a la derecha */}
+                <div className="relative flex-1">
+                  <button
+                    onClick={toggleAutoScroll}
+                    title={autoScrollEnabled ? 'Desactivar scroll automático' : 'Activar scroll automático'}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm border ${
+                      autoScrollEnabled
+                        ? 'bg-blue-500 hover:bg-blue-600 text-white border-blue-600 hover:shadow-md'
+                        : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+                    }`}
+                  >
+                    <span className="text-sm">{autoScrollEnabled ? '📜' : '🚫'}</span>
+                    <span>{autoScrollEnabled ? 'Auto-scroll' : 'No scroll'}</span>
+                  </button>
+                  {/* 🎯 Feedback temporal */}
+                  {showScrollFeedback && (
+                    <div className={`absolute top-full mt-2 right-0 px-3 py-2 rounded-lg shadow-lg text-xs font-medium whitespace-nowrap z-50 ${
+                      autoScrollEnabled
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-white'
+                    }`}>
+                      {autoScrollEnabled
+                        ? '✅ Scroll automático activado'
+                        : '⏸️ No scroll al responder'}
+                    </div>
                   )}
                 </div>
               </div>
