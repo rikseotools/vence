@@ -348,6 +348,103 @@ export default function TestLayout({
     }, 150)
   }
 
+  // 🔄 NUEVA FUNCIÓN: Guardar respuestas faltantes en segundo plano
+  const saveAnswersInBackground = async (sessionId, allAnswers, questions, temaId, testStartTime) => {
+    console.log('💾 ═══════════════════════════════════════════')
+    console.log('💾 GUARDADO EN SEGUNDO PLANO INICIADO')
+    console.log('💾 ═══════════════════════════════════════════')
+
+    try {
+      // Obtener qué preguntas ya están guardadas
+      const { data: savedQuestions } = await supabase
+        .from('test_questions')
+        .select('question_order')
+        .eq('test_id', sessionId)
+
+      const savedOrders = new Set(savedQuestions?.map(q => q.question_order) || [])
+      console.log(`📊 Question_orders ya guardados:`, Array.from(savedOrders).sort((a, b) => a - b))
+
+      let savedCount = 0
+      let errorCount = 0
+      const timePerQuestion = Math.round((Date.now() - testStartTime) / allAnswers.length)
+
+      // Intentar guardar cada respuesta que falta
+      for (let i = 0; i < allAnswers.length; i++) {
+        const questionOrder = i + 1
+
+        // Si ya está guardada, skip
+        if (savedOrders.has(questionOrder)) {
+          console.log(`✅ Pregunta ${questionOrder} ya guardada, skip`)
+          continue
+        }
+
+        const answer = allAnswers[i]
+        const question = questions[i]
+
+        console.log(`───────────────────────────────────────────`)
+        console.log(`💾 Guardando pregunta ${questionOrder} (faltante)`)
+
+        const questionData = {
+          id: question.id,
+          question: question.question_text,
+          options: [question.option_a, question.option_b, question.option_c, question.option_d],
+          correctAnswer: question.correct,
+          explanation: question.explanation,
+          article: {
+            id: question.primary_article_id,
+            number: question.article_number,
+            law_short_name: question.law_short_name
+          },
+          metadata: {
+            id: question.id,
+            difficulty: question.difficulty,
+            question_type: 'single'
+          },
+          tema: temaId
+        }
+
+        try {
+          const result = await saveDetailedAnswer(
+            sessionId,
+            questionData,
+            answer,
+            temaId,
+            answer.confidence || 'sure',
+            0,
+            testStartTime,
+            null,
+            [],
+            [],
+            []
+          )
+
+          if (result?.success) {
+            savedCount++
+            console.log(`   ✅ Guardada exitosamente`)
+          } else {
+            errorCount++
+            console.error(`   ❌ Error guardando:`, result)
+          }
+        } catch (err) {
+          errorCount++
+          console.error(`   ❌ Excepción guardando:`, err)
+        }
+      }
+
+      console.log('')
+      console.log('💾 ═══════════════════════════════════════════')
+      console.log(`✅ GUARDADO EN SEGUNDO PLANO COMPLETADO`)
+      console.log(`   - Guardadas: ${savedCount}`)
+      console.log(`   - Errores: ${errorCount}`)
+      console.log('💾 ═══════════════════════════════════════════')
+
+      return { success: true, savedCount, errorCount }
+    } catch (error) {
+      console.error('❌ Error en guardado en segundo plano:', error)
+      return { success: false, error }
+    }
+  }
+
   // Manejar respuesta con protección anti-duplicados
   const handleAnswerClick = async (answerIndex) => {
     if (showResult || processingAnswer) return
@@ -572,13 +669,48 @@ export default function TestLayout({
         }
         
         // Lógica de finalización existente...
-        if (currentQuestion === effectiveQuestions.length - 1) {
+        // 🔄 NUEVA LÓGICA: Verificar si todas las preguntas están respondidas
+        const allQuestionsAnswered = newDetailedAnswers.length >= effectiveQuestions.length
+
+        if (currentQuestion === effectiveQuestions.length - 1 || allQuestionsAnswered) {
           console.log('🏁 Última pregunta completada')
+          console.log(`📊 Preguntas respondidas: ${newDetailedAnswers.length}/${effectiveQuestions.length}`)
           setIsExplicitlyCompleted(true)
-          
+
           if (user && currentTestSession) {
             setSaveStatus('saving')
             console.log('💾 Completando test final...')
+
+            // 🔄 NUEVO: Verificar preguntas guardadas en BD antes de completar
+            const { data: savedQuestions } = await supabase
+              .from('test_questions')
+              .select('question_order')
+              .eq('test_id', currentTestSession.id)
+
+            const savedCount = savedQuestions?.length || 0
+            const expectedCount = newDetailedAnswers.length
+
+            console.log(`📊 Preguntas en BD: ${savedCount}/${expectedCount}`)
+
+            // 🔄 NUEVO: Si faltan preguntas, intentar guardarlas en segundo plano
+            if (savedCount < expectedCount) {
+              console.warn(`⚠️  Faltan ${expectedCount - savedCount} preguntas por guardar`)
+              console.log('💾 Guardando preguntas faltantes en segundo plano...')
+
+              // Guardar en segundo plano sin bloquear
+              saveAnswersInBackground(
+                currentTestSession.id,
+                newDetailedAnswers,
+                effectiveQuestions,
+                tema,
+                startTime
+              ).then(result => {
+                console.log('✅ Guardado en segundo plano completado:', result)
+              }).catch(err => {
+                console.error('❌ Error en guardado en segundo plano:', err)
+              })
+            }
+
             const result = await completeDetailedTest(
               currentTestSession.id,
               newScore,
@@ -590,12 +722,12 @@ export default function TestLayout({
             )
             setSaveStatus(result.status)
             console.log('✅ Test completado en BD:', result.status)
-            
+
             // 🔓 NOTIFICAR COMPLETION PARA SISTEMA DE DESBLOQUEO
             if (result.status === 'success' && tema && typeof tema === 'number') {
               const accuracy = Math.round((newScore / effectiveQuestions.length) * 100)
               console.log(`🔄 Notificando completion para desbloqueo: Tema ${tema}, ${accuracy}% accuracy`)
-              
+
               try {
                 await notifyTestCompletion(tema, accuracy, effectiveQuestions.length)
                 console.log('✅ Sistema de desbloqueo notificado correctamente')

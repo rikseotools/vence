@@ -66,7 +66,7 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
 
       const { data: todayTests } = await supabase
         .from('tests')
-        .select('title')
+        .select('title, test_type, is_completed, score, total_questions')
         .eq('user_id', userId)
         .gte('created_at', today.toISOString())
         .lt('created_at', tomorrow.toISOString())
@@ -84,6 +84,22 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
 
       // 5. Extraer leyes únicas estudiadas hoy
       const lawsToday = extractUniqueLastToday(todayTests)
+
+      // 6. Calcular estadísticas por tipo de test (práctica vs examen)
+      const practiceTests = todayTests?.filter(t => t.test_type === 'practice' && t.is_completed) || []
+      const examTests = todayTests?.filter(t => t.test_type === 'exam' && t.is_completed) || []
+
+      const practiceStats = {
+        count: practiceTests.length,
+        totalQuestions: practiceTests.reduce((sum, t) => sum + (t.total_questions || 0), 0),
+        correctAnswers: practiceTests.reduce((sum, t) => sum + (t.score || 0), 0)
+      }
+
+      const examStats = {
+        count: examTests.length,
+        totalQuestions: examTests.reduce((sum, t) => sum + (t.total_questions || 0), 0),
+        correctAnswers: examTests.reduce((sum, t) => sum + (t.score || 0), 0)
+      }
 
       // Obtener nombre apropiado (evitar "Usuario" genérico)
       let displayName = userName // Fallback inicial
@@ -142,7 +158,9 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         tests: todayTests || [],
         total_questions: stats?.[0]?.today_questions || 0,
         correct_answers: stats?.[0]?.today_correct || 0,
-        laws_studied: lawsToday
+        laws_studied: lawsToday,
+        practiceStats,
+        examStats
       })
 
     } catch (error) {
@@ -518,6 +536,50 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                           ({Math.round((todayActivity.correct_answers / todayActivity.total_questions) * 100)}%)
                         </span>
                       </div>
+
+                      {/* Tarjetas de tests por tipo */}
+                      {(todayActivity.practiceStats?.count > 0 || todayActivity.examStats?.count > 0) && (
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                          {/* Tests de Práctica */}
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xl">📝</span>
+                              <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">Tests de Práctica</span>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                {todayActivity.practiceStats?.count || 0}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">completados</p>
+                              {todayActivity.practiceStats?.totalQuestions > 0 && (
+                                <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-1">
+                                  Precisión: {Math.round((todayActivity.practiceStats.correctAnswers / todayActivity.practiceStats.totalQuestions) * 100)}%
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Tests de Examen */}
+                          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xl">📋</span>
+                              <span className="text-xs font-semibold text-purple-700 dark:text-purple-400">Tests de Examen</span>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                                {todayActivity.examStats?.count || 0}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">completados</p>
+                              {todayActivity.examStats?.totalQuestions > 0 && (
+                                <p className="text-xs font-medium text-purple-600 dark:text-purple-400 mt-1">
+                                  Precisión: {Math.round((todayActivity.examStats.correctAnswers / todayActivity.examStats.totalQuestions) * 100)}%
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {todayActivity.laws_studied.length > 0 && (
                         <div>
                           <p className="text-sm text-gray-600 mb-2">Leyes estudiadas:</p>
