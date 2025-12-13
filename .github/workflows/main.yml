@@ -1,0 +1,16 @@
+  name: Update User Streaks Daily
+
+  on:
+    schedule:
+      - cron: '0 3 * * *'
+    workflow_dispatch:
+
+  jobs:
+    update-streaks:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Update User Streaks
+          run: |
+            curl -X GET \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              https://vence.vercel.app/api/cron/update-streaks
