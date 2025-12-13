@@ -391,17 +391,6 @@ export default function PsicotecnicosTestClient() {
           <p className="text-gray-600 max-w-2xl mx-auto mb-4">
             Selecciona las categorías que quieres practicar y configura tu test personalizado
           </p>
-          {/* Mensaje de desarrollo */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 max-w-2xl mx-auto">
-            <div className="flex items-center justify-center space-x-2 text-blue-700">
-              <span className="text-lg">🚀</span>
-              <p className="text-sm font-medium">
-                <strong>¡Estamos en desarrollo!</strong> Durante octubre añadiremos preguntas psicotécnicas diariamente.
-                <br />
-                <span className="text-blue-600">Si haces las preguntas disponibles hoy y vuelves mañana, ¡verás que hay nuevas!</span>
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Lista estilo checklist simple */}
