@@ -37,6 +37,20 @@ export default function TemaPage({ params }) {
   // 🆕 ESTADO PARA MODO PRÁCTICA/EXAMEN
   const [testMode, setTestMode] = useState('practica') // 'practica' o 'examen'
 
+  // 💾 Cargar preferencia de modo desde localStorage
+  useEffect(() => {
+    const savedMode = localStorage.getItem('preferredTestMode')
+    if (savedMode === 'practica' || savedMode === 'examen') {
+      setTestMode(savedMode)
+    }
+  }, [])
+
+  // 💾 Función helper para cambiar modo y guardar preferencia
+  const handleTestModeChange = (newMode) => {
+    setTestMode(newMode)
+    localStorage.setItem('preferredTestMode', newMode)
+  }
+
   // 🔄 REFRESH STATS WHEN PAGE BECOMES VISIBLE (user returns from completed test)
   useEffect(() => {
     if (!currentUser || !temaNumber) return
@@ -969,7 +983,7 @@ export default function TemaPage({ params }) {
             {/* Toggle buttons */}
             <div className="flex gap-3 mb-4">
               <button
-                onClick={() => setTestMode('practica')}
+                onClick={() => handleTestModeChange('practica')}
                 className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                   testMode === 'practica'
                     ? 'border-blue-500 bg-blue-50'
@@ -984,7 +998,7 @@ export default function TemaPage({ params }) {
               </button>
 
               <button
-                onClick={() => setTestMode('examen')}
+                onClick={() => handleTestModeChange('examen')}
                 className={`flex-1 p-4 rounded-lg border-2 transition-all ${
                   testMode === 'examen'
                     ? 'border-purple-500 bg-purple-50'

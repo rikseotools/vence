@@ -27,7 +27,7 @@ export default function TestAleatorioPage() {
   const [detailedStats, setDetailedStats] = useState({})
   const [loadingDetailedStatsPerTheme, setLoadingDetailedStatsPerTheme] = useState({}) // Por tema: {1: true}
   const [loadingThemeCounts, setLoadingThemeCounts] = useState(true)
-  const [testMode, setTestMode] = useState('practice') // 'practice' o 'exam'
+  const [testMode, setTestMode] = useState('practica') // 'practica' o 'examen'
   
   const router = useRouter()
 
@@ -135,7 +135,7 @@ export default function TestAleatorioPage() {
   // Cargar preferencia de modo desde localStorage
   useEffect(() => {
     const savedMode = localStorage.getItem('preferredTestMode')
-    if (savedMode === 'practice' || savedMode === 'exam') {
+    if (savedMode === 'practica' || savedMode === 'examen') {
       setTestMode(savedMode)
     }
   }, [])
@@ -531,7 +531,7 @@ export default function TestAleatorioPage() {
       }
 
       // 🆕 REDIRIGIR SEGÚN EL MODO SELECCIONADO
-      const testPath = testMode === 'exam' ? 'test-aleatorio-examen' : 'test-personalizado'
+      const testPath = testMode === 'examen' ? 'test-aleatorio-examen' : 'test-personalizado'
       router.push(`/auxiliar-administrativo-estado/test/${testPath}?${testParams.toString()}`)
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -1070,7 +1070,7 @@ export default function TestAleatorioPage() {
                   <div className="text-sm text-blue-700 space-y-1">
                     <p>• <strong>{selectedThemes.length}</strong> temas seleccionados</p>
                     <p>• <strong>{numQuestions}</strong> preguntas totales</p>
-                    <p>• Modo: <strong>{testMode === 'practice' ? '📚 Práctica' : '📝 Examen'}</strong></p>
+                    <p>• Modo: <strong>{testMode === 'practica' ? '📚 Práctica' : '📝 Examen'}</strong></p>
                     <p>• Dificultad: <strong>{
                       difficulty === 'mixed' ? 'Mixto' :
                       difficulty === 'easy' ? 'Fácil' :
@@ -1172,20 +1172,20 @@ export default function TestAleatorioPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Modo Práctica */}
                   <div
-                    onClick={() => handleTestModeChange('practice')}
+                    onClick={() => handleTestModeChange('practica')}
                     className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      testMode === 'practice'
+                      testMode === 'practica'
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center mb-3">
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 ${
-                        testMode === 'practice'
+                        testMode === 'practica'
                           ? 'border-blue-500 bg-blue-500'
                           : 'border-gray-300'
                       }`}>
-                        {testMode === 'practice' && (
+                        {testMode === 'practica' && (
                           <div className="w-2 h-2 bg-white rounded-full"></div>
                         )}
                       </div>
@@ -1215,20 +1215,20 @@ export default function TestAleatorioPage() {
 
                   {/* Modo Examen */}
                   <div
-                    onClick={() => handleTestModeChange('exam')}
+                    onClick={() => handleTestModeChange('examen')}
                     className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      testMode === 'exam'
+                      testMode === 'examen'
                         ? 'border-orange-500 bg-orange-50'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
                     <div className="flex items-center mb-3">
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-3 ${
-                        testMode === 'exam'
+                        testMode === 'examen'
                           ? 'border-orange-500 bg-orange-500'
                           : 'border-gray-300'
                       }`}>
-                        {testMode === 'exam' && (
+                        {testMode === 'examen' && (
                           <div className="w-2 h-2 bg-white rounded-full"></div>
                         )}
                       </div>
