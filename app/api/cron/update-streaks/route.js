@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request) {
@@ -8,7 +9,10 @@ export async function GET(request) {
 
     if (authHeader !== expectedAuth) {
       console.error('❌ Unauthorized request to update-streaks cron')
-      return new Response('Unauthorized', { status: 401 })
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
 
     // Usar service role key para ejecutar RPC
@@ -22,14 +26,14 @@ export async function GET(request) {
 
     if (error) {
       console.error('❌ Error actualizando rachas:', error)
-      return Response.json({
+      return NextResponse.json({
         success: false,
         error: error.message
       }, { status: 500 })
     }
 
     console.log('✅ Rachas actualizadas correctamente')
-    return Response.json({
+    return NextResponse.json({
       success: true,
       message: 'Rachas actualizadas correctamente',
       timestamp: new Date().toISOString()
@@ -37,7 +41,7 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('❌ Error inesperado:', error)
-    return Response.json({
+    return NextResponse.json({
       success: false,
       error: error.message
     }, { status: 500 })
