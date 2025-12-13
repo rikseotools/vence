@@ -43,3 +43,4 @@ export async function GET(request) {
     }, { status: 500 })
   }
 }
+# Force redeploy sábado, 13 de diciembre de 2025, 13:05:41 CET
