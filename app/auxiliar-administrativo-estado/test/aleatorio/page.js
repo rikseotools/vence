@@ -28,27 +28,57 @@ export default function TestAleatorioPage() {
   const [loadingDetailedStatsPerTheme, setLoadingDetailedStatsPerTheme] = useState({}) // Por tema: {1: true}
   const [loadingThemeCounts, setLoadingThemeCounts] = useState(true)
   const [testMode, setTestMode] = useState('practica') // 'practica' o 'examen'
-  
+  const [expandedBlocks, setExpandedBlocks] = useState({ block1: true, block2: true }) // Bloques expandidos por defecto
+
   const router = useRouter()
 
-  const themes = [
-    { id: 1, name: "La Constitución Española de 1978" },
-    { id: 2, name: "El Tribunal Constitucional. La Corona" },
-    { id: 3, name: "Las Cortes Generales" },
-    { id: 4, name: "El Poder Judicial" },
-    { id: 5, name: "El Gobierno y la Administración" },
-    { id: 6, name: "El Gobierno Abierto. Agenda 2030" },
-    { id: 7, name: "Ley 19/2013 de Transparencia" },
-    { id: 8, name: "La Administración General del Estado" },
-    { id: 9, name: "La Organización Territorial del Estado" },
-    { id: 10, name: "La Organización de la Unión Europea" },
-    { id: 11, name: "Las Leyes del Procedimiento Administrativo Común" },
-    { id: 12, name: "La Protección de Datos Personales" },
-    { id: 13, name: "El Personal Funcionario de las Administraciones Públicas" },
-    { id: 14, name: "Derechos y Deberes de los Funcionarios" },
-    { id: 15, name: "El Presupuesto del Estado en España" },
-    { id: 16, name: "Políticas de Igualdad y contra la Violencia de Género" }
+  const themeBlocks = [
+    {
+      id: 'block1',
+      title: 'Bloque I: Temas Generales',
+      subtitle: 'Derecho Constitucional y Administrativo',
+      themes: [
+        { id: 1, name: "La Constitución Española de 1978" },
+        { id: 2, name: "El Tribunal Constitucional. La Corona" },
+        { id: 3, name: "Las Cortes Generales" },
+        { id: 4, name: "El Poder Judicial" },
+        { id: 5, name: "El Gobierno y la Administración" },
+        { id: 6, name: "El Gobierno Abierto. Agenda 2030" },
+        { id: 7, name: "Ley 19/2013 de Transparencia" },
+        { id: 8, name: "La Administración General del Estado" },
+        { id: 9, name: "La Organización Territorial del Estado" },
+        { id: 10, name: "La Organización de la Unión Europea" },
+        { id: 11, name: "Las Leyes del Procedimiento Administrativo Común" },
+        { id: 12, name: "La Protección de Datos Personales" },
+        { id: 13, name: "El Personal Funcionario de las Administraciones Públicas" },
+        { id: 14, name: "Derechos y Deberes de los Funcionarios" },
+        { id: 15, name: "El Presupuesto del Estado en España" },
+        { id: 16, name: "Políticas de Igualdad y contra la Violencia de Género" }
+      ]
+    },
+    {
+      id: 'block2',
+      title: 'Bloque II: Temas Específicos',
+      subtitle: 'Informática y Atención al Ciudadano',
+      themes: [
+        { id: 101, name: "Tema 1: Atención al ciudadano" },
+        { id: 102, name: "Tema 2: Servicios de información administrativa" },
+        { id: 103, name: "Tema 3: Documento, registro y archivo" },
+        { id: 104, name: "Tema 4: Administración electrónica" },
+        { id: 105, name: "Tema 5: Informática básica" },
+        { id: 106, name: "Tema 6: Sistema operativo" },
+        { id: 107, name: "Tema 7: Explorador de Windows" },
+        { id: 108, name: "Tema 8: Word" },
+        { id: 109, name: "Tema 9: Excel" },
+        { id: 110, name: "Tema 10: Access" },
+        { id: 111, name: "Tema 11: Correo electrónico" },
+        { id: 112, name: "Tema 12: Internet" }
+      ]
+    }
   ]
+
+  // Lista plana de todos los temas para compatibilidad con funciones existentes
+  const themes = themeBlocks.flatMap(block => block.themes)
 
   const loadThemeQuestionCounts = async () => {
     setLoadingThemeCounts(true)
@@ -161,11 +191,34 @@ export default function TestAleatorioPage() {
       const { getSupabaseClient } = await import('../../../../lib/supabase')
       const supabase = getSupabaseClient()
 
-      // MÉTODO SIMPLIFICADO: Solo cargar estadísticas básicas (total, accuracy, lastStudy)
+      // MÉTODO OPTIMIZADO: Dos queries para evitar timeout en el join
+      // 1. Obtener test IDs del usuario (últimos 6 meses)
+      const sixMonthsAgo = new Date()
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+      const { data: userTests, error: testsError } = await supabase
+        .from('tests')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('created_at', sixMonthsAgo.toISOString())
+        .limit(1000)
+
+      if (testsError || !userTests || userTests.length === 0) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('❌ Error obteniendo tests del usuario:', testsError)
+        }
+        setUserStats({})
+        return
+      }
+
+      const testIds = userTests.map(t => t.id)
+
+      // 2. Obtener respuestas de esos tests (más eficiente con índice en test_id)
       const { data: responses, error: allError } = await supabase
         .from('test_questions')
-        .select('tema_number, is_correct, created_at, question_id, tests!inner(user_id)')
-        .eq('tests.user_id', userId)
+        .select('tema_number, is_correct, created_at, question_id, test_id')
+        .in('test_id', testIds)
+        .order('created_at', { ascending: false })
 
       if (allError) {
         if (process.env.NODE_ENV === 'development') {
@@ -376,12 +429,28 @@ export default function TestAleatorioPage() {
   }
 
   const selectAllStudiedThemes = () => {
-    const studiedThemeIds = getStudiedThemes().map(theme => theme.id)
-    setSelectedThemes(studiedThemeIds)
+    const allThemeIds = getAllThemes().map(theme => theme.id)
+    setSelectedThemes(allThemeIds)
   }
 
   const clearSelection = () => {
     setSelectedThemes([])
+  }
+
+  const selectBlockThemes = (blockId) => {
+    const block = themeBlocks.find(b => b.id === blockId)
+    if (!block) return
+
+    const blockThemeIds = block.themes.map(t => t.id)
+    const otherSelectedThemes = selectedThemes.filter(id => !blockThemeIds.includes(id))
+    const allBlockSelected = blockThemeIds.every(id => selectedThemes.includes(id))
+
+    // Si todos están seleccionados, deseleccionar; si no, seleccionar todos
+    if (allBlockSelected) {
+      setSelectedThemes(otherSelectedThemes)
+    } else {
+      setSelectedThemes([...otherSelectedThemes, ...blockThemeIds])
+    }
   }
 
   // Función para verificar preguntas disponibles con los criterios actuales
@@ -613,25 +682,7 @@ export default function TestAleatorioPage() {
     )
   }
 
-  const studiedThemes = getStudiedThemes()
-
-  if (studiedThemes.length === 0) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-lg p-8 text-center max-w-md">
-          <div className="text-6xl mb-4">📚</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">¡Primero estudia temas individuales!</h2>
-          <p className="text-gray-600 mb-6">Para hacer tests mezclados, primero debes estudiar cada tema por separado. Solo aparecen aquí los temas que ya has practicado individualmente (mínimo 10 preguntas y 10% de aciertos).</p>
-          <Link 
-            href="/auxiliar-administrativo-estado/test"
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity"
-          >
-            🚀 Estudiar temas por separado
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  const availableThemes = getAllThemes() // Mostrar TODOS los temas, no solo los estudiados
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -651,7 +702,7 @@ export default function TestAleatorioPage() {
             🎲 Test Aleatorio
           </h1>
           <p className="text-gray-600">
-            Configura tu test personalizado seleccionando los temas que has estudiado
+            Configura tu test personalizado seleccionando los temas que quieres practicar
           </p>
         </div>
 
@@ -943,7 +994,7 @@ export default function TestAleatorioPage() {
                     <button
                       onClick={() => setShowThemeSelectionModal(true)}
                       className="w-5 h-5 rounded-full bg-gray-300 hover:bg-gray-400 text-gray-600 hover:text-gray-700 flex items-center justify-center text-xs font-bold transition-colors flex-shrink-0"
-                      title="¿Por qué solo veo algunos temas?"
+                      title="¿Cómo funciona la selección de temas?"
                     >
                       ℹ️
                     </button>
@@ -968,92 +1019,100 @@ export default function TestAleatorioPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                {studiedThemes.map(theme => {
-                  const accuracy = getThemeAccuracy(theme.id)
-                  const isSelected = selectedThemes.includes(theme.id)
-                  const showDetails = showDetailedStatsPerTheme[theme.id] || false
-                  const isLoadingDetails = loadingDetailedStatsPerTheme[theme.id] || false
-                  
-                  
+              {/* Renderizar temas agrupados por bloques */}
+              <div className="space-y-4">
+                {themeBlocks.map(block => {
+                  const isExpanded = expandedBlocks[block.id]
+                  const blockThemes = block.themes
+                  const selectedInBlock = blockThemes.filter(t => selectedThemes.includes(t.id)).length
+
                   return (
-                    <div
-                      key={theme.id}
-                      onClick={() => toggleTheme(theme.id)}
-                      className={`p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                        isSelected 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-200 bg-white hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-center mb-2">
-                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center mr-2 flex-shrink-0 ${
-                          isSelected 
-                            ? 'border-blue-500 bg-blue-500' 
-                            : 'border-gray-300'
-                        }`}>
-                          {isSelected && (
-                            <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </div>
-                        <span className="font-medium text-gray-800 text-xs">
-                          T{theme.id}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-600 mb-2 leading-tight overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
-                        {theme.name}
-                      </p>
-                      <div className="flex flex-col gap-1">
-                        <div className={`text-xs px-2 py-1 rounded-full text-center ${
-                          accuracy >= 80 ? 'bg-green-100 text-green-700' :
-                          accuracy >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {accuracy}%
-                        </div>
-                        
-                        {/* Estadísticas detalladas (solo si el usuario las pidió) */}
-                        {showDetails && (
-                          <div className="space-y-1 mt-2">
-                            {isLoadingDetails ? (
-                              <div className="text-xs text-center text-gray-500">
-                                <div className="flex items-center justify-center gap-1">
-                                  <div className="animate-spin w-3 h-3 border border-blue-400 border-t-transparent rounded-full"></div>
-                                  <span>Calculando...</span>
-                                </div>
-                              </div>
-                            ) : detailedStats[theme.id] ? (
-                              <>
-                                <div className="text-xs text-gray-500 flex items-center justify-center">
-                                  <span className="w-4 text-center">📊</span>
-                                  <span className="ml-1">{detailedStats[theme.id].total} preguntas</span>
-                                </div>
-                                <div className="text-xs text-green-600 flex items-center justify-center">
-                                  <span className="w-4 text-center">✅</span>
-                                  <span className="ml-1">{detailedStats[theme.id].answered} vistas</span>
-                                </div>
-                                <div className="text-xs text-blue-600 flex items-center justify-center">
-                                  <span className="w-4 text-center">👁️</span>
-                                  <span className="ml-1">{detailedStats[theme.id].neverSeen} nunca vistas</span>
-                                </div>
-                              </>
-                            ) : null}
-                          </div>
-                        )}
-                        
-                        {/* Botón para ver/ocultar detalles */}
+                    <div key={block.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                      {/* Header del bloque */}
+                      <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                        {/* Botón expandir/contraer + info */}
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation() // Evitar que se seleccione/deseleccione el tema
-                            toggleThemeDetailedStats(theme.id)
-                          }}
-                          className="mt-2 w-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-700 px-2 py-1 rounded transition-colors"
+                          onClick={() => setExpandedBlocks(prev => ({ ...prev, [block.id]: !prev[block.id] }))}
+                          className="flex items-center gap-3 hover:opacity-70 transition-opacity"
                         >
-                          {showDetails ? '🔼 Ocultar detalles' : '📊 Ver detalles'}
+                          <span className="text-lg">
+                            {isExpanded ? '▼' : '▶'}
+                          </span>
+                          <div className="text-left">
+                            <h4 className="font-bold text-gray-800 text-sm">{block.title}</h4>
+                            <p className="text-xs text-gray-600">{block.subtitle}</p>
+                          </div>
                         </button>
+
+                        {/* Botones de acción */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                            {selectedInBlock}/{blockThemes.length}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              selectBlockThemes(block.id)
+                            }}
+                            className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-lg hover:bg-green-200 transition-colors font-medium"
+                          >
+                            {selectedInBlock === blockThemes.length ? 'Deseleccionar' : 'Seleccionar todo'}
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Contenido del bloque */}
+                      {isExpanded && (
+                        <div className="p-4 bg-white">
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                            {blockThemes.map(theme => {
+                              const accuracy = getThemeAccuracy(theme.id)
+                              const isSelected = selectedThemes.includes(theme.id)
+                              const showDetails = showDetailedStatsPerTheme[theme.id] || false
+                              const isLoadingDetails = loadingDetailedStatsPerTheme[theme.id] || false
+
+                              return (
+                                <div
+                                  key={theme.id}
+                                  onClick={() => toggleTheme(theme.id)}
+                                  className={`p-2 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                                    isSelected
+                                      ? 'border-blue-500 bg-blue-50'
+                                      : 'border-gray-200 bg-white hover:border-gray-300'
+                                  }`}
+                                >
+                                  <div className="flex items-center mb-1">
+                                    <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center mr-1.5 flex-shrink-0 ${
+                                      isSelected
+                                        ? 'border-blue-500 bg-blue-500'
+                                        : 'border-gray-300'
+                                    }`}>
+                                      {isSelected && (
+                                        <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                        </svg>
+                                      )}
+                                    </div>
+                                    <span className="font-medium text-gray-800 text-xs">
+                                      {theme.id >= 101 ? `T${theme.id - 100}` : `T${theme.id}`}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-600 mb-1 leading-tight overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
+                                    {theme.name}
+                                  </p>
+                                  <div className={`text-xs px-1.5 py-0.5 rounded-full text-center ${
+                                    accuracy >= 80 ? 'bg-green-100 text-green-700' :
+                                    accuracy >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-red-100 text-red-700'
+                                  }`}>
+                                    {accuracy}%
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -1109,7 +1168,7 @@ export default function TestAleatorioPage() {
                     {checkingAvailability ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                        <h4 className="font-semibold text-gray-800">Verificando preguntas disponibles...</h4>
+                        <h4 className="font-semibold text-gray-800">Cargando preguntas disponibles...</h4>
                       </>
                     ) : (
                       <>
@@ -1279,6 +1338,14 @@ export default function TestAleatorioPage() {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Generando test...
+                  </div>
+                ) : checkingAvailability ? (
+                  <div className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Cargando preguntas disponibles...
                   </div>
                 ) : (
                   <div className="flex items-center">
@@ -1768,7 +1835,7 @@ export default function TestAleatorioPage() {
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                   <span className="mr-2">📚</span>
-                  ¿Por qué solo veo algunos temas?
+                  ¿Cómo funciona la selección de temas?
                 </h3>
                 <button
                   onClick={() => setShowThemeSelectionModal(false)}
@@ -1783,44 +1850,40 @@ export default function TestAleatorioPage() {
               <div className="p-6">
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Solo aparecen temas que ya has estudiado:</h4>
+                    <h4 className="font-semibold text-gray-900 mb-2">Todos los temas están disponibles:</h4>
+                    <p className="text-gray-600 text-sm">
+                      Puedes seleccionar cualquier tema para tu test aleatorio, incluso los que nunca has estudiado.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">¿Cómo interpretar las estadísticas?</h4>
                     <ul className="text-gray-600 text-sm space-y-2">
                       <li className="flex items-start">
-                        <span className="text-blue-600 mr-2">📝</span>
-                        <span><strong>Al menos 10 preguntas respondidas</strong> en test individual</span>
+                        <span className="text-green-600 mr-2">✅</span>
+                        <span><strong>Temas con estadísticas:</strong> Ya los has practicado y conoces tu nivel</span>
                       </li>
                       <li className="flex items-start">
-                        <span className="text-blue-600 mr-2">🎯</span>
-                        <span><strong>Más del 10% de aciertos</strong> (conocimiento mínimo)</span>
+                        <span className="text-blue-600 mr-2">📊</span>
+                        <span><strong>Temas sin estadísticas:</strong> Nunca los has estudiado (aparecerán con 0%)</span>
                       </li>
                     </ul>
                   </div>
 
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">¿Cómo funciona?</h4>
+                    <h4 className="font-semibold text-gray-900 mb-2">¿Cómo funciona el test aleatorio?</h4>
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                       <p className="text-gray-700 text-sm space-y-2">
-                        <span className="block"><strong>1️⃣ Paso 1:</strong> Estudia temas por separado</span>
-                        <span className="block"><strong>2️⃣ Paso 2:</strong> Practica hasta tener experiencia básica</span>
-                        <span className="block"><strong>3️⃣ Paso 3:</strong> Mezcla temas en tests aleatorios</span>
+                        <span className="block"><strong>1️⃣</strong> Selecciona los temas que quieres practicar</span>
+                        <span className="block"><strong>2️⃣</strong> Configura número de preguntas y dificultad</span>
+                        <span className="block"><strong>3️⃣</strong> El sistema mezclará preguntas de todos los temas seleccionados</span>
                       </p>
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">¿Quieres más temas disponibles?</h4>
-                    <ul className="text-gray-600 text-sm space-y-1">
-                      <li>• Ve a <strong>Tests por tema</strong></li>
-                      <li>• Selecciona un tema nuevo</li>
-                      <li>• Responde al menos 10 preguntas</li>
-                      <li>• Consigue más del 10% de aciertos</li>
-                      <li>• ¡El tema aparecerá aquí automáticamente!</li>
-                    </ul>
-                  </div>
-
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <p className="text-blue-800 text-sm">
-                      <strong>💡 Estrategia:</strong> Los tests mezclados son más efectivos cuando ya tienes una base sólida en cada tema. ¡Primero domina los temas individualmente!
+                      <strong>💡 Consejo:</strong> Puedes mezclar temas que ya dominas con temas nuevos para un aprendizaje más completo y variado.
                     </p>
                   </div>
                 </div>

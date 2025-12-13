@@ -56,6 +56,7 @@ export default function TestPageWrapper({
   // 🎯 Estados para loading dinámico
   const [loadedCount, setLoadedCount] = useState(0)
   const [totalToLoad, setTotalToLoad] = useState(0)
+  const [internalLoadingMessage, setInternalLoadingMessage] = useState('')
 
   // 🔒 Control de ejecución única para prevenir double-fetch
   const [loadingKey, setLoadingKey] = useState('')
@@ -351,6 +352,16 @@ export default function TestPageWrapper({
       clearInterval(loadingInterval)
       setLoadedCount(numQuestions)
 
+      // 📝 Mostrar mensajes secuenciales con delays más largos
+      setInternalLoadingMessage('📝 Procesando preguntas...')
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      setInternalLoadingMessage('🔧 Configurando test...')
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      setInternalLoadingMessage('⚡ Iniciando test...')
+      await new Promise(resolve => setTimeout(resolve, 200))
+
     } catch (err) {
       console.error(`❌ TestPageWrapper: Error cargando test [KEY: ${currentKey}]:`, err)
       setError(err.message || 'Error cargando el test')
@@ -388,7 +399,7 @@ export default function TestPageWrapper({
                 {loadedCount}/{totalToLoad}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {loadedCount < totalToLoad ? '📥 Cargando preguntas...' : '✅ Preguntas listas'}
+                {internalLoadingMessage || (loadedCount < totalToLoad ? '📥 Cargando preguntas...' : '✅ Preguntas cargadas')}
               </p>
             </div>
           )}
