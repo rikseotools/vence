@@ -16,7 +16,7 @@ jobs:
           curl -X GET \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            https://vence.vercel.app/api/cron/update-streaks
+            https://www.vence.es/api/cron/update-streaks
 
       - name: Log completion
         run: echo "✅ Rachas actualizadas - $(date)"
