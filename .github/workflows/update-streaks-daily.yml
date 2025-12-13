@@ -1,0 +1,22 @@
+name: Update User Streaks Daily
+
+on:
+  schedule:
+    # Ejecutar todos los días a las 3:00 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  update-streaks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update User Streaks
+        run: |
+          curl -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://vence.vercel.app/api/cron/update-streaks
+
+      - name: Log completion
+        run: echo "✅ Rachas actualizadas - $(date)"
