@@ -71,6 +71,7 @@ export default function ExamLayout({
   // Estados del modal de artículo
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
+  const [selectedQuestionForModal, setSelectedQuestionForModal] = useState(null) // 🎨 Para resaltado inteligente
 
   // Hook para obtener la URL actual
   const pathname = usePathname()
@@ -395,10 +396,11 @@ export default function ExamLayout({
   }
 
   // ✅ FUNCIÓN: Abrir modal de artículo
-  function openArticleModal(articleNumber, lawName) {
+  function openArticleModal(articleNumber, lawName, question = null) {
     // Convertir nombre de ley a slug (espacios a guiones, barras a guiones)
     const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
     setSelectedArticle({ number: articleNumber, lawSlug })
+    setSelectedQuestionForModal(question) // 🎨 Guardar pregunta para resaltado
     setModalOpen(true)
   }
 
@@ -406,6 +408,7 @@ export default function ExamLayout({
   function closeArticleModal() {
     setModalOpen(false)
     setSelectedArticle({ number: null, lawSlug: null })
+    setSelectedQuestionForModal(null) // 🎨 Limpiar pregunta
   }
 
   // ✅ FUNCIÓN: Formatear tiempo para el cronómetro
@@ -717,7 +720,8 @@ export default function ExamLayout({
                   <button
                     onClick={() => openArticleModal(
                       question.articles.article_number,
-                      question.articles.laws?.short_name || 'Ley'
+                      question.articles.laws?.short_name || 'Ley',
+                      question // 🎨 Pasar pregunta completa para resaltado inteligente
                     )}
                     className="mt-4 text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors flex items-center gap-1"
                   >
@@ -764,12 +768,21 @@ export default function ExamLayout({
         )}
       </div>
 
-      {/* ✅ MODAL DE ARTÍCULO */}
+      {/* ✅ MODAL DE ARTÍCULO CON RESALTADO INTELIGENTE */}
       <ArticleModal
         isOpen={modalOpen}
         onClose={closeArticleModal}
         articleNumber={selectedArticle.number}
         lawSlug={selectedArticle.lawSlug}
+        // 🎨 Pasar datos de la pregunta para resaltado inteligente
+        questionText={selectedQuestionForModal?.question_text}
+        correctAnswer={selectedQuestionForModal?.correct_option}
+        options={selectedQuestionForModal ? [
+          selectedQuestionForModal.option_a,
+          selectedQuestionForModal.option_b,
+          selectedQuestionForModal.option_c,
+          selectedQuestionForModal.option_d
+        ] : null}
       />
     </div>
   )
