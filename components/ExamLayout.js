@@ -24,6 +24,26 @@ import {
   formatTime
 } from '../utils/testAnalytics.js'
 
+// 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar botón "Ver artículo"
+const NON_LEGAL_CONTENT = [
+  'Informática Básica',
+  'Portal de Internet',
+  'La Red Internet',
+  'Windows 10',
+  'Explorador de Windows',
+  'Hojas de cálculo. Excel',
+  'Base de datos: Access',
+  'Correo electrónico',
+  'Procesadores de texto',
+  'Administración electrónica y servicios al ciudadano (CSL)',
+]
+
+// 🔍 FUNCIÓN: Verificar si es contenido legal (artículo de ley real)
+function isLegalArticle(lawShortName) {
+  if (!lawShortName) return false
+  return !NON_LEGAL_CONTENT.includes(lawShortName)
+}
+
 export default function ExamLayout({
   tema,
   testNumber,
@@ -692,8 +712,8 @@ export default function ExamLayout({
                   </div>
                 )}
 
-                {/* Información del artículo (solo después de corregir) */}
-                {showFeedback && question.articles && (
+                {/* Información del artículo (solo después de corregir y si es contenido legal) */}
+                {showFeedback && question.articles && isLegalArticle(question.articles.laws?.short_name) && (
                   <button
                     onClick={() => openArticleModal(
                       question.articles.article_number,

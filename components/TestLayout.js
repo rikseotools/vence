@@ -29,6 +29,26 @@ import { testTracker } from '../utils/testTracking.js'
 import { useTestCompletion } from '../hooks/useTestCompletion'
 import AdSenseComponent from './AdSenseComponent'
 
+// 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar artículo
+const NON_LEGAL_CONTENT = [
+  'Informática Básica',
+  'Portal de Internet',
+  'La Red Internet',
+  'Windows 10',
+  'Explorador de Windows',
+  'Hojas de cálculo. Excel',
+  'Base de datos: Access',
+  'Correo electrónico',
+  'Procesadores de texto',
+  'Administración electrónica y servicios al ciudadano (CSL)',
+]
+
+// 🔍 FUNCIÓN: Verificar si es contenido legal (artículo de ley real)
+function isLegalArticle(lawShortName) {
+  if (!lawShortName) return false
+  return !NON_LEGAL_CONTENT.includes(lawShortName)
+}
+
 export default function TestLayout({
   tema,
   testNumber,
@@ -1773,10 +1793,10 @@ export default function TestLayout({
                       </>
                     )}
 
-                    {/* Información del artículo desplegable */}
-                    {currentQ?.article?.full_text && (
-                      <ArticleDropdown 
-                        article={currentQ.article} 
+                    {/* Información del artículo desplegable (solo si es contenido legal) */}
+                    {currentQ?.article?.full_text && isLegalArticle(currentQ.article.law_short_name) && (
+                      <ArticleDropdown
+                        article={currentQ.article}
                         currentQuestion={currentQ}
                       />
                     )}
