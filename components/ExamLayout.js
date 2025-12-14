@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 import ArticleModal from './ArticleModal'
+import QuestionDispute from './QuestionDisputeFixed'
 
 // Imports modularizados
 import {
@@ -555,10 +556,10 @@ export default function ExamLayout({
               {/* Botón volver */}
               <div className="text-center">
                 <Link
-                  href={`/auxiliar-administrativo-estado/test/tema/${tema}`}
+                  href={tema && tema !== 0 ? `/auxiliar-administrativo-estado/test/tema/${tema}` : '/auxiliar-administrativo-estado/test'}
                   className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  ← Volver al tema
+                  ← Volver a tests
                 </Link>
               </div>
             </div>
@@ -700,9 +701,18 @@ export default function ExamLayout({
                     )}
                     className="mt-4 text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors flex items-center gap-1"
                   >
-                    📚 {question.articles.laws?.short_name || 'Ley'} - Artículo {question.articles.article_number}
+                    Ver 📚 {question.articles.laws?.short_name || 'Ley'} - Artículo {question.articles.article_number}
                     <span className="text-xs">▸</span>
                   </button>
+                )}
+
+                {/* Botón de impugnación (solo después de corregir) */}
+                {showFeedback && (
+                  <QuestionDispute
+                    questionId={question.id}
+                    user={user}
+                    supabase={supabase}
+                  />
                 )}
               </div>
             )
@@ -721,14 +731,14 @@ export default function ExamLayout({
           </div>
         )}
 
-        {/* ✅ BOTÓN VOLVER AL TEMA (al final de todo) */}
+        {/* ✅ BOTÓN VOLVER A TESTS (al final de todo) */}
         {isSubmitted && (
           <div className="mt-8 mb-8 text-center">
             <Link
-              href={`/auxiliar-administrativo-estado/test/tema/${tema}`}
+              href={tema && tema !== 0 ? `/auxiliar-administrativo-estado/test/tema/${tema}` : '/auxiliar-administrativo-estado/test'}
               className="inline-block px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md"
             >
-              ← Volver al tema {tema}
+              {tema && tema !== 0 ? `← Volver al tema ${tema}` : '← Volver a tests'}
             </Link>
           </div>
         )}
