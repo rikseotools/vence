@@ -43,6 +43,17 @@ export default function AdminDashboard() {
 
         if (testsError) throw testsError
 
+        // 2c. Tests completados últimos 15 días - Para comparar tendencias
+        const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+        const { data: recentTests15Days, error: tests15Error } = await supabase
+          .from('tests')
+          .select('id, is_completed, created_at, completed_at, user_id, score, total_questions, test_type, test_url, tema_number')
+          .gte('created_at', fifteenDaysAgo)
+          .order('created_at', { ascending: false })
+          .limit(5000)
+
+        if (tests15Error) throw tests15Error
+
         // 2b. NUEVO: Usar RPC para obtener estadísticas reales sin límites
         console.log('🔍 FETCH: Obteniendo estadísticas del dashboard vía RPC...')
         const { data: dashboardStats, error: dashboardRpcError } = await supabase
@@ -141,7 +152,7 @@ export default function AdminDashboard() {
         console.log('🔍 DEBUG: Final activity array length:', finalTodayActivity.length)
         console.log('🔍 DEBUG: Final activity estructura completa:', finalTodayActivity)
         
-        const processedStats = processStatistics(generalStats, recentTests, finalTodayActivity, allCompletedTests, dashboardStats)
+        const processedStats = processStatistics(generalStats, recentTests, finalTodayActivity, allCompletedTests, dashboardStats, recentTests15Days)
         const processedEmailStats = processEmailStatistics(emailData)
 
         setStats(processedStats)
@@ -173,13 +184,14 @@ export default function AdminDashboard() {
     loadDashboardData()
   }, [supabase])
 
-  function processStatistics(users, tests, todayTests, allCompletedTests, dashboardStats) {
+  function processStatistics(users, tests, todayTests, allCompletedTests, dashboardStats, tests15Days) {
     console.log('🔍 Procesando estadísticas RAW:')
     console.log('- users array:', users)
     console.log('- tests array:', tests)
     console.log('- todayTests array:', todayTests)
     console.log('- allCompletedTests array:', allCompletedTests?.length)
     console.log('- dashboardStats:', dashboardStats)
+    console.log('- tests15Days array:', tests15Days?.length)
 
     // Usar datos del RPC para estadísticas principales
     const totalUsers = dashboardStats?.[0]?.total_users || users?.length || 0
@@ -282,8 +294,46 @@ export default function AdminDashboard() {
       ).length
     }
 
-    console.log('📊 Desglose por modo:', testsByMode)
-    console.log('📊 Desglose por tipo de estudio:', testsByStudyType)
+    console.log('📊 Desglose por modo (30 días):', testsByMode)
+    console.log('📊 Desglose por tipo de estudio (30 días):', testsByStudyType)
+
+    // 📊 NUEVO: Desglose para últimos 15 días (para comparar tendencias)
+    const validCompletedTests15Days = (tests15Days || []).filter(t =>
+      t.is_completed === true &&
+      t.completed_at &&
+      t.score !== null &&
+      t.total_questions > 0 &&
+      !isNaN(t.score) &&
+      !isNaN(t.total_questions) &&
+      Number(t.total_questions) > 0
+    )
+
+    const testsLast15Days = validCompletedTests15Days.length
+
+    const testsByMode15Days = {
+      practice: validCompletedTests15Days.filter(t => t.test_type === 'practice').length,
+      exam: validCompletedTests15Days.filter(t => t.test_type === 'exam').length
+    }
+
+    const testsByStudyType15Days = {
+      aleatorio: validCompletedTests15Days.filter(t =>
+        t.test_url?.includes('/test-aleatorio') ||
+        t.test_url?.includes('/test/rapido')
+      ).length,
+      porTema: validCompletedTests15Days.filter(t =>
+        t.tema_number !== null && t.tema_number !== undefined
+      ).length,
+      porLey: validCompletedTests15Days.filter(t =>
+        t.test_url?.includes('/leyes/')
+      ).length,
+      personalizado: validCompletedTests15Days.filter(t =>
+        t.test_url?.includes('/test-personalizado') &&
+        !t.tema_number
+      ).length
+    }
+
+    console.log('📊 Desglose por modo (15 días):', testsByMode15Days)
+    console.log('📊 Desglose por tipo de estudio (15 días):', testsByStudyType15Days)
 
     // Análisis de rendimiento SUPER CORREGIDO - SCORE ES PORCENTAJE
     let averageAccuracy = 0
@@ -466,9 +516,13 @@ export default function AdminDashboard() {
       averageUsersPerDay,
       projectedUsersPerWeek,
       daysPassedThisWeek,
-      // 📊 NUEVO: Desglose por modo de test
+      // 📊 NUEVO: Desglose por modo de test (30 días)
       testsByMode,
-      testsByStudyType
+      testsByStudyType,
+      // 📊 NUEVO: Desglose para comparar tendencias (15 días)
+      testsLast15Days,
+      testsByMode15Days,
+      testsByStudyType15Days
     }
 
     console.log('📊 ESTADÍSTICAS FINALES:', result)
@@ -738,45 +792,91 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Desglose de tests completados (30 días) */}
-            {stats.testsByMode && stats.testsByStudyType && (
+            {/* Desglose de tests completados - Comparación 15 vs 30 días */}
+            {stats.testsByMode && stats.testsByStudyType && stats.testsByMode15Days && stats.testsByStudyType15Days && (
               <div className="mt-4 space-y-3">
+                {/* Modo de tests - Comparación */}
                 <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                   <p className="text-xs font-semibold text-green-800 dark:text-green-200 mb-2">
-                    📝 Modo de tests completados (30 días):
+                    📝 Modo de tests completados:
                   </p>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-green-700 dark:text-green-300">
-                      <span>Práctica:</span>
-                      <span className="font-semibold">{stats.testsByMode.practice} ({Math.round((stats.testsByMode.practice / stats.testsLast30Days) * 100)}%)</span>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2 text-xs text-green-700 dark:text-green-300">
+                      <div className="text-center font-semibold pb-1 border-b border-green-300 dark:border-green-700">15 días</div>
+                      <div className="text-center font-semibold pb-1 border-b border-green-300 dark:border-green-700">30 días</div>
                     </div>
-                    <div className="flex justify-between text-xs text-green-700 dark:text-green-300">
-                      <span>Examen:</span>
-                      <span className="font-semibold">{stats.testsByMode.exam} ({Math.round((stats.testsByMode.exam / stats.testsLast30Days) * 100)}%)</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-xs text-green-700 dark:text-green-300">
+                        <div className="flex justify-between">
+                          <span>Práctica:</span>
+                          <span className="font-semibold">{stats.testsByMode15Days.practice} ({stats.testsLast15Days > 0 ? Math.round((stats.testsByMode15Days.practice / stats.testsLast15Days) * 100) : 0}%)</span>
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span>Examen:</span>
+                          <span className="font-semibold">{stats.testsByMode15Days.exam} ({stats.testsLast15Days > 0 ? Math.round((stats.testsByMode15Days.exam / stats.testsLast15Days) * 100) : 0}%)</span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-green-700 dark:text-green-300">
+                        <div className="flex justify-between">
+                          <span>Práctica:</span>
+                          <span className="font-semibold">{stats.testsByMode.practice} ({Math.round((stats.testsByMode.practice / stats.testsLast30Days) * 100)}%)</span>
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span>Examen:</span>
+                          <span className="font-semibold">{stats.testsByMode.exam} ({Math.round((stats.testsByMode.exam / stats.testsLast30Days) * 100)}%)</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Tipo de estudio - Comparación */}
                 <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                   <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 mb-2">
-                    📚 Tipo de estudio (30 días):
+                    📚 Tipo de estudio:
                   </p>
-                  <div className="space-y-1 text-xs text-purple-700 dark:text-purple-300">
-                    <div className="flex justify-between">
-                      <span>Por tema:</span>
-                      <span className="font-semibold">{stats.testsByStudyType.porTema} ({Math.round((stats.testsByStudyType.porTema / stats.testsLast30Days) * 100)}%)</span>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2 text-xs text-purple-700 dark:text-purple-300">
+                      <div className="text-center font-semibold pb-1 border-b border-purple-300 dark:border-purple-700">15 días</div>
+                      <div className="text-center font-semibold pb-1 border-b border-purple-300 dark:border-purple-700">30 días</div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Aleatorio:</span>
-                      <span className="font-semibold">{stats.testsByStudyType.aleatorio} ({Math.round((stats.testsByStudyType.aleatorio / stats.testsLast30Days) * 100)}%)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Por ley:</span>
-                      <span className="font-semibold">{stats.testsByStudyType.porLey} ({Math.round((stats.testsByStudyType.porLey / stats.testsLast30Days) * 100)}%)</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Personalizado:</span>
-                      <span className="font-semibold">{stats.testsByStudyType.personalizado} ({Math.round((stats.testsByStudyType.personalizado / stats.testsLast30Days) * 100)}%)</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="text-xs text-purple-700 dark:text-purple-300 space-y-1">
+                        <div className="flex justify-between">
+                          <span>Por tema:</span>
+                          <span className="font-semibold">{stats.testsByStudyType15Days.porTema} ({stats.testsLast15Days > 0 ? Math.round((stats.testsByStudyType15Days.porTema / stats.testsLast15Days) * 100) : 0}%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Aleatorio:</span>
+                          <span className="font-semibold">{stats.testsByStudyType15Days.aleatorio} ({stats.testsLast15Days > 0 ? Math.round((stats.testsByStudyType15Days.aleatorio / stats.testsLast15Days) * 100) : 0}%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Por ley:</span>
+                          <span className="font-semibold">{stats.testsByStudyType15Days.porLey} ({stats.testsLast15Days > 0 ? Math.round((stats.testsByStudyType15Days.porLey / stats.testsLast15Days) * 100) : 0}%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Personalizado:</span>
+                          <span className="font-semibold">{stats.testsByStudyType15Days.personalizado} ({stats.testsLast15Days > 0 ? Math.round((stats.testsByStudyType15Days.personalizado / stats.testsLast15Days) * 100) : 0}%)</span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-purple-700 dark:text-purple-300 space-y-1">
+                        <div className="flex justify-between">
+                          <span>Por tema:</span>
+                          <span className="font-semibold">{stats.testsByStudyType.porTema} ({Math.round((stats.testsByStudyType.porTema / stats.testsLast30Days) * 100)}%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Aleatorio:</span>
+                          <span className="font-semibold">{stats.testsByStudyType.aleatorio} ({Math.round((stats.testsByStudyType.aleatorio / stats.testsLast30Days) * 100)}%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Por ley:</span>
+                          <span className="font-semibold">{stats.testsByStudyType.porLey} ({Math.round((stats.testsByStudyType.porLey / stats.testsLast30Days) * 100)}%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Personalizado:</span>
+                          <span className="font-semibold">{stats.testsByStudyType.personalizado} ({Math.round((stats.testsByStudyType.personalizado / stats.testsLast30Days) * 100)}%)</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
