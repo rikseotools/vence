@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 import ArticleModal from './ArticleModal'
 import QuestionDispute from './QuestionDisputeFixed'
+import MotivationalMessage from './MotivationalMessage'
 
 // Imports modularizados
 import {
@@ -44,6 +45,70 @@ function isLegalArticle(lawShortName) {
   return !NON_LEGAL_CONTENT.includes(lawShortName)
 }
 
+/// 🎉 FUNCIÓN: Obtener mensaje motivacional según puntuación
+function getMotivationalMessage(notaSobre10, userName) {
+  const nota = parseFloat(notaSobre10)
+  const nombre = userName || 'allí'
+
+  if (nota === 10) {
+    return {
+      emoji: '🏆',
+      message: `¡PERFECTO, ${nombre}!`,
+      color: 'text-yellow-600',
+      bgColor: 'from-yellow-50 to-amber-50',
+      borderColor: 'border-yellow-300'
+    }
+  } else if (nota >= 9) {
+    return {
+      emoji: '🎉',
+      message: `¡EXCELENTE, ${nombre}!`,
+      color: 'text-green-600',
+      bgColor: 'from-green-50 to-emerald-50',
+      borderColor: 'border-green-300'
+    }
+  } else if (nota >= 8) {
+    return {
+      emoji: '✨',
+      message: `¡MUY BIEN, ${nombre}!`,
+      color: 'text-green-600',
+      bgColor: 'from-green-50 to-teal-50',
+      borderColor: 'border-green-200'
+    }
+  } else if (nota >= 7) {
+    return {
+      emoji: '👏',
+      message: `¡BIEN HECHO, ${nombre}!`,
+      color: 'text-blue-600',
+      bgColor: 'from-blue-50 to-indigo-50',
+      borderColor: 'border-blue-200'
+    }
+  } else if (nota >= 6) {
+    return {
+      emoji: '💪',
+      message: `¡BUEN INTENTO, ${nombre}!`,
+      color: 'text-orange-600',
+      bgColor: 'from-orange-50 to-amber-50',
+      borderColor: 'border-orange-200'
+    }
+  } else if (nota >= 5) {
+    return {
+      emoji: '📚',
+      message: `Sigue practicando, ${nombre}`,
+      color: 'text-orange-500',
+      bgColor: 'from-orange-50 to-yellow-50',
+      borderColor: 'border-orange-200'
+    }
+  } else {
+    return {
+      emoji: '🎯',
+      message: `¡No te rindas, ${nombre}!`,
+      color: 'text-gray-600',
+      bgColor: 'from-gray-50 to-slate-50',
+      borderColor: 'border-gray-300'
+    }
+  }
+}
+
 export default function ExamLayout({
   tema,
   testNumber,
@@ -51,7 +116,7 @@ export default function ExamLayout({
   questions,
   children
 }) {
-  const { user, loading: authLoading, supabase } = useAuth()
+  const { user, userProfile, loading: authLoading, supabase } = useAuth()
 
   // Estados del examen
   const [userAnswers, setUserAnswers] = useState({}) // { questionIndex: selectedOption }
@@ -492,24 +557,52 @@ export default function ExamLayout({
           )}
 
           {/* Resultado después de corregir */}
-          {isSubmitted && (
-            <div>
-              {/* Nota destacada sobre 10 */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
-                <div className="text-center mb-4">
-                  <div className="text-5xl mb-2">
-                    {notaSobre10 >= 8 ? '🎉' : notaSobre10 >= 5 ? '👍' : '📚'}
+          {isSubmitted && (() => {
+            const motivationalData = getMotivationalMessage(notaSobre10, user?.user_metadata?.full_name || user?.email?.split('@')[0])
+            const showConfetti = parseFloat(notaSobre10) >= 9
+            return (
+              <div className="relative">
+                {/* 🎉 CONFETTI PARA 9-10 */}
+                {showConfetti && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div className="confetti-container">
+                      {[...Array(50)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="confetti"
+                          style={{
+                            left: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random() * 3}s`,
+                            backgroundColor: ['#fbbf24', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)]
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-6xl font-bold text-blue-600 mb-2">
-                    {notaSobre10}
+                )}
+
+                {/* Nota destacada sobre 10 con mensaje motivacional */}
+                <div className={`relative bg-gradient-to-r ${motivationalData.bgColor} border-2 ${motivationalData.borderColor} rounded-xl p-6 mb-6`}>
+                  <div className="text-center mb-4">
+                    {/* Mensaje motivacional personalizado */}
+                    <div className="text-6xl mb-3 animate-bounce">
+                      {motivationalData.emoji}
+                    </div>
+                    <div className={`text-3xl sm:text-4xl font-bold ${motivationalData.color} mb-4`}>
+                      {motivationalData.message}
+                    </div>
+
+                    {/* Nota numérica */}
+                    <div className={`text-6xl font-bold ${motivationalData.color} mb-2`}>
+                      {notaSobre10}
+                    </div>
+                    <div className="text-xl text-gray-700 font-medium">
+                      sobre 10
+                    </div>
+                    <div className="text-sm text-gray-500 mt-2">
+                      (Cada 3 fallos restan 1 correcta)
+                    </div>
                   </div>
-                  <div className="text-xl text-gray-700 font-medium">
-                    sobre 10
-                  </div>
-                  <div className="text-sm text-gray-500 mt-2">
-                    (Cada 3 fallos restan 1 correcta)
-                  </div>
-                </div>
 
                 {/* ⏱️ TIEMPO EMPLEADO */}
                 <div className="bg-white rounded-lg p-4 border border-blue-200">
@@ -576,6 +669,20 @@ export default function ExamLayout({
                 </div>
               )}
 
+              {/* Mensaje Motivacional Personalizado */}
+              <div className="mb-6">
+                <MotivationalMessage
+                  category="exam_result"
+                  context={{
+                    nombre: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Estudiante',
+                    accuracy: parseFloat(notaSobre10) * 10,
+                    nota: notaSobre10,
+                    racha: userProfile?.current_streak_days || 0,
+                    preguntas: totalQuestions
+                  }}
+                />
+              </div>
+
               {/* Botón volver */}
               <div className="text-center">
                 <Link
@@ -586,7 +693,8 @@ export default function ExamLayout({
                 </Link>
               </div>
             </div>
-          )}
+            )
+          })()}
         </div>
 
         {/* ✅ LISTA DE PREGUNTAS */}
