@@ -4,7 +4,9 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '../../../../lib/supabase'
 import ExamLayout from '../../../../components/ExamLayout'
+import ExamLoadingIndicator from '../../../../components/ExamLoadingIndicator'
 import { fetchAleatorioMultiTema } from '../../../../lib/testFetchers'
+import { normalizeLawShortName } from '../../../../lib/lawMappingUtils'
 
 const supabase = getSupabaseClient()
 
@@ -13,6 +15,14 @@ function TestAleatorioExamenContent() {
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [loadingProgress, setLoadingProgress] = useState({
+    currentPhase: 'connecting',
+    currentMapping: 0,
+    totalMappings: 0,
+    currentLaw: '',
+    questionsFound: 0,
+    message: 'Conectando con la base de datos...'
+  })
 
   // ✅ EXTRAER CONFIGURACIÓN DE LA URL
   const testConfig = {
@@ -52,6 +62,8 @@ function TestAleatorioExamenContent() {
     try {
       setLoading(true)
       setError(null)
+      console.log('🚀 INICIANDO carga de preguntas para examen...')
+      console.log('📋 Configuración:', testConfig)
 
       // Validar que haya temas seleccionados
       if (!testConfig.themes || testConfig.themes.length === 0) {
@@ -60,6 +72,16 @@ function TestAleatorioExamenContent() {
 
       // ✅ OBTENER PREGUNTAS USANDO topic_scope (IGUAL QUE TEMA A TEMA)
       // Primero obtener mapeos de los temas seleccionados
+      console.log('📚 Obteniendo mapeos para temas:', testConfig.themes)
+      setLoadingProgress({
+        currentPhase: 'fetching_mappings',
+        currentMapping: 0,
+        totalMappings: 0,
+        currentLaw: '',
+        questionsFound: 0,
+        message: 'Obteniendo estructura de temas...'
+      })
+
       const { data: mappings, error: mappingError } = await supabase
         .from('topic_scope')
         .select(`
@@ -70,61 +92,265 @@ function TestAleatorioExamenContent() {
         .in('topics.topic_number', testConfig.themes)
         .eq('topics.position_type', 'auxiliar_administrativo')
 
-      if (mappingError) throw mappingError
+      if (mappingError) {
+        console.error('❌ Error obteniendo mapeos:', mappingError)
+        throw mappingError
+      }
 
       if (!mappings || mappings.length === 0) {
         throw new Error('No se encontraron mapeos para los temas seleccionados')
       }
 
+      console.log(`✅ Encontrados ${mappings.length} mapeos`)
+
+      // Actualizar progreso con el total de mapeos
+      setLoadingProgress(prev => ({
+        ...prev,
+        totalMappings: mappings.length,
+        currentPhase: 'processing_laws',
+        message: `Procesando ${mappings.length} combinaciones de leyes y temas...`
+      }))
+
       // Obtener preguntas para cada mapeo
       let allQuestions = []
+      let mappingIndex = 0
 
       for (const mapping of mappings) {
-        let query = supabase
-          .from('questions')
-          .select(`
-            id, question_text, option_a, option_b, option_c, option_d,
-            correct_option, explanation, difficulty, is_official_exam,
-            primary_article_id, exam_source, exam_date, exam_entity,
-            articles!inner(
-              id, article_number, title, content,
-              laws!inner(short_name, name)
-            )
-          `)
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
+        mappingIndex++
+        // Normalizar el nombre de la ley usando nuestra función centralizada
+        const normalizedLawName = normalizeLawShortName(mapping.laws?.short_name)
+        console.log(`\n🔍 Procesando mapeo ${mappingIndex}/${mappings.length}: ${mapping.laws?.short_name}${normalizedLawName !== mapping.laws?.short_name ? ` → ${normalizedLawName}` : ''}`)
 
-        // Aplicar filtros opcionales
-        if (testConfig.difficulty && testConfig.difficulty !== 'mixed') {
-          query = query.eq('global_difficulty_category', testConfig.difficulty)
+        // Actualizar progreso con la ley actual
+        setLoadingProgress(prev => ({
+          ...prev,
+          currentMapping: mappingIndex,
+          currentLaw: normalizedLawName,
+          message: `Buscando preguntas en ${normalizedLawName} (${mappingIndex}/${mappings.length})`
+        }))
+
+        // Filtrar artículos vacíos o inválidos
+        const validArticleNumbers = mapping.article_numbers?.filter(art => art && art.toString().trim() !== '') || []
+
+        if (validArticleNumbers.length === 0) {
+          console.log(`⚠️ Sin artículos válidos para ${mapping.laws?.short_name}, saltando...`)
+          continue
         }
 
-        if (testConfig.onlyOfficialQuestions) {
-          query = query.eq('is_official_exam', true)
-        }
+        console.log(`  📝 Artículos a buscar (${validArticleNumbers.length}):`, validArticleNumbers.slice(0, 5), validArticleNumbers.length > 5 ? '...' : '')
 
-        const { data: lawQuestions, error: questionsError } = await query
+        try {
+          // Construir query base - SIN topics porque no hay relación directa
+          let query = supabase
+            .from('questions')
+            .select(`
+              id, question_text, option_a, option_b, option_c, option_d,
+              correct_option, explanation, difficulty, is_official_exam,
+              primary_article_id, exam_source, exam_date, exam_entity,
+              articles!inner(
+                id, article_number, title, content,
+                laws!inner(short_name, name)
+              )
+            `)
+            .eq('is_active', true)
+            .eq('articles.laws.short_name', normalizedLawName)
+            .in('articles.article_number', validArticleNumbers)
 
-        if (!questionsError && lawQuestions) {
-          allQuestions = [...allQuestions, ...lawQuestions]
+          // Aplicar filtros opcionales
+          if (testConfig.difficulty && testConfig.difficulty !== 'mixed') {
+            query = query.eq('global_difficulty_category', testConfig.difficulty)
+          }
+
+          if (testConfig.onlyOfficialQuestions) {
+            query = query.eq('is_official_exam', true)
+          }
+
+          const { data: lawQuestions, error: questionsError } = await query
+
+          if (questionsError) {
+            // Si falla la query con .in(), intentar con queries individuales para artículos con caracteres especiales
+            console.error(`❌ Error con ley ${normalizedLawName}:`, questionsError.message)
+            console.log(`  🔄 Intentando método alternativo con queries individuales...`)
+
+            let fallbackQuestions = []
+            let successfulArticles = 0
+            let failedArticles = 0
+
+            for (const articleNumber of validArticleNumbers) {
+              try {
+                let individualQuery = supabase
+                  .from('questions')
+                  .select(`
+                    id, question_text, option_a, option_b, option_c, option_d,
+                    correct_option, explanation, difficulty, is_official_exam,
+                    primary_article_id, exam_source, exam_date, exam_entity,
+                    articles!inner(
+                      id, article_number, title, content,
+                      laws!inner(short_name, name)
+                    )
+                  `)
+                  .eq('is_active', true)
+                  .eq('articles.laws.short_name', normalizedLawName)
+                  .eq('articles.article_number', articleNumber)
+
+                // Aplicar filtros opcionales
+                if (testConfig.difficulty && testConfig.difficulty !== 'mixed') {
+                  individualQuery = individualQuery.eq('global_difficulty_category', testConfig.difficulty)
+                }
+
+                if (testConfig.onlyOfficialQuestions) {
+                  individualQuery = individualQuery.eq('is_official_exam', true)
+                }
+
+                const { data: articleQuestions, error: articleError } = await individualQuery
+
+                if (!articleError && articleQuestions) {
+                  fallbackQuestions = [...fallbackQuestions, ...articleQuestions]
+                  successfulArticles++
+                } else {
+                  failedArticles++
+                  if (failedArticles <= 3) { // Solo mostrar los primeros 3 errores
+                    console.log(`    ⚠️ Artículo ${articleNumber} falló:`, articleError?.message)
+                  }
+                }
+              } catch (err) {
+                failedArticles++
+              }
+            }
+
+            console.log(`  📊 Resultado fallback: ${successfulArticles} exitosos, ${failedArticles} fallidos`)
+
+            if (fallbackQuestions.length > 0) {
+              // Agregar el tema de origen a cada pregunta
+              const questionsWithTopic = fallbackQuestions.map(q => ({
+                ...q,
+                source_topic: mapping.topics?.topic_number || 0
+              }))
+              allQuestions = [...allQuestions, ...questionsWithTopic]
+            }
+          } else if (lawQuestions && lawQuestions.length > 0) {
+            console.log(`  ✅ Query exitosa: ${lawQuestions.length} preguntas encontradas`)
+            // Agregar el tema de origen a cada pregunta
+            const questionsWithTopic = lawQuestions.map(q => ({
+              ...q,
+              source_topic: mapping.topics?.topic_number || 0
+            }))
+            allQuestions = [...allQuestions, ...questionsWithTopic]
+
+            // Actualizar contador de preguntas encontradas
+            setLoadingProgress(prev => ({
+              ...prev,
+              questionsFound: prev.questionsFound + lawQuestions.length
+            }))
+          } else {
+            console.log(`  ⚠️ Sin preguntas para ${normalizedLawName}`)
+          }
+        } catch (err) {
+          console.error(`⚠️ Error procesando ley ${normalizedLawName}: ${err.message}`)
         }
       }
 
       if (allQuestions.length === 0) {
+        console.error('❌ NO SE ENCONTRARON PREGUNTAS!')
         throw new Error('No se encontraron preguntas con los criterios seleccionados')
       }
 
-      // 🎲 Mezclar y seleccionar el número exacto de preguntas
-      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5)
-      const selectedQuestions = shuffled.slice(0, testConfig.numQuestions)
+      console.log(`\n📊 RESUMEN FINAL:`)
+      console.log(`  ✅ Total de preguntas disponibles: ${allQuestions.length}`)
+      console.log(`  🎯 Preguntas solicitadas: ${testConfig.numQuestions}`)
+
+      // Actualizar progreso - fase de selección
+      setLoadingProgress({
+        currentPhase: 'selecting',
+        currentMapping: mappings.length,
+        totalMappings: mappings.length,
+        currentLaw: '',
+        questionsFound: allQuestions.length,
+        message: `Seleccionando ${testConfig.numQuestions} preguntas de ${allQuestions.length} disponibles...`
+      })
+
+      // 📊 Aplicar selección proporcional para multi-tema
+      let selectedQuestions = []
+
+      if (testConfig.themes.length > 1) {
+        console.log('\n📊 APLICANDO SELECCIÓN PROPORCIONAL en modo examen')
+
+        // Calcular distribución
+        const questionsPerTheme = Math.floor(testConfig.numQuestions / testConfig.themes.length)
+        const remainder = testConfig.numQuestions % testConfig.themes.length
+
+        // Agrupar por tema
+        const questionsByTheme = {}
+        testConfig.themes.forEach(theme => {
+          questionsByTheme[theme] = allQuestions.filter(q => q.source_topic === theme)
+          console.log(`📚 Tema ${theme}: ${questionsByTheme[theme].length} preguntas disponibles`)
+        })
+
+        // Determinar cuántas preguntas por tema (asignar extras a los que tienen más)
+        const sortedThemes = [...testConfig.themes].sort((a, b) =>
+          questionsByTheme[b].length - questionsByTheme[a].length
+        )
+
+        const questionsNeeded = {}
+        testConfig.themes.forEach((theme, index) => {
+          questionsNeeded[theme] = questionsPerTheme
+          if (sortedThemes.indexOf(theme) < remainder) {
+            questionsNeeded[theme]++
+          }
+        })
+
+        // Seleccionar proporcionalmente
+        testConfig.themes.forEach(theme => {
+          const themeQuestions = questionsByTheme[theme]
+          const needed = questionsNeeded[theme]
+          const available = themeQuestions.length
+
+          const shuffled = [...themeQuestions].sort(() => Math.random() - 0.5)
+          const selected = shuffled.slice(0, Math.min(needed, available))
+
+          selectedQuestions.push(...selected)
+          console.log(`✅ Tema ${theme}: ${selected.length} preguntas seleccionadas`)
+        })
+
+        // Si faltan preguntas, completar con las restantes
+        if (selectedQuestions.length < testConfig.numQuestions) {
+          const remaining = allQuestions.filter(q =>
+            !selectedQuestions.some(sq => sq.id === q.id)
+          )
+          const shuffledRemaining = [...remaining].sort(() => Math.random() - 0.5)
+          const additional = shuffledRemaining.slice(0, testConfig.numQuestions - selectedQuestions.length)
+          selectedQuestions.push(...additional)
+          console.log(`⚠️ Agregadas ${additional.length} preguntas adicionales para completar`)
+        }
+
+        // Mezclar el resultado final
+        selectedQuestions = [...selectedQuestions].sort(() => Math.random() - 0.5)
+
+        // Verificar distribución final
+        const finalDistribution = {}
+        selectedQuestions.forEach(q => {
+          finalDistribution[q.source_topic] = (finalDistribution[q.source_topic] || 0) + 1
+        })
+
+        console.log('📊 DISTRIBUCIÓN FINAL:')
+        Object.entries(finalDistribution).forEach(([theme, count]) => {
+          const percentage = ((count / selectedQuestions.length) * 100).toFixed(1)
+          console.log(`   - Tema ${theme}: ${count} preguntas (${percentage}%)`)
+        })
+
+      } else {
+        // Un solo tema: selección aleatoria normal
+        const shuffled = [...allQuestions].sort(() => Math.random() - 0.5)
+        selectedQuestions = shuffled.slice(0, testConfig.numQuestions)
+      }
+
+      console.log(`\n✅ PREGUNTAS SELECCIONADAS: ${selectedQuestions.length}`)
+      console.log('🎮 Iniciando modo examen...\n')
 
       setQuestions(selectedQuestions)
 
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('❌ Error cargando preguntas para examen:', err)
-      }
+      console.error('❌ ERROR FATAL cargando preguntas para examen:', err)
       setError(err.message)
     } finally {
       setLoading(false)
@@ -156,16 +382,17 @@ function TestAleatorioExamenContent() {
 
   // ✅ LOADING STATE
   if (loading) {
+    const selectedThemeNames = testConfig.themes
+      .map(id => themeNames[id])
+      .filter(Boolean)
+
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Preparando test en modo examen...</p>
-          <p className="text-sm text-gray-500 mt-2">
-            {testConfig.themes.length} temas • {testConfig.numQuestions} preguntas
-          </p>
-        </div>
-      </div>
+      <ExamLoadingIndicator
+        numQuestions={testConfig.numQuestions}
+        numThemes={testConfig.themes.length}
+        themeNames={selectedThemeNames}
+        progress={loadingProgress}
+      />
     )
   }
 
@@ -212,12 +439,11 @@ function TestAleatorioExamenContent() {
 export default function TestAleatorioExamenPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-3"></div>
-          <p className="text-gray-600 text-sm">Preparando test aleatorio en modo examen...</p>
-        </div>
-      </div>
+      <ExamLoadingIndicator
+        numQuestions={25}
+        numThemes={1}
+        themeNames={[]}
+      />
     }>
       <TestAleatorioExamenContent />
     </Suspense>

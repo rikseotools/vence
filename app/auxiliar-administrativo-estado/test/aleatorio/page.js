@@ -23,6 +23,7 @@ export default function TestAleatorioPage() {
   const [showThemeSelectionModal, setShowThemeSelectionModal] = useState(false)
   const [availableQuestions, setAvailableQuestions] = useState(0)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [checkingProgress, setCheckingProgress] = useState({ current: 0, total: 0, themeName: '' })
   const [showDetailedStatsPerTheme, setShowDetailedStatsPerTheme] = useState({}) // Por tema: {1: true, 3: false}
   const [detailedStats, setDetailedStats] = useState({})
   const [loadingDetailedStatsPerTheme, setLoadingDetailedStatsPerTheme] = useState({}) // Por tema: {1: true}
@@ -174,12 +175,21 @@ export default function TestAleatorioPage() {
   const handleTestModeChange = (newMode) => {
     setTestMode(newMode)
     localStorage.setItem('preferredTestMode', newMode)
+
+    // Si se cambia a modo examen, resetear la dificultad a 'mixed' (aleatorio)
+    if (newMode === 'examen' && difficulty !== 'mixed') {
+      setDifficulty('mixed')
+    }
   }
 
   // Verificar preguntas disponibles cuando cambien los criterios
   useEffect(() => {
     if (selectedThemes.length > 0) {
       checkAvailableQuestions()
+      // Desactivar modo adaptativo automáticamente si hay más de un tema
+      if (selectedThemes.length > 1 && adaptiveMode) {
+        setAdaptiveMode(false)
+      }
     } else {
       setAvailableQuestions(0)
     }
@@ -455,13 +465,15 @@ export default function TestAleatorioPage() {
 
   // Función para verificar preguntas disponibles con los criterios actuales
   const checkAvailableQuestions = async () => {
-    
+
     if (selectedThemes.length === 0) {
       setAvailableQuestions(0)
       return
     }
 
     setCheckingAvailability(true)
+    setCheckingProgress({ current: 0, total: selectedThemes.length, themeName: '' })
+
     try {
       const { getSupabaseClient } = await import('../../../../lib/supabase')
       const supabase = getSupabaseClient()
@@ -473,8 +485,16 @@ export default function TestAleatorioPage() {
       }
 
       let totalQuestions = 0
-      
+      let currentThemeIndex = 0
+
       for (const tema of selectedThemes) {
+        // Actualizar progreso con el nombre del tema actual
+        const currentTheme = themes.find(t => t.id === tema)
+        setCheckingProgress({
+          current: currentThemeIndex + 1,
+          total: selectedThemes.length,
+          themeName: currentTheme?.name || `Tema ${tema}`
+        })
         try {
           const { data: mappings, error: mappingError } = await supabase
             .from('topic_scope')
@@ -554,6 +574,7 @@ export default function TestAleatorioPage() {
             console.error(`Error procesando tema ${tema}:`, error)
           }
         }
+        currentThemeIndex++ // Incrementar índice para el siguiente tema
       }
 
       setAvailableQuestions(totalQuestions)
@@ -614,11 +635,11 @@ export default function TestAleatorioPage() {
 
 
   useEffect(() => {
-    if (user && !loading) {
-      // Cargar stats de usuario y conteos de temas en paralelo
-      loadUserStats(user.id)
-      loadThemeQuestionCounts() // También cargar conteos inmediatamente
-    }
+    // NO cargar estadísticas automáticamente - solo cuando sea necesario
+    // Las estadísticas se cargarán cuando:
+    // 1. El usuario seleccione temas (para mostrar preguntas disponibles)
+    // 2. El usuario haga hover sobre un tema (para ver detalles)
+    // Esto hace que la página cargue INSTANTÁNEAMENTE
   }, [user?.id, loading])
 
   // 🔄 REFRESH STATS WHEN PAGE BECOMES VISIBLE (user returns from completed test)
@@ -626,9 +647,10 @@ export default function TestAleatorioPage() {
     if (!user) return
 
     const handleVisibilityChange = () => {
-      if (!document.hidden && user && !loading && !statsLoading) {
+      // Solo recargar si hay temas seleccionados (el usuario está trabajando activamente)
+      if (!document.hidden && user && !loading && !statsLoading && selectedThemes.length > 0) {
         loadUserStats(user.id)
-        loadThemeQuestionCounts()
+        // No cargar loadThemeQuestionCounts - se hace on-demand
       }
     }
 
@@ -637,9 +659,10 @@ export default function TestAleatorioPage() {
 
     // Listen for window focus (alternative method for when user returns)
     const handleWindowFocus = () => {
-      if (user && !loading && !statsLoading) {
+      // Solo recargar si hay temas seleccionados
+      if (user && !loading && !statsLoading && selectedThemes.length > 0) {
         loadUserStats(user.id)
-        loadThemeQuestionCounts()
+        // No cargar loadThemeQuestionCounts - se hace on-demand
       }
     }
 
@@ -650,14 +673,16 @@ export default function TestAleatorioPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleWindowFocus)
     }
-  }, [user, loading, statsLoading])
+  }, [user, loading, statsLoading, selectedThemes.length])
 
-  if (loading || statsLoading) {
+  // Solo mostrar cargando si realmente estamos cargando la autenticación
+  // No mostrar cargando para estadísticas (se cargan on-demand)
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando configuración...</p>
+          <p className="text-gray-600">Cargando...</p>
         </div>
       </div>
     )
@@ -753,21 +778,24 @@ export default function TestAleatorioPage() {
               <div className="mb-6">
                 <div className="flex items-center space-x-2 mb-3">
                   <label className={`text-sm font-bold ${
-                    onlyOfficialQuestions ? 'text-gray-400' : 'text-gray-700'
+                    onlyOfficialQuestions || testMode === 'examen' ? 'text-gray-400' : 'text-gray-700'
                   }`}>
                     🎯 Dificultad del Test
                     {onlyOfficialQuestions && (
                       <span className="text-xs text-gray-500 ml-2">(deshabilitado con preguntas oficiales)</span>
                     )}
+                    {testMode === 'examen' && !onlyOfficialQuestions && (
+                      <span className="text-xs text-gray-500 ml-2">(aleatorio en modo examen)</span>
+                    )}
                   </label>
                   <button
                     className={`w-5 h-5 rounded-full flex items-center justify-center text-sm transition-colors ${
-                      onlyOfficialQuestions 
-                        ? 'text-gray-300 cursor-not-allowed' 
+                      onlyOfficialQuestions || testMode === 'examen'
+                        ? 'text-gray-300 cursor-not-allowed'
                         : 'text-gray-400 hover:text-gray-600'
                     }`}
-                    onClick={() => !onlyOfficialQuestions && setShowPrioritizationModal(true)}
-                    disabled={onlyOfficialQuestions}
+                    onClick={() => !onlyOfficialQuestions && testMode !== 'examen' && setShowPrioritizationModal(true)}
+                    disabled={onlyOfficialQuestions || testMode === 'examen'}
                   >
                     ℹ️
                   </button>
@@ -775,10 +803,10 @@ export default function TestAleatorioPage() {
                 
                 <div className="grid grid-cols-4 gap-2 mb-4">
                   <button
-                    onClick={() => !onlyOfficialQuestions && setDifficulty('mixed')}
-                    disabled={onlyOfficialQuestions}
+                    onClick={() => !onlyOfficialQuestions && testMode !== 'examen' && setDifficulty('mixed')}
+                    disabled={onlyOfficialQuestions || testMode === 'examen'}
                     className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                      onlyOfficialQuestions
+                      onlyOfficialQuestions || testMode === 'examen'
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                         : difficulty === 'mixed'
                         ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg'
@@ -788,10 +816,10 @@ export default function TestAleatorioPage() {
                     🎲 Aleatoria
                   </button>
                   <button
-                    onClick={() => !onlyOfficialQuestions && setDifficulty('easy')}
-                    disabled={onlyOfficialQuestions}
+                    onClick={() => !onlyOfficialQuestions && testMode !== 'examen' && setDifficulty('easy')}
+                    disabled={onlyOfficialQuestions || testMode === 'examen'}
                     className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                      onlyOfficialQuestions
+                      onlyOfficialQuestions || testMode === 'examen'
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                         : difficulty === 'easy'
                         ? 'bg-gradient-to-r from-green-400 to-green-600 text-white shadow-lg'
@@ -801,10 +829,10 @@ export default function TestAleatorioPage() {
                     🟢 Fácil
                   </button>
                   <button
-                    onClick={() => !onlyOfficialQuestions && setDifficulty('medium')}
-                    disabled={onlyOfficialQuestions}
+                    onClick={() => !onlyOfficialQuestions && testMode !== 'examen' && setDifficulty('medium')}
+                    disabled={onlyOfficialQuestions || testMode === 'examen'}
                     className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                      onlyOfficialQuestions
+                      onlyOfficialQuestions || testMode === 'examen'
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                         : difficulty === 'medium'
                         ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 text-white shadow-lg'
@@ -814,10 +842,10 @@ export default function TestAleatorioPage() {
                     🟡 Medio
                   </button>
                   <button
-                    onClick={() => !onlyOfficialQuestions && setDifficulty('hard')}
-                    disabled={onlyOfficialQuestions}
+                    onClick={() => !onlyOfficialQuestions && testMode !== 'examen' && setDifficulty('hard')}
+                    disabled={onlyOfficialQuestions || testMode === 'examen'}
                     className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                      onlyOfficialQuestions
+                      onlyOfficialQuestions || testMode === 'examen'
                         ? 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-50'
                         : difficulty === 'hard'
                         ? 'bg-gradient-to-r from-orange-400 to-orange-600 text-white shadow-lg'
@@ -942,42 +970,44 @@ export default function TestAleatorioPage() {
                     )}
                   </div>
 
-                  {/* Modo adaptativo */}
-                  <div className="border-t border-gray-200 pt-4">
-                    <label className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={adaptiveMode}
-                        onChange={(e) => setAdaptiveMode(e.target.checked)}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        ✨ Modo adaptativo anti-frustración
-                      </span>
-                      <button
-                        className="w-5 h-5 text-gray-400 hover:text-gray-600 rounded-full flex items-center justify-center text-sm transition-colors"
-                        onClick={() => setShowAdaptiveModal(true)}
-                      >
-                        ℹ️
-                      </button>
-                    </label>
+                  {/* Modo adaptativo - SOLO para un tema */}
+                  {selectedThemes.length === 1 && (
+                    <div className="border-t border-gray-200 pt-4">
+                      <label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={adaptiveMode}
+                          onChange={(e) => setAdaptiveMode(e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          ✨ Modo adaptativo anti-frustración
+                        </span>
+                        <button
+                          className="w-5 h-5 text-gray-400 hover:text-gray-600 rounded-full flex items-center justify-center text-sm transition-colors"
+                          onClick={() => setShowAdaptiveModal(true)}
+                        >
+                          ℹ️
+                        </button>
+                      </label>
 
-                    {adaptiveMode && (
-                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-blue-600 text-lg">✨</span>
-                          <div className="flex-1">
-                            <p className="text-sm font-bold text-blue-800">
-                              Modo Adaptativo Activado
-                            </p>
-                            <p className="text-xs text-blue-700">
-                              Ajusta automáticamente la dificultad según tu % de aciertos
-                            </p>
+                      {adaptiveMode && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-blue-600 text-lg">✨</span>
+                            <div className="flex-1">
+                              <p className="text-sm font-bold text-blue-800">
+                                Modo Adaptativo Activado
+                              </p>
+                              <p className="text-xs text-blue-700">
+                                Ajusta automáticamente la dificultad según tu % de aciertos
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
 
                 </div>
               </div>
@@ -1146,7 +1176,7 @@ export default function TestAleatorioPage() {
                         {focusEssentialArticles && (
                           <p>• ⭐ Solo artículos imprescindibles</p>
                         )}
-                        {adaptiveMode && (
+                        {adaptiveMode && selectedThemes.length === 1 && (
                           <p>• ✨ Modo adaptativo anti-frustración</p>
                         )}
                       </div>
@@ -1166,10 +1196,30 @@ export default function TestAleatorioPage() {
                 }`}>
                   <div className="flex items-center gap-2 mb-2">
                     {checkingAvailability ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                        <h4 className="font-semibold text-gray-800">Cargando preguntas disponibles...</h4>
-                      </>
+                      <div className="flex flex-col space-y-2 w-full">
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <h4 className="font-semibold text-gray-800">Verificando preguntas disponibles...</h4>
+                        </div>
+                        {checkingProgress.themeName && (
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Analizando:</span> {checkingProgress.themeName}
+                            {checkingProgress.total > 1 && (
+                              <span className="ml-2 text-blue-600">
+                                ({checkingProgress.current}/{checkingProgress.total})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {checkingProgress.total > 1 && (
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div
+                              className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                              style={{ width: `${(checkingProgress.current / checkingProgress.total) * 100}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     ) : (
                       <>
                         <span className="text-lg">
@@ -1332,20 +1382,36 @@ export default function TestAleatorioPage() {
                 }`}
               >
                 {generating ? (
-                  <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Generando test...
+                  <div className="flex flex-col items-center space-y-1">
+                    <div className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>
+                        {testMode === 'examen' ? 'Preparando examen...' : 'Generando test...'}
+                      </span>
+                    </div>
+                    {selectedThemes.length > 1 && (
+                      <div className="text-xs opacity-90">
+                        Mezclando {selectedThemes.length} temas • {numQuestions} preguntas
+                      </div>
+                    )}
                   </div>
                 ) : checkingAvailability ? (
-                  <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Cargando preguntas disponibles...
+                  <div className="flex flex-col items-center space-y-1">
+                    <div className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Verificando disponibilidad...
+                    </div>
+                    {checkingProgress.themeName && (
+                      <div className="text-xs opacity-90">
+                        {checkingProgress.themeName.split(':')[0]} ({checkingProgress.current}/{checkingProgress.total})
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center">
