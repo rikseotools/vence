@@ -64,15 +64,20 @@ export default function RankingModal({ isOpen, onClose }) {
         todayEnd.setUTCHours(23, 59, 59, 999)
         endDate = todayEnd.toISOString()
       } else if (timeFilter === 'week') {
-        // Esta semana - últimos 7 días
+        // Esta semana - desde el lunes de esta semana
         console.log('🔍 Calculando fecha para "Esta semana"')
         const now = new Date()
         console.log('   Fecha actual:', now.toISOString())
-        const sevenDaysAgo = new Date()
-        sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7)
-        sevenDaysAgo.setUTCHours(0, 0, 0, 0)
-        startDate = sevenDaysAgo.toISOString()
-        console.log('   Fecha hace 7 días:', startDate)
+
+        // Calcular el lunes de esta semana
+        const dayOfWeek = now.getUTCDay() // 0 = domingo, 1 = lunes, etc.
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Domingo cuenta como 6 días desde el lunes
+        const thisMonday = new Date(now)
+        thisMonday.setUTCDate(now.getUTCDate() - daysFromMonday)
+        thisMonday.setUTCHours(0, 0, 0, 0)
+
+        startDate = thisMonday.toISOString()
+        console.log('   Desde el lunes:', startDate)
         // endDate = null → hasta ahora
       } else if (timeFilter === 'month') {
         // Este mes - desde el día 1 del mes actual en UTC

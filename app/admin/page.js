@@ -36,7 +36,7 @@ export default function AdminDashboard() {
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
         const { data: recentTests, error: testsError } = await supabase
           .from('tests')
-          .select('id, is_completed, created_at, completed_at, user_id, score, total_questions')
+          .select('id, is_completed, created_at, completed_at, user_id, score, total_questions, test_type, test_url, tema_number')
           .gte('created_at', thirtyDaysAgo)
           .order('created_at', { ascending: false }) // Más recientes primero
           .limit(5000) // Obtener hasta 5000 tests
@@ -258,6 +258,33 @@ export default function AdminDashboard() {
 
     const testsLast30Days = validCompletedTests.length
 
+    // 📊 NUEVO: Desglose por modo (práctica vs examen) y tipo (aleatorio vs tema)
+    const testsByMode = {
+      practice: validCompletedTests.filter(t => t.test_type === 'practice').length,
+      exam: validCompletedTests.filter(t => t.test_type === 'exam').length
+    }
+
+    // Desglose por tipo de estudio (usando test_url y tema_number)
+    const testsByStudyType = {
+      aleatorio: validCompletedTests.filter(t =>
+        t.test_url?.includes('/test-aleatorio') ||
+        t.test_url?.includes('/test/rapido')
+      ).length,
+      porTema: validCompletedTests.filter(t =>
+        t.tema_number !== null && t.tema_number !== undefined
+      ).length,
+      porLey: validCompletedTests.filter(t =>
+        t.test_url?.includes('/leyes/')
+      ).length,
+      personalizado: validCompletedTests.filter(t =>
+        t.test_url?.includes('/test-personalizado') &&
+        !t.tema_number
+      ).length
+    }
+
+    console.log('📊 Desglose por modo:', testsByMode)
+    console.log('📊 Desglose por tipo de estudio:', testsByStudyType)
+
     // Análisis de rendimiento SUPER CORREGIDO - SCORE ES PORCENTAJE
     let averageAccuracy = 0
     if (validCompletedTests.length > 0) {
@@ -438,7 +465,10 @@ export default function AdminDashboard() {
       projectedUsersNextYear,
       averageUsersPerDay,
       projectedUsersPerWeek,
-      daysPassedThisWeek
+      daysPassedThisWeek,
+      // 📊 NUEVO: Desglose por modo de test
+      testsByMode,
+      testsByStudyType
     }
 
     console.log('📊 ESTADÍSTICAS FINALES:', result)
@@ -691,7 +721,7 @@ export default function AdminDashboard() {
             </h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Usuarios que han hecho tests:</span>
+                <span className="text-sm text-gray-600">Usuarios con tests (total histórico):</span>
                 <span className="text-base sm:text-lg font-semibold text-blue-600">{stats.usersWhoCompletedTests}</span>
               </div>
               <div className="flex justify-between items-center">
@@ -707,7 +737,52 @@ export default function AdminDashboard() {
                 <span className="text-base sm:text-lg font-semibold text-red-600">{stats.abandonedTests}</span>
               </div>
             </div>
-            
+
+            {/* Desglose de tests completados (30 días) */}
+            {stats.testsByMode && stats.testsByStudyType && (
+              <div className="mt-4 space-y-3">
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <p className="text-xs font-semibold text-green-800 dark:text-green-200 mb-2">
+                    📝 Modo de tests completados (30 días):
+                  </p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-green-700 dark:text-green-300">
+                      <span>Práctica:</span>
+                      <span className="font-semibold">{stats.testsByMode.practice} ({Math.round((stats.testsByMode.practice / stats.testsLast30Days) * 100)}%)</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-green-700 dark:text-green-300">
+                      <span>Examen:</span>
+                      <span className="font-semibold">{stats.testsByMode.exam} ({Math.round((stats.testsByMode.exam / stats.testsLast30Days) * 100)}%)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <p className="text-xs font-semibold text-purple-800 dark:text-purple-200 mb-2">
+                    📚 Tipo de estudio (30 días):
+                  </p>
+                  <div className="space-y-1 text-xs text-purple-700 dark:text-purple-300">
+                    <div className="flex justify-between">
+                      <span>Por tema:</span>
+                      <span className="font-semibold">{stats.testsByStudyType.porTema} ({Math.round((stats.testsByStudyType.porTema / stats.testsLast30Days) * 100)}%)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Aleatorio:</span>
+                      <span className="font-semibold">{stats.testsByStudyType.aleatorio} ({Math.round((stats.testsByStudyType.aleatorio / stats.testsLast30Days) * 100)}%)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Por ley:</span>
+                      <span className="font-semibold">{stats.testsByStudyType.porLey} ({Math.round((stats.testsByStudyType.porLey / stats.testsLast30Days) * 100)}%)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Personalizado:</span>
+                      <span className="font-semibold">{stats.testsByStudyType.personalizado} ({Math.round((stats.testsByStudyType.personalizado / stats.testsLast30Days) * 100)}%)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
               <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200">
                 📊 <strong>Tasa de finalización:</strong> {stats.completionRate}% de tests se completan

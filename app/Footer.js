@@ -75,6 +75,9 @@ export default function FooterES() {
             <p className="text-xs text-gray-500 text-center">
               Vence España es una plataforma educativa independiente. Todos los contenidos son de carácter informativo y educativo.
             </p>
+            <p className="text-xs text-gray-400 text-center mt-2">
+              Con <span className="text-red-500">❤️</span> para Nila
+            </p>
           </div>
         </div>
       </footer>
@@ -200,6 +203,9 @@ export default function FooterES() {
         <div className="container mx-auto px-4">
           <p className="text-xs text-gray-500 text-center">
             Vence España es una plataforma educativa independiente. Todos los contenidos son de carácter informativo y educativo.
+          </p>
+          <p className="text-xs text-gray-400 text-center mt-2">
+            Con <span className="text-red-500">❤️</span> para Nila
           </p>
         </div>
       </div>
