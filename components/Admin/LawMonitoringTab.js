@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 // Componente Spinner
 const Spinner = ({ size = 'sm' }) => {
@@ -18,6 +19,7 @@ const Spinner = ({ size = 'sm' }) => {
 }
 
 export default function LawMonitoringTab() {
+  const router = useRouter()
   const [laws, setLaws] = useState([])
   const [loading, setLoading] = useState(false)
   const [processingLaws, setProcessingLaws] = useState(new Set()) // IDs de leyes siendo procesadas
@@ -106,11 +108,11 @@ export default function LawMonitoringTab() {
       })
 
       const data = await response.json()
-      
+
       if (data.success) {
         // Actualizar estado local
-        setLaws(prev => prev.map(law => 
-          law.id === lawId 
+        setLaws(prev => prev.map(law =>
+          law.id === lawId
             ? { ...law, changeStatus: 'reviewed' }
             : law
         ))
@@ -120,6 +122,11 @@ export default function LawMonitoringTab() {
     } catch (err) {
       setError('Error conectando con el servidor')
     }
+  }
+
+  // Navegar a la página de verificación de artículos
+  const goToVerifyArticles = (lawId) => {
+    router.push(`/admin/verificar-articulos/${lawId}`)
   }
 
   // Cargar leyes iniciales sin verificar automáticamente
@@ -321,14 +328,22 @@ export default function LawMonitoringTab() {
                 </td>
                 
                 <td className="px-6 py-4 text-sm">
-                  {law.changeStatus === 'changed' && (
+                  <div className="flex flex-col space-y-2">
+                    {law.changeStatus === 'changed' && (
+                      <button
+                        onClick={() => markAsReviewed(law.id)}
+                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                      >
+                        Marcar como revisado
+                      </button>
+                    )}
                     <button
-                      onClick={() => markAsReviewed(law.id)}
-                      className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                      onClick={() => goToVerifyArticles(law.id)}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors"
                     >
-                      Marcar como revisado
+                      📋 Verificar artículos
                     </button>
-                  )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -405,14 +420,22 @@ export default function LawMonitoringTab() {
             </div>
 
             {/* Action */}
-            {law.changeStatus === 'changed' && (
+            <div className="space-y-2">
+              {law.changeStatus === 'changed' && (
+                <button
+                  onClick={() => markAsReviewed(law.id)}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm transition-colors"
+                >
+                  Marcar como revisado
+                </button>
+              )}
               <button
-                onClick={() => markAsReviewed(law.id)}
-                className="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm transition-colors"
+                onClick={() => goToVerifyArticles(law.id)}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm transition-colors"
               >
-                Marcar como revisado
+                📋 Verificar artículos
               </button>
-            )}
+            </div>
           </div>
         ))}
       </div>

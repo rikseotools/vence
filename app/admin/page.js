@@ -1222,7 +1222,7 @@ export default function AdminDashboard() {
             </div>
           </a>
 
-          <a 
+          <a
             href="/admin/notificaciones"
             className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 sm:p-4 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
           >
@@ -1231,6 +1231,32 @@ export default function AdminDashboard() {
               <div className="min-w-0">
                 <h4 className="font-medium text-orange-900 dark:text-orange-100 text-sm sm:text-base">Notificaciones</h4>
                 <p className="text-xs sm:text-sm text-orange-600 dark:text-orange-400">Tracking Push & Email</p>
+              </div>
+            </div>
+          </a>
+
+          <a
+            href="/admin/ai"
+            className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 sm:p-4 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-xl sm:text-2xl">🤖</span>
+              <div className="min-w-0">
+                <h4 className="font-medium text-emerald-900 dark:text-emerald-100 text-sm sm:text-base">Configurar IA</h4>
+                <p className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400">APIs, modelos y uso</p>
+              </div>
+            </div>
+          </a>
+
+          <a
+            href="/admin/monitoreo"
+            className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3 sm:p-4 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-xl sm:text-2xl">📋</span>
+              <div className="min-w-0">
+                <h4 className="font-medium text-indigo-900 dark:text-indigo-100 text-sm sm:text-base">Verificar Leyes</h4>
+                <p className="text-xs sm:text-sm text-indigo-600 dark:text-indigo-400">Comparar con BOE</p>
               </div>
             </div>
           </a>

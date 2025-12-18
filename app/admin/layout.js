@@ -149,8 +149,8 @@ export default function AdminLayout({ children }) {
                     <span>📧</span>
                     <span>Newsletters</span>
                   </a>
-                  <a 
-                    href="/admin/monitoreo" 
+                  <a
+                    href="/admin/monitoreo"
                     className={`text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 relative ${
                       hasUnreviewedChanges ? 'animate-pulse' : ''
                     }`}
@@ -162,6 +162,13 @@ export default function AdminLayout({ children }) {
                         !
                       </span>
                     )}
+                  </a>
+                  <a
+                    href="/admin/ai"
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>🤖</span>
+                    <span>IA</span>
                   </a>
                 </div>
               </nav>

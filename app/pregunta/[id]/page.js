@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import ArticleModal from '@/components/ArticleModal'
 
 export default function QuestionPage({ params }) {
   const { user, supabase } = useAuth()
@@ -17,6 +18,46 @@ export default function QuestionPage({ params }) {
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [hasAnswered, setHasAnswered] = useState(false)
   const [answerStartTime, setAnswerStartTime] = useState(null)
+  const [showArticleModal, setShowArticleModal] = useState(false)
+  const [lawSlug, setLawSlug] = useState(null)
+
+  // Función para generar slug desde nombre de ley
+  const generateLawSlug = (lawShortName) => {
+    if (!lawShortName) return null
+
+    // Mapeo directo para leyes comunes
+    const slugMap = {
+      'Ley 39/2015': 'ley-39-2015',
+      'Ley 40/2015': 'ley-40-2015',
+      'Ley 19/2013': 'ley-19-2013',
+      'Ley 50/1997': 'ley-50-1997',
+      'Ley 7/1985': 'ley-7-1985',
+      'Ley 2/2014': 'ley-2-2014',
+      'Ley 25/2014': 'ley-25-2014',
+      'Ley 38/2015': 'ley-38-2015',
+      'CE': 'ce',
+      'TUE': 'tue',
+      'TFUE': 'tfue',
+      'EBEP': 'ebep',
+      'Reglamento del Congreso': 'reglamento-del-congreso',
+      'Reglamento del Senado': 'reglamento-del-senado',
+    }
+
+    if (slugMap[lawShortName]) {
+      return slugMap[lawShortName]
+    }
+
+    // Generar slug genérico si no está en el mapeo
+    return lawShortName
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\//g, '-') // Barra a guión
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+  }
 
   // Detectar modo quiz y fuente desde URL
   const isQuizMode = searchParams.get('modo') === 'quiz'
@@ -43,42 +84,54 @@ export default function QuestionPage({ params }) {
       setLoading(true)
       setError(null)
 
-      // Primero intentar obtener la pregunta básica para verificar que existe
-      const { data: basicQuestion, error: basicError } = await supabase
+      // 1. Obtener la pregunta
+      const { data: questionData, error: questionError } = await supabase
         .from('questions')
         .select('*')
         .eq('id', questionId)
         .single()
 
-      if (basicError) {
-        setError(`Pregunta no encontrada`)
+      if (questionError || !questionData) {
+        setError('Pregunta no encontrada')
         return
       }
 
-      // Ahora obtener con información del artículo
-      const { data, error } = await supabase
-        .from('questions')
-        .select(`
-          *,
-          articles:primary_article_id (
-            id,
-            number,
-            title,
-            content
-          )
-        `)
-        .eq('id', questionId)
-        .single()
+      // 2. Si tiene artículo vinculado, obtenerlo
+      if (questionData.primary_article_id) {
+        const { data: articleData } = await supabase
+          .from('articles')
+          .select('id, article_number, title, content, law_id')
+          .eq('id', questionData.primary_article_id)
+          .single()
 
-      if (error) {
-        setQuestion(basicQuestion)
-        return
+        if (articleData) {
+          questionData.articles = articleData
+
+          // 3. Si el artículo tiene ley, obtenerla
+          if (articleData.law_id) {
+            const { data: lawData } = await supabase
+              .from('laws')
+              .select('id, short_name, name')
+              .eq('id', articleData.law_id)
+              .single()
+
+            if (lawData) {
+              questionData.articles.laws = lawData
+              // Generar el slug de la ley para el modal
+              const lawName = lawData.short_name || lawData.name
+              if (lawName) {
+                setLawSlug(generateLawSlug(lawName))
+              }
+            }
+          }
+        }
       }
 
-      setQuestion(data)
+      setQuestion(questionData)
       // Iniciar timer para medir tiempo de respuesta
       setAnswerStartTime(Date.now())
     } catch (err) {
+      console.error('Error cargando pregunta:', err)
       setError('Error al cargar la pregunta')
     } finally {
       setLoading(false)
@@ -211,7 +264,7 @@ export default function QuestionPage({ params }) {
             </h1>
             {!isQuizMode && question.articles && (
               <p className="text-gray-600 dark:text-gray-400">
-                {question.articles.number} - {question.articles.title}
+                Art. {question.articles.article_number} - {question.articles.title}
               </p>
             )}
           </div>
@@ -228,7 +281,7 @@ export default function QuestionPage({ params }) {
               )}
               {!isQuizMode && question.articles && (
                 <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  📚 {question.articles.number} - {question.articles.title}
+                  📚 Art. {question.articles.article_number} - {question.articles.title}
                 </div>
               )}
               <div className="prose max-w-none dark:prose-invert">
@@ -349,14 +402,51 @@ export default function QuestionPage({ params }) {
               </div>
             )}
 
-            {/* Información del artículo - solo en modo normal o después de responder */}
+            {/* Botón Ver artículo - solo en modo normal o después de responder */}
+            {question.articles && (!isQuizMode || hasAnswered) && (
+              <div className="mb-6">
+                <button
+                  onClick={() => setShowArticleModal(true)}
+                  className="w-full flex items-center justify-center gap-3 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl hover:from-indigo-100 hover:to-blue-100 dark:hover:from-indigo-900/50 dark:hover:to-blue-900/50 transition-all group"
+                >
+                  <span className="text-2xl group-hover:scale-110 transition-transform">📋</span>
+                  <div className="text-left">
+                    <div className="font-bold text-indigo-800 dark:text-indigo-300">
+                      Ver Artículo {question.articles.article_number}
+                    </div>
+                    <div className="text-sm text-indigo-600 dark:text-indigo-400">
+                      {question.articles.laws?.short_name || question.articles.laws?.name || 'Contenido del artículo con palabras clave resaltadas'}
+                    </div>
+                  </div>
+                  <span className="text-indigo-500 dark:text-indigo-400 ml-auto">→</span>
+                </button>
+              </div>
+            )}
+
+            {/* Resumen del artículo (versión compacta) - solo en modo normal o después de responder */}
             {question.articles && question.articles.content && (!isQuizMode || hasAnswered) && (
               <div className="bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg p-6 mb-6">
-                <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-3 text-lg">
-                  📋 {question.articles.number}
-                </h4>
-                <p className="text-gray-700 dark:text-gray-300 leading-relaxed italic">
-                  "{question.articles.content}"
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-bold text-gray-800 dark:text-gray-200 text-lg">
+                    📋 Artículo {question.articles.article_number}
+                  </h4>
+                  <button
+                    onClick={() => setShowArticleModal(true)}
+                    className="text-sm px-3 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-800/50 text-blue-700 dark:text-blue-300 rounded-lg transition-colors"
+                  >
+                    Ver completo →
+                  </button>
+                </div>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed italic line-clamp-4">
+                  "{question.articles.content.substring(0, 300)}{question.articles.content.length > 300 ? '... ' : ''}"
+                  {question.articles.content.length > 300 && (
+                    <button
+                      onClick={() => setShowArticleModal(true)}
+                      className="text-blue-600 dark:text-blue-400 hover:underline not-italic font-medium"
+                    >
+                      ver más
+                    </button>
+                  )}
                 </p>
               </div>
             )}
@@ -407,6 +497,19 @@ export default function QuestionPage({ params }) {
           </div>
         </div>
       </main>
+
+      {/* Modal de artículo con resaltado de palabras clave */}
+      {question?.articles && lawSlug && (
+        <ArticleModal
+          isOpen={showArticleModal}
+          onClose={() => setShowArticleModal(false)}
+          articleNumber={question.articles.article_number}
+          lawSlug={lawSlug}
+          questionText={question.question || question.question_text}
+          correctAnswer={correctIndex}
+          options={options}
+        />
+      )}
     </div>
   )
 }
