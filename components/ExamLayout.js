@@ -140,9 +140,7 @@ export default function ExamLayout({
   const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
   const [selectedQuestionForModal, setSelectedQuestionForModal] = useState(null) // 🎨 Para resaltado inteligente
 
-  // 📤 Estados para compartir resultado
-  const [showShareMenu, setShowShareMenu] = useState(false)
-  const [shareSuccess, setShareSuccess] = useState(false)
+  // 📤 Estado para compartir resultado
   const [showSharePrompt, setShowSharePrompt] = useState(false)
 
   // 📤 Estado para compartir pregunta individual
@@ -253,78 +251,6 @@ export default function ExamLayout({
     }))
   }
 
-  // 📤 FUNCIÓN: Compartir resultado
-  const handleShare = async (platform, nota) => {
-    // URL con UTM parameters para trackear en Google Analytics
-    const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=exam_share&utm_content=score_${nota}`
-    const url = `https://vence.es?${utmParams}`
-    const shareText = `¡Acabo de sacar un ${nota}/10 en mi test de oposiciones en vence.es! 💪`
-    let shareUrl = ''
-
-    switch (platform) {
-      case 'twitter':
-        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`
-        break
-      case 'facebook':
-        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(shareText)}`
-        break
-      case 'instagram':
-        try {
-          await navigator.clipboard.writeText(shareText)
-          setShareSuccess(true)
-          setTimeout(() => setShareSuccess(false), 2000)
-          alert('Texto copiado al portapapeles. Pégalo en tu historia o publicación de Instagram.')
-        } catch (error) {
-          console.error('Error al copiar:', error)
-        }
-        break
-      case 'whatsapp':
-        shareUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + url)}`
-        break
-      case 'linkedin':
-        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`
-        break
-      case 'copy':
-        try {
-          await navigator.clipboard.writeText(shareText + '\n' + url)
-          setShareSuccess(true)
-          setTimeout(() => setShareSuccess(false), 2000)
-        } catch (error) {
-          console.error('Error al copiar:', error)
-        }
-        break
-    }
-
-    // 📤 Registrar share en base de datos
-    if (user) {
-      try {
-        await supabase
-          .from('share_events')
-          .insert({
-            user_id: user.id,
-            share_type: 'exam_result',
-            platform: platform,
-            score: parseFloat(nota),
-            test_session_id: currentTestSession?.id,
-            share_text: shareText,
-            share_url: shareUrl || `copied: ${shareText}\n${url}`,
-            device_info: {
-              screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
-              userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
-            }
-          })
-        console.log('📤 Share registrado:', { platform, nota })
-      } catch (error) {
-        console.error('Error registrando share:', error)
-      }
-    }
-
-    if (shareUrl) {
-      window.open(shareUrl, '_blank', 'width=600,height=400')
-    }
-    setShowShareMenu(false)
-  }
-
   // ✅ FUNCIÓN: Corregir examen (NO BLOQUEANTE - muestra resultados inmediatamente)
   function handleSubmitExam() {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
@@ -370,10 +296,7 @@ export default function ExamLayout({
     setIsSaving(true) // Mostrar "Guardando en segundo plano..."
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
-    // 📤 Mostrar prompt de compartir después de 2.5 segundos
-    setTimeout(() => {
-      setShowSharePrompt(true)
-    }, 2500)
+    // 📤 El usuario puede compartir manualmente con el botón "Compartir resultado"
 
     console.log(`🚀 MOSTRANDO RESULTADOS AL USUARIO (sin esperar guardado)`)
     console.log(`💾 Iniciando guardado en segundo plano...`)
@@ -691,65 +614,16 @@ export default function ExamLayout({
                     </div>
 
                     {/* 📤 BOTÓN COMPARTIR - Debajo de la puntuación */}
-                    <div className="relative mt-4">
+                    <div className="mt-4">
                       <button
-                        onClick={() => setShowShareMenu(!showShareMenu)}
-                        className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 rounded-lg transition-all shadow-md hover:shadow-lg border border-gray-200"
+                        onClick={() => setShowSharePrompt(true)}
+                        className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                         </svg>
                         <span className="text-sm font-medium">Compartir resultado</span>
                       </button>
-
-                      {/* Menú de compartir */}
-                      {showShareMenu && (
-                        <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[180px] z-50">
-                          <button
-                            onClick={() => handleShare('twitter', notaSobre10)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-                          >
-                            <span>✖️</span>
-                            <span>X (Twitter)</span>
-                          </button>
-                          <button
-                            onClick={() => handleShare('facebook', notaSobre10)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-                          >
-                            <span>📘</span>
-                            <span>Facebook</span>
-                          </button>
-                          <button
-                            onClick={() => handleShare('instagram', notaSobre10)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-                          >
-                            <span>📷</span>
-                            <span>Instagram</span>
-                          </button>
-                          <button
-                            onClick={() => handleShare('whatsapp', notaSobre10)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-                          >
-                            <span>💬</span>
-                            <span>WhatsApp</span>
-                          </button>
-                          <button
-                            onClick={() => handleShare('linkedin', notaSobre10)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-                          >
-                            <span>💼</span>
-                            <span>LinkedIn</span>
-                          </button>
-                          <div className="border-t border-gray-100 my-1"></div>
-                          <button
-                            onClick={() => handleShare('copy', notaSobre10)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-                          >
-                            <span>📋</span>
-                            <span>{shareSuccess ? '¡Copiado!' : 'Copiar'}</span>
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
 
