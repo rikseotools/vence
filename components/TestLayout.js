@@ -7,6 +7,7 @@ import PersistentRegistrationManager from './PersistentRegistrationManager'
 import { usePathname } from 'next/navigation'
 import QuestionEvolution from './QuestionEvolution'
 import QuestionDispute from './QuestionDispute'
+import ShareQuestion from './ShareQuestion'
 
 
 // Imports modularizados
@@ -92,7 +93,10 @@ export default function TestLayout({
   // Estados para hot articles
   const [hotArticleInfo, setHotArticleInfo] = useState(null)
   const [showHotAlert, setShowHotAlert] = useState(false)
-  
+
+  // 📤 Estado para compartir pregunta
+  const [showShareQuestion, setShowShareQuestion] = useState(false)
+
   // 🧠 Estados para modo adaptativo
   const [adaptiveMode, setAdaptiveMode] = useState(false)
   const [activeQuestions, setActiveQuestions] = useState([])
@@ -490,6 +494,70 @@ export default function TestLayout({
     } catch (error) {
       console.error('❌ Error en guardado en segundo plano:', error)
       return { success: false, error }
+    }
+  }
+
+  // Compartir rápido sin abrir modal
+  const handleQuickShare = async (platform) => {
+    const currentQ = effectiveQuestions?.[currentQuestion]
+    if (!currentQ) return
+
+    const questionText = currentQ.question || ''
+    const options = currentQ.options || []
+    const questionId = currentQ.id
+
+    const shareText = `🤔 ¿Sabrías responder esta pregunta?\n\n${questionText}\n\nA) ${options[0] || ''}\nB) ${options[1] || ''}\nC) ${options[2] || ''}\nD) ${options[3] || ''}\n\n¿Cuál es la respuesta correcta?`
+
+    const cleanUrl = questionId ? `https://vence.es/pregunta/${questionId}` : 'https://vence.es'
+    const utmUrl = `${cleanUrl}?utm_source=${platform}&utm_medium=social&utm_campaign=question_share`
+
+    let shareUrl = ''
+
+    switch (platform) {
+      case 'whatsapp':
+        const whatsappLink = cleanUrl.replace('https://', '')
+        const whatsappMessage = `${shareText}\n\n${whatsappLink}`
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`
+        break
+      case 'telegram':
+        shareUrl = `https://t.me/share/url?url=${encodeURIComponent(cleanUrl)}&text=${encodeURIComponent(shareText)}`
+        break
+      case 'twitter':
+        const twitterText = `🤔 ¿Sabrías responder?\n\n${questionText.substring(0, 180)}${questionText.length > 180 ? '...' : ''}\n\nA, B, C o D?`
+        shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(twitterText)}&url=${encodeURIComponent(utmUrl)}`
+        break
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(utmUrl)}&quote=${encodeURIComponent(shareText)}`
+        break
+      case 'instagram':
+        // Instagram no tiene API de share directo, copiamos al portapapeles
+        try {
+          await navigator.clipboard.writeText(shareText + '\n\n' + cleanUrl)
+          alert('Texto copiado. Pégalo en tu historia o publicación de Instagram.')
+        } catch (e) {
+          console.error('Error copiando:', e)
+        }
+        return // No abrimos ventana
+    }
+
+    if (shareUrl) {
+      window.open(shareUrl, '_blank', 'width=600,height=400')
+    }
+
+    // Registrar intento de share
+    if (user && supabase) {
+      try {
+        await supabase.from('share_events').insert({
+          user_id: user.id,
+          share_type: 'question_quiz',
+          platform: platform,
+          question_id: questionId,
+          share_text: shareText,
+          share_url: cleanUrl
+        })
+      } catch (error) {
+        console.error('Error registrando share:', error)
+      }
     }
   }
 
@@ -1327,16 +1395,14 @@ export default function TestLayout({
               
               {/* Pregunta actual con dark mode */}
               <div className="mb-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h2
-                      ref={questionHeaderRef}
-                      className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2"
-                    >
-                      Pregunta {currentQuestion + 1}
-                    </h2>
-                    {/* 🚫 ELIMINADO: No mostrar artículo antes de responder (da pistas) */}
-                  </div>
+                <div className="mb-4">
+                  <h2
+                    ref={questionHeaderRef}
+                    className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2"
+                  >
+                    Pregunta {currentQuestion + 1}
+                  </h2>
+                  {/* 🚫 ELIMINADO: No mostrar artículo antes de responder (da pistas) */}
                 </div>
                 
                 <div className="prose max-w-none dark:prose-invert">
@@ -1395,9 +1461,10 @@ export default function TestLayout({
                 ))}
               </div>
 
-              {/* Botones de respuesta rápida A/B/C/D - Solo si no se ha respondido */}
+              {/* Botones de respuesta rápida A/B/C/D + Compartir - Solo si no se ha respondido */}
               {!showResult && currentQ?.options && (
                 <div className="mb-6">
+                  {/* Botones A/B/C/D */}
                   <div className="flex justify-center space-x-4">
                     {currentQ.options.map((option, index) => (
                       <button
@@ -1412,6 +1479,69 @@ export default function TestLayout({
                         {String.fromCharCode(65 + index)}
                       </button>
                     ))}
+                  </div>
+                  {/* 📤 Compartir pregunta - acceso directo a plataformas */}
+                  <div className="flex justify-center items-center gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <span className="text-sm text-gray-500 dark:text-gray-400 mr-1">Compartir:</span>
+                    {/* WhatsApp */}
+                    <button
+                      onClick={() => handleQuickShare('whatsapp')}
+                      className="p-2 rounded-full hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+                      title="WhatsApp"
+                    >
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#25D366">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                      </svg>
+                    </button>
+                    {/* Telegram */}
+                    <button
+                      onClick={() => handleQuickShare('telegram')}
+                      className="p-2 rounded-full hover:bg-cyan-50 dark:hover:bg-cyan-900/30 transition-colors"
+                      title="Telegram"
+                    >
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#0088cc">
+                        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                      </svg>
+                    </button>
+                    {/* Instagram */}
+                    <button
+                      onClick={() => handleQuickShare('instagram')}
+                      className="p-2 rounded-full hover:bg-pink-50 dark:hover:bg-pink-900/30 transition-colors"
+                      title="Instagram (copia texto)"
+                    >
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="url(#instagram-gradient)">
+                        <defs>
+                          <linearGradient id="instagram-gradient" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#FFDC80"/>
+                            <stop offset="25%" stopColor="#F77737"/>
+                            <stop offset="50%" stopColor="#E1306C"/>
+                            <stop offset="75%" stopColor="#C13584"/>
+                            <stop offset="100%" stopColor="#833AB4"/>
+                          </linearGradient>
+                        </defs>
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                      </svg>
+                    </button>
+                    {/* Facebook */}
+                    <button
+                      onClick={() => handleQuickShare('facebook')}
+                      className="p-2 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                      title="Facebook"
+                    >
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#1877F2">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                      </svg>
+                    </button>
+                    {/* X/Twitter */}
+                    <button
+                      onClick={() => handleQuickShare('twitter')}
+                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      title="X"
+                    >
+                      <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
+                    </button>
                   </div>
                 </div>
               )}
@@ -1535,7 +1665,7 @@ export default function TestLayout({
                         </div>
                       )}
 
-                    {/*Componente de impugnación */}
+                    {/* Botón de impugnación */}
                     <QuestionDispute
                       questionId={currentQuestionUuid || questions[currentQuestion]?.id}
                       user={user}
@@ -1571,12 +1701,33 @@ export default function TestLayout({
                         
                         {/* Condición mejorada: Solo mostrar botón si NO es la última pregunta */}
                         {!isExplicitlyCompleted && currentQuestion < effectiveQuestions.length - 1 ? (
-                          <button
-                          onClick={handleNextQuestion}
-                          className={`w-full px-6 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl text-lg`}
-                        >
-                          Siguiente Pregunta → ({currentQuestion + 2}/{effectiveQuestions.length})
-                        </button>
+                          <div className="space-y-3">
+                            <button
+                              onClick={handleNextQuestion}
+                              className={`w-full px-6 py-4 rounded-lg font-semibold text-white transition-all bg-gradient-to-r ${config.color} hover:opacity-90 shadow-lg hover:shadow-xl text-lg`}
+                            >
+                              Siguiente Pregunta → ({currentQuestion + 2}/{effectiveQuestions.length})
+                            </button>
+                            {/* 📤 Compartir - acceso directo */}
+                            <div className="flex justify-center items-center gap-3 pt-2">
+                              <span className="text-sm text-gray-500 dark:text-gray-400">Compartir:</span>
+                              <button onClick={() => handleQuickShare('whatsapp')} className="p-1.5 rounded-full hover:bg-green-50 dark:hover:bg-green-900/30" title="WhatsApp">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                              </button>
+                              <button onClick={() => handleQuickShare('telegram')} className="p-1.5 rounded-full hover:bg-cyan-50 dark:hover:bg-cyan-900/30" title="Telegram">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#0088cc"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                              </button>
+                              <button onClick={() => handleQuickShare('instagram')} className="p-1.5 rounded-full hover:bg-pink-50 dark:hover:bg-pink-900/30" title="Instagram">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#E1306C"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                              </button>
+                              <button onClick={() => handleQuickShare('facebook')} className="p-1.5 rounded-full hover:bg-blue-50 dark:hover:bg-blue-900/30" title="Facebook">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                              </button>
+                              <button onClick={() => handleQuickShare('twitter')} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700" title="X">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                              </button>
+                            </div>
+                          </div>
                       ) : (
                         /* Pantalla de finalización con estadísticas compactas */
                         <div className="text-center w-full">
@@ -1813,6 +1964,16 @@ export default function TestLayout({
         </main>
 
       </div>
+
+      {/* 📤 Modal para compartir pregunta */}
+      {effectiveQuestions && effectiveQuestions[currentQuestion] && (
+        <ShareQuestion
+          question={effectiveQuestions[currentQuestion]}
+          lawName={config?.title || ''}
+          isOpen={showShareQuestion}
+          onClose={() => setShowShareQuestion(false)}
+        />
+      )}
     </PersistentRegistrationManager>
   )
 }
