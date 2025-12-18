@@ -1069,7 +1069,7 @@ export default function ExamLayout({
       {/* 📤 Modal para compartir pregunta individual */}
       <ShareQuestion
         question={shareQuestionData}
-        lawName={title}
+        lawName={config?.title || tema || ''}
         isOpen={!!shareQuestionData}
         onClose={() => setShareQuestionData(null)}
       />
