@@ -251,8 +251,8 @@ export default function ExamLayout({
     }))
   }
 
-  // 📤 FUNCIÓN: Compartir pregunta individual directo a redes
-  const handleQuickShareQuestion = (platform, question) => {
+  // 📤 FUNCIÓN: Compartir pregunta individual directo a redes (con tracking)
+  const handleQuickShareQuestion = async (platform, question) => {
     if (!question) return
     const questionText = question.question_text || question.text || 'Pregunta de oposiciones'
     const shortQuestion = questionText.length > 100 ? questionText.substring(0, 100) + '...' : questionText
@@ -276,13 +276,33 @@ export default function ExamLayout({
         break
     }
 
+    // 📊 Tracking: guardar share de pregunta en base de datos
+    if (user && shareUrl) {
+      try {
+        await supabase.from('share_events').insert({
+          user_id: user.id,
+          share_type: 'question_quiz',
+          platform: platform,
+          share_text: shareText,
+          share_url: shareUrl,
+          device_info: {
+            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+          }
+        })
+        console.log('📤 Share pregunta registrado:', platform)
+      } catch (error) {
+        console.error('Error registrando share pregunta:', error)
+      }
+    }
+
     if (shareUrl) {
       window.open(shareUrl, '_blank', 'width=600,height=400')
     }
   }
 
-  // 📤 FUNCIÓN: Compartir resultado directo a redes
-  const handleQuickShareResult = (platform) => {
+  // 📤 FUNCIÓN: Compartir resultado directo a redes (con tracking)
+  const handleQuickShareResult = async (platform) => {
     const nota = isSubmitted ? Math.max(0, ((correctCount - (incorrectCount / 3)) / totalQuestions) * 10).toFixed(2) : '0'
     const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=exam_share&utm_content=score_${nota}`
     const url = `https://vence.es?${utmParams}`
@@ -302,6 +322,28 @@ export default function ExamLayout({
       case 'twitter':
         shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(url)}`
         break
+    }
+
+    // 📊 Tracking: guardar share en base de datos
+    if (user && shareUrl) {
+      try {
+        await supabase.from('share_events').insert({
+          user_id: user.id,
+          share_type: 'exam_result',
+          platform: platform,
+          score: parseFloat(nota),
+          test_session_id: currentTestSession?.id || null,
+          share_text: shareText,
+          share_url: shareUrl,
+          device_info: {
+            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+          }
+        })
+        console.log('📤 Share registrado:', platform, nota)
+      } catch (error) {
+        console.error('Error registrando share:', error)
+      }
     }
 
     if (shareUrl) {

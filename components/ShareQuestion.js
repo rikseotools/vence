@@ -74,13 +74,14 @@ D) ${options[3] || ''}
           user_id: user.id,
           share_type: 'question_quiz',
           platform: platform,
-          question_id: question.id,
           share_text: formatShareText(platform),
           share_url: `https://vence.es/pregunta/${question.id}`,
           device_info: {
-            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null
+            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
           }
         })
+      console.log('📤 Share pregunta registrado:', platform)
     } catch (error) {
       console.error('Error registrando share:', error)
     }

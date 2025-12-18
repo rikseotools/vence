@@ -61,13 +61,15 @@ export default function ShareStreak({
           user_id: user.id,
           share_type: 'streak',
           platform: platform,
-          streak_days: streakDays,
           share_text: formatShareText(platform),
           share_url: 'https://vence.es',
           device_info: {
-            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null
+            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+            streak_days: streakDays // Guardamos en device_info ya que no hay columna
           }
         })
+      console.log('📤 Share racha registrado:', platform, streakDays, 'días')
     } catch (error) {
       console.error('Error registrando share de racha:', error)
     }

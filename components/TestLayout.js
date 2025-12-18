@@ -542,10 +542,14 @@ export default function TestLayout({
           user_id: user.id,
           share_type: 'question_quiz',
           platform: platform,
-          question_id: questionId,
           share_text: shareText,
-          share_url: cleanUrl
+          share_url: cleanUrl,
+          device_info: {
+            screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+          }
         })
+        console.log('📤 Share pregunta registrado:', platform)
       } catch (error) {
         console.error('Error registrando share:', error)
       }
