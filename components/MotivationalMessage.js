@@ -6,7 +6,8 @@ export default function MotivationalMessage({
   category = 'exam_result',
   context = {},
   onMessageLoaded = null,
-  className = ''
+  className = '',
+  hideShareButton = false
 }) {
   const { user, supabase } = useAuth()
   const [message, setMessage] = useState(null)
@@ -300,67 +301,69 @@ export default function MotivationalMessage({
           </button>
         </div>
 
-        {/* Compartir */}
-        <div className="relative w-full sm:w-auto">
-          <button
-            onClick={() => setShowShareMenu(!showShareMenu)}
-            className="flex items-center justify-center space-x-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg transition-all shadow-sm w-full sm:w-auto"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
-            </svg>
-            <span className="text-sm font-medium">Compartir</span>
-          </button>
+        {/* Compartir - Solo mostrar si no está oculto */}
+        {!hideShareButton && (
+          <div className="relative w-full sm:w-auto">
+            <button
+              onClick={() => setShowShareMenu(!showShareMenu)}
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-lg transition-all shadow-sm w-full sm:w-auto"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+              </svg>
+              <span className="text-sm font-medium">Compartir</span>
+            </button>
 
-          {/* Menú de compartir */}
-          {showShareMenu && (
-            <div className="absolute left-0 sm:right-0 sm:left-auto bottom-full mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 w-full sm:min-w-[180px] sm:w-auto z-50">
-              <button
-                onClick={() => handleShare('twitter')}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-              >
-                <span>✖️</span>
-                <span>X (Twitter)</span>
-              </button>
-              <button
-                onClick={() => handleShare('facebook')}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-              >
-                <span>📘</span>
-                <span>Facebook</span>
-              </button>
-              <button
-                onClick={() => handleShare('instagram')}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-              >
-                <span>📷</span>
-                <span>Instagram</span>
-              </button>
-              <button
-                onClick={() => handleShare('whatsapp')}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-              >
-                <span>💬</span>
-                <span>WhatsApp</span>
-              </button>
-              <button
-                onClick={() => handleShare('linkedin')}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-              >
-                <span>💼</span>
-                <span>LinkedIn</span>
-              </button>
-              <div className="border-t border-gray-100 my-1"></div>
-              <button
-                onClick={() => handleShare('copy')}
-                className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
-              >
-                <span>📋</span>
-                <span>{shareSuccess ? '¡Copiado!' : 'Copiar'}</span>
-              </button>
-            </div>
-          )}
-        </div>
+            {/* Menú de compartir */}
+            {showShareMenu && (
+              <div className="absolute left-0 sm:right-0 sm:left-auto bottom-full mb-2 bg-white rounded-lg shadow-xl border border-gray-200 py-2 w-full sm:min-w-[180px] sm:w-auto z-50">
+                <button
+                  onClick={() => handleShare('twitter')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                >
+                  <span>✖️</span>
+                  <span>X (Twitter)</span>
+                </button>
+                <button
+                  onClick={() => handleShare('facebook')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                >
+                  <span>📘</span>
+                  <span>Facebook</span>
+                </button>
+                <button
+                  onClick={() => handleShare('instagram')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                >
+                  <span>📷</span>
+                  <span>Instagram</span>
+                </button>
+                <button
+                  onClick={() => handleShare('whatsapp')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                >
+                  <span>💬</span>
+                  <span>WhatsApp</span>
+                </button>
+                <button
+                  onClick={() => handleShare('linkedin')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                >
+                  <span>💼</span>
+                  <span>LinkedIn</span>
+                </button>
+                <div className="border-t border-gray-100 my-1"></div>
+                <button
+                  onClick={() => handleShare('copy')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center space-x-2 text-sm"
+                >
+                  <span>📋</span>
+                  <span>{shareSuccess ? '¡Copiado!' : 'Copiar'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
