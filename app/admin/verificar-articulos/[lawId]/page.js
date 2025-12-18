@@ -298,7 +298,62 @@ export default function VerificarArticulosPage() {
 
   // Estados para selección de preguntas para IA
   const [selectedQuestions, setSelectedQuestions] = useState(new Set())
-  const [aiProvider, setAiProvider] = useState('openai')
+  // Configuración de modelos cargada desde la API
+  const [aiConfigs, setAiConfigs] = useState([])
+  const [aiProvider, setAiProvider] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('verifyAiProvider') || 'anthropic'
+    }
+    return 'anthropic'
+  })
+  const [aiModel, setAiModel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('verifyAiModel') || 'claude-3-haiku-20240307'
+    }
+    return 'claude-3-haiku-20240307'
+  })
+
+  // Cargar configuración de modelos desde /admin/ai
+  useEffect(() => {
+    const loadAiConfigs = async () => {
+      try {
+        const response = await fetch('/api/admin/ai-config')
+        const data = await response.json()
+        if (data.success) {
+          setAiConfigs(data.configs)
+        }
+      } catch (err) {
+        console.error('Error cargando configuración IA:', err)
+      }
+    }
+    loadAiConfigs()
+  }, [])
+
+  // Helper para obtener modelos del proveedor actual
+  const getProviderModels = (provider) => {
+    const config = aiConfigs.find(c => c.provider === provider)
+    return config?.available_models || []
+  }
+
+  // Guardar proveedor y modelo en localStorage cuando cambien
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('verifyAiProvider', aiProvider)
+      // Si el modelo actual no pertenece al proveedor, usar el primero
+      const providerModels = getProviderModels(aiProvider)
+      if (providerModels.length > 0) {
+        const modelExists = providerModels.some(m => m.id === aiModel)
+        if (!modelExists) {
+          setAiModel(providerModels[0].id)
+        }
+      }
+    }
+  }, [aiProvider, aiConfigs])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('verifyAiModel', aiModel)
+    }
+  }, [aiModel])
   const [verifyingWithAI, setVerifyingWithAI] = useState(false)
   const [aiResults, setAiResults] = useState({})
 
@@ -329,9 +384,10 @@ export default function VerificarArticulosPage() {
   const [applyingFix, setApplyingFix] = useState(null) // questionId being fixed
   const [questionModal, setQuestionModal] = useState(null) // { question, articleNumber, articleContent }
   const [loadingArticleContent, setLoadingArticleContent] = useState(false)
+  const [verificationSummaries, setVerificationSummaries] = useState({}) // { article_number: { ok, fixed, problems, total, lastVerifiedAt } }
 
   // Función para aplicar corrección de IA
-  const applyAIFix = async (questionId, newCorrectOption, suggestedFix, verificationId) => {
+  const applyAIFix = async (questionId, newCorrectOption, suggestedFix, verificationId, articleNumber = null) => {
     setApplyingFix(questionId)
     try {
       const response = await fetch('/api/verify-articles/apply-fix', {
@@ -347,7 +403,21 @@ export default function VerificarArticulosPage() {
       const data = await response.json()
       if (data.success) {
         setAppliedFixes(prev => ({ ...prev, [questionId]: true }))
-        alert(`Corrección aplicada: Respuesta cambiada a ${newCorrectOption}`)
+        // Actualizar el resumen de verificación si tenemos el articleNumber
+        if (articleNumber && verificationSummaries[articleNumber]) {
+          setVerificationSummaries(prev => {
+            const current = prev[articleNumber]
+            if (!current) return prev
+            return {
+              ...prev,
+              [articleNumber]: {
+                ...current,
+                fixed: (current.fixed || 0) + 1,
+                problems: Math.max(0, (current.problems || 0) - 1)
+              }
+            }
+          })
+        }
       } else {
         alert(`Error: ${data.error}`)
       }
@@ -751,6 +821,27 @@ export default function VerificarArticulosPage() {
     }
   }
 
+  // Cargar resúmenes de verificación para todos los artículos
+  const loadVerificationSummaries = async (articleNumbers) => {
+    if (!articleNumbers || articleNumbers.length === 0) return
+
+    try {
+      const response = await fetch(
+        `/api/verify-articles/verification-summaries?lawId=${lawId}&articles=${articleNumbers.join(',')}`
+      )
+      const data = await response.json()
+      if (data.success && data.summaries) {
+        setVerificationSummaries(data.summaries)
+        // También cargar los fixes aplicados
+        if (data.appliedFixes) {
+          setAppliedFixes(prev => ({ ...prev, ...data.appliedFixes }))
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando resúmenes de verificación:', err)
+    }
+  }
+
   // Cargar histórico de cambios
   const loadHistory = async () => {
     setLoadingHistory(true)
@@ -759,6 +850,11 @@ export default function VerificarArticulosPage() {
       const data = await response.json()
       if (data.success) {
         setHistoryData(data.logs || [])
+        // Cargar resúmenes de verificación para todos los artículos del histórico
+        const articleNumbers = (data.logs || []).map(log => log.article_number)
+        if (articleNumbers.length > 0) {
+          loadVerificationSummaries(articleNumbers)
+        }
       }
     } catch (err) {
       console.error('Error cargando histórico:', err)
@@ -816,27 +912,102 @@ export default function VerificarArticulosPage() {
       if (verificationsData.success && verificationsData.results?.length > 0) {
         // Convertir a mapa por questionId
         const resultsMap = {}
+        const fixesApplied = {}
         verificationsData.results.forEach(v => {
           resultsMap[v.question_id] = {
+            id: v.id,
             isCorrect: v.is_correct,
             confidence: v.confidence,
             explanation: v.explanation,
             articleQuote: v.article_quote,
             suggestedFix: v.suggested_fix,
             correctOptionShouldBe: v.correct_option_should_be,
+            newExplanation: v.new_explanation,
             verifiedAt: v.verified_at,
-            provider: v.ai_provider
+            provider: v.ai_provider,
+            fixApplied: v.fix_applied
+          }
+          // Si ya se aplicó la corrección, marcarlo
+          if (v.fix_applied) {
+            fixesApplied[v.question_id] = true
           }
         })
         setHistoryAiResults(prev => ({
           ...prev,
           [articleNumber]: resultsMap
         }))
+        // Actualizar appliedFixes con los que ya tienen corrección aplicada
+        if (Object.keys(fixesApplied).length > 0) {
+          setAppliedFixes(prev => ({ ...prev, ...fixesApplied }))
+        }
       }
     } catch (err) {
       console.error('Error cargando preguntas:', err)
     } finally {
       setLoadingHistoryQuestions(prev => ({ ...prev, [articleNumber]: false }))
+    }
+  }
+
+  // Función para determinar el estado de verificación de un artículo
+  const getArticleVerificationStatus = (articleNumber) => {
+    // Primero verificar si tenemos un resumen pre-cargado
+    const summary = verificationSummaries[articleNumber]
+    if (summary) {
+      return {
+        status: summary.problems === 0 && summary.verified >= summary.total ? 'all_ok' : 'has_problems',
+        total: summary.total,
+        verified: summary.verified,
+        ok: summary.ok,
+        fixed: summary.fixed,
+        problems: summary.problems,
+        lastVerifiedAt: summary.lastVerifiedAt ? new Date(summary.lastVerifiedAt) : null
+      }
+    }
+
+    // Si no hay resumen, usar el método detallado (cuando ya se cargaron las preguntas)
+    const questions = historyQuestions[articleNumber]
+    const aiResults = historyAiResults[articleNumber]
+
+    if (!questions || questions.length === 0) return { status: 'no_questions' }
+    if (!aiResults || Object.keys(aiResults).length === 0) return { status: 'not_verified', total: questions.length }
+
+    const verifiedCount = Object.keys(aiResults).length
+
+    // Contar correctas, corregidas y con problemas
+    let okCount = 0
+    let fixedCount = 0
+    let problemCount = 0
+    let lastVerifiedAt = null
+
+    questions.forEach(q => {
+      const result = aiResults[q.id]
+      if (!result) return
+
+      // Obtener la fecha de verificación más reciente
+      if (result.verifiedAt) {
+        const date = new Date(result.verifiedAt)
+        if (!lastVerifiedAt || date > lastVerifiedAt) {
+          lastVerifiedAt = date
+        }
+      }
+
+      if (appliedFixes[q.id]) {
+        fixedCount++
+      } else if (result.isCorrect === true) {
+        okCount++
+      } else if (result.isCorrect === false) {
+        problemCount++
+      }
+    })
+
+    return {
+      status: problemCount === 0 && verifiedCount >= questions.length ? 'all_ok' : 'has_problems',
+      total: questions.length,
+      verified: verifiedCount,
+      ok: okCount,
+      fixed: fixedCount,
+      problems: problemCount,
+      lastVerifiedAt
     }
   }
 
@@ -851,7 +1022,8 @@ export default function VerificarArticulosPage() {
         body: JSON.stringify({
           lawId,
           articleNumber,
-          provider: aiProvider
+          provider: aiProvider,
+          model: aiModel
         })
       })
 
@@ -860,6 +1032,8 @@ export default function VerificarArticulosPage() {
       if (data.success) {
         // Convertir resultados a mapa por questionId
         const resultsMap = {}
+        let okCount = 0
+        let problemsCount = 0
         data.results.forEach(r => {
           resultsMap[r.questionId] = {
             isCorrect: r.isCorrect,
@@ -871,10 +1045,24 @@ export default function VerificarArticulosPage() {
             verifiedAt: new Date().toISOString(),
             provider: aiProvider
           }
+          if (r.isCorrect === true) okCount++
+          else if (r.isCorrect === false) problemsCount++
         })
         setHistoryAiResults(prev => ({
           ...prev,
           [articleNumber]: resultsMap
+        }))
+        // Actualizar resumen de verificación
+        setVerificationSummaries(prev => ({
+          ...prev,
+          [articleNumber]: {
+            total: data.results.length,
+            verified: data.results.length,
+            ok: okCount,
+            fixed: 0,
+            problems: problemsCount,
+            lastVerifiedAt: new Date().toISOString()
+          }
         }))
       } else {
         console.error('Error verificando artículo:', data.error)
@@ -1643,14 +1831,26 @@ export default function VerificarArticulosPage() {
                 ← Volver a actualización
               </button>
               <div className="flex items-center space-x-4">
-                <select
-                  value={aiProvider}
-                  onChange={(e) => setAiProvider(e.target.value)}
-                  className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                >
-                  <option value="openai">GPT-4o-mini</option>
-                  <option value="claude">Claude Haiku</option>
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={aiProvider}
+                    onChange={(e) => setAiProvider(e.target.value)}
+                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                  >
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="google">Google</option>
+                  </select>
+                  <select
+                    value={aiModel}
+                    onChange={(e) => setAiModel(e.target.value)}
+                    className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                  >
+                    {getProviderModels(aiProvider).map(model => (
+                      <option key={model.id} value={model.id}>{model.name}</option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   onClick={verifySelectedWithAI}
                   disabled={selectedQuestions.size === 0}
@@ -1681,7 +1881,7 @@ export default function VerificarArticulosPage() {
               </div>
 
               <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Verificando {selectedQuestions.size} preguntas con {aiProvider === 'openai' ? 'GPT-4o-mini' : 'Claude Haiku'}
+                Verificando {selectedQuestions.size} preguntas con {getProviderModels(aiProvider).find(m => m.id === aiModel)?.name || aiModel}
               </div>
 
               <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-[600px] overflow-y-auto">
@@ -1709,6 +1909,19 @@ export default function VerificarArticulosPage() {
                       ) : result.error ? (
                         <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm">
                           ❌ {result.error}
+                        </div>
+                      ) : appliedFixes[result.questionId] ? (
+                        // Mostrar estado corregido
+                        <div className="p-3 rounded-lg text-sm bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300">
+                          <div className="font-medium mb-1">
+                            ✅ Pregunta corregida
+                          </div>
+                          <p>La respuesta correcta se cambió a: <strong>{result.correctOptionShouldBe}</strong></p>
+                          {result.newExplanation && (
+                            <div className="mt-2 p-2 bg-green-100/50 dark:bg-green-800/20 rounded text-xs">
+                              <span className="font-medium">Nueva explicación aplicada</span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className={`p-3 rounded-lg text-sm ${
@@ -1746,34 +1959,29 @@ export default function VerificarArticulosPage() {
                                   <p className="mt-1 text-blue-600 dark:text-blue-400">{result.newExplanation}</p>
                                 </div>
                               )}
-                              {appliedFixes[result.questionId] ? (
-                                <div className="text-green-600 dark:text-green-400 text-sm font-medium mt-2">
-                                  ✅ Corrección aplicada
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={() => applyAIFix(
-                                    result.questionId,
-                                    result.correctOptionShouldBe,
-                                    result.newExplanation || result.suggestedFix,
-                                    result.verificationId
-                                  )}
-                                  disabled={applyingFix === result.questionId}
-                                  className="mt-2 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white text-sm rounded-lg font-medium transition-colors flex items-center gap-2"
-                                >
-                                  {applyingFix === result.questionId ? (
-                                    <>
-                                      <Spinner size="sm" />
-                                      <span>Aplicando...</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span>🔧</span>
-                                      <span>Aplicar corrección</span>
-                                    </>
-                                  )}
-                                </button>
-                              )}
+                              <button
+                                onClick={() => applyAIFix(
+                                  result.questionId,
+                                  result.correctOptionShouldBe,
+                                  result.newExplanation || result.suggestedFix,
+                                  result.verificationId,
+                                  question?.article_number
+                                )}
+                                disabled={applyingFix === result.questionId}
+                                className="mt-2 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white text-sm rounded-lg font-medium transition-colors flex items-center gap-2"
+                              >
+                                {applyingFix === result.questionId ? (
+                                  <>
+                                    <Spinner size="sm" />
+                                    <span>Aplicando...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>🔧</span>
+                                    <span>Aplicar corrección</span>
+                                  </>
+                                )}
+                              </button>
                             </div>
                           )}
                         </div>
@@ -1931,12 +2139,57 @@ export default function VerificarArticulosPage() {
                         >
                           🔍 Ver BOE vs BD
                         </button>
-                        <button
-                          onClick={() => loadHistoryArticleQuestions(log.article_number)}
-                          className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1"
-                        >
-                          {expandedHistoryArticles.has(log.article_number) ? '📖 Ocultar preguntas' : '📖 Ver preguntas vinculadas'}
-                        </button>
+                        {(() => {
+                          const status = getArticleVerificationStatus(log.article_number)
+                          const isExpanded = expandedHistoryArticles.has(log.article_number)
+
+                          // Si todas OK, mostrar check verde con fecha y botón volver a revisar
+                          if (status.status === 'all_ok') {
+                            return (
+                              <>
+                                <span className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                                  <span>✅</span>
+                                  <span>{status.ok} OK{status.fixed > 0 ? ` + ${status.fixed} corregidas` : ''}</span>
+                                  {status.lastVerifiedAt && (
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                                      ({status.lastVerifiedAt.toLocaleDateString('es-ES')})
+                                    </span>
+                                  )}
+                                </span>
+                                <button
+                                  onClick={() => loadHistoryArticleQuestions(log.article_number)}
+                                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                                >
+                                  {isExpanded ? '🔄 Ocultar' : '🔄 Volver a revisar'}
+                                </button>
+                              </>
+                            )
+                          }
+
+                          // Si hay problemas, mostrar advertencia
+                          if (status.status === 'has_problems') {
+                            return (
+                              <button
+                                onClick={() => loadHistoryArticleQuestions(log.article_number)}
+                                className="text-sm text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 flex items-center gap-1"
+                              >
+                                <span>⚠️</span>
+                                <span>{status.ok} OK{status.fixed > 0 ? ` + ${status.fixed} corr.` : ''} / {status.problems} pendientes</span>
+                                {isExpanded && <span className="text-xs">(ocultar)</span>}
+                              </button>
+                            )
+                          }
+
+                          // No verificado aún
+                          return (
+                            <button
+                              onClick={() => loadHistoryArticleQuestions(log.article_number)}
+                              className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1"
+                            >
+                              {isExpanded ? '📖 Ocultar preguntas' : '📖 Ver preguntas vinculadas'}
+                            </button>
+                          )
+                        })()}
                       </div>
 
                       {/* Sección expandible de preguntas */}
@@ -1972,8 +2225,18 @@ export default function VerificarArticulosPage() {
                                     onChange={(e) => setAiProvider(e.target.value)}
                                     className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                   >
-                                    <option value="openai">GPT-4o-mini</option>
-                                    <option value="claude">Claude Haiku</option>
+                                    <option value="openai">OpenAI</option>
+                                    <option value="anthropic">Anthropic</option>
+                                    <option value="google">Google</option>
+                                  </select>
+                                  <select
+                                    value={aiModel}
+                                    onChange={(e) => setAiModel(e.target.value)}
+                                    className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                  >
+                                    {getProviderModels(aiProvider).map(model => (
+                                      <option key={model.id} value={model.id}>{model.name}</option>
+                                    ))}
                                   </select>
                                   <button
                                     onClick={() => verifyArticleWithAI(log.article_number)}
@@ -2003,11 +2266,13 @@ export default function VerificarArticulosPage() {
                                   <div
                                     key={question.id}
                                     className={`bg-white dark:bg-gray-800 rounded-lg p-3 border ${
-                                      aiResult
-                                        ? aiResult.isCorrect
-                                          ? 'border-green-300 dark:border-green-700'
-                                          : 'border-red-300 dark:border-red-700'
-                                        : 'border-gray-200 dark:border-gray-600'
+                                      appliedFixes[question.id]
+                                        ? 'border-green-300 dark:border-green-700'
+                                        : aiResult
+                                          ? aiResult.isCorrect
+                                            ? 'border-green-300 dark:border-green-700'
+                                            : 'border-red-300 dark:border-red-700'
+                                          : 'border-gray-200 dark:border-gray-600'
                                     }`}
                                   >
                                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -2051,12 +2316,23 @@ export default function VerificarArticulosPage() {
                                       <div className={`p-2 rounded-lg text-xs ${
                                         aiResult.error
                                           ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
-                                          : aiResult.isCorrect
+                                          : appliedFixes[question.id]
                                             ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                                            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                                            : aiResult.isCorrect
+                                              ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
+                                              : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
                                       }`}>
                                         {aiResult.error ? (
                                           <span>❌ {aiResult.error}</span>
+                                        ) : appliedFixes[question.id] ? (
+                                          // Estado corregido
+                                          <>
+                                            <div className="font-medium mb-1">✅ Pregunta corregida</div>
+                                            <p>Respuesta cambiada a: <strong>{aiResult.correctOptionShouldBe}</strong></p>
+                                            {aiResult.newExplanation && (
+                                              <div className="mt-1 text-[10px] opacity-75">Nueva explicación aplicada</div>
+                                            )}
+                                          </>
                                         ) : (
                                           <>
                                             <div className="flex items-center justify-between mb-1">
@@ -2094,24 +2370,19 @@ export default function VerificarArticulosPage() {
                                                     <p className="mt-0.5 text-blue-600 dark:text-blue-400">{aiResult.newExplanation}</p>
                                                   </div>
                                                 )}
-                                                {appliedFixes[question.id] ? (
-                                                  <span className="text-green-600 dark:text-green-400 text-[10px]">
-                                                    ✅ Corregido
-                                                  </span>
-                                                ) : (
-                                                  <button
-                                                    onClick={() => applyAIFix(
-                                                      question.id,
-                                                      aiResult.correctOptionShouldBe,
-                                                      aiResult.newExplanation || aiResult.suggestedFix,
-                                                      aiResult.id
-                                                    )}
-                                                    disabled={applyingFix === question.id}
-                                                    className="px-2 py-1 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white text-[10px] rounded font-medium transition-colors"
-                                                  >
-                                                    {applyingFix === question.id ? 'Aplicando...' : '🔧 Aplicar corrección'}
-                                                  </button>
-                                                )}
+                                                <button
+                                                  onClick={() => applyAIFix(
+                                                    question.id,
+                                                    aiResult.correctOptionShouldBe,
+                                                    aiResult.newExplanation || aiResult.suggestedFix,
+                                                    aiResult.id,
+                                                    log.article_number
+                                                  )}
+                                                  disabled={applyingFix === question.id}
+                                                  className="px-2 py-1 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white text-[10px] rounded font-medium transition-colors"
+                                                >
+                                                  {applyingFix === question.id ? 'Aplicando...' : '🔧 Aplicar corrección'}
+                                                </button>
                                               </div>
                                             )}
                                           </>

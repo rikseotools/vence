@@ -14,8 +14,8 @@ const AVAILABLE_MODELS = {
   ],
   anthropic: [
     { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: 'Rápido y económico' },
-    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Equilibrado' },
-    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Más potente' },
+    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Rápido y mejorado' },
+    { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Equilibrado y potente' },
   ],
   google: [
     { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Rápido y económico' },

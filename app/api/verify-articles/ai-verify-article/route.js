@@ -49,7 +49,7 @@ async function getAIConfig(provider) {
  */
 export async function POST(request) {
   try {
-    const { lawId, articleNumber, provider = 'openai' } = await request.json()
+    const { lawId, articleNumber, provider = 'openai', model } = await request.json()
 
     if (!lawId || !articleNumber) {
       return Response.json({
@@ -152,24 +152,22 @@ export async function POST(request) {
     }
 
     let aiResponse
-    let modelUsed = aiConfig.model
+    // Usar modelo enviado por el cliente si existe, sino usar el de config
+    let modelUsed = model || aiConfig.model
     let tokenUsage = {}
 
     if (normalizedProvider === 'anthropic') {
-      const result = await verifyWithClaude(prompt, aiConfig.apiKey, aiConfig.model)
+      const result = await verifyWithClaude(prompt, aiConfig.apiKey, modelUsed)
       aiResponse = result.response
-      modelUsed = aiConfig.model
       tokenUsage = result.usage || {}
     } else if (normalizedProvider === 'google') {
-      const result = await verifyWithGoogle(prompt, aiConfig.apiKey, aiConfig.model)
+      const result = await verifyWithGoogle(prompt, aiConfig.apiKey, modelUsed)
       aiResponse = result.response
-      modelUsed = aiConfig.model
       tokenUsage = result.usage || {}
     } else {
       // OpenAI por defecto
-      const result = await verifyWithOpenAI(prompt, aiConfig.apiKey, aiConfig.model)
+      const result = await verifyWithOpenAI(prompt, aiConfig.apiKey, modelUsed)
       aiResponse = result.response
-      modelUsed = aiConfig.model
       tokenUsage = result.usage || {}
     }
 
@@ -360,11 +358,11 @@ Responde en formato JSON con este esquema exacto:
       "questionId": "uuid-de-la-pregunta",
       "isCorrect": true/false,
       "confidence": "alta/media/baja",
-      "explanation": "Explicación breve de tu análisis interno",
+      "explanation": "Tu análisis interno sobre por qué la respuesta es correcta o incorrecta",
       "articleQuote": "Cita LITERAL del artículo del BOE que justifica la respuesta",
-      "suggestedFix": "Breve descripción del error si lo hay. null si está bien",
+      "suggestedFix": "Descripción del error si lo hay. null si está bien",
       "correctOptionShouldBe": "A/B/C/D si hay error, null si está bien",
-      "newExplanation": "OBLIGATORIO: Explicación didáctica para el alumno basada ÚNICAMENTE en el contenido del artículo proporcionado. Formato: 'La respuesta correcta es [LETRA] porque según el artículo [N], [explicar el concepto con tus palabras basándote en el artículo]. [Si puedes citar literalmente, hazlo entre comillas]. Las opciones incorrectas: [explicar brevemente por qué cada una es incorrecta].' IMPORTANTE: No inventes información que no esté en el artículo."
+      "newExplanation": "OBLIGATORIO - Explicación DIDÁCTICA y COMPLETA para el alumno (mínimo 3-4 párrafos). Estructura:\n\n1. CONTEXTO: Explica el concepto legal que trata la pregunta y su importancia en el procedimiento administrativo.\n\n2. RESPUESTA CORRECTA: Indica cuál es y por qué es correcta según el artículo, citando el texto literal entre comillas.\n\n3. ANÁLISIS DE CADA OPCIÓN:\n   - Opción A: [Correcta/Incorrecta porque...]\n   - Opción B: [Correcta/Incorrecta porque...]\n   - Opción C: [Correcta/Incorrecta porque...]\n   - Opción D: [Correcta/Incorrecta porque...]\n\n4. CONSEJO DE ESTUDIO: Cómo recordar este concepto o relacionarlo con otros artículos de la ley.\n\nIMPORTANTE: Sé pedagógico, claro y detallado. El objetivo es que el alumno ENTIENDA el concepto, no solo memorice la respuesta."
     }
   ]
 }
@@ -373,10 +371,11 @@ IMPORTANTE:
 - Devuelve exactamente ${questions.length} verificaciones, una por pregunta
 - Mantén el orden de las preguntas
 - Usa los IDs de pregunta proporcionados
-- El campo "newExplanation" es OBLIGATORIO: explicación didáctica basada SOLO en el artículo proporcionado
+- El campo "newExplanation" es OBLIGATORIO y debe ser DIDÁCTICO Y EXTENSO (mínimo 200 palabras)
 - NO ALUCINES: si algo no está en el artículo, no lo inventes
 - Las citas entre comillas deben ser EXACTAS del texto proporcionado arriba
-- Si no puedes verificar algo con el artículo dado, indícalo claramente`
+- Si no puedes verificar algo con el artículo dado, indícalo claramente
+- El objetivo es ENSEÑAR al alumno, no solo indicar si está bien o mal`
 }
 
 /**

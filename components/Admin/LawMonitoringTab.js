@@ -26,6 +26,7 @@ export default function LawMonitoringTab() {
   const [completedLaws, setCompletedLaws] = useState(new Set()) // IDs de leyes completadas
   const [lastCheck, setLastCheck] = useState(null)
   const [error, setError] = useState(null)
+  const [lawFilter, setLawFilter] = useState('') // Filtro por texto de ley
 
   const checkLawChanges = async () => {
     try {
@@ -163,14 +164,22 @@ export default function LawMonitoringTab() {
       const dateB = new Date(b.lastUpdateBOE.split('/').reverse().join('-'))
       return dateB.getTime() - dateA.getTime() // Más reciente primero
     }
-    
+
     // Si solo una tiene fecha BOE, ponerla primero
     if (a.lastUpdateBOE && !b.lastUpdateBOE) return -1
     if (!a.lastUpdateBOE && b.lastUpdateBOE) return 1
-    
+
     // Si ninguna tiene fecha BOE, ordenar por nombre
     return a.law.localeCompare(b.law)
   })
+
+  // Aplicar filtro por texto de ley
+  const filteredLaws = !lawFilter.trim()
+    ? sortedLaws
+    : sortedLaws.filter(law =>
+        law.law.toLowerCase().includes(lawFilter.toLowerCase()) ||
+        law.name?.toLowerCase().includes(lawFilter.toLowerCase())
+      )
 
   return (
     <div className="p-3 sm:p-6">
@@ -183,19 +192,43 @@ export default function LawMonitoringTab() {
             Detección automática de cambios en el BOE
           </p>
         </div>
-        
-        <button
-          onClick={checkLawChanges}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto flex items-center space-x-2"
-        >
-          {loading && <Spinner size="sm" />}
-          <span>{loading ? 'Verificando...' : 'Verificar ahora'}</span>
-        </button>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          {/* Búsqueda de ley */}
+          <div className="relative">
+            <input
+              type="text"
+              value={lawFilter}
+              onChange={(e) => setLawFilter(e.target.value)}
+              placeholder="Buscar ley..."
+              className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg pl-8 pr-3 py-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-48"
+            />
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+              🔍
+            </span>
+            {lawFilter && (
+              <button
+                onClick={() => setLawFilter('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={checkLawChanges}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto flex items-center justify-center space-x-2"
+          >
+            {loading && <Spinner size="sm" />}
+            <span>{loading ? 'Verificando...' : 'Verificar ahora'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Barra de progreso global */}
-      {loading && sortedLaws.length > 0 && (
+      {loading && laws.length > 0 && (
         <div className="mb-6">
           <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
             <div className="flex justify-between items-center mb-2">
@@ -203,21 +236,21 @@ export default function LawMonitoringTab() {
                 Progreso de verificación
               </span>
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                {completedLaws.size} / {sortedLaws.length}
+                {completedLaws.size} / {laws.length}
               </span>
             </div>
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div 
+              <div
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ 
-                  width: `${sortedLaws.length > 0 ? (completedLaws.size / sortedLaws.length) * 100 : 0}%` 
+                style={{
+                  width: `${laws.length > 0 ? (completedLaws.size / laws.length) * 100 : 0}%`
                 }}
               ></div>
             </div>
             {processingLaws.size > 0 && (
               <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                Verificando: {[...processingLaws].map(id => 
-                  sortedLaws.find(l => l.id === id)?.law
+                Verificando: {[...processingLaws].map(id =>
+                  laws.find(l => l.id === id)?.law
                 ).filter(Boolean).join(', ')}
               </div>
             )}
@@ -262,7 +295,7 @@ export default function LawMonitoringTab() {
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {sortedLaws.map((law) => (
+            {filteredLaws.map((law) => (
               <tr 
                 key={law.id}
                 className={law.changeStatus === 'changed' ? 'bg-red-50 dark:bg-red-900/20' : ''}
@@ -353,7 +386,7 @@ export default function LawMonitoringTab() {
 
       {/* Mobile Cards */}
       <div className="lg:hidden space-y-4">
-        {sortedLaws.map((law) => (
+        {filteredLaws.map((law) => (
           <div 
             key={law.id}
             className={`bg-white dark:bg-gray-800 rounded-lg shadow border ${
@@ -440,9 +473,11 @@ export default function LawMonitoringTab() {
         ))}
       </div>
 
-      {sortedLaws.length === 0 && !loading && (
+      {filteredLaws.length === 0 && !loading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No hay leyes configuradas para monitoreo
+          {!lawFilter.trim()
+            ? 'No hay leyes configuradas para monitoreo'
+            : `No se encontraron leyes con "${lawFilter}"`}
         </div>
       )}
     </div>
