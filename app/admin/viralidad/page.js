@@ -104,12 +104,44 @@ export default function ViralidadPage() {
       })
       const uniqueSharers = Object.keys(userShareCount).length
 
+      // 3. Obtener usuarios activos para calcular % de compartición
+      let activeUsers = 0
+      let totalUsers = 0
+
+      // Usuarios que han hecho tests en el período
+      let testsQuery = supabase
+        .from('tests')
+        .select('user_id')
+
+      if (dateFrom) {
+        testsQuery = testsQuery.gte('created_at', dateFrom)
+      }
+
+      const { data: testsData } = await testsQuery
+      const uniqueActiveUsers = new Set(testsData?.map(t => t.user_id).filter(Boolean))
+      activeUsers = uniqueActiveUsers.size
+
+      // Total usuarios registrados
+      const { count: usersCount } = await supabase
+        .from('user_profiles')
+        .select('id', { count: 'exact', head: true })
+
+      totalUsers = usersCount || 0
+
+      // Calcular porcentajes
+      const shareRateActive = activeUsers > 0 ? (uniqueSharers / activeUsers * 100) : 0
+      const shareRateTotal = totalUsers > 0 ? (uniqueSharers / totalUsers * 100) : 0
+
       setStats({
         totalShares,
         byType,
         byPlatform,
         uniqueSharers,
-        questionsShared
+        questionsShared,
+        activeUsers,
+        totalUsers,
+        shareRateActive,
+        shareRateTotal
       })
 
       setShareEvents(shares || [])
@@ -195,15 +227,47 @@ export default function ViralidadPage() {
         </div>
       </div>
 
+      {/* Tarjeta: Tasa de Compartición con Benchmark */}
+      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-4 shadow-lg text-white">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div>
+              <span className="text-4xl font-bold">{stats?.shareRateActive?.toFixed(1) || 0}%</span>
+              <span className="text-sm opacity-75 ml-2">comparte</span>
+            </div>
+            <div className="text-sm opacity-75 border-l border-white/30 pl-4">
+              <div>{stats?.uniqueSharers || 0} de {stats?.activeUsers || 0} usuarios</div>
+              <div className="text-xs">que han hecho tests ({dateFilter === '7d' ? '7 días' : dateFilter === '30d' ? '30 días' : 'siempre'})</div>
+            </div>
+          </div>
+
+          {/* Benchmark */}
+          {(() => {
+            const rate = stats?.shareRateActive || 0
+            let level, icon
+            if (rate < 3) { level = 'Muy Bajo'; icon = '🔴' }
+            else if (rate < 5) { level = 'Bajo'; icon = '🟠' }
+            else if (rate < 10) { level = 'Normal'; icon = '🟡' }
+            else if (rate < 15) { level = 'Bueno'; icon = '🟢' }
+            else { level = 'Excelente'; icon = '🌟' }
+            return (
+              <div className="bg-white/20 rounded-lg px-4 py-2 text-center">
+                <div className="flex items-center gap-2">
+                  <span>{icon}</span>
+                  <span className="font-bold">{level}</span>
+                </div>
+                <div className="text-xs opacity-75">Benchmark: 5-15%</div>
+              </div>
+            )
+          })()}
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="text-3xl font-bold text-blue-600">{stats?.totalShares || 0}</div>
           <div className="text-sm text-gray-600 dark:text-gray-400">Total Compartidos</div>
-        </div>
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="text-3xl font-bold text-orange-600">{stats?.uniqueSharers || 0}</div>
-          <div className="text-sm text-gray-600 dark:text-gray-400">Usuarios que Comparten</div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="text-3xl font-bold text-purple-600">
@@ -214,6 +278,12 @@ export default function ViralidadPage() {
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="text-3xl font-bold text-green-600">{stats?.questionsShared || 0}</div>
           <div className="text-sm text-gray-600 dark:text-gray-400">Preguntas Compartidas</div>
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="text-3xl font-bold text-orange-600">
+            {stats?.activeUsers > 0 ? (stats.totalShares / stats.activeUsers).toFixed(2) : 0}
+          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">Shares por Usuario Activo</div>
         </div>
       </div>
 
