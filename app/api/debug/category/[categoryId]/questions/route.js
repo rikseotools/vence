@@ -9,12 +9,50 @@ function getSupabase() {
 
 export async function GET(request, { params }) {
   try {
-    const { categoryId } = params
+    const resolvedParams = await params
+    const { categoryId } = resolvedParams
     const supabase = getSupabase()
 
     console.log('🔍 Debug API: Obteniendo preguntas de categoría:', categoryId)
 
-    // Obtener todas las preguntas de la categoría especificada
+    // Primero intentar buscar en laws (para preguntas de leyes)
+    const { data: law } = await supabase
+      .from('laws')
+      .select('id')
+      .eq('id', categoryId)
+      .single()
+
+    if (law) {
+      // Es una ley - buscar preguntas de esta ley
+      const { data: articles } = await supabase
+        .from('articles')
+        .select('id')
+        .eq('law_id', categoryId)
+        .eq('is_active', true)
+
+      const articleIds = articles?.map(a => a.id) || []
+
+      if (articleIds.length > 0) {
+        const { data: questions, error } = await supabase
+          .from('questions')
+          .select('id, question_text, created_at, primary_article_id')
+          .in('primary_article_id', articleIds)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+
+        if (error) {
+          console.error('❌ Error obteniendo preguntas de ley:', error)
+        } else {
+          console.log(`✅ Encontradas ${questions?.length || 0} preguntas en ley ${categoryId}`)
+          return Response.json({
+            questions: questions || [],
+            total: questions?.length || 0
+          })
+        }
+      }
+    }
+
+    // Si no es una ley, buscar en psychometric_questions
     const { data: questions, error } = await supabase
       .from('psychometric_questions')
       .select(`
@@ -31,9 +69,9 @@ export async function GET(request, { params }) {
 
     if (error) {
       console.error('❌ Error obteniendo preguntas de categoría:', error)
-      return Response.json({ 
+      return Response.json({
         error: 'Error obteniendo preguntas de categoría',
-        details: error.message 
+        details: error.message
       }, { status: 500 })
     }
 
@@ -46,9 +84,9 @@ export async function GET(request, { params }) {
 
   } catch (error) {
     console.error('❌ Error inesperado en debug/category API:', error)
-    return Response.json({ 
+    return Response.json({
       error: 'Error interno del servidor',
-      details: error.message 
+      details: error.message
     }, { status: 500 })
   }
 }

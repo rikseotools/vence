@@ -348,8 +348,16 @@ export default function VerificarArticulosPage() {
   const [verifyingPostUpdate, setVerifyingPostUpdate] = useState(false)
 
   // Tabs
-  const [activeTab, setActiveTab] = useState('verificacion') // 'verificacion' | 'verificar-preguntas' | 'reparar'
+  const [activeTab, setActiveTab] = useState('verificacion') // 'verificacion' | 'verificar-preguntas' | 'reparar' | 'todos-articulos'
   const [historyData, setHistoryData] = useState([])
+
+  // Tab: Todos los artículos (verificación rutinaria)
+  const [allArticlesData, setAllArticlesData] = useState([]) // todos los artículos con preguntas
+  const [articlesWithoutQuestions, setArticlesWithoutQuestions] = useState([]) // artículos sin preguntas
+  const [loadingAllArticles, setLoadingAllArticles] = useState(false)
+  const [allArticlesFilter, setAllArticlesFilter] = useState('all') // 'all' | 'verified' | 'unverified' | 'no-questions'
+  const [selectedArticlesForVerify, setSelectedArticlesForVerify] = useState(new Set()) // artículos seleccionados para verificar
+  const [expandedQuestionId, setExpandedQuestionId] = useState(null) // pregunta expandida para ver detalles
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [historyFilter, setHistoryFilter] = useState('all') // 'all' | 'pending' | 'ok' | 'problems'
   const [selectedHistoryArticles, setSelectedHistoryArticles] = useState(new Set()) // artículos seleccionados para verificar en lote
@@ -379,6 +387,7 @@ export default function VerificarArticulosPage() {
   const [historyQuestions, setHistoryQuestions] = useState({}) // { article_number: questions[] }
   const [loadingHistoryQuestions, setLoadingHistoryQuestions] = useState({}) // { article_number: boolean }
   const [expandedHistoryArticles, setExpandedHistoryArticles] = useState(new Set()) // artículos expandidos
+  const [questionExpandType, setQuestionExpandType] = useState({}) // { article_number: 'ok' | 'pending' } - qué tipo de preguntas mostrar
   const [historyAiResults, setHistoryAiResults] = useState({}) // { article_number: { questionId: result } }
   const [verifyingArticle, setVerifyingArticle] = useState(null) // article_number being verified
   const [savedVerifications, setSavedVerifications] = useState({}) // { article_number: results[] }
@@ -1028,6 +1037,36 @@ export default function VerificarArticulosPage() {
     }
   }
 
+  // Cargar TODOS los artículos de la ley que tengan preguntas
+  const loadAllArticlesWithQuestions = async () => {
+    setLoadingAllArticles(true)
+    try {
+      const response = await fetch(`/api/verify-articles/all-articles?lawId=${lawId}`)
+      const data = await response.json()
+      if (data.success) {
+        setAllArticlesData(data.articles || [])
+        setArticlesWithoutQuestions(data.articlesWithoutQuestions || [])
+        // Cargar resúmenes de verificación
+        const articleNumbers = (data.articles || []).map(a => a.article_number)
+        if (articleNumbers.length > 0) {
+          await loadVerificationSummaries(articleNumbers)
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando artículos:', err)
+    } finally {
+      setLoadingAllArticles(false)
+    }
+  }
+
+  // Abrir tab de todos los artículos
+  const openAllArticles = () => {
+    setActiveTab('todos-articulos')
+    if (allArticlesData.length === 0) {
+      loadAllArticlesWithQuestions()
+    }
+  }
+
   // Función auxiliar para cargar solo los datos (sin toggle)
   const loadArticleQuestionsData = async (articleNumber) => {
     // Si ya tenemos las preguntas, no recargar
@@ -1174,8 +1213,8 @@ export default function VerificarArticulosPage() {
     }
   }
 
-  // Verificar TODAS las preguntas de un artículo con IA
-  const verifyArticleWithAI = async (articleNumber) => {
+  // Verificar preguntas de un artículo con IA (todas o solo las especificadas)
+  const verifyArticleWithAI = async (articleNumber, questionIds = null) => {
     setVerifyingArticle(articleNumber)
 
     try {
@@ -1186,7 +1225,8 @@ export default function VerificarArticulosPage() {
           lawId,
           articleNumber,
           provider: aiProvider,
-          model: aiModel
+          model: aiModel,
+          questionIds // Si se pasa, solo verifica estas preguntas
         })
       })
 
@@ -1211,22 +1251,33 @@ export default function VerificarArticulosPage() {
           if (r.isCorrect === true) okCount++
           else if (r.isCorrect === false) problemsCount++
         })
+        // Fusionar con resultados existentes (no sobrescribir)
         setHistoryAiResults(prev => ({
           ...prev,
-          [articleNumber]: resultsMap
-        }))
-        // Actualizar resumen de verificación
-        setVerificationSummaries(prev => ({
-          ...prev,
           [articleNumber]: {
-            total: data.results.length,
-            verified: data.results.length,
-            ok: okCount,
-            fixed: 0,
-            problems: problemsCount,
-            lastVerifiedAt: new Date().toISOString()
+            ...(prev[articleNumber] || {}),
+            ...resultsMap
           }
         }))
+        // Actualizar resumen de verificación (calculando totales reales)
+        setVerificationSummaries(prev => {
+          const existingResults = prev[articleNumber] || {}
+          const totalQuestions = historyQuestions[articleNumber]?.length || data.results.length
+          const newOk = (existingResults.ok || 0) + okCount
+          const newProblems = (existingResults.problems || 0) + problemsCount
+          const newVerified = (existingResults.verified || 0) + data.results.length
+          return {
+            ...prev,
+            [articleNumber]: {
+              total: totalQuestions,
+              verified: Math.min(newVerified, totalQuestions),
+              ok: newOk,
+              fixed: existingResults.fixed || 0,
+              problems: newProblems,
+              lastVerifiedAt: new Date().toISOString()
+            }
+          }
+        })
       } else {
         console.error('Error verificando artículo:', data.error, 'Provider:', aiProvider, 'Model:', aiModel)
         alert(`Error verificando: ${data.error}\n\nModelo: ${aiModel}\nProveedor: ${aiProvider}`)
@@ -1629,6 +1680,16 @@ export default function VerificarArticulosPage() {
                 }
                 return null
               })()}
+            </button>
+            <button
+              onClick={openAllArticles}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === 'todos-articulos'
+                  ? 'bg-white dark:bg-gray-700 text-cyan-600 dark:text-cyan-400 border border-b-0 border-gray-200 dark:border-gray-700'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              📋 Todos los artículos
             </button>
           </div>
         </div>
@@ -2700,7 +2761,7 @@ export default function VerificarArticulosPage() {
                 <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                   {[
                     { id: 'all', label: 'Todos', icon: '📋' },
-                    { id: 'pending', label: 'Pendientes', icon: '⏳' },
+                    { id: 'pending', label: 'Artículos que cambiaron', icon: '🔄', tooltip: 'Artículos con cambios en BOE pendientes de verificar' },
                     { id: 'problems', label: 'Con problemas', icon: '⚠️' },
                     { id: 'ok', label: 'Verificados OK', icon: '✅' },
                   ].map(f => {
@@ -2709,10 +2770,10 @@ export default function VerificarArticulosPage() {
                       const summary = verificationSummaries[log.article_number]
                       if (f.id === 'all') return true
                       if (f.id === 'pending') {
-                        // Sin verificar: no hay summary o verified < total
-                        if (!summary) return true
+                        // Solo contar como pendiente si tiene preguntas sin verificar
+                        if (!summary || !summary.total || summary.total === 0) return false
                         const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
-                        return verified < (summary.total || 0)
+                        return verified < summary.total
                       }
                       if (f.id === 'problems') {
                         return summary && summary.problems > 0
@@ -2729,12 +2790,13 @@ export default function VerificarArticulosPage() {
                       <button
                         key={f.id}
                         onClick={() => setHistoryFilter(f.id)}
+                        title={f.tooltip || ''}
                         className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
                           historyFilter === f.id
-                            ? f.id === 'pending' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+                            ? f.id === 'pending' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
                             : f.id === 'problems' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
                             : f.id === 'ok' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                            : 'bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-300'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
                         }`}
                       >
@@ -2979,9 +3041,10 @@ export default function VerificarArticulosPage() {
                       const summary = verificationSummaries[log.article_number]
                       if (historyFilter === 'all') return true
                       if (historyFilter === 'pending') {
-                        if (!summary) return true
+                        // Solo mostrar como pendiente si tiene preguntas sin verificar
+                        if (!summary || !summary.total || summary.total === 0) return false
                         const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
-                        return verified < (summary.total || 0)
+                        return verified < summary.total
                       }
                       if (historyFilter === 'problems') {
                         return summary && summary.problems > 0
@@ -3036,20 +3099,27 @@ export default function VerificarArticulosPage() {
                         </span>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-12 flex-shrink-0 mt-0.5">Antes:</span>
-                          <span className="text-sm text-red-600 dark:text-red-400 line-through">
-                            {log.old_title || '(sin título)'}
-                          </span>
+                      {/* Solo mostrar Antes/Ahora si hay diferencia real */}
+                      {log.old_title !== log.new_title ? (
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 w-12 flex-shrink-0 mt-0.5">Antes:</span>
+                            <span className="text-sm text-red-600 dark:text-red-400 line-through">
+                              {log.old_title || '(sin título)'}
+                            </span>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 w-12 flex-shrink-0 mt-0.5">Ahora:</span>
+                            <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                              {log.new_title || '(sin título)'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-12 flex-shrink-0 mt-0.5">Ahora:</span>
-                          <span className="text-sm text-green-600 dark:text-green-400 font-medium">
-                            {log.new_title || '(sin título)'}
-                          </span>
+                      ) : (
+                        <div className="text-sm text-gray-700 dark:text-gray-300">
+                          {log.new_title || '(sin título)'}
                         </div>
-                      </div>
+                      )}
 
                       {/* Botones de acción */}
                       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600 flex flex-wrap gap-3">
@@ -3096,34 +3166,123 @@ export default function VerificarArticulosPage() {
                             const sinVerificar = (status.total || 0) - (status.verified || 0)
                             const tieneProblemasReales = status.problems > 0
                             const nadaVerificado = (status.verified || 0) === 0 && (status.total || 0) > 0
+                            const okCount = (status.ok || 0) + (status.fixed || 0)
+                            const currentType = questionExpandType[log.article_number]
 
+                            // Si nada está verificado, solo mostrar botón de pendientes
+                            if (nadaVerificado) {
+                              return (
+                                <button
+                                  onClick={() => {
+                                    setQuestionExpandType(prev => ({ ...prev, [log.article_number]: 'pending' }))
+                                    loadHistoryArticleQuestions(log.article_number)
+                                  }}
+                                  className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1"
+                                >
+                                  <span>🔍</span>
+                                  <span>{status.total} sin verificar</span>
+                                  {isExpanded && currentType === 'pending' && <span className="text-xs">(ocultar)</span>}
+                                </button>
+                              )
+                            }
+
+                            // Mostrar dos botones separados: OK y Sin verificar
                             return (
-                              <button
-                                onClick={() => loadHistoryArticleQuestions(log.article_number)}
-                                className={`text-sm flex items-center gap-1 ${
-                                  tieneProblemasReales
-                                    ? 'text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300'
-                                    : 'text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300'
-                                }`}
-                              >
-                                <span>{tieneProblemasReales ? '⚠️' : '🔍'}</span>
-                                <span>
-                                  {nadaVerificado
-                                    ? `${status.total} preguntas sin verificar`
-                                    : tieneProblemasReales
-                                      ? `${status.ok} OK${status.fixed > 0 ? ` + ${status.fixed} corr.` : ''} / ${status.problems} con problemas${sinVerificar > 0 ? ` / ${sinVerificar} sin verificar` : ''}`
-                                      : `${status.ok} OK${status.fixed > 0 ? ` + ${status.fixed} corr.` : ''}${sinVerificar > 0 ? ` / ${sinVerificar} sin verificar` : ''}`
-                                  }
-                                </span>
-                                {isExpanded && <span className="text-xs">(ocultar)</span>}
-                              </button>
+                              <div className="flex items-center gap-2 text-sm">
+                                <span>🔍</span>
+                                {/* Botón para preguntas OK */}
+                                {okCount > 0 && (
+                                  <button
+                                    onClick={() => {
+                                      if (isExpanded && currentType === 'ok') {
+                                        setExpandedHistoryArticles(prev => {
+                                          const next = new Set(prev)
+                                          next.delete(log.article_number)
+                                          return next
+                                        })
+                                      } else {
+                                        setQuestionExpandType(prev => ({ ...prev, [log.article_number]: 'ok' }))
+                                        loadHistoryArticleQuestions(log.article_number)
+                                      }
+                                    }}
+                                    className={`hover:underline ${
+                                      isExpanded && currentType === 'ok'
+                                        ? 'text-green-700 dark:text-green-300 font-medium'
+                                        : 'text-green-600 dark:text-green-400'
+                                    }`}
+                                  >
+                                    {okCount} OK
+                                    {isExpanded && currentType === 'ok' && ' ▼'}
+                                  </button>
+                                )}
+                                {/* Separador */}
+                                {okCount > 0 && (sinVerificar > 0 || tieneProblemasReales) && (
+                                  <span className="text-gray-400">/</span>
+                                )}
+                                {/* Botón para problemas */}
+                                {tieneProblemasReales && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        if (isExpanded && currentType === 'problems') {
+                                          setExpandedHistoryArticles(prev => {
+                                            const next = new Set(prev)
+                                            next.delete(log.article_number)
+                                            return next
+                                          })
+                                        } else {
+                                          setQuestionExpandType(prev => ({ ...prev, [log.article_number]: 'problems' }))
+                                          loadHistoryArticleQuestions(log.article_number)
+                                        }
+                                      }}
+                                      className={`hover:underline ${
+                                        isExpanded && currentType === 'problems'
+                                          ? 'text-orange-700 dark:text-orange-300 font-medium'
+                                          : 'text-orange-600 dark:text-orange-400'
+                                      }`}
+                                    >
+                                      {status.problems} con problemas
+                                      {isExpanded && currentType === 'problems' && ' ▼'}
+                                    </button>
+                                    {sinVerificar > 0 && <span className="text-gray-400">/</span>}
+                                  </>
+                                )}
+                                {/* Botón para sin verificar */}
+                                {sinVerificar > 0 && (
+                                  <button
+                                    onClick={() => {
+                                      if (isExpanded && currentType === 'pending') {
+                                        setExpandedHistoryArticles(prev => {
+                                          const next = new Set(prev)
+                                          next.delete(log.article_number)
+                                          return next
+                                        })
+                                      } else {
+                                        setQuestionExpandType(prev => ({ ...prev, [log.article_number]: 'pending' }))
+                                        loadHistoryArticleQuestions(log.article_number)
+                                      }
+                                    }}
+                                    className={`hover:underline ${
+                                      isExpanded && currentType === 'pending'
+                                        ? 'text-purple-700 dark:text-purple-300 font-medium'
+                                        : 'text-purple-600 dark:text-purple-400'
+                                    }`}
+                                  >
+                                    {sinVerificar} sin verificar
+                                    {isExpanded && currentType === 'pending' && ' ▼'}
+                                  </button>
+                                )}
+                              </div>
                             )
                           }
 
-                          // No verificado aún
+                          // No verificado aún (sin summary)
                           return (
                             <button
-                              onClick={() => loadHistoryArticleQuestions(log.article_number)}
+                              onClick={() => {
+                                setQuestionExpandType(prev => ({ ...prev, [log.article_number]: 'pending' }))
+                                loadHistoryArticleQuestions(log.article_number)
+                              }}
                               className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1"
                             >
                               {isExpanded ? '📖 Ocultar preguntas' : '📖 Ver preguntas vinculadas'}
@@ -3146,83 +3305,124 @@ export default function VerificarArticulosPage() {
                             </div>
                           ) : (
                             <div className="space-y-3">
-                              {/* Header con contador y botón verificar todas */}
-                              <div className="flex flex-wrap items-center justify-between gap-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                                <div>
-                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {historyQuestions[log.article_number]?.length} preguntas encontradas
-                                  </span>
-                                  {historyAiResults[log.article_number] && Object.keys(historyAiResults[log.article_number]).length > 0 && (
-                                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                      {Object.values(historyAiResults[log.article_number]).filter(r => r.isCorrect === true).length} correctas,{' '}
-                                      {Object.values(historyAiResults[log.article_number]).filter(r => r.isCorrect === false).length} con problemas
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <select
-                                    value={aiProvider}
-                                    onChange={(e) => setAiProvider(e.target.value)}
-                                    className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                  >
-                                    <option value="openai">OpenAI</option>
-                                    <option value="anthropic">Anthropic</option>
-                                    <option value="google">Google</option>
-                                  </select>
-                                  <select
-                                    value={aiModel}
-                                    onChange={(e) => setAiModel(e.target.value)}
-                                    className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                  >
-                                    {getAllProviderModels(aiProvider).map(model => (
-                                      <option
-                                        key={model.id}
-                                        value={model.id}
-                                        disabled={model.status === 'failed'}
-                                      >
-                                        {model.status === 'working' ? '✓ ' : model.status === 'failed' ? '✗ ' : ''}
-                                        {model.name}
-                                        {model.status === 'failed' ? ' (falla)' : ''}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <button
-                                    onClick={() => verifyArticleWithAI(log.article_number)}
-                                    disabled={verifyingArticle === log.article_number}
-                                    className="text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                                  >
-                                    {verifyingArticle === log.article_number ? (
-                                      <>
-                                        <Spinner size="sm" />
-                                        <span>Verificando todas...</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <span>🤖</span>
-                                        <span>Verificar todas con IA</span>
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
+                              {/* Lista de preguntas filtradas según tipo seleccionado */}
+                              {(() => {
+                                const questions = historyQuestions[log.article_number] || []
+                                const aiResults = historyAiResults[log.article_number] || {}
+                                const expandType = questionExpandType[log.article_number] || 'pending'
 
-                              {/* Lista de preguntas */}
-                              {historyQuestions[log.article_number]?.map((question) => {
-                                const aiResult = historyAiResults[log.article_number]?.[question.id]
+                                // Filtrar según el tipo seleccionado
+                                const displayQuestions = questions.filter(q => {
+                                  const result = aiResults[q.id]
+                                  if (expandType === 'ok') return result && result.isCorrect === true
+                                  if (expandType === 'problems') return result && result.isCorrect === false
+                                  if (expandType === 'pending') return !result
+                                  return true
+                                })
+
+                                const typeLabel = expandType === 'ok' ? 'verificadas OK' :
+                                                  expandType === 'problems' ? 'con problemas' :
+                                                  'sin verificar'
+
+                                // IDs de las preguntas que se muestran (para verificar solo estas)
+                                const displayQuestionIds = displayQuestions.map(q => q.id)
 
                                 return (
-                                  <div
-                                    key={question.id}
-                                    className={`bg-white dark:bg-gray-800 rounded-lg p-3 border ${
-                                      appliedFixes[question.id]
-                                        ? 'border-green-300 dark:border-green-700'
-                                        : aiResult
-                                          ? aiResult.isCorrect
-                                            ? 'border-green-300 dark:border-green-700'
-                                            : 'border-red-300 dark:border-red-700'
-                                          : 'border-gray-200 dark:border-gray-600'
-                                    }`}
-                                  >
+                                  <>
+                                    {/* Header con contador y botón verificar */}
+                                    <div className="flex flex-wrap items-center justify-between gap-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                                      <div>
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                          {questions.length} preguntas encontradas
+                                        </span>
+                                        {Object.keys(aiResults).length > 0 && (
+                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                            {Object.values(aiResults).filter(r => r.isCorrect === true).length} correctas,{' '}
+                                            {Object.values(aiResults).filter(r => r.isCorrect === false).length} con problemas
+                                          </div>
+                                        )}
+                                      </div>
+                                      {/* Solo mostrar botón de verificar si hay preguntas sin verificar en la vista actual */}
+                                      {expandType === 'pending' && displayQuestions.length > 0 && (
+                                        <div className="flex items-center gap-2">
+                                          <select
+                                            value={aiProvider}
+                                            onChange={(e) => setAiProvider(e.target.value)}
+                                            className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                          >
+                                            <option value="openai">OpenAI</option>
+                                            <option value="anthropic">Anthropic</option>
+                                            <option value="google">Google</option>
+                                          </select>
+                                          <select
+                                            value={aiModel}
+                                            onChange={(e) => setAiModel(e.target.value)}
+                                            className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                          >
+                                            {getAllProviderModels(aiProvider).map(model => (
+                                              <option
+                                                key={model.id}
+                                                value={model.id}
+                                                disabled={model.status === 'failed'}
+                                              >
+                                                {model.status === 'working' ? '✓ ' : model.status === 'failed' ? '✗ ' : ''}
+                                                {model.name}
+                                                {model.status === 'failed' ? ' (falla)' : ''}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            onClick={() => verifyArticleWithAI(log.article_number, displayQuestionIds)}
+                                            disabled={verifyingArticle === log.article_number}
+                                            className="text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                                          >
+                                            {verifyingArticle === log.article_number ? (
+                                              <>
+                                                <Spinner size="sm" />
+                                                <span>Verificando {displayQuestions.length}...</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <span>🤖</span>
+                                                <span>Verificar {displayQuestions.length} con IA</span>
+                                              </>
+                                            )}
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Lista de preguntas */}
+                                    {displayQuestions.length === 0 ? (
+                                  <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                                    {expandType === 'pending'
+                                      ? '✨ Todas las preguntas de este artículo están verificadas'
+                                      : expandType === 'ok'
+                                        ? '📝 No hay preguntas verificadas OK todavía'
+                                        : '🎉 No hay preguntas con problemas'
+                                    }
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                      Mostrando {displayQuestions.length} preguntas {typeLabel}
+                                    </div>
+                                    {displayQuestions.map((question) => {
+                                      const aiResult = aiResults[question.id]
+
+                                      return (
+                                        <div
+                                          key={question.id}
+                                          className={`bg-white dark:bg-gray-800 rounded-lg p-3 border mb-3 ${
+                                            appliedFixes[question.id]
+                                              ? 'border-green-300 dark:border-green-700'
+                                              : aiResult
+                                                ? aiResult.isCorrect
+                                                  ? 'border-green-300 dark:border-green-700'
+                                                  : 'border-red-300 dark:border-red-700'
+                                                : 'border-gray-200 dark:border-gray-600'
+                                          }`}
+                                        >
                                     <div className="flex items-start justify-between gap-2 mb-2">
                                       <p className="text-sm text-gray-800 dark:text-gray-200">
                                         {question.question_text}
@@ -3338,15 +3538,20 @@ export default function VerificarArticulosPage() {
                                       </div>
                                     )}
 
-                                    {/* Estado sin verificar */}
-                                    {!aiResult && (
-                                      <div className="text-xs text-gray-400 dark:text-gray-500 italic">
-                                        Sin verificar
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
+                                          {/* Estado sin verificar */}
+                                          {!aiResult && (
+                                            <div className="text-xs text-gray-400 dark:text-gray-500 italic">
+                                              Sin verificar
+                                            </div>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </>
+                                )}
+                              </>
+                            )
+                          })()}
                             </div>
                           )}
                         </div>
@@ -3374,7 +3579,7 @@ export default function VerificarArticulosPage() {
                         {historyFilter === 'pending' ? '✨' : historyFilter === 'problems' ? '🎉' : '📭'}
                       </div>
                       <p className="font-medium">
-                        {historyFilter === 'pending' && 'No hay artículos pendientes de verificar'}
+                        {historyFilter === 'pending' && 'No hay artículos que cambiaron pendientes de verificar'}
                         {historyFilter === 'problems' && '¡No hay artículos con problemas!'}
                         {historyFilter === 'ok' && 'No hay artículos verificados todavía'}
                       </p>
@@ -3860,6 +4065,446 @@ export default function VerificarArticulosPage() {
                 </>
               )
             })()}
+          </div>
+        )}
+
+        {/* ===================== TAB: TODOS LOS ARTÍCULOS ===================== */}
+        {activeTab === 'todos-articulos' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Todos los artículos con preguntas
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Lista completa de artículos que tienen preguntas vinculadas, con su estado de verificación
+                </p>
+              </div>
+              <button
+                onClick={loadAllArticlesWithQuestions}
+                disabled={loadingAllArticles}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+              >
+                {loadingAllArticles ? (
+                  <>
+                    <Spinner size="sm" />
+                    <span>Cargando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🔄</span>
+                    <span>Actualizar</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {loadingAllArticles ? (
+              <div className="flex items-center justify-center py-12 text-gray-500">
+                <Spinner size="md" />
+                <span className="ml-3">Cargando artículos...</span>
+              </div>
+            ) : allArticlesData.length === 0 ? (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <div className="text-5xl mb-4">📭</div>
+                <p className="text-lg font-medium">No hay artículos con preguntas</p>
+                <p className="text-sm mt-1">Esta ley no tiene artículos con preguntas vinculadas</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Filtros clickeables */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => { setAllArticlesFilter('all'); setSelectedArticlesForVerify(new Set()) }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        allArticlesFilter === 'all'
+                          ? 'bg-gray-700 text-white dark:bg-gray-200 dark:text-gray-800'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500'
+                      }`}
+                    >
+                      📋 Todos ({allArticlesData.length})
+                    </button>
+                    <button
+                      onClick={() => { setAllArticlesFilter('verified'); setSelectedArticlesForVerify(new Set()) }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        allArticlesFilter === 'verified'
+                          ? 'bg-green-600 text-white'
+                          : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-800/50'
+                      }`}
+                    >
+                      ✅ Verificados ({allArticlesData.filter(a => {
+                        const s = verificationSummaries[a.article_number]
+                        if (!s || !s.total) return false
+                        const v = (s.ok || 0) + (s.fixed || 0) + (s.problems || 0)
+                        return v >= s.total
+                      }).length})
+                    </button>
+                    <button
+                      onClick={() => { setAllArticlesFilter('unverified'); setSelectedArticlesForVerify(new Set()) }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        allArticlesFilter === 'unverified'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/50 dark:text-purple-300 dark:hover:bg-purple-800/50'
+                      }`}
+                    >
+                      📝 Sin verificar ({allArticlesData.filter(a => {
+                        const s = verificationSummaries[a.article_number]
+                        if (!s || !s.total) return true
+                        const v = (s.ok || 0) + (s.fixed || 0) + (s.problems || 0)
+                        return v < s.total
+                      }).length})
+                    </button>
+                    <button
+                      onClick={() => { setAllArticlesFilter('no-questions'); setSelectedArticlesForVerify(new Set()) }}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        allArticlesFilter === 'no-questions'
+                          ? 'bg-gray-600 text-white'
+                          : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500'
+                      }`}
+                    >
+                      📭 Sin preguntas ({articlesWithoutQuestions.length})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Botón verificar los sin verificar (seleccionados o todos) */}
+                {allArticlesFilter === 'unverified' && (
+                  (() => {
+                    const unverifiedArticles = allArticlesData.filter(a => {
+                      const s = verificationSummaries[a.article_number]
+                      const total = s?.total || 0
+                      const verified = (s?.ok || 0) + (s?.fixed || 0) + (s?.problems || 0)
+                      return !(total > 0 && verified >= total)
+                    })
+
+                    // Artículos seleccionados (o todos si no hay selección)
+                    const articlesToVerify = selectedArticlesForVerify.size > 0
+                      ? unverifiedArticles.filter(a => selectedArticlesForVerify.has(a.article_number))
+                      : unverifiedArticles
+
+                    const totalPending = articlesToVerify.reduce((acc, a) => {
+                      const s = verificationSummaries[a.article_number]
+                      const total = s?.total || a.question_count || 0
+                      const verified = (s?.ok || 0) + (s?.fixed || 0) + (s?.problems || 0)
+                      return acc + Math.max(0, total - verified)
+                    }, 0)
+
+                    if (unverifiedArticles.length === 0) return null
+
+                    const allSelected = unverifiedArticles.every(a => selectedArticlesForVerify.has(a.article_number))
+                    const someSelected = selectedArticlesForVerify.size > 0
+
+                    return (
+                      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 mb-4 space-y-3">
+                        {/* Fila superior: selección y contador */}
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedArticlesForVerify(new Set(unverifiedArticles.map(a => a.article_number)))
+                              } else {
+                                setSelectedArticlesForVerify(new Set())
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                            {someSelected
+                              ? `${selectedArticlesForVerify.size} de ${unverifiedArticles.length} artículos seleccionados`
+                              : `${unverifiedArticles.length} artículos sin verificar`
+                            }
+                            {' '}({totalPending} preguntas)
+                          </p>
+                        </div>
+
+                        {/* Fila inferior: selector de modelo y botón */}
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={aiProvider}
+                              onChange={(e) => {
+                                setAiProvider(e.target.value)
+                                // Seleccionar primer modelo del nuevo proveedor
+                                const models = getAllProviderModels(e.target.value)
+                                if (models.length > 0) {
+                                  setAiModel(models[0].id)
+                                }
+                              }}
+                              className="text-xs px-2 py-1 rounded border border-purple-300 dark:border-purple-600 bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300"
+                            >
+                              <option value="openai">OpenAI</option>
+                              <option value="anthropic">Anthropic</option>
+                              <option value="google">Google</option>
+                            </select>
+                            <select
+                              value={aiModel}
+                              onChange={(e) => setAiModel(e.target.value)}
+                              className="text-xs px-2 py-1 rounded border border-purple-300 dark:border-purple-600 bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300"
+                            >
+                              {getAllProviderModels(aiProvider).map(model => (
+                                <option
+                                  key={model.id}
+                                  value={model.id}
+                                  disabled={model.status === 'failed'}
+                                >
+                                  {model.status === 'working' ? '✓ ' : model.status === 'failed' ? '✗ ' : ''}
+                                  {model.name}
+                                  {model.status === 'failed' ? ' (falla)' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (batchVerifying) return
+                              setBatchVerifying(true)
+                              setBatchProgress({ currentArticle: 0, totalArticles: articlesToVerify.length })
+
+                              for (let i = 0; i < articlesToVerify.length; i++) {
+                                setBatchProgress({ currentArticle: i + 1, totalArticles: articlesToVerify.length })
+                                await verifyArticleWithAI(articlesToVerify[i].article_number)
+                              }
+
+                              setBatchVerifying(false)
+                              setSelectedArticlesForVerify(new Set())
+                              loadAllArticlesWithQuestions()
+                            }}
+                            disabled={batchVerifying || articlesToVerify.length === 0}
+                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                          >
+                            {batchVerifying ? (
+                              <span className="flex items-center gap-2">
+                                <Spinner size="sm" />
+                                {batchProgress.currentArticle}/{batchProgress.totalArticles}
+                              </span>
+                            ) : (
+                              <>🤖 Verificar {someSelected ? 'seleccionados' : 'todos'}</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })()
+                )}
+
+                {/* Lista de artículos sin preguntas */}
+                {allArticlesFilter === 'no-questions' ? (
+                  articlesWithoutQuestions.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <div className="text-4xl mb-2">🎉</div>
+                      <p>Todos los artículos tienen preguntas</p>
+                    </div>
+                  ) : (
+                    articlesWithoutQuestions.map((article, i) => (
+                      <div
+                        key={article.article_id || i}
+                        className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                Art. {article.article_number}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300 rounded-full">
+                                📭 Sin preguntas
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {article.title || '(sin título)'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )
+                ) : (
+                  /* Lista de artículos con preguntas filtrados */
+                  allArticlesData.filter(article => {
+                    if (allArticlesFilter === 'all') return true
+                    const s = verificationSummaries[article.article_number]
+                    const total = s?.total || 0
+                    const verified = (s?.ok || 0) + (s?.fixed || 0) + (s?.problems || 0)
+                    const isVerified = total > 0 && verified >= total
+                    if (allArticlesFilter === 'verified') return isVerified
+                    if (allArticlesFilter === 'unverified') return !isVerified
+                    return true
+                  }).map((article, i) => {
+                  const summary = verificationSummaries[article.article_number]
+                  const verified = summary ? (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0) : 0
+                  const total = summary?.total || article.question_count || 0
+                  const isFullyVerified = total > 0 && verified >= total && (summary?.problems || 0) === 0
+                  const hasProblems = (summary?.problems || 0) > 0
+                  const pendingCount = total - verified
+
+                  return (
+                    <div
+                      key={article.id || i}
+                      className={`bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border ${
+                        hasProblems
+                          ? 'border-orange-300 dark:border-orange-700'
+                          : isFullyVerified
+                            ? 'border-green-300 dark:border-green-700'
+                            : 'border-gray-200 dark:border-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        {/* Checkbox para seleccionar (solo en filtro unverified) */}
+                        {allArticlesFilter === 'unverified' && !isFullyVerified && (
+                          <input
+                            type="checkbox"
+                            checked={selectedArticlesForVerify.has(article.article_number)}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedArticlesForVerify)
+                              if (e.target.checked) {
+                                newSet.add(article.article_number)
+                              } else {
+                                newSet.delete(article.article_number)
+                              }
+                              setSelectedArticlesForVerify(newSet)
+                            }}
+                            className="mt-1 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500 flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              Art. {article.article_number}
+                            </span>
+                            {isFullyVerified && (
+                              <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 rounded-full">
+                                ✅ Verificado
+                              </span>
+                            )}
+                            {hasProblems && (
+                              <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 rounded-full">
+                                ⚠️ {summary.problems} problemas
+                              </span>
+                            )}
+                            {!isFullyVerified && !hasProblems && pendingCount > 0 && (
+                              <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded-full">
+                                📝 {pendingCount} sin verificar
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            {article.title || '(sin título)'}
+                          </p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>{total} preguntas</span>
+                            {summary?.lastVerifiedAt && (
+                              <span>
+                                Última verificación: {new Date(summary.lastVerifiedAt).toLocaleDateString('es-ES')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setQuestionExpandType(prev => ({ ...prev, [article.article_number]: 'pending' }))
+                              loadHistoryArticleQuestions(article.article_number)
+                            }}
+                            className="text-sm px-3 py-1.5 bg-cyan-100 hover:bg-cyan-200 dark:bg-cyan-900/50 dark:hover:bg-cyan-800/50 text-cyan-700 dark:text-cyan-300 rounded-lg transition-colors"
+                          >
+                            🔍 Ver preguntas
+                          </button>
+                          {/* Botón verificar con IA - solo si hay preguntas sin verificar */}
+                          {pendingCount > 0 && (
+                            <button
+                              onClick={() => verifyArticleWithAI(article.article_number)}
+                              disabled={verifyingArticle === article.article_number}
+                              className="text-sm px-3 py-1.5 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/50 dark:hover:bg-purple-800/50 text-purple-700 dark:text-purple-300 rounded-lg transition-colors disabled:opacity-50"
+                              title={`Verificar con ${getProviderModels(aiProvider).find(m => m.id === aiModel)?.name || aiModel}`}
+                            >
+                              {verifyingArticle === article.article_number ? (
+                                <span className="flex items-center gap-1">
+                                  <Spinner size="sm" /> Verificando...
+                                </span>
+                              ) : (
+                                <>🤖 Verificar ({pendingCount})</>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Preguntas expandidas */}
+                      {expandedHistoryArticles.has(article.article_number) && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                          {loadingHistoryQuestions[article.article_number] ? (
+                            <div className="flex items-center justify-center py-4 text-gray-500">
+                              <Spinner size="sm" />
+                              <span className="ml-2">Cargando preguntas...</span>
+                            </div>
+                          ) : (historyQuestions[article.article_number]?.length || 0) === 0 ? (
+                            <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                              No hay preguntas para este artículo
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                                {historyQuestions[article.article_number]?.length} preguntas - Click en una para ver detalles
+                              </div>
+                              {historyQuestions[article.article_number]?.map((q, qi) => {
+                                const aiResult = historyAiResults[article.article_number]?.[q.id]
+                                const isOk = aiResult?.isCorrect === true
+                                const hasProblem = aiResult?.isCorrect === false
+                                const isPending = !aiResult
+
+                                return (
+                                  <a
+                                    key={q.id}
+                                    href={`/pregunta/${q.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={`block p-3 rounded-lg text-sm border cursor-pointer hover:ring-2 hover:ring-cyan-400 transition-all ${
+                                      isOk
+                                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                                        : hasProblem
+                                          ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                                          : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <span className="flex-shrink-0 mt-0.5">
+                                        {isOk ? '✅' : hasProblem ? '⚠️' : '📝'}
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-gray-800 dark:text-gray-200 line-clamp-2">
+                                          {q.question_text}
+                                        </p>
+                                        {aiResult && (
+                                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">
+                                            {aiResult.explanation}
+                                          </p>
+                                        )}
+                                        {isPending && (
+                                          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                                            Pendiente de verificar
+                                          </p>
+                                        )}
+                                      </div>
+                                      <span className="text-gray-400 flex-shrink-0 text-xs">
+                                        🔗
+                                      </span>
+                                    </div>
+                                  </a>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                  })
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -90,24 +90,38 @@ ORDER BY a.article_number::integer;
 
 #### A) Si hay que corregir la pregunta:
 ```sql
--- 1. Corregir la pregunta/opciones
+-- 1. Corregir la pregunta/opciones Y marcar como verificada
 UPDATE questions
 SET option_c = 'TEXTO CORREGIDO SEGÚN ARTÍCULO OFICIAL',
+    verified_at = NOW(),
+    verification_status = 'ok',
     updated_at = NOW()
 WHERE id = 'QUESTION_ID';
 
 -- 2. Verificar el cambio
-SELECT 
+SELECT
     question_text,
     option_a,
     option_b,
     option_c,
     option_d,
     correct_option,
-    explanation
-FROM questions 
+    explanation,
+    verified_at,
+    verification_status
+FROM questions
 WHERE id = 'QUESTION_ID';
 ```
+
+#### B) Si la pregunta estaba correcta (solo marcar como verificada):
+```sql
+UPDATE questions
+SET verified_at = NOW(),
+    verification_status = 'ok'
+WHERE id = 'QUESTION_ID';
+```
+
+> **IMPORTANTE**: Siempre que revises una pregunta (corrijas o no), marca `verified_at` y `verification_status = 'ok'`. Esto indica que un humano ha verificado la pregunta.
 
 ### PASO 5: Cerrar Impugnación con Mensaje Motivador
 
@@ -273,6 +287,7 @@ WHERE id = 'DISPUTE_ID';
 
 ## Reglas Importantes
 - **SIEMPRE consultar el artículo oficial** antes de corregir
+- **SIEMPRE marcar como verificada** (`verified_at`, `verification_status = 'ok'`) cualquier pregunta que revises
 - **SIEMPRE agradecer** al usuario por reportar
 - **PERSONALIZAR** el mensaje con el nombre del usuario
 - **SER ESPECÍFICO** sobre qué se corrigió o por qué está correcto
@@ -282,3 +297,95 @@ WHERE id = 'DISPUTE_ID';
 - **ANIMAR** a seguir colaborando y estudiando
 - **NO DEFENDER ERRORES** - si está mal, reconocerlo y agradecer
 - **VERIFICAR siempre** la corrección antes de cerrar la impugnación
+
+## Campos de verificación en `questions`
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `verified_at` | timestamptz | Fecha de última verificación (IA o humano) |
+| `verification_status` | text | `'ok'` = correcta, `'problem'` = con errores, `NULL` = sin verificar |
+
+> Las preguntas con `verified_at = NULL` aparecen como "pendientes de verificar" en el panel de admin.
+
+---
+
+# Reparar Preguntas (Verificación IA)
+
+**Ubicación:** `/admin/verificar-articulos/[lawId]` → Tab "Reparar"
+
+## Consultar preguntas pendientes de reparar
+
+```sql
+WITH verificacion AS (
+  SELECT
+    v.question_id,
+    v.article_id,
+    v.is_correct,
+    v.correct_option_should_be,
+    a.article_number,
+    a.title as article_title,
+    a.content as article_content,
+    l.short_name as ley,
+    q.question_text,
+    q.option_a,
+    q.option_b,
+    q.option_c,
+    q.option_d,
+    q.correct_option as opcion_correcta_actual,
+    q.explanation,
+    q.primary_article_id
+  FROM ai_verification_results v
+  LEFT JOIN articles a ON v.article_id = a.id
+  LEFT JOIN laws l ON a.law_id = l.id
+  LEFT JOIN questions q ON v.question_id = q.id
+  WHERE v.is_correct = false
+    AND (v.fix_applied IS NULL OR v.fix_applied = false)
+    AND (v.discarded IS NULL OR v.discarded = false)
+  ORDER BY l.short_name, a.article_number::integer
+)
+SELECT * FROM verificacion;
+```
+
+## Verificar cada pregunta
+
+1. **¿Artículo correcto vinculado?** Comparar `article_id` con `primary_article_id`
+2. **¿Explicación completa?** Debe citar el artículo y ser didáctica
+3. **¿Respuesta correcta?** Comparar `opcion_correcta_actual` con `correct_option_should_be` y verificar contra `article_content`
+
+## Aplicar corrección y marcar como verificada
+
+```sql
+-- Corregir pregunta Y marcar como verificada por humano
+UPDATE questions
+SET correct_option = 'b',  -- o la opción correcta
+    explanation = 'Nueva explicación didáctica...',
+    verified_at = NOW(),
+    verification_status = 'ok',
+    updated_at = NOW()
+WHERE id = 'QUESTION_ID';
+
+-- Marcar como reparada en ai_verification_results
+UPDATE ai_verification_results
+SET fix_applied = true,
+    fix_applied_at = NOW()
+WHERE question_id = 'QUESTION_ID';
+```
+
+## Si la pregunta estaba bien (falso positivo de IA)
+
+```sql
+-- Solo marcar como verificada (la IA se equivocó)
+UPDATE questions
+SET verified_at = NOW(),
+    verification_status = 'ok'
+WHERE id = 'QUESTION_ID';
+
+-- Descartar el resultado de verificación IA
+UPDATE ai_verification_results
+SET discarded = true,
+    discarded_at = NOW(),
+    discarded_reason = 'Falso positivo - pregunta correcta'
+WHERE question_id = 'QUESTION_ID';
+```
+
+> **IMPORTANTE**: Siempre que revises una pregunta en reparaciones, marca `verified_at` y `verification_status = 'ok'`. Esto asegura que las preguntas revisadas por humanos no vuelvan a aparecer como pendientes.

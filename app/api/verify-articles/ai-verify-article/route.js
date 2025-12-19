@@ -243,6 +243,25 @@ async function processBatch({
       console.error('Error guardando verificación:', insertError)
     }
 
+    // Actualizar campos de verificación en la pregunta
+    const verificationStatus = verification.isCorrect === true
+      ? 'ok'
+      : verification.isCorrect === false
+        ? 'problem'
+        : null  // No guardar status si no se pudo determinar
+
+    const { error: updateError } = await supabase
+      .from('questions')
+      .update({
+        verified_at: new Date().toISOString(),
+        verification_status: verificationStatus
+      })
+      .eq('id', question.id)
+
+    if (updateError) {
+      console.error('Error actualizando verificación en pregunta:', updateError)
+    }
+
     results.push({
       questionId: question.id,
       questionText: question.question_text.substring(0, 100) + '...',
@@ -263,7 +282,7 @@ async function processBatch({
  */
 export async function POST(request) {
   try {
-    const { lawId, articleNumber, provider = 'openai', model } = await request.json()
+    const { lawId, articleNumber, provider = 'openai', model, questionIds = null } = await request.json()
 
     if (!lawId || !articleNumber) {
       return Response.json({
@@ -301,8 +320,8 @@ export async function POST(request) {
       }, { status: 404 })
     }
 
-    // 3. Obtener todas las preguntas del artículo
-    const { data: questions, error: questionsError } = await supabase
+    // 3. Obtener las preguntas del artículo (todas o solo las especificadas)
+    let questionsQuery = supabase
       .from('questions')
       .select(`
         id,
@@ -316,6 +335,13 @@ export async function POST(request) {
       `)
       .eq('primary_article_id', article.id)
       .eq('is_active', true)
+
+    // Si se especifican IDs de preguntas, filtrar solo esas
+    if (questionIds && Array.isArray(questionIds) && questionIds.length > 0) {
+      questionsQuery = questionsQuery.in('id', questionIds)
+    }
+
+    const { data: questions, error: questionsError } = await questionsQuery
 
     if (questionsError) {
       return Response.json({
