@@ -7,13 +7,14 @@ const supabase = createClient(
 
 /**
  * Normaliza número de artículo para comparación
- * Ej: "55bis" → "55 bis", "4 BIS" → "4 bis"
+ * Ej: "55bis" → "55 bis", "4 BIS" → "4 bis", "22 quáter" → "22 quater", "216 bis 2" → "216 bis 2"
  */
 function normalizeArticleNumber(num) {
   if (!num) return ''
   return num
     .toLowerCase()
-    .replace(/(\d+)\s*(bis|ter|quater|quinquies|sexies|septies)/gi, '$1 $2')
+    .replace(/quáter/gi, 'quater') // Normalizar variante con acento
+    .replace(/(\d+)\s*(bis|ter|quater|quinquies|sexies|septies|octies|nonies|decies)(\s*\d+)?/gi, '$1 $2$3')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -136,8 +137,10 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
       let foundArticle = null
       let title = ''
 
-      // Primero intentar formato numérico: "Artículo 207.", "Artículo 4 bis."
-      const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|quater|quinquies|sexies|septies))?)\.?\s*([^<]*)<\/h5>/i)
+      // Primero intentar formato numérico: "Artículo 207.", "Artículo 4 bis.", "Artículo 22 octies.", "Artículo 216 bis 4."
+      // Lista completa de sufijos latinos: bis, ter, quater/quáter, quinquies, sexies, septies, octies, nonies, decies
+      // También soporta números adicionales después del sufijo (ej: "216 bis 2", "216 bis 3")
+      const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([^<]*)<\/h5>/i)
 
       if (numericMatch) {
         foundArticle = normalizeArticleNumber(numericMatch[1])

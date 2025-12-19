@@ -135,8 +135,10 @@ function extractArticlesFromBOE(html) {
     let articleNumber = null
     let title = ''
 
-    // Primero intentar formato numérico: "Artículo 1.", "Artículo 4 bis."
-    const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|quater|quinquies|sexies|septies))?)\.?\s*([^<]*)<\/h5>/i)
+    // Primero intentar formato numérico: "Artículo 1.", "Artículo 4 bis.", "Artículo 22 octies.", "Artículo 216 bis 4."
+    // Lista completa de sufijos latinos: bis, ter, quater/quáter, quinquies, sexies, septies, octies, nonies, decies
+    // También soporta números adicionales después del sufijo (ej: "216 bis 2", "216 bis 3")
+    const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([^<]*)<\/h5>/i)
 
     if (numericMatch) {
       articleNumber = numericMatch[1].trim().replace(/\s+/g, ' ')
@@ -199,21 +201,26 @@ function extractArticlesFromBOE(html) {
     })
   }
 
-  // Ordenar por número de artículo (soporta "4", "4 bis", "4 ter", etc.)
-  const suffixOrder = { '': 0, 'bis': 1, 'ter': 2, 'quater': 3, 'quinquies': 4, 'sexies': 5, 'septies': 6 }
+  // Ordenar por número de artículo (soporta "4", "4 bis", "4 ter", "216 bis 2", etc.)
+  const suffixOrder = { '': 0, 'bis': 1, 'ter': 2, 'quater': 3, 'quinquies': 4, 'sexies': 5, 'septies': 6, 'octies': 7, 'nonies': 8, 'decies': 9 }
   articles.sort((a, b) => {
     const parseArticle = (num) => {
-      const match = num.match(/^(\d+)(?:\s+(\w+))?$/)
-      if (!match) return { base: 0, suffix: 0 }
+      // Normalizar sufijo con acento antes de parsear
+      const normalized = num.replace(/quáter/gi, 'quater')
+      // Soporta: "216", "216 bis", "216 bis 2", "216 bis 3"
+      const match = normalized.match(/^(\d+)(?:\s+([a-z]+))?(?:\s+(\d+))?$/i)
+      if (!match) return { base: 0, suffix: 0, subnum: 0 }
       return {
         base: parseInt(match[1]) || 0,
-        suffix: suffixOrder[match[2]?.toLowerCase() || ''] || 0
+        suffix: suffixOrder[match[2]?.toLowerCase() || ''] || 0,
+        subnum: parseInt(match[3]) || 0
       }
     }
     const parsedA = parseArticle(a.article_number)
     const parsedB = parseArticle(b.article_number)
     if (parsedA.base !== parsedB.base) return parsedA.base - parsedB.base
-    return parsedA.suffix - parsedB.suffix
+    if (parsedA.suffix !== parsedB.suffix) return parsedA.suffix - parsedB.suffix
+    return parsedA.subnum - parsedB.subnum
   })
 
   return articles
@@ -221,13 +228,14 @@ function extractArticlesFromBOE(html) {
 
 /**
  * Normaliza número de artículo para comparación
- * Ej: "55bis" → "55 bis", "4 BIS" → "4 bis", "22  ter" → "22 ter"
+ * Ej: "55bis" → "55 bis", "4 BIS" → "4 bis", "22 quáter" → "22 quater", "216 bis 2" → "216 bis 2"
  */
 function normalizeArticleNumber(num) {
   if (!num) return ''
   return num
     .toLowerCase()
-    .replace(/(\d+)\s*(bis|ter|quater|quinquies|sexies|septies)/gi, '$1 $2')
+    .replace(/quáter/gi, 'quater') // Normalizar variante con acento
+    .replace(/(\d+)\s*(bis|ter|quater|quinquies|sexies|septies|octies|nonies|decies)(\s*\d+)?/gi, '$1 $2$3')
     .replace(/\s+/g, ' ')
     .trim()
 }
