@@ -31,7 +31,7 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
       // 1. Cargar datos básicos del perfil desde public_user_profiles (accesible para todos)
       const { data: publicProfile, error: publicProfileError } = await supabase
         .from('public_user_profiles')
-        .select('display_name, ciudad')
+        .select('display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url')
         .eq('id', userId)
         .maybeSingle() // Usar maybeSingle en lugar de single para evitar error si no existe
 
@@ -140,6 +140,10 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         ...stats?.[0],
         display_name: displayName,
         ciudad: publicProfile?.ciudad,
+        avatar_type: publicProfile?.avatar_type,
+        avatar_emoji: publicProfile?.avatar_emoji,
+        avatar_color: publicProfile?.avatar_color,
+        avatar_url: publicProfile?.avatar_url,
         streak: stats?.[0]?.current_streak || 0,
         time_in_vence: timeInVence,
         mastered_topics: stats?.[0]?.mastered_topics || 0,
@@ -277,9 +281,22 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                        {profileData.display_name?.[0]?.toUpperCase() || userName?.[0]?.toUpperCase() || '?'}
-                      </div>
+                      {/* Avatar del usuario */}
+                      {profileData.avatar_type === 'predefined' && profileData.avatar_emoji ? (
+                        <div className={`w-16 h-16 bg-gradient-to-r ${profileData.avatar_color || 'from-blue-500 to-blue-600'} rounded-full flex items-center justify-center text-3xl`}>
+                          {profileData.avatar_emoji}
+                        </div>
+                      ) : (profileData.avatar_type === 'uploaded' || profileData.avatar_type === 'google') && profileData.avatar_url ? (
+                        <img
+                          src={profileData.avatar_url}
+                          alt={profileData.display_name || 'Avatar'}
+                          className="w-16 h-16 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                          {profileData.display_name?.[0]?.toUpperCase() || userName?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      )}
                       <div>
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                           {profileData.display_name || userName}

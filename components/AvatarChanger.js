@@ -133,18 +133,18 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
       if (error) throw error
 
       // IMPORTANTE: También actualizar public_user_profiles para que se vea en el ranking
+      // Usar UPDATE en lugar de UPSERT porque display_name es NOT NULL y el registro ya existe
       const { error: profileError } = await supabase
         .from('public_user_profiles')
-        .upsert({
-          id: user.id,
+        .update({
           avatar_type: 'predefined',
           avatar_emoji: avatar.emoji,
           avatar_color: avatar.color,
           avatar_name: avatar.name,
+          avatar_url: null,
           updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
         })
+        .eq('id', user.id)
 
       if (profileError) {
         console.warn('Error actualizando perfil público:', profileError)
@@ -233,19 +233,18 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
       if (updateError) throw updateError
 
       // IMPORTANTE: También actualizar public_user_profiles para que se vea en el ranking
+      // Usar UPDATE en lugar de UPSERT porque display_name es NOT NULL y el registro ya existe
       const { error: profileError } = await supabase
         .from('public_user_profiles')
-        .upsert({
-          id: user.id,
+        .update({
           avatar_type: 'uploaded',
           avatar_url: publicUrl,
           avatar_emoji: null,
           avatar_color: null,
           avatar_name: null,
           updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
         })
+        .eq('id', user.id)
 
       if (profileError) {
         console.warn('Error actualizando perfil público con imagen:', profileError)
