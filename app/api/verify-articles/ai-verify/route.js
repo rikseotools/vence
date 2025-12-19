@@ -136,8 +136,9 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
 
     // Buscar el artículo específico
     // Estructura: <div class="bloque" id="aX">...</div>
+    // Nota: algunos BOE usan IDs numéricos (a207) y otros textuales (adoscientossiete)
     const articleRegex = new RegExp(
-      `<div[^>]*id="a${articleNumber}"[^>]*>[\\s\\S]*?<h5[^>]*class="articulo"[^>]*>([\\s\\S]*?)</h5>([\\s\\S]*?)(?=<div[^>]*class="bloque"|<p[^>]*class="linkSubir"|$)`,
+      `<div[^>]*id="a${articleNumber}"[^>]*>[\\s\\S]*?<h5[^>]*class="articulo"[^>]*>([\\s\\S]*?)</h5>([\\s\\S]*?)(?=<div[^>]*class="bloque"|$)`,
       'i'
     )
 
@@ -147,6 +148,12 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
       const title = match[1].replace(/<[^>]*>/g, '').trim()
       let content = match[2]
         .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '') // Quitar [Bloque X: #aX]
+        .replace(/<p[^>]*class="nota_pie"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar notas de modificación
+        .replace(/<p[^>]*class="linkSubir"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar enlace "Subir"
+        .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '') // Quitar bloques de notas
+        .replace(/<form[^>]*>[\s\S]*?<\/form>/gi, '') // Quitar formularios
+        .replace(/<a[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '') // Quitar jurisprudencia
+        .replace(/Jurisprudencia/gi, '')
         // Preservar estructura de párrafos
         .replace(/<\/p>/gi, '\n\n') // Fin de párrafo = doble salto
         .replace(/<br\s*\/?>/gi, '\n') // Salto de línea

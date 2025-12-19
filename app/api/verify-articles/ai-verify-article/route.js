@@ -32,7 +32,7 @@ async function getAIConfig(provider) {
 
   const defaultModels = {
     openai: 'gpt-4o-mini',
-    anthropic: 'claude-3-haiku-20240307',
+    anthropic: 'claude-sonnet-4-20250514',
     google: 'gemini-1.5-flash'
   }
 
@@ -40,6 +40,220 @@ async function getAIConfig(provider) {
     apiKey: envKeys[provider],
     model: defaultModels[provider],
     isActive: !!envKeys[provider]
+  }
+}
+
+/**
+ * Obtiene el límite de tokens de salida apropiado para cada modelo
+ */
+function getMaxOutputTokens(model) {
+  const limits = {
+    // Claude models
+    'claude-3-haiku-20240307': 4096,
+    'claude-sonnet-4-20250514': 8192,
+    'claude-sonnet-4-5-20250929': 8192,
+    // OpenAI models
+    'gpt-4o-mini': 16384,
+    'gpt-4o': 16384,
+    'gpt-4-turbo': 4096,
+    // Google models
+    'gemini-1.5-flash': 8192,
+    'gemini-1.5-flash-8b': 8192,
+    'gemini-1.5-pro': 8192,
+    'gemini-2.0-flash-exp': 8192,
+  }
+  return limits[model] || 4096 // Default conservador
+}
+
+/**
+ * Obtiene el número máximo de preguntas seguras por lote según el modelo
+ * Basado en datos reales: con explicaciones extensas, cada pregunta usa ~700-800 tokens
+ */
+function getSafeBatchSize(model) {
+  // Límites específicos por modelo basados en pruebas reales
+  const modelBatchLimits = {
+    // Claude 3 Haiku: muy limitado (4096 tokens) - con 6 preguntas se trunca
+    'claude-3-haiku-20240307': 4,
+    // Claude Sonnet: 8192 tokens
+    'claude-sonnet-4-20250514': 10,
+    'claude-sonnet-4-5-20250929': 10,
+    // GPT-4o: 16384 tokens - más holgado
+    'gpt-4o-mini': 18,
+    'gpt-4o': 18,
+    'gpt-4-turbo': 4,
+    // Gemini: 8192 tokens
+    'gemini-1.5-flash': 10,
+    'gemini-1.5-flash-8b': 10,
+    'gemini-1.5-pro': 10,
+    'gemini-2.0-flash-exp': 10,
+  }
+
+  return modelBatchLimits[model] || 4 // Default conservador
+}
+
+/**
+ * Guarda un error de verificación en la BD para análisis posterior
+ */
+async function logVerificationError({
+  lawId,
+  articleNumber,
+  provider,
+  model,
+  prompt,
+  rawResponse,
+  errorMessage,
+  errorType,
+  questionsCount,
+  tokensUsed
+}) {
+  try {
+    await supabase.from('ai_verification_errors').insert({
+      law_id: lawId,
+      article_number: articleNumber,
+      provider,
+      model,
+      prompt: prompt?.substring(0, 50000), // Limitar tamaño
+      raw_response: rawResponse?.substring(0, 50000),
+      error_message: errorMessage,
+      error_type: errorType,
+      questions_count: questionsCount,
+      tokens_used: tokensUsed
+    })
+  } catch (err) {
+    console.error('Error guardando log de error:', err)
+  }
+}
+
+/**
+ * Procesa un lote de preguntas con la IA
+ */
+async function processBatch({
+  questions,
+  lawName,
+  articleNumber,
+  articleContent,
+  provider,
+  apiKey,
+  model,
+  lawId,
+  articleId,
+  batchIndex,
+  totalBatches
+}) {
+  const prompt = buildBatchVerificationPrompt({
+    lawName,
+    articleNumber,
+    articleContent,
+    questions
+  })
+
+  console.log(`[AI-Verify] Procesando lote ${batchIndex + 1}/${totalBatches} (${questions.length} preguntas)`)
+
+  let aiResponse
+  let tokenUsage = {}
+
+  if (provider === 'anthropic') {
+    const result = await verifyWithClaude(prompt, apiKey, model)
+    aiResponse = result.response
+    tokenUsage = result.usage || {}
+  } else if (provider === 'google') {
+    const result = await verifyWithGoogle(prompt, apiKey, model)
+    aiResponse = result.response
+    tokenUsage = result.usage || {}
+  } else {
+    const result = await verifyWithOpenAI(prompt, apiKey, model)
+    aiResponse = result.response
+    tokenUsage = result.usage || {}
+  }
+
+  // Guardar uso de tokens para este lote
+  const endpoints = {
+    openai: '/v1/chat/completions',
+    anthropic: '/v1/messages',
+    google: '/v1beta/models/generateContent'
+  }
+  await supabase.from('ai_api_usage').insert({
+    provider,
+    model,
+    endpoint: endpoints[provider] || 'unknown',
+    input_tokens: tokenUsage.input_tokens || tokenUsage.prompt_tokens,
+    output_tokens: tokenUsage.output_tokens || tokenUsage.completion_tokens,
+    total_tokens: tokenUsage.total_tokens,
+    feature: 'article_verification',
+    law_id: lawId,
+    article_number: articleNumber,
+    questions_count: questions.length
+  })
+
+  // Verificar si hay error
+  if (aiResponse.error) {
+    await logVerificationError({
+      lawId,
+      articleNumber,
+      provider,
+      model,
+      prompt,
+      rawResponse: aiResponse.raw,
+      errorMessage: aiResponse.error,
+      errorType: aiResponse.error.includes('JSON') ? 'json_parse' : 'api_error',
+      questionsCount: questions.length,
+      tokensUsed: tokenUsage
+    })
+
+    return {
+      success: false,
+      error: aiResponse.error,
+      raw: aiResponse.raw,
+      tokenUsage,
+      results: []
+    }
+  }
+
+  // Procesar y guardar resultados del lote
+  const verifications = aiResponse.verifications || []
+  const results = []
+
+  for (const question of questions) {
+    const verification = verifications.find(v => v.questionId === question.id) ||
+                        verifications[questions.indexOf(question)] ||
+                        { isCorrect: null, explanation: 'No se pudo verificar esta pregunta' }
+
+    // Guardar en BD
+    const { error: insertError } = await supabase
+      .from('ai_verification_results')
+      .upsert({
+        question_id: question.id,
+        article_id: articleId,
+        law_id: lawId,
+        is_correct: verification.isCorrect,
+        confidence: verification.confidence,
+        explanation: verification.explanation,
+        article_quote: verification.articleQuote,
+        suggested_fix: verification.suggestedFix,
+        correct_option_should_be: verification.correctOptionShouldBe,
+        new_explanation: verification.newExplanation,
+        ai_provider: provider,
+        ai_model: model,
+        verified_at: new Date().toISOString()
+      }, {
+        onConflict: 'question_id,ai_provider'
+      })
+
+    if (insertError) {
+      console.error('Error guardando verificación:', insertError)
+    }
+
+    results.push({
+      questionId: question.id,
+      questionText: question.question_text.substring(0, 100) + '...',
+      ...verification
+    })
+  }
+
+  return {
+    success: true,
+    tokenUsage,
+    results
   }
 }
 
@@ -129,20 +343,14 @@ export async function POST(request) {
       }
     }
 
-    // 5. Construir el prompt para verificar TODAS las preguntas
-    const prompt = buildBatchVerificationPrompt({
-      lawName: `${law.short_name} - ${law.name}`,
-      articleNumber,
-      articleContent,
-      questions
-    })
-
-    // 6. Llamar a la IA
+    // 5. Configurar proveedor y modelo
     // Normalizar nombres de proveedores (claude -> anthropic)
     const normalizedProvider = provider === 'claude' ? 'anthropic' : provider
 
     // Obtener configuración desde BD
     const aiConfig = await getAIConfig(normalizedProvider)
+
+    console.log(`[AI-Verify] Provider: ${normalizedProvider}, Model config: ${aiConfig.model}, Has API key: ${!!aiConfig.apiKey}`)
 
     if (!aiConfig.apiKey) {
       return Response.json({
@@ -151,94 +359,72 @@ export async function POST(request) {
       }, { status: 400 })
     }
 
-    let aiResponse
     // Usar modelo enviado por el cliente si existe, sino usar el de config
-    let modelUsed = model || aiConfig.model
-    let tokenUsage = {}
+    const modelUsed = model || aiConfig.model
+    const lawName = `${law.short_name} - ${law.name}`
 
-    if (normalizedProvider === 'anthropic') {
-      const result = await verifyWithClaude(prompt, aiConfig.apiKey, modelUsed)
-      aiResponse = result.response
-      tokenUsage = result.usage || {}
-    } else if (normalizedProvider === 'google') {
-      const result = await verifyWithGoogle(prompt, aiConfig.apiKey, modelUsed)
-      aiResponse = result.response
-      tokenUsage = result.usage || {}
-    } else {
-      // OpenAI por defecto
-      const result = await verifyWithOpenAI(prompt, aiConfig.apiKey, modelUsed)
-      aiResponse = result.response
-      tokenUsage = result.usage || {}
-    }
+    // 6. Dividir en lotes si es necesario
+    const safeBatchSize = getSafeBatchSize(modelUsed)
+    const totalBatches = Math.ceil(questions.length / safeBatchSize)
 
-    // 7. Guardar uso de tokens
-    const endpoints = {
-      openai: '/v1/chat/completions',
-      anthropic: '/v1/messages',
-      google: '/v1beta/models/generateContent'
-    }
-    await supabase.from('ai_api_usage').insert({
-      provider: normalizedProvider,
-      model: modelUsed,
-      endpoint: endpoints[normalizedProvider] || 'unknown',
-      input_tokens: tokenUsage.input_tokens || tokenUsage.prompt_tokens,
-      output_tokens: tokenUsage.output_tokens || tokenUsage.completion_tokens,
-      total_tokens: tokenUsage.total_tokens,
-      feature: 'article_verification',
-      law_id: lawId,
-      article_number: articleNumber,
-      questions_count: questions.length
-    })
+    console.log(`[AI-Verify] Modelo: ${modelUsed}, max_tokens: ${getMaxOutputTokens(modelUsed)}, Preguntas: ${questions.length}, Lote seguro: ${safeBatchSize}, Total lotes: ${totalBatches}`)
 
-    // 8. Procesar y guardar resultados
-    const results = []
+    // 7. Procesar preguntas en lotes
+    const allResults = []
+    const allTokenUsage = { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
+    const errors = []
 
-    if (aiResponse.error) {
-      return Response.json({
-        success: false,
-        error: aiResponse.error
-      }, { status: 500 })
-    }
+    for (let i = 0; i < totalBatches; i++) {
+      const startIdx = i * safeBatchSize
+      const endIdx = Math.min(startIdx + safeBatchSize, questions.length)
+      const batchQuestions = questions.slice(startIdx, endIdx)
 
-    // Parsear resultados (esperamos un array de verificaciones)
-    const verifications = aiResponse.verifications || []
+      const batchResult = await processBatch({
+        questions: batchQuestions,
+        lawName,
+        articleNumber,
+        articleContent,
+        provider: normalizedProvider,
+        apiKey: aiConfig.apiKey,
+        model: modelUsed,
+        lawId,
+        articleId: article.id,
+        batchIndex: i,
+        totalBatches
+      })
 
-    for (const question of questions) {
-      // Buscar la verificación correspondiente
-      const verification = verifications.find(v => v.questionId === question.id) ||
-                          verifications[questions.indexOf(question)] ||
-                          { isCorrect: null, explanation: 'No se pudo verificar esta pregunta' }
-
-      // Guardar en BD (upsert para evitar duplicados)
-      const { error: insertError } = await supabase
-        .from('ai_verification_results')
-        .upsert({
-          question_id: question.id,
-          article_id: article.id,
-          law_id: lawId,
-          is_correct: verification.isCorrect,
-          confidence: verification.confidence,
-          explanation: verification.explanation,
-          article_quote: verification.articleQuote,
-          suggested_fix: verification.suggestedFix,
-          correct_option_should_be: verification.correctOptionShouldBe,
-          new_explanation: verification.newExplanation,
-          ai_provider: normalizedProvider,
-          ai_model: modelUsed,
-          verified_at: new Date().toISOString()
-        }, {
-          onConflict: 'question_id,ai_provider'
-        })
-
-      if (insertError) {
-        console.error('Error guardando verificación:', insertError)
+      // Acumular tokens
+      if (batchResult.tokenUsage) {
+        allTokenUsage.input_tokens += batchResult.tokenUsage.input_tokens || 0
+        allTokenUsage.output_tokens += batchResult.tokenUsage.output_tokens || 0
+        allTokenUsage.total_tokens += batchResult.tokenUsage.total_tokens || 0
       }
 
-      results.push({
-        questionId: question.id,
-        questionText: question.question_text.substring(0, 100) + '...',
-        ...verification
-      })
+      if (batchResult.success) {
+        allResults.push(...batchResult.results)
+      } else {
+        // Si falla un lote, registrar el error pero continuar con los demás
+        errors.push({
+          batch: i + 1,
+          questionsRange: `${startIdx + 1}-${endIdx}`,
+          error: batchResult.error
+        })
+        console.error(`[AI-Verify] Error en lote ${i + 1}/${totalBatches}:`, batchResult.error)
+      }
+    }
+
+    // 8. Retornar resultados combinados
+    const hasErrors = errors.length > 0
+    const allFailed = errors.length === totalBatches
+
+    if (allFailed) {
+      return Response.json({
+        success: false,
+        error: `Todos los lotes fallaron. Primer error: ${errors[0]?.error}`,
+        errors,
+        provider: normalizedProvider,
+        model: modelUsed
+      }, { status: 500 })
     }
 
     return Response.json({
@@ -248,10 +434,17 @@ export async function POST(request) {
         title: article.title
       },
       questionsCount: questions.length,
-      results,
-      tokenUsage,
-      provider,
+      results: allResults,
+      tokenUsage: allTokenUsage,
+      provider: normalizedProvider,
       model: modelUsed,
+      batches: {
+        total: totalBatches,
+        successful: totalBatches - errors.length,
+        failed: errors.length,
+        batchSize: safeBatchSize
+      },
+      errors: hasErrors ? errors : undefined,
       timestamp: new Date().toISOString()
     })
 
@@ -282,8 +475,9 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
 
     const html = await response.text()
 
+    // Nota: algunos BOE usan IDs numéricos (a207) y otros textuales (adoscientossiete)
     const articleRegex = new RegExp(
-      `<div[^>]*id="a${articleNumber}"[^>]*>[\\s\\S]*?<h5[^>]*class="articulo"[^>]*>([\\s\\S]*?)</h5>([\\s\\S]*?)(?=<div[^>]*class="bloque"|<p[^>]*class="linkSubir"|$)`,
+      `<div[^>]*id="a${articleNumber}"[^>]*>[\\s\\S]*?<h5[^>]*class="articulo"[^>]*>([\\s\\S]*?)</h5>([\\s\\S]*?)(?=<div[^>]*class="bloque"|$)`,
       'i'
     )
 
@@ -291,7 +485,14 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
 
     if (match) {
       let content = match[2]
-        .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '')
+        .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '') // Quitar [Bloque X: #aX]
+        .replace(/<p[^>]*class="nota_pie"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar notas de modificación
+        .replace(/<p[^>]*class="linkSubir"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar enlace "Subir"
+        .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '') // Quitar bloques de notas
+        .replace(/<form[^>]*>[\s\S]*?<\/form>/gi, '') // Quitar formularios
+        .replace(/<a[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '') // Quitar jurisprudencia
+        .replace(/Jurisprudencia/gi, '')
+        // Preservar estructura de párrafos
         .replace(/<\/p>/gi, '\n\n')
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<\/li>/gi, '\n')
@@ -362,7 +563,7 @@ Responde en formato JSON con este esquema exacto:
       "articleQuote": "Cita LITERAL del artículo del BOE que justifica la respuesta",
       "suggestedFix": "Descripción del error si lo hay. null si está bien",
       "correctOptionShouldBe": "A/B/C/D si hay error, null si está bien",
-      "newExplanation": "OBLIGATORIO - Explicación DIDÁCTICA y COMPLETA para el alumno (mínimo 3-4 párrafos). Estructura:\n\n1. CONTEXTO: Explica el concepto legal que trata la pregunta y su importancia en el procedimiento administrativo.\n\n2. RESPUESTA CORRECTA: Indica cuál es y por qué es correcta según el artículo, citando el texto literal entre comillas.\n\n3. ANÁLISIS DE CADA OPCIÓN:\n   - Opción A: [Correcta/Incorrecta porque...]\n   - Opción B: [Correcta/Incorrecta porque...]\n   - Opción C: [Correcta/Incorrecta porque...]\n   - Opción D: [Correcta/Incorrecta porque...]\n\n4. CONSEJO DE ESTUDIO: Cómo recordar este concepto o relacionarlo con otros artículos de la ley.\n\nIMPORTANTE: Sé pedagógico, claro y detallado. El objetivo es que el alumno ENTIENDA el concepto, no solo memorice la respuesta."
+      "newExplanation": "OBLIGATORIO - Explicación DIDÁCTICA y COMPLETA para el alumno. Estructura:\n\n1. FUNDAMENTO LEGAL: Cita SIEMPRE el artículo completo con su apartado específico y la ley. Ejemplos correctos:\n   - 'El artículo 3.5 de la Ley 39/2015 establece que...'\n   - 'Según el artículo 21.2.a) de la Ley 39/2015 del Procedimiento Administrativo Común...'\n   - 'El apartado 3 del artículo 53 de la Ley 39/2015 dispone...'\n   NUNCA digas solo 'El artículo establece...' sin especificar número, apartado y ley.\n\n2. RESPUESTA CORRECTA: Explica POR QUÉ es correcta citando el texto literal del artículo entre comillas.\n\n3. ANÁLISIS DE OPCIONES INCORRECTAS: Explica brevemente por qué cada opción incorrecta no es válida.\n\n4. CONSEJO PRÁCTICO: Un truco nemotécnico o relación con otros conceptos para recordarlo.\n\nIMPORTANTE: Sé claro, pedagógico y preciso. El alumno debe entender el concepto legal, no solo memorizar."
     }
   ]
 }
@@ -375,7 +576,15 @@ IMPORTANTE:
 - NO ALUCINES: si algo no está en el artículo, no lo inventes
 - Las citas entre comillas deben ser EXACTAS del texto proporcionado arriba
 - Si no puedes verificar algo con el artículo dado, indícalo claramente
-- El objetivo es ENSEÑAR al alumno, no solo indicar si está bien o mal`
+- El objetivo es ENSEÑAR al alumno, no solo indicar si está bien o mal
+
+FORMATO JSON CRÍTICO:
+- Devuelve SOLO el JSON, sin texto antes ni después
+- Los saltos de línea dentro de strings DEBEN ser \\n (escapados), NUNCA saltos de línea literales
+- Ejemplo correcto: "explanation": "Primera línea.\\n\\nSegunda línea."
+- Ejemplo INCORRECTO: "explanation": "Primera línea.
+Segunda línea."
+- El JSON debe ser válido y parseable directamente`
 }
 
 /**
@@ -409,7 +618,7 @@ async function verifyWithOpenAI(prompt, apiKey, model = 'gpt-4o-mini') {
           }
         ],
         temperature: 0.1,
-        max_tokens: 4000
+        max_tokens: getMaxOutputTokens(model)
       })
     })
 
@@ -425,24 +634,47 @@ async function verifyWithOpenAI(prompt, apiKey, model = 'gpt-4o-mini') {
     const content = data.choices?.[0]?.message?.content
     const usage = data.usage
 
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        return {
-          response: JSON.parse(jsonMatch[0]),
-          usage
-        }
-      }
-    } catch (e) {
+    // Verificar que hay contenido
+    if (!content) {
+      console.error('OpenAI no devolvió contenido. Respuesta:', JSON.stringify(data))
       return {
-        response: { error: 'No se pudo parsear la respuesta como JSON', raw: content },
+        response: { error: 'OpenAI no devolvió contenido en la respuesta', raw: JSON.stringify(data) },
         usage
       }
     }
 
-    return {
-      response: { verifications: [] },
-      usage
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        let jsonStr = jsonMatch[0]
+
+        // Intentar parsear directamente primero
+        try {
+          return { response: JSON.parse(jsonStr), usage }
+        } catch (firstError) {
+          // Si falla, limpiar caracteres de control dentro de strings
+          jsonStr = jsonStr.replace(/"([^"\\]|\\.)*"/g, (match) => {
+            return match
+              .replace(/\n/g, '\\n')
+              .replace(/\r/g, '\\r')
+              .replace(/\t/g, '\\t')
+              .replace(/[\x00-\x1F\x7F]/g, '')
+          })
+          return { response: JSON.parse(jsonStr), usage }
+        }
+      } else {
+        console.error('No se encontró JSON en la respuesta de OpenAI:', content.substring(0, 500))
+        return {
+          response: { error: 'No se encontró JSON en la respuesta', raw: content.substring(0, 500) },
+          usage
+        }
+      }
+    } catch (e) {
+      console.error('Error parseando JSON de OpenAI:', e.message, 'Contenido:', content.substring(0, 500))
+      return {
+        response: { error: `No se pudo parsear la respuesta como JSON: ${e.message}`, raw: content.substring(0, 500) },
+        usage
+      }
     }
   } catch (error) {
     return {
@@ -473,7 +705,7 @@ async function verifyWithClaude(prompt, apiKey, model = 'claude-3-haiku-20240307
       },
       body: JSON.stringify({
         model,
-        max_tokens: 4000,
+        max_tokens: getMaxOutputTokens(model),
         messages: [
           {
             role: 'user',
@@ -485,9 +717,20 @@ async function verifyWithClaude(prompt, apiKey, model = 'claude-3-haiku-20240307
 
     const data = await response.json()
 
-    if (data.error) {
+    // Manejar errores HTTP
+    if (!response.ok) {
+      console.error('Error HTTP de Claude:', response.status, JSON.stringify(data))
       return {
-        response: { error: data.error.message },
+        response: { error: data.error?.message || `Error HTTP ${response.status}`, raw: JSON.stringify(data) },
+        usage: {}
+      }
+    }
+
+    // Manejar errores en la respuesta
+    if (data.error || data.type === 'error') {
+      console.error('Error en respuesta de Claude:', JSON.stringify(data))
+      return {
+        response: { error: data.error?.message || data.message || 'Error desconocido de Claude', raw: JSON.stringify(data) },
         usage: {}
       }
     }
@@ -499,24 +742,49 @@ async function verifyWithClaude(prompt, apiKey, model = 'claude-3-haiku-20240307
       total_tokens: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0)
     }
 
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        return {
-          response: JSON.parse(jsonMatch[0]),
-          usage
-        }
-      }
-    } catch (e) {
+    // Verificar que hay contenido
+    if (!content) {
+      console.error('Claude no devolvió contenido. Respuesta:', JSON.stringify(data))
       return {
-        response: { error: 'No se pudo parsear la respuesta como JSON', raw: content },
+        response: { error: 'Claude no devolvió contenido en la respuesta', raw: JSON.stringify(data) },
         usage
       }
     }
 
-    return {
-      response: { verifications: [] },
-      usage
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        let jsonStr = jsonMatch[0]
+
+        // Intentar parsear directamente primero
+        try {
+          return { response: JSON.parse(jsonStr), usage }
+        } catch (firstError) {
+          // Si falla, limpiar caracteres de control dentro de strings
+          // Reemplazar caracteres de control problemáticos dentro de strings JSON
+          jsonStr = jsonStr.replace(/"([^"\\]|\\.)*"/g, (match) => {
+            return match
+              .replace(/\n/g, '\\n')
+              .replace(/\r/g, '\\r')
+              .replace(/\t/g, '\\t')
+              .replace(/[\x00-\x1F\x7F]/g, '') // Eliminar otros caracteres de control
+          })
+
+          return { response: JSON.parse(jsonStr), usage }
+        }
+      } else {
+        console.error('No se encontró JSON en la respuesta de Claude:', content.substring(0, 500))
+        return {
+          response: { error: 'No se encontró JSON en la respuesta', raw: content.substring(0, 500) },
+          usage
+        }
+      }
+    } catch (e) {
+      console.error('Error parseando JSON de Claude:', e.message, 'Contenido:', content.substring(0, 500))
+      return {
+        response: { error: `No se pudo parsear la respuesta como JSON: ${e.message}`, raw: content.substring(0, 500) },
+        usage
+      }
     }
   } catch (error) {
     return {
@@ -553,7 +821,7 @@ async function verifyWithGoogle(prompt, apiKey, model = 'gemini-1.5-flash') {
           ],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 4000
+            maxOutputTokens: getMaxOutputTokens(model)
           }
         })
       }
@@ -575,6 +843,15 @@ async function verifyWithGoogle(prompt, apiKey, model = 'gemini-1.5-flash') {
       total_tokens: data.usageMetadata?.totalTokenCount || 0
     }
 
+    // Verificar que hay contenido
+    if (!content) {
+      console.error('Google no devolvió contenido. Respuesta:', JSON.stringify(data))
+      return {
+        response: { error: 'Google no devolvió contenido en la respuesta', raw: JSON.stringify(data) },
+        usage
+      }
+    }
+
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
@@ -582,17 +859,19 @@ async function verifyWithGoogle(prompt, apiKey, model = 'gemini-1.5-flash') {
           response: JSON.parse(jsonMatch[0]),
           usage
         }
+      } else {
+        console.error('No se encontró JSON en la respuesta de Google:', content.substring(0, 500))
+        return {
+          response: { error: 'No se encontró JSON en la respuesta', raw: content.substring(0, 500) },
+          usage
+        }
       }
     } catch (e) {
+      console.error('Error parseando JSON de Google:', e.message, 'Contenido:', content.substring(0, 500))
       return {
-        response: { error: 'No se pudo parsear la respuesta como JSON', raw: content },
+        response: { error: `No se pudo parsear la respuesta como JSON: ${e.message}`, raw: content.substring(0, 500) },
         usage
       }
-    }
-
-    return {
-      response: { verifications: [] },
-      usage
     }
   } catch (error) {
     return {

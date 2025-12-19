@@ -6,40 +6,176 @@ const supabase = createClient(
 )
 
 /**
+ * Convierte texto de número español a dígito
+ * Soporta desde "primero" hasta "trescientos y pico"
+ * También soporta sufijos: "bis", "ter", "quater", etc.
+ * Ej: "primero" -> "1", "ciento ochenta y siete bis" -> "187 bis"
+ */
+function spanishTextToNumber(text) {
+  if (!text) return null
+
+  // Separar posible sufijo (bis, ter, etc.)
+  const suffixMatch = text.match(/^(.+?)\s+(bis|ter|quater|quinquies|sexies|septies)\.?$/i)
+  let mainText = suffixMatch ? suffixMatch[1].trim() : text.trim()
+  const suffix = suffixMatch ? suffixMatch[2].toLowerCase() : ''
+
+  const normalized = mainText.toLowerCase().trim()
+
+  // Mapas base
+  const ordinals = {
+    'primero': 1, 'segundo': 2, 'tercero': 3, 'cuarto': 4, 'quinto': 5,
+    'sexto': 6, 'séptimo': 7, 'septimo': 7, 'octavo': 8, 'noveno': 9
+  }
+
+  const units = {
+    'uno': 1, 'una': 1, 'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
+    'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9
+  }
+
+  const teens = {
+    'diez': 10, 'once': 11, 'doce': 12, 'trece': 13, 'catorce': 14,
+    'quince': 15, 'dieciséis': 16, 'dieciseis': 16, 'diecisiete': 17,
+    'dieciocho': 18, 'diecinueve': 19
+  }
+
+  const twenties = {
+    'veinte': 20, 'veintiuno': 21, 'veintiuna': 21, 'veintidós': 22, 'veintidos': 22,
+    'veintitrés': 23, 'veintitres': 23, 'veinticuatro': 24, 'veinticinco': 25,
+    'veintiséis': 26, 'veintiseis': 26, 'veintisiete': 27, 'veintiocho': 28,
+    'veintinueve': 29
+  }
+
+  const tens = {
+    'treinta': 30, 'cuarenta': 40, 'cincuenta': 50, 'sesenta': 60,
+    'setenta': 70, 'ochenta': 80, 'noventa': 90
+  }
+
+  const hundreds = {
+    'cien': 100, 'ciento': 100, 'doscientos': 200, 'doscientas': 200,
+    'trescientos': 300, 'trescientas': 300
+  }
+
+  // Función auxiliar para convertir la parte numérica
+  function convertPart(str) {
+    str = str.toLowerCase().trim()
+
+    // Ordinales (primero, segundo, etc.)
+    if (ordinals[str]) return ordinals[str]
+
+    // Unidades
+    if (units[str]) return units[str]
+
+    // Teens (10-19)
+    if (teens[str]) return teens[str]
+
+    // Twenties (20-29)
+    if (twenties[str]) return twenties[str]
+
+    // Decenas simples
+    if (tens[str]) return tens[str]
+
+    // Decenas compuestas: "treinta y uno", "ochenta y siete"
+    const tensCompound = str.match(/^(treinta|cuarenta|cincuenta|sesenta|setenta|ochenta|noventa)\s+y\s+(\w+)$/i)
+    if (tensCompound) {
+      const tenValue = tens[tensCompound[1].toLowerCase()] || 0
+      const unitValue = units[tensCompound[2].toLowerCase()] || 0
+      if (tenValue && unitValue) return tenValue + unitValue
+    }
+
+    // Cien/ciento
+    if (hundreds[str]) return hundreds[str]
+
+    return null
+  }
+
+  // Intentar conversión directa (números simples: 1-99)
+  const directConversion = convertPart(normalized)
+  if (directConversion !== null) {
+    return suffix ? `${directConversion} ${suffix}` : String(directConversion)
+  }
+
+  // Manejar centenas: "ciento uno", "ciento ochenta y dos", "doscientos diez"
+  const hundredsMatch = normalized.match(/^(cien|ciento|doscientos?|doscientas?|trescientos?|trescientas?)(?:\s+(.+))?$/i)
+  if (hundredsMatch) {
+    const hundredValue = hundreds[hundredsMatch[1].toLowerCase()] || 0
+    if (hundredsMatch[2]) {
+      const rest = convertPart(hundredsMatch[2])
+      if (rest !== null) {
+        const total = hundredValue + rest
+        return suffix ? `${total} ${suffix}` : String(total)
+      }
+    }
+    return suffix ? `${hundredValue} ${suffix}` : String(hundredValue)
+  }
+
+  return null
+}
+
+/**
  * Extrae los artículos del HTML del BOE (título Y contenido)
  * Maneja artículos con y sin título
  * Soporta IDs numéricos (id="a1") y textuales (id="aprimero")
+ * Soporta artículos con números en texto ("Artículo primero") o dígitos ("Artículo 1")
  */
 function extractArticlesFromBOE(html) {
   const articles = []
 
   // Regex más flexible: captura cualquier div.bloque con id que empiece por "a"
   // Algunos BOEs usan id="a1", otros id="aprimero", "asegundo", etc.
-  const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="a[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|<p[^>]*class="linkSubir"|$)/gi
+  // Termina solo al encontrar el siguiente div.bloque o el final del documento
+  const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="a[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|$)/gi
 
   let match
   while ((match = articleBlockRegex.exec(html)) !== null) {
     const blockContent = match[1]
 
     // Extraer número de artículo del header h5 (más confiable que el ID)
-    // Soporta: "Artículo 1.", "Artículo 4 bis.", "Artículo 22 ter.", etc.
-    const articleHeaderMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|quater|quinquies|sexies|septies))?)\.?\s*([^<]*)<\/h5>/i)
+    // Soporta: "Artículo 1.", "Artículo 4 bis.", "Artículo 22 ter."
+    // También: "Artículo primero", "Artículo segundo", "Artículo ciento uno"
+    let articleNumber = null
+    let title = ''
 
-    if (!articleHeaderMatch) {
-      // Si no hay header de artículo, saltar este bloque
-      continue
+    // Primero intentar formato numérico: "Artículo 1.", "Artículo 4 bis."
+    const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|quater|quinquies|sexies|septies))?)\.?\s*([^<]*)<\/h5>/i)
+
+    if (numericMatch) {
+      articleNumber = numericMatch[1].trim().replace(/\s+/g, ' ')
+      title = numericMatch[2]?.trim().replace(/\.$/, '') || ''
+    } else {
+      // Intentar formato texto: "Artículo primero", "Artículo ciento ochenta y cuatro. Título aquí"
+      const textMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+([^<]+)<\/h5>/i)
+      if (textMatch) {
+        let textContent = textMatch[1].trim()
+
+        // Separar número y título si hay un punto seguido de texto
+        // Ej: "ciento ochenta y cuatro. Concejales de Municipios..."
+        const titleSeparatorMatch = textContent.match(/^(.+?)\.\s+(.+)$/)
+        if (titleSeparatorMatch) {
+          textContent = titleSeparatorMatch[1].trim()
+          title = titleSeparatorMatch[2].trim().replace(/\.$/, '')
+        }
+
+        // Intentar convertir el texto a número
+        const converted = spanishTextToNumber(textContent)
+        if (converted) {
+          articleNumber = converted
+        }
+      }
     }
 
-    const articleNumber = articleHeaderMatch[1].trim().replace(/\s+/g, ' ') // "4 bis" -> "4 bis"
-    let title = ''
-    if (articleHeaderMatch[2]) {
-      title = articleHeaderMatch[2].trim().replace(/\.$/, '') // Quitar punto final
+    if (!articleNumber) {
+      // Si no se pudo extraer número de artículo, saltar este bloque
+      continue
     }
 
     // Extraer contenido (todo después del h5, preservando formato de párrafos)
     let content = blockContent
       .replace(/<h5[^>]*class="articulo"[^>]*>[\s\S]*?<\/h5>/gi, '') // Quitar el h5 del título
       .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '') // Quitar [Bloque X: #aX]
+      .replace(/<p[^>]*class="nota_pie"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar notas de modificación del BOE
+      .replace(/<p[^>]*class="linkSubir"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar enlace "Subir"
+      .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '') // Quitar bloques de notas
+      .replace(/<form[^>]*>[\s\S]*?<\/form>/gi, '') // Quitar formularios de jurisprudencia
       .replace(/<a[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '') // Quitar enlaces de jurisprudencia
       .replace(/<span[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/span>/gi, '') // Quitar spans de jurisprudencia
       .replace(/<div[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '') // Quitar divs de jurisprudencia
@@ -210,8 +346,14 @@ export async function GET(request) {
     if (boeArticles.length === 0) {
       return Response.json({
         success: false,
-        error: 'No se pudieron extraer artículos del BOE. Puede que la estructura HTML haya cambiado.',
-        htmlPreview: boeHtml.substring(0, 500)
+        error: `No se pudieron extraer artículos del BOE para "${law.short_name}". Puede que la estructura HTML haya cambiado.`,
+        law: {
+          id: law.id,
+          short_name: law.short_name,
+          name: law.name,
+          boe_url: law.boe_url
+        },
+        htmlPreview: boeHtml.substring(0, 1000)
       }, { status: 500 })
     }
 
