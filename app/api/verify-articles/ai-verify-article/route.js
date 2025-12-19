@@ -487,6 +487,7 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
       let content = match[2]
         .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '') // Quitar [Bloque X: #aX]
         .replace(/<p[^>]*class="nota_pie"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar notas de modificación
+        .replace(/<p[^>]*class="pie_unico"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar "Texto añadido, publicado el..."
         .replace(/<p[^>]*class="linkSubir"[^>]*>[\s\S]*?<\/p>/gi, '') // Quitar enlace "Subir"
         .replace(/<blockquote[^>]*>[\s\S]*?<\/blockquote>/gi, '') // Quitar bloques de notas
         .replace(/<form[^>]*>[\s\S]*?<\/form>/gi, '') // Quitar formularios
