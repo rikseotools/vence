@@ -8,30 +8,42 @@ const supabase = createClient(
 /**
  * Extrae los artículos del HTML del BOE (título Y contenido)
  * Maneja artículos con y sin título
+ * Soporta IDs numéricos (id="a1") y textuales (id="aprimero")
  */
 function extractArticlesFromBOE(html) {
   const articles = []
 
-  // Regex más flexible para capturar artículos con o sin título
-  // Estructura: <div class="bloque" id="aX">...<h5 class="articulo">Artículo X. [Título opcional]</h5>...contenido...</div>
-  const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="a(\d+)"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|<p[^>]*class="linkSubir"|$)/gi
+  // Regex más flexible: captura cualquier div.bloque con id que empiece por "a"
+  // Algunos BOEs usan id="a1", otros id="aprimero", "asegundo", etc.
+  const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="a[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|<p[^>]*class="linkSubir"|$)/gi
 
   let match
   while ((match = articleBlockRegex.exec(html)) !== null) {
-    const articleNumber = match[1]
-    const blockContent = match[2]
+    const blockContent = match[1]
 
-    // Extraer título del h5
-    const titleMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+\d+\.?\s*([^<]*)<\/h5>/i)
+    // Extraer número de artículo del header h5 (más confiable que el ID)
+    // Soporta: "Artículo 1.", "Artículo 4 bis.", "Artículo 22 ter.", etc.
+    const articleHeaderMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|quater|quinquies|sexies|septies))?)\.?\s*([^<]*)<\/h5>/i)
+
+    if (!articleHeaderMatch) {
+      // Si no hay header de artículo, saltar este bloque
+      continue
+    }
+
+    const articleNumber = articleHeaderMatch[1].trim().replace(/\s+/g, ' ') // "4 bis" -> "4 bis"
     let title = ''
-    if (titleMatch && titleMatch[1]) {
-      title = titleMatch[1].trim().replace(/\.$/, '') // Quitar punto final
+    if (articleHeaderMatch[2]) {
+      title = articleHeaderMatch[2].trim().replace(/\.$/, '') // Quitar punto final
     }
 
     // Extraer contenido (todo después del h5, preservando formato de párrafos)
     let content = blockContent
       .replace(/<h5[^>]*class="articulo"[^>]*>[\s\S]*?<\/h5>/gi, '') // Quitar el h5 del título
       .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '') // Quitar [Bloque X: #aX]
+      .replace(/<a[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '') // Quitar enlaces de jurisprudencia
+      .replace(/<span[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/span>/gi, '') // Quitar spans de jurisprudencia
+      .replace(/<div[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '') // Quitar divs de jurisprudencia
+      .replace(/Jurisprudencia/gi, '') // Quitar texto suelto de "Jurisprudencia"
       // Preservar estructura de párrafos
       .replace(/<\/p>/gi, '\n\n') // Fin de párrafo = doble salto
       .replace(/<br\s*\/?>/gi, '\n') // Salto de línea
@@ -50,14 +62,37 @@ function extractArticlesFromBOE(html) {
     })
   }
 
-  // Ordenar por número de artículo
+  // Ordenar por número de artículo (soporta "4", "4 bis", "4 ter", etc.)
+  const suffixOrder = { '': 0, 'bis': 1, 'ter': 2, 'quater': 3, 'quinquies': 4, 'sexies': 5, 'septies': 6 }
   articles.sort((a, b) => {
-    const numA = parseInt(a.article_number) || 0
-    const numB = parseInt(b.article_number) || 0
-    return numA - numB
+    const parseArticle = (num) => {
+      const match = num.match(/^(\d+)(?:\s+(\w+))?$/)
+      if (!match) return { base: 0, suffix: 0 }
+      return {
+        base: parseInt(match[1]) || 0,
+        suffix: suffixOrder[match[2]?.toLowerCase() || ''] || 0
+      }
+    }
+    const parsedA = parseArticle(a.article_number)
+    const parsedB = parseArticle(b.article_number)
+    if (parsedA.base !== parsedB.base) return parsedA.base - parsedB.base
+    return parsedA.suffix - parsedB.suffix
   })
 
   return articles
+}
+
+/**
+ * Normaliza número de artículo para comparación
+ * Ej: "55bis" → "55 bis", "4 BIS" → "4 bis", "22  ter" → "22 ter"
+ */
+function normalizeArticleNumber(num) {
+  if (!num) return ''
+  return num
+    .toLowerCase()
+    .replace(/(\d+)\s*(bis|ter|quater|quinquies|sexies|septies)/gi, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**
@@ -224,9 +259,9 @@ export async function GET(request) {
       }
     }
 
-    // Crear mapas para comparación rápida
-    const boeMap = new Map(boeArticles.map(a => [a.article_number, a]))
-    const dbMap = new Map((dbArticles || []).map(a => [a.article_number, a]))
+    // Crear mapas para comparación rápida (normalizando números de artículo)
+    const boeMap = new Map(boeArticles.map(a => [normalizeArticleNumber(a.article_number), a]))
+    const dbMap = new Map((dbArticles || []).map(a => [normalizeArticleNumber(a.article_number), a]))
 
     // Verificar artículos del BOE
     for (const [artNum, boeArt] of boeMap) {
@@ -263,25 +298,30 @@ export async function GET(request) {
         const dbHasTitle = dbArt.title && dbArt.title.trim() !== ''
 
         // Debug: log de comparación
-        if (['2', '4', '6'].includes(artNum)) {
+        if (['2', '4', '6', '11'].includes(artNum)) {
           console.log(`📊 Comparación Art ${artNum}:`, {
+            boeTitle: boeArt.title,
+            dbTitle: dbArt.title,
+            boeTitleNorm,
+            dbTitleNorm,
             titlesMatch,
+            boeHasNoTitle,
+            dbHasTitle,
             contentMatch: contentComparison.match,
             contentSimilarity: contentComparison.similarity,
-            classification: contentComparison.match
-              ? (titlesMatch ? 'MATCHING' : 'TITLE_MISMATCH')
-              : (titlesMatch ? 'CONTENT_MISMATCH' : 'TITLE_MISMATCH')
+            condicionOK: titlesMatch || (boeHasNoTitle && dbHasTitle)
           })
         }
 
         if (contentComparison.match) {
           // Contenido coincide
-          if (titlesMatch || (boeHasNoTitle && dbHasTitle)) {
-            // Todo OK: títulos coinciden O (BOE sin título pero BD tiene título y contenido OK)
+          if (titlesMatch || (boeHasNoTitle && dbHasTitle) || (boeHasNoTitle && !dbHasTitle)) {
+            // Todo OK: títulos coinciden O (BOE sin título - BD puede tener o no)
             comparison.summary.matching++
             comparison.details.matching.push({
               article_number: artNum,
               title: dbArt.title || boeArt.title || '(sin título)',
+              db_id: dbArt.id,
               note: boeHasNoTitle && dbHasTitle ? 'BOE sin título, BD tiene título (contenido OK)' : null
             })
           } else {
@@ -297,32 +337,17 @@ export async function GET(request) {
             })
           }
         } else {
-          // Contenido NO coincide
-          if (!titlesMatch) {
-            // Título Y contenido diferentes
-            comparison.summary.title_mismatch++
-            comparison.details.title_mismatch.push({
-              article_number: artNum,
-              boe_title: boeArt.title || '(sin título)',
-              db_title: dbArt.title || '(sin título)',
-              db_id: dbArt.id,
-              content_ok: false,
-              content_similarity: contentComparison.similarity,
-              boe_has_no_title: boeHasNoTitle,
-              boe_content_preview: boeArt.content?.substring(0, 200) + '...'
-            })
-          } else {
-            // Solo contenido diferente (títulos coinciden)
-            comparison.summary.content_mismatch++
-            comparison.details.content_mismatch.push({
-              article_number: artNum,
-              title: boeArt.title || '(sin título)',
-              similarity: contentComparison.similarity,
-              boe_content_preview: boeArt.content?.substring(0, 300) + '...',
-              db_content_preview: dbArt.content?.substring(0, 300) + '...',
-              db_id: dbArt.id
-            })
-          }
+          // Contenido NO coincide - esto es lo importante, clasificar como content_mismatch
+          comparison.summary.content_mismatch++
+          comparison.details.content_mismatch.push({
+            article_number: artNum,
+            title: dbArt.title || boeArt.title || '(sin título)',
+            similarity: contentComparison.similarity,
+            boe_content_preview: boeArt.content?.substring(0, 300) + '...',
+            db_content_preview: dbArt.content?.substring(0, 300) + '...',
+            db_id: dbArt.id,
+            boe_has_no_title: boeHasNoTitle
+          })
         }
       }
     }
@@ -340,10 +365,38 @@ export async function GET(request) {
     }
 
     // 6. Calcular estado general
-    const isOk = comparison.summary.missing_in_db === 0 &&
-                 comparison.summary.extra_in_db === 0 &&
-                 comparison.summary.title_mismatch === 0 &&
+    // isOk = true si los artículos que tenemos en BD coinciden con el BOE
+    // (no importa si faltan artículos, eso es informativo)
+    const isOk = comparison.summary.title_mismatch === 0 &&
                  comparison.summary.content_mismatch === 0
+
+    // 7. Actualizar estado de verificación en la ley (guardar resumen completo)
+    const summaryToSave = {
+      boe_count: comparison.summary.boe_count,
+      db_count: comparison.summary.db_count,
+      matching: comparison.summary.matching,
+      title_mismatch: comparison.summary.title_mismatch,
+      content_mismatch: comparison.summary.content_mismatch || 0,
+      extra_in_db: comparison.summary.extra_in_db,
+      missing_in_db: comparison.summary.missing_in_db,
+      is_ok: isOk,
+      verified_at: new Date().toISOString()
+    }
+    console.log('💾 [VERIFY] Guardando summary para ley:', law.id, summaryToSave)
+
+    const { error: updateError } = await supabase
+      .from('laws')
+      .update({
+        last_checked: new Date().toISOString(),
+        last_verification_summary: summaryToSave
+      })
+      .eq('id', law.id)
+
+    if (updateError) {
+      console.error('❌ [VERIFY] Error guardando summary:', updateError)
+    } else {
+      console.log('✅ [VERIFY] Summary guardado correctamente')
+    }
 
     return Response.json({
       success: true,

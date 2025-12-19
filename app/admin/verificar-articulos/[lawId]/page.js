@@ -224,53 +224,6 @@ const CompareModal = ({ isOpen, onClose, article, law, lawId }) => {
   )
 }
 
-// Stepper component - clickable para navegar entre pasos
-const Stepper = ({ currentStep, steps, onStepClick, completedSteps = [] }) => (
-  <div className="flex items-center justify-center mb-6 flex-wrap gap-1">
-    {steps.map((step, index) => {
-      const isCompleted = index < currentStep || completedSteps.includes(index)
-      const isCurrent = index === currentStep
-      const canClick = isCompleted || index <= currentStep
-
-      return (
-        <div key={index} className="flex items-center">
-          <button
-            onClick={() => canClick && onStepClick && onStepClick(index)}
-            disabled={!canClick}
-            className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-all ${
-              isCompleted
-                ? 'bg-green-500 text-white hover:bg-green-600 cursor-pointer'
-                : isCurrent
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-            }`}
-            title={canClick ? `Ir a: ${step}` : 'Paso no disponible'}
-          >
-            {isCompleted && !isCurrent ? '✓' : index + 1}
-          </button>
-          <span
-            onClick={() => canClick && onStepClick && onStepClick(index)}
-            className={`mx-1 text-xs hidden md:inline ${
-              isCurrent
-                ? 'text-blue-600 dark:text-blue-400 font-medium'
-                : isCompleted
-                  ? 'text-green-600 dark:text-green-400 cursor-pointer hover:underline'
-                  : 'text-gray-500 dark:text-gray-400'
-            }`}
-          >
-            {step}
-          </span>
-          {index < steps.length - 1 && (
-            <div className={`w-4 h-0.5 mx-1 ${
-              isCompleted ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-700'
-            }`} />
-          )}
-        </div>
-      )
-    })}
-  </div>
-)
-
 export default function VerificarArticulosPage() {
   const params = useParams()
   const router = useRouter()
@@ -283,9 +236,13 @@ export default function VerificarArticulosPage() {
   const [verificationResults, setVerificationResults] = useState(null)
   const [error, setError] = useState(null)
 
+  // Estado para la última verificación guardada
+  const [savedVerification, setSavedVerification] = useState(null)
+  const [loadingSavedVerification, setLoadingSavedVerification] = useState(true)
+  const [showSavedSummary, setShowSavedSummary] = useState(false)
+
   // Estado del flujo paso a paso
   const [currentStep, setCurrentStep] = useState(0)
-  const STEPS = ['Verificar', 'Resumen', 'Seleccionar', 'Actualizar', 'Preguntas', 'IA']
 
   // Estados para selección de artículos
   const [selectedArticles, setSelectedArticles] = useState(new Set())
@@ -308,7 +265,19 @@ export default function VerificarArticulosPage() {
   })
   const [aiModel, setAiModel] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('verifyAiModel') || 'claude-3-haiku-20240307'
+      const saved = localStorage.getItem('verifyAiModel')
+      // Lista de modelos válidos actuales
+      const validModels = [
+        'claude-3-haiku-20240307', 'claude-sonnet-4-20250514', 'claude-sonnet-4-5-20250929',
+        'gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo',
+        'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'
+      ]
+      if (saved && validModels.includes(saved)) {
+        return saved
+      }
+      // Si el modelo guardado no es válido, limpiar y usar default
+      localStorage.removeItem('verifyAiModel')
+      return 'claude-3-haiku-20240307'
     }
     return 'claude-3-haiku-20240307'
   })
@@ -329,8 +298,17 @@ export default function VerificarArticulosPage() {
     loadAiConfigs()
   }, [])
 
-  // Helper para obtener modelos del proveedor actual
-  const getProviderModels = (provider) => {
+  // Helper para obtener modelos del proveedor actual (solo los que funcionan)
+  const getProviderModels = (provider, includeAll = false) => {
+    const config = aiConfigs.find(c => c.provider === provider)
+    const models = config?.available_models || []
+    // Si includeAll, devolver todos. Si no, solo los que no han fallado
+    if (includeAll) return models
+    return models.filter(m => m.status !== 'failed')
+  }
+
+  // Helper para obtener TODOS los modelos (incluyendo fallidos, para mostrar en dropdown)
+  const getAllProviderModels = (provider) => {
     const config = aiConfigs.find(c => c.provider === provider)
     return config?.available_models || []
   }
@@ -339,12 +317,12 @@ export default function VerificarArticulosPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('verifyAiProvider', aiProvider)
-      // Si el modelo actual no pertenece al proveedor, usar el primero
-      const providerModels = getProviderModels(aiProvider)
-      if (providerModels.length > 0) {
-        const modelExists = providerModels.some(m => m.id === aiModel)
-        if (!modelExists) {
-          setAiModel(providerModels[0].id)
+      // Si el modelo actual no pertenece al proveedor o está fallido, usar el primero que funcione
+      const workingModels = getProviderModels(aiProvider)
+      if (workingModels.length > 0) {
+        const modelWorks = workingModels.some(m => m.id === aiModel)
+        if (!modelWorks) {
+          setAiModel(workingModels[0].id)
         }
       }
     }
@@ -358,8 +336,9 @@ export default function VerificarArticulosPage() {
   const [aiResults, setAiResults] = useState({})
 
   // Filtros
-  const [filter, setFilter] = useState('all') // all, title_mismatch, content_mismatch, extra_in_db
+  const [filter, setFilter] = useState('all') // all, title_mismatch, content_mismatch, extra_in_db, matching
   const [searchArticle, setSearchArticle] = useState('') // búsqueda por número de artículo
+  const [similarityRange, setSimilarityRange] = useState([0, 100]) // [min, max] porcentaje de similitud
 
   // Modal de comparación
   const [compareArticle, setCompareArticle] = useState(null)
@@ -368,10 +347,33 @@ export default function VerificarArticulosPage() {
   const [postUpdateVerification, setPostUpdateVerification] = useState({})
   const [verifyingPostUpdate, setVerifyingPostUpdate] = useState(false)
 
-  // Tabs y Histórico de cambios
-  const [activeTab, setActiveTab] = useState('verificacion') // 'verificacion' | 'historico'
+  // Tabs
+  const [activeTab, setActiveTab] = useState('verificacion') // 'verificacion' | 'verificar-preguntas' | 'reparar'
   const [historyData, setHistoryData] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyFilter, setHistoryFilter] = useState('all') // 'all' | 'pending' | 'ok' | 'problems'
+  const [selectedHistoryArticles, setSelectedHistoryArticles] = useState(new Set()) // artículos seleccionados para verificar en lote
+  const [batchVerifying, setBatchVerifying] = useState(false) // verificando en lote
+  const [batchProgress, setBatchProgress] = useState({
+    currentArticle: 0,
+    totalArticles: 0,
+    currentArticleNumber: null,
+    questionsCompleted: 0,
+    questionsTotal: 0,
+    // Info de lotes dentro del artículo actual
+    currentBatch: 0,
+    totalBatches: 0,
+    batchSize: 0,
+    currentBatchQuestions: 0, // preguntas en el lote actual
+    status: '' // mensaje de estado actual
+  }) // progreso de verificación en lote
+  const [batchResults, setBatchResults] = useState(null) // resultados finales de verificación en lote
+  const [errorLogs, setErrorLogs] = useState(null) // logs de errores de verificación
+  const [showErrorLogs, setShowErrorLogs] = useState(false) // mostrar modal de errores
+  const [loadingErrorLogs, setLoadingErrorLogs] = useState(false)
+  const [loadingRepairData, setLoadingRepairData] = useState(false) // cargando datos para tab reparar
+  const [repairFilter, setRepairFilter] = useState('pending') // 'pending' | 'repaired' | 'discarded'
+  const [discardedQuestions, setDiscardedQuestions] = useState({}) // { questionId: true } - falsos positivos descartados
 
   // Preguntas en histórico (para cada artículo del histórico)
   const [historyQuestions, setHistoryQuestions] = useState({}) // { article_number: questions[] }
@@ -429,6 +431,79 @@ export default function VerificarArticulosPage() {
     }
   }
 
+  // Función para marcar/desmarcar como descartado (falso positivo)
+  const toggleDiscarded = async (questionId, articleNumber, shouldDiscard) => {
+    try {
+      const response = await fetch('/api/verify-articles/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId,
+          discarded: shouldDiscard
+        })
+      })
+      const data = await response.json()
+
+      if (data.success) {
+        // Actualizar estado local
+        if (shouldDiscard) {
+          setDiscardedQuestions(prev => ({ ...prev, [questionId]: true }))
+        } else {
+          setDiscardedQuestions(prev => {
+            const next = { ...prev }
+            delete next[questionId]
+            return next
+          })
+        }
+        // Actualizar también el resultado en historyAiResults para persistencia visual
+        setHistoryAiResults(prev => {
+          if (prev[articleNumber]?.[questionId]) {
+            return {
+              ...prev,
+              [articleNumber]: {
+                ...prev[articleNumber],
+                [questionId]: {
+                  ...prev[articleNumber][questionId],
+                  discarded: shouldDiscard
+                }
+              }
+            }
+          }
+          return prev
+        })
+      } else if (data.needsMigration) {
+        alert('Error: La columna "discarded" no existe en la base de datos.\n\nEjecuta esta SQL en Supabase:\nALTER TABLE ai_verification_results ADD COLUMN discarded boolean DEFAULT false;')
+      } else {
+        alert(`Error: ${data.error}`)
+      }
+    } catch (err) {
+      console.error('Error actualizando estado de descarte:', err)
+      alert('Error al actualizar el estado')
+    }
+  }
+
+  // Cargar logs de errores de verificación
+  // Si se pasan articleNumbers, solo carga los de esos artículos
+  const loadErrorLogs = async (articleNumbers = null) => {
+    setLoadingErrorLogs(true)
+    try {
+      let url = `/api/verify-articles/errors?lawId=${lawId}&limit=20`
+      if (articleNumbers && articleNumbers.length > 0) {
+        url += `&articles=${articleNumbers.join(',')}`
+      }
+      const response = await fetch(url)
+      const data = await response.json()
+      if (data.success) {
+        setErrorLogs(data.errors || [])
+        setShowErrorLogs(true)
+      }
+    } catch (err) {
+      console.error('Error cargando logs:', err)
+    } finally {
+      setLoadingErrorLogs(false)
+    }
+  }
+
   // Cargar info básica de la ley (sin verificación automática)
   useEffect(() => {
     const loadLaw = async () => {
@@ -456,6 +531,36 @@ export default function VerificarArticulosPage() {
 
     if (lawId) {
       loadLaw()
+      // Precargar historial y summaries en segundo plano para que el tab cargue más rápido
+      loadHistory()
+    }
+  }, [lawId])
+
+  // Cargar la última verificación guardada
+  useEffect(() => {
+    const loadSavedVerification = async () => {
+      try {
+        setLoadingSavedVerification(true)
+        console.log('🔍 [VERIFICACIÓN] Cargando verificación guardada para lawId:', lawId)
+        const response = await fetch('/api/verify-articles/stats-by-law')
+        const data = await response.json()
+        console.log('🔍 [VERIFICACIÓN] Respuesta stats-by-law:', data)
+        console.log('🔍 [VERIFICACIÓN] Stats para esta ley:', data.stats?.[lawId])
+        if (data.success && data.stats[lawId]) {
+          console.log('🔍 [VERIFICACIÓN] Guardando en estado:', data.stats[lawId])
+          setSavedVerification(data.stats[lawId])
+        } else {
+          console.log('🔍 [VERIFICACIÓN] No hay datos guardados para esta ley')
+        }
+      } catch (err) {
+        console.error('❌ [VERIFICACIÓN] Error cargando verificación guardada:', err)
+      } finally {
+        setLoadingSavedVerification(false)
+      }
+    }
+
+    if (lawId) {
+      loadSavedVerification()
     }
   }, [lawId])
 
@@ -489,14 +594,24 @@ export default function VerificarArticulosPage() {
       if (data.success) {
         setVerificationResults(data)
         setLaw(data.comparison?.law)
-        setCurrentStep(1)
+        return data // Devolver datos para uso externo
       } else {
         setError(data.error || 'Error verificando artículos')
+        return null
       }
     } catch (err) {
       setError('Error conectando con el servidor')
+      return null
     } finally {
       setVerifying(false)
+    }
+  }
+
+  // Ejecutar verificación e ir al paso indicado
+  const runVerificationAndGoToStep = async (targetStep = 1) => {
+    const result = await runVerification()
+    if (result) {
+      setCurrentStep(targetStep)
     }
   }
 
@@ -513,16 +628,35 @@ export default function VerificarArticulosPage() {
     })
   }
 
-  // Seleccionar/deseleccionar todos (title_mismatch y content_mismatch que tienen db_id)
+  // Seleccionar/deseleccionar todos los artículos actualizables según los filtros actuales
   const selectAllArticles = () => {
     const details = verificationResults?.comparison?.details
-    const titleMismatches = (details?.title_mismatch || [])
-      .filter(a => a.db_id)
-      .map(a => a.article_number)
-    const contentMismatches = (details?.content_mismatch || [])
-      .filter(a => a.db_id)
-      .map(a => a.article_number)
-    setSelectedArticles(new Set([...titleMismatches, ...contentMismatches]))
+    let articlesToSelect = []
+
+    // Función para verificar si un artículo cumple el filtro de similitud
+    const matchesSimilarityFilter = (a) => {
+      if (similarityRange[0] === 0 && similarityRange[1] === 100) return true
+      const sim = a.similarity ?? a.content_similarity ?? (a.type === 'matching' ? 100 : 0)
+      return sim >= similarityRange[0] && sim <= similarityRange[1]
+    }
+
+    if (filter === 'all' || filter === 'title_mismatch') {
+      articlesToSelect.push(...(details?.title_mismatch || [])
+        .filter(a => a.db_id && matchesSimilarityFilter(a))
+        .map(a => a.article_number))
+    }
+    if (filter === 'all' || filter === 'content_mismatch') {
+      articlesToSelect.push(...(details?.content_mismatch || [])
+        .filter(a => a.db_id && matchesSimilarityFilter(a))
+        .map(a => a.article_number))
+    }
+    if (filter === 'matching') {
+      articlesToSelect.push(...(details?.matching || [])
+        .filter(a => a.db_id && matchesSimilarityFilter(a))
+        .map(a => a.article_number))
+    }
+
+    setSelectedArticles(new Set(articlesToSelect))
   }
 
   const deselectAllArticles = () => {
@@ -533,13 +667,16 @@ export default function VerificarArticulosPage() {
   const updateTitlesInDB = async () => {
     const details = verificationResults?.comparison?.details
 
-    // Incluir tanto title_mismatch como content_mismatch
+    // Incluir title_mismatch, content_mismatch y matching (para refrescar desde BOE)
     const titleMismatches = (details?.title_mismatch || [])
       .filter(a => selectedArticles.has(a.article_number) && a.db_id)
     const contentMismatches = (details?.content_mismatch || [])
       .filter(a => selectedArticles.has(a.article_number) && a.db_id)
+    const matchingArticles = (details?.matching || [])
+      .filter(a => selectedArticles.has(a.article_number) && a.db_id)
+      .map(a => ({ ...a, type: 'matching' }))
 
-    const articlesToUpdate = [...titleMismatches, ...contentMismatches]
+    const articlesToUpdate = [...titleMismatches, ...contentMismatches, ...matchingArticles]
 
     if (articlesToUpdate.length === 0) {
       setError('No hay artículos válidos para actualizar')
@@ -557,11 +694,11 @@ export default function VerificarArticulosPage() {
           lawId,
           articles: articlesToUpdate.map(a => ({
             article_number: a.article_number,
-            // Para title_mismatch usamos boe_title/db_title, para content_mismatch usamos title
+            // Para title_mismatch usamos boe_title/db_title, para content_mismatch y matching usamos title
             boe_title: a.boe_title || a.title,
             db_title: a.db_title || a.title,
             db_id: a.db_id,
-            type: a.boe_title !== undefined ? 'title_mismatch' : 'content_mismatch'
+            type: a.type || (a.boe_title !== undefined ? 'title_mismatch' : 'content_mismatch')
           }))
         })
       })
@@ -571,6 +708,19 @@ export default function VerificarArticulosPage() {
       if (data.success) {
         setUpdateResults(data.results)
         setCurrentStep(3) // Ir al paso de resultados de actualización
+
+        // Re-verificar en background para actualizar el summary en BD
+        fetch(`/api/verify-articles?lawId=${lawId}&_t=${Date.now()}`, {
+          cache: 'no-store'
+        }).then(() => {
+          // Recargar desde BD
+          return fetch('/api/verify-articles/stats-by-law')
+        }).then(res => res.json()).then(statsData => {
+          if (statsData.success && statsData.stats[lawId]) {
+            setSavedVerification(statsData.stats[lawId])
+            console.log('✅ Summary recargado desde BD')
+          }
+        }).catch(err => console.error('Error re-verificando:', err))
       } else {
         setError(data.error || 'Error actualizando títulos')
       }
@@ -770,7 +920,7 @@ export default function VerificarArticulosPage() {
     setVerifyingWithAI(false)
   }
 
-  // Filtrar artículos con discrepancias
+  // Filtrar artículos con discrepancias (o coincidentes)
   const getFilteredDiscrepancies = () => {
     const details = verificationResults?.comparison?.details
     if (!details) return []
@@ -786,6 +936,9 @@ export default function VerificarArticulosPage() {
     if (filter === 'all' || filter === 'extra_in_db') {
       result = [...result, ...(details.extra_in_db || []).map(a => ({ ...a, type: 'extra_in_db' }))]
     }
+    if (filter === 'matching') {
+      result = [...result, ...(details.matching || []).map(a => ({ ...a, type: 'matching' }))]
+    }
 
     // Ordenar por número de artículo para facilitar la búsqueda
     result.sort((a, b) => {
@@ -799,17 +952,14 @@ export default function VerificarArticulosPage() {
       result = result.filter(a => a.article_number.includes(searchArticle.trim()))
     }
 
-    // Debug: log what we're returning
-    console.log('🔎 getFilteredDiscrepancies:', {
-      filter,
-      searchArticle,
-      title_mismatch_count: details.title_mismatch?.length || 0,
-      content_mismatch_count: details.content_mismatch?.length || 0,
-      extra_in_db_count: details.extra_in_db?.length || 0,
-      result_count: result.length,
-      content_mismatch_articles: details.content_mismatch?.map(a => a.article_number) || [],
-      article_2_in_result: result.some(a => a.article_number === '2')
-    })
+    // Filtrar por rango de similitud (solo si no es el rango completo)
+    if (similarityRange[0] > 0 || similarityRange[1] < 100) {
+      result = result.filter(a => {
+        // Obtener similitud del artículo
+        const sim = a.similarity ?? a.content_similarity ?? (a.type === 'matching' ? 100 : 0)
+        return sim >= similarityRange[0] && sim <= similarityRange[1]
+      })
+    }
 
     return result
   }
@@ -823,7 +973,7 @@ export default function VerificarArticulosPage() {
 
   // Cargar resúmenes de verificación para todos los artículos
   const loadVerificationSummaries = async (articleNumbers) => {
-    if (!articleNumbers || articleNumbers.length === 0) return
+    if (!articleNumbers || articleNumbers.length === 0) return {}
 
     try {
       const response = await fetch(
@@ -836,13 +986,16 @@ export default function VerificarArticulosPage() {
         if (data.appliedFixes) {
           setAppliedFixes(prev => ({ ...prev, ...data.appliedFixes }))
         }
+        return data.summaries
       }
+      return {}
     } catch (err) {
       console.error('Error cargando resúmenes de verificación:', err)
+      return {}
     }
   }
 
-  // Cargar histórico de cambios
+  // Cargar histórico de cambios - devuelve los datos para uso directo
   const loadHistory = async () => {
     setLoadingHistory(true)
     try {
@@ -853,37 +1006,30 @@ export default function VerificarArticulosPage() {
         // Cargar resúmenes de verificación para todos los artículos del histórico
         const articleNumbers = (data.logs || []).map(log => log.article_number)
         if (articleNumbers.length > 0) {
-          loadVerificationSummaries(articleNumbers)
+          const summaries = await loadVerificationSummaries(articleNumbers)
+          return { logs: data.logs || [], summaries: summaries || {} }
         }
+        return { logs: data.logs || [], summaries: {} }
       }
+      return { logs: [], summaries: {} }
     } catch (err) {
       console.error('Error cargando histórico:', err)
+      return { logs: [], summaries: {} }
     } finally {
       setLoadingHistory(false)
     }
   }
 
-  // Cambiar a tab de histórico
+  // Cambiar a tab de verificar preguntas
   const openHistory = () => {
-    setActiveTab('historico')
+    setActiveTab('verificar-preguntas')
     if (historyData.length === 0) {
       loadHistory()
     }
   }
 
-  // Cargar preguntas de un artículo del histórico
-  const loadHistoryArticleQuestions = async (articleNumber) => {
-    // Toggle expand/collapse
-    setExpandedHistoryArticles(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(articleNumber)) {
-        newSet.delete(articleNumber)
-        return newSet
-      }
-      newSet.add(articleNumber)
-      return newSet
-    })
-
+  // Función auxiliar para cargar solo los datos (sin toggle)
+  const loadArticleQuestionsData = async (articleNumber) => {
     // Si ya tenemos las preguntas, no recargar
     if (historyQuestions[articleNumber]) return
 
@@ -903,42 +1049,43 @@ export default function VerificarArticulosPage() {
         }))
       }
 
-      // Cargar verificaciones guardadas
-      const verificationsResponse = await fetch(
-        `/api/verify-articles/ai-verify-article?lawId=${lawId}&articleNumber=${articleNumber}`
-      )
-      const verificationsData = await verificationsResponse.json()
+      // Cargar verificaciones guardadas (si no las tenemos ya en memoria)
+      if (!historyAiResults[articleNumber]) {
+        const verificationsResponse = await fetch(
+          `/api/verify-articles/ai-verify-article?lawId=${lawId}&articleNumber=${articleNumber}`
+        )
+        const verificationsData = await verificationsResponse.json()
 
-      if (verificationsData.success && verificationsData.results?.length > 0) {
-        // Convertir a mapa por questionId
-        const resultsMap = {}
-        const fixesApplied = {}
-        verificationsData.results.forEach(v => {
-          resultsMap[v.question_id] = {
-            id: v.id,
-            isCorrect: v.is_correct,
-            confidence: v.confidence,
-            explanation: v.explanation,
-            articleQuote: v.article_quote,
-            suggestedFix: v.suggested_fix,
-            correctOptionShouldBe: v.correct_option_should_be,
-            newExplanation: v.new_explanation,
-            verifiedAt: v.verified_at,
-            provider: v.ai_provider,
-            fixApplied: v.fix_applied
+        if (verificationsData.success && verificationsData.results?.length > 0) {
+          // Convertir a mapa por questionId
+          const resultsMap = {}
+          const fixesApplied = {}
+          verificationsData.results.forEach(v => {
+            resultsMap[v.question_id] = {
+              id: v.id,
+              isCorrect: v.is_correct,
+              confidence: v.confidence,
+              explanation: v.explanation,
+              articleQuote: v.article_quote,
+              suggestedFix: v.suggested_fix,
+              correctOptionShouldBe: v.correct_option_should_be,
+              newExplanation: v.new_explanation,
+              verifiedAt: v.verified_at,
+              provider: v.ai_provider,
+              fixApplied: v.fix_applied,
+              discarded: v.discarded
+            }
+            if (v.fix_applied) {
+              fixesApplied[v.question_id] = true
+            }
+          })
+          setHistoryAiResults(prev => ({
+            ...prev,
+            [articleNumber]: resultsMap
+          }))
+          if (Object.keys(fixesApplied).length > 0) {
+            setAppliedFixes(prev => ({ ...prev, ...fixesApplied }))
           }
-          // Si ya se aplicó la corrección, marcarlo
-          if (v.fix_applied) {
-            fixesApplied[v.question_id] = true
-          }
-        })
-        setHistoryAiResults(prev => ({
-          ...prev,
-          [articleNumber]: resultsMap
-        }))
-        // Actualizar appliedFixes con los que ya tienen corrección aplicada
-        if (Object.keys(fixesApplied).length > 0) {
-          setAppliedFixes(prev => ({ ...prev, ...fixesApplied }))
         }
       }
     } catch (err) {
@@ -946,6 +1093,22 @@ export default function VerificarArticulosPage() {
     } finally {
       setLoadingHistoryQuestions(prev => ({ ...prev, [articleNumber]: false }))
     }
+  }
+
+  // Cargar preguntas de un artículo del histórico (con toggle para UI)
+  const loadHistoryArticleQuestions = async (articleNumber) => {
+    // Toggle expand/collapse
+    setExpandedHistoryArticles(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(articleNumber)) {
+        newSet.delete(articleNumber)
+        return newSet
+      }
+      newSet.add(articleNumber)
+      return newSet
+    })
+
+    await loadArticleQuestionsData(articleNumber)
   }
 
   // Función para determinar el estado de verificación de un artículo
@@ -1065,13 +1228,259 @@ export default function VerificarArticulosPage() {
           }
         }))
       } else {
-        console.error('Error verificando artículo:', data.error)
+        console.error('Error verificando artículo:', data.error, 'Provider:', aiProvider, 'Model:', aiModel)
+        alert(`Error verificando: ${data.error}\n\nModelo: ${aiModel}\nProveedor: ${aiProvider}`)
       }
     } catch (err) {
       console.error('Error conectando con IA:', err)
+      alert(`Error de conexión: ${err.message}`)
     } finally {
       setVerifyingArticle(null)
     }
+  }
+
+  // Verificar múltiples artículos en lote
+  const verifySelectedArticles = async () => {
+    const articlesToVerify = Array.from(selectedHistoryArticles)
+    if (articlesToVerify.length === 0) return
+
+    setBatchVerifying(true)
+    setBatchResults(null)
+
+    // Obtener info detallada de lotes antes de empezar
+    let batchInfo = null
+    let articleBatchInfo = {} // { articleNumber: { questionCount, batches } }
+
+    try {
+      setBatchProgress({
+        currentArticle: 0,
+        totalArticles: articlesToVerify.length,
+        currentArticleNumber: null,
+        questionsCompleted: 0,
+        questionsTotal: 0,
+        currentBatch: 0,
+        totalBatches: 0,
+        batchSize: 0,
+        currentBatchQuestions: 0,
+        status: 'Calculando lotes...'
+      })
+
+      const infoResponse = await fetch('/api/verify-articles/batch-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lawId,
+          articleNumbers: articlesToVerify,
+          model: aiModel
+        })
+      })
+
+      if (infoResponse.ok) {
+        batchInfo = await infoResponse.json()
+        if (batchInfo.success) {
+          // Crear mapa de info por artículo
+          batchInfo.articles.forEach(a => {
+            articleBatchInfo[a.articleNumber] = a
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error obteniendo batch info:', err)
+    }
+
+    // Usar info de batch-info si está disponible, sino estimaciones
+    const estimatedTotalQuestions = batchInfo?.totals?.questions ||
+      articlesToVerify.reduce((acc, articleNumber) => {
+        const summary = verificationSummaries[articleNumber]
+        return acc + (summary?.total || 0)
+      }, 0)
+
+    const estimatedTotalBatches = batchInfo?.totals?.batches || 0
+    const batchSize = batchInfo?.batchSize || 4
+
+    setBatchProgress({
+      currentArticle: 0,
+      totalArticles: articlesToVerify.length,
+      currentArticleNumber: null,
+      questionsCompleted: 0,
+      questionsTotal: estimatedTotalQuestions,
+      currentBatch: 0,
+      totalBatches: estimatedTotalBatches,
+      batchSize,
+      currentBatchQuestions: 0,
+      status: estimatedTotalBatches > 1
+        ? `${estimatedTotalQuestions} preguntas en ${estimatedTotalBatches} lotes`
+        : `${estimatedTotalQuestions} preguntas`
+    })
+
+    let successCount = 0
+    let errorCount = 0
+    let totalQuestionsVerified = 0
+    let totalQuestionsWithProblems = 0
+    let totalQuestionsOk = 0
+    const errors = []
+
+    for (let i = 0; i < articlesToVerify.length; i++) {
+      const articleNumber = articlesToVerify[i]
+      const artInfo = articleBatchInfo[articleNumber] || {}
+      const articleQuestions = artInfo.questionCount || verificationSummaries[articleNumber]?.total || 0
+      const articleBatches = artInfo.batches || Math.ceil(articleQuestions / batchSize) || 1
+
+      setBatchProgress(prev => ({
+        ...prev,
+        currentArticle: i + 1,
+        currentArticleNumber: articleNumber,
+        currentBatch: 0,
+        currentBatchQuestions: articleQuestions,
+        status: articleBatches > 1
+          ? `Art. ${articleNumber}: ${articleQuestions} preguntas (${articleBatches} lotes)`
+          : `Art. ${articleNumber}: ${articleQuestions} preguntas`
+      }))
+
+      try {
+        const response = await fetch('/api/verify-articles/ai-verify-article', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lawId,
+            articleNumber,
+            provider: aiProvider,
+            model: aiModel
+          })
+        })
+
+        if (!response.ok) {
+          errorCount++
+          errors.push({ article: articleNumber, error: `HTTP ${response.status}` })
+          continue
+        }
+
+        const data = await response.json()
+
+        if (data?.success && data?.results) {
+          successCount++
+          const questionsInArticle = data.results.length
+          totalQuestionsVerified += questionsInArticle
+
+          // Convertir resultados a mapa por questionId
+          const resultsMap = {}
+          let okCount = 0
+          let problemsCount = 0
+          data.results.forEach(r => {
+            resultsMap[r.questionId] = {
+              isCorrect: r.isCorrect,
+              confidence: r.confidence,
+              explanation: r.explanation,
+              articleQuote: r.articleQuote,
+              suggestedFix: r.suggestedFix,
+              correctOptionShouldBe: r.correctOptionShouldBe,
+              newExplanation: r.newExplanation,
+              verifiedAt: new Date().toISOString(),
+              provider: aiProvider
+            }
+            if (r.isCorrect === true) {
+              okCount++
+              totalQuestionsOk++
+            } else if (r.isCorrect === false) {
+              problemsCount++
+              totalQuestionsWithProblems++
+            }
+          })
+
+          setHistoryAiResults(prev => ({
+            ...prev,
+            [articleNumber]: resultsMap
+          }))
+
+          // Actualizar resumen de verificación
+          setVerificationSummaries(prev => ({
+            ...prev,
+            [articleNumber]: {
+              total: questionsInArticle,
+              verified: questionsInArticle,
+              ok: okCount,
+              fixed: 0,
+              problems: problemsCount,
+              lastVerifiedAt: new Date().toISOString()
+            }
+          }))
+
+          // Actualizar progreso con preguntas completadas
+          setBatchProgress(prev => ({
+            ...prev,
+            questionsCompleted: prev.questionsCompleted + questionsInArticle,
+            questionsTotal: Math.max(prev.questionsTotal, prev.questionsCompleted + questionsInArticle)
+          }))
+        } else {
+          errorCount++
+          const errorMsg = data?.error || 'Respuesta inválida'
+          errors.push({ article: articleNumber, error: errorMsg })
+          console.error(`Error verificando artículo ${articleNumber}:`, errorMsg)
+        }
+      } catch (err) {
+        errorCount++
+        errors.push({ article: articleNumber, error: err.message || 'Error de conexión' })
+        console.error(`Error conectando para artículo ${articleNumber}:`, err)
+      }
+
+      // Pequeña pausa entre peticiones para no saturar la API
+      if (i < articlesToVerify.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+    }
+
+    setBatchVerifying(false)
+    setSelectedHistoryArticles(new Set())
+
+    // Guardar resultados para mostrar en UI
+    setBatchResults({
+      articlesVerified: successCount,
+      articlesWithErrors: errorCount,
+      questionsVerified: totalQuestionsVerified,
+      questionsOk: totalQuestionsOk,
+      questionsWithProblems: totalQuestionsWithProblems,
+      errors,
+      completedAt: new Date().toISOString()
+    })
+  }
+
+  // Toggle selección de artículo en histórico
+  const toggleHistoryArticleSelection = (articleNumber) => {
+    setSelectedHistoryArticles(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(articleNumber)) {
+        newSet.delete(articleNumber)
+      } else {
+        newSet.add(articleNumber)
+      }
+      return newSet
+    })
+  }
+
+  // Seleccionar/deseleccionar todos los artículos filtrados
+  const selectAllFilteredArticles = () => {
+    const filteredArticles = historyData.filter(log => {
+      const summary = verificationSummaries[log.article_number]
+      if (historyFilter === 'all') return true
+      if (historyFilter === 'pending') {
+        if (!summary) return true
+        const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
+        return verified < (summary.total || 0)
+      }
+      if (historyFilter === 'problems') return summary && summary.problems > 0
+      if (historyFilter === 'ok') {
+        if (!summary) return false
+        const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
+        return summary.problems === 0 && verified >= (summary.total || 0) && summary.total > 0
+      }
+      return true
+    }).map(log => log.article_number)
+
+    setSelectedHistoryArticles(new Set(filteredArticles))
+  }
+
+  const deselectAllHistoryArticles = () => {
+    setSelectedHistoryArticles(new Set())
   }
 
   if (loading) {
@@ -1138,7 +1547,18 @@ export default function VerificarArticulosPage() {
           {/* Tabs */}
           <div className="flex gap-1 mt-4 border-b border-gray-200 dark:border-gray-700">
             <button
-              onClick={() => setActiveTab('verificacion')}
+              onClick={() => {
+                setActiveTab('verificacion')
+                setCurrentStep(0)
+                // Recargar verificación guardada
+                fetch('/api/verify-articles/stats-by-law')
+                  .then(res => res.json())
+                  .then(data => {
+                    if (data.success && data.stats[lawId]) {
+                      setSavedVerification(data.stats[lawId])
+                    }
+                  })
+              }}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
                 activeTab === 'verificacion'
                   ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 border border-b-0 border-gray-200 dark:border-gray-700'
@@ -1150,12 +1570,65 @@ export default function VerificarArticulosPage() {
             <button
               onClick={openHistory}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-                activeTab === 'historico'
+                activeTab === 'verificar-preguntas'
                   ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 border border-b-0 border-gray-200 dark:border-gray-700'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
               }`}
             >
-              📜 Cambios realizados
+              🤖 Verificar preguntas
+            </button>
+            <button
+              onClick={async () => {
+                setActiveTab('reparar')
+                setLoadingRepairData(true)
+                try {
+                  // Obtener datos frescos - usar los devueltos directamente para evitar problemas de state async
+                  let summariesToUse = verificationSummaries
+                  if (historyData.length === 0 || Object.keys(verificationSummaries).length === 0) {
+                    const result = await loadHistory()
+                    summariesToUse = result.summaries || {}
+                  }
+                  // Cargar preguntas de artículos con problemas
+                  const articlesWithProblems = Object.entries(summariesToUse)
+                    .filter(([_, s]) => s.problems > 0)
+                    .map(([articleNumber]) => articleNumber)
+                  for (const articleNumber of articlesWithProblems) {
+                    await loadArticleQuestionsData(articleNumber)
+                  }
+                } finally {
+                  setLoadingRepairData(false)
+                }
+              }}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors flex items-center gap-2 ${
+                activeTab === 'reparar'
+                  ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 border border-b-0 border-gray-200 dark:border-gray-700'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              🔧 Reparar preguntas
+              {/* Badge con conteo de preguntas pendientes (excluyendo reparadas y descartadas) */}
+              {(() => {
+                let pendingCount = 0
+                Object.entries(historyAiResults).forEach(([articleNumber, aiResults]) => {
+                  Object.entries(aiResults).forEach(([questionId, result]) => {
+                    if (result.isCorrect === false &&
+                        !result.fixApplied &&
+                        !appliedFixes[questionId] &&
+                        !result.discarded &&
+                        !discardedQuestions[questionId]) {
+                      pendingCount++
+                    }
+                  })
+                })
+                if (pendingCount > 0) {
+                  return (
+                    <span className="bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded-full">
+                      {pendingCount}
+                    </span>
+                  )
+                }
+                return null
+              })()}
             </button>
           </div>
         </div>
@@ -1165,20 +1638,6 @@ export default function VerificarArticulosPage() {
         {/* ===================== TAB: VERIFICACIÓN ===================== */}
         {activeTab === 'verificacion' && (
           <>
-            {/* Stepper - clickable para navegar */}
-            {currentStep > 0 && (
-              <Stepper
-                currentStep={currentStep}
-                steps={STEPS}
-                onStepClick={(step) => {
-                  // Solo permitir ir a pasos completados o al actual
-                  if (step <= currentStep) {
-                    setCurrentStep(step)
-                  }
-                }}
-              />
-            )}
-
             {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
             <p className="text-red-600 dark:text-red-400">❌ {error}</p>
@@ -1187,31 +1646,175 @@ export default function VerificarArticulosPage() {
 
         {/* ===================== PASO 0: Iniciar verificación ===================== */}
         {currentStep === 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <div className="text-6xl mb-4">📊</div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              Verificación de Artículos
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-              Este proceso comparará los artículos del BOE oficial con los que tenemos en la base de datos para detectar discrepancias.
-            </p>
-            <button
-              onClick={runVerification}
-              disabled={verifying}
-              className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2 mx-auto"
-            >
-              {verifying ? (
-                <>
-                  <Spinner size="sm" />
-                  <span>Verificando BOE...</span>
-                </>
-              ) : (
-                <>
-                  <span>🔍</span>
-                  <span>Iniciar verificación</span>
-                </>
-              )}
-            </button>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
+            {/* DEBUG */}
+            {console.log('🎯 [RENDER PASO 0] loadingSavedVerification:', loadingSavedVerification)}
+            {console.log('🎯 [RENDER PASO 0] savedVerification:', savedVerification)}
+            {console.log('🎯 [RENDER PASO 0] savedVerification?.summary:', savedVerification?.summary)}
+            {loadingSavedVerification ? (
+              <div className="text-center">
+                <Spinner size="md" />
+                <p className="text-gray-500 mt-2">Cargando estado...</p>
+              </div>
+            ) : savedVerification?.summary ? (
+              // Mostrar última verificación guardada
+              <div className="space-y-6">
+                <div className="text-center">
+                  <div className="text-6xl mb-4">
+                    {savedVerification.isOk ? '✅' : '⚠️'}
+                  </div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                    {savedVerification.isOk ? 'Artículos sincronizados' : 'Hay discrepancias'}
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-2">
+                    Última verificación: {new Date(savedVerification.lastVerified).toLocaleDateString('es-ES', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+
+                {/* Resumen expandible */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setShowSavedSummary(!showSavedSummary)}
+                    className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      📊 Ver resumen de verificación
+                    </span>
+                    <span className="text-gray-500">
+                      {showSavedSummary ? '▲' : '▼'}
+                    </span>
+                  </button>
+                  {showSavedSummary && savedVerification.summary && (
+                    <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 text-center">
+                          <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                            {savedVerification.summary.boe_count || 0}
+                          </div>
+                          <div className="text-xs text-blue-700 dark:text-blue-300">En BOE</div>
+                        </div>
+                        <div className="bg-gray-100 dark:bg-gray-700 rounded-lg p-3 text-center">
+                          <div className="text-xl font-bold text-gray-600 dark:text-gray-300">
+                            {savedVerification.summary.db_count || 0}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">En BD</div>
+                        </div>
+                        <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3 text-center">
+                          <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                            {savedVerification.summary.ok_count || savedVerification.summary.matching || 0}
+                          </div>
+                          <div className="text-xs text-green-700 dark:text-green-300">OK</div>
+                        </div>
+                        {(savedVerification.summary.title_mismatch > 0) && (
+                          <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-3 text-center">
+                            <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
+                              {savedVerification.summary.title_mismatch}
+                            </div>
+                            <div className="text-xs text-yellow-700 dark:text-yellow-300">Título diferente</div>
+                          </div>
+                        )}
+                        {(savedVerification.summary.content_mismatch > 0) && (
+                          <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-3 text-center">
+                            <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                              {savedVerification.summary.content_mismatch}
+                            </div>
+                            <div className="text-xs text-orange-700 dark:text-orange-300">Contenido diferente</div>
+                          </div>
+                        )}
+                        {(savedVerification.summary.extra_in_db > 0) && (
+                          <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-3 text-center">
+                            <div className="text-xl font-bold text-red-600 dark:text-red-400">
+                              {savedVerification.summary.extra_in_db}
+                            </div>
+                            <div className="text-xs text-red-700 dark:text-red-300">Extra en BD</div>
+                          </div>
+                        )}
+                        {(savedVerification.summary.missing_in_db > 0) && (
+                          <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3 text-center">
+                            <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                              {savedVerification.summary.missing_in_db}
+                            </div>
+                            <div className="text-xs text-purple-700 dark:text-purple-300">Faltan en BD</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Botones de acción */}
+                <div className="flex justify-center gap-4">
+                  <button
+                    onClick={() => runVerificationAndGoToStep(1)}
+                    disabled={verifying}
+                    className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 disabled:bg-gray-400 text-gray-800 dark:text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                  >
+                    {verifying ? (
+                      <>
+                        <Spinner size="sm" />
+                        <span>Verificando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🔄</span>
+                        <span>Volver a inspeccionar</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => runVerificationAndGoToStep(2)}
+                    disabled={verifying}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                  >
+                    {verifying ? (
+                      <>
+                        <Spinner size="sm" />
+                        <span>Cargando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>📋</span>
+                        <span>Ver artículos</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // No hay verificación previa - mostrar pantalla inicial
+              <div className="text-center">
+                <div className="text-6xl mb-4">📊</div>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  Verificación de Artículos
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                  Este proceso comparará los artículos del BOE oficial con los que tenemos en la base de datos para detectar discrepancias.
+                </p>
+                <button
+                  onClick={() => runVerificationAndGoToStep(1)}
+                  disabled={verifying}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                >
+                  {verifying ? (
+                    <>
+                      <Spinner size="sm" />
+                      <span>Verificando BOE...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🔍</span>
+                      <span>Iniciar verificación</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1302,7 +1905,7 @@ export default function VerificarArticulosPage() {
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Filtrar:</span>
                     <select
@@ -1314,7 +1917,33 @@ export default function VerificarArticulosPage() {
                       <option value="title_mismatch">Títulos diferentes</option>
                       <option value="content_mismatch">Solo contenido diferente</option>
                       <option value="extra_in_db">Artículos extra en BD</option>
+                      <option value="matching">✅ Coincidentes (OK)</option>
                     </select>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Similitud:</span>
+                    <div className="flex items-center gap-1">
+                      {[
+                        { label: 'Todos', range: [0, 100] },
+                        { label: '80-100%', range: [80, 100] },
+                        { label: '60-80%', range: [60, 79] },
+                        { label: '40-60%', range: [40, 59] },
+                        { label: '20-40%', range: [20, 39] },
+                        { label: '0-20%', range: [0, 19] },
+                      ].map(({ label, range }) => (
+                        <button
+                          key={label}
+                          onClick={() => setSimilarityRange(range)}
+                          className={`px-2 py-1 text-xs rounded ${
+                            similarityRange[0] === range[0] && similarityRange[1] === range[1]
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Buscar:</span>
@@ -1360,7 +1989,7 @@ export default function VerificarArticulosPage() {
                   Selecciona artículos para actualizar ({selectedArticles.size} seleccionados)
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Los artículos con "Título diferente" o "Contenido diferente" se pueden actualizar desde el BOE
+                  Selecciona artículos para actualizar desde el BOE. Usa el filtro para ver también los coincidentes.
                 </p>
               </div>
 
@@ -1373,7 +2002,8 @@ export default function VerificarArticulosPage() {
                   </div>
                 ) : (
                   filteredDiscrepancies.map((art) => {
-                    const canUpdate = (art.type === 'title_mismatch' || art.type === 'content_mismatch') && art.db_id
+                    const canUpdate = (art.type === 'title_mismatch' || art.type === 'content_mismatch' || art.type === 'matching') && art.db_id
+                    const isMatching = art.type === 'matching'
                     return (
                       <label
                         key={`${art.type}-${art.article_number}`}
@@ -1391,15 +2021,17 @@ export default function VerificarArticulosPage() {
                             <span className="font-medium text-gray-900 dark:text-white">
                               Artículo {art.article_number}
                             </span>
-                            {/* Badge del tipo de discrepancia */}
+                            {/* Badge del tipo */}
                             <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              art.type === 'title_mismatch'
-                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
-                                : art.type === 'content_mismatch'
-                                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
-                                  : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                              art.type === 'matching'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                                : art.type === 'title_mismatch'
+                                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
+                                  : art.type === 'content_mismatch'
+                                    ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
+                                    : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
                             }`}>
-                              {art.type === 'title_mismatch' ? 'Título diferente' : art.type === 'content_mismatch' ? 'Contenido diferente' : 'Extra en BD'}
+                              {art.type === 'matching' ? '✓ Coincide' : art.type === 'title_mismatch' ? 'Título diferente' : art.type === 'content_mismatch' ? 'Contenido diferente' : 'Extra en BD'}
                             </span>
                             {/* Estado del contenido - siempre mostrar para title_mismatch */}
                             {art.type === 'title_mismatch' && (
@@ -1684,28 +2316,13 @@ export default function VerificarArticulosPage() {
               )}
             </div>
 
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4">
-              <p className="text-blue-700 dark:text-blue-300">
-                <strong>Siguiente paso:</strong> Ahora puedes revisar las preguntas vinculadas a estos artículos
-                para verificar si siguen siendo correctas con el nuevo contenido del BOE.
-              </p>
-            </div>
-
-            <div className="flex justify-between">
+            <div className="flex justify-start">
               <button
                 onClick={() => setCurrentStep(0)}
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 ← Empezar de nuevo
               </button>
-              {updateResults.updated?.length > 0 && (
-                <button
-                  onClick={loadQuestionsForUpdated}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Ver preguntas vinculadas →
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -1846,8 +2463,17 @@ export default function VerificarArticulosPage() {
                     onChange={(e) => setAiModel(e.target.value)}
                     className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                   >
-                    {getProviderModels(aiProvider).map(model => (
-                      <option key={model.id} value={model.id}>{model.name}</option>
+                    {getAllProviderModels(aiProvider).map(model => (
+                      <option
+                        key={model.id}
+                        value={model.id}
+                        disabled={model.status === 'failed'}
+                        className={model.status === 'failed' ? 'text-red-500' : ''}
+                      >
+                        {model.status === 'working' ? '✓ ' : model.status === 'failed' ? '✗ ' : ''}
+                        {model.name}
+                        {model.status === 'failed' ? ' (falla)' : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -2046,17 +2672,17 @@ export default function VerificarArticulosPage() {
           </>
         )}
 
-        {/* ===================== TAB: HISTÓRICO DE CAMBIOS ===================== */}
-        {activeTab === 'historico' && (
+        {/* ===================== TAB: VERIFICAR PREGUNTAS ===================== */}
+        {activeTab === 'verificar-preguntas' && (
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Registro de actualizaciones
+                    Verificar preguntas con IA
                   </h2>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Historial de cambios realizados desde el BOE
+                    Selecciona artículos para verificar sus preguntas con inteligencia artificial
                   </p>
                 </div>
                 <button
@@ -2068,6 +2694,272 @@ export default function VerificarArticulosPage() {
                   <span>Actualizar</span>
                 </button>
               </div>
+
+              {/* Filtros de estado de verificación */}
+              {historyData.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  {[
+                    { id: 'all', label: 'Todos', icon: '📋' },
+                    { id: 'pending', label: 'Pendientes', icon: '⏳' },
+                    { id: 'problems', label: 'Con problemas', icon: '⚠️' },
+                    { id: 'ok', label: 'Verificados OK', icon: '✅' },
+                  ].map(f => {
+                    // Contar artículos por filtro
+                    const count = historyData.filter(log => {
+                      const summary = verificationSummaries[log.article_number]
+                      if (f.id === 'all') return true
+                      if (f.id === 'pending') {
+                        // Sin verificar: no hay summary o verified < total
+                        if (!summary) return true
+                        const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
+                        return verified < (summary.total || 0)
+                      }
+                      if (f.id === 'problems') {
+                        return summary && summary.problems > 0
+                      }
+                      if (f.id === 'ok') {
+                        if (!summary) return false
+                        const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
+                        return summary.problems === 0 && verified >= (summary.total || 0) && summary.total > 0
+                      }
+                      return true
+                    }).length
+
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setHistoryFilter(f.id)}
+                        className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                          historyFilter === f.id
+                            ? f.id === 'pending' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+                            : f.id === 'problems' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
+                            : f.id === 'ok' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        <span>{f.icon}</span>
+                        <span>{f.label}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          historyFilter === f.id
+                            ? 'bg-white/50 dark:bg-black/20'
+                            : 'bg-gray-200 dark:bg-gray-600'
+                        }`}>
+                          {count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Controles de selección y verificación en lote */}
+              {historyData.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={selectAllFilteredArticles}
+                      disabled={batchVerifying}
+                      className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 disabled:opacity-50"
+                    >
+                      Seleccionar todos
+                    </button>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <button
+                      onClick={deselectAllHistoryArticles}
+                      disabled={batchVerifying}
+                      className="text-xs text-gray-600 hover:text-gray-700 dark:text-gray-400 disabled:opacity-50"
+                    >
+                      Deseleccionar
+                    </button>
+                  </div>
+
+                  {selectedHistoryArticles.size > 0 && (
+                    <div className="flex items-center gap-3 ml-auto">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {selectedHistoryArticles.size} seleccionado{selectedHistoryArticles.size !== 1 ? 's' : ''}
+                      </span>
+                      <button
+                        onClick={verifySelectedArticles}
+                        disabled={batchVerifying}
+                        className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                      >
+                        {batchVerifying ? (
+                          <>
+                            <Spinner size="sm" />
+                            <span>Verificando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>🤖</span>
+                            <span>Verificar seleccionados</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Barra de progreso durante verificación en lote */}
+                  {batchVerifying && (
+                    <div className="w-full mt-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                      {/* Info del artículo actual */}
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <div className="flex items-center gap-2">
+                          <Spinner size="sm" />
+                          <span className="font-medium text-purple-700 dark:text-purple-300">
+                            {batchProgress.currentArticleNumber
+                              ? `Verificando artículo ${batchProgress.currentArticleNumber}`
+                              : 'Preparando verificación...'}
+                          </span>
+                        </div>
+                        <span className="text-gray-500 dark:text-gray-400 text-xs">
+                          Artículo {batchProgress.currentArticle} de {batchProgress.totalArticles}
+                        </span>
+                      </div>
+
+                      {/* Mensaje de estado (info de lotes) */}
+                      {batchProgress.status && (
+                        <div className="mb-3 px-3 py-1.5 bg-purple-100 dark:bg-purple-800/30 rounded text-xs text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span>{batchProgress.status}</span>
+                        </div>
+                      )}
+
+                      {/* Barra de progreso por PREGUNTAS */}
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                          <span className="font-medium">Preguntas verificadas</span>
+                          <span>
+                            {batchProgress.questionsCompleted}
+                            {batchProgress.questionsTotal > 0 ? ` / ${batchProgress.questionsTotal}` : ''}
+                          </span>
+                        </div>
+                        <div className="w-full bg-purple-200 dark:bg-purple-800 rounded-full h-3">
+                          <div
+                            className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-500 relative overflow-hidden"
+                            style={{
+                              width: batchProgress.questionsTotal > 0
+                                ? `${Math.min((batchProgress.questionsCompleted / batchProgress.questionsTotal) * 100, 100)}%`
+                                : '5%'
+                            }}
+                          >
+                            <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Panel de resultados después de verificación en lote */}
+                  {batchResults && !batchVerifying && (
+                    <div className={`w-full mt-2 rounded-lg p-4 border ${
+                      batchResults.articlesWithErrors > 0
+                        ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                        : batchResults.questionsWithProblems > 0
+                          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                          : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
+                            {batchResults.articlesWithErrors > 0 ? '⚠️' : batchResults.questionsWithProblems > 0 ? '📋' : '✅'}
+                            Verificación completada
+                          </h4>
+
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500 dark:text-gray-400">Artículos:</span>
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {batchResults.articlesVerified} verificados
+                                {batchResults.articlesWithErrors > 0 && (
+                                  <span className="text-red-600 dark:text-red-400 ml-1">
+                                    ({batchResults.articlesWithErrors} errores)
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500 dark:text-gray-400">Preguntas:</span>
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {batchResults.questionsVerified} verificadas
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500 dark:text-gray-400">Correctas:</span>
+                              <span className="font-medium text-green-600 dark:text-green-400">
+                                {batchResults.questionsOk}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500 dark:text-gray-400">Con problemas:</span>
+                              <span className={`font-medium ${
+                                batchResults.questionsWithProblems > 0
+                                  ? 'text-orange-600 dark:text-orange-400'
+                                  : 'text-gray-500 dark:text-gray-400'
+                              }`}>
+                                {batchResults.questionsWithProblems}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Errores detallados */}
+                          {batchResults.errors?.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-orange-200 dark:border-orange-700">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-xs font-medium text-orange-700 dark:text-orange-300">Errores:</p>
+                                <button
+                                  onClick={() => {
+                                    // Pasar solo los artículos que fallaron
+                                    const failedArticles = batchResults.errors?.map(e => e.article) || []
+                                    loadErrorLogs(failedArticles)
+                                  }}
+                                  disabled={loadingErrorLogs}
+                                  className="text-xs text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-200 underline flex items-center gap-1"
+                                >
+                                  {loadingErrorLogs ? (
+                                    <>
+                                      <Spinner size="sm" />
+                                      <span>Cargando...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span>🔍</span>
+                                      <span>Ver detalles guardados</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <ul className="text-xs text-orange-600 dark:text-orange-400 space-y-0.5">
+                                {batchResults.errors.slice(0, 3).map((e, i) => (
+                                  <li key={i}>• Art. {e.article}: {e.error}</li>
+                                ))}
+                                {batchResults.errors.length > 3 && (
+                                  <li className="text-gray-500">...y {batchResults.errors.length - 3} más</li>
+                                )}
+                              </ul>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                                Las preguntas de estos artículos no se han verificado. Puedes volver a intentarlo seleccionándolos de nuevo.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => setBatchResults(null)}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+                          title="Cerrar"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-12">
@@ -2082,13 +2974,46 @@ export default function VerificarArticulosPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {historyData.map((log, i) => (
+                  {historyData
+                    .filter(log => {
+                      const summary = verificationSummaries[log.article_number]
+                      if (historyFilter === 'all') return true
+                      if (historyFilter === 'pending') {
+                        if (!summary) return true
+                        const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
+                        return verified < (summary.total || 0)
+                      }
+                      if (historyFilter === 'problems') {
+                        return summary && summary.problems > 0
+                      }
+                      if (historyFilter === 'ok') {
+                        if (!summary) return false
+                        const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
+                        return summary.problems === 0 && verified >= (summary.total || 0) && summary.total > 0
+                      }
+                      return true
+                    })
+                    .map((log, i) => (
                     <div
                       key={log.id || i}
-                      className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-100 dark:border-gray-600"
+                      className={`bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border transition-colors ${
+                        selectedHistoryArticles.has(log.article_number)
+                          ? 'border-purple-400 dark:border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                          : 'border-gray-100 dark:border-gray-600'
+                      }`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
+                          {/* Checkbox de selección */}
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedHistoryArticles.has(log.article_number)}
+                              onChange={() => toggleHistoryArticleSelection(log.article_number)}
+                              disabled={batchVerifying}
+                              className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 disabled:opacity-50"
+                            />
+                          </label>
                           <span className="text-lg font-bold text-gray-700 dark:text-gray-300">
                             Art. {log.article_number}
                           </span>
@@ -2166,15 +3091,30 @@ export default function VerificarArticulosPage() {
                             )
                           }
 
-                          // Si hay problemas, mostrar advertencia
+                          // Si hay problemas o preguntas sin verificar
                           if (status.status === 'has_problems') {
+                            const sinVerificar = (status.total || 0) - (status.verified || 0)
+                            const tieneProblemasReales = status.problems > 0
+                            const nadaVerificado = (status.verified || 0) === 0 && (status.total || 0) > 0
+
                             return (
                               <button
                                 onClick={() => loadHistoryArticleQuestions(log.article_number)}
-                                className="text-sm text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 flex items-center gap-1"
+                                className={`text-sm flex items-center gap-1 ${
+                                  tieneProblemasReales
+                                    ? 'text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300'
+                                    : 'text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300'
+                                }`}
                               >
-                                <span>⚠️</span>
-                                <span>{status.ok} OK{status.fixed > 0 ? ` + ${status.fixed} corr.` : ''} / {status.problems} pendientes</span>
+                                <span>{tieneProblemasReales ? '⚠️' : '🔍'}</span>
+                                <span>
+                                  {nadaVerificado
+                                    ? `${status.total} preguntas sin verificar`
+                                    : tieneProblemasReales
+                                      ? `${status.ok} OK${status.fixed > 0 ? ` + ${status.fixed} corr.` : ''} / ${status.problems} con problemas${sinVerificar > 0 ? ` / ${sinVerificar} sin verificar` : ''}`
+                                      : `${status.ok} OK${status.fixed > 0 ? ` + ${status.fixed} corr.` : ''}${sinVerificar > 0 ? ` / ${sinVerificar} sin verificar` : ''}`
+                                  }
+                                </span>
                                 {isExpanded && <span className="text-xs">(ocultar)</span>}
                               </button>
                             )
@@ -2234,8 +3174,16 @@ export default function VerificarArticulosPage() {
                                     onChange={(e) => setAiModel(e.target.value)}
                                     className="text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                   >
-                                    {getProviderModels(aiProvider).map(model => (
-                                      <option key={model.id} value={model.id}>{model.name}</option>
+                                    {getAllProviderModels(aiProvider).map(model => (
+                                      <option
+                                        key={model.id}
+                                        value={model.id}
+                                        disabled={model.status === 'failed'}
+                                      >
+                                        {model.status === 'working' ? '✓ ' : model.status === 'failed' ? '✗ ' : ''}
+                                        {model.name}
+                                        {model.status === 'failed' ? ' (falla)' : ''}
+                                      </option>
                                     ))}
                                   </select>
                                   <button
@@ -2405,9 +3353,513 @@ export default function VerificarArticulosPage() {
                       )}
                     </div>
                   ))}
+                  {/* Mensaje si el filtro no tiene resultados */}
+                  {historyData.length > 0 && historyFilter !== 'all' && historyData.filter(log => {
+                    const summary = verificationSummaries[log.article_number]
+                    if (historyFilter === 'pending') {
+                      if (!summary) return true
+                      const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
+                      return verified < (summary.total || 0)
+                    }
+                    if (historyFilter === 'problems') return summary && summary.problems > 0
+                    if (historyFilter === 'ok') {
+                      if (!summary) return false
+                      const verified = (summary.ok || 0) + (summary.fixed || 0) + (summary.problems || 0)
+                      return summary.problems === 0 && verified >= (summary.total || 0) && summary.total > 0
+                    }
+                    return true
+                  }).length === 0 && (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <div className="text-4xl mb-3">
+                        {historyFilter === 'pending' ? '✨' : historyFilter === 'problems' ? '🎉' : '📭'}
+                      </div>
+                      <p className="font-medium">
+                        {historyFilter === 'pending' && 'No hay artículos pendientes de verificar'}
+                        {historyFilter === 'problems' && '¡No hay artículos con problemas!'}
+                        {historyFilter === 'ok' && 'No hay artículos verificados todavía'}
+                      </p>
+                      <button
+                        onClick={() => setHistoryFilter('all')}
+                        className="mt-3 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                      >
+                        Ver todos los artículos →
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ===================== TAB: REPARAR PREGUNTAS ===================== */}
+        {activeTab === 'reparar' && (
+          <div className="space-y-6">
+            {(() => {
+              // Recopilar preguntas pendientes, reparadas y descartadas
+              const pendingQuestions = []
+              const repairedQuestions = []
+              const discardedQuestionsList = []
+
+              Object.entries(historyAiResults).forEach(([articleNumber, aiResults]) => {
+                Object.entries(aiResults).forEach(([questionId, result]) => {
+                  if (result.isCorrect === false) {
+                    const questions = historyQuestions[articleNumber] || []
+                    const question = questions.find(q => q.id === questionId)
+                    if (question) {
+                      const item = {
+                        ...question,
+                        articleNumber,
+                        aiResult: result
+                      }
+                      if (appliedFixes[questionId] || result.fixApplied) {
+                        repairedQuestions.push(item)
+                      } else if (discardedQuestions[questionId] || result.discarded) {
+                        discardedQuestionsList.push(item)
+                      } else {
+                        pendingQuestions.push(item)
+                      }
+                    }
+                  }
+                })
+              })
+
+              if (loadingHistory || loadingRepairData) {
+                return (
+                  <div className="flex items-center justify-center py-12">
+                    <Spinner size="lg" />
+                    <span className="ml-3 text-gray-500">Cargando preguntas...</span>
+                  </div>
+                )
+              }
+
+              const questionsToShow = repairFilter === 'pending'
+                ? pendingQuestions
+                : repairFilter === 'repaired'
+                  ? repairedQuestions
+                  : discardedQuestionsList
+
+              return (
+                <>
+                  {/* Tarjetas de filtro */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Tarjeta Pendientes */}
+                    <button
+                      onClick={() => setRepairFilter('pending')}
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                        repairFilter === 'pending'
+                          ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-orange-300 dark:hover:border-orange-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`text-3xl ${repairFilter === 'pending' ? '' : 'grayscale opacity-60'}`}>⚠️</div>
+                          <div>
+                            <h3 className={`font-semibold ${repairFilter === 'pending' ? 'text-orange-700 dark:text-orange-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                              Pendientes de reparar
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Preguntas con errores detectados
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`text-2xl font-bold ${
+                          repairFilter === 'pending' ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400 dark:text-gray-500'
+                        }`}>
+                          {pendingQuestions.length}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Tarjeta Reparadas */}
+                    <button
+                      onClick={() => setRepairFilter('repaired')}
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                        repairFilter === 'repaired'
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-green-300 dark:hover:border-green-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`text-3xl ${repairFilter === 'repaired' ? '' : 'grayscale opacity-60'}`}>✅</div>
+                          <div>
+                            <h3 className={`font-semibold ${repairFilter === 'repaired' ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                              Preguntas reparadas
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Correcciones ya aplicadas
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`text-2xl font-bold ${
+                          repairFilter === 'repaired' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'
+                        }`}>
+                          {repairedQuestions.length}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Tarjeta Descartadas */}
+                    <button
+                      onClick={() => setRepairFilter('discarded')}
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
+                        repairFilter === 'discarded'
+                          ? 'border-gray-500 bg-gray-50 dark:bg-gray-700/50'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-600'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`text-3xl ${repairFilter === 'discarded' ? '' : 'grayscale opacity-60'}`}>🚫</div>
+                          <div>
+                            <h3 className={`font-semibold ${repairFilter === 'discarded' ? 'text-gray-700 dark:text-gray-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                              Descartadas
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Falsos positivos ignorados
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`text-2xl font-bold ${
+                          repairFilter === 'discarded' ? 'text-gray-600 dark:text-gray-400' : 'text-gray-400 dark:text-gray-500'
+                        }`}>
+                          {discardedQuestionsList.length}
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Acciones rápidas para IDs */}
+                  {pendingQuestions.length > 0 && repairFilter === 'pending' && (
+                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          IDs de preguntas pendientes ({pendingQuestions.length})
+                        </h4>
+                        <button
+                          onClick={() => {
+                            const ids = pendingQuestions.map(q => q.id).join('\n')
+                            navigator.clipboard.writeText(ids)
+                            alert(`${pendingQuestions.length} IDs copiados al portapapeles`)
+                          }}
+                          className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded flex items-center gap-1"
+                        >
+                          <span>📋</span>
+                          <span>Copiar IDs</span>
+                        </button>
+                      </div>
+                      <div className="bg-white dark:bg-gray-900 rounded p-2 text-xs font-mono text-gray-600 dark:text-gray-400 max-h-24 overflow-y-auto">
+                        {pendingQuestions.map((q, i) => (
+                          <div key={q.id} className="flex items-center gap-2 py-0.5">
+                            <span className="text-gray-400">{i + 1}.</span>
+                            <span className="select-all">{q.id}</span>
+                            <span className="text-gray-400 text-xs">Art. {q.articleNumber}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lista de preguntas */}
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    {questionsToShow.length === 0 ? (
+                      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                        <div className="text-5xl mb-4">
+                          {repairFilter === 'pending' ? '🎉' : repairFilter === 'repaired' ? '📋' : '🚫'}
+                        </div>
+                        <p className="text-lg font-medium">
+                          {repairFilter === 'pending'
+                            ? 'No hay preguntas pendientes'
+                            : repairFilter === 'repaired'
+                              ? 'No hay preguntas reparadas'
+                              : 'No hay preguntas descartadas'}
+                        </p>
+                        <p className="text-sm mt-1">
+                          {repairFilter === 'pending'
+                            ? 'Todas las preguntas con problemas han sido reparadas o descartadas'
+                            : repairFilter === 'repaired'
+                              ? 'Aún no se ha reparado ninguna pregunta'
+                              : 'No has descartado ningún falso positivo'}
+                        </p>
+                        {repairFilter === 'pending' && repairedQuestions.length > 0 && (
+                          <button
+                            onClick={() => setRepairFilter('repaired')}
+                            className="mt-4 text-green-600 hover:text-green-700 dark:text-green-400 text-sm"
+                          >
+                            Ver {repairedQuestions.length} reparada{repairedQuestions.length !== 1 ? 's' : ''} →
+                          </button>
+                        )}
+                        {repairFilter === 'repaired' && pendingQuestions.length > 0 && (
+                          <button
+                            onClick={() => setRepairFilter('pending')}
+                            className="mt-4 text-orange-600 hover:text-orange-700 dark:text-orange-400 text-sm"
+                          >
+                            ← Ver {pendingQuestions.length} pendiente{pendingQuestions.length !== 1 ? 's' : ''}
+                          </button>
+                        )}
+                        {repairFilter === 'discarded' && pendingQuestions.length > 0 && (
+                          <button
+                            onClick={() => setRepairFilter('pending')}
+                            className="mt-4 text-orange-600 hover:text-orange-700 dark:text-orange-400 text-sm"
+                          >
+                            ← Ver {pendingQuestions.length} pendiente{pendingQuestions.length !== 1 ? 's' : ''}
+                          </button>
+                        )}
+                        {repairFilter === 'pending' && repairedQuestions.length === 0 && discardedQuestionsList.length === 0 && (
+                          <button
+                            onClick={() => setActiveTab('verificar-preguntas')}
+                            className="mt-4 text-purple-600 hover:text-purple-700 dark:text-purple-400 text-sm"
+                          >
+                            ← Ir a verificar preguntas
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 pb-3 border-b border-gray-200 dark:border-gray-700">
+                          <span className={`font-medium ${
+                            repairFilter === 'pending' ? 'text-orange-600 dark:text-orange-400' :
+                            repairFilter === 'repaired' ? 'text-green-600 dark:text-green-400' :
+                            'text-gray-600 dark:text-gray-400'
+                          }`}>
+                            {repairFilter === 'pending' ? '⚠️' : repairFilter === 'repaired' ? '✅' : '🚫'} {questionsToShow.length} pregunta{questionsToShow.length !== 1 ? 's' : ''} {
+                              repairFilter === 'pending' ? 'pendientes' :
+                              repairFilter === 'repaired' ? 'reparadas' : 'descartadas'
+                            }
+                          </span>
+                        </div>
+
+                        {questionsToShow.map((item, idx) => (
+                          <div
+                            key={item.id}
+                            className={`rounded-lg p-4 border ${
+                              repairFilter === 'pending'
+                                ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                                : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                            }`}
+                          >
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                                  repairFilter === 'pending'
+                                    ? 'bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200'
+                                    : 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200'
+                                }`}>
+                                  Art. {item.articleNumber}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                  #{idx + 1}
+                                </span>
+                                {repairFilter === 'repaired' && item.aiResult?.verifiedAt && (
+                                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                                    Reparada el {new Date(item.aiResult.verifiedAt).toLocaleDateString('es-ES')}
+                                  </span>
+                                )}
+                              </div>
+                              {item.aiResult?.confidence && (
+                                <span className={`text-xs px-2 py-0.5 rounded ${
+                                  item.aiResult.confidence === 'alta' ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300' :
+                                  item.aiResult.confidence === 'media' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300' :
+                                  'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                }`}>
+                                  Confianza: {item.aiResult.confidence}
+                                </span>
+                              )}
+                              {/* Debug: mostrar datos crudos */}
+                              <button
+                                onClick={() => {
+                                  console.log('=== DEBUG Pregunta ===')
+                                  console.log('ID:', item.id)
+                                  console.log('correct_option (actual):', item.correct_option, '→', ['A','B','C','D'][item.correct_option])
+                                  console.log('AI isCorrect:', item.aiResult?.isCorrect)
+                                  console.log('AI correctOptionShouldBe:', item.aiResult?.correctOptionShouldBe)
+                                  console.log('AI result completo:', item.aiResult)
+                                  alert(`Respuesta actual: ${['A','B','C','D'][item.correct_option]}\nAI isCorrect: ${item.aiResult?.isCorrect}\nAI shouldBe: ${item.aiResult?.correctOptionShouldBe}`)
+                                }}
+                                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+                              >
+                                🔍 Debug
+                              </button>
+                            </div>
+
+                            {/* Pregunta */}
+                            <p className="text-sm text-gray-900 dark:text-white font-medium mb-3">
+                              {item.question_text}
+                            </p>
+
+                            {/* Opciones */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3 text-xs">
+                              {['A', 'B', 'C', 'D'].map((letter, i) => {
+                                const optionKey = `option_${letter.toLowerCase()}`
+                                const isCurrentCorrect = item.correct_option === i
+                                const shouldBeCorrect = item.aiResult?.correctOptionShouldBe === letter
+
+                                return (
+                                  <div
+                                    key={letter}
+                                    className={`p-2 rounded ${
+                                      shouldBeCorrect
+                                        ? 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700'
+                                        : isCurrentCorrect && repairFilter === 'pending'
+                                          ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700'
+                                          : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
+                                    }`}
+                                  >
+                                    <span className="font-medium">{letter})</span> {item[optionKey]}
+                                    {shouldBeCorrect && <span className="ml-1 text-green-600 dark:text-green-400">✓ Correcta</span>}
+                                    {isCurrentCorrect && !shouldBeCorrect && repairFilter === 'pending' && <span className="ml-1 text-red-600 dark:text-red-400">✗ Anterior</span>}
+                                  </div>
+                                )
+                              })}
+                            </div>
+
+                            {/* Explicación del problema */}
+                            {item.aiResult?.explanation && (
+                              <div className="text-xs bg-white dark:bg-gray-800 rounded p-3 mb-3 border border-gray-200 dark:border-gray-700">
+                                <p className="font-medium text-gray-700 dark:text-gray-300 mb-1">Análisis IA:</p>
+                                <p className="text-gray-600 dark:text-gray-400">{item.aiResult.explanation}</p>
+                              </div>
+                            )}
+
+                            {/* Cita del artículo */}
+                            {item.aiResult?.articleQuote && (
+                              <div className="text-xs bg-blue-50 dark:bg-blue-900/20 rounded p-3 mb-3 border border-blue-200 dark:border-blue-800">
+                                <p className="font-medium text-blue-700 dark:text-blue-300 mb-1">📜 Cita del artículo:</p>
+                                <p className="text-blue-600 dark:text-blue-400 italic">"{item.aiResult.articleQuote}"</p>
+                              </div>
+                            )}
+
+                            {/* Nueva explicación sugerida */}
+                            {item.aiResult?.newExplanation && (
+                              <div className="text-xs bg-purple-50 dark:bg-purple-900/20 rounded p-3 mb-3 border border-purple-200 dark:border-purple-800">
+                                <p className="font-medium text-purple-700 dark:text-purple-300 mb-1">📝 {repairFilter === 'repaired' ? 'Explicación aplicada' : 'Nueva explicación'}:</p>
+                                <p className="text-purple-600 dark:text-purple-400">{item.aiResult.newExplanation}</p>
+                              </div>
+                            )}
+
+                            {/* Botón de aplicar (solo para pendientes) */}
+                            {repairFilter === 'pending' && (() => {
+                              // Detectar falso positivo: la IA dice que está mal pero sugiere la misma respuesta
+                              const currentLetter = ['A', 'B', 'C', 'D'][item.correct_option]
+                              const isFalsePositive = item.aiResult?.correctOptionShouldBe === currentLetter
+
+                              if (isFalsePositive) {
+                                return (
+                                  <div className="pt-3 border-t border-yellow-200 dark:border-yellow-700">
+                                    <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3 mb-3">
+                                      <p className="text-xs text-yellow-700 dark:text-yellow-300 font-medium mb-1">
+                                        ⚠️ Posible falso positivo
+                                      </p>
+                                      <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                                        La IA marcó esta pregunta como incorrecta, pero sugiere la misma respuesta ({currentLetter}) que ya tiene.
+                                        Esto puede ocurrir con preguntas de "doble negativo" donde la IA se confunde.
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => toggleDiscarded(item.id, item.articleNumber, true)}
+                                        className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 text-sm px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                                      >
+                                        <span>🚫</span>
+                                        <span>Descartar (falso positivo)</span>
+                                      </button>
+                                      {item.aiResult?.newExplanation && (
+                                        <button
+                                          onClick={() => applyAIFix(
+                                            item.id,
+                                            null, // No cambiar la respuesta
+                                            item.aiResult?.newExplanation,
+                                            item.aiResult?.id,
+                                            item.articleNumber
+                                          )}
+                                          disabled={applyingFix === item.id}
+                                          className="bg-purple-500 hover:bg-purple-600 disabled:bg-gray-400 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                                        >
+                                          {applyingFix === item.id ? (
+                                            <Spinner size="sm" />
+                                          ) : (
+                                            <span>📝</span>
+                                          )}
+                                          <span>Solo actualizar explicación</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              }
+
+                              return (
+                                <div className="flex items-center justify-between pt-3 border-t border-orange-200 dark:border-orange-700">
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    Cambiar de <span className="font-medium text-red-600">{currentLetter}</span>
+                                    {' → '}
+                                    <span className="font-medium text-green-600">{item.aiResult?.correctOptionShouldBe}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => applyAIFix(
+                                      item.id,
+                                      item.aiResult?.correctOptionShouldBe,
+                                      item.aiResult?.newExplanation || item.aiResult?.suggestedFix,
+                                      item.aiResult?.id,
+                                      item.articleNumber
+                                    )}
+                                    disabled={applyingFix === item.id}
+                                    className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                                  >
+                                    {applyingFix === item.id ? (
+                                      <>
+                                        <Spinner size="sm" />
+                                        <span>Aplicando...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span>🔧</span>
+                                        <span>Aplicar corrección</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              )
+                            })()}
+
+                            {/* Info de reparación (solo para reparadas) */}
+                            {repairFilter === 'repaired' && (
+                              <div className="flex items-center justify-between pt-3 border-t border-green-200 dark:border-green-700">
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Respuesta cambiada a: <span className="font-medium text-green-600">{item.aiResult?.correctOptionShouldBe}</span>
+                                </div>
+                                <span className="text-xs bg-green-100 dark:bg-green-800 text-green-700 dark:text-green-300 px-2 py-1 rounded">
+                                  ✓ Corrección aplicada
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Info de descarte (solo para descartadas) */}
+                            {repairFilter === 'discarded' && (
+                              <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  Marcada como falso positivo de la IA
+                                </div>
+                                <button
+                                  onClick={() => toggleDiscarded(item.id, item.articleNumber, false)}
+                                  className="text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded flex items-center gap-1"
+                                >
+                                  <span>↩️</span>
+                                  <span>Restaurar a pendientes</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
           </div>
         )}
       </div>
@@ -2420,6 +3872,97 @@ export default function VerificarArticulosPage() {
         law={law}
         lawId={lawId}
       />
+
+      {/* Modal de logs de errores */}
+      {showErrorLogs && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div
+              className="fixed inset-0 bg-black/50 transition-opacity"
+              onClick={() => setShowErrorLogs(false)}
+            />
+            <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 my-8 overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  🔍 Logs de errores de verificación
+                </h3>
+                <button
+                  onClick={() => setShowErrorLogs(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 max-h-[70vh] overflow-y-auto">
+                {!errorLogs || errorLogs.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <div className="text-4xl mb-2">📭</div>
+                    <p>No hay errores registrados para esta ley</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {errorLogs.map((log, idx) => (
+                      <div key={log.id || idx} className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200 px-2 py-0.5 rounded font-medium">
+                              Art. {log.article_number}
+                            </span>
+                            <span className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-0.5 rounded">
+                              {log.provider} / {log.model}
+                            </span>
+                            {log.error_type && (
+                              <span className="text-xs bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200 px-2 py-0.5 rounded">
+                                {log.error_type}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(log.created_at).toLocaleString('es-ES')}
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-red-700 dark:text-red-300 font-medium mb-2">
+                          {log.error_message}
+                        </p>
+
+                        {log.questions_count && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                            Preguntas intentadas: {log.questions_count}
+                          </p>
+                        )}
+
+                        {log.raw_response && (
+                          <details className="mt-2">
+                            <summary className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-gray-700 dark:hover:text-gray-200">
+                              Ver respuesta cruda (truncada)
+                            </summary>
+                            <pre className="mt-2 p-3 bg-gray-100 dark:bg-gray-900 rounded text-xs text-gray-700 dark:text-gray-300 overflow-x-auto max-h-48 whitespace-pre-wrap">
+                              {log.raw_response.substring(0, 2000)}
+                              {log.raw_response.length > 2000 && '...'}
+                            </pre>
+                          </details>
+                        )}
+
+                        {log.tokens_used && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                            Tokens: {log.tokens_used.input_tokens || '?'} in / {log.tokens_used.output_tokens || '?'} out
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

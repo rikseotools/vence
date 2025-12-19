@@ -6,7 +6,20 @@ const supabase = createClient(
 )
 
 /**
+ * Normaliza número de artículo para comparación
+ */
+function normalizeArticleNumber(num) {
+  if (!num) return ''
+  return num
+    .toLowerCase()
+    .replace(/(\d+)\s*(bis|ter|quater|quinquies|sexies|septies)/gi, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
  * Extrae el contenido de un artículo específico del BOE
+ * Soporta IDs numéricos (id="a5") y textuales (id="aquinto")
  */
 async function fetchArticleFromBOE(boeUrl, articleNumber) {
   try {
@@ -22,34 +35,47 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
 
     const html = await response.text()
 
-    // Buscar el artículo específico
-    // Estructura: <div class="bloque" id="aX">...</div>
-    const articleRegex = new RegExp(
-      `<div[^>]*id="a${articleNumber}"[^>]*>[\\s\\S]*?<h5[^>]*class="articulo"[^>]*>([\\s\\S]*?)</h5>([\\s\\S]*?)(?=<div[^>]*class="bloque"|<p[^>]*class="linkSubir"|$)`,
-      'i'
-    )
+    // Normalizar el número de artículo buscado
+    const targetArticle = normalizeArticleNumber(articleNumber)
 
-    const match = html.match(articleRegex)
+    // Buscar todos los bloques de artículos y encontrar el que coincida
+    const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="a[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|<p[^>]*class="linkSubir"|$)/gi
 
-    if (match) {
-      const title = match[1].replace(/<[^>]*>/g, '').trim()
-        .replace(/^Artículo\s+\d+\.\s*/, '') // Quitar "Artículo X. "
-        .replace(/\.$/, '') // Quitar punto final
+    let match
+    while ((match = articleBlockRegex.exec(html)) !== null) {
+      const blockContent = match[1]
 
-      let content = match[2]
-        .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '') // Quitar [Bloque X: #aX]
-        // Preservar estructura de párrafos
-        .replace(/<\/p>/gi, '\n\n') // Fin de párrafo = doble salto
-        .replace(/<br\s*\/?>/gi, '\n') // Salto de línea
-        .replace(/<\/li>/gi, '\n') // Fin de item de lista
-        .replace(/<\/div>/gi, '\n') // Fin de div
-        .replace(/<[^>]*>/g, '') // Quitar resto de tags HTML
-        .replace(/\n{3,}/g, '\n\n') // Máximo 2 saltos seguidos
-        .replace(/[ \t]+/g, ' ') // Normalizar espacios horizontales
-        .replace(/^ +| +$/gm, '') // Quitar espacios al inicio/fin de cada línea
-        .trim()
+      // Extraer número de artículo del header
+      const headerMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|quater|quinquies|sexies|septies))?)\.?\s*([^<]*)<\/h5>/i)
 
-      return { title, content }
+      if (!headerMatch) continue
+
+      const foundArticle = normalizeArticleNumber(headerMatch[1])
+
+      // ¿Es el artículo que buscamos?
+      if (foundArticle === targetArticle) {
+        const title = headerMatch[2] ? headerMatch[2].trim().replace(/\.$/, '') : ''
+
+        let content = blockContent
+          .replace(/<h5[^>]*class="articulo"[^>]*>[\s\S]*?<\/h5>/gi, '') // Quitar el h5
+          .replace(/<p[^>]*class="bloque"[^>]*>.*?<\/p>/gi, '') // Quitar [Bloque X: #aX]
+          .replace(/<form[^>]*>[\s\S]*?<\/form>/gi, '') // Quitar formularios de jurisprudencia
+          .replace(/<a[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/a>/gi, '')
+          .replace(/<span[^>]*class="[^"]*jurisprudencia[^"]*"[^>]*>[\s\S]*?<\/span>/gi, '')
+          .replace(/Jurisprudencia/gi, '')
+          // Preservar estructura de párrafos
+          .replace(/<\/p>/gi, '\n\n')
+          .replace(/<br\s*\/?>/gi, '\n')
+          .replace(/<\/li>/gi, '\n')
+          .replace(/<\/div>/gi, '\n')
+          .replace(/<[^>]*>/g, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/[ \t]+/g, ' ')
+          .replace(/^ +| +$/gm, '')
+          .trim()
+
+        return { title, content }
+      }
     }
 
     return null
