@@ -6,12 +6,24 @@ const supabase = createClient(
 )
 
 /**
+ * Recalcula isOk en tiempo real basándose en el summary
+ * Criterios: Sin discrepancias de título, contenido, ni artículos faltantes
+ */
+function calculateIsOk(summary) {
+  if (!summary) return false
+  return (
+    (summary.title_mismatch || 0) === 0 &&
+    (summary.content_mismatch || 0) === 0 &&
+    (summary.missing_in_db || 0) === 0
+  )
+}
+
+/**
  * GET /api/verify-articles/stats-by-law
  * Devuelve estadísticas de artículos por ley
  */
 export async function GET() {
   try {
-    console.log('📊 [STATS-BY-LAW] Cargando stats de verificación...')
     // Obtener todas las leyes con su estado de verificación y resumen
     const { data: laws, error: lawsError } = await supabase
       .from('laws')
@@ -22,27 +34,31 @@ export async function GET() {
       throw lawsError
     }
 
-    console.log('📊 [STATS-BY-LAW] Leyes cargadas:', laws?.length)
-
     const statsByLaw = {}
+    let hasDiscrepancies = false
 
     for (const law of laws || []) {
       const summary = law.last_verification_summary || null
+      // Recalcular isOk en tiempo real (no confiar en valor guardado antiguo)
+      const isOk = calculateIsOk(summary)
+
+      // Si hay verificación y no está OK, hay discrepancias
+      if (summary && !isOk) {
+        hasDiscrepancies = true
+      }
+
       statsByLaw[law.id] = {
         lastVerified: law.last_checked,
         status: law.verification_status,
-        isOk: summary?.is_ok || false, // Usar is_ok del summary
+        isOk,
         summary: summary
-      }
-      // Log solo si tiene summary
-      if (summary) {
-        console.log('📊 [STATS-BY-LAW] Ley con summary:', law.short_name, summary)
       }
     }
 
     return Response.json({
       success: true,
-      stats: statsByLaw
+      stats: statsByLaw,
+      hasDiscrepancies
     })
 
   } catch (error) {

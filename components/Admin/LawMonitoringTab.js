@@ -27,6 +27,7 @@ export default function LawMonitoringTab() {
   const [lastCheck, setLastCheck] = useState(null)
   const [error, setError] = useState(null)
   const [lawFilter, setLawFilter] = useState('') // Filtro por texto de ley
+  const [aiVerificationStats, setAiVerificationStats] = useState({}) // { lawId: { lastVerified, pending, fixed } }
 
   const checkLawChanges = async () => {
     try {
@@ -130,6 +131,19 @@ export default function LawMonitoringTab() {
     router.push(`/admin/verificar-articulos/${lawId}`)
   }
 
+  // Cargar estadísticas de verificación IA por ley
+  const loadAiVerificationStats = async () => {
+    try {
+      const response = await fetch('/api/verify-articles/stats-by-law')
+      const data = await response.json()
+      if (data.success) {
+        setAiVerificationStats(data.stats || {})
+      }
+    } catch (err) {
+      console.error('Error cargando stats de verificación IA:', err)
+    }
+  }
+
   // Cargar leyes iniciales sin verificar automáticamente
   useEffect(() => {
     const loadLaws = async () => {
@@ -137,7 +151,7 @@ export default function LawMonitoringTab() {
         setLoading(true)
         const response = await fetch('/api/law-changes?readonly=true')
         const data = await response.json()
-        
+
         if (data.success) {
           setLaws(data.results)
         } else {
@@ -149,11 +163,16 @@ export default function LawMonitoringTab() {
         setLoading(false)
       }
     }
-    
+
     loadLaws()
+    loadAiVerificationStats()
   }, [])
 
-  const hasUnreviewedChanges = laws.some(law => law.changeStatus === 'changed')
+  // Detectar si hay leyes pendientes: cambios detectados O discrepancias BOE vs BD
+  const hasUnreviewedChanges = laws.some(law =>
+    law.changeStatus === 'changed' ||
+    (aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk)
+  )
 
   // Ordenar leyes por fecha BOE (más recientes primero)
   const sortedLaws = [...laws].sort((a, b) => {
@@ -290,6 +309,9 @@ export default function LawMonitoringTab() {
                 Último cambio BOE
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                BOE = BD
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 Acción
               </th>
             </tr>
@@ -334,6 +356,15 @@ export default function LawMonitoringTab() {
                         </div>
                       )}
                     </div>
+                  ) : aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk ? (
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 animate-pulse">
+                        🚨 BOE ≠ BD
+                      </span>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">
+                        Artículos pendientes
+                      </div>
+                    </div>
                   ) : law.changeStatus === 'reviewed' ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200">
                       👁️ Revisado
@@ -359,7 +390,33 @@ export default function LawMonitoringTab() {
                     <span className="text-gray-400 dark:text-gray-600">Sin fecha</span>
                   )}
                 </td>
-                
+
+                <td className="px-6 py-4 text-sm">
+                  {aiVerificationStats[law.id]?.isOk ? (
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200">
+                        ✅ Sí
+                      </span>
+                      {aiVerificationStats[law.id].lastVerified && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(aiVerificationStats[law.id].lastVerified).toLocaleDateString('es-ES')}
+                        </div>
+                      )}
+                    </div>
+                  ) : aiVerificationStats[law.id]?.lastVerified ? (
+                    <div className="space-y-1">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200">
+                        ⚠️ Revisar
+                      </span>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(aiVerificationStats[law.id].lastVerified).toLocaleDateString('es-ES')}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 dark:text-gray-600 text-xs">No verificado</span>
+                  )}
+                </td>
+
                 <td className="px-6 py-4 text-sm">
                   <div className="flex flex-col space-y-2">
                     {law.changeStatus === 'changed' && (
@@ -431,6 +488,15 @@ export default function LawMonitoringTab() {
                     </div>
                   )}
                 </div>
+              ) : aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk ? (
+                <div className="space-y-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 animate-pulse">
+                    🚨 BOE ≠ BD
+                  </span>
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                    Artículos pendientes
+                  </div>
+                </div>
               ) : law.changeStatus === 'reviewed' ? (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200">
                   👁️ Revisado
@@ -448,8 +514,28 @@ export default function LawMonitoringTab() {
             </div>
 
             {/* Last BOE Update */}
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
               📋 Último cambio BOE: {law.lastUpdateBOE ? law.lastUpdateBOE : 'Sin fecha'}
+            </div>
+
+            {/* BOE = BD */}
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
+              BOE = BD:{' '}
+              {aiVerificationStats[law.id]?.isOk ? (
+                <>
+                  <span className="text-green-600 dark:text-green-400 font-medium">✅ Sí</span>
+                  {aiVerificationStats[law.id].lastVerified && (
+                    <span>({new Date(aiVerificationStats[law.id].lastVerified).toLocaleDateString('es-ES')})</span>
+                  )}
+                </>
+              ) : aiVerificationStats[law.id]?.lastVerified ? (
+                <>
+                  <span className="text-orange-600 dark:text-orange-400 font-medium">⚠️ Revisar</span>
+                  <span>({new Date(aiVerificationStats[law.id].lastVerified).toLocaleDateString('es-ES')})</span>
+                </>
+              ) : (
+                <span className="text-gray-400">No verificado</span>
+              )}
             </div>
 
             {/* Action */}
