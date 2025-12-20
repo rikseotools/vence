@@ -110,18 +110,21 @@ async function handleCheckoutSessionCompleted(session, supabase) {
 
   if (userId) {
     console.log('👤 Activando premium para usuario:', userId)
-    try {
-      await supabase
-        .from('user_profiles')
-        .update({
-          plan_type: 'premium',
-          stripe_customer_id: session.customer
-        })
-        .eq('id', userId)
+    console.log('🔑 SERVICE_ROLE_KEY configurada:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
 
-      console.log(`✅ User ${userId} ahora es PREMIUM`)
-    } catch (error) {
-      console.error('Error updating logged user:', error)
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .update({
+        plan_type: 'premium',
+        stripe_customer_id: session.customer
+      })
+      .eq('id', userId)
+      .select()
+
+    if (error) {
+      console.error('❌ Error actualizando usuario a premium:', error)
+    } else {
+      console.log(`✅ User ${userId} ahora es PREMIUM`, data)
     }
     return
   }
