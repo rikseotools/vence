@@ -31,11 +31,9 @@ export default function ConversionesPage() {
 
     try {
       await Promise.all([
+        loadMainStats(),
         loadFunnelStats(),
-        loadRegistrationStats(),
-        loadTimeAnalysis(),
-        loadRecentEvents(),
-        loadDailyStats()
+        loadTimeAnalysis()
       ])
     } catch (err) {
       console.error('Error loading data:', err)
@@ -45,38 +43,33 @@ export default function ConversionesPage() {
     }
   }
 
+  // Cargar datos principales desde la API (usa service role para bypasear RLS)
+  const loadMainStats = async () => {
+    const response = await fetch(`/api/admin/conversion-stats?days=${dateRange}`)
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Error loading stats')
+    }
+
+    const data = await response.json()
+
+    setRegistrationStats(data.registrations)
+    setRecentEvents(data.events)
+    setDailyStats(data.dailyStats)
+  }
+
   const loadFunnelStats = async () => {
+    // Intentar cargar la vista, si falla usar datos vacíos
     const { data, error } = await supabase
       .from('conversion_funnel_stats')
       .select('*')
 
-    if (error) throw error
+    if (error) {
+      console.log('Funnel stats view not available:', error.message)
+      setFunnelStats([])
+      return
+    }
     setFunnelStats(data || [])
-  }
-
-  const loadRegistrationStats = async () => {
-    const daysAgo = new Date()
-    daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange))
-
-    // Obtener registros de user_profiles
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('id, registration_source, created_at')
-      .gte('created_at', daysAgo.toISOString())
-
-    if (error) throw error
-
-    // Agrupar por fuente
-    const bySource = {}
-    ;(data || []).forEach(user => {
-      const source = user.registration_source || 'organic'
-      bySource[source] = (bySource[source] || 0) + 1
-    })
-
-    setRegistrationStats({
-      total: data?.length || 0,
-      bySource
-    })
   }
 
   const loadTimeAnalysis = async () => {
@@ -84,67 +77,12 @@ export default function ConversionesPage() {
       .from('conversion_time_analysis')
       .select('*')
 
-    if (error) throw error
-    setTimeAnalysis(data || [])
-  }
-
-  const loadRecentEvents = async () => {
-    const daysAgo = new Date()
-    daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange))
-
-    const { data, error } = await supabase
-      .from('conversion_events')
-      .select(`
-        *,
-        user_profiles!conversion_events_user_id_fkey(email, full_name)
-      `)
-      .gte('created_at', daysAgo.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(100)
-
     if (error) {
-      // Si falla el join, intentar sin el
-      const { data: simpleData, error: simpleError } = await supabase
-        .from('conversion_events')
-        .select('*')
-        .gte('created_at', daysAgo.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(100)
-
-      if (simpleError) throw simpleError
-      setRecentEvents(simpleData || [])
+      console.log('Time analysis view not available:', error.message)
+      setTimeAnalysis([])
       return
     }
-
-    setRecentEvents(data || [])
-  }
-
-  const loadDailyStats = async () => {
-    const daysAgo = new Date()
-    daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange))
-
-    const { data, error } = await supabase
-      .from('conversion_events')
-      .select('event_type, created_at')
-      .gte('created_at', daysAgo.toISOString())
-
-    if (error) throw error
-
-    // Agrupar por dia y tipo
-    const grouped = {}
-    ;(data || []).forEach(event => {
-      const day = new Date(event.created_at).toLocaleDateString('es-ES')
-      if (!grouped[day]) grouped[day] = {}
-      if (!grouped[day][event.event_type]) grouped[day][event.event_type] = 0
-      grouped[day][event.event_type]++
-    })
-
-    // Convertir a array ordenado
-    const result = Object.entries(grouped)
-      .map(([date, events]) => ({ date, ...events }))
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-
-    setDailyStats(result)
+    setTimeAnalysis(data || [])
   }
 
   const loadUserJourney = async (userId) => {
@@ -164,7 +102,6 @@ export default function ConversionesPage() {
   // Calcular totales del funnel
   const getTotals = () => {
     const fromEvents = funnelStats.reduce((acc, row) => ({
-      completed_first_test: (acc.completed_first_test || 0) + (row.completed_first_test || 0),
       hit_limit: (acc.hit_limit || 0) + (row.hit_limit || 0),
       saw_modal: (acc.saw_modal || 0) + (row.saw_modal || 0),
       clicked_upgrade: (acc.clicked_upgrade || 0) + (row.clicked_upgrade || 0),
@@ -173,9 +110,10 @@ export default function ConversionesPage() {
       paid: (acc.paid || 0) + (row.paid || 0)
     }), {})
 
-    // Registros vienen de user_profiles, no de conversion_events
+    // Registros y primer test vienen de user_profiles
     return {
       registrations: registrationStats.total,
+      completed_first_test: registrationStats.firstTestCompleted || 0,
       ...fromEvents
     }
   }
