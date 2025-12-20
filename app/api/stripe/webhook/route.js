@@ -111,7 +111,17 @@ async function handleCheckoutSessionCompleted(session, supabase) {
   if (userId) {
     console.log('👤 Activando premium para usuario:', userId)
     console.log('🔑 SERVICE_ROLE_KEY configurada:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+    console.log('🔑 SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
 
+    // ANTES: Verificar estado actual
+    const { data: beforeData } = await supabase
+      .from('user_profiles')
+      .select('plan_type, updated_at')
+      .eq('id', userId)
+      .single()
+    console.log('📊 ANTES del update:', beforeData)
+
+    // UPDATE
     const { data, error } = await supabase
       .from('user_profiles')
       .update({
@@ -126,6 +136,22 @@ async function handleCheckoutSessionCompleted(session, supabase) {
     } else {
       console.log(`✅ User ${userId} ahora es PREMIUM`, data)
     }
+
+    // DESPUÉS: Verificar que se guardó
+    const { data: afterData } = await supabase
+      .from('user_profiles')
+      .select('plan_type, updated_at')
+      .eq('id', userId)
+      .single()
+    console.log('📊 DESPUÉS del update:', afterData)
+
+    // Comparar
+    if (afterData?.plan_type !== 'premium') {
+      console.error('🚨 ALERTA: El plan_type NO se actualizó a premium!')
+      console.error('🚨 beforeData:', beforeData)
+      console.error('🚨 afterData:', afterData)
+    }
+
     return
   }
 
