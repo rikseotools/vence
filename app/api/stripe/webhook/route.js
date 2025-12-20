@@ -135,6 +135,23 @@ async function handleCheckoutSessionCompleted(session, supabase) {
       console.error('❌ Error actualizando usuario a premium:', error)
     } else {
       console.log(`✅ User ${userId} ahora es PREMIUM`, data)
+
+      // Trackear conversion de pago completado
+      try {
+        await supabase.rpc('track_conversion_event', {
+          p_user_id: userId,
+          p_event_type: 'payment_completed',
+          p_event_data: {
+            amount: session.amount_total / 100,
+            currency: session.currency,
+            plan: session.mode,
+            timestamp: new Date().toISOString()
+          }
+        })
+        console.log('📊 Conversion event tracked: payment_completed')
+      } catch (trackErr) {
+        console.error('Error tracking conversion:', trackErr)
+      }
     }
 
     // DESPUÉS: Verificar que se guardó

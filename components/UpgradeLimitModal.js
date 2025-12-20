@@ -2,26 +2,38 @@
 // Modal persuasivo cuando el usuario alcanza el limite diario
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { trackUpgradeModalView, trackUpgradeButtonClick } from '@/lib/services/conversionTracker'
 
 export default function UpgradeLimitModal({
   isOpen,
   onClose,
   questionsAnswered = 20,
-  resetTime = null
+  resetTime = null,
+  supabase = null,
+  userId = null
 }) {
   const router = useRouter()
+  const hasTrackedView = useRef(false)
 
-  // Prevenir scroll cuando esta abierto
+  // Prevenir scroll cuando esta abierto + trackear vista
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
+
+      // Trackear vista del modal (solo una vez por apertura)
+      if (!hasTrackedView.current && supabase && userId) {
+        trackUpgradeModalView(supabase, userId, 'limit_reached')
+        hasTrackedView.current = true
+      }
+
       return () => {
         document.body.style.overflow = 'unset'
+        hasTrackedView.current = false
       }
     }
-  }, [isOpen])
+  }, [isOpen, supabase, userId])
 
   // Calcular tiempo hasta reset
   const getTimeUntilReset = () => {
@@ -43,6 +55,10 @@ export default function UpgradeLimitModal({
   if (!isOpen) return null
 
   const handleUpgrade = () => {
+    // Trackear clic en boton de upgrade
+    if (supabase && userId) {
+      trackUpgradeButtonClick(supabase, userId, 'limit_modal')
+    }
     router.push('/premium')
     onClose()
   }

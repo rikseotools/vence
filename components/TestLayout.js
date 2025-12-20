@@ -32,6 +32,7 @@ import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import AdSenseComponent from './AdSenseComponent'
 import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
+import { trackLimitReached } from '../lib/services/conversionTracker'
 
 // 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar artículo
 const NON_LEGAL_CONTENT = [
@@ -574,6 +575,10 @@ export default function TestLayout({
 
     // Verificar limite diario para usuarios FREE
     if (hasLimit && isLimitReached) {
+      // Trackear que el usuario alcanzo el limite
+      if (supabase && user?.id) {
+        trackLimitReached(supabase, user.id, questionsToday)
+      }
       setShowUpgradeModal(true)
       return
     }
@@ -1980,6 +1985,8 @@ export default function TestLayout({
         onClose={() => setShowUpgradeModal(false)}
         questionsAnswered={questionsToday}
         resetTime={resetTime}
+        supabase={supabase}
+        userId={user?.id}
       />
     </PersistentRegistrationManager>
   )

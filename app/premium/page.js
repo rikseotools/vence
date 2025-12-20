@@ -1,8 +1,9 @@
 // app/premium/page.js - PÁGINA DE PAGO PREMIUM
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
+import { trackPremiumPageView, trackCheckoutStarted } from '@/lib/services/conversionTracker'
 
 function PremiumPageContent() {
   const { user, loading: authLoading, supabase } = useAuth()
@@ -10,6 +11,16 @@ function PremiumPageContent() {
   const [error, setError] = useState('')
   const [selectedPlan, setSelectedPlan] = useState('semester') // 'semester' o 'monthly'
   const searchParams = useSearchParams()
+  const hasTrackedPageView = useRef(false)
+
+  // Trackear vista de pagina premium
+  useEffect(() => {
+    if (user && supabase && !hasTrackedPageView.current && !authLoading) {
+      const referrer = document.referrer || null
+      trackPremiumPageView(supabase, user.id, referrer)
+      hasTrackedPageView.current = true
+    }
+  }, [user, supabase, authLoading])
 
   // Auto-iniciar checkout después de login exitoso
   useEffect(() => {
@@ -65,6 +76,11 @@ function PremiumPageContent() {
 
     try {
       console.log('🔄 Creando checkout para usuario:', user.email, 'Plan:', selectedPlan)
+
+      // Trackear inicio de checkout
+      if (supabase && user.id) {
+        trackCheckoutStarted(supabase, user.id, selectedPlan)
+      }
 
       // Determinar el priceId según el plan seleccionado
       const priceId = selectedPlan === 'semester'
