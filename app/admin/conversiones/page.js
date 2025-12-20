@@ -270,6 +270,51 @@ export default function ConversionesPage() {
         </div>
       </div>
 
+      {/* Guia de Configuracion de Campañas */}
+      <details className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+        <summary className="p-4 cursor-pointer font-bold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+          <span>📖</span>
+          Guia: Como configurar URLs de campañas para tracking
+        </summary>
+        <div className="px-4 pb-4 space-y-4 text-sm">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+            <h4 className="font-bold text-purple-600 mb-2">📘 Meta Ads (Facebook/Instagram)</h4>
+            <p className="text-gray-600 dark:text-gray-400 mb-2">URL destino en tu anuncio:</p>
+            <code className="block bg-gray-100 dark:bg-gray-700 p-2 rounded text-xs break-all">
+              https://vence.pro?utm_source=facebook&utm_medium=cpc&utm_campaign=NOMBRE_CAMPANA
+            </code>
+            <p className="text-gray-500 text-xs mt-2">Tambien detecta automaticamente el parametro fbclid que Meta añade.</p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+            <h4 className="font-bold text-blue-600 mb-2">🔍 Google Ads</h4>
+            <p className="text-gray-600 dark:text-gray-400 mb-2">URL destino en tu anuncio:</p>
+            <code className="block bg-gray-100 dark:bg-gray-700 p-2 rounded text-xs break-all">
+              https://vence.pro?utm_source=google&utm_medium=cpc&utm_campaign=NOMBRE_CAMPANA
+            </code>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+            <h4 className="font-bold text-green-600 mb-2">✅ Parametros detectados automaticamente</h4>
+            <ul className="text-gray-600 dark:text-gray-400 space-y-1">
+              <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">utm_source=facebook|instagram|meta</code> → meta_ads</li>
+              <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">utm_source=google + utm_medium=cpc</code> → google_ads</li>
+              <li><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">fbclid</code> (automatico de Meta) → meta_ads</li>
+              <li>Sin UTMs → organic</li>
+            </ul>
+          </div>
+
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <h4 className="font-bold text-yellow-700 dark:text-yellow-300 mb-2">⚠️ Importante</h4>
+            <ul className="text-yellow-600 dark:text-yellow-400 space-y-1 text-xs">
+              <li>• El tracking se guarda cuando el usuario se REGISTRA (no en cada visita)</li>
+              <li>• Si el usuario ya existe, mantiene su fuente original</li>
+              <li>• Usa URLs sin espacios ni caracteres especiales en utm_campaign</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+
       {/* Canales de Adquisicion */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
