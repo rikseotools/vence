@@ -94,9 +94,7 @@ export default function UpgradeLimitModal({
             <ul className="space-y-2">
               {[
                 'Preguntas ilimitadas todos los dias',
-                'Acceso a todos los temas',
-                'Estadisticas avanzadas',
-                'Sin publicidad'
+                'Acceso a todos los temas'
               ].map((benefit, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

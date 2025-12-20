@@ -1970,6 +1970,17 @@ export default function TestLayout({
           onClose={() => setShowShareQuestion(false)}
         />
       )}
+
+      {/* Banner de limite diario (solo usuarios FREE) */}
+      {hasLimit && <DailyLimitBanner />}
+
+      {/* Modal de upgrade cuando se alcanza el limite */}
+      <UpgradeLimitModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        questionsAnswered={questionsToday}
+        resetTime={resetTime}
+      />
     </PersistentRegistrationManager>
   )
 }
@@ -2175,17 +2186,6 @@ function ArticleDropdown({ article, currentQuestion }) {
           </div>
         </div>
       )}
-
-      {/* Banner de limite diario (solo usuarios FREE) */}
-      {hasLimit && <DailyLimitBanner />}
-
-      {/* Modal de upgrade cuando se alcanza el limite */}
-      <UpgradeLimitModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        questionsAnswered={questionsToday}
-        resetTime={resetTime}
-      />
     </div>
   )
 }

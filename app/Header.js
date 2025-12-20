@@ -382,7 +382,7 @@ export default function HeaderES() {
                     className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-xs font-semibold shadow-sm"
                   >
                     <span>👑</span>
-                    <span>Premium</span>
+                    <span>Hazte Premium</span>
                   </Link>
                 )}
               </div>
@@ -467,7 +467,7 @@ export default function HeaderES() {
                   className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold shadow-md hover:shadow-lg transition-all"
                 >
                   <span>👑</span>
-                  <span className="text-sm">Premium</span>
+                  <span className="text-sm">Hazte Premium</span>
                 </Link>
               )}
 

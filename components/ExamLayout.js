@@ -9,6 +9,9 @@ import QuestionDispute from './QuestionDisputeFixed'
 import MotivationalMessage from './MotivationalMessage'
 import SharePrompt from './SharePrompt'
 import ShareQuestion from './ShareQuestion'
+import DailyLimitBanner from './DailyLimitBanner'
+import UpgradeLimitModal from './UpgradeLimitModal'
+import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 
 // Imports modularizados
 import {
@@ -119,6 +122,15 @@ export default function ExamLayout({
   children
 }) {
   const { user, userProfile, loading: authLoading, supabase } = useAuth()
+  const {
+    hasLimit,
+    isLimitReached,
+    questionsToday,
+    resetTime,
+    showUpgradeModal,
+    setShowUpgradeModal,
+    recordAnswer
+  } = useDailyQuestionLimit()
 
   // Estados del examen
   const [userAnswers, setUserAnswers] = useState({}) // { questionIndex: selectedOption }
@@ -353,6 +365,12 @@ export default function ExamLayout({
 
   // ✅ FUNCIÓN: Corregir examen (NO BLOQUEANTE - muestra resultados inmediatamente)
   function handleSubmitExam() {
+    // 🔒 Verificar límite diario para usuarios FREE
+    if (hasLimit && isLimitReached) {
+      setShowUpgradeModal(true)
+      return
+    }
+
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     console.log('🎯 INICIANDO CORRECCIÓN DE EXAMEN')
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
@@ -403,10 +421,19 @@ export default function ExamLayout({
     console.log('')
 
     // 🔄 GUARDAR EN SEGUNDO PLANO (async, no bloqueante)
-    saveExamInBackground(correctCount, totalTimeSeconds).then(() => {
+    saveExamInBackground(correctCount, totalTimeSeconds).then(async () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('✅ GUARDADO EN SEGUNDO PLANO COMPLETADO')
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
+      // 📊 Registrar preguntas en contador diario (solo usuarios FREE)
+      if (hasLimit) {
+        const answeredCount = Object.keys(userAnswers).length
+        console.log(`📊 Registrando ${answeredCount} preguntas en límite diario...`)
+        for (let i = 0; i < answeredCount; i++) {
+          await recordAnswer()
+        }
+      }
     }).catch(err => {
       console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.error('❌ ERROR EN GUARDADO EN SEGUNDO PLANO:', err)
@@ -1081,6 +1108,17 @@ export default function ExamLayout({
         lawName={config?.title || tema || ''}
         isOpen={!!shareQuestionData}
         onClose={() => setShareQuestionData(null)}
+      />
+
+      {/* Banner de limite diario (solo usuarios FREE) */}
+      {hasLimit && <DailyLimitBanner />}
+
+      {/* Modal de upgrade cuando se alcanza el limite */}
+      <UpgradeLimitModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        questionsAnswered={questionsToday}
+        resetTime={resetTime}
       />
     </div>
   )
