@@ -409,7 +409,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   )}
                                   {!userStats[theme.id] && (
                                     <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                                      Sin datos
+                                      Empezar
                                     </span>
                                   )}
                                 </div>
@@ -476,7 +476,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                   )}
                                   {!userStats[theme.id] && (
                                     <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                                      Sin datos
+                                      Empezar
                                     </span>
                                   )}
                                 </div>
