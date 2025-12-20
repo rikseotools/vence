@@ -1,4 +1,4 @@
-// app/premium/page.js - FLUJO PROFESIONAL OPCIÓN A
+// app/premium/page.js - PÁGINA DE PAGO PREMIUM
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,12 +8,13 @@ function PremiumPageContent() {
   const { user, loading: authLoading, supabase } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selectedPlan, setSelectedPlan] = useState('semester') // 'semester' o 'monthly'
   const searchParams = useSearchParams()
 
   // Auto-iniciar checkout después de login exitoso
   useEffect(() => {
     const shouldStartCheckout = searchParams.get('start_checkout') === 'true'
-    
+
     if (shouldStartCheckout && user && !loading) {
       console.log('🎯 Usuario logueado, iniciando checkout automáticamente...')
       handleCheckout()
@@ -27,7 +28,7 @@ function PremiumPageContent() {
 
     try {
       console.log('🔄 Paso 1: Iniciando registro con Google...')
-      
+
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -40,11 +41,11 @@ function PremiumPageContent() {
           }
         }
       })
-      
+
       if (authError) {
         throw new Error('Error en el registro: ' + authError.message)
       }
-      
+
     } catch (err) {
       console.error('Error:', err)
       setError(err.message)
@@ -52,7 +53,7 @@ function PremiumPageContent() {
     }
   }
 
-  // FUNCIÓN: Checkout (Paso 2 - automático después del login)
+  // FUNCIÓN: Checkout (Paso 2)
   const handleCheckout = async () => {
     if (!user) {
       setError('Necesitas estar registrado primero')
@@ -63,16 +64,20 @@ function PremiumPageContent() {
     setError('')
 
     try {
-      console.log('🔄 Paso 2: Creando checkout para usuario:', user.email)
+      console.log('🔄 Creando checkout para usuario:', user.email, 'Plan:', selectedPlan)
+
+      // Determinar el priceId según el plan seleccionado
+      const priceId = selectedPlan === 'semester'
+        ? (process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER || 'price_1RjhHBCybKEAFwateoAVKstO')
+        : (process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder')
 
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || 'price_1RjhHBCybKEAFwateoAVKstO',
+          priceId: priceId,
           userId: user.id,
-          trialDays: 7,
-          mode: 'normal' // Usuario logueado
+          mode: 'normal'
         }),
       })
 
@@ -84,7 +89,7 @@ function PremiumPageContent() {
       // Redirigir a Stripe
       const { loadStripe } = await import('@stripe/stripe-js')
       const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-      
+
       const { error: stripeError } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
       })
@@ -100,95 +105,112 @@ function PremiumPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 py-12">
       <div className="max-w-4xl mx-auto px-4">
-        
+
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            🚀 Vence Premium
+            👑 Vence Premium
           </h1>
           <p className="text-xl text-gray-600">
-            Acceso completo a todos los tests de Auxiliar Administrativo
+            Acceso ilimitado a todos los tests de la plataforma
           </p>
         </div>
 
-        {/* Plan Card */}
-        <div className="max-w-md mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
-            
-            {/* Badge */}
-            <div className="text-center mb-6">
-              <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-bold">
-                🎉 7 DÍAS GRATIS
-              </span>
-            </div>
+        {/* Plan Cards */}
+        <div className="max-w-2xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
 
-            {/* Price */}
-            <div className="text-center mb-6">
-              <div className="text-4xl font-bold text-gray-900 mb-2">€59</div>
-              <div className="text-gray-600">cada 6 meses</div>
-              <div className="text-sm text-green-600 font-medium mt-2">
-                ✅ Prueba gratuita de 7 días incluida
+            {/* Plan Semestral */}
+            <div
+              onClick={() => setSelectedPlan('semester')}
+              className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all ${
+                selectedPlan === 'semester'
+                  ? 'border-amber-500 ring-2 ring-amber-200'
+                  : 'border-gray-200 hover:border-amber-300'
+              }`}
+            >
+              <div className="text-center">
+                {selectedPlan === 'semester' && (
+                  <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-4 inline-block">
+                    MEJOR PRECIO
+                  </span>
+                )}
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Semestral</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-1">59€</div>
+                <div className="text-gray-500 text-sm mb-4">cada 6 meses</div>
+                <div className="text-green-600 text-sm font-medium">
+                  Ahorras 61€ al año
+                </div>
               </div>
             </div>
 
-            {/* Features */}
-            <div className="space-y-4 mb-8">
+            {/* Plan Mensual */}
+            <div
+              onClick={() => setSelectedPlan('monthly')}
+              className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all ${
+                selectedPlan === 'monthly'
+                  ? 'border-amber-500 ring-2 ring-amber-200'
+                  : 'border-gray-200 hover:border-amber-300'
+              }`}
+            >
+              <div className="text-center">
+                <div className="h-6 mb-4"></div> {/* Spacer para alinear */}
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Mensual</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-1">20€</div>
+                <div className="text-gray-500 text-sm mb-4">al mes</div>
+                <div className="text-gray-400 text-sm">
+                  Flexibilidad total
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Beneficios */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+            <h3 className="font-bold text-gray-800 mb-4 text-center">Incluido en Premium:</h3>
+            <div className="grid md:grid-cols-2 gap-3">
               {[
-                "Tests ilimitados",
-                "Todos los 16 temas",
-                "Preguntas oficiales exclusivas", 
-                "IA personalizada",
-                "Analytics avanzados"
+                "Preguntas ilimitadas",
+                "Acceso a todos los temas",
+                "Sé el primero en probar las últimas novedades de la plataforma"
               ].map((feature, index) => (
                 <div key={index} className="flex items-center">
-                  <span className="text-green-500 mr-3">✅</span>
-                  <span>{feature}</span>
+                  <span className="text-green-500 mr-2">✓</span>
+                  <span className="text-gray-700">{feature}</span>
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Botón de pago */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
 
             {/* LOADING STATE */}
             {authLoading && (
               <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-4"></div>
                 <p className="text-gray-600">Verificando tu sesión...</p>
               </div>
             )}
 
-            {/* ESTADO 1: USUARIO NO LOGUEADO - MOSTRAR REGISTRO */}
+            {/* ESTADO 1: USUARIO NO LOGUEADO */}
             {!authLoading && !user && (
               <div>
-                {/* Info del proceso */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <h3 className="font-bold text-blue-800 mb-2">📋 Proceso simple:</h3>
-                  <div className="space-y-2 text-sm text-blue-700">
-                    <div className="flex items-center">
-                      <span className="w-6 h-6 bg-blue-600 text-white rounded-full text-xs flex items-center justify-center mr-2 font-bold">1</span>
-                      <span>Crear cuenta con Google (30 segundos)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="w-6 h-6 bg-blue-600 text-white rounded-full text-xs flex items-center justify-center mr-2 font-bold">2</span>
-                      <span>Introducir datos de pago</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="w-6 h-6 bg-green-600 text-white rounded-full text-xs flex items-center justify-center mr-2 font-bold">3</span>
-                      <span className="font-semibold">¡7 días gratis activados!</span>
-                    </div>
-                  </div>
+                <div className="text-center mb-6">
+                  <p className="text-gray-600">Crea una cuenta para continuar</p>
                 </div>
 
-                {/* Botón principal */}
                 <button
                   onClick={handleSignupFirst}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 px-6 rounded-lg font-bold text-lg hover:opacity-90 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none mb-4"
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 px-6 rounded-lg font-bold text-lg hover:from-amber-600 hover:to-orange-600 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none mb-4"
                 >
                   {loading ? (
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                      Conectando con Google...
+                      Conectando...
                     </div>
                   ) : (
                     <div className="flex items-center justify-center space-x-3">
@@ -200,92 +222,80 @@ function PremiumPageContent() {
                           <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                         </svg>
                       </div>
-                      <span>Empezar 7 Días Gratis</span>
+                      <span>Continuar con Google</span>
                     </div>
                   )}
                 </button>
 
-                {/* Info adicional */}
-                <div className="text-xs text-gray-500 text-center space-y-1">
-                  <p>• Sin compromisos • Cancela cuando quieras</p>
-                  <p>• Proceso 100% seguro con Google y Stripe</p>
-                </div>
-
-                {/* Login para usuarios existentes */}
-                <div className="text-center mt-6 pt-4 border-t border-gray-200">
-                  <p className="text-sm text-gray-600 mb-3">¿Ya tienes cuenta?</p>
+                <div className="text-center">
                   <a
                     href="/login?return_to=/premium"
-                    className="text-blue-600 hover:text-blue-800 font-medium text-sm underline"
+                    className="text-amber-600 hover:text-amber-800 font-medium text-sm"
                   >
-                    Iniciar Sesión
+                    ¿Ya tienes cuenta? Iniciar Sesión
                   </a>
                 </div>
               </div>
             )}
 
-            {/* ESTADO 2: USUARIO LOGUEADO - MOSTRAR CHECKOUT O ESTADO */}
+            {/* ESTADO 2: USUARIO LOGUEADO */}
             {!authLoading && user && (
               <div>
-                {/* Si viene de Google Ads y debe hacer checkout automático */}
-                {searchParams.get('start_checkout') === 'true' && loading && (
+                {user.plan_type === 'legacy_free' && (
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-                    <h3 className="font-bold text-gray-800 mb-2">✅ ¡Cuenta creada!</h3>
-                    <p className="text-gray-600 text-sm mb-4">
-                      Configurando tu suscripción...<br/>
-                      <span className="text-xs text-gray-500">Redirigiendo a Stripe...</span>
-                    </p>
+                    <div className="bg-gradient-to-r from-green-100 to-emerald-100 border border-green-300 text-green-800 px-4 py-3 rounded-lg mb-4">
+                      <span className="text-lg font-bold">🎉 ¡Usuario VIP!</span><br/>
+                      Tienes acceso gratuito de por vida
+                    </div>
+                    <a
+                      href="/auxiliar-administrativo-estado/test"
+                      className="inline-block bg-green-600 text-white py-3 px-6 rounded-lg font-bold hover:bg-green-700 transition-colors"
+                    >
+                      Ir a Tests
+                    </a>
                   </div>
                 )}
 
-                {/* Usuario ya logueado - mostrar estado según plan */}
-                {!loading && (
-                  <>
-                    {user.plan_type === 'legacy_free' && (
-                      <div className="text-center">
-                        <div className="bg-gradient-to-r from-green-100 to-emerald-100 border border-green-300 text-green-800 px-4 py-3 rounded-lg mb-4">
-                          <span className="text-lg font-bold">🎉 ¡Usuario VIP!</span><br/>
-                          Tienes acceso gratuito de por vida
-                        </div>
-                        <a
-                          href="/auxiliar-administrativo-estado/test"
-                          className="inline-block bg-green-600 text-white py-3 px-6 rounded-lg font-bold hover:bg-green-700 transition-colors"
-                        >
-                          🚀 Ir a Tests
-                        </a>
-                      </div>
-                    )}
+                {user.plan_type === 'premium' && (
+                  <div className="text-center">
+                    <div className="bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg mb-4">
+                      <span className="text-lg font-bold">👑 Ya eres Premium</span><br/>
+                      Disfruta de acceso ilimitado
+                    </div>
+                    <a
+                      href="/auxiliar-administrativo-estado/test"
+                      className="inline-block bg-amber-600 text-white py-3 px-6 rounded-lg font-bold hover:bg-amber-700 transition-colors"
+                    >
+                      Ir a Tests
+                    </a>
+                  </div>
+                )}
 
-                    {user.plan_type !== 'legacy_free' && (
-                      <div>
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                          <div className="flex items-center mb-2">
-                            <span className="text-lg mr-2">✅</span>
-                            <span className="font-bold text-green-800">¡Perfecto, {user.email?.split('@')[0]}!</span>
-                          </div>
-                          <p className="text-sm text-green-700">
-                            Tu cuenta está lista. Ahora vamos a configurar tu suscripción.
-                          </p>
-                        </div>
+                {user.plan_type !== 'legacy_free' && user.plan_type !== 'premium' && (
+                  <div>
+                    <div className="text-center mb-6">
+                      <p className="text-lg font-medium text-gray-800">
+                        Plan seleccionado: <span className="text-amber-600 font-bold">
+                          {selectedPlan === 'semester' ? '59€ / 6 meses' : '20€ / mes'}
+                        </span>
+                      </p>
+                    </div>
 
-                        <button
-                          onClick={handleCheckout}
-                          disabled={loading}
-                          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 px-6 rounded-lg font-bold text-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
-                        >
-                          {loading ? (
-                            <div className="flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                              Creando checkout...
-                            </div>
-                          ) : (
-                            '💳 Configurar Pago (7 Días Gratis)'
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </>
+                    <button
+                      onClick={handleCheckout}
+                      disabled={loading}
+                      className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-bold text-lg hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                    >
+                      {loading ? (
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          Procesando...
+                        </div>
+                      ) : (
+                        '💳 Pagar'
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -302,7 +312,7 @@ function PremiumPageContent() {
 
             {/* Terms */}
             <div className="text-xs text-gray-500 text-center mt-6">
-              Al continuar aceptas nuestros términos de servicio y política de privacidad.
+              Pago seguro con Stripe. Al continuar aceptas nuestros términos de servicio.
             </div>
           </div>
         </div>
@@ -315,8 +325,7 @@ function PremiumPageContent() {
               <div>User ID: {user.id}</div>
               <div>Email: {user.email}</div>
               <div>Plan Type: {user.plan_type}</div>
-              <div>Start Checkout: {searchParams.get('start_checkout')}</div>
-              <div>Loading: {loading.toString()}</div>
+              <div>Selected Plan: {selectedPlan}</div>
             </div>
           </div>
         )}
@@ -329,11 +338,11 @@ function PremiumPageContent() {
 export default function PremiumPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-6"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-600 border-t-transparent mx-auto mb-6"></div>
           <h2 className="text-2xl font-bold text-gray-800 mb-3">
-            🔄 Cargando página...
+            Cargando...
           </h2>
         </div>
       </div>

@@ -8,7 +8,7 @@ export async function POST(request) {
   try {
     console.log('🚀 API Stripe llamada - Sistema dual...')
     
-    const { priceId, userId, trialDays = 7, mode = 'normal' } = await request.json()
+    const { priceId, userId, mode = 'normal' } = await request.json()
     
     if (!priceId) {
       console.error('❌ Price ID faltante')
@@ -135,7 +135,6 @@ export async function POST(request) {
           },
         ],
         subscription_data: {
-          trial_period_days: trialDays,
           metadata: {
             supabase_user_id: userId,
             registration_source: user.registration_source,
@@ -151,19 +150,18 @@ export async function POST(request) {
         allow_promotion_codes: true,
       }
 
-      console.log('🔄 Creando session de Stripe con trial de', trialDays, 'días...')
+      console.log('🔄 Creando session de Stripe (pago inmediato)...')
       const session = await stripe.checkout.sessions.create(sessionData)
 
       console.log('✅ Checkout session creada:', session.id)
       console.log('📊 Usuario:', user.email, '| Fuente:', user.registration_source, '| Plan:', user.plan_type)
       
-      return NextResponse.json({ 
+      return NextResponse.json({
         sessionId: session.id,
         debug: {
           userEmail: user.email,
           registrationSource: user.registration_source,
-          planType: user.plan_type,
-          trialDays: trialDays
+          planType: user.plan_type
         }
       })
       

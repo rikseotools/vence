@@ -99,11 +99,11 @@ const ProviderCard = ({ config, onUpdate, onTest }) => {
     }
   }
 
-  const handleTest = async () => {
+  const handleTest = async (testAll = true) => {
     setTesting(true)
     setTestResult(null)
     try {
-      const result = await onTest(config.provider, apiKey || null, selectedModel)
+      const result = await onTest(config.provider, apiKey || null, selectedModel, testAll)
       setTestResult(result)
     } finally {
       setTesting(false)
@@ -224,11 +224,23 @@ const ProviderCard = ({ config, onUpdate, onTest }) => {
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           >
             {config.available_models?.map(model => (
-              <option key={model.id} value={model.id}>
+              <option
+                key={model.id}
+                value={model.id}
+                disabled={model.status === 'failed'}
+                className={model.status === 'failed' ? 'text-red-500 bg-red-50' : ''}
+              >
+                {model.status === 'working' ? '✓ ' : model.status === 'failed' ? '✗ ' : ''}
                 {model.name} - {model.description}
+                {model.status === 'failed' ? ' (no funciona)' : ''}
               </option>
             ))}
           </select>
+          {config.available_models?.some(m => m.status === 'failed') && (
+            <p className="mt-1 text-xs text-red-500">
+              Los modelos marcados con ✗ no funcionan con tu API key
+            </p>
+          )}
         </div>
 
         {/* Botones */}
@@ -242,12 +254,12 @@ const ProviderCard = ({ config, onUpdate, onTest }) => {
             <span>Guardar</span>
           </button>
           <button
-            onClick={handleTest}
+            onClick={() => handleTest(true)}
             disabled={testing}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
           >
             {testing ? <Spinner size="sm" /> : '🧪'}
-            <span>Probar conexión</span>
+            <span>Probar modelos</span>
           </button>
           {config.provider === 'openai' && (
             <a
@@ -283,41 +295,127 @@ const ProviderCard = ({ config, onUpdate, onTest }) => {
 
         {/* Resultado del test */}
         {testResult && (
-          <div className={`p-4 rounded-lg ${
-            testResult.success
-              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
-          }`}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">{testResult.success ? '✅' : '❌'}</span>
-              <span className={`font-medium ${
-                testResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+          <div className="space-y-3">
+            {/* Resumen si es test de todos los modelos */}
+            {testResult.testAllModels && testResult.summary && (
+              <div className={`p-3 rounded-lg ${
+                testResult.summary.working === testResult.summary.total
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                  : testResult.summary.working > 0
+                    ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                    : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
               }`}>
-                {testResult.success ? 'Conexión exitosa' : 'Error de conexión'}
-              </span>
-            </div>
-            {testResult.success ? (
-              <div className="text-sm text-green-600 dark:text-green-400 space-y-1">
-                <p>Modelo: <span className="font-mono">{testResult.model}</span></p>
-                <p>Latencia: {testResult.latency}ms</p>
-                <p>Respuesta: "{testResult.response}"</p>
-                {testResult.usage && (
-                  <p>Tokens usados: {testResult.usage.total_tokens || (testResult.usage.input_tokens + testResult.usage.output_tokens)}</p>
-                )}
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    Modelos: {testResult.summary.working}/{testResult.summary.total} funcionando
+                  </span>
+                  <div className="flex gap-1">
+                    {testResult.modelResults?.map((m, i) => (
+                      <span
+                        key={i}
+                        className={`w-3 h-3 rounded-full ${m.success ? 'bg-green-500' : 'bg-red-500'}`}
+                        title={`${m.modelName}: ${m.success ? 'OK' : m.error}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Resultados por modelo */}
+            {testResult.testAllModels && testResult.modelResults ? (
+              <div className="space-y-2">
+                {testResult.modelResults.map((modelResult, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-lg border ${
+                      modelResult.success
+                        ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+                        : 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span>{modelResult.success ? '✅' : '❌'}</span>
+                        <span className="font-medium text-sm text-gray-900 dark:text-white">
+                          {modelResult.modelName}
+                        </span>
+                        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                          ({modelResult.modelId})
+                        </span>
+                      </div>
+                      {modelResult.success && (
+                        <div className="flex items-center gap-3 text-xs">
+                          {modelResult.latency && (
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {modelResult.latency}ms
+                            </span>
+                          )}
+                          {modelResult.estimatedCost && (
+                            <>
+                              <span className="text-blue-600 dark:text-blue-400">
+                                {modelResult.estimatedCost.totalTokens} tok
+                              </span>
+                              <span className="text-green-600 dark:text-green-400 font-medium">
+                                {modelResult.estimatedCost.totalCostFormatted}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {!modelResult.success && modelResult.error && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-red-600 dark:text-red-400 hover:text-red-700">
+                          {getFriendlyErrorMessage(modelResult.error, config.provider)}
+                        </summary>
+                        <pre className="mt-1 p-2 bg-red-100 dark:bg-red-900/30 rounded text-xs overflow-x-auto whitespace-pre-wrap break-all text-red-700 dark:text-red-300">
+                          {modelResult.error}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : (
-              <div className="text-sm text-red-600 dark:text-red-400 space-y-2">
-                <p className="font-medium">
-                  {getFriendlyErrorMessage(testResult.error, config.provider)}
-                </p>
-                <details className="mt-2">
-                  <summary className="cursor-pointer text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
-                    Ver detalles técnicos
-                  </summary>
-                  <pre className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded text-xs overflow-x-auto whitespace-pre-wrap break-all">
-                    {testResult.error}
-                  </pre>
-                </details>
+              /* Resultado de test individual */
+              <div className={`p-4 rounded-lg ${
+                testResult.success
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">{testResult.success ? '✅' : '❌'}</span>
+                  <span className={`font-medium ${
+                    testResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                  }`}>
+                    {testResult.success ? 'Conexión exitosa' : 'Error de conexión'}
+                  </span>
+                </div>
+                {testResult.success ? (
+                  <div className="text-sm text-green-600 dark:text-green-400 space-y-1">
+                    <p>Modelo: <span className="font-mono">{testResult.model}</span></p>
+                    <p>Latencia: {testResult.latency}ms</p>
+                    <p>Respuesta: "{testResult.response}"</p>
+                    {testResult.usage && (
+                      <p>Tokens usados: {testResult.usage.total_tokens || (testResult.usage.input_tokens + testResult.usage.output_tokens)}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-red-600 dark:text-red-400 space-y-2">
+                    <p className="font-medium">
+                      {getFriendlyErrorMessage(testResult.error, config.provider)}
+                    </p>
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                        Ver detalles técnicos
+                      </summary>
+                      <pre className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded text-xs overflow-x-auto whitespace-pre-wrap break-all">
+                        {testResult.error}
+                      </pre>
+                    </details>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -400,12 +498,12 @@ export default function AdminAIPage() {
     }
   }
 
-  const handleTest = async (provider, apiKey, model) => {
+  const handleTest = async (provider, apiKey, model, testAllModels = true) => {
     try {
       const response = await fetch('/api/admin/ai-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey, model })
+        body: JSON.stringify({ provider, apiKey, model, testAllModels })
       })
       const data = await response.json()
       loadConfigs() // Recargar para actualizar el estado de verificación

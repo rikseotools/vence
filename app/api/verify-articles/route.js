@@ -516,13 +516,10 @@ export async function GET(request) {
     }
 
     // 6. Calcular estado general
-    // isOk = false si hay cualquier discrepancia:
-    // - title_mismatch: títulos diferentes
-    // - content_mismatch: contenido diferente
-    // - missing_in_db: artículos nuevos en BOE que no tenemos (ley actualizada!)
+    // isOk = true si los artículos que tenemos coinciden con el BOE
+    // (Los artículos faltantes se muestran como info, no como alarma)
     const isOk = comparison.summary.title_mismatch === 0 &&
-                 comparison.summary.content_mismatch === 0 &&
-                 comparison.summary.missing_in_db === 0
+                 comparison.summary.content_mismatch === 0
 
     // 7. Actualizar estado de verificación en la ley (guardar resumen completo)
     const summaryToSave = {

@@ -5,13 +5,73 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
+// Precios por millón de tokens (input/output) en USD
+const MODEL_PRICING = {
+  // OpenAI
+  'gpt-4o-mini': { input: 0.15, output: 0.60 },
+  'gpt-4o': { input: 2.50, output: 10.00 },
+  'gpt-4-turbo': { input: 10.00, output: 30.00 },
+  // Anthropic
+  'claude-3-haiku-20240307': { input: 0.25, output: 1.25 },
+  'claude-sonnet-4-20250514': { input: 3.00, output: 15.00 },
+  'claude-sonnet-4-5-20250929': { input: 3.00, output: 15.00 },
+  // Google (gratis con límites, pero tiene precios de pago)
+  'gemini-1.5-flash': { input: 0.075, output: 0.30 },
+  'gemini-1.5-flash-8b': { input: 0.0375, output: 0.15 },
+  'gemini-1.5-pro': { input: 1.25, output: 5.00 },
+  'gemini-2.0-flash-exp': { input: 0, output: 0 }, // Experimental/gratis
+}
+
+// Calcular coste estimado de una llamada
+function estimateCost(provider, modelId, usage) {
+  const pricing = MODEL_PRICING[modelId]
+  if (!pricing || !usage) return null
+
+  const inputTokens = usage.input_tokens || usage.prompt_tokens || 0
+  const outputTokens = usage.output_tokens || usage.completion_tokens || 0
+
+  const inputCost = (inputTokens / 1_000_000) * pricing.input
+  const outputCost = (outputTokens / 1_000_000) * pricing.output
+  const totalCost = inputCost + outputCost
+
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens: inputTokens + outputTokens,
+    inputCost: inputCost.toFixed(6),
+    outputCost: outputCost.toFixed(6),
+    totalCost: totalCost.toFixed(6),
+    totalCostFormatted: totalCost < 0.01 ? `$${(totalCost * 1000).toFixed(4)}m` : `$${totalCost.toFixed(4)}`
+  }
+}
+
+// Modelos disponibles por proveedor (debe coincidir con ai-config/route.js)
+const AVAILABLE_MODELS = {
+  openai: [
+    { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+    { id: 'gpt-4o', name: 'GPT-4o' },
+    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+  ],
+  anthropic: [
+    { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku' },
+    { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+    { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5' },
+  ],
+  google: [
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash' },
+    { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B' },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Exp)' },
+  ]
+}
+
 /**
  * POST /api/admin/ai-config/test
- * Prueba una API key y opcionalmente la guarda
+ * Prueba una API key - si testAllModels=true, prueba todos los modelos
  */
 export async function POST(request) {
   try {
-    const { provider, apiKey, model } = await request.json()
+    const { provider, apiKey, model, testAllModels } = await request.json()
 
     if (!provider) {
       return Response.json({
@@ -54,12 +114,82 @@ export async function POST(request) {
       }, { status: 400 })
     }
 
+    // Si testAllModels=true, probar todos los modelos del proveedor
+    if (testAllModels) {
+      const models = AVAILABLE_MODELS[provider] || []
+      const modelResults = []
+      let anySuccess = false
+
+      for (const modelInfo of models) {
+        let result
+        if (provider === 'openai') {
+          result = await testOpenAI(keyToTest, modelInfo.id)
+        } else if (provider === 'anthropic') {
+          result = await testAnthropic(keyToTest, modelInfo.id)
+        } else if (provider === 'google') {
+          result = await testGoogle(keyToTest, modelInfo.id)
+        }
+
+        modelResults.push({
+          modelId: modelInfo.id,
+          modelName: modelInfo.name,
+          success: result.success,
+          latency: result.latency,
+          error: result.error,
+          errorType: result.errorType,
+          usage: result.usage,
+          estimatedCost: result.usage ? estimateCost(provider, modelInfo.id, result.usage) : null
+        })
+
+        if (result.success) anySuccess = true
+      }
+
+      // Actualizar estado en BD
+      const workingModels = modelResults.filter(m => m.success).map(m => m.modelId)
+      const failedModels = modelResults.filter(m => !m.success).map(m => ({
+        id: m.modelId,
+        error: m.error
+      }))
+
+      // Guardar resultados detallados en last_error_message como JSON
+      const testResults = JSON.stringify({
+        working: workingModels,
+        failed: failedModels,
+        testedAt: new Date().toISOString()
+      })
+
+      await supabase
+        .from('ai_api_config')
+        .update({
+          last_verified_at: new Date().toISOString(),
+          last_verification_status: anySuccess ? 'valid' : 'invalid',
+          last_error_message: testResults,
+          updated_at: new Date().toISOString()
+        })
+        .eq('provider', provider)
+
+      return Response.json({
+        success: anySuccess,
+        provider,
+        testAllModels: true,
+        modelResults,
+        workingModels,
+        failedModels,
+        summary: {
+          total: modelResults.length,
+          working: modelResults.filter(m => m.success).length,
+          failed: modelResults.filter(m => !m.success).length
+        }
+      })
+    }
+
+    // Probar solo un modelo específico
     let result
 
     if (provider === 'openai') {
       result = await testOpenAI(keyToTest, model || 'gpt-4o-mini')
     } else if (provider === 'anthropic') {
-      result = await testAnthropic(keyToTest, model || 'claude-3-haiku-20240307')
+      result = await testAnthropic(keyToTest, model || 'claude-sonnet-4-20250514')
     } else if (provider === 'google') {
       result = await testGoogle(keyToTest, model || 'gemini-1.5-flash')
     } else {

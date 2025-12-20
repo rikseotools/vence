@@ -7,14 +7,14 @@ const supabase = createClient(
 
 /**
  * Recalcula isOk en tiempo real basándose en el summary
- * Criterios: Sin discrepancias de título, contenido, ni artículos faltantes
+ * Criterios: Sin discrepancias de título o contenido en artículos existentes
+ * (Los artículos faltantes se muestran como info, no como alarma)
  */
 function calculateIsOk(summary) {
   if (!summary) return false
   return (
     (summary.title_mismatch || 0) === 0 &&
-    (summary.content_mismatch || 0) === 0 &&
-    (summary.missing_in_db || 0) === 0
+    (summary.content_mismatch || 0) === 0
   )
 }
 

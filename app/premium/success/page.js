@@ -9,7 +9,7 @@ export default function PremiumSuccess() {
           <div className="text-6xl mb-6">🎉</div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">¡Bienvenido a Premium!</h1>
           <p className="text-lg text-gray-600 mb-6">
-            Tu suscripción se ha configurado correctamente. Tienes <strong>7 días de prueba gratuita</strong>.
+            Tu suscripción se ha configurado correctamente. Ya tienes acceso ilimitado.
           </p>
           <Link href="/auxiliar-administrativo-estado/test" 
                 className="bg-blue-600 text-white py-4 px-6 rounded-lg font-bold hover:bg-blue-700">

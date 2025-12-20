@@ -14,8 +14,8 @@ const AVAILABLE_MODELS = {
   ],
   anthropic: [
     { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', description: 'Rápido y económico' },
-    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Rápido y mejorado' },
     { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Equilibrado y potente' },
+    { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5', description: 'Mejor modelo de código' },
   ],
   google: [
     { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Rápido y económico' },
@@ -29,7 +29,7 @@ const AVAILABLE_MODELS = {
 const DEFAULT_PROVIDERS = ['openai', 'anthropic', 'google']
 const DEFAULT_MODELS = {
   openai: 'gpt-4o-mini',
-  anthropic: 'claude-3-haiku-20240307',
+  anthropic: 'claude-sonnet-4-20250514',
   google: 'gemini-1.5-flash'
 }
 
@@ -58,12 +58,44 @@ export async function GET() {
     // Asegurar que tenemos todos los proveedores
     const allConfigs = DEFAULT_PROVIDERS.map(provider => {
       const existing = configMap[provider]
+
+      // Parsear resultados del test de modelos si existe
+      let modelTestResults = null
+      if (existing?.last_error_message) {
+        try {
+          const parsed = JSON.parse(existing.last_error_message)
+          if (parsed.working || parsed.failed) {
+            modelTestResults = parsed
+          }
+        } catch (e) {
+          // No es JSON, es un mensaje de error normal
+        }
+      }
+
+      // Marcar modelos disponibles con su estado
+      const availableModels = (AVAILABLE_MODELS[provider] || []).map(model => {
+        let status = 'unknown' // unknown, working, failed
+        let error = null
+
+        if (modelTestResults) {
+          if (modelTestResults.working?.includes(model.id)) {
+            status = 'working'
+          } else if (modelTestResults.failed?.find(f => f.id === model.id)) {
+            status = 'failed'
+            error = modelTestResults.failed.find(f => f.id === model.id)?.error
+          }
+        }
+
+        return { ...model, status, error }
+      })
+
       if (existing) {
         return {
           ...existing,
-          available_models: AVAILABLE_MODELS[provider] || [],
+          available_models: availableModels,
           api_key_encrypted: undefined,
-          has_key: !!existing.api_key_encrypted
+          has_key: !!existing.api_key_encrypted,
+          model_test_results: modelTestResults
         }
       }
       // Crear config por defecto
@@ -71,12 +103,13 @@ export async function GET() {
         provider,
         is_active: false,
         default_model: DEFAULT_MODELS[provider],
-        available_models: AVAILABLE_MODELS[provider] || [],
+        available_models: availableModels,
         has_key: false,
         api_key_hint: null,
         last_verified_at: null,
         last_verification_status: null,
-        last_error_message: null
+        last_error_message: null,
+        model_test_results: null
       }
     })
 
