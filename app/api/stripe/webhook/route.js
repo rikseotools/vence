@@ -2,9 +2,17 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe'
-import { getSupabaseClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+// Crear cliente con SERVICE_ROLE_KEY para bypasear RLS
+const getServiceSupabase = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+}
 
 export async function POST(request) {
   try {
@@ -25,7 +33,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
     }
 
-    const supabase = getSupabaseClient()
+    const supabase = getServiceSupabase()
 
     switch (event.type) {
       case 'checkout.session.completed':
