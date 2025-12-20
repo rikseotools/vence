@@ -1,6 +1,6 @@
 -- ============================================================
 -- SISTEMA DE LIMITES DIARIOS DE PREGUNTAS
--- Limita usuarios FREE a 20 preguntas/dia
+-- Limita usuarios FREE a 25 preguntas/dia
 -- Reset: Medianoche Europe/Madrid
 -- ============================================================
 
@@ -54,7 +54,7 @@ DECLARE
   v_today DATE;
   v_current_count INTEGER;
   v_is_premium BOOLEAN;
-  v_limit INTEGER := 20;
+  v_limit INTEGER := 25;
 BEGIN
   -- Fecha actual en Madrid
   v_today := (NOW() AT TIME ZONE 'Europe/Madrid')::DATE;

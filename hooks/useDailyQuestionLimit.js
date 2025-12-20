@@ -1,11 +1,11 @@
 // hooks/useDailyQuestionLimit.js
-// Hook para gestionar el limite diario de preguntas (20/dia para usuarios FREE)
+// Hook para gestionar el limite diario de preguntas (25/dia para usuarios FREE)
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
-const DAILY_LIMIT = 20
+const DAILY_LIMIT = 25
 const CACHE_TTL = 60000 // 1 minuto
 
 export function useDailyQuestionLimit() {
