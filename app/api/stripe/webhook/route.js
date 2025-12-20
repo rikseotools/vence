@@ -64,96 +64,93 @@ export async function POST(request) {
   }
 }
 
-// ✅ ACTUALIZADO: Manejar checkout completado (modo directo Y usuario logueado)
+// ✅ ACTUALIZADO: Manejar checkout completado (pago directo sin trial)
 async function handleCheckoutSessionCompleted(session, supabase) {
   console.log('🎯 Checkout completado:', session.id)
-  
-  // CASO 1: Usuario logueado (tiene userId en metadata)
-  const userId = session.subscription?.metadata?.supabase_user_id || 
-                 session.metadata?.supabase_user_id
+
+  // Obtener userId: primero intentar desde subscription metadata, luego session metadata
+  let userId = null
+
+  // Si hay subscription, recuperarla para obtener metadata
+  if (session.subscription) {
+    try {
+      const subscription = await stripe.subscriptions.retrieve(session.subscription)
+      userId = subscription.metadata?.supabase_user_id
+      console.log('📋 userId desde subscription metadata:', userId)
+    } catch (err) {
+      console.error('Error retrieving subscription:', err)
+    }
+  }
+
+  // Fallback: buscar en session metadata
+  if (!userId) {
+    userId = session.metadata?.supabase_user_id
+    console.log('📋 userId desde session metadata:', userId)
+  }
+
+  // Fallback: buscar usuario por stripe_customer_id
+  if (!userId && session.customer) {
+    const { data: userByCustomer } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .eq('stripe_customer_id', session.customer)
+      .single()
+
+    userId = userByCustomer?.id
+    console.log('📋 userId desde stripe_customer_id:', userId)
+  }
 
   if (userId) {
-    console.log('👤 Checkout de usuario logueado:', userId)
+    console.log('👤 Activando premium para usuario:', userId)
     try {
       await supabase
         .from('user_profiles')
         .update({
-          plan_type: 'trial',
+          plan_type: 'premium',
           stripe_customer_id: session.customer
         })
         .eq('id', userId)
 
-      console.log(`✅ User ${userId} started trial via checkout`)
+      console.log(`✅ User ${userId} ahora es PREMIUM`)
     } catch (error) {
       console.error('Error updating logged user:', error)
     }
     return
   }
 
-  // CASO 2: Checkout directo (sin userId) - crear usuario
-  const createdVia = session.subscription?.metadata?.created_via
-  if (createdVia === 'direct_checkout') {
-    console.log('🚀 Checkout directo detectado')
-    
-    try {
-      // Obtener datos del customer de Stripe
-      const customer = await stripe.customers.retrieve(session.customer)
-      
-      if (customer.email) {
-        // Verificar si ya existe un usuario con este email
-        const { data: existingUser } = await supabase
+  // CASO 2: Checkout directo (sin userId conocido) - buscar por email del customer
+  console.log('🔍 Buscando usuario por email del customer...')
+
+  try {
+    // Obtener datos del customer de Stripe
+    const customer = await stripe.customers.retrieve(session.customer)
+
+    if (customer.email) {
+      // Verificar si ya existe un usuario con este email
+      const { data: existingUser } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('email', customer.email)
+        .single()
+
+      if (existingUser) {
+        // Usuario existe - actualizar con datos de Stripe
+        console.log('📧 Actualizando usuario existente por email:', customer.email)
+        await supabase
           .from('user_profiles')
-          .select('id')
-          .eq('email', customer.email)
-          .single()
-
-        if (existingUser) {
-          // Usuario existe - actualizar con datos de Stripe
-          console.log('📧 Actualizando usuario existente:', customer.email)
-          await supabase
-            .from('user_profiles')
-            .update({
-              plan_type: 'trial',
-              stripe_customer_id: session.customer
-            })
-            .eq('id', existingUser.id)
-        } else {
-          // Usuario nuevo - crear cuenta
-          console.log('🆕 Creando nuevo usuario:', customer.email)
-          
-          // Crear usuario en Supabase Auth
-          const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-            email: customer.email,
-            email_confirm: true,
-            user_metadata: {
-              full_name: customer.name || customer.email.split('@')[0],
-              created_via: 'stripe_checkout'
-            }
+          .update({
+            plan_type: 'premium',
+            stripe_customer_id: session.customer
           })
+          .eq('id', existingUser.id)
 
-          if (authError) {
-            console.error('Error creando usuario en Auth:', authError)
-            return
-          }
-
-          // Crear perfil de usuario
-          await supabase
-            .from('user_profiles')
-            .insert({
-              id: authUser.user.id,
-              email: customer.email,
-              full_name: customer.name || customer.email.split('@')[0],
-              plan_type: 'trial',
-              stripe_customer_id: session.customer,
-              created_via: 'stripe_checkout'
-            })
-
-          console.log(`✅ Nuevo usuario creado: ${authUser.user.id}`)
-        }
+        console.log(`✅ User ${existingUser.id} ahora es PREMIUM (encontrado por email)`)
+      } else {
+        console.log('⚠️ No se encontró usuario con email:', customer.email)
       }
-    } catch (error) {
-      console.error('Error manejando checkout directo:', error)
     }
+  } catch (error) {
+    console.error('Error manejando checkout:', error)
   }
 }
 
