@@ -270,6 +270,51 @@ export default function ConversionesPage() {
         </div>
       </div>
 
+      {/* Canales de Adquisicion */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <span>📣</span>
+          Canales de Adquisicion
+        </h2>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Object.entries(registrationStats.bySource).length === 0 ? (
+            <div className="col-span-4 text-center py-4 text-gray-500">
+              Sin datos en el periodo seleccionado
+            </div>
+          ) : (
+            Object.entries(registrationStats.bySource)
+              .sort((a, b) => b[1] - a[1])
+              .map(([source, count]) => {
+                const percentage = registrationStats.total > 0
+                  ? ((count / registrationStats.total) * 100).toFixed(1)
+                  : 0
+                const colors = {
+                  'organic': 'bg-green-50 dark:bg-green-900/20 text-green-600',
+                  'google_ads': 'bg-blue-50 dark:bg-blue-900/20 text-blue-600',
+                  'meta_ads': 'bg-purple-50 dark:bg-purple-900/20 text-purple-600',
+                  'default': 'bg-gray-50 dark:bg-gray-700 text-gray-600'
+                }
+                const icons = {
+                  'organic': '🌱',
+                  'google_ads': '🔍',
+                  'meta_ads': '📘'
+                }
+                return (
+                  <div key={source} className={`p-4 rounded-lg ${colors[source] || colors.default}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span>{icons[source] || '📊'}</span>
+                      <span className="font-medium capitalize">{source.replace('_', ' ')}</span>
+                    </div>
+                    <div className="text-3xl font-bold">{count}</div>
+                    <div className="text-sm opacity-75">{percentage}% del total</div>
+                  </div>
+                )
+              })
+          )}
+        </div>
+      </div>
+
       {/* Funnel Visual Principal */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
