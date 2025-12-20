@@ -212,47 +212,82 @@ function AuthCallbackContent() {
           isGoogleAds
         })
         
-        // Configurar plan según origen
-        let planType = 'free'
-        let registrationSource = 'organic'
-        let requiresPayment = false
-        
-        if (isGoogleAds) {
-          planType = 'premium_required'
-          registrationSource = 'google_ads'
-          requiresPayment = true
-          console.log('🎯 [CALLBACK] Usuario identificado como Google Ads')
-        }
-        
-        // Crear/actualizar perfil
-        const { error: profileError } = await supabase
+        // 🔧 FIX: Verificar primero si el perfil ya existe para NO sobrescribir plan_type
+        const { data: existingProfile, error: existingError } = await supabase
           .from('user_profiles')
-          .upsert({
-            id: userId,
-            email: userEmail,
-            full_name: user.user_metadata?.full_name || userEmail?.split('@')[0],
-            avatar_url: user.user_metadata?.avatar_url,
-            preferred_language: 'es',
-            plan_type: planType,
-            registration_source: registrationSource,
-            requires_payment: requiresPayment,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id'
+          .select('id, plan_type, registration_source')
+          .eq('id', userId)
+          .single()
+
+        if (existingProfile) {
+          // 🛡️ PERFIL EXISTE - Solo actualizar campos NO sensibles
+          console.log('✅ [CALLBACK] Perfil ya existe, preservando plan_type:', existingProfile.plan_type)
+
+          const { error: updateError } = await supabase
+            .from('user_profiles')
+            .update({
+              full_name: user.user_metadata?.full_name || userEmail?.split('@')[0],
+              avatar_url: user.user_metadata?.avatar_url,
+              updated_at: new Date().toISOString()
+              // ⚠️ NO actualizamos plan_type, registration_source ni requires_payment
+            })
+            .eq('id', userId)
+
+          if (updateError) {
+            console.error('❌ [CALLBACK] Error actualizando perfil:', updateError)
+            throw updateError
+          }
+
+          console.log('✅ [CALLBACK] Perfil actualizado (plan_type preservado:', existingProfile.plan_type, ')')
+          console.log('🎯 [CALLBACK] Configuración existente preservada:', {
+            planType: existingProfile.plan_type,
+            registrationSource: existingProfile.registration_source,
+            isGoogleAds
           })
-        
-        if (profileError) {
-          console.error('❌ [CALLBACK] Error creando perfil:', profileError)
-          throw profileError
+        } else {
+          // 🆕 PERFIL NO EXISTE - Crear nuevo
+          console.log('🆕 [CALLBACK] Perfil no existe, creando nuevo...')
+
+          // Configurar plan según origen
+          let planType = 'free'
+          let registrationSource = 'organic'
+          let requiresPayment = false
+
+          if (isGoogleAds) {
+            planType = 'premium_required'
+            registrationSource = 'google_ads'
+            requiresPayment = true
+            console.log('🎯 [CALLBACK] Usuario identificado como Google Ads')
+          }
+
+          // Crear nuevo perfil
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .insert({
+              id: userId,
+              email: userEmail,
+              full_name: user.user_metadata?.full_name || userEmail?.split('@')[0],
+              avatar_url: user.user_metadata?.avatar_url,
+              preferred_language: 'es',
+              plan_type: planType,
+              registration_source: registrationSource,
+              requires_payment: requiresPayment,
+              updated_at: new Date().toISOString()
+            })
+
+          if (profileError) {
+            console.error('❌ [CALLBACK] Error creando perfil:', profileError)
+            throw profileError
+          }
+
+          console.log('✅ [CALLBACK] Perfil creado exitosamente')
+          console.log('🎯 [CALLBACK] Configuración aplicada:', {
+            planType,
+            registrationSource,
+            requiresPayment,
+            isGoogleAds
+          })
         }
-        
-        console.log('✅ [CALLBACK] Perfil actualizado exitosamente')
-        console.log('🎯 [CALLBACK] Configuración aplicada:', {
-          planType,
-          registrationSource,
-          requiresPayment,
-          isGoogleAds
-        })
         
         // Trackear registro
         if (isGoogleAds) {

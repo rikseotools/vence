@@ -181,49 +181,68 @@ export function AuthProvider({ children, initialUser = null }) {
   }, [supabase])
 
   // 🎯 NUEVA FUNCIÓN: Crear/actualizar perfil según fuente
+  // 🔧 FIX: Verificar si el perfil ya existe ANTES de llamar RPCs para no resetear plan_type
   const ensureUserProfile = async (authUser) => {
     try {
+      console.log('👤 Verificando perfil existente para:', authUser.email)
+
+      // 🔧 PRIMERO: Verificar si el perfil ya existe en la BD
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('id, plan_type, registration_source')
+        .eq('id', authUser.id)
+        .single()
+
+      if (existingProfile) {
+        // El perfil ya existe - NO llamar a ningún RPC para no resetear plan_type
+        console.log('✅ Perfil ya existe:', existingProfile.plan_type, '| Fuente:', existingProfile.registration_source)
+        console.log('🛡️ Saltando RPCs para preservar plan_type actual')
+        return await loadUserProfile(authUser.id)
+      }
+
+      // El perfil NO existe - crear nuevo
+      console.log('🆕 Perfil no existe, creando nuevo...')
+
       const registrationSource = detectRegistrationSource()
       const campaignId = new URLSearchParams(window.location.search).get('campaign')
-      
-      console.log('👤 Asegurando perfil para:', authUser.email)
+
       console.log('📍 Fuente detectada:', registrationSource)
-      
+
       if (registrationSource === 'google_ads') {
         // Usuario de Google Ads - requiere pago
         console.log('💰 Creando usuario Google Ads (requiere pago)')
-        
+
         await supabase.rpc('create_google_ads_user', {
           user_id: authUser.id,
           user_email: authUser.email,
           user_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0],
           campaign_id: campaignId
         })
-        
+
       } else if (registrationSource === 'meta_ads') {
         // Usuario de Meta/Facebook Ads - acceso gratis pero trackear fuente
         console.log('📘 Creando usuario Meta Ads (acceso gratis)')
-        
+
         await supabase.rpc('create_meta_ads_user', {
           user_id: authUser.id,
           user_email: authUser.email,
           user_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0]
         })
-        
+
       } else {
         // Usuario orgánico - acceso gratis
         console.log('🆓 Creando usuario orgánico (acceso gratis)')
-        
+
         await supabase.rpc('create_organic_user', {
           user_id: authUser.id,
           user_email: authUser.email,
           user_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0]
         })
       }
-      
+
       // Recargar perfil después de crear/actualizar
       return await loadUserProfile(authUser.id)
-      
+
     } catch (error) {
       console.error('❌ Error asegurando perfil:', error)
       return null
