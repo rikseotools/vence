@@ -28,7 +28,10 @@ import {
 } from '../utils/testAnalytics.js'
 import { testTracker } from '../utils/testTracking.js'
 import { useTestCompletion } from '../hooks/useTestCompletion'
+import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import AdSenseComponent from './AdSenseComponent'
+import DailyLimitBanner from './DailyLimitBanner'
+import UpgradeLimitModal from './UpgradeLimitModal'
 
 // 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar artículo
 const NON_LEGAL_CONTENT = [
@@ -59,6 +62,15 @@ export default function TestLayout({
 }) {
   const { user, loading: authLoading, supabase } = useAuth()
   const { notifyTestCompletion } = useTestCompletion()
+  const {
+    hasLimit,
+    isLimitReached,
+    questionsToday,
+    resetTime,
+    showUpgradeModal,
+    setShowUpgradeModal,
+    recordAnswer
+  } = useDailyQuestionLimit()
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -559,7 +571,13 @@ export default function TestLayout({
   // Manejar respuesta con protección anti-duplicados
   const handleAnswerClick = async (answerIndex) => {
     if (showResult || processingAnswer) return
-    
+
+    // Verificar limite diario para usuarios FREE
+    if (hasLimit && isLimitReached) {
+      setShowUpgradeModal(true)
+      return
+    }
+
     console.log('🎯 Respuesta seleccionada:', answerIndex)
     
     if (!effectiveQuestions || !effectiveQuestions[currentQuestion]) {
@@ -748,6 +766,11 @@ export default function TestLayout({
               }
               await updateTestScore(session.id, newScore)
               console.log('✅ Respuesta ÚNICA guardada y puntuación actualizada')
+
+              // Registrar respuesta en contador diario (solo usuarios FREE)
+              if (hasLimit) {
+                await recordAnswer()
+              }
             } else {
               // 🔴 NUEVO: Manejo mejorado de errores
               console.error('❌ Error guardando respuesta:', {
@@ -2152,6 +2175,17 @@ function ArticleDropdown({ article, currentQuestion }) {
           </div>
         </div>
       )}
+
+      {/* Banner de limite diario (solo usuarios FREE) */}
+      {hasLimit && <DailyLimitBanner />}
+
+      {/* Modal de upgrade cuando se alcanza el limite */}
+      <UpgradeLimitModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        questionsAnswered={questionsToday}
+        resetTime={resetTime}
+      />
     </div>
   )
 }

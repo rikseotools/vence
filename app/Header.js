@@ -29,7 +29,7 @@ export default function HeaderES() {
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
 
-  const { user, loading: authLoading, supabase } = useAuth()
+  const { user, loading: authLoading, supabase, isPremium, isLegacy, userProfile } = useAuth()
   const oposicionContext = useOposicion()
   const adminNotifications = useAdminNotifications()
   
@@ -301,11 +301,11 @@ export default function HeaderES() {
             {/* Logo con loading - Responsive y más grande */}
             <div className="flex items-center">
               {/* Logo solo icono en móvil - extra grande con más espacio */}
-              <div className="lg:hidden py-3">
+              <div className="xl:hidden py-3">
                   <LogoIcon size={48} onClick={handleLinkClick} />
               </div>
               {/* Logo horizontal solo en desktop */}
-              <div className="hidden lg:block">
+              <div className="hidden xl:block">
                 <LogoHorizontal className="scale-125" />
               </div>
             </div>
@@ -323,12 +323,12 @@ export default function HeaderES() {
   return (
     <>
       <header className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 relative min-h-16">
-        <div className={`container mx-auto px-4 ${user ? 'py-6 pb-12 lg:pb-6' : 'py-6'}`}>
+        <div className={`container mx-auto px-4 ${user ? 'py-6 pb-12 xl:pb-6' : 'py-6'}`}>
           <div className="flex items-center justify-between relative">
             
             {/* 🔥 SEGUNDA LÍNEA MÓVIL - RACHA + LEYES + SOPORTE */}
             {user && (
-              <div className="lg:hidden absolute top-full left-0 flex items-center gap-4 mt-1 mb-2 pl-4">
+              <div className="xl:hidden absolute top-full left-0 flex items-center gap-4 mt-1 mb-2 pl-4">
                 {/* 🔥 ICONO DE RACHA */}
                 <button
                   onClick={() => {
@@ -374,6 +374,17 @@ export default function HeaderES() {
                 >
                   <span className="text-lg">💬</span>
                 </button>
+
+                {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE */}
+                {!isPremium && !isLegacy && userProfile?.plan_type !== 'trial' && (
+                  <Link
+                    href="/premium"
+                    className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-xs font-semibold shadow-sm"
+                  >
+                    <span>👑</span>
+                    <span>Premium</span>
+                  </Link>
+                )}
               </div>
             )}
             
@@ -382,18 +393,18 @@ export default function HeaderES() {
               {/* Logo responsive - más pequeño en móvil */}
               <div className="flex items-center">
                 {/* Logo solo icono en móvil - tamaño reducido */}
-                <div className="lg:hidden py-1">
+                <div className="xl:hidden py-1">
                     <LogoIcon size={48} onClick={handleLinkClick} />
                 </div>
                 {/* Logo horizontal solo en desktop - 25% más grande */}
-                <div className="hidden lg:block">
+                <div className="hidden xl:block">
                   <LogoHorizontal className="scale-125" onClick={handleLinkClick} />
                 </div>
               </div>
             </div>
             
             {/* NAVEGACIÓN COMPLETA DESKTOP */}
-            <nav className="hidden lg:flex items-center justify-center flex-1 mx-8">
+            <nav className="hidden xl:flex items-center justify-center flex-1 mx-8">
               <div className="flex items-center space-x-1 bg-gray-50 dark:bg-gray-800 rounded-full p-1">
                 {(user ? getLoggedInNavLinks() : getGuestNavLinks()).map((link) => (
                   <Link 
@@ -416,7 +427,7 @@ export default function HeaderES() {
               {user && isAdmin && !adminLoading && (
                 <Link 
                   href="/admin"
-                  className={`hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors relative ${
+                  className={`hidden xl:flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors relative ${
                     (adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 
                       ? 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800 animate-pulse' 
                       : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800'
@@ -442,12 +453,23 @@ export default function HeaderES() {
                     adminNotifications.refresh()
                   }
                 }}
-                className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
+                className="hidden xl:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
                 title="Contactar soporte"
               >
                 <span className="text-sm">💬</span>
                 <span className="text-sm font-medium">Soporte</span>
               </button>
+
+              {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE en desktop */}
+              {user && !isPremium && !isLegacy && userProfile?.plan_type !== 'trial' && (
+                <Link
+                  href="/premium"
+                  className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+                >
+                  <span>👑</span>
+                  <span className="text-sm">Premium</span>
+                </Link>
+              )}
 
               {/* Icono de ranking/liga y racha (solo usuarios logueados) */}
               {user && (
@@ -520,7 +542,7 @@ export default function HeaderES() {
                       }
                     }, 100)
                   }}
-                  className={`hidden lg:flex items-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors ${userStreak === 0 ? 'opacity-60' : ''}`}
+                  className={`hidden xl:flex items-center p-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors ${userStreak === 0 ? 'opacity-60' : ''}`}
                   aria-label="Ver ranking de rachas"
                   title={userStreak === 0 ? 'Comienza tu racha estudiando hoy' : `Tu racha: ${userStreak} días consecutivos`}
                 >
@@ -533,7 +555,7 @@ export default function HeaderES() {
               {user && (
                 <Link
                   href={getTestsLink()}
-                  className="lg:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                   aria-label="Ir a Tests"
                   title="Tests de Práctica"
                 >
@@ -546,7 +568,7 @@ export default function HeaderES() {
               {user && (
                 <Link
                   href="/psicotecnicos/test"
-                  className="lg:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  className="xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                   aria-label="Ir a Psicotécnicos"
                   title="Tests Psicotécnicos"
                 >
@@ -562,7 +584,7 @@ export default function HeaderES() {
               <button
                 type="button"
                 onClick={toggleMobileMenu}
-                className="lg:hidden flex items-center space-x-1 px-2 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                className="xl:hidden flex items-center space-x-1 px-2 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
                 aria-expanded={isMobileMenuOpen}
               >
@@ -587,7 +609,7 @@ export default function HeaderES() {
 
 
           {/* MENÚ MÓVIL */}
-          <div className={`lg:hidden absolute left-0 right-0 top-full bg-white dark:bg-gray-900 shadow-lg border-t border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 ease-in-out ${
+          <div className={`xl:hidden absolute left-0 right-0 top-full bg-white dark:bg-gray-900 shadow-lg border-t border-gray-200 dark:border-gray-700 z-50 transition-all duration-300 ease-in-out ${
             isMobileMenuOpen 
               ? 'opacity-100 visible' 
               : 'opacity-0 invisible'
@@ -659,7 +681,7 @@ export default function HeaderES() {
         {/* Overlay para cerrar menú móvil */}
         {isMobileMenuOpen && (
           <div 
-            className="lg:hidden fixed inset-0 bg-black/20 dark:bg-black/40 z-40" 
+            className="xl:hidden fixed inset-0 bg-black/20 dark:bg-black/40 z-40" 
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
@@ -691,7 +713,7 @@ export default function HeaderES() {
       />
 
       {/* 💬 BOTÓN DE FEEDBACK FLOTANTE - Solo desktop */}
-      <div className="hidden lg:block">
+      <div className="hidden xl:block">
         <FeedbackButton 
           onFeedbackSent={() => {
             // Refrescar notificaciones admin inmediatamente después de enviar feedback
