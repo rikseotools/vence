@@ -40,6 +40,11 @@ function PerfilPageContent() {
   })
   const [pushLoading, setPushLoading] = useState(true)
   const [pushSaving, setPushSaving] = useState(false)
+
+  // 🆕 SUSCRIPCIÓN
+  const [subscriptionData, setSubscriptionData] = useState(null)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
+  const [portalLoading, setPortalLoading] = useState(false)
   
   // Para evitar guardado en primera carga
   const isInitialLoad = useRef(true)
@@ -185,13 +190,17 @@ function PerfilPageContent() {
     const tab = searchParams.get('tab')
     if (tab === 'emails') {
       setActiveTab('emails')
-      
+
       // Si viene desde email, mostrar mensaje específico
       const utm_source = searchParams.get('utm_source')
       if (utm_source === 'email_unsubscribe') {
         setMessage('📧 Aquí puedes gestionar tus preferencias de email')
         setTimeout(() => setMessage(''), 5000)
       }
+    } else if (tab === 'suscripcion') {
+      setActiveTab('suscripcion')
+    } else if (tab === 'notificaciones') {
+      setActiveTab('notificaciones')
     }
   }, [searchParams])
 
@@ -296,6 +305,34 @@ function PerfilPageContent() {
 
     loadPushNotifications()
   }, [user, supabase])
+
+  // 🆕 CARGAR DATOS DE SUSCRIPCIÓN
+  useEffect(() => {
+    async function loadSubscription() {
+      if (!user) return
+
+      try {
+        setSubscriptionLoading(true)
+
+        const response = await fetch(`/api/stripe/subscription?userId=${user.id}`)
+        const data = await response.json()
+
+        if (response.ok) {
+          setSubscriptionData(data)
+        } else {
+          console.error('Error loading subscription:', data.error)
+          setSubscriptionData({ hasSubscription: false })
+        }
+      } catch (error) {
+        console.error('Error loading subscription:', error)
+        setSubscriptionData({ hasSubscription: false })
+      } finally {
+        setSubscriptionLoading(false)
+      }
+    }
+
+    loadSubscription()
+  }, [user])
 
   useEffect(() => {
     async function loadUserProfile() {
@@ -760,6 +797,227 @@ function PerfilPageContent() {
     if (userOposicion?.name) return userOposicion.name
     
     return null
+  }
+
+  // 🆕 ABRIR PORTAL DE STRIPE
+  const openStripePortal = async () => {
+    if (!user) return
+
+    try {
+      setPortalLoading(true)
+
+      const response = await fetch('/api/stripe/subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        setMessage('❌ Error al abrir el portal de gestión')
+        setTimeout(() => setMessage(''), 3000)
+      }
+    } catch (error) {
+      console.error('Error opening portal:', error)
+      setMessage('❌ Error al abrir el portal de gestión')
+      setTimeout(() => setMessage(''), 3000)
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
+  // 🆕 COMPONENTE SUSCRIPCIÓN
+  const SubscriptionTab = () => {
+    if (subscriptionLoading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-600">Cargando suscripción...</span>
+        </div>
+      )
+    }
+
+    const formatDate = (dateString) => {
+      return new Date(dateString).toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      })
+    }
+
+    const getStatusBadge = (status) => {
+      const badges = {
+        active: { bg: 'bg-green-100', text: 'text-green-800', label: 'Activa' },
+        trialing: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Periodo de prueba' },
+        canceled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelada' },
+        past_due: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pago pendiente' },
+        unpaid: { bg: 'bg-red-100', text: 'text-red-800', label: 'Impagada' }
+      }
+      return badges[status] || { bg: 'bg-gray-100', text: 'text-gray-800', label: status }
+    }
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+            💳 Mi Suscripción
+          </h3>
+        </div>
+
+        {subscriptionData?.hasSubscription && subscriptionData?.subscription ? (
+          <div className="space-y-6">
+            {/* Estado de la suscripción */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <span className="text-3xl">👑</span>
+                  <div>
+                    <h4 className="text-xl font-bold text-gray-800 dark:text-white">Premium</h4>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(subscriptionData.subscription.status).bg} ${getStatusBadge(subscriptionData.subscription.status).text}`}>
+                      {getStatusBadge(subscriptionData.subscription.status).label}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-gray-800 dark:text-white">
+                    {subscriptionData.subscription.planAmount}€
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    / {subscriptionData.subscription.planIntervalCount === 1 ? '' : subscriptionData.subscription.planIntervalCount + ' '}
+                    {subscriptionData.subscription.planInterval === 'month' ? 'mes' :
+                     subscriptionData.subscription.planInterval === 'year' ? 'año' :
+                     subscriptionData.subscription.planInterval}
+                    {subscriptionData.subscription.planIntervalCount > 1 ? 'es' : ''}
+                  </div>
+                </div>
+              </div>
+
+              {/* Fechas */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Inicio del periodo</div>
+                  <div className="font-semibold text-gray-800 dark:text-white">
+                    {formatDate(subscriptionData.subscription.currentPeriodStart)}
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {subscriptionData.subscription.cancelAtPeriodEnd ? 'Finaliza el' : 'Próxima renovación'}
+                  </div>
+                  <div className="font-semibold text-gray-800 dark:text-white">
+                    {formatDate(subscriptionData.subscription.currentPeriodEnd)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Aviso de cancelación pendiente */}
+              {subscriptionData.subscription.cancelAtPeriodEnd && (
+                <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-yellow-600">⚠️</span>
+                    <span className="text-yellow-800 dark:text-yellow-200 font-medium">
+                      Tu suscripción se cancelará el {formatDate(subscriptionData.subscription.currentPeriodEnd)}
+                    </span>
+                  </div>
+                  <p className="text-yellow-700 dark:text-yellow-300 text-sm mt-1">
+                    Seguirás teniendo acceso Premium hasta esa fecha.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Botones de gestión */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                onClick={openStripePortal}
+                disabled={portalLoading}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+              >
+                {portalLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Abriendo portal...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>⚙️</span>
+                    <span>Gestionar Suscripción</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-start space-x-2">
+                <span className="text-blue-500 mt-0.5">💡</span>
+                <div>
+                  <h5 className="font-medium text-blue-800 dark:text-blue-200">Portal de gestión</h5>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                    Desde el portal de Stripe puedes actualizar tu método de pago, ver facturas anteriores,
+                    o cancelar tu suscripción.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Usuario sin suscripción */
+          <div className="text-center py-8">
+            <div className="text-6xl mb-4">📭</div>
+            <h4 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+              No tienes una suscripción activa
+            </h4>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              {subscriptionData?.planType === 'premium' ? (
+                'Tu cuenta tiene acceso Premium pero no encontramos una suscripción activa en Stripe.'
+              ) : subscriptionData?.planType === 'legacy_free' ? (
+                'Tienes acceso gratuito ilimitado como usuario legacy.'
+              ) : (
+                'Hazte Premium para acceder a todas las funcionalidades sin límites.'
+              )}
+            </p>
+            {subscriptionData?.planType !== 'premium' && subscriptionData?.planType !== 'legacy_free' && (
+              <a
+                href="/premium"
+                className="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-medium hover:opacity-90 transition-all"
+              >
+                <span>👑</span>
+                <span>Ver Planes Premium</span>
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* Info de cuenta */}
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="font-semibold text-gray-800 dark:text-white mb-4">📋 Información de cuenta</h4>
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-700 dark:text-gray-300">Tipo de plan:</span>
+                <span className="text-gray-600 dark:text-gray-400 ml-2 capitalize">
+                  {subscriptionData?.planType === 'premium' ? '👑 Premium' :
+                   subscriptionData?.planType === 'legacy_free' ? '🎁 Legacy (Gratis)' :
+                   subscriptionData?.planType === 'trial' ? '🆓 Prueba' :
+                   '📝 Free'}
+                </span>
+              </div>
+              {subscriptionData?.stripeCustomerId && (
+                <div>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">ID Cliente:</span>
+                  <span className="text-gray-600 dark:text-gray-400 ml-2 font-mono text-xs">
+                    {subscriptionData.stripeCustomerId}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // 🆕 COMPONENTE NOTIFICACIONES
@@ -1253,6 +1511,16 @@ function PerfilPageContent() {
                   >
                     🔔 Notificaciones
                   </button>
+                  <button
+                    onClick={() => setActiveTab('suscripcion')}
+                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === 'suscripcion'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
+                  >
+                    💳 Suscripción
+                  </button>
                 </nav>
               </div>
 
@@ -1640,7 +1908,10 @@ function PerfilPageContent() {
 
               {/* 🆕 PESTAÑA DE NOTIFICACIONES */}
               {activeTab === 'notificaciones' && <NotificationsTab />}
-              
+
+              {/* 🆕 PESTAÑA DE SUSCRIPCIÓN */}
+              {activeTab === 'suscripcion' && <SubscriptionTab />}
+
               {/* 🆕 PESTAÑA DE EMAIL PREFERENCES (LEGACY) */}
               {activeTab === 'emails' && <EmailPreferencesTab />}
               
