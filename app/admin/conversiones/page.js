@@ -10,6 +10,7 @@ export default function ConversionesPage() {
 
   // Estados para datos
   const [funnelStats, setFunnelStats] = useState([])
+  const [registrationStats, setRegistrationStats] = useState({ total: 0, bySource: {} })
   const [timeAnalysis, setTimeAnalysis] = useState([])
   const [recentEvents, setRecentEvents] = useState([])
   const [dailyStats, setDailyStats] = useState([])
@@ -31,6 +32,7 @@ export default function ConversionesPage() {
     try {
       await Promise.all([
         loadFunnelStats(),
+        loadRegistrationStats(),
         loadTimeAnalysis(),
         loadRecentEvents(),
         loadDailyStats()
@@ -50,6 +52,31 @@ export default function ConversionesPage() {
 
     if (error) throw error
     setFunnelStats(data || [])
+  }
+
+  const loadRegistrationStats = async () => {
+    const daysAgo = new Date()
+    daysAgo.setDate(daysAgo.getDate() - parseInt(dateRange))
+
+    // Obtener registros de user_profiles
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('id, registration_source, created_at')
+      .gte('created_at', daysAgo.toISOString())
+
+    if (error) throw error
+
+    // Agrupar por fuente
+    const bySource = {}
+    ;(data || []).forEach(user => {
+      const source = user.registration_source || 'organic'
+      bySource[source] = (bySource[source] || 0) + 1
+    })
+
+    setRegistrationStats({
+      total: data?.length || 0,
+      bySource
+    })
   }
 
   const loadTimeAnalysis = async () => {
@@ -136,8 +163,7 @@ export default function ConversionesPage() {
 
   // Calcular totales del funnel
   const getTotals = () => {
-    return funnelStats.reduce((acc, row) => ({
-      registrations: (acc.registrations || 0) + (row.registrations || 0),
+    const fromEvents = funnelStats.reduce((acc, row) => ({
       completed_first_test: (acc.completed_first_test || 0) + (row.completed_first_test || 0),
       hit_limit: (acc.hit_limit || 0) + (row.hit_limit || 0),
       saw_modal: (acc.saw_modal || 0) + (row.saw_modal || 0),
@@ -146,6 +172,12 @@ export default function ConversionesPage() {
       started_checkout: (acc.started_checkout || 0) + (row.started_checkout || 0),
       paid: (acc.paid || 0) + (row.paid || 0)
     }), {})
+
+    // Registros vienen de user_profiles, no de conversion_events
+    return {
+      registrations: registrationStats.total,
+      ...fromEvents
+    }
   }
 
   const totals = getTotals()
