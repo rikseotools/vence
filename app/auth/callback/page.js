@@ -329,6 +329,18 @@ function AuthCallbackContent() {
           // NOTA: Los emails de nuevos usuarios se envían en resumen diario (21:00)
           // Ver: /api/cron/daily-registration-summary
           console.log('📝 [CALLBACK] Nuevo usuario registrado - se incluirá en resumen diario')
+
+          // Guardar IP de registro para detectar multicuentas
+          try {
+            await fetch('/api/auth/store-registration-ip', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId })
+            })
+            console.log('📍 [CALLBACK] IP de registro guardada')
+          } catch (ipError) {
+            console.warn('⚠️ [CALLBACK] Error guardando IP:', ipError)
+          }
         }
         
         // Preparar redirección
