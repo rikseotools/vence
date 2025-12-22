@@ -111,7 +111,15 @@ function PremiumPageContent() {
 
       // Redirigir a Stripe
       const { loadStripe } = await import('@stripe/stripe-js')
-      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+      const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+      console.log('🔑 Stripe Publishable Key:', stripeKey ? `${stripeKey.substring(0, 20)}...` : 'UNDEFINED/EMPTY')
+      console.log('🔑 Key type:', stripeKey?.startsWith('pk_live') ? 'LIVE' : stripeKey?.startsWith('pk_test') ? 'TEST' : 'UNKNOWN')
+
+      if (!stripeKey) {
+        throw new Error('Stripe publishable key is not configured')
+      }
+
+      const stripe = await loadStripe(stripeKey)
 
       const { error: stripeError } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
