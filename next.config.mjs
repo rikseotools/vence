@@ -14,11 +14,13 @@ const nextConfig = {
   // ✅ Compresión mejorada
   compress: true,
   
-  // ✅ Agregar configuración de SEO
+  // ✅ Agregar configuración de SEO y Stripe
   env: {
-    SITE_URL: process.env.NODE_ENV === 'production' 
+    SITE_URL: process.env.NODE_ENV === 'production'
       ? 'https://www.vence.es'  // ✅ Con www en producción
-      : 'http://localhost:3000'
+      : 'http://localhost:3000',
+    // ✅ Forzar exposición de variable Stripe al cliente (fix para Next.js 15.3+)
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   },
   
   // ✅ URL ALIAS CORTA para mejor SEO
