@@ -16,6 +16,9 @@ export default function UsuariosManagementPage() {
   const [filter, setFilter] = useState('all') // all, active, risk, power, inactive, admin
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('activity') // activity, name, tests, accuracy
+  const [deleteModal, setDeleteModal] = useState({ show: false, user: null })
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   useEffect(() => {
     loadUsers()
@@ -219,12 +222,44 @@ export default function UsuariosManagementPage() {
       // Recargar usuarios
       await loadUsers()
       console.log(`✅ Acción ${action} completada para usuario ${userId}`)
-      
+
     } catch (err) {
       console.error(`❌ Error en acción ${action}:`, err)
       alert(`Error: ${err.message}`)
     } finally {
       setActionLoading(prev => ({ ...prev, [userId]: null }))
+    }
+  }
+
+  async function handleDeleteUser() {
+    if (deleteConfirmText !== 'ELIMINAR') {
+      alert('Debes escribir ELIMINAR para confirmar')
+      return
+    }
+
+    setDeleteLoading(true)
+    try {
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: deleteModal.user.user_id })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        alert('Usuario eliminado correctamente')
+        setDeleteModal({ show: false, user: null })
+        setDeleteConfirmText('')
+        await loadUsers()
+      } else {
+        alert(`Error eliminando usuario: ${result.error}`)
+      }
+    } catch (err) {
+      console.error('Error eliminando usuario:', err)
+      alert(`Error: ${err.message}`)
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -559,6 +594,16 @@ export default function UsuariosManagementPage() {
                     {actionLoading[user.user_id] === 'promote_admin' ? '⏳' : '⭐'} Promover
                   </button>
                 )}
+
+                {/* Botón eliminar - solo si no es super_admin */}
+                {!user.roles.includes('super_admin') && (
+                  <button
+                    onClick={() => setDeleteModal({ show: true, user })}
+                    className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                )}
               </div>
             </div>
 
@@ -592,11 +637,67 @@ export default function UsuariosManagementPage() {
             No se encontraron usuarios
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
-            {searchTerm || filter !== 'all' 
+            {searchTerm || filter !== 'all'
               ? 'Prueba ajustando los filtros o la búsqueda'
               : 'No hay usuarios registrados'
             }
           </p>
+        </div>
+      )}
+
+      {/* Modal de confirmación de eliminación */}
+      {deleteModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Eliminar Usuario
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                ¿Eliminar a <strong>{deleteModal.user?.full_name || deleteModal.user?.email}</strong>?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                {deleteModal.user?.email}
+              </p>
+              <p className="text-xs text-red-500 mt-3">
+                Se eliminarán todos sus datos: tests, respuestas, sesiones, emails, etc.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Escribe <strong>ELIMINAR</strong> para confirmar:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="ELIMINAR"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setDeleteModal({ show: false, user: null })
+                  setDeleteConfirmText('')
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                disabled={deleteLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deleteConfirmText !== 'ELIMINAR' || deleteLoading}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleteLoading ? '⏳ Eliminando...' : '🗑️ Eliminar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
