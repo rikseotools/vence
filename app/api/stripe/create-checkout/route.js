@@ -158,6 +158,7 @@ export async function POST(request) {
       
       return NextResponse.json({
         sessionId: session.id,
+        checkoutUrl: session.url,  // URL directa de Stripe
         debug: {
           userEmail: user.email,
           registrationSource: user.registration_source,

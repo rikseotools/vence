@@ -109,18 +109,24 @@ function PremiumPageContent() {
 
       console.log('✅ Checkout session creada, redirigiendo a Stripe...')
 
-      // Redirigir a Stripe
+      // Redirigir usando la URL directa de Stripe (más confiable)
+      if (data.checkoutUrl) {
+        console.log('🔗 Usando URL directa de Stripe checkout')
+        window.location.href = data.checkoutUrl
+        return
+      }
+
+      // Fallback: usar redirectToCheckout si no hay URL
+      console.log('🔄 Fallback: usando redirectToCheckout')
       const { loadStripe } = await import('@stripe/stripe-js')
       const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
       console.log('🔑 Stripe Publishable Key:', stripeKey ? `${stripeKey.substring(0, 20)}...` : 'UNDEFINED/EMPTY')
-      console.log('🔑 Key type:', stripeKey?.startsWith('pk_live') ? 'LIVE' : stripeKey?.startsWith('pk_test') ? 'TEST' : 'UNKNOWN')
 
       if (!stripeKey) {
         throw new Error('Stripe publishable key is not configured')
       }
 
       const stripe = await loadStripe(stripeKey)
-
       const { error: stripeError } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
       })
