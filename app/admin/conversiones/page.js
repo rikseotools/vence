@@ -17,6 +17,9 @@ export default function ConversionesPage() {
   const [selectedUser, setSelectedUser] = useState(null)
   const [userJourney, setUserJourney] = useState([])
   const [dateRange, setDateRange] = useState('7') // dias
+  const [selectedStage, setSelectedStage] = useState(null)
+  const [stageUsers, setStageUsers] = useState([])
+  const [loadingStage, setLoadingStage] = useState(false)
 
   // Cargar datos
   useEffect(() => {
@@ -97,6 +100,26 @@ export default function ConversionesPage() {
     }
 
     setUserJourney(data || [])
+  }
+
+  // Cargar usuarios por etapa del funnel
+  const loadStageUsers = async (stageKey, stageName) => {
+    setSelectedStage({ key: stageKey, name: stageName })
+    setLoadingStage(true)
+    setStageUsers([])
+
+    try {
+      const response = await fetch(`/api/admin/funnel-users?stage=${stageKey}&days=${dateRange}&limit=100`)
+      if (!response.ok) {
+        throw new Error('Error loading users')
+      }
+      const data = await response.json()
+      setStageUsers(data.users || [])
+    } catch (err) {
+      console.error('Error loading stage users:', err)
+    } finally {
+      setLoadingStage(false)
+    }
   }
 
   // Calcular totales del funnel
@@ -321,16 +344,41 @@ export default function ConversionesPage() {
             const conversionRate = prevValue > 0 ? ((value / prevValue) * 100).toFixed(1) : 0
             const totalRate = totals.registrations > 0 ? ((value / totals.registrations) * 100).toFixed(1) : 0
             const barWidth = totals.registrations > 0 ? Math.max(5, (value / totals.registrations) * 100) : 0
+            const isExpanded = selectedStage?.key === step.key
 
             return (
               <div key={step.key} className="relative">
-                <div className="flex items-center gap-4">
+                <div
+                  className={`flex items-center gap-4 p-2 -mx-2 rounded-lg transition-colors ${
+                    value > 0 ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50' : ''
+                  } ${isExpanded ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                  onClick={() => {
+                    if (value > 0) {
+                      if (isExpanded) {
+                        setSelectedStage(null)
+                        setStageUsers([])
+                      } else {
+                        loadStageUsers(step.key, step.label)
+                      }
+                    }
+                  }}
+                  title={value > 0 ? `Clic para ver ${value} usuarios` : ''}
+                >
                   <div className="w-10 text-2xl">{step.icon}</div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-gray-900 dark:text-white">{step.label}</span>
+                      <span className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                        {step.label}
+                        {value > 0 && (
+                          <span className={`text-xs ${isExpanded ? 'text-blue-600' : 'text-blue-500'}`}>
+                            {isExpanded ? '▼ ocultar' : '▶ ver usuarios'}
+                          </span>
+                        )}
+                      </span>
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl font-bold text-gray-900 dark:text-white">{value}</span>
+                        <span className={`text-2xl font-bold ${value > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
+                          {value}
+                        </span>
                         {index > 0 && (
                           <span className={`text-sm px-2 py-0.5 rounded ${
                             parseFloat(conversionRate) >= 50 ? 'bg-green-100 text-green-800' :
@@ -351,7 +399,79 @@ export default function ConversionesPage() {
                     </div>
                   </div>
                 </div>
-                {index < arr.length - 1 && (
+
+                {/* Panel expandido con usuarios */}
+                {isExpanded && (
+                  <div className="ml-12 mt-2 mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                    {loadingStage ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        <p className="text-sm text-gray-500">Cargando usuarios...</p>
+                      </div>
+                    ) : stageUsers.length === 0 ? (
+                      <p className="text-center text-gray-500 py-4">No hay usuarios en esta etapa</p>
+                    ) : (
+                      <div className="max-h-[400px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="sticky top-0 bg-gray-50 dark:bg-gray-700">
+                            <tr className="border-b border-gray-200 dark:border-gray-600">
+                              <th className="text-left py-2 px-2 font-semibold text-gray-600 dark:text-gray-400">Email</th>
+                              <th className="text-left py-2 px-2 font-semibold text-gray-600 dark:text-gray-400">Nombre</th>
+                              <th className="text-left py-2 px-2 font-semibold text-gray-600 dark:text-gray-400">Plan</th>
+                              <th className="text-left py-2 px-2 font-semibold text-gray-600 dark:text-gray-400">Fuente</th>
+                              <th className="text-left py-2 px-2 font-semibold text-gray-600 dark:text-gray-400">Fecha</th>
+                              <th className="text-center py-2 px-2 font-semibold text-gray-600 dark:text-gray-400">Journey</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stageUsers.map((user, i) => (
+                              <tr
+                                key={user.id || i}
+                                className="border-b border-gray-100 dark:border-gray-600/50 hover:bg-white dark:hover:bg-gray-600/50"
+                              >
+                                <td className="py-2 px-2 text-gray-900 dark:text-white">{user.email}</td>
+                                <td className="py-2 px-2 text-gray-600 dark:text-gray-300">{user.full_name || '-'}</td>
+                                <td className="py-2 px-2">
+                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                    user.plan_type === 'premium' ? 'bg-amber-100 text-amber-800' :
+                                    user.plan_type === 'free' ? 'bg-gray-200 text-gray-700' :
+                                    'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {user.plan_type}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-2 text-gray-500 text-xs">{user.registration_source || 'organic'}</td>
+                                <td className="py-2 px-2 text-gray-500 text-xs">
+                                  {user.event_at
+                                    ? new Date(user.event_at).toLocaleDateString('es-ES')
+                                    : user.created_at
+                                      ? new Date(user.created_at).toLocaleDateString('es-ES')
+                                      : '-'}
+                                </td>
+                                <td className="py-2 px-2 text-center">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      loadUserJourney(user.id)
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800 text-xs font-medium hover:underline"
+                                  >
+                                    Ver
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {stageUsers.length >= 100 && (
+                          <p className="text-xs text-gray-400 text-center mt-2">Mostrando primeros 100 usuarios</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {index < arr.length - 1 && !isExpanded && (
                   <div className="ml-5 h-4 border-l-2 border-dashed border-gray-300 dark:border-gray-600"></div>
                 )}
               </div>
@@ -604,6 +724,7 @@ export default function ConversionesPage() {
           </div>
         </div>
       )}
+
     </div>
   )
 }

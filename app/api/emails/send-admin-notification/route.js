@@ -47,6 +47,13 @@ export async function POST(request) {
         }
         break
 
+      case 'new_purchase':
+        emailContent = {
+          subject: `💰 ¡Nueva Compra Premium! - ${data.userEmail}`,
+          html: generateNewPurchaseEmailHTML(data)
+        }
+        break
+
       default:
         return NextResponse.json(
           { success: false, error: 'Tipo de notificación no válido' },
@@ -288,7 +295,7 @@ function generateChatResponseEmailHTML(data) {
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
         <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          
+
           <div style="text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 20px;">
             <h1 style="color: #3b82f6; margin: 0;">💬 Nueva Respuesta en Chat de Soporte</h1>
           </div>
@@ -311,7 +318,7 @@ function generateChatResponseEmailHTML(data) {
           </div>
 
           <div style="text-align: center; margin-top: 30px;">
-            <a href="${data.adminUrl}" 
+            <a href="${data.adminUrl}"
                style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
               💬 Responder en Chat
             </a>
@@ -319,6 +326,69 @@ function generateChatResponseEmailHTML(data) {
 
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
             <p style="margin: 0;">Vence - info@vence.es</p>
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `
+}
+
+function generateNewPurchaseEmailHTML(data) {
+  const currencySymbol = data.currency?.toUpperCase() === 'EUR' ? '€' : data.currency || '€'
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Nueva Compra Premium</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+
+          <div style="text-align: center; border-bottom: 2px solid #f59e0b; padding-bottom: 20px; margin-bottom: 20px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: #92400e; margin: 0;">💰 ¡NUEVA VENTA!</h1>
+            <p style="color: #b45309; margin: 10px 0 0 0; font-size: 18px;">Un usuario ha comprado Premium</p>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; border: 2px solid #10b981;">
+            <div style="font-size: 48px; font-weight: bold; color: #059669;">${data.amount}${currencySymbol}</div>
+            <div style="color: #065f46; font-size: 14px; margin-top: 5px;">Plan: ${data.plan || 'Premium'}</div>
+          </div>
+
+          <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #0c4a6e; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
+            <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
+            <p style="margin: 8px 0;"><strong>Nombre:</strong> ${data.userName}</p>
+            <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date(data.createdAt).toLocaleString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</p>
+            <p style="margin: 8px 0;"><strong>Stripe Customer:</strong> <code style="background: #e0e7ff; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${data.stripeCustomerId}</code></p>
+          </div>
+
+          <div style="background: #fefce8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #eab308;">
+            <h3 style="color: #a16207; margin: 0 0 10px 0;">🎯 Próximos pasos:</h3>
+            <ul style="margin: 10px 0; padding-left: 20px; color: #92400e;">
+              <li>El usuario ya tiene acceso Premium automáticamente</li>
+              <li>Verificar en Stripe Dashboard si es necesario</li>
+              <li>¡Celebrar! 🎉</li>
+            </ul>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="${data.adminUrl}"
+               style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+              📊 Ver Panel de Conversiones
+            </a>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+            <p style="margin: 0;">Vence Pro - Sistema de Notificaciones Admin</p>
           </div>
 
         </div>

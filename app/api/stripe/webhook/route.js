@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe'
 import { createClient } from '@supabase/supabase-js'
+import { Resend } from 'resend'
+
+const resend = new Resend(process.env.RESEND_API_KEY)
+const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
@@ -151,6 +155,22 @@ async function handleCheckoutSessionCompleted(session, supabase) {
         console.log('📊 Conversion event tracked: payment_completed')
       } catch (trackErr) {
         console.error('Error tracking conversion:', trackErr)
+      }
+
+      // Enviar email de notificación al admin
+      try {
+        const userProfile = data?.[0] || {}
+        await sendAdminPurchaseEmail({
+          userEmail: userProfile.email || session.customer_email,
+          userName: userProfile.full_name || 'Sin nombre',
+          amount: session.amount_total / 100,
+          currency: session.currency?.toUpperCase() || 'EUR',
+          stripeCustomerId: session.customer,
+          userId: userId
+        })
+        console.log('📧 Email de nueva compra enviado al admin')
+      } catch (emailErr) {
+        console.error('Error enviando email admin:', emailErr)
       }
     }
 
@@ -317,4 +337,58 @@ async function handlePaymentSucceeded(invoice, supabase) {
 
 async function handlePaymentFailed(invoice, supabase) {
   console.log(`⚠️ Payment failed for invoice ${invoice.id}`)
+}
+
+// Función para enviar email de nueva compra al admin
+async function sendAdminPurchaseEmail(data) {
+  const currencySymbol = data.currency === 'EUR' ? '€' : data.currency
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Nueva Compra Premium</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+
+          <div style="text-align: center; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: #92400e; margin: 0;">💰 ¡NUEVA VENTA!</h1>
+            <p style="color: #b45309; margin: 10px 0 0 0; font-size: 18px;">Un usuario ha comprado Premium</p>
+          </div>
+
+          <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; border: 2px solid #10b981;">
+            <div style="font-size: 48px; font-weight: bold; color: #059669;">${data.amount}${currencySymbol}</div>
+          </div>
+
+          <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #0c4a6e; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
+            <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
+            <p style="margin: 8px 0;"><strong>Nombre:</strong> ${data.userName}</p>
+            <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
+          </div>
+
+          <div style="text-align: center; margin-top: 20px;">
+            <a href="https://www.vence.es/admin/conversiones"
+               style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+              📊 Ver Panel de Conversiones
+            </a>
+          </div>
+
+          <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+            <p style="margin: 0;">Vence Pro</p>
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `
+
+  await resend.emails.send({
+    from: process.env.FROM_EMAIL || 'info@vence.es',
+    to: ADMIN_EMAIL,
+    subject: `💰 ¡Nueva Compra Premium! - ${data.userEmail} - ${data.amount}${currencySymbol}`,
+    html: html
+  })
 }

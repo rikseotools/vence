@@ -326,21 +326,9 @@ function AuthCallbackContent() {
             console.warn('⚠️ [CALLBACK] Excepción enviando email de bienvenida:', emailError)
           }
 
-          // Enviar notificación admin de nuevo usuario
-          try {
-            const { sendAdminNewUserNotification } = await import('../../../lib/notifications/adminEmailNotifications')
-            await sendAdminNewUserNotification({
-              id: userId,
-              email: userEmail,
-              user_metadata: user.user_metadata,
-              app_metadata: { provider: 'google' },
-              created_at: new Date().toISOString()
-            })
-            console.log('✅ [CALLBACK] Notificación admin enviada para nuevo usuario')
-          } catch (adminEmailError) {
-            console.error('❌ [CALLBACK] Error enviando notificación admin:', adminEmailError)
-            // No fallar el registro por esto
-          }
+          // NOTA: Los emails de nuevos usuarios se envían en resumen diario (21:00)
+          // Ver: /api/cron/daily-registration-summary
+          console.log('📝 [CALLBACK] Nuevo usuario registrado - se incluirá en resumen diario')
         }
         
         // Preparar redirección
