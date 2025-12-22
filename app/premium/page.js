@@ -23,11 +23,18 @@ function PremiumPageContent() {
   }, [user, supabase, authLoading])
 
   // Auto-iniciar checkout después de login exitoso
+  const hasTriedAutoCheckout = useRef(false)
+
   useEffect(() => {
     const shouldStartCheckout = searchParams.get('start_checkout') === 'true'
 
-    if (shouldStartCheckout && user && !loading) {
+    if (shouldStartCheckout && user && !loading && !hasTriedAutoCheckout.current) {
+      hasTriedAutoCheckout.current = true
       console.log('🎯 Usuario logueado, iniciando checkout automáticamente...')
+
+      // Limpiar URL para evitar bucles
+      window.history.replaceState({}, '', '/premium')
+
       handleCheckout()
     }
   }, [user, searchParams, loading])

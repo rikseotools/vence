@@ -2375,6 +2375,201 @@ export default function NewslettersPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Template 4: Lanzamiento Premium */}
+                  <div
+                    className={`border rounded-lg p-3 cursor-pointer transition-all ${
+                      selectedTemplate === 'lanzamiento_premium'
+                        ? 'border-purple-500 bg-purple-50 shadow-md'
+                        : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    }`}
+                    onClick={() => {
+                      setSelectedTemplate('lanzamiento_premium')
+                      setSubject('⚠️ Hoy Vence free se limita a 25 preguntas diarias. Hazte premium hoy antes de que suban los precios')
+                      setHtmlContent(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Vence Premium - Cambio importante</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); padding: 30px; border-radius: 12px;">
+    <h1 style="color: white; margin: 0; font-size: 26px;">📢 Cambio importante en Vence</h1>
+    <p style="color: #bfdbfe; margin: 10px 0 0 0; font-size: 16px;">A partir de hoy</p>
+  </div>
+
+  <h2 style="color: #1f2937; font-size: 22px;">{user_name}, esto te afecta directamente</h2>
+
+  <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+    Llevamos meses trabajando para ofrecerte la mejor plataforma de preparación de oposiciones.
+    <strong>A partir de hoy, las cuentas gratuitas tendrán un límite de 25 preguntas al día.</strong>
+  </p>
+
+  <div style="background: #fef2f2; border: 2px solid #ef4444; padding: 25px; border-radius: 12px; margin: 25px 0;">
+    <h3 style="color: #7f1d1d; margin-top: 0; font-size: 18px;">🔒 Lo que cambia HOY para cuentas free:</h3>
+    <ul style="color: #7f1d1d; font-size: 15px; margin: 15px 0; padding-left: 20px;">
+      <li><strong>Máximo 25 preguntas al día</strong> - antes era ilimitado</li>
+      <li>Se resetea cada día a medianoche</li>
+      <li>Estadísticas y análisis limitados</li>
+    </ul>
+    <p style="margin: 0; color: #991b1b; font-size: 14px; font-style: italic;">
+      Con 25 preguntas al día es muy difícil preparar una oposición de forma seria.
+    </p>
+  </div>
+
+  <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 3px solid #f59e0b; padding: 25px; border-radius: 12px; margin: 25px 0; text-align: center;">
+    <h3 style="color: #92400e; margin-top: 0; font-size: 20px;">🎁 SOLO HOY</h3>
+    <div style="display: flex; justify-content: center; gap: 30px; margin: 20px 0; flex-wrap: wrap;">
+      <div style="background: white; padding: 20px 30px; border-radius: 10px; border: 2px solid #f59e0b;">
+        <p style="margin: 0; color: #92400e; font-size: 36px; font-weight: bold;">59€</p>
+        <p style="margin: 5px 0 0 0; color: #b45309; font-size: 16px; font-weight: bold;">6 MESES</p>
+        <p style="margin: 5px 0 0 0; color: #065f46; font-size: 13px;">= 9,83€/mes</p>
+      </div>
+      <div style="background: white; padding: 20px 30px; border-radius: 10px; border: 2px solid #e5e7eb;">
+        <p style="margin: 0; color: #374151; font-size: 36px; font-weight: bold;">20€</p>
+        <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 16px; font-weight: bold;">MENSUAL</p>
+        <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 13px;">sin compromiso</p>
+      </div>
+    </div>
+    <p style="margin: 15px 0 0 0; color: #dc2626; font-size: 14px; font-weight: bold;">
+      ⚠️ Mañana los precios suben
+    </p>
+  </div>
+
+  <div style="background: #f0fdf4; border: 2px solid #10b981; border-radius: 12px; padding: 25px; margin: 25px 0;">
+    <h3 style="color: #065f46; margin-top: 0; font-size: 18px; text-align: center;">✨ Con Vence Premium tienes:</h3>
+    <ul style="list-style: none; padding: 0; margin: 15px 0;">
+      <li style="margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;">
+        <span style="position: absolute; left: 0;">✅</span>
+        <strong>Preguntas ILIMITADAS</strong> - estudia todo lo que necesites
+      </li>
+      <li style="margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;">
+        <span style="position: absolute; left: 0;">✅</span>
+        <strong>+5.000 preguntas</strong> de exámenes oficiales y generadas por IA
+      </li>
+      <li style="margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;">
+        <span style="position: absolute; left: 0;">✅</span>
+        <strong>Tests personalizados</strong> - por tema, ley, dificultad...
+      </li>
+      <li style="margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;">
+        <span style="position: absolute; left: 0;">✅</span>
+        <strong>Análisis inteligente</strong> - detecta tus puntos débiles automáticamente
+      </li>
+      <li style="margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;">
+        <span style="position: absolute; left: 0;">✅</span>
+        <strong>Estadísticas completas</strong> - tu progreso al detalle
+      </li>
+      <li style="margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;">
+        <span style="position: absolute; left: 0;">✅</span>
+        <strong>Sin interrupciones</strong> - estudia cuando quieras, cuanto quieras
+      </li>
+    </ul>
+  </div>
+
+  <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0; border-radius: 6px;">
+    <p style="margin: 0; color: #1e40af; font-size: 15px; line-height: 1.6;">
+      <strong>💡 Piénsalo así:</strong> ¿Cuánto vale para ti aprobar la oposición?
+      Con Vence Premium puedes hacer 100, 200 o 500 preguntas al día si lo necesitas.
+      <strong>Sin límites, sin excusas.</strong>
+    </p>
+  </div>
+
+  <div style="text-align: center; margin: 35px 0;">
+    <a href="https://www.vence.es/premium" style="display: inline-block; background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); color: white; padding: 22px 50px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 18px; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);">
+      🚀 Quiero Premium por 59€
+    </a>
+    <p style="margin: 15px 0 0 0; color: #dc2626; font-size: 14px; font-weight: bold;">
+      ⏰ Solo hoy a este precio
+    </p>
+  </div>
+
+  <p style="margin-top: 30px;">
+    <strong>Manuel</strong><br>
+    <strong>Vence.es</strong><br>
+    <em>Preparando tu futuro, pregunta a pregunta</em>
+  </p>
+</body>
+</html>`)
+                      setShowPreview(true)
+                    }}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h5 className="font-medium text-gray-800 text-sm">
+                            🚀 Lanzamiento Premium
+                          </h5>
+                          {selectedTemplate === 'lanzamiento_premium' && (
+                            <span className="px-2 py-1 text-xs bg-purple-600 text-white rounded-full">
+                              ✓ Seleccionada
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 truncate">
+                          Anuncio premium + 20% descuento solo hoy
+                        </p>
+
+                        {/* Estadísticas del template */}
+                        {(() => {
+                          const stats = getTemplateStats('lanzamiento_premium')
+                          return stats ? (
+                            <div className="mt-3 grid grid-cols-4 gap-2">
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-blue-600">{stats.totalSent}</div>
+                                <div className="text-xs text-gray-500">📧 Enviados</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-green-600">{stats.uniqueOpeners} ({stats.openRate.toFixed(1)}%)</div>
+                                <div className="text-xs text-gray-500">📖 Aperturas</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-purple-600">{stats.uniqueClickers} ({stats.clickRate.toFixed(1)}%)</div>
+                                <div className="text-xs text-gray-500">👆 Clicks</div>
+                              </div>
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-orange-600">
+                                  {stats.lastSent ? new Date(stats.lastSent).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'N/A'}
+                                </div>
+                                <div className="text-xs text-gray-500">📅 Último</div>
+                              </div>
+                            </div>
+                          ) : loadingStats ? (
+                            <div className="mt-3 text-center">
+                              <div className="text-xs text-gray-500">⏳ Cargando stats...</div>
+                            </div>
+                          ) : (
+                            <div className="mt-3 text-center">
+                              <div className="text-xs text-gray-500">📭 Sin envíos aún</div>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Botones de acción para plantilla premium seleccionada */}
+                    {selectedTemplate === 'lanzamiento_premium' && (
+                      <div className="mt-3 pt-3 border-t border-gray-200">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (confirm('¿Estás seguro de que quieres quitar esta plantilla de la selección?')) {
+                                setSelectedTemplate(null)
+                                setLoadedCustomTemplate(null)
+                                setSubject('')
+                                setHtmlContent('')
+                                setShowPreview(false)
+                              }
+                            }}
+                            className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 shadow-sm font-medium"
+                            title="Deseleccionar plantilla"
+                          >
+                            🗑️ Quitar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
