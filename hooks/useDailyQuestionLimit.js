@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { trackLimitReached } from '../lib/services/conversionTracker'
 
 const DAILY_LIMIT = 25
 const CACHE_TTL = 60000 // 1 minuto
@@ -25,6 +26,7 @@ export function useDailyQuestionLimit() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const lastFetchRef = useRef(0)
   const isMountedRef = useRef(true)
+  const limitTrackedTodayRef = useRef(false)
 
   // Determinar si usuario tiene limite (solo FREE y no premium/legacy)
   const hasLimit = !!(
@@ -138,9 +140,24 @@ export function useDailyQuestionLimit() {
 
         setStatus(newStatus)
 
-        // Mostrar modal si se alcanzo el limite
+        // Mostrar modal si alcanzó el limite
         if (result.is_limit_reached) {
           setShowUpgradeModal(true)
+
+          // Trackear evento de conversion SOLO UNA VEZ por día
+          // Verificar ref (sesión actual) y localStorage (entre recargas)
+          const today = new Date().toISOString().split('T')[0]
+          const storageKey = `limit_tracked_${user.id}_${today}`
+          const alreadyTracked = limitTrackedTodayRef.current ||
+            (typeof window !== 'undefined' && localStorage.getItem(storageKey))
+
+          if (result.questions_today === DAILY_LIMIT && !alreadyTracked) {
+            limitTrackedTodayRef.current = true
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(storageKey, 'true')
+            }
+            trackLimitReached(supabase, user.id, result.questions_today)
+          }
         }
 
         return {

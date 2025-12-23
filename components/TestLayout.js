@@ -32,7 +32,6 @@ import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import AdSenseComponent from './AdSenseComponent'
 import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
-import { trackLimitReached } from '../lib/services/conversionTracker'
 
 // 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar artículo
 const NON_LEGAL_CONTENT = [
@@ -574,11 +573,8 @@ export default function TestLayout({
     if (showResult || processingAnswer) return
 
     // Verificar limite diario para usuarios FREE
+    // (el tracking de limit_reached se hace en useDailyQuestionLimit cuando llega a 25)
     if (hasLimit && isLimitReached) {
-      // Trackear que el usuario alcanzo el limite
-      if (supabase && user?.id) {
-        trackLimitReached(supabase, user.id, questionsToday)
-      }
       setShowUpgradeModal(true)
       return
     }
