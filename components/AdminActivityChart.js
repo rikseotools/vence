@@ -1,62 +1,8 @@
-// components/AdminActivityChart.js - Gráfico de actividad temporal para admin
+// components/AdminActivityChart.js - Gráfico de usuarios activos por día
 'use client'
 import { useState, useEffect } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { useAuth } from '../contexts/AuthContext'
-
-// Componente de ayuda para explicar las métricas
-function MetricHelpTooltip({ metric, children }) {
-  const [showTooltip, setShowTooltip] = useState(false)
-  
-  const explanations = {
-    'usuariosTotales': {
-      title: 'Usuarios totales',
-      description: 'Número total de usuarios registrados hasta esa fecha. Crece acumulativamente.',
-      color: 'text-blue-600'
-    },
-    'usuariosActivos': {
-      title: 'Usuarios activos',
-      description: 'Usuarios que completaron al menos 1 test durante esa semana específica.',
-      color: 'text-green-600'
-    },
-    'tasaActividad': {
-      title: '% Actividad',
-      description: 'Porcentaje de usuarios activos sobre el total. Indica qué tan comprometidos están tus usuarios.',
-      color: 'text-orange-600'
-    },
-    'engagement': {
-      title: 'Tests por usuario activo',
-      description: 'Cuántos tests hace cada usuario activo en promedio. Más alto = mayor compromiso y retención.',
-      color: 'text-purple-600'
-    }
-  }
-
-  const info = explanations[metric]
-  if (!info) return children
-
-  return (
-    <div className="relative inline-block">
-      <div
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        className="cursor-help"
-      >
-        {children}
-      </div>
-      {showTooltip && (
-        <div className="absolute z-50 w-64 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl -top-2 left-full ml-2">
-          <div className={`font-medium ${info.color} mb-1`}>
-            {info.title}
-          </div>
-          <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-            {info.description}
-          </div>
-          <div className="absolute top-3 -left-1 w-2 h-2 bg-white dark:bg-gray-800 border-l border-t border-gray-200 dark:border-gray-700 transform rotate-45"></div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function AdminActivityChart() {
   const { supabase } = useAuth()
@@ -73,105 +19,98 @@ export default function AdminActivityChart() {
   const loadActivityData = async () => {
     try {
       setLoading(true)
-      console.log('📊 Cargando datos para gráfico de actividad...')
+      console.log('📊 Cargando usuarios activos por día...')
 
-      // Generar últimas 4 semanas
-      const weeks = []
-      for (let i = 3; i >= 0; i--) {
-        const endDate = new Date()
-        endDate.setDate(endDate.getDate() - (i * 7))
-        const startDate = new Date(endDate)
-        startDate.setDate(startDate.getDate() - 6)
-        
-        weeks.push({
-          label: `S${4-i}`,
-          fullLabel: `${startDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })} - ${endDate.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}`,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString()
+      // Generar últimos 14 días + 14 días anteriores para comparar
+      const currentDays = []
+      const previousDays = []
+
+      for (let i = 13; i >= 0; i--) {
+        // Período actual
+        const currentDate = new Date()
+        currentDate.setDate(currentDate.getDate() - i)
+        currentDate.setHours(0, 0, 0, 0)
+        const currentNextDay = new Date(currentDate)
+        currentNextDay.setDate(currentNextDay.getDate() + 1)
+
+        // Período anterior (14 días antes)
+        const previousDate = new Date()
+        previousDate.setDate(previousDate.getDate() - i - 14)
+        previousDate.setHours(0, 0, 0, 0)
+        const previousNextDay = new Date(previousDate)
+        previousNextDay.setDate(previousNextDay.getDate() + 1)
+
+        currentDays.push({
+          label: currentDate.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }),
+          weekday: currentDate.toLocaleDateString('es-ES', { weekday: 'short' }),
+          startDate: currentDate.toISOString(),
+          endDate: currentNextDay.toISOString()
+        })
+
+        previousDays.push({
+          startDate: previousDate.toISOString(),
+          endDate: previousNextDay.toISOString()
         })
       }
 
       const data = []
 
-      for (const week of weeks) {
-        // 1. Total de usuarios registrados hasta esa fecha
-        const { count: totalUsers, error: usersError } = await supabase
-          .from('admin_users_with_roles')
-          .select('user_id', { count: 'exact', head: true })
-          .lte('user_created_at', week.endDate)
-
-        if (usersError) throw usersError
-
-        // 2. Usuarios activos en esa semana (que completaron al menos 1 test)
-        const { data: activeTests, error: testsError } = await supabase
+      for (let i = 0; i < currentDays.length; i++) {
+        // Usuarios período actual
+        const { data: currentTests, error: currentError } = await supabase
           .from('tests')
           .select('user_id')
-          .eq('is_completed', true)
-          .gte('completed_at', week.startDate)
-          .lte('completed_at', week.endDate)
+          .gte('started_at', currentDays[i].startDate)
+          .lt('started_at', currentDays[i].endDate)
 
-        if (testsError) throw testsError
+        if (currentError) throw currentError
 
-        // Usuarios únicos que completaron tests
-        const activeUsers = new Set(activeTests?.map(t => t.user_id) || []).size
+        // Usuarios período anterior
+        const { data: previousTests, error: previousError } = await supabase
+          .from('tests')
+          .select('user_id')
+          .gte('started_at', previousDays[i].startDate)
+          .lt('started_at', previousDays[i].endDate)
 
-        // 3. Calcular porcentajes
-        const activityRate = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0
+        if (previousError) throw previousError
 
-        // 4. Tests completados en la semana
-        const testsCompleted = activeTests?.length || 0
-
+        const currentUsers = new Set(currentTests?.map(t => t.user_id) || []).size
+        const previousUsers = new Set(previousTests?.map(t => t.user_id) || []).size
 
         data.push({
-          semana: week.label,
-          fecha: week.fullLabel,
-          usuariosTotales: totalUsers || 0,
-          usuariosActivos: activeUsers,
-          tasaActividad: activityRate,
-          testsCompletados: testsCompleted,
-          // Métrica original: tests por usuario activo
-          testsPorUsuario: activeUsers > 0 ? Math.round((testsCompleted / activeUsers) * 10) / 10 : 0
+          dia: currentDays[i].label,
+          weekday: currentDays[i].weekday,
+          actual: currentUsers,
+          anterior: previousUsers
         })
       }
 
-      console.log('📊 Datos del gráfico procesados:', data)
+      console.log('📊 Datos procesados:', data)
       setChartData(data)
 
     } catch (err) {
-      console.error('❌ Error cargando datos del gráfico:', err)
+      console.error('❌ Error cargando datos:', err)
       setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const CustomTooltip = ({ active, payload, label }) => {
+  const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
+      const diff = data.actual - data.anterior
+      const diffPercent = data.anterior > 0 ? Math.round((diff / data.anterior) * 100) : 0
       return (
         <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-          <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">{data.fecha}</p>
-          <div className="space-y-1 text-xs">
-            <p className="flex items-center">
-              <span className="w-3 h-3 bg-blue-500 rounded-full mr-2"></span>
-              Total: {data.usuariosTotales} usuarios
+          <p className="text-sm font-medium text-gray-900 dark:text-white mb-2">{data.dia}</p>
+          <p className="text-sm"><span className="text-blue-600 font-bold">{data.actual}</span> usuarios (actual)</p>
+          <p className="text-sm"><span className="text-gray-400 font-bold">{data.anterior}</span> usuarios (anterior)</p>
+          {data.anterior > 0 && (
+            <p className={`text-xs mt-1 ${diff >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {diff >= 0 ? '↑' : '↓'} {Math.abs(diff)} ({diff >= 0 ? '+' : ''}{diffPercent}%)
             </p>
-            <p className="flex items-center">
-              <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-              Activos: {data.usuariosActivos} usuarios
-            </p>
-            <p className="flex items-center">
-              <span className="w-3 h-3 bg-orange-500 rounded-full mr-2"></span>
-              Actividad: {data.tasaActividad}%
-            </p>
-            <p className="flex items-center">
-              <span className="w-3 h-3 bg-purple-500 rounded-full mr-2"></span>
-              Tests: {data.testsCompletados}
-            </p>
-            <p className="text-gray-600 dark:text-gray-400 pt-1 border-t border-gray-200 dark:border-gray-600">
-              {data.testsPorUsuario} tests/usuario activo
-            </p>
-          </div>
+          )}
         </div>
       )
     }
@@ -182,12 +121,12 @@ export default function AdminActivityChart() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          📊 Evolución de Actividad
+          👤 Usuarios Activos por Día
         </h3>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Cargando gráfico...</p>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Cargando...</p>
           </div>
         </div>
       </div>
@@ -198,156 +137,98 @@ export default function AdminActivityChart() {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          📊 Evolución de Actividad
+          👤 Usuarios Activos por Día
         </h3>
         <div className="flex items-center justify-center h-64">
           <div className="text-center text-red-600 dark:text-red-400">
             <div className="text-3xl mb-2">❌</div>
-            <p className="text-sm">Error cargando gráfico</p>
-            <p className="text-xs mt-1">{error}</p>
+            <p className="text-sm">Error: {error}</p>
           </div>
         </div>
       </div>
     )
   }
 
+  // Calcular tendencia (actual vs anterior)
+  const totalActual = chartData.reduce((sum, d) => sum + d.actual, 0)
+  const totalAnterior = chartData.reduce((sum, d) => sum + d.anterior, 0)
+  const trend = totalAnterior > 0 ? Math.round(((totalActual - totalAnterior) / totalAnterior) * 100) : 0
+  const avgDaily = chartData.length > 0 ? Math.round(totalActual / chartData.length) : 0
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
         <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
-          📊 Evolución de Actividad
+          👤 Usuarios Activos por Día
         </h3>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 sm:mt-0">
-          Últimas 4 semanas
+        <div className="flex items-center gap-3 mt-1 sm:mt-0">
+          <span className="text-xs text-gray-500">Últimos 14 días</span>
+          <span className={`text-xs font-medium px-2 py-1 rounded ${
+            trend > 0 ? 'bg-green-100 text-green-700' :
+            trend < 0 ? 'bg-red-100 text-red-700' :
+            'bg-gray-100 text-gray-700'
+          }`}>
+            {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'} {Math.abs(trend)}%
+          </span>
         </div>
       </div>
-      
-      <div className="h-80">
+
+      <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-            <XAxis 
-              dataKey="semana" 
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+          <LineChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} vertical={false} />
+            <XAxis
+              dataKey="dia"
+              tick={{ fontSize: 10, fill: '#6B7280' }}
               axisLine={false}
               tickLine={false}
             />
-            <YAxis 
-              yAxisId="left"
-              orientation="left"
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+            <YAxis
+              tick={{ fontSize: 11, fill: '#6B7280' }}
               axisLine={false}
               tickLine={false}
-            />
-            <YAxis 
-              yAxisId="right" 
-              orientation="right"
-              tick={{ fontSize: 12, fill: '#6B7280' }}
-              axisLine={false}
-              tickLine={false}
-              domain={[0, 100]}
-              tickFormatter={(value) => `${value}%`}
+              allowDecimals={false}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Legend 
-              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-              iconType="circle"
+            <Legend
+              wrapperStyle={{ fontSize: '11px' }}
+              iconType="line"
             />
-            
-            {/* Líneas principales */}
             <Line
-              yAxisId="left"
               type="monotone"
-              dataKey="usuariosTotales"
+              dataKey="anterior"
+              stroke="#D1D5DB"
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              dot={{ fill: '#D1D5DB', r: 3 }}
+              name="14 días anteriores"
+            />
+            <Line
+              type="monotone"
+              dataKey="actual"
               stroke="#3B82F6"
               strokeWidth={2}
-              dot={{ fill: '#3B82F6', strokeWidth: 0, r: 4 }}
-              name="Usuarios totales"
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="usuariosActivos"
-              stroke="#10B981"
-              strokeWidth={2}
-              dot={{ fill: '#10B981', strokeWidth: 0, r: 4 }}
-              name="Usuarios activos"
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="tasaActividad"
-              stroke="#F59E0B"
-              strokeWidth={2}
-              dot={{ fill: '#F59E0B', strokeWidth: 0, r: 4 }}
-              name="% Actividad"
-              strokeDasharray="5 5"
-            />
-            <Line
-              yAxisId="left"
-              type="monotone"
-              dataKey="testsPorUsuario"
-              stroke="#8B5CF6"
-              strokeWidth={2}
-              dot={{ fill: '#8B5CF6', strokeWidth: 0, r: 4 }}
-              name="Tests/usuario"
-              strokeDasharray="3 3"
+              dot={{ fill: '#3B82F6', r: 4 }}
+              name="Últimos 14 días"
+              label={{ position: 'top', fill: '#3B82F6', fontSize: 10 }}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Resumen rápido con ayuda */}
-      <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Resumen actual:</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">Pasa el cursor sobre ? para ayuda</span>
+      {/* Resumen */}
+      <div className="mt-4 flex items-center justify-center gap-6 text-sm">
+        <div className="text-center">
+          <div className="font-bold text-blue-600 text-lg">{avgDaily}</div>
+          <div className="text-gray-500 text-xs">promedio/día</div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-          <div className="text-center">
-            <div className="font-semibold text-blue-600">
-              {chartData[chartData.length - 1]?.usuariosTotales || 0}
-            </div>
-            <div className="text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1">
-              Total usuarios
-              <MetricHelpTooltip metric="usuariosTotales">
-                <span className="w-3 h-3 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-full text-xs flex items-center justify-center font-bold cursor-help">?</span>
-              </MetricHelpTooltip>
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="font-semibold text-green-600">
-              {chartData[chartData.length - 1]?.usuariosActivos || 0}
-            </div>
-            <div className="text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1">
-              Activos S4
-              <MetricHelpTooltip metric="usuariosActivos">
-                <span className="w-3 h-3 bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 rounded-full text-xs flex items-center justify-center font-bold cursor-help">?</span>
-              </MetricHelpTooltip>
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="font-semibold text-orange-600">
-              {chartData[chartData.length - 1]?.tasaActividad || 0}%
-            </div>
-            <div className="text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1">
-              % Actividad
-              <MetricHelpTooltip metric="tasaActividad">
-                <span className="w-3 h-3 bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400 rounded-full text-xs flex items-center justify-center font-bold cursor-help">?</span>
-              </MetricHelpTooltip>
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="font-semibold text-purple-600">
-              {chartData[chartData.length - 1]?.testsPorUsuario || 0}
-            </div>
-            <div className="text-gray-600 dark:text-gray-400 flex items-center justify-center gap-1">
-              Tests/usuario
-              <MetricHelpTooltip metric="engagement">
-                <span className="w-3 h-3 bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400 rounded-full text-xs flex items-center justify-center font-bold cursor-help">?</span>
-              </MetricHelpTooltip>
-            </div>
-          </div>
+        <div className="text-center">
+          <div className="font-bold text-green-600 text-lg">{chartData[chartData.length - 1]?.actual || 0}</div>
+          <div className="text-gray-500 text-xs">hoy</div>
+        </div>
+        <div className="text-center">
+          <div className="font-bold text-purple-600 text-lg">{Math.max(...chartData.map(d => d.actual), 0)}</div>
+          <div className="text-gray-500 text-xs">máximo</div>
         </div>
       </div>
     </div>

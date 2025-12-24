@@ -714,29 +714,32 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Tests hoy - CORREGIDO: Mostrar actividad coherente */}
+          {/* Usuarios activos hoy */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-6 border">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                  Tests Completos Hoy
+                  Usuarios Activos Hoy
                 </p>
-                <p className="text-xl sm:text-2xl font-bold text-purple-600">{stats.testsCompletedToday}</p>
+                <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                  {(() => {
+                    const uniqueUserIds = [...new Set(recentActivity.map(a => a.user_id))]
+                    return uniqueUserIds.length
+                  })()}
+                </p>
                 <p className="text-xs text-gray-500 mt-1">
                   {stats.testsCompletedToday > 0
                     ? (() => {
-                        const activeUsers = recentActivity.map(a => a.user_profiles?.full_name?.split(' ')[0] || a.user_profiles?.email?.split('@')[0] || 'Usuario anónimo')
+                        const activeUsers = recentActivity.map(a => a.user_profiles?.full_name?.split(' ')[0] || a.user_profiles?.email?.split('@')[0] || 'Usuario')
                         const uniqueUsers = [...new Set(activeUsers)]
-                        const first2 = uniqueUsers.slice(0, 2).join(', ')
-                        const remaining = uniqueUsers.length - 2
-                        return remaining > 0 ? `Por ${first2} y ${remaining} más` : `Por ${first2}`
+                        return uniqueUsers.join(', ')
                       })()
-                    : 'Ninguno completado'
+                    : 'Sin actividad hoy'
                   }
                 </p>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-lg sm:text-2xl">✅</span>
+                <span className="text-lg sm:text-2xl">👤</span>
               </div>
             </div>
           </div>
