@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { useGoogleAds } from '../../../utils/googleAds'
-import { getMetaParams, isFromMeta, trackMetaRegistration } from '../../../lib/metaPixelCapture'
+import { getMetaParams, isFromMeta, trackMetaRegistration, isFromGoogle, getGoogleParams } from '../../../lib/metaPixelCapture'
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -204,9 +204,16 @@ function AuthCallbackContent() {
         })
         
         // 🎯 DETECTAR ORIGEN (Google Ads o Meta)
-        const isGoogleAds = finalReturnUrl.includes('/premium-ads') ||
-                           finalReturnUrl.includes('campaign=') ||
-                           finalReturnUrl.includes('start_checkout=true')
+        // Método 1: URL contiene parámetros especiales de landing page premium
+        const isGoogleAdsFromUrl = finalReturnUrl.includes('/premium-ads') ||
+                                   finalReturnUrl.includes('start_checkout=true')
+
+        // Método 2: Detectar por gclid o utm_source=google (capturado en cookies/sessionStorage)
+        const googleParams = getGoogleParams()
+        const isGoogleAdsFromParams = isFromGoogle()
+
+        // Combinar ambos métodos
+        const isGoogleAds = isGoogleAdsFromUrl || isGoogleAdsFromParams
 
         // 🎯 DETECTAR META (Facebook/Instagram)
         const metaParams = getMetaParams()
@@ -215,6 +222,12 @@ function AuthCallbackContent() {
         console.log('🔍 [CALLBACK] Análisis origen:', {
           finalReturnUrl,
           isGoogleAds,
+          isGoogleAdsFromUrl,
+          isGoogleAdsFromParams,
+          googleParams: googleParams ? {
+            gclid: googleParams.gclid?.slice(0, 10) + '...',
+            utm_source: googleParams.utm_source
+          } : null,
           isMetaAds,
           metaParams: metaParams ? {
             fbclid: metaParams.fbclid?.slice(0, 10) + '...',
@@ -263,11 +276,16 @@ function AuthCallbackContent() {
           let registrationSource = 'organic'
           let requiresPayment = false
 
-          if (isGoogleAds) {
+          if (isGoogleAdsFromUrl) {
+            // Landing page premium de Google Ads → requiere pago
             planType = 'premium_required'
             registrationSource = 'google_ads'
             requiresPayment = true
-            console.log('🎯 [CALLBACK] Usuario identificado como Google Ads')
+            console.log('🎯 [CALLBACK] Usuario identificado como Google Ads PREMIUM (landing page)')
+          } else if (isGoogleAdsFromParams) {
+            // Google Ads normal (gclid o utm_source=google) → plan free pero trackear origen
+            registrationSource = 'google_ads'
+            console.log('🎯 [CALLBACK] Usuario identificado como Google Ads (UTM/gclid)')
           } else if (isMetaAds) {
             registrationSource = 'meta'
             console.log('🎯 [CALLBACK] Usuario identificado como Meta Ads (Facebook/Instagram)')

@@ -183,7 +183,97 @@
 | `exam_position` | text | YES | null |
 | `official_difficulty_level` | text | YES | null |
 | `content_hash` | text | YES | null |
+| `topic_review_status` | text | YES | null |
+| `verified_at` | timestamp with time zone | YES | null |
+| `verification_status` | text | YES | null |
 
+**📝 CAMPOS DE VERIFICACIÓN DE TEMAS:**
+- `topic_review_status`: Estado de revisión por IA. Valores posibles:
+  - **Estados legales (8):** `perfect`, `bad_explanation`, `bad_answer`, `bad_answer_and_explanation`, `wrong_article`, `wrong_article_bad_explanation`, `wrong_article_bad_answer`, `all_wrong`
+  - **Estados técnicos (4):** `tech_perfect`, `tech_bad_explanation`, `tech_bad_answer`, `tech_bad_answer_and_explanation`
+  - **Pendiente:** `pending` (no verificada)
+- `verified_at`: Fecha de última verificación
+- `verification_status`: Estado legacy (`ok`, `problem`, `pending`)
+
+---
+
+### **TABLA: `ai_verification_results`** ⭐ Sistema de Verificación IA
+| Campo | Tipo | Nullable | Default | Descripción |
+|-------|------|----------|---------|-------------|
+| `id` | uuid | NO | uuid_generate_v4() | ID único |
+| `question_id` | uuid | NO | null | FK a questions |
+| `article_id` | uuid | YES | null | FK a articles |
+| `law_id` | uuid | YES | null | FK a laws |
+| `article_ok` | boolean | YES | null | ¿Artículo vinculado correcto? |
+| `answer_ok` | boolean | YES | null | ¿Respuesta marcada correcta? |
+| `explanation_ok` | boolean | YES | null | ¿Explicación correcta? |
+| `is_correct` | boolean | YES | null | Legacy: respuesta correcta |
+| `confidence` | text | YES | null | Nivel confianza: alta/media/baja |
+| `explanation` | text | YES | null | Análisis de la IA |
+| `article_quote` | text | YES | null | Cita del artículo |
+| `suggested_fix` | jsonb | YES | null | Corrección sugerida |
+| `correct_option_should_be` | text | YES | null | Opción correcta si hay error |
+| `correct_article_suggestion` | text | YES | null | Artículo correcto si está mal vinculado |
+| `explanation_fix` | text | YES | null | Corrección para la explicación |
+| `ai_provider` | text | YES | null | Proveedor IA (openai, anthropic, google) |
+| `ai_model` | text | YES | null | Modelo usado |
+| `verified_at` | timestamp | YES | now() | Fecha verificación |
+| `fix_applied` | boolean | YES | false | ¿Se aplicó la corrección? |
+| `fix_applied_at` | timestamp | YES | null | Fecha aplicación corrección |
+| `discarded` | boolean | YES | false | ¿Verificación descartada (override manual)? |
+| `discarded_at` | timestamp | YES | null | Fecha descarte |
+
+**🔍 QUERIES ÚTILES PARA VERIFICACIÓN:**
+
+```sql
+-- Preguntas con problemas (verificadas mal por IA)
+SELECT q.id, q.question_text, q.topic_review_status, l.short_name
+FROM questions q
+JOIN articles a ON q.primary_article_id = a.id
+JOIN laws l ON a.law_id = l.id
+WHERE q.topic_review_status IN (
+  'bad_explanation', 'bad_answer', 'bad_answer_and_explanation',
+  'wrong_article', 'wrong_article_bad_explanation',
+  'wrong_article_bad_answer', 'all_wrong',
+  'tech_bad_explanation', 'tech_bad_answer', 'tech_bad_answer_and_explanation'
+)
+ORDER BY l.short_name, q.topic_review_status;
+
+-- Resumen por estado
+SELECT topic_review_status, COUNT(*) as total
+FROM questions
+WHERE topic_review_status IS NOT NULL
+GROUP BY topic_review_status
+ORDER BY total DESC;
+
+-- Preguntas pendientes de verificar
+SELECT COUNT(*) as pendientes
+FROM questions q
+JOIN articles a ON q.primary_article_id = a.id
+WHERE (q.topic_review_status IS NULL OR q.topic_review_status = 'pending')
+  AND q.is_active = true;
+
+-- Detalle de verificación IA con problemas
+SELECT
+  q.id,
+  q.question_text,
+  q.topic_review_status,
+  av.article_ok,
+  av.answer_ok,
+  av.explanation_ok,
+  av.explanation as ai_analysis,
+  av.explanation_fix,
+  l.short_name as ley
+FROM questions q
+JOIN ai_verification_results av ON q.id = av.question_id
+JOIN articles a ON q.primary_article_id = a.id
+JOIN laws l ON a.law_id = l.id
+WHERE (av.article_ok = false OR av.answer_ok = false OR av.explanation_ok = false)
+  AND av.discarded = false
+ORDER BY l.short_name;
+```
+
+---
 
 ### **TABLA: `preguntas_examenes_oficiales`**
 | Campo | Tipo | Nullable | Default |

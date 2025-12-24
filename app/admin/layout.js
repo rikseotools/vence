@@ -164,6 +164,13 @@ export default function AdminLayout({ children }) {
                     )}
                   </a>
                   <a
+                    href="/admin/revision-temas"
+                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
+                  >
+                    <span>📚</span>
+                    <span>Revisión Temas</span>
+                  </a>
+                  <a
                     href="/admin/ai"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
