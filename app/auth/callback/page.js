@@ -246,14 +246,27 @@ function AuthCallbackContent() {
           // 🛡️ PERFIL EXISTE - Solo actualizar campos NO sensibles
           console.log('✅ [CALLBACK] Perfil ya existe, preservando plan_type:', existingProfile.plan_type)
 
+          // 🔧 FIX: Si el perfil es 'organic' pero detectamos Google/Meta Ads, actualizar registration_source
+          let updateData = {
+            full_name: user.user_metadata?.full_name || userEmail?.split('@')[0],
+            avatar_url: user.user_metadata?.avatar_url,
+            updated_at: new Date().toISOString()
+          }
+
+          // Solo actualizar registration_source si el actual es 'organic' o null
+          const canUpdateSource = !existingProfile.registration_source || existingProfile.registration_source === 'organic'
+
+          if (canUpdateSource && isGoogleAdsFromParams) {
+            updateData.registration_source = 'google_ads'
+            console.log('🔄 [CALLBACK] Actualizando registration_source de organic → google_ads')
+          } else if (canUpdateSource && isMetaAds) {
+            updateData.registration_source = 'meta'
+            console.log('🔄 [CALLBACK] Actualizando registration_source de organic → meta')
+          }
+
           const { error: updateError } = await supabase
             .from('user_profiles')
-            .update({
-              full_name: user.user_metadata?.full_name || userEmail?.split('@')[0],
-              avatar_url: user.user_metadata?.avatar_url,
-              updated_at: new Date().toISOString()
-              // ⚠️ NO actualizamos plan_type, registration_source ni requires_payment
-            })
+            .update(updateData)
             .eq('id', userId)
 
           if (updateError) {
@@ -262,9 +275,9 @@ function AuthCallbackContent() {
           }
 
           console.log('✅ [CALLBACK] Perfil actualizado (plan_type preservado:', existingProfile.plan_type, ')')
-          console.log('🎯 [CALLBACK] Configuración existente preservada:', {
+          console.log('🎯 [CALLBACK] Configuración final:', {
             planType: existingProfile.plan_type,
-            registrationSource: existingProfile.registration_source,
+            registrationSource: updateData.registration_source || existingProfile.registration_source,
             isGoogleAds
           })
         } else {
