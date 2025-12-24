@@ -71,7 +71,7 @@ export default function EngagementPage() {
         // Obtener usuarios registrados - Sin límite usando order
         const { data: users, error: usersError } = await supabase
           .from('user_profiles')
-          .select('id, created_at')
+          .select('id, created_at, registration_source')
           .order('created_at', { ascending: false })
           .limit(10000) // Usar limit en lugar de range
         
@@ -171,31 +171,22 @@ export default function EngagementPage() {
         // 📊 DATOS HISTÓRICOS - Buscar el período con datos más reciente
         const dauMauHistory = []
         const today = new Date()
-        
-        // Encontrar la fecha del test más reciente para ajustar el rango
-        const mostRecentTest = validCompletedTests.reduce((latest, test) => {
-          const testDate = new Date(test.completed_at)
-          return testDate > latest ? testDate : latest
-        }, new Date(0))
-        
-        // Si no hay tests recientes, usar el test más reciente como punto de referencia
-        const referenceDate = mostRecentTest > new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000) 
-          ? today 
-          : mostRecentTest
-        
-        // Calcular MAU desde el punto de referencia
-        const thirtyDaysFromReference = new Date(referenceDate.getTime() - 30 * 24 * 60 * 60 * 1000)
+        today.setHours(23, 59, 59, 999) // Final del día de hoy
+
+        // Calcular MAU (últimos 30 días desde hoy)
+        const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
         const fixedMAU = new Set(
           validCompletedTests
-            .filter(t => new Date(t.completed_at) >= thirtyDaysFromReference)
+            .filter(t => new Date(t.completed_at) >= thirtyDaysAgo)
             .map(t => t.user_id)
         ).size
-        
+
+        // Últimos 14 días
         for (let i = 13; i >= 0; i--) {
-          const date = new Date(referenceDate.getTime() - i * 24 * 60 * 60 * 1000)
+          const date = new Date(today.getTime() - i * 24 * 60 * 60 * 1000)
+          date.setHours(0, 0, 0, 0)
           const dateKey = date.toISOString().split('T')[0]
-          
-          // DAU para este día específico
+
           const dayActiveUsers = new Set(
             validCompletedTests
               .filter(t => {
@@ -206,46 +197,90 @@ export default function EngagementPage() {
               })
               .map(t => t.user_id)
           ).size
-          
-          // Usar MAU fijo para mejor rendimiento
+
           const dayDauMauRatio = fixedMAU > 0 ? Math.round((dayActiveUsers / fixedMAU) * 100) : 0
-          
+
           dauMauHistory.push({
             date: dateKey,
             dau: dayActiveUsers,
             mau: fixedMAU,
             ratio: dayDauMauRatio,
-            formattedDate: date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })
+            formattedDate: date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }),
+            weekday: date.toLocaleDateString('es-ES', { weekday: 'short' })
           })
         }
 
-        // 📈 EVOLUCIÓN USUARIOS REGISTRADOS ACTIVOS (últimos 6 meses)
+        // 📈 USUARIOS ACTIVADOS POR DÍA Y ORIGEN (últimos 14 días)
+        // "Activados" = usuarios que se registran Y responden al menos 1 pregunta EL MISMO DÍA
         const activationHistory = []
-        for (let monthOffset = 0; monthOffset < 6; monthOffset++) {
-          const monthStart = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)
-          const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 0)
-          
-          // Usuarios registrados hasta esa fecha
-          const usersUntilMonth = users.filter(u => new Date(u.created_at) <= monthEnd).length
-          
-          // Usuarios activos en ese mes
-          const monthActiveUsers = new Set(
-            validCompletedTests
-              .filter(t => {
-                const testDate = new Date(t.completed_at)
-                return testDate >= monthStart && testDate <= monthEnd
-              })
-              .map(t => t.user_id)
-          ).size
-          
-          const activationRate = usersUntilMonth > 0 ? Math.round((monthActiveUsers / usersUntilMonth) * 100) : 0
-          
-          activationHistory.unshift({
-            month: monthStart.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
-            totalUsers: usersUntilMonth,
-            activeUsers: monthActiveUsers,
-            activationRate: activationRate
+
+        // Obtener usuarios con fecha de registro, activación y origen
+        const { data: usersWithActivation } = await supabase
+          .from('user_profiles')
+          .select('id, created_at, registration_source, first_test_completed_at')
+
+        // Filtrar usuarios que se activaron el mismo día que se registraron
+        const sameDayActivated = usersWithActivation?.filter(u => {
+          if (!u.first_test_completed_at) return false
+          const regDate = new Date(u.created_at).toISOString().split('T')[0]
+          const actDate = new Date(u.first_test_completed_at).toISOString().split('T')[0]
+          return regDate === actDate
+        }) || []
+
+        // Crear mapa de usuarios por origen
+        const usersBySource = {
+          organic: users.filter(u => !u.registration_source || u.registration_source === 'organic'),
+          meta: users.filter(u => u.registration_source === 'meta'),
+          google: users.filter(u => u.registration_source === 'google')
+        }
+
+        for (let i = 13; i >= 0; i--) {
+          const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+          date.setHours(0, 0, 0, 0)
+          const dateKey = date.toISOString().split('T')[0]
+
+          // Usuarios que se registraron Y activaron ese mismo día
+          const activatedThatDay = sameDayActivated.filter(u => {
+            const regDate = new Date(u.created_at).toISOString().split('T')[0]
+            return regDate === dateKey
           })
+
+          // Contar por origen
+          const organicActivated = activatedThatDay.filter(u =>
+            !u.registration_source || u.registration_source === 'organic'
+          ).length
+          const metaActivated = activatedThatDay.filter(u =>
+            u.registration_source === 'meta'
+          ).length
+          const googleActivated = activatedThatDay.filter(u =>
+            u.registration_source === 'google'
+          ).length
+
+          activationHistory.push({
+            date: dateKey,
+            formattedDate: date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+            weekday: date.toLocaleDateString('es-ES', { weekday: 'short' }),
+            total: activatedThatDay.length,
+            organic: organicActivated,
+            meta: metaActivated,
+            google: googleActivated
+          })
+        }
+
+        // Calcular totales por origen para el resumen
+        const activatedBySource = {
+          organic: sameDayActivated.filter(u => !u.registration_source || u.registration_source === 'organic').length,
+          meta: sameDayActivated.filter(u => u.registration_source === 'meta').length,
+          google: sameDayActivated.filter(u => u.registration_source === 'google').length
+        }
+        const activationSummary = {
+          totalOrganic: usersBySource.organic.length,
+          totalMeta: usersBySource.meta.length,
+          totalGoogle: usersBySource.google.length,
+          activatedOrganic: activatedBySource.organic,
+          activatedMeta: activatedBySource.meta,
+          activatedGoogle: activatedBySource.google,
+          totalActivated: sameDayActivated.length
         }
 
         // 🎯 TRUE RETENTION RATE (Day 1, 7, 30)
@@ -653,9 +688,6 @@ export default function EngagementPage() {
           rawCompletedTestsCount: completedTests.length,
           usersCount: users.length,
           existingUserIdsSize: existingUserIds.size,
-          mostRecentTest: validCompletedTests.length > 0 ? mostRecentTest.toISOString() : 'No tests',
-          referenceDate: referenceDate.toISOString(),
-          usingRecentData: referenceDate === today,
           firstFewRawTests: completedTests.slice(0, 3).map(t => ({
             user_id: t.user_id,
             completed_at: t.completed_at,
@@ -683,6 +715,7 @@ export default function EngagementPage() {
           registeredActiveRatio,
           cohortAnalysis,
           activationHistory,
+          activationSummary,
           retentionAnalysis,
           engagementDepth,
           habitFormation,
@@ -1188,87 +1221,194 @@ export default function EngagementPage() {
         )}
       </div>
 
-      {/* Gráfico de evolución Usuarios Registrados Activos */}
+      {/* Gráfico de Usuarios Activados por Día y Origen */}
       {stats.activationHistory && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              📈 Evolución de Activación de Usuarios
+              🚀 Usuarios Activados por Día (últimos 14 días)
             </h3>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Actual: <span className="font-semibold text-green-600">{stats.registeredActiveRatio}%</span>
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                Organic ({stats.activationSummary?.activatedOrganic || 0}/{stats.activationSummary?.totalOrganic || 0})
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                Meta ({stats.activationSummary?.activatedMeta || 0}/{stats.activationSummary?.totalMeta || 0})
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                Google ({stats.activationSummary?.activatedGoogle || 0}/{stats.activationSummary?.totalGoogle || 0})
+              </span>
             </div>
           </div>
-          
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            Usuarios <span className="font-medium text-emerald-600">activados</span> cada día. Activado = se registró y respondió al menos 1 pregunta <span className="font-medium">el mismo día</span>.
+          </p>
+
           <div className="relative">
-            {/* Zona objetivo (50%+) */}
-            <div className="absolute inset-x-0 bg-green-50 dark:bg-green-900/10 border-y border-green-200 dark:border-green-800" 
-                 style={{top: '50%', height: '50%'}}>
-              <div className="text-xs text-green-600 dark:text-green-400 p-1">Zona objetivo (50%+)</div>
-            </div>
-            
-            {/* Gráfico de barras */}
-            <div className="relative h-48 border-b border-gray-200 dark:border-gray-700 px-2">
-              <div className="flex items-end justify-between h-full pt-8 pb-4">
-                {stats.activationHistory.map((point, index) => {
-                  const height = Math.min(140, (point.activationRate / 100) * 140)
-                  const isLast = index === stats.activationHistory.length - 1
-                  
-                  return (
-                    <div key={point.month} className="flex-1 flex flex-col items-center">
-                      {/* Barra */}
-                      <div className="relative w-full max-w-12 mx-2">
-                        {/* Valor encima de la barra */}
-                        <div className="text-xs font-semibold text-center mb-1 text-gray-700 dark:text-gray-300">
-                          {point.activationRate}%
+            {/* Gráfico de líneas con escala dinámica */}
+            {(() => {
+              const values = stats.activationHistory.map(h => h.total)
+              const dataMax = Math.max(...values, 1)
+              const yMax = Math.ceil(dataMax * 1.2)
+              const yRange = yMax || 10
+
+              return (
+                <div className="relative h-48 border-b border-gray-200 dark:border-gray-700 mb-10">
+                  {/* SVG para líneas */}
+                  <svg
+                    className="absolute inset-0 w-full h-full"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    {/* Línea Total (fondo gris claro) */}
+                    <polyline
+                      points={stats.activationHistory.map((point, index) => {
+                        const x = (index / Math.max(1, stats.activationHistory.length - 1)) * 100
+                        const y = 100 - (point.total / yRange) * 100
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="#D1D5DB"
+                      strokeWidth="0.5"
+                      strokeDasharray="2 2"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    {/* Línea Organic (verde) */}
+                    <polyline
+                      points={stats.activationHistory.map((point, index) => {
+                        const x = (index / Math.max(1, stats.activationHistory.length - 1)) * 100
+                        const y = 100 - (point.organic / yRange) * 100
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="#10B981"
+                      strokeWidth="0.5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    {/* Línea Meta (azul) */}
+                    {stats.activationSummary?.totalMeta > 0 && (
+                      <polyline
+                        points={stats.activationHistory.map((point, index) => {
+                          const x = (index / Math.max(1, stats.activationHistory.length - 1)) * 100
+                          const y = 100 - (point.meta / yRange) * 100
+                          return `${x},${y}`
+                        }).join(' ')}
+                        fill="none"
+                        stroke="#3B82F6"
+                        strokeWidth="0.5"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )}
+                    {/* Línea Google (rojo) */}
+                    {stats.activationSummary?.totalGoogle > 0 && (
+                      <polyline
+                        points={stats.activationHistory.map((point, index) => {
+                          const x = (index / Math.max(1, stats.activationHistory.length - 1)) * 100
+                          const y = 100 - (point.google / yRange) * 100
+                          return `${x},${y}`
+                        }).join(' ')}
+                        fill="none"
+                        stroke="#EF4444"
+                        strokeWidth="0.5"
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    )}
+                  </svg>
+
+                  {/* Puntos y valores - Total */}
+                  {stats.activationHistory.map((point, index) => {
+                    const leftPercent = (index / Math.max(1, stats.activationHistory.length - 1)) * 100
+                    const bottomPercent = (point.total / yRange) * 100
+                    const isLast = index === stats.activationHistory.length - 1
+                    const isWeekend = ['sáb', 'dom'].includes(point.weekday)
+
+                    return (
+                      <div key={point.date}>
+                        {/* Punto total */}
+                        <div
+                          className={`absolute w-3 h-3 ${isLast ? 'bg-emerald-600' : 'bg-emerald-500'} rounded-full z-20 group cursor-pointer border-2 border-white shadow-sm`}
+                          style={{
+                            left: `calc(${leftPercent}% - 6px)`,
+                            bottom: `calc(${bottomPercent}% - 6px)`
+                          }}
+                          title={`${point.formattedDate}: ${point.total} usuarios (Organic: ${point.organic}, Meta: ${point.meta}, Google: ${point.google})`}
+                        >
+                          <div className="opacity-0 group-hover:opacity-100 absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-30 transition-opacity pointer-events-none">
+                            <div className="font-medium">{point.formattedDate}</div>
+                            <div className="text-emerald-400">Organic: {point.organic}</div>
+                            {point.meta > 0 && <div className="text-blue-400">Meta: {point.meta}</div>}
+                            {point.google > 0 && <div className="text-red-400">Google: {point.google}</div>}
+                          </div>
                         </div>
-                        
-                        <div 
-                          className={`w-full ${isLast ? 'bg-green-600' : 'bg-blue-600'} rounded transition-all hover:opacity-80 cursor-pointer`}
-                          style={{height: `${height}px`}}
-                          title={`${point.month}: ${point.activationRate}% (${point.activeUsers}/${point.totalUsers})`}
-                        ></div>
+
+                        {/* Valor encima del punto */}
+                        <div
+                          className="absolute text-xs font-medium text-emerald-600 z-10 pointer-events-none"
+                          style={{
+                            left: `calc(${leftPercent}% - 8px)`,
+                            bottom: `calc(${bottomPercent}% + 10px)`
+                          }}
+                        >
+                          {point.total}
+                        </div>
+
+                        {/* Día debajo */}
+                        <div
+                          className={`absolute text-xs text-center whitespace-nowrap ${isWeekend ? 'text-orange-500 font-medium' : 'text-gray-500'}`}
+                          style={{
+                            left: `calc(${leftPercent}% - 20px)`,
+                            bottom: '-28px',
+                            width: '40px'
+                          }}
+                        >
+                          <div>{point.weekday}</div>
+                          <div className="text-gray-400 text-[10px]">{point.formattedDate.split(' ')[0]}</div>
+                        </div>
                       </div>
-                      
-                      {/* Etiqueta de mes */}
-                      <div className="text-xs text-gray-500 mt-2 text-center">
-                        {point.month}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-            
-            {/* Eje Y con marcadores */}
-            <div className="absolute left-0 top-0 h-48 flex flex-col justify-between text-xs text-gray-400 -ml-8 pt-8">
-              <span>100%</span>
-              <span>75%</span>
-              <span>50%</span>
-              <span>25%</span>
-              <span>0%</span>
-            </div>
+                    )
+                  })}
+
+                  {/* Eje Y dinámico */}
+                  <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-400 -ml-6">
+                    <span>{yMax}</span>
+                    <span>{Math.round(yMax * 0.75)}</span>
+                    <span>{Math.round(yMax * 0.5)}</span>
+                    <span>{Math.round(yMax * 0.25)}</span>
+                    <span>0</span>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
-          
+
           {/* Estadísticas resumidas */}
-          <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
             <div className="text-center">
-              <div className="text-lg font-semibold text-green-600">
-                {Math.max(...stats.activationHistory.map(h => h.activationRate))}%
+              <div className="text-lg font-semibold text-emerald-600">
+                {stats.activationHistory.reduce((sum, h) => sum + h.total, 0)}
               </div>
-              <div className="text-xs text-gray-500">Máximo</div>
+              <div className="text-xs text-gray-500">Activados (14d)</div>
             </div>
             <div className="text-center">
               <div className="text-lg font-semibold text-blue-600">
-                {Math.round(stats.activationHistory.reduce((sum, h) => sum + h.activationRate, 0) / stats.activationHistory.length)}%
+                {stats.activationSummary?.totalActivated || 0}
               </div>
-              <div className="text-xs text-gray-500">Promedio</div>
+              <div className="text-xs text-gray-500">Total activados</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-orange-600">
-                {Math.min(...stats.activationHistory.map(h => h.activationRate))}%
+              <div className="text-lg font-semibold text-purple-600">
+                {stats.totalUsers > 0 ? Math.round((stats.activationSummary?.totalActivated || 0) / stats.totalUsers * 100) : 0}%
               </div>
-              <div className="text-xs text-gray-500">Mínimo</div>
+              <div className="text-xs text-gray-500">Tasa activación</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-semibold text-gray-600">
+                {stats.totalUsers - (stats.activationSummary?.totalActivated || 0)}
+              </div>
+              <div className="text-xs text-gray-500">Sin activar</div>
             </div>
           </div>
         </div>
@@ -1277,95 +1417,124 @@ export default function EngagementPage() {
       {/* Gráfico de evolución DAU/MAU */}
       {stats.dauMauHistory && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              📈 Evolución DAU/MAU (período con actividad)
+              📈 Evolución DAU/MAU (últimos 14 días)
             </h3>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               Promedio 7 días: <span className="font-semibold text-purple-600">{stats.dauMauRatio}%</span>
             </div>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+            Mide <span className="font-medium text-purple-600">stickiness</span> (pegajosidad). No necesita crecer, solo mantenerse estable en la zona ideal (20-30%).
+          </p>
           
           <div className="relative">
-            {/* Zona ideal (20-30%) */}
-            <div className="absolute inset-x-0 bg-green-50 dark:bg-green-900/10 border-y border-green-200 dark:border-green-800" 
-                 style={{top: '70%', height: '10%'}}>
-              <div className="text-xs text-green-600 dark:text-green-400 p-1">Zona ideal (20-30%)</div>
-            </div>
-            
-            {/* Gráfico de línea */}
-            <div className="relative h-48 border-b border-gray-200 dark:border-gray-700 px-2">
-              {/* SVG para línea continua */}
-              <svg 
-                className="absolute inset-0 w-full h-full pointer-events-none" 
-                viewBox="0 0 100 100" 
-                preserveAspectRatio="none"
-              >
-                <polyline
-                  points={stats.dauMauHistory.map((point, index) => {
-                    const x = (index / (stats.dauMauHistory.length - 1)) * 100
-                    const y = 100 - Math.min(96, (point.ratio / 100) * 96)
-                    return `${x},${y}`
-                  }).join(' ')}
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="0.5"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
-              
-              {/* Puntos interactivos */}
-              <div className="relative h-full">
-                {stats.dauMauHistory.map((point, index) => {
-                  const height = Math.min(96, (point.ratio / 100) * 96)
-                  const leftPos = (index / (stats.dauMauHistory.length - 1)) * 100
-                  const isLast = index === stats.dauMauHistory.length - 1
-                  
-                  return (
-                    <div key={point.date}>
-                      {/* Punto del gráfico */}
-                      <div
-                        className={`absolute w-3 h-3 ${isLast ? 'bg-purple-600' : 'bg-blue-600'} rounded-full z-20 group cursor-pointer transform -translate-x-1.5 -translate-y-1.5 border-2 border-white shadow-sm`}
-                        style={{
-                          left: `${leftPos}%`,
-                          bottom: `${height}%`
-                        }}
-                        title={`${point.formattedDate}: ${point.ratio}% (DAU: ${point.dau}, MAU: ${point.mau})`}
-                      >
-                        {/* Tooltip en hover */}
-                        <div className="opacity-0 group-hover:opacity-100 absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-30 transition-opacity pointer-events-none">
-                          {point.formattedDate}<br/>
-                          {point.ratio}% (DAU: {point.dau})
-                        </div>
-                      </div>
-                      
-                      {/* Etiqueta de fecha (solo cada 5 días) */}
-                      {index % 5 === 0 && (
-                        <div 
-                          className="absolute text-xs text-gray-400 transform -rotate-45 origin-left whitespace-nowrap"
+            {/* Gráfico de línea con escala dinámica */}
+            {(() => {
+              const values = stats.dauMauHistory.map(h => h.ratio)
+              const dataMin = Math.min(...values)
+              const dataMax = Math.max(...values)
+              // Calcular rango con padding
+              const range = dataMax - dataMin || 10
+              const padding = Math.max(5, range * 0.15)
+              const yMin = Math.max(0, Math.floor((dataMin - padding) / 5) * 5)
+              const yMax = Math.min(100, Math.ceil((dataMax + padding) / 5) * 5)
+              const yRange = yMax - yMin || 10
+
+              return (
+                <div className="relative h-48 border-b border-gray-200 dark:border-gray-700 mb-10">
+                  {/* Zona ideal (20-30%) si está en rango */}
+                  {yMin < 30 && yMax > 20 && (
+                    <div
+                      className="absolute inset-x-0 bg-green-50 dark:bg-green-900/20 border-y border-green-200 dark:border-green-800/50"
+                      style={{
+                        bottom: `${((20 - yMin) / yRange) * 100}%`,
+                        height: `${((Math.min(30, yMax) - Math.max(20, yMin)) / yRange) * 100}%`
+                      }}
+                    />
+                  )}
+
+                  {/* SVG para línea */}
+                  <svg
+                    className="absolute inset-0 w-full h-full"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    <polyline
+                      points={stats.dauMauHistory.map((point, index) => {
+                        const x = (index / Math.max(1, stats.dauMauHistory.length - 1)) * 100
+                        const y = 100 - ((point.ratio - yMin) / yRange) * 100
+                        return `${x},${y}`
+                      }).join(' ')}
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="0.5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+
+                  {/* Puntos y valores */}
+                  {stats.dauMauHistory.map((point, index) => {
+                    const leftPercent = (index / Math.max(1, stats.dauMauHistory.length - 1)) * 100
+                    const bottomPercent = ((point.ratio - yMin) / yRange) * 100
+                    const isLast = index === stats.dauMauHistory.length - 1
+
+                    return (
+                      <div key={point.date}>
+                        <div
+                          className={`absolute w-2.5 h-2.5 ${isLast ? 'bg-purple-600' : 'bg-blue-600'} rounded-full z-20 group cursor-pointer border-2 border-white shadow-sm`}
                           style={{
-                            left: `${leftPos}%`,
-                            bottom: '-30px'
+                            left: `calc(${leftPercent}% - 5px)`,
+                            bottom: `calc(${bottomPercent}% - 5px)`
+                          }}
+                          title={`${point.formattedDate}: ${point.ratio}% (DAU: ${point.dau}, MAU: ${point.mau})`}
+                        >
+                          <div className="opacity-0 group-hover:opacity-100 absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-30 transition-opacity pointer-events-none">
+                            {point.formattedDate}<br/>
+                            DAU: {point.dau} | MAU: {point.mau}
+                          </div>
+                        </div>
+
+                        <div
+                          className="absolute text-xs font-medium text-blue-600 z-10 pointer-events-none"
+                          style={{
+                            left: `calc(${leftPercent}% - 12px)`,
+                            bottom: `calc(${bottomPercent}% + 8px)`
                           }}
                         >
-                          {point.formattedDate}
+                          {point.ratio}%
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-            
-            {/* Eje Y con marcadores */}
-            <div className="absolute left-0 top-0 h-48 flex flex-col justify-between text-xs text-gray-400 -ml-8">
-              <span>100%</span>
-              <span>80%</span>
-              <span>60%</span>
-              <span>40%</span>
-              <span>20%</span>
-              <span>0%</span>
-            </div>
+
+                        <div
+                          className={`absolute text-xs whitespace-nowrap text-center ${
+                            point.weekday?.includes('sá') || point.weekday?.includes('do')
+                              ? 'text-orange-500 font-medium'
+                              : 'text-gray-400'
+                          }`}
+                          style={{
+                            left: `calc(${leftPercent}% - 12px)`,
+                            bottom: '-22px'
+                          }}
+                        >
+                          <div>{point.weekday || ''}</div>
+                          <div className="text-[10px]">{point.formattedDate?.split(' ')[0] || ''}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Eje Y dinámico */}
+                  <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-400 -ml-8">
+                    <span>{yMax}%</span>
+                    <span>{Math.round(yMin + yRange * 0.75)}%</span>
+                    <span>{Math.round(yMin + yRange * 0.5)}%</span>
+                    <span>{Math.round(yMin + yRange * 0.25)}%</span>
+                    <span>{yMin}%</span>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
           
           {/* Estadísticas resumidas */}
