@@ -35,15 +35,15 @@ export const GoogleAdsEvents = {
     if (typeof window !== 'undefined' && window.gtag) {
       const transactionId = generateTransactionId()
       
-      // Fragmento exacto de Google Ads (según nueva configuración)
+      // Fragmento exacto de Google Ads - Conversión "Registro Vence"
       window.gtag('event', 'conversion', {
-        'send_to': 'AW-10842123204/TAS3CPi_2NAaEMTX9rEo',
+        'send_to': 'AW-10842123204/p4mqCO217NYbEMTX9rEo',
         'value': 1.0,
         'currency': 'EUR',
         'transaction_id': transactionId
       })
       
-      console.log('🎯 Google Ads Conversion tracked (page load):', 'AW-10842123204/TAS3CPi_2NAaEMTX9rEo', { method, transactionId })
+      console.log('🎯 Google Ads Conversion tracked (Registro Vence):', 'AW-10842123204/p4mqCO217NYbEMTX9rEo', { method, transactionId })
     }
     
     // También enviar a GA4 (mantener esto si usas Google Analytics)
