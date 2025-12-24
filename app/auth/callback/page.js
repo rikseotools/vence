@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { useGoogleAds } from '../../../utils/googleAds'
+import { getMetaParams, isFromMeta, trackMetaRegistration } from '../../../lib/metaPixelCapture'
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -202,14 +203,23 @@ function AuthCallbackContent() {
           emailCheckError: emailCheckError?.code
         })
         
-        // 🎯 DETECTAR GOOGLE ADS SIMPLIFICADO
-        const isGoogleAds = finalReturnUrl.includes('/premium-ads') || 
+        // 🎯 DETECTAR ORIGEN (Google Ads o Meta)
+        const isGoogleAds = finalReturnUrl.includes('/premium-ads') ||
                            finalReturnUrl.includes('campaign=') ||
                            finalReturnUrl.includes('start_checkout=true')
-        
-        console.log('🔍 [CALLBACK] Análisis origen SIMPLIFICADO:', {
+
+        // 🎯 DETECTAR META (Facebook/Instagram)
+        const metaParams = getMetaParams()
+        const isMetaAds = isFromMeta()
+
+        console.log('🔍 [CALLBACK] Análisis origen:', {
           finalReturnUrl,
-          isGoogleAds
+          isGoogleAds,
+          isMetaAds,
+          metaParams: metaParams ? {
+            fbclid: metaParams.fbclid?.slice(0, 10) + '...',
+            utm_source: metaParams.utm_source
+          } : null
         })
         
         // 🔧 FIX: Verificar primero si el perfil ya existe para NO sobrescribir plan_type
@@ -258,6 +268,9 @@ function AuthCallbackContent() {
             registrationSource = 'google_ads'
             requiresPayment = true
             console.log('🎯 [CALLBACK] Usuario identificado como Google Ads')
+          } else if (isMetaAds) {
+            registrationSource = 'meta'
+            console.log('🎯 [CALLBACK] Usuario identificado como Meta Ads (Facebook/Instagram)')
           }
 
           // Crear nuevo perfil
@@ -293,6 +306,20 @@ function AuthCallbackContent() {
         if (isGoogleAds) {
           console.log('🎯 [GOOGLE ADS] Trackeando registro de usuario Google Ads...')
           events.SIGNUP('google_ads')
+        } else if (isMetaAds) {
+          console.log('🎯 [META ADS] Trackeando registro de usuario Meta Ads...')
+          events.SIGNUP('meta')
+          // Enviar evento a Meta Conversions API
+          try {
+            const metaResult = await trackMetaRegistration(userId, userEmail)
+            if (metaResult?.success) {
+              console.log('✅ [META CAPI] Evento CompleteRegistration enviado:', metaResult.eventId)
+            } else {
+              console.warn('⚠️ [META CAPI] Error enviando evento:', metaResult?.error)
+            }
+          } catch (metaError) {
+            console.warn('⚠️ [META CAPI] Excepción enviando evento:', metaError)
+          }
         } else {
           console.log('🎯 [ORGANIC] Trackeando registro orgánico...')
           events.SIGNUP('google')
@@ -490,11 +517,11 @@ function AuthCallbackContent() {
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              <strong>🔍 Debug Auth Callback SIMPLIFICADO:</strong><br/>
+              <strong>🔍 Debug Auth Callback:</strong><br/>
               Status: {status}<br/>
               Return URL: {returnUrl || 'none'}<br/>
               Is Google Ads: {returnUrl?.includes('/premium-ads') ? 'YES' : 'NO'}<br/>
-              <strong>🎯 Sin problemas de scope</strong>
+              Is Meta Ads: {typeof window !== 'undefined' && isFromMeta() ? 'YES' : 'NO'}
             </p>
           </div>
         )}

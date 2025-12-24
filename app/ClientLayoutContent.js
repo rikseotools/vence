@@ -1,5 +1,6 @@
 // app/ClientLayoutContent.js - COMPONENTE CLIENTE SEPARADO
 'use client'
+import { useEffect } from 'react'
 import HeaderES from './Header'
 import FooterES from './Footer'
 import Breadcrumbs from '../components/Breadcrumbs'
@@ -8,6 +9,7 @@ import OnboardingModal from '../components/OnboardingModal'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 import { useOnboarding } from '../hooks/useOnboarding'
+import { captureMetaParams } from '../lib/metaPixelCapture'
 
 // Configuración de temas para breadcrumbs dinámicos
 const TEMAS_CONFIG = {
@@ -38,6 +40,11 @@ export default function ClientLayoutContent({ children }) {
   const { user, loading } = useAuth()
   const pathname = usePathname()
   const { showModal, handleComplete, handleSkip } = useOnboarding()
+
+  // Capturar parámetros de Meta Ads (fbclid, utm_source, etc.) al cargar
+  useEffect(() => {
+    captureMetaParams()
+  }, [])
 
   // Función para generar labels dinámicos de breadcrumbs
   const getBreadcrumbLabels = () => {
