@@ -42,7 +42,10 @@ export default function TestPageWrapper({
   
   // 📋 NUEVA PROP PARA CONTENT_SCOPE
   contentScopeConfig, // Configuración de content_scope
-  
+
+  // 🏢 NUEVA PROP PARA TIPO DE OPOSICIÓN
+  positionType, // 'auxiliar_administrativo' | 'administrativo' | 'gestion'
+
   // 🎯 Props de UI (opcionales)
   loadingMessage,
   errorMessage
@@ -292,8 +295,11 @@ export default function TestPageWrapper({
         questions = await fetchContentScopeQuestions(testConfig, contentScopeConfig)
       } else {
         // Para otros tipos de test, usar el fetcher normal
-        let finalTestConfig = testConfig
-        
+        let finalTestConfig = {
+          ...testConfig,
+          positionType: positionType || 'auxiliar_administrativo'
+        }
+
         // 🎯 PARA TESTS PERSONALIZADOS: Extraer filtros de URL y agregarlos al config
         if (testType === 'personalizado') {
           const selectedLawsParam = finalSearchParams?.get?.('selected_laws')
@@ -317,7 +323,8 @@ export default function TestPageWrapper({
           finalTestConfig = {
             ...testConfig,
             selectedLaws,
-            selectedArticlesByLaw
+            selectedArticlesByLaw,
+            positionType: positionType || 'auxiliar_administrativo'
           }
           
           if (selectedLaws.length > 0) {
