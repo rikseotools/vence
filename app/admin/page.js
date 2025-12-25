@@ -109,12 +109,13 @@ export default function AdminDashboard() {
         console.log('📅 Fecha Madrid:', madridDate.toLocaleDateString('es-ES'))
         console.log('🕐 Inicio día Madrid (UTC):', startOfDayMadrid.toISOString())
 
+        // Usuarios activos = usuarios que iniciaron un test hoy (respondieron al menos 1 pregunta)
         const { data: todayTests, error: todayTestsError } = await supabase
           .from('tests')
-          .select('id, completed_at, score, total_questions, user_id, created_at')
-          .eq('is_completed', true)
-          .gte('created_at', startOfDayMadrid.toISOString())
-          .order('completed_at', { ascending: false })
+          .select('id, started_at, completed_at, score, total_questions, user_id, created_at, is_completed')
+          .not('started_at', 'is', null)
+          .gte('started_at', startOfDayMadrid.toISOString())
+          .order('started_at', { ascending: false })
 
         if (todayTestsError) {
           console.error('❌ Error consultando tests de hoy:', todayTestsError)
