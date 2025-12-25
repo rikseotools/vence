@@ -533,6 +533,7 @@ const TestConfigurator = ({
           .from('articles')
           .select(`
             article_number,
+            title,
             questions!inner(id)
           `)
           .eq('law_id', law.id)
@@ -547,7 +548,7 @@ const TestConfigurator = ({
         const articleCounts = articles.reduce((acc, item) => {
           const articleNum = item.article_number;
           if (!acc[articleNum]) {
-            acc[articleNum] = { article_number: articleNum, question_count: 0 };
+            acc[articleNum] = { article_number: articleNum, title: item.title, question_count: 0 };
           }
           acc[articleNum].question_count++;
           return acc;
@@ -588,6 +589,7 @@ const TestConfigurator = ({
         .select(`
           articles!inner(
             article_number,
+            title,
             laws!inner(short_name)
           )
         `)
@@ -604,12 +606,16 @@ const TestConfigurator = ({
       const articleCounts = {};
       articlesData.forEach(q => {
         const artNum = q.articles.article_number;
-        articleCounts[artNum] = (articleCounts[artNum] || 0) + 1;
+        if (!articleCounts[artNum]) {
+          articleCounts[artNum] = { count: 0, title: q.articles.title };
+        }
+        articleCounts[artNum].count++;
       });
 
-      const articles = Object.entries(articleCounts).map(([articleNumber, questionCount]) => ({
+      const articles = Object.entries(articleCounts).map(([articleNumber, data]) => ({
         article_number: parseInt(articleNumber),
-        question_count: questionCount
+        title: data.title,
+        question_count: data.count
       })).sort((a, b) => a.article_number - b.article_number);
 
       console.log(`✅ Cargados ${articles.length} artículos para ${lawShortName}`);
@@ -2218,7 +2224,8 @@ const TestConfigurator = ({
                           />
                           <div className="flex-1">
                             <div className="font-medium text-sm text-gray-900">
-                              Artículo {article.article_number}
+                              Art. {article.article_number}
+                              {article.title && <span className="font-normal text-gray-600"> - {article.title}</span>}
                             </div>
                             <div className="text-xs text-gray-600">
                               {article.question_count} pregunta{article.question_count > 1 ? 's' : ''}
