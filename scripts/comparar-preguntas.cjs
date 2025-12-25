@@ -112,17 +112,30 @@ function findMatch(scrapedQ, dbTexts, dbMap, dbFullMap) {
 const TOPIC_TO_LAW = {
   'Tema 1.Informática_básica ': 'Informática Básica',
   'Tema_1__Informática_básica': 'Informática Básica',
-  'Tema_2._Sistema_Operativo_Windows_11': 'Windows 10',
-  'Tema_3._El_Explorador_de_Archivos': 'Explorador de Windows',
+  'Informática_básica_y_ofimática': 'Windows 11',
+  'Tema_2._Sistema_Operativo_Windows_11': 'Windows 11',
+  'Tema_3._El_Explorador_de_Archivos': 'Explorador Windows 11',
   'Tema_4._Procesadores_de_texto': 'Procesadores de texto',
+  'Tema_4__Procesadores_de_texto': 'Procesadores de texto',
   'Tema_5._Hojas_de_calculo': 'Hojas de cálculo. Excel',
   'Tema_6._Bases_de_datos': 'Base de datos: Access',
   'Tema_7._Correo_electronico': 'Correo electrónico',
-  'Tema_8._La_Red_Internet': 'La Red Internet'
+  'Tema_7__Correo_electrónico': 'Correo electrónico',
+  'Tema_8._La_Red_Internet': 'La Red Internet',
+  'Tema_8__La_Red_Internet': 'La Red Internet'
+};
+
+// Override de ley por subtema (cuando el subtema pertenece a otra ley diferente a la carpeta)
+const SUBTEMA_TO_LAW_OVERRIDE = {
+  'tema 3. el explorador de archivos de windows 11': 'Explorador Windows 11'
 };
 
 // Mapeo de subtemas a títulos de artículos (para matching)
 const SUBTEMA_TO_ARTICLE = {
+  // Explorador de Windows 11 (Tema 3)
+  'tema 3. el explorador de archivos de windows 11': 'Explorador de archivos de Windows 11',
+  // Windows 11 (Tema 2)
+  'tema 2. sistema operativo windows 11': 'Fundamentos del Sistema Operativo Windows 11',
   // Informática Básica (Tema 1) - Orden: Art.2=Intro, Art.3=Hardware, Art.4=Software, Art.5=Seguridad
   'introducción a la informática': 'Introducción a la informática',
   'el hardware': 'El hardware',
@@ -135,6 +148,7 @@ const SUBTEMA_TO_ARTICLE = {
   'correspondencia': 'Combinación de correspondencia',
   'atajos de teclado': 'Atajos de teclado',
   'menús vista, referencias y revisar': 'Menú vista',
+  'menus vista, referencias y revisar': 'Menú vista',
   // Hojas de cálculo
   'utilidades de las hojas de cálculo': 'Utilidades de las hojas',
   'formato de celdas y formato condicional': 'Formato de celdas',
@@ -145,7 +159,14 @@ const SUBTEMA_TO_ARTICLE = {
   'informes, formularios, macros y vinculación': 'Informes, formularios',
   // Correo electrónico
   'conceptos y funcionamiento': 'Conceptos y funcionamiento',
-  'el entorno de trabajo': 'El entorno de trabajo'
+  'conceptos elementales y funcionamiento': 'Conceptos y funcionamiento',
+  'el entorno de trabajo': 'El entorno de trabajo',
+  'el entorno de trabajo: enviar, recibir, responder, reenviar mensajes, creación de mensajes, reglas de mensaje y libreta de direcciones': 'El entorno de trabajo',
+  // Internet
+  'origen, evolución y estado actual de internet': 'Origen, evolución y estado actual',
+  'conceptos elementales sobre protocolos y servicios en internet': 'Conceptos elementales sobre protocolos',
+  'funcionalidades básicas de los navegadores web': 'Funcionalidades básicas de los navegadores',
+  'atajos de teclado en navegadores': 'Atajos de teclado en navegadores'
 };
 
 // Extraer subtema del campo topic
@@ -531,41 +552,65 @@ async function main() {
   console.log('🔍 Comparador de Preguntas');
   console.log('═'.repeat(50));
 
-  // Cargar BD
-  console.log('\n📊 Cargando base de datos...');
-  const { data: dbQuestions, error } = await supabase
-    .from('questions')
-    .select('id, question_text, option_a, option_b, option_c, option_d')
-    .eq('is_active', true);
+  // Cache de preguntas por ley (se carga bajo demanda)
+  const lawQuestionsCache = new Map();
 
-  if (error) {
-    console.error('❌ Error:', error.message);
-    rl.close();
-    return;
+  // Función para cargar preguntas de una ley específica
+  async function loadQuestionsForLaw(lawName) {
+    if (lawQuestionsCache.has(lawName)) {
+      return lawQuestionsCache.get(lawName);
+    }
+
+    const { data: law } = await supabase
+      .from('laws')
+      .select('id')
+      .eq('short_name', lawName)
+      .single();
+
+    if (!law) return { dbTexts: new Set(), dbMap: new Map(), dbFullMap: new Map(), count: 0 };
+
+    // Obtener artículos de la ley
+    const { data: articles } = await supabase
+      .from('articles')
+      .select('id')
+      .eq('law_id', law.id);
+
+    if (!articles?.length) return { dbTexts: new Set(), dbMap: new Map(), dbFullMap: new Map(), count: 0 };
+
+    const articleIds = articles.map(a => a.id);
+
+    // Cargar preguntas de esos artículos
+    let dbQuestions = [];
+    for (let i = 0; i < articleIds.length; i += 10) {
+      const batch = articleIds.slice(i, i + 10);
+      const { data } = await supabase
+        .from('questions')
+        .select('id, question_text, option_a, option_b, option_c, option_d')
+        .in('primary_article_id', batch)
+        .eq('is_active', true);
+      if (data) dbQuestions = dbQuestions.concat(data);
+    }
+
+    const dbTexts = new Set();
+    const dbMap = new Map();
+    const dbFullMap = new Map();
+
+    for (const q of dbQuestions) {
+      const normQuestion = normalizeText(q.question_text);
+      dbTexts.add(normQuestion);
+      dbMap.set(normQuestion, q.question_text);
+
+      const fullText = [q.question_text, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || ''].join(' ');
+      const normFull = normalizeText(fullText);
+      dbFullMap.set(normFull, q.question_text);
+    }
+
+    const result = { dbTexts, dbMap, dbFullMap, count: dbQuestions.length };
+    lawQuestionsCache.set(lawName, result);
+    return result;
   }
 
-  const dbTexts = new Set();
-  const dbMap = new Map(); // normalized -> original question
-  const dbFullMap = new Map(); // normalized (pregunta+opciones) -> original
-
-  for (const q of dbQuestions) {
-    // Solo pregunta
-    const normQuestion = normalizeText(q.question_text);
-    dbTexts.add(normQuestion);
-    dbMap.set(normQuestion, q.question_text);
-
-    // Pregunta + opciones (mas preciso)
-    const fullText = [
-      q.question_text,
-      q.option_a || '',
-      q.option_b || '',
-      q.option_c || '',
-      q.option_d || ''
-    ].join(' ');
-    const normFull = normalizeText(fullText);
-    dbFullMap.set(normFull, q.question_text);
-  }
-  console.log(`   ${dbQuestions.length} preguntas en BD\n`);
+  console.log('');
 
   // Loop principal
   while (true) {
@@ -638,12 +683,30 @@ async function main() {
     console.log(`\n📂 ${topic.name} → ${subtemaSeleccionado}`);
     console.log('═'.repeat(50));
 
+    // Cargar preguntas de la ley correspondiente (más rápido que cargar todas)
+    const lawName = TOPIC_TO_LAW[topic.name];
+    let dbTexts, dbMap, dbFullMap;
+
+    if (lawName) {
+      process.stdout.write(`\n📊 Cargando preguntas de "${lawName}"...`);
+      const lawData = await loadQuestionsForLaw(lawName);
+      dbTexts = lawData.dbTexts;
+      dbMap = lawData.dbMap;
+      dbFullMap = lawData.dbFullMap;
+      console.log(` ${lawData.count} preguntas`);
+    } else {
+      console.log(`\n⚠️  Sin mapeo de ley para "${topic.name}" - no se detectarán duplicados`);
+      dbTexts = new Set();
+      dbMap = new Map();
+      dbFullMap = new Map();
+    }
+
     const nuevas = [];
     const duplicadas = [];  // exactas, inicio, similar (>85%)
     const posibles = [];    // 70-85% similitud
 
     const total = questions.length;
-    console.log(`\n⏳ Comparando ${total} preguntas...`);
+    console.log(`⏳ Comparando ${total} preguntas...`);
 
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
@@ -730,12 +793,34 @@ async function main() {
           // Preparar grupos para subida directa
           const nuevasPorSubtema = groupBySubtema(nuevas);
           for (const [subtema, pregs] of nuevasPorSubtema) {
-            const articulo = await findArticleForSubtema(subtema, law.id, supabase);
+            // Verificar si hay override de ley para este subtema
+            const normalizedSubtema = subtema.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const overrideLawName = SUBTEMA_TO_LAW_OVERRIDE[normalizedSubtema];
+
+            let targetLawId = law.id;
+            let targetLawName = law.short_name;
+
+            if (overrideLawName) {
+              // Buscar la ley override
+              const { data: overrideLaw } = await supabase
+                .from('laws')
+                .select('id, short_name')
+                .eq('short_name', overrideLawName)
+                .single();
+
+              if (overrideLaw) {
+                targetLawId = overrideLaw.id;
+                targetLawName = overrideLaw.short_name;
+                console.log(`   🔄 Override: ${subtema} → ${targetLawName}`);
+              }
+            }
+
+            const articulo = await findArticleForSubtema(subtema, targetLawId, supabase);
             if (articulo) {
               console.log(`   📁 ${subtema} (${pregs.length}) → Art. ${articulo.article_number}: ${articulo.title}`);
               gruposParaSubir.push({ subtema, preguntas: pregs, articulo });
             } else {
-              console.log(`   ⚠️  ${subtema} (${pregs.length}) → SIN ARTÍCULO (no se subirán)`);
+              console.log(`   ⚠️  ${subtema} (${pregs.length}) → SIN ARTÍCULO en ${targetLawName} (no se subirán)`);
             }
           }
         }
@@ -748,6 +833,8 @@ async function main() {
         if (subir.toLowerCase() === 's') {
           // Subida directa sin menú adicional
           await ejecutarSubida(gruposParaSubir, supabase);
+          // Limpiar caché para que recargue las preguntas actualizadas
+          lawQuestionsCache.clear();
         }
       } else {
         console.log('\n❌ No hay preguntas listas para subir (falta mapeo de artículos)');
