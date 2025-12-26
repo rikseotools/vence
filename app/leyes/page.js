@@ -2,7 +2,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import LeyesServerComponent from '@/components/LeyesServerComponent'
-import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs' 
+import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper' 
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
@@ -152,7 +152,7 @@ export default function TestLeyesEspana() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      <InteractiveBreadcrumbs />
+      <ClientBreadcrumbsWrapper />
       <div className="container mx-auto px-4 py-12">
         
         {/* Hero Section */}
