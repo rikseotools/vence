@@ -178,12 +178,84 @@ SET correct_option = X  -- 0=A, 1=B, 2=C, 3=D
 WHERE id = 'ID_PREGUNTA';
 ```
 
-### 4.2 Corrección de explicación
+### 4.2 Corrección de explicación ⭐ IMPORTANTE
+
+**Las explicaciones deben ser DIDÁCTICAS, no simples ni resumidas.**
+
+El objetivo es que el alumno APRENDA, no solo sepa si acertó o falló.
 
 ```sql
-UPDATE questions 
-SET explanation = 'Nueva explicación corregida y detallada...'
+UPDATE questions
+SET explanation = 'Explicación didáctica completa...'
 WHERE id = 'ID_PREGUNTA';
+```
+
+#### **Formato obligatorio para explicaciones didácticas:**
+
+```
+📚 TÍTULO DEL CONCEPTO
+
+Introducción breve al tema de la pregunta.
+
+📖 TEXTO LEGAL O NORMATIVO (si aplica):
+Cita literal del artículo o norma relevante.
+
+📋 ANÁLISIS DE CADA OPCIÓN:
+
+✅ X) CORRECTA: Explicación de por qué es correcta
+❌ A) Explicación de por qué es incorrecta
+❌ B) Explicación de por qué es incorrecta
+❌ C) Explicación de por qué es incorrecta
+
+💡 CLAVE PARA RECORDAR:
+Regla mnemotécnica o truco para memorizar.
+
+🎯 DATO IMPORTANTE PARA OPOSICIONES:
+Información adicional relevante que amplía el conocimiento.
+
+⚠️ CUIDADO/NOTA (opcional):
+Advertencias sobre confusiones comunes o matices importantes.
+```
+
+#### **Ejemplo de explicación INCORRECTA (demasiado simple):**
+
+```
+❌ MAL:
+"La respuesta correcta es B porque el art. 7 CE habla de sindicatos."
+```
+
+#### **Ejemplo de explicación CORRECTA (didáctica):**
+
+```
+✅ BIEN:
+📚 LOS SINDICATOS Y ASOCIACIONES EMPRESARIALES EN LA CONSTITUCIÓN
+
+El artículo 7 de la Constitución Española regula los sindicatos de trabajadores y las asociaciones empresariales.
+
+📖 TEXTO LITERAL DEL ARTÍCULO 7 CE:
+
+"Los sindicatos de trabajadores y las asociaciones empresariales contribuyen a la DEFENSA Y PROMOCIÓN de los intereses económicos y sociales que les son propios. Su creación y el ejercicio de su actividad son libres dentro del respeto a la Constitución y a la ley. Su estructura interna y funcionamiento deberán ser democráticos."
+
+📋 ANÁLISIS DE LAS OPCIONES:
+
+❌ A) "Son instrumento fundamental para la participación política"
+   → Esto corresponde al Art. 6 CE (PARTIDOS POLÍTICOS)
+
+❌ B) "Concurren a la manifestación de la voluntad popular"
+   → Esto también corresponde al Art. 6 CE (PARTIDOS POLÍTICOS)
+
+❌ C) "Tienen como misión garantizar la soberanía e independencia de España"
+   → Esto corresponde al Art. 8 CE (FUERZAS ARMADAS)
+
+✅ D) "Contribuyen a la promoción y defensa de los intereses económicos y sociales"
+   → CORRECTA - Es el contenido del Art. 7 CE
+
+💡 TRUCO PARA RECORDAR LOS ARTÍCULOS DEL TÍTULO PRELIMINAR:
+- Art. 6: Partidos políticos → "participación política"
+- Art. 7: Sindicatos → "intereses económicos y sociales"
+- Art. 8: Fuerzas Armadas → "soberanía e independencia"
+
+🎯 Estos tres artículos son MUY preguntados en oposiciones. Memoriza qué institución corresponde a cada función.
 ```
 
 ### 4.3 Cambio de pregunta (CORRECTA ↔ INCORRECTA)
@@ -309,6 +381,13 @@ WHERE id = 'ARTICLE_ID';
 - Resultado: Pregunta "huérfana" no accesible en tests
 ```
 
+### ❌ **Error 6: Explicaciones demasiado simples**
+```
+- Escribir explicaciones cortas tipo "La respuesta es B según el art. 7"
+- Resultado: El alumno no aprende, solo ve si acertó o falló
+- SIEMPRE usar el formato didáctico con emojis, análisis de opciones y trucos
+```
+
 ---
 
 ## 🎯 **FLUJO RÁPIDO PARA EXPERTOS**
@@ -358,10 +437,14 @@ SELECT ... FROM topic_scope ... WHERE article_numbers @> ARRAY['NUM'];
 
 1. **Una SQL a la vez** - No múltiples correcciones juntas
 2. **Verificar SIEMPRE el artículo asignado** - Coherencia total
-3. **Explicaciones detalladas** - Educativas y precisas
+3. **Explicaciones DIDÁCTICAS** - No simples, deben enseñar al alumno
 4. **Sistema de respuestas consistente** - 0=A, 1=B, 2=C, 3=D
 5. **Topic_scope actualizado** - Accesibilidad garantizada
 6. **Artículo 0 completo** - Información estructural suficiente
+7. **Usar formato con emojis** - 📚📖📋✅❌💡🎯⚠️ para mejor lectura
+8. **Analizar TODAS las opciones** - No solo decir cuál es correcta
+9. **Incluir trucos mnemotécnicos** - Ayudan a memorizar para el examen
+10. **Añadir datos extra relevantes** - Plazos, excepciones, relaciones con otros artículos
 
 ---
 
@@ -369,19 +452,36 @@ SELECT ... FROM topic_scope ... WHERE article_numbers @> ARRAY['NUM'];
 
 ```sql
 -- 1. Revisar pregunta
-SELECT question_text, correct_option, explanation, a.content 
-FROM questions q JOIN articles a ON q.primary_article_id = a.id 
+SELECT question_text, correct_option, explanation, a.content
+FROM questions q JOIN articles a ON q.primary_article_id = a.id
 WHERE q.id = 'problem-id';
 
--- 2. Identificar problema: Explicación contradice respuesta
+-- 2. Identificar problema: Explicación muy simple "La respuesta es C según art. 168"
 
--- 3. Corregir
-UPDATE questions 
-SET explanation = 'Explicación corregida que justifica la respuesta...'
+-- 3. Corregir con explicación DIDÁCTICA
+UPDATE questions
+SET explanation = '📚 PROCEDIMIENTO DE REFORMA CONSTITUCIONAL (Art. 168)
+
+El artículo 168 CE establece el procedimiento agravado de reforma para materias especialmente protegidas.
+
+📖 ARTÍCULO 168.1 CE:
+"Cuando se propusiere la revisión total de la Constitución o una parcial que afecte al Título Preliminar, al Capítulo II Sección 1ª del Título I, o al Título II..."
+
+📋 ANÁLISIS DE LAS OPCIONES:
+
+✅ C) CORRECTA: La capital del Estado (art. 5) está en el Título Preliminar, protegido por art. 168.
+
+❌ A) Las materias de LO están en art. 81 (Título III) - No protegido
+❌ B) Propiedad privada está en art. 33 (Sección 2ª) - No protegido
+❌ D) Tributos están en art. 133 (Título VII) - No protegido
+
+💡 CLAVE: El art. 168 solo protege Título Preliminar + Sección 1ª Cap. II Tít. I + Título II
+
+🎯 Si preguntan sobre reforma de algo del Título Preliminar, siempre es art. 168.'
 WHERE id = 'problem-id';
 
 -- 4. Verificar mapeo
-SELECT article_numbers FROM topic_scope 
+SELECT article_numbers FROM topic_scope
 WHERE topic_id = tema_id AND law_id = ley_id;
 
 -- 5. ✅ Corrección completada
@@ -389,7 +489,14 @@ WHERE topic_id = tema_id AND law_id = ley_id;
 
 ---
 
-**🎯 REGLA DE ORO: 
-1. Sistema de respuestas: 0=A, 1=B, 2=C, 3=D
-2. Preguntas sin artículo literal específico → Art. 0 + explicación completa
-3. Siempre verificar coherencia entre pregunta, respuesta, explicación y artículo asignado.**
+**🎯 REGLAS DE ORO:**
+
+1. **Sistema de respuestas:** 0=A, 1=B, 2=C, 3=D
+2. **Preguntas de estructura/temario** → Art. 0 + explicación completa
+3. **Coherencia total** entre pregunta, respuesta, explicación y artículo
+4. **Explicaciones SIEMPRE didácticas** con formato:
+   - 📚 Título del concepto
+   - 📖 Texto legal/normativo
+   - 📋 Análisis de TODAS las opciones (✅❌)
+   - 💡 Trucos para recordar
+   - 🎯 Datos importantes para oposiciones

@@ -2,6 +2,39 @@
 
 Este documento describe el proceso completo para añadir preguntas scrapeadas a la base de datos, basado en el flujo probado con el Tema 1 (Constitución Española).
 
+---
+
+## ⚠️ REQUISITO CRÍTICO: Usar Temario Oficial del BOE
+
+**ANTES de añadir preguntas a cualquier oposición, es OBLIGATORIO:**
+
+1. **Obtener el temario oficial del BOE** de la convocatoria correspondiente
+2. **Verificar la estructura de temas** (numeración, títulos, contenido)
+3. **Alinear la BD con el temario oficial**, NO con la estructura de OpositaTest
+
+### ¿Por qué es crítico?
+
+- OpositaTest puede tener una estructura diferente al temario oficial
+- Los usuarios estudian según el temario oficial de la convocatoria
+- Una discrepancia en la numeración confunde a los opositores
+- El contenido de cada tema debe coincidir exactamente con el BOE
+
+### Ejemplo de discrepancia detectada:
+
+| OpositaTest | BOE Oficial (C1 Administrativo) |
+|-------------|--------------------------------|
+| Tema 2: La Corona | Tema 4: La Corona |
+| Tema 3: Las Cortes | Tema 5: Las Cortes |
+
+### Proceso correcto:
+
+1. Descargar PDF del temario oficial del BOE
+2. Crear/actualizar `topics` en BD con la estructura oficial
+3. Mapear preguntas de OpositaTest al tema CORRECTO según BOE
+4. Verificar que el UI muestre la estructura oficial
+
+---
+
 ## Resumen del Proceso
 
 1. **Scrapear preguntas** de OpositaTest

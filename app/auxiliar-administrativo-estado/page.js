@@ -5,27 +5,27 @@ import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Auxiliar Administrativo Estado 2025 | Tests y Temario Gratis Online',
-  description: 'Prepara la oposición de Auxiliar Administrativo del Estado con tests gratuitos y temarios actualizados. 28 temas oficiales, 1200+ preguntas y exámenes oficiales.',
+  title: 'Auxiliar Administrativo Estado 2026 | Tests y Temario Gratis Online',
+  description: 'Prepara la oposición de Auxiliar Administrativo del Estado con tests gratuitos y temarios actualizados. 28 temas oficiales BOE 2025, convocatoria publicada.',
   keywords: [
     'auxiliar administrativo estado',
     'auxiliar administrativo del estado',
     'oposiciones auxiliar administrativo',
     'test auxiliar administrativo estado',
     'temario auxiliar administrativo',
-    'oposiciones 2025',
+    'oposiciones 2026',
     'examenes oficiales auxiliar administrativo',
     'preparar auxiliar administrativo gratis',
     '28 temas auxiliar administrativo',
-    'oferta empleo publico auxiliar administrativo 2025'
+    'convocatoria auxiliar administrativo 2026'
   ].join(', '),
-  authors: [{ name: 'Tests Jurídicos España' }],
+  authors: [{ name: 'Vence - Preparación Oposiciones' }],
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Auxiliar Administrativo Estado 2025 | Preparación Completa Gratuita',
-    description: 'Tests gratuitos, temarios descargables y exámenes oficiales para la oposición de Auxiliar Administrativo del Estado.',
+    title: 'Auxiliar Administrativo Estado 2026 | Preparación Completa Gratuita',
+    description: 'Tests gratuitos y temario oficial BOE 22/12/2025 para la oposición de Auxiliar Administrativo del Estado. ¡Convocatoria publicada!',
     url: `${SITE_URL}/auxiliar-administrativo-estado`,
-    siteName: 'Tests Jurídicos España',
+    siteName: 'Vence',
     locale: 'es_ES',
     type: 'website',
   },
@@ -40,8 +40,8 @@ export const metadata = {
 
 export default function AuxiliarAdministrativoEstado() {
   const estadisticas = [
-    { numero: "1.700", texto: "Plazas 2025", color: "text-blue-600" },
-    { numero: "125", texto: "Preguntas test", color: "text-green-600" },
+    { numero: "28", texto: "Temas oficiales", color: "text-blue-600" },
+    { numero: "110", texto: "Preguntas test", color: "text-green-600" },
     { numero: "90", texto: "Minutos examen", color: "text-purple-600" },
     { numero: "ESO", texto: "Solo necesitas", color: "text-orange-600" }
   ]
@@ -50,47 +50,47 @@ export default function AuxiliarAdministrativoEstado() {
     {
       icon: "📚",
       titulo: "Temarios Completos",
-      descripcion: "28 temas del programa oficial actualizado con las últimas modificaciones de 2025.",
+      descripcion: "28 temas del programa oficial según BOE 22/12/2025. 2 bloques: Organización pública y Actividad administrativa.",
       enlace: "/auxiliar-administrativo-estado/temario",
       cta: "📚 Ver Temarios",
-      stats: "28 temas • PDF descargable",
+      stats: "28 temas • 2 bloques • BOE 2025",
       color: "bg-blue-600 hover:bg-blue-700"
     },
     {
-      icon: "🎯", 
+      icon: "🎯",
       titulo: "Tests y Exámenes",
       descripcion: "Tests específicos de cada tema y exámenes oficiales de convocatorias anteriores.",
       enlace: "/auxiliar-administrativo-estado/test",
       cta: "🎯 Empezar Tests",
-      stats: "125 preguntas • 2 temas disponibles",
+      stats: "500+ preguntas • Todos los temas",
       color: "bg-green-600 hover:bg-green-700"
     }
   ]
 
   const faqs = [
     {
-      pregunta: "¿Cuántas plazas hay para Auxiliar Administrativo del Estado 2025?",
-      respuesta: "La OEP 2024 ofertó 2.450 plazas de turno libre más 2.033 de promoción interna. Para 2025, la OEP ya está aprobada con 1.700 plazas y se espera que la convocatoria se publique en el tercer trimestre del año."
+      pregunta: "¿Cuándo es el examen de Auxiliar Administrativo del Estado 2026?",
+      respuesta: "La convocatoria fue publicada en el BOE el 22 de diciembre de 2025 (BOE-A-2025-26262). El examen está previsto para el primer semestre de 2026. Consulta el BOE para fechas exactas de inscripción."
     },
     {
       pregunta: "¿Cuál es el temario oficial de Auxiliar Administrativo del Estado?",
-      respuesta: "El temario consta de 28 temas divididos en: Organización del Estado (temas 1-14), Derecho Administrativo (temas 15-21), y Gestión de Personal y Hacienda Pública (temas 22-28). Todos actualizados según BOE 2024."
+      respuesta: "El temario consta de 28 temas divididos en 2 bloques según BOE 22/12/2025: Bloque I - Organización pública (16 temas) y Bloque II - Actividad administrativa y ofimática (12 temas). Incluye novedades como políticas LGTBI y Copilot de Windows."
     },
     {
       pregunta: "¿Qué requisitos necesito para presentarme a la oposición?",
-      respuesta: "Debes tener nacionalidad española o de la UE, ser mayor de 16 años, tener el título de ESO o equivalente, y no estar inhabilitado para el ejercicio de funciones públicas."
+      respuesta: "Debes tener nacionalidad española o de la UE, tener 16 años cumplidos y no exceder la edad de jubilación, tener el título de Graduado en ESO o equivalente, y no estar inhabilitado para el ejercicio de funciones públicas."
     },
     {
       pregunta: "¿Cómo es el examen de Auxiliar Administrativo del Estado?",
-      respuesta: "El examen consta de un ejercicio único dividido en dos partes en 90 minutos: 60 preguntas (30 sobre el programa oficial y 30 psicotécnicas sobre aptitudes administrativas, numéricas y verbales) y 50 preguntas sobre conocimientos ofimáticos de Windows 10 y Microsoft 365."
+      respuesta: "El examen consta de un ejercicio único de 90 minutos con 110 preguntas tipo test: 60 preguntas sobre el programa oficial (30 teóricas + 30 psicotécnicas) y 50 preguntas sobre conocimientos ofimáticos de Windows y Microsoft 365."
     },
     {
       pregunta: "¿Cuál es el sueldo de un Auxiliar Administrativo del Estado?",
-      respuesta: "El sueldo se sitúa entre 1.300-1.700€ brutos mensuales, perteneciendo al Grupo C2. El sueldo base anual es de aproximadamente 8.435€, pero con complementos, trienios y pagas extra puede alcanzar los 20.000-22.000€ anuales."
+      respuesta: "El sueldo se sitúa entre 1.400-1.800€ brutos mensuales, perteneciendo al Grupo C2. Con complementos, trienios y pagas extra puede alcanzar los 20.000-24.000€ anuales dependiendo del destino."
     },
     {
-      pregunta: "¿Dónde puedo trabajar como Auxiliar Administrativo del Estado?",
-      respuesta: "Puedes trabajar en cualquier ministerio, organismos autónomos, delegaciones territoriales, y otros entes públicos estatales en toda España, con posibilidad de elección de destino según la nota obtenida."
+      pregunta: "¿Qué novedades tiene el temario de 2025?",
+      respuesta: "Las principales novedades del BOE 22/12/2025 son: inclusión de políticas de igualdad LGTBI (Tema 16), Copilot de Windows como asistente IA (Tema 22), y actualización a Microsoft 365 en todos los temas de ofimática."
     }
   ]
 
@@ -121,17 +121,21 @@ export default function AuxiliarAdministrativoEstado() {
         <div className="container mx-auto px-4 py-8">
           {/* Hero Section */}
           <div className="text-center mb-8">
-            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-              🏛️ ADMINISTRACIÓN GENERAL DEL ESTADO
+            <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm font-medium">
+              🏛️ CONVOCATORIA PUBLICADA BOE 22/12/2025
             </span>
-            
+
             <h1 className="text-4xl font-bold text-gray-800 mt-4 mb-4">
-              Auxiliar Administrativo del Estado 2025
+              Auxiliar Administrativo del Estado 2026
             </h1>
-            
+
             <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
-              La oposición más accesible del Estado con <strong>1.700 plazas convocadas</strong> para 2025. 
-              Prepárate con nuestro sistema completo de tests y temarios.
+              <span className="inline-block bg-red-100 text-red-700 px-3 py-1 rounded-full font-bold animate-pulse">
+                ¡Convocatoria oficial publicada! Inscríbete hasta el 22 de enero de 2026
+              </span>
+            </p>
+            <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
+              Prepárate con el temario actualizado según BOE y nuestro sistema completo de tests.
             </p>
             
             {/* Estadísticas compactas */}
@@ -180,21 +184,21 @@ export default function AuxiliarAdministrativoEstado() {
             </div>
           </section>
 
-          {/* Información de la Convocatoria 2025 */}
+          {/* Información de la Convocatoria 2026 */}
           <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg shadow-lg p-6 text-white mb-10">
-            <h2 className="text-2xl font-bold mb-3">🚀 Oferta Empleo Público 2025 - ¡Ya Aprobada!</h2>
+            <h2 className="text-2xl font-bold mb-3">🚀 Convocatoria 2026 - ¡Publicada en BOE!</h2>
             <div className="grid grid-cols-4 gap-4 mb-4">
               <div className="text-center">
                 <div className="text-2xl font-bold">1.700</div>
-                <div className="text-green-100 text-sm">Plazas</div>
+                <div className="text-green-100 text-sm">Plazas libres</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">+20%</div>
-                <div className="text-green-100 text-sm">vs 2024</div>
+                <div className="text-2xl font-bold">720</div>
+                <div className="text-green-100 text-sm">Promoción int.</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">Sep</div>
-                <div className="text-green-100 text-sm">Convocatoria*</div>
+                <div className="text-2xl font-bold">28</div>
+                <div className="text-green-100 text-sm">Temas</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold">110</div>
@@ -202,15 +206,82 @@ export default function AuxiliarAdministrativoEstado() {
               </div>
             </div>
             <div className="bg-white bg-opacity-20 rounded-lg p-4 mb-4">
-              <h3 className="font-bold mb-2">✨ Buenas noticias: El examen se ha simplificado</h3>
+              <h3 className="font-bold mb-2">📋 BOE-A-2025-26262 (22 de diciembre de 2025)</h3>
               <p className="text-green-100 text-sm">
-                Ya no hay prueba práctica de Office en ordenador. Todo el examen es tipo test en una sola sesión de 90 minutos.
+                <strong>Plazo de inscripción: hasta el 22 de enero de 2026.</strong> Inscripción online mediante sistema IPS y Cl@ve.
               </p>
             </div>
             <p className="text-green-100 text-sm">
-              <strong>¡Es el momento perfecto para empezar!</strong> La convocatoria específica se publicará aproximadamente en septiembre de 2025.
+              Examen tipo test de 90 minutos. Novedades del temario: políticas LGTBI y Copilot de Windows.
             </p>
           </div>
+
+          {/* Temario Oficial BOE */}
+          <section className="mb-10">
+            <h2 className="text-3xl font-bold text-gray-800 text-center mb-6">
+              📋 Temario Oficial BOE 22/12/2025
+            </h2>
+
+            <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+              {/* Bloque I */}
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+                <h3 className="text-xl font-bold text-blue-800 mb-4">
+                  Bloque I: Organización pública
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">16 temas (1-16)</p>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">1.</span>La Constitución Española de 1978</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">2.</span>El Tribunal Constitucional. La Corona</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">3.</span>Las Cortes Generales</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">4.</span>El Poder Judicial</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">5.</span>El Gobierno y la Administración</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">6.</span>El Gobierno Abierto</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">7.</span>La Ley 19/2013 de transparencia</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">8.</span>La Administración General del Estado</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">9.</span>La Organización territorial del Estado</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">10.</span>La organización de la Unión Europea</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">11.</span>Las Leyes del Procedimiento Administrativo</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">12.</span>La protección de datos personales</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">13.</span>El personal funcionario</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">14.</span>Derechos y deberes de los funcionarios</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">15.</span>El presupuesto del Estado en España</li>
+                  <li className="flex items-start"><span className="text-blue-500 mr-2">16.</span>Políticas de igualdad <span className="ml-1 text-xs bg-purple-100 text-purple-700 px-1 rounded">LGTBI nuevo</span></li>
+                </ul>
+              </div>
+
+              {/* Bloque II */}
+              <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+                <h3 className="text-xl font-bold text-green-800 mb-4">
+                  Bloque II: Actividad administrativa y ofimática
+                </h3>
+                <p className="text-sm text-gray-500 mb-4">12 temas (17-28)</p>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-start"><span className="text-green-500 mr-2">17.</span>Atención al público</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">18.</span>Los servicios de información administrativa</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">19.</span>Documento, registro y archivo</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">20.</span>Administración electrónica</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">21.</span>Informática básica</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">22.</span>Sistema operativo Windows <span className="ml-1 text-xs bg-blue-100 text-blue-700 px-1 rounded">Copilot nuevo</span></li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">23.</span>El explorador de Windows</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">24.</span>Procesadores de texto: Word 365</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">25.</span>Hojas de cálculo: Excel 365</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">26.</span>Bases de datos: Access 365</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">27.</span>Correo electrónico: Outlook 365</li>
+                  <li className="flex items-start"><span className="text-green-500 mr-2">28.</span>La Red Internet</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="text-center mt-6">
+              <Link
+                href="/auxiliar-administrativo-estado/temario"
+                className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"
+              >
+                <span>📚</span>
+                <span>Ver Temario Completo con Epígrafes</span>
+              </Link>
+            </div>
+          </section>
 
           {/* Descripción SEO de la Oposición */}
           <section className="mb-12">
@@ -238,10 +309,10 @@ export default function AuxiliarAdministrativoEstado() {
 
                 <h3 className="text-xl font-semibold mt-6 mb-3">Requisitos y Proceso Selectivo</h3>
                 <p className="mb-4">
-                  Para acceder a esta oposición necesitas cumplir los <strong>requisitos básicos</strong>: tener nacionalidad española o de la UE, ser mayor de 16 años, poseer el título de ESO o equivalente, y no estar inhabilitado para funciones públicas.
+                  Para acceder a esta oposición necesitas cumplir los <strong>requisitos básicos</strong>: tener nacionalidad española o de la UE, tener 16 años cumplidos y no exceder la edad de jubilación, poseer el título de Graduado en ESO o equivalente, y no estar inhabilitado para funciones públicas.
                 </p>
                 <p className="mb-6">
-                  El proceso selectivo consiste en un <strong>examen único</strong> dividido en dos partes que se realizan en una misma sesión de 90 minutos: 60 preguntas teóricas y psicotécnicas, y 50 preguntas de conocimientos ofimáticos sobre Windows 10 y Microsoft 365.
+                  El proceso selectivo consiste en un <strong>examen único</strong> de 90 minutos con 110 preguntas tipo test: 60 preguntas sobre el programa oficial (30 teóricas + 30 psicotécnicas) y 50 preguntas de conocimientos ofimáticos sobre Windows y Microsoft 365.
                 </p>
 
                 <h3 className="text-xl font-semibold mt-6 mb-3">Ventajas de ser Auxiliar Administrativo del Estado</h3>

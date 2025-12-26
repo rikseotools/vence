@@ -90,6 +90,26 @@ const VirtualLawBadge = () => (
   </span>
 )
 
+// Formatear nombre de oposición
+const formatPositionName = (position) => {
+  const names = {
+    'auxiliar_administrativo': { name: 'Auxiliar Administrativo', group: 'C2', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200' },
+    'administrativo': { name: 'Administrativo del Estado', group: 'C1', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200' },
+    'gestion': { name: 'Gestión del Estado', group: 'A2', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200' }
+  }
+  return names[position] || { name: position, group: '', color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200' }
+}
+
+// Badge de oposición
+const PositionBadge = ({ position }) => {
+  const info = formatPositionName(position)
+  return (
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${info.color}`}>
+      🎯 {info.name} ({info.group})
+    </span>
+  )
+}
+
 export default function TopicDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -642,9 +662,14 @@ export default function TopicDetailPage() {
           ← Volver a temas
         </Link>
 
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-          Tema {topic?.topic_number}: {topic?.title}
-        </h1>
+        <div className="flex flex-wrap items-center gap-3 mb-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+            Tema {topic?.topic_number}: {topic?.title}
+          </h1>
+          {topic?.position_type && (
+            <PositionBadge position={topic.position_type} />
+          )}
+        </div>
 
         {/* Stats globales */}
         <div className="flex flex-wrap gap-3 mt-3 text-sm">

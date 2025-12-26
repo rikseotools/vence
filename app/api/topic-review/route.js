@@ -189,25 +189,63 @@ export async function GET(request) {
       })
     )
 
-    // Agrupar por bloques (1-16 = Bloque I, 101+ = Bloque II)
-    const block1 = topicsWithStats.filter(t => t.topic_number < 100)
-    const block2 = topicsWithStats.filter(t => t.topic_number >= 100)
+    // Agrupar por bloques según el tipo de oposición
+    let blocks = []
 
-    return Response.json({
-      success: true,
-      positions: uniquePositions,
-      blocks: [
+    if (positionType === 'administrativo') {
+      // Administrativo del Estado (C1) - 6 bloques, 45 temas
+      blocks = [
+        {
+          id: 'block1',
+          title: 'Bloque I: Organización del Estado (11 temas)',
+          topics: topicsWithStats.filter(t => t.topic_number >= 1 && t.topic_number <= 11)
+        },
+        {
+          id: 'block2',
+          title: 'Bloque II: Organización de Oficinas Públicas (4 temas)',
+          topics: topicsWithStats.filter(t => t.topic_number >= 12 && t.topic_number <= 15)
+        },
+        {
+          id: 'block3',
+          title: 'Bloque III: Derecho Administrativo General (7 temas)',
+          topics: topicsWithStats.filter(t => t.topic_number >= 16 && t.topic_number <= 22)
+        },
+        {
+          id: 'block4',
+          title: 'Bloque IV: Gestión de Personal (9 temas)',
+          topics: topicsWithStats.filter(t => t.topic_number >= 23 && t.topic_number <= 31)
+        },
+        {
+          id: 'block5',
+          title: 'Bloque V: Gestión Financiera (6 temas)',
+          topics: topicsWithStats.filter(t => t.topic_number >= 32 && t.topic_number <= 37)
+        },
+        {
+          id: 'block6',
+          title: 'Bloque VI: Informática Básica y Ofimática (8 temas)',
+          topics: topicsWithStats.filter(t => t.topic_number >= 38 && t.topic_number <= 45)
+        }
+      ]
+    } else {
+      // Auxiliar Administrativo (C2) - 2 bloques
+      blocks = [
         {
           id: 'block1',
           title: 'Bloque I: Temas Generales',
-          topics: block1
+          topics: topicsWithStats.filter(t => t.topic_number < 100)
         },
         {
           id: 'block2',
           title: 'Bloque II: Temas Específicos',
-          topics: block2
+          topics: topicsWithStats.filter(t => t.topic_number >= 100)
         }
       ]
+    }
+
+    return Response.json({
+      success: true,
+      positions: uniquePositions,
+      blocks
     })
 
   } catch (error) {

@@ -34,6 +34,7 @@ export default function TestAleatorioAdministrativoPage() {
   const router = useRouter()
 
   // 45 temas de Administrativo del Estado C1 organizados en 6 bloques
+  // Estructura alineada con la BD (basada en OpositaTest)
   const themeBlocks = [
     {
       id: 'block1',
@@ -41,16 +42,16 @@ export default function TestAleatorioAdministrativoPage() {
       subtitle: '11 temas - Constitución, Gobierno, Administración',
       themes: [
         { id: 1, name: "La Constitución Española de 1978" },
-        { id: 2, name: "Los derechos y deberes fundamentales" },
-        { id: 3, name: "El Tribunal Constitucional" },
-        { id: 4, name: "La Corona" },
-        { id: 5, name: "Las Cortes Generales" },
-        { id: 6, name: "El Gobierno" },
-        { id: 7, name: "La Administración General del Estado" },
-        { id: 8, name: "La organización territorial del Estado" },
-        { id: 9, name: "Las Comunidades Autónomas" },
+        { id: 2, name: "La Jefatura del Estado. La Corona" },
+        { id: 3, name: "Las Cortes Generales" },
+        { id: 4, name: "El Poder Judicial" },
+        { id: 5, name: "El Gobierno y la Administración" },
+        { id: 6, name: "El Gobierno Abierto. Agenda 2030" },
+        { id: 7, name: "La Ley 19/2013 de Transparencia" },
+        { id: 8, name: "La Administración General del Estado" },
+        { id: 9, name: "La Organización Territorial del Estado" },
         { id: 10, name: "La Administración Local" },
-        { id: 11, name: "La Unión Europea" }
+        { id: 11, name: "La Organización de la Unión Europea" }
       ]
     },
     {
@@ -58,10 +59,10 @@ export default function TestAleatorioAdministrativoPage() {
       title: 'Bloque II: Organización de Oficinas Públicas',
       subtitle: '4 temas - Atención ciudadana, Registros, Archivos',
       themes: [
-        { id: 12, name: "Atención al ciudadano" },
-        { id: 13, name: "Los servicios de información administrativa" },
-        { id: 14, name: "El registro de documentos" },
-        { id: 15, name: "Los archivos" }
+        { id: 12, name: "Atención al Público" },
+        { id: 13, name: "Documento, Registro y Archivo" },
+        { id: 14, name: "Administración Electrónica" },
+        { id: 15, name: "Protección de Datos Personales" }
       ]
     },
     {
@@ -69,13 +70,13 @@ export default function TestAleatorioAdministrativoPage() {
       title: 'Bloque III: Derecho Administrativo General',
       subtitle: '7 temas - Procedimiento, Contratos, Responsabilidad',
       themes: [
-        { id: 16, name: "El acto administrativo" },
-        { id: 17, name: "El procedimiento administrativo común" },
-        { id: 18, name: "Los recursos administrativos" },
-        { id: 19, name: "La jurisdicción contencioso-administrativa" },
-        { id: 20, name: "Los contratos del sector público" },
-        { id: 21, name: "La responsabilidad de las Administraciones Públicas" },
-        { id: 22, name: "La potestad sancionadora" }
+        { id: 16, name: "Las Fuentes del Derecho Administrativo" },
+        { id: 17, name: "El Acto Administrativo" },
+        { id: 18, name: "Las Leyes del Procedimiento Administrativo" },
+        { id: 19, name: "Los Contratos del Sector Público" },
+        { id: 20, name: "Procedimientos y Formas de la Actividad Administrativa" },
+        { id: 21, name: "La Responsabilidad Patrimonial" },
+        { id: 22, name: "Políticas de Igualdad" }
       ]
     },
     {
@@ -83,28 +84,28 @@ export default function TestAleatorioAdministrativoPage() {
       title: 'Bloque IV: Gestión de Personal',
       subtitle: '9 temas - Empleo público, Derechos, Deberes',
       themes: [
-        { id: 23, name: "El personal al servicio de las Administraciones Públicas" },
-        { id: 24, name: "Acceso al empleo público" },
-        { id: 25, name: "La provisión de puestos de trabajo" },
-        { id: 26, name: "Situaciones administrativas" },
-        { id: 27, name: "Derechos de los empleados públicos" },
-        { id: 28, name: "Deberes de los empleados públicos" },
-        { id: 29, name: "El régimen disciplinario" },
-        { id: 30, name: "El régimen de Seguridad Social" },
-        { id: 31, name: "Prevención de riesgos laborales" }
+        { id: 23, name: "El Personal al Servicio de las Administraciones Públicas" },
+        { id: 24, name: "Selección de Personal" },
+        { id: 25, name: "El Personal Funcionario" },
+        { id: 26, name: "Adquisición y Pérdida de la Condición de Funcionario" },
+        { id: 27, name: "Provisión de Puestos de Trabajo" },
+        { id: 28, name: "Las Incompatibilidades y Régimen Disciplinario" },
+        { id: 29, name: "El Régimen de la Seguridad Social de los Funcionarios" },
+        { id: 30, name: "El Personal Laboral" },
+        { id: 31, name: "El Régimen de la Seguridad Social del Personal Laboral" }
       ]
     },
     {
       id: 'block5',
       title: 'Bloque V: Gestión Financiera',
-      subtitle: '6 temas - Presupuestos, Contratación, Subvenciones',
+      subtitle: '6 temas - Presupuestos, Gastos, Retribuciones',
       themes: [
-        { id: 32, name: "El Presupuesto del Estado" },
-        { id: 33, name: "El ciclo presupuestario" },
-        { id: 34, name: "El gasto público" },
-        { id: 35, name: "La contabilidad pública" },
-        { id: 36, name: "El control del gasto público" },
-        { id: 37, name: "Las subvenciones públicas" }
+        { id: 32, name: "El Presupuesto" },
+        { id: 33, name: "El Presupuesto del Estado en España" },
+        { id: 34, name: "El Procedimiento de Ejecución del Presupuesto de Gasto" },
+        { id: 35, name: "Las Retribuciones e Indemnizaciones" },
+        { id: 36, name: "Gastos para la Compra de Bienes y Servicios" },
+        { id: 37, name: "Gestión Económica y Financiera" }
       ]
     },
     {
@@ -112,14 +113,14 @@ export default function TestAleatorioAdministrativoPage() {
       title: 'Bloque VI: Informática Básica y Ofimática',
       subtitle: '8 temas - Windows, Office, Internet',
       themes: [
-        { id: 38, name: "Informática básica" },
-        { id: 39, name: "Sistema operativo Windows" },
-        { id: 40, name: "Procesador de textos Word" },
-        { id: 41, name: "Hoja de cálculo Excel" },
-        { id: 42, name: "Base de datos Access" },
-        { id: 43, name: "Correo electrónico" },
-        { id: 44, name: "Internet y navegadores" },
-        { id: 45, name: "Seguridad informática" }
+        { id: 38, name: "Informática Básica" },
+        { id: 39, name: "Sistema Operativo Windows" },
+        { id: 40, name: "El Explorador de Windows" },
+        { id: 41, name: "Procesadores de Texto: Word 365" },
+        { id: 42, name: "Hojas de Cálculo: Excel 365" },
+        { id: 43, name: "Bases de Datos: Access 365" },
+        { id: 44, name: "Correo Electrónico: Outlook 365" },
+        { id: 45, name: "La Red Internet" }
       ]
     }
   ]

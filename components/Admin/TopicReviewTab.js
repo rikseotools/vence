@@ -87,9 +87,9 @@ const ReviewStatusBadge = ({ status, small = false }) => {
 // Formatear nombre de oposición
 const formatPositionName = (position) => {
   const names = {
-    'auxiliar_administrativo': 'Auxiliar Administrativo del Estado',
-    'administrativo': 'Administrativo del Estado',
-    'gestion': 'Gestión del Estado'
+    'auxiliar_administrativo': 'Auxiliar Administrativo del Estado (C2)',
+    'administrativo': 'Administrativo del Estado (C1)',
+    'gestion': 'Gestión del Estado (A2)'
   }
   return names[position] || position.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }

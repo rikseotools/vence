@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import AdminNotificationBadge from '@/components/AdminNotificationBadge'
 import AdminActivityChart from '@/components/AdminActivityChart'
+import AdminRegistrationsChart from '@/components/AdminRegistrationsChart'
 
 export default function AdminDashboard() {
   const { supabase } = useAuth()
@@ -239,6 +240,39 @@ export default function AdminDashboard() {
       const userDate = new Date(u.user_created_at)
       return userDate >= thisMonday
     }).length || 0
+
+    // 📊 NUEVO: Usuarios registrados HOY (zona horaria Madrid)
+    const nowMadridCalc = new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' })
+    const madridDateCalc = new Date(nowMadridCalc)
+    const startOfTodayMadrid = new Date(madridDateCalc)
+    startOfTodayMadrid.setHours(0, 0, 0, 0)
+
+    // Calcular inicio y fin de AYER (zona horaria Madrid)
+    const startOfYesterdayMadrid = new Date(startOfTodayMadrid)
+    startOfYesterdayMadrid.setDate(startOfYesterdayMadrid.getDate() - 1)
+
+    const usersToday = users?.filter(u => {
+      const userDate = new Date(u.user_created_at)
+      return userDate >= startOfTodayMadrid
+    }) || []
+
+    const usersYesterday = users?.filter(u => {
+      const userDate = new Date(u.user_created_at)
+      return userDate >= startOfYesterdayMadrid && userDate < startOfTodayMadrid
+    }) || []
+
+    const newUsersToday = usersToday.length
+    const newUsersYesterday = usersYesterday.length
+
+    const newUsersTodayBySource = usersToday.reduce((acc, user) => {
+      const source = user.registration_source || 'unknown'
+      acc[source] = (acc[source] || 0) + 1
+      return acc
+    }, {})
+
+    console.log('🔍 DEBUG - Usuarios hoy:', newUsersToday)
+    console.log('🔍 DEBUG - Usuarios ayer:', newUsersYesterday)
+    console.log('🔍 DEBUG - newUsersTodayBySource calculado:', newUsersTodayBySource)
 
     // 📊 NUEVO: Desglose por fuente de registro (esta semana)
     const usersThisWeek = users?.filter(u => {
@@ -504,6 +538,9 @@ export default function AdminDashboard() {
       activeUsersLast30Days,
       newUsersThisWeek,
       newUsersThisWeekBySource, // 📊 NUEVO: Desglose por fuente
+      newUsersToday, // 📊 NUEVO: Usuarios registrados hoy
+      newUsersYesterday, // 📊 NUEVO: Usuarios registrados ayer
+      newUsersTodayBySource, // 📊 NUEVO: Desglose por fuente (hoy)
       abandonedTests: abandonedTests.length,
       totalTestsAttempted: totalAttempts,
       usersWhoCompletedTests,
@@ -745,20 +782,28 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Precisión promedio - CORREGIDA */}
+          {/* Usuarios Registrados Hoy por Fuente */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-6 border">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
-                  Precisión Promedio
+                  Registros Hoy
                 </p>
-                <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.averageAccuracy}%</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {stats.completionRate}% de los tests iniciados se completan
-                </p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.newUsersToday}</p>
+                <div className="text-xs text-gray-700 dark:text-gray-300 mt-1 space-y-0.5">
+                  <div>🌱 {stats.newUsersTodayBySource?.organic || 0} Orgánico</div>
+                  <div>💰 {stats.newUsersTodayBySource?.google_ads || 0} Google</div>
+                  <div>📘 {stats.newUsersTodayBySource?.meta_ads || 0} Meta</div>
+                  {stats.newUsersTodayBySource?.unknown > 0 && (
+                    <div>❓ {stats.newUsersTodayBySource.unknown} Otros</div>
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
+                  Ayer: {stats.newUsersYesterday}
+                </div>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                <span className="text-lg sm:text-2xl">🏆</span>
+                <span className="text-lg sm:text-2xl">📝</span>
               </div>
             </div>
           </div>
@@ -944,6 +989,9 @@ export default function AdminDashboard() {
 
       {/* Gráfico de evolución temporal - Ancho completo */}
       <AdminActivityChart />
+
+      {/* Gráfico de registros por día */}
+      <AdminRegistrationsChart />
 
       {/* Gestión de Feedback e Impugnaciones - Movido arriba para mayor visibilidad */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-4 sm:p-6">

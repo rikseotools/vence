@@ -122,7 +122,9 @@ const TOPIC_TO_LAW = {
   'Tema_7._Correo_electronico': 'Correo electrónico',
   'Tema_7__Correo_electrónico': 'Correo electrónico',
   'Tema_8._La_Red_Internet': 'La Red Internet',
-  'Tema_8__La_Red_Internet': 'La Red Internet'
+  'Tema_8__La_Red_Internet': 'La Red Internet',
+  // C1 - Administrativo del Estado
+  'Tema_1,_Constitución_Española_de_1978': 'CE'
 };
 
 // Override de ley por subtema (cuando el subtema pertenece a otra ley diferente a la carpeta)
@@ -166,7 +168,13 @@ const SUBTEMA_TO_ARTICLE = {
   'origen, evolución y estado actual de internet': 'Origen, evolución y estado actual',
   'conceptos elementales sobre protocolos y servicios en internet': 'Conceptos elementales sobre protocolos',
   'funcionalidades básicas de los navegadores web': 'Funcionalidades básicas de los navegadores',
-  'atajos de teclado en navegadores': 'Atajos de teclado en navegadores'
+  'atajos de teclado en navegadores': 'Atajos de teclado en navegadores',
+  // C1 - Constitución Española (Tema 1)
+  'estructura y contenido de la constitución española': 'Estructura de la Constitucion',
+  'derechos y deberes fundamentales. su garantía y suspensión': 'De los derechos y deberes fundamentales',
+  'el tribunal constitucional': 'Del Tribunal Constitucional',
+  'el defensor del pueblo': 'Defensor del Pueblo',
+  'la reforma de la constitución española': 'De la reforma constitucional'
 };
 
 // Extraer subtema del campo topic
@@ -531,8 +539,10 @@ function getQuestionsFromTopic(topicName) {
     try {
       const data = JSON.parse(fs.readFileSync(path.join(topicPath, file), 'utf-8'));
       if (data.questions) {
+        // Usar subtema del archivo como topic para cada pregunta
+        const subtema = data.subtema || file.replace('.json', '').replace(/_/g, ' ');
         for (const q of data.questions) {
-          questions.push({ ...q, file });
+          questions.push({ ...q, file, topic: subtema });
         }
       }
     } catch (e) {}

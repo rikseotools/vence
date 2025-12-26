@@ -8,26 +8,26 @@ export default function OposicionesPage() {
   const { setOposicionActual, oposicionMenu, hasOposicion } = useOposicion()
   const [selectedOposicion, setSelectedOposicion] = useState(null)
 
-  // Datos de oposiciones disponibles
+  // Datos de oposiciones disponibles - Actualizados BOE 22/12/2025
   const oposiciones = [
     {
       id: 'auxiliar-administrativo-estado',
       name: 'Auxiliar Administrativo del Estado',
       shortName: 'Aux. Administrativo',
       badge: 'C2',
-      icon: '👨‍💼',
-      color: 'blue',
-      description: 'Oposición para trabajar en la Administración General del Estado como Auxiliar Administrativo.',
+      icon: '🏛️',
+      color: 'emerald',
+      description: 'Oposición para trabajar en la Administración General del Estado como Auxiliar Administrativo. Temario oficial publicado en BOE 22/12/2025.',
       category: 'Administración General',
       level: 'Grupo C, Subgrupo C2',
-      temarios: 16,
-      tests: 320,
+      temarios: 28,
+      tests: 500,
       difficulty: 'Intermedio',
       duration: '6-12 meses',
       salary: '18.000€ - 22.000€',
       features: [
-        'Temario completo actualizado',
-        'Tests por temas',
+        'Temario oficial BOE 2025 (28 temas)',
+        'Tests por temas y bloques',
         'Simulacros de examen',
         'Seguimiento de progreso',
         'Estadísticas detalladas'
@@ -35,9 +35,38 @@ export default function OposicionesPage() {
       requirements: [
         'Título de Graduado en ESO o equivalente',
         'Nacionalidad española o UE',
-        'No estar inhabilitado para el ejercicio público'
+        'Tener 16 años y no exceder edad jubilación'
       ],
       href: '/auxiliar-administrativo-estado'
+    },
+    {
+      id: 'administrativo-estado',
+      name: 'Administrativo del Estado',
+      shortName: 'Administrativo',
+      badge: 'C1',
+      icon: '🏢',
+      color: 'blue',
+      description: 'Oposición de mayor nivel para la Administración General del Estado. Temario oficial publicado en BOE 22/12/2025.',
+      category: 'Administración General',
+      level: 'Grupo C, Subgrupo C1',
+      temarios: 45,
+      tests: 800,
+      difficulty: 'Alto',
+      duration: '12-18 meses',
+      salary: '22.000€ - 28.000€',
+      features: [
+        'Temario oficial BOE 2025 (45 temas)',
+        'Tests por temas y bloques',
+        '6 bloques temáticos',
+        'Seguimiento de progreso',
+        'Estadísticas detalladas'
+      ],
+      requirements: [
+        'Título de Bachiller o Técnico',
+        'Nacionalidad española o UE',
+        'Tener 16 años y no exceder edad jubilación'
+      ],
+      href: '/administrativo-estado'
     }
   ]
 
@@ -139,8 +168,8 @@ export default function OposicionesPage() {
             Oposiciones Disponibles
           </h2>
           <p className="text-gray-600 mb-4 max-w-2xl mx-auto">
-            Actualmente ofrecemos preparación para la siguiente oposición. 
-            Próximamente añadiremos más opciones.
+            Preparación completa para las oposiciones de la Administración General del Estado.
+            Temarios actualizados según BOE 22/12/2025.
           </p>
           <div className="inline-flex items-center space-x-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm">
             <span>💡</span>
@@ -286,14 +315,12 @@ export default function OposicionesPage() {
               ¡Próximamente más oposiciones!
             </h3>
             <p className="text-purple-600 mb-6">
-              Estamos trabajando para añadir más oposiciones a nuestra plataforma. 
-              Pronto tendrás acceso a Guardia Civil, Policía Nacional, Correos y muchas más.
+              Estamos trabajando para añadir más oposiciones a nuestra plataforma.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-purple-500">
-              <span>👮‍♂️ Guardia Civil</span>
-              <span>🚔 Policía Nacional</span>
-              <span>📮 Correos</span>
-              <span>⚖️ Justicia</span>
+              <span>⚖️ Gestión Procesal</span>
+              <span>⚖️ Tramitación Procesal</span>
+              <span>⚖️ Auxilio Judicial</span>
             </div>
           </div>
         </div>

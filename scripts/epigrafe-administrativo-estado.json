@@ -1,0 +1,354 @@
+{
+  "oposicion": "Cuerpo General Administrativo de la Administración del Estado",
+  "grupo": "C1",
+  "fuenteOficial": "BOE núm. 306, Lunes 22 de diciembre de 2025",
+  "disposicion": "BOE-A-2025-26262",
+  "urlBOE": "https://www.boe.es/boe/dias/2025/12/22/pdfs/BOE-A-2025-26262.pdf",
+  "paginas": "170739-170741",
+  "totalTemas": 45,
+  "bloques": [
+    {
+      "numero": 1,
+      "nombre": "Organización del Estado y de la Administración pública",
+      "temasEnBloque": 11,
+      "temasGlobal": "1-11",
+      "temas": [
+        {
+          "numeroBloque": 1,
+          "numeroGlobal": 1,
+          "titulo": "La Constitución Española de 1978",
+          "epigrafe": "La Constitución Española de 1978: estructura y contenido. Derechos y deberes fundamentales. Su garantía y suspensión. El Tribunal Constitucional. El Defensor del Pueblo. Reforma de la Constitución."
+        },
+        {
+          "numeroBloque": 2,
+          "numeroGlobal": 2,
+          "titulo": "La Jefatura del Estado. La Corona",
+          "epigrafe": "La Jefatura del Estado. La Corona: funciones constitucionales del Rey. Sucesión y regencia."
+        },
+        {
+          "numeroBloque": 3,
+          "numeroGlobal": 3,
+          "titulo": "Las Cortes Generales",
+          "epigrafe": "Las Cortes Generales: composición, atribuciones y funcionamiento del Congreso de los Diputados y del Senado."
+        },
+        {
+          "numeroBloque": 4,
+          "numeroGlobal": 4,
+          "titulo": "El Poder Judicial",
+          "epigrafe": "El Poder Judicial. El Consejo General del Poder Judicial. El Tribunal Supremo. La organización judicial española."
+        },
+        {
+          "numeroBloque": 5,
+          "numeroGlobal": 5,
+          "titulo": "El Gobierno y la Administración",
+          "epigrafe": "El Gobierno y la Administración. El Presidente del Gobierno. El Consejo de Ministros. Designación, causas de cese y responsabilidad del Gobierno. Las funciones del Gobierno. Relaciones entre el Gobierno y las Cortes Generales."
+        },
+        {
+          "numeroBloque": 6,
+          "numeroGlobal": 6,
+          "titulo": "El Gobierno Abierto",
+          "epigrafe": "El Gobierno Abierto: concepto y principios informadores. La Agenda 2030 y los Objetivos de Desarrollo Sostenible."
+        },
+        {
+          "numeroBloque": 7,
+          "numeroGlobal": 7,
+          "titulo": "La Ley 19/2013 de transparencia",
+          "epigrafe": "La Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno."
+        },
+        {
+          "numeroBloque": 8,
+          "numeroGlobal": 8,
+          "titulo": "La Administración General del Estado",
+          "epigrafe": "La Administración General del Estado. Órganos centrales. Órganos superiores y directivos. Órganos territoriales. La Administración del Estado en el Exterior."
+        },
+        {
+          "numeroBloque": 9,
+          "numeroGlobal": 9,
+          "titulo": "La Organización territorial del Estado",
+          "epigrafe": "La Organización territorial del Estado: las Comunidades Autónomas. Constitución y distribución de competencias entre el Estado y las Comunidades Autónomas. Estatutos de Autonomía."
+        },
+        {
+          "numeroBloque": 10,
+          "numeroGlobal": 10,
+          "titulo": "La Administración local",
+          "epigrafe": "La Administración local: entidades que la integran. La provincia, el municipio y la isla."
+        },
+        {
+          "numeroBloque": 11,
+          "numeroGlobal": 11,
+          "titulo": "La organización de la Unión Europea",
+          "epigrafe": "La organización de la Unión Europea. El Consejo Europeo, el Consejo, el Parlamento Europeo, la Comisión Europea y el Tribunal de Justicia de la Unión Europea. Efectos de la integración europea sobre la organización del Estado español."
+        }
+      ]
+    },
+    {
+      "numero": 2,
+      "nombre": "Organización de oficinas públicas",
+      "temasEnBloque": 4,
+      "temasGlobal": "12-15",
+      "temas": [
+        {
+          "numeroBloque": 1,
+          "numeroGlobal": 12,
+          "titulo": "Atención al público",
+          "epigrafe": "Atención al público. Atención de personas con discapacidad. Los servicios de información administrativa. Información general y particular al ciudadano. Iniciativas. Reclamaciones. Quejas. Peticiones."
+        },
+        {
+          "numeroBloque": 2,
+          "numeroGlobal": 13,
+          "titulo": "Documento, registro y archivo",
+          "epigrafe": "Concepto de documento, registro y archivo. Funciones del registro y del archivo. Clases de archivo y criterios de ordenación."
+        },
+        {
+          "numeroBloque": 3,
+          "numeroGlobal": 14,
+          "titulo": "Administración electrónica",
+          "epigrafe": "Administración electrónica y servicios al ciudadano. Análisis de principales páginas web de carácter público. Servicios telemáticos. Oficinas integradas de atención al ciudadano. Ventanilla única empresarial. El Punto de Acceso General de la Administración General del Estado."
+        },
+        {
+          "numeroBloque": 4,
+          "numeroGlobal": 15,
+          "titulo": "Protección de datos personales",
+          "epigrafe": "La protección de datos personales y su régimen Jurídico: principios, derechos, responsable y encargado del tratamiento, delegado y autoridades de protección de datos. Derechos digitales."
+        }
+      ]
+    },
+    {
+      "numero": 3,
+      "nombre": "Derecho administrativo general",
+      "temasEnBloque": 7,
+      "temasGlobal": "16-22",
+      "temas": [
+        {
+          "numeroBloque": 1,
+          "numeroGlobal": 16,
+          "titulo": "Las fuentes del derecho administrativo",
+          "epigrafe": "Las fuentes del derecho administrativo. La jerarquía de las fuentes. La ley. Las disposiciones del Ejecutivo con fuerza de ley: decreto-ley y decreto legislativo. El reglamento: concepto, clases y límites. Otras fuentes del derecho administrativo."
+        },
+        {
+          "numeroBloque": 2,
+          "numeroGlobal": 17,
+          "titulo": "El acto administrativo",
+          "epigrafe": "El acto administrativo: concepto, clases y elementos. Eficacia y validez de los actos administrativos. Su motivación y notificación."
+        },
+        {
+          "numeroBloque": 3,
+          "numeroGlobal": 18,
+          "titulo": "Las Leyes del Procedimiento Administrativo",
+          "epigrafe": "Las Leyes del Procedimiento Administrativo Común de las Administraciones Públicas y del Régimen Jurídico del Sector Público. Procedimiento administrativo común y su alcance: iniciación, ordenación, instrucción y terminación. La revisión de los actos en vía administrativa: revisión de oficio y recursos administrativos. El recurso contencioso-administrativo. Actividad administrativa impugnable. Las partes: capacidad, legitimación, representación y defensa."
+        },
+        {
+          "numeroBloque": 4,
+          "numeroGlobal": 19,
+          "titulo": "Los contratos del sector público",
+          "epigrafe": "Los contratos del sector público: concepto y clases. Preparación, adjudicación, efectos, cumplimiento y extinción. La revisión de precios y otras alteraciones contractuales. Régimen de invalidez y recursos."
+        },
+        {
+          "numeroBloque": 5,
+          "numeroGlobal": 20,
+          "titulo": "Procedimientos y formas de la actividad administrativa",
+          "epigrafe": "Procedimientos y formas de la actividad administrativa. La actividad de limitación, arbitral, de servicio público y de fomento. Formas de gestión de los servicios públicos."
+        },
+        {
+          "numeroBloque": 6,
+          "numeroGlobal": 21,
+          "titulo": "La responsabilidad patrimonial",
+          "epigrafe": "La responsabilidad patrimonial de las Administraciones públicas. Concepto y clases. Requisitos generales. Efectos."
+        },
+        {
+          "numeroBloque": 7,
+          "numeroGlobal": 22,
+          "titulo": "Políticas de igualdad",
+          "epigrafe": "Políticas de igualdad y contra la violencia de género. Políticas de igualdad de trato y no discriminación de las personas LGTBI. Discapacidad y dependencia: régimen jurídico."
+        }
+      ]
+    },
+    {
+      "numero": 4,
+      "nombre": "Gestión de personal",
+      "temasEnBloque": 9,
+      "temasGlobal": "23-31",
+      "temas": [
+        {
+          "numeroBloque": 1,
+          "numeroGlobal": 23,
+          "titulo": "El personal al servicio de las Administraciones públicas",
+          "epigrafe": "El personal al servicio de las Administraciones públicas: concepto y clases. El texto refundido del Estatuto Básico del Empleado Público y demás normativa de aplicación. Las competencias en materia de personal. El Registro Central de Personal."
+        },
+        {
+          "numeroBloque": 2,
+          "numeroGlobal": 24,
+          "titulo": "Selección de personal",
+          "epigrafe": "Selección de personal. Los procesos selectivos en la Administración pública y su conexión con la Oferta de Empleo Público. Principios constitucionales. Acceso al empleo público y provisión de puestos de trabajo de las personas con discapacidad."
+        },
+        {
+          "numeroBloque": 3,
+          "numeroGlobal": 25,
+          "titulo": "El personal funcionario",
+          "epigrafe": "El personal funcionario al servicio de las Administraciones públicas: funcionarios de carrera y funcionarios interinos. La selección de los funcionarios."
+        },
+        {
+          "numeroBloque": 4,
+          "numeroGlobal": 26,
+          "titulo": "Adquisición y pérdida de la condición de funcionario",
+          "epigrafe": "Adquisición y pérdida de la condición de funcionario. Situaciones administrativas de los funcionarios. Supuestos y efectos de cada una de ellas."
+        },
+        {
+          "numeroBloque": 5,
+          "numeroGlobal": 27,
+          "titulo": "Provisión de puestos de trabajo",
+          "epigrafe": "Provisión de puestos de trabajo en la función pública. Los deberes y derechos de los funcionarios. La carrera administrativa. Promoción interna."
+        },
+        {
+          "numeroBloque": 6,
+          "numeroGlobal": 28,
+          "titulo": "Las incompatibilidades y régimen disciplinario",
+          "epigrafe": "Las incompatibilidades. Régimen disciplinario: faltas, sanciones y procedimiento."
+        },
+        {
+          "numeroBloque": 7,
+          "numeroGlobal": 29,
+          "titulo": "El régimen de la Seguridad Social de los funcionarios",
+          "epigrafe": "El régimen de la Seguridad Social de los funcionarios. La MUFACE y las clases pasivas."
+        },
+        {
+          "numeroBloque": 8,
+          "numeroGlobal": 30,
+          "titulo": "El personal laboral",
+          "epigrafe": "El personal laboral al servicio de las Administraciones públicas. Selección. Derechos, deberes e incompatibilidades. El IV Convenio único para el personal laboral de la Administración General del Estado: ámbito de aplicación y sistema de clasificación."
+        },
+        {
+          "numeroBloque": 9,
+          "numeroGlobal": 31,
+          "titulo": "El régimen de la Seguridad Social del personal laboral",
+          "epigrafe": "El régimen de la Seguridad Social del personal laboral. La acción protectora. Tipos y características de las prestaciones."
+        }
+      ]
+    },
+    {
+      "numero": 5,
+      "nombre": "Gestión financiera",
+      "temasEnBloque": 6,
+      "temasGlobal": "32-37",
+      "temas": [
+        {
+          "numeroBloque": 1,
+          "numeroGlobal": 32,
+          "titulo": "El presupuesto",
+          "epigrafe": "El presupuesto: concepto. Los principios presupuestarios. El ciclo presupuestario. El presupuesto por programas: concepto y fases. Terminología y desarrollo del proceso presupuestario."
+        },
+        {
+          "numeroBloque": 2,
+          "numeroGlobal": 33,
+          "titulo": "El presupuesto del Estado en España",
+          "epigrafe": "El presupuesto del Estado en España: concepto y estructura. Los créditos presupuestarios: clasificación. Gastos plurianuales. Las modificaciones presupuestarias: créditos extraordinarios y suplementos de crédito. Ampliaciones de crédito. Generaciones de crédito. Transferencias de crédito. Incorporaciones de crédito. Anticipos de tesorería."
+        },
+        {
+          "numeroBloque": 3,
+          "numeroGlobal": 34,
+          "titulo": "El procedimiento administrativo de ejecución del presupuesto de gasto",
+          "epigrafe": "El procedimiento administrativo de ejecución del presupuesto de gasto. Órganos competentes. Fases del procedimiento y sus documentos contables. Compromisos de gasto para ejercicios posteriores. La ordenación del pago: concepto y competencia. Realización del pago: modos y perceptores. Control del gasto público. Clases. Especial referencia al control de legalidad. El Tribunal de Cuentas."
+        },
+        {
+          "numeroBloque": 4,
+          "numeroGlobal": 35,
+          "titulo": "Las retribuciones e indemnizaciones",
+          "epigrafe": "Las retribuciones e indemnizaciones de los funcionarios públicos y del personal laboral al servicio de la Administración pública. Nóminas: estructura y normas de confección. Altas y bajas: su justificación. Retribuciones básicas: sueldos, trienios, pagas extraordinarias. Retribuciones complementarias y otras remuneraciones. Devengo y liquidación de derechos económicos. El pago de las retribuciones del personal en activo. Formas de pago."
+        },
+        {
+          "numeroBloque": 5,
+          "numeroGlobal": 36,
+          "titulo": "Gastos para la compra de bienes y servicios",
+          "epigrafe": "Gastos para la compra de bienes y servicios. Gastos de inversión. Gastos de transferencias: corrientes y de capital. Pagos: concepto y tipos. Pagos por obligaciones presupuestarias. Anticipos de caja fija. Pagos «a justificar». Justificación de libramientos."
+        },
+        {
+          "numeroBloque": 6,
+          "numeroGlobal": 37,
+          "titulo": "Gestión económica y financiera",
+          "epigrafe": "Gestión económica y financiera de los contratos del sector público. Gestión económica y financiera de subvenciones."
+        }
+      ]
+    },
+    {
+      "numero": 6,
+      "nombre": "Informática básica y ofimática",
+      "temasEnBloque": 8,
+      "temasGlobal": "38-45",
+      "temas": [
+        {
+          "numeroBloque": 1,
+          "numeroGlobal": 38,
+          "titulo": "Informática básica",
+          "epigrafe": "Informática básica: conceptos fundamentales sobre el hardware y el software. Sistemas de almacenamiento de datos. Sistemas operativos. Nociones básicas de seguridad informática."
+        },
+        {
+          "numeroBloque": 2,
+          "numeroGlobal": 39,
+          "titulo": "Sistema operativo Windows",
+          "epigrafe": "Introducción al sistema operativo: el entorno Windows. Fundamentos. Trabajo en el entorno gráfico de Windows: ventanas, iconos, menús contextuales, cuadros de diálogo. El escritorio y sus elementos. El menú inicio. Copilot."
+        },
+        {
+          "numeroBloque": 3,
+          "numeroGlobal": 40,
+          "titulo": "El explorador de Windows",
+          "epigrafe": "El explorador de Windows. Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas «Este equipo» y «Acceso rápido». Accesorios. Herramientas del sistema."
+        },
+        {
+          "numeroBloque": 4,
+          "numeroGlobal": 41,
+          "titulo": "Procesadores de texto: Word 365",
+          "epigrafe": "Procesadores de texto: Word 365. Principales funciones y utilidades. Creación y estructuración del documento. Gestión, grabación, recuperación e impresión de ficheros. Personalización del entorno de trabajo."
+        },
+        {
+          "numeroBloque": 5,
+          "numeroGlobal": 42,
+          "titulo": "Hojas de cálculo: Excel 365",
+          "epigrafe": "Hojas de cálculo: Excel 365. Principales funciones y utilidades. Libros, hojas y celdas. Configuración. Introducción y edición de datos. Fórmulas y funciones. Gráficos. Gestión de datos. Personalización del entorno de trabajo."
+        },
+        {
+          "numeroBloque": 6,
+          "numeroGlobal": 43,
+          "titulo": "Bases de datos: Access 365",
+          "epigrafe": "Bases de datos: Access 365. Principales funciones y utilidades. Tablas. Consultas. Formularios. Informes. Relaciones. Importación, vinculación y exportación de datos."
+        },
+        {
+          "numeroBloque": 7,
+          "numeroGlobal": 44,
+          "titulo": "Correo electrónico: Outlook 365",
+          "epigrafe": "Correo electrónico: Outlook 365. Conceptos elementales y funcionamiento. El entorno de trabajo. Enviar, recibir, responder y reenviar mensajes. Creación de mensajes. Reglas de mensaje. Libreta de direcciones."
+        },
+        {
+          "numeroBloque": 8,
+          "numeroGlobal": 45,
+          "titulo": "La Red Internet",
+          "epigrafe": "La Red Internet: origen, evolución y estado actual. Conceptos elementales sobre protocolos y servicios en Internet. Funcionalidades básicas de los navegadores web."
+        }
+      ]
+    }
+  ],
+  "resumen": {
+    "totalBloques": 6,
+    "totalTemas": 45,
+    "distribucion": {
+      "bloqueI": 11,
+      "bloqueII": 4,
+      "bloqueIII": 7,
+      "bloqueIV": 9,
+      "bloqueV": 6,
+      "bloqueVI": 8
+    }
+  },
+  "novedades2025": [
+    "Bloque III Tema 7: Incluye políticas LGTBI (nuevo)",
+    "Bloque VI Tema 2: Incluye Copilot (asistente IA de Windows)",
+    "Bloque VI: Actualización a Microsoft 365 (antes Office)"
+  ],
+  "notas": [
+    "FUENTE OFICIAL: BOE núm. 306, 22/12/2025 - Disposición 26262",
+    "Este JSON es la referencia autoritativa para la estructura de temas",
+    "La numeración global (1-45) es la usada en la app",
+    "La numeración por bloque es la que aparece en el BOE",
+    "Cualquier discrepancia con OpositaTest debe resolverse a favor del BOE"
+  ],
+  "fechaActualizacion": "2025-12-25"
+}

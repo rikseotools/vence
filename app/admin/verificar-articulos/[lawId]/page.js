@@ -253,6 +253,11 @@ export default function VerificarArticulosPage() {
   const [updating, setUpdating] = useState(false)
   const [updateResults, setUpdateResults] = useState(null)
 
+  // Estados para añadir artículos faltantes
+  const [selectedMissingArticles, setSelectedMissingArticles] = useState(new Set())
+  const [addingMissing, setAddingMissing] = useState(false)
+  const [addMissingResults, setAddMissingResults] = useState(null)
+
   // Estados para selección de preguntas para IA
   const [selectedQuestions, setSelectedQuestions] = useState(new Set())
   // Configuración de modelos cargada desde la API
@@ -740,6 +745,124 @@ export default function VerificarArticulosPage() {
     }
   }
 
+  // Añadir artículos faltantes desde BOE
+  const addMissingArticles = async () => {
+    if (selectedMissingArticles.size === 0) {
+      setError('Selecciona al menos un artículo para añadir')
+      return
+    }
+
+    try {
+      setAddingMissing(true)
+      setError(null)
+
+      const response = await fetch('/api/verify-articles/add-missing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lawId,
+          articleNumbers: Array.from(selectedMissingArticles)
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setAddMissingResults(data)
+        setSelectedMissingArticles(new Set())
+
+        // Re-verificar para actualizar el resumen
+        const verifyResponse = await fetch(`/api/verify-articles?lawId=${lawId}&_t=${Date.now()}`, {
+          cache: 'no-store'
+        })
+        const verifyData = await verifyResponse.json()
+        if (verifyData.success) {
+          setVerificationResults(verifyData)
+        }
+      } else {
+        setError(data.error || 'Error añadiendo artículos')
+      }
+    } catch (err) {
+      setError('Error conectando con el servidor')
+    } finally {
+      setAddingMissing(false)
+    }
+  }
+
+  // Toggle selección de artículo faltante
+  const toggleMissingArticle = (articleNumber) => {
+    const newSet = new Set(selectedMissingArticles)
+    if (newSet.has(articleNumber)) {
+      newSet.delete(articleNumber)
+    } else {
+      newSet.add(articleNumber)
+    }
+    setSelectedMissingArticles(newSet)
+  }
+
+  // Seleccionar todos los artículos faltantes
+  const selectAllMissingArticles = () => {
+    const details = verificationResults?.comparison?.details
+    if (!details?.missing_in_db) return
+    const allMissing = details.missing_in_db.map(a => a.article_number)
+    setSelectedMissingArticles(new Set(allMissing))
+  }
+
+  // Añadir TODOS los artículos faltantes (desde paso 0, sin necesidad de seleccionar)
+  const addAllMissingArticles = async () => {
+    try {
+      setAddingMissing(true)
+      setError(null)
+      setAddMissingResults(null)
+
+      // Primero obtener la lista actualizada de artículos faltantes
+      const verifyResponse = await fetch(`/api/verify-articles?lawId=${lawId}&_t=${Date.now()}`, {
+        cache: 'no-store'
+      })
+      const verifyData = await verifyResponse.json()
+
+      if (!verifyData.success) {
+        setError('Error obteniendo lista de artículos faltantes')
+        return
+      }
+
+      const missingArticles = verifyData.comparison?.details?.missing_in_db || []
+      if (missingArticles.length === 0) {
+        setError('No hay artículos faltantes para añadir')
+        return
+      }
+
+      // Añadir todos los artículos faltantes
+      const response = await fetch('/api/verify-articles/add-missing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lawId,
+          articleNumbers: missingArticles.map(a => a.article_number)
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setAddMissingResults(data)
+
+        // Actualizar el resumen guardado
+        const statsResponse = await fetch('/api/verify-articles/stats-by-law')
+        const statsData = await statsResponse.json()
+        if (statsData.success && statsData.stats[lawId]) {
+          setSavedVerification(statsData.stats[lawId])
+        }
+      } else {
+        setError(data.error || 'Error añadiendo artículos')
+      }
+    } catch (err) {
+      setError('Error conectando con el servidor')
+    } finally {
+      setAddingMissing(false)
+    }
+  }
+
   // Verificar artículos después de actualizar
   const verifyUpdatedArticles = async () => {
     const articleNumbers = updateResults?.updated?.map(u => u.article_number) || []
@@ -944,6 +1067,9 @@ export default function VerificarArticulosPage() {
     }
     if (filter === 'all' || filter === 'extra_in_db') {
       result = [...result, ...(details.extra_in_db || []).map(a => ({ ...a, type: 'extra_in_db' }))]
+    }
+    if (filter === 'all' || filter === 'missing_in_db') {
+      result = [...result, ...(details.missing_in_db || []).map(a => ({ ...a, type: 'missing_in_db' }))]
     }
     if (filter === 'matching') {
       result = [...result, ...(details.matching || []).map(a => ({ ...a, type: 'matching' }))]
@@ -1810,7 +1936,7 @@ export default function VerificarArticulosPage() {
                 </div>
 
                 {/* Botones de acción */}
-                <div className="flex justify-center gap-4">
+                <div className="flex flex-wrap justify-center gap-4">
                   <button
                     onClick={() => runVerificationAndGoToStep(1)}
                     disabled={verifying}
@@ -1845,7 +1971,39 @@ export default function VerificarArticulosPage() {
                       </>
                     )}
                   </button>
+                  {/* Botón para añadir todos los artículos faltantes */}
+                  {savedVerification?.summary?.missing_in_db > 0 && (
+                    <button
+                      onClick={addAllMissingArticles}
+                      disabled={addingMissing}
+                      className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                    >
+                      {addingMissing ? (
+                        <>
+                          <Spinner size="sm" />
+                          <span>Añadiendo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>➕</span>
+                          <span>Añadir {savedVerification.summary.missing_in_db} artículos faltantes</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
+                {/* Mensaje de éxito al añadir artículos */}
+                {addMissingResults && (
+                  <div className="mt-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex items-center justify-center gap-2 text-green-700 dark:text-green-300">
+                      <span>✅</span>
+                      <span>Se añadieron {addMissingResults.added} artículos a la base de datos</span>
+                      {addMissingResults.skipped > 0 && (
+                        <span className="text-sm text-gray-500">({addMissingResults.skipped} ya existían)</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               // No hay verificación previa - mostrar pantalla inicial
@@ -1923,6 +2081,14 @@ export default function VerificarArticulosPage() {
                   </div>
                   <div className="text-xs text-red-700 dark:text-red-300">Extra BD</div>
                 </div>
+                {summary.missing_in_db > 0 && (
+                  <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4 text-center">
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                      {summary.missing_in_db}
+                    </div>
+                    <div className="text-xs text-purple-700 dark:text-purple-300">Faltan en BD</div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 text-center">
@@ -1978,6 +2144,7 @@ export default function VerificarArticulosPage() {
                       <option value="title_mismatch">Títulos diferentes</option>
                       <option value="content_mismatch">Solo contenido diferente</option>
                       <option value="extra_in_db">Artículos extra en BD</option>
+                      <option value="missing_in_db">Faltan en BD</option>
                       <option value="matching">✅ Coincidentes (OK)</option>
                     </select>
                   </div>
@@ -2033,12 +2200,23 @@ export default function VerificarArticulosPage() {
                   >
                     Seleccionar actualizables
                   </button>
+                  {verificationResults?.comparison?.details?.missing_in_db?.length > 0 && (
+                    <>
+                      <span className="text-gray-300 dark:text-gray-600">|</span>
+                      <button
+                        onClick={selectAllMissingArticles}
+                        className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                      >
+                        Seleccionar faltantes ({verificationResults.comparison.details.missing_in_db.length})
+                      </button>
+                    </>
+                  )}
                   <span className="text-gray-300 dark:text-gray-600">|</span>
                   <button
-                    onClick={deselectAllArticles}
+                    onClick={() => { deselectAllArticles(); setSelectedMissingArticles(new Set()) }}
                     className="text-sm text-gray-600 hover:text-gray-700 dark:text-gray-400"
                   >
-                    Deseleccionar
+                    Deseleccionar todo
                   </button>
                 </div>
               </div>
@@ -2047,10 +2225,20 @@ export default function VerificarArticulosPage() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Selecciona artículos para actualizar ({selectedArticles.size} seleccionados)
+                  Selecciona artículos
+                  {selectedArticles.size > 0 && (
+                    <span className="ml-2 text-sm font-normal text-blue-600 dark:text-blue-400">
+                      ({selectedArticles.size} para actualizar)
+                    </span>
+                  )}
+                  {selectedMissingArticles.size > 0 && (
+                    <span className="ml-2 text-sm font-normal text-purple-600 dark:text-purple-400">
+                      ({selectedMissingArticles.size} para añadir)
+                    </span>
+                  )}
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Selecciona artículos para actualizar desde el BOE. Usa el filtro para ver también los coincidentes.
+                  Selecciona artículos para actualizar desde el BOE o añadir los que faltan en la BD.
                 </p>
               </div>
 
@@ -2064,18 +2252,20 @@ export default function VerificarArticulosPage() {
                 ) : (
                   filteredDiscrepancies.map((art) => {
                     const canUpdate = (art.type === 'title_mismatch' || art.type === 'content_mismatch' || art.type === 'matching') && art.db_id
+                    const isMissing = art.type === 'missing_in_db'
                     const isMatching = art.type === 'matching'
+                    const isClickable = canUpdate || isMissing
                     return (
                       <label
                         key={`${art.type}-${art.article_number}`}
-                        className={`flex items-start p-4 ${canUpdate ? 'hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer' : 'opacity-60'}`}
+                        className={`flex items-start p-4 ${isClickable ? 'hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer' : 'opacity-60'}`}
                       >
                         <input
                           type="checkbox"
-                          checked={selectedArticles.has(art.article_number)}
-                          onChange={() => canUpdate && toggleArticleSelection(art.article_number)}
-                          disabled={!canUpdate}
-                          className="mt-1 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50"
+                          checked={isMissing ? selectedMissingArticles.has(art.article_number) : selectedArticles.has(art.article_number)}
+                          onChange={() => isMissing ? toggleMissingArticle(art.article_number) : (canUpdate && toggleArticleSelection(art.article_number))}
+                          disabled={!isClickable}
+                          className={`mt-1 h-4 w-4 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50 ${isMissing ? 'text-purple-600' : 'text-blue-600'}`}
                         />
                         <div className="ml-3 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
@@ -2090,9 +2280,11 @@ export default function VerificarArticulosPage() {
                                   ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
                                   : art.type === 'content_mismatch'
                                     ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
-                                    : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                                    : art.type === 'missing_in_db'
+                                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+                                      : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
                             }`}>
-                              {art.type === 'matching' ? '✓ Coincide' : art.type === 'title_mismatch' ? 'Título diferente' : art.type === 'content_mismatch' ? 'Contenido diferente' : 'Extra en BD'}
+                              {art.type === 'matching' ? '✓ Coincide' : art.type === 'title_mismatch' ? 'Título diferente' : art.type === 'content_mismatch' ? 'Contenido diferente' : art.type === 'missing_in_db' ? 'Falta en BD' : 'Extra en BD'}
                             </span>
                             {/* Estado del contenido - siempre mostrar para title_mismatch */}
                             {art.type === 'title_mismatch' && (
@@ -2178,6 +2370,24 @@ export default function VerificarArticulosPage() {
                               Este artículo no está en el BOE (puede estar derogado)
                             </div>
                           )}
+                          {/* Detalles para missing_in_db */}
+                          {art.type === 'missing_in_db' && (
+                            <div className="mt-2 text-sm space-y-1">
+                              {art.boe_title && (
+                                <div className="text-purple-700 dark:text-purple-300 font-medium">
+                                  {art.boe_title}
+                                </div>
+                              )}
+                              {art.boe_content_preview && (
+                                <div className="text-xs text-gray-500 bg-purple-50 dark:bg-purple-900/20 p-2 rounded">
+                                  {art.boe_content_preview}
+                                </div>
+                              )}
+                              <div className="text-xs text-purple-600 dark:text-purple-400">
+                                Este artículo existe en el BOE pero no está en nuestra base de datos
+                              </div>
+                            </div>
+                          )}
                           {/* Botón para ver comparación completa */}
                           {(art.type === 'title_mismatch' || art.type === 'content_mismatch') && (
                             <button
@@ -2199,30 +2409,66 @@ export default function VerificarArticulosPage() {
               </div>
             </div>
 
-            <div className="flex justify-between">
+            {/* Mensaje de éxito al añadir artículos */}
+            {addMissingResults && (
+              <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
+                  <span>✅</span>
+                  <span>Se añadieron {addMissingResults.added} artículos a la base de datos</span>
+                  {addMissingResults.skipped > 0 && (
+                    <span className="text-sm text-gray-500">({addMissingResults.skipped} ya existían)</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between flex-wrap gap-4">
               <button
                 onClick={goBack}
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 ← Volver al resumen
               </button>
-              <button
-                onClick={updateTitlesInDB}
-                disabled={selectedArticles.size === 0 || updating}
-                className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-              >
-                {updating ? (
-                  <>
-                    <Spinner size="sm" />
-                    <span>Actualizando...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>✏️</span>
-                    <span>Actualizar {selectedArticles.size} artículos en BD →</span>
-                  </>
+              <div className="flex gap-3">
+                {/* Botón para añadir artículos faltantes */}
+                {selectedMissingArticles.size > 0 && (
+                  <button
+                    onClick={addMissingArticles}
+                    disabled={addingMissing}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                  >
+                    {addingMissing ? (
+                      <>
+                        <Spinner size="sm" />
+                        <span>Añadiendo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>➕</span>
+                        <span>Añadir {selectedMissingArticles.size} artículos a BD</span>
+                      </>
+                    )}
+                  </button>
                 )}
-              </button>
+                {/* Botón para actualizar artículos existentes */}
+                <button
+                  onClick={updateTitlesInDB}
+                  disabled={selectedArticles.size === 0 || updating}
+                  className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                >
+                  {updating ? (
+                    <>
+                      <Spinner size="sm" />
+                      <span>Actualizando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✏️</span>
+                      <span>Actualizar {selectedArticles.size} artículos en BD →</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
