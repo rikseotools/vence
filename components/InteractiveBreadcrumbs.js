@@ -1,14 +1,35 @@
 // components/InteractiveBreadcrumbs.js
 'use client'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
+import { getSupabaseClient } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
+
+const supabase = getSupabaseClient()
 
 export default function InteractiveBreadcrumbs({ customLabels = {}, className = "" }) {
   const pathname = usePathname()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [openDropdown, setOpenDropdown] = useState(null)
+  const [toast, setToast] = useState(null)
+  const { user } = useAuth()
+
+  // Detectar si venimos de un cambio de oposición (query param)
+  useEffect(() => {
+    const changedTo = searchParams.get('oposicionCambiada')
+    if (changedTo) {
+      setToast(`🎯 Oposición cambiada a ${changedTo}`)
+      // Limpiar el query param de la URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('oposicionCambiada')
+      window.history.replaceState({}, '', url.pathname)
+      // Ocultar después de 3 segundos
+      setTimeout(() => setToast(null), 3000)
+    }
+  }, [searchParams])
   
   // Mapeo de rutas a etiquetas legibles
   const defaultLabels = {
@@ -26,12 +47,22 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   // Combinar etiquetas por defecto con personalizadas
   const labels = { ...defaultLabels, ...customLabels }
 
+  // Detectar la sección actual (test, temario, etc.)
+  const getCurrentSection = () => {
+    if (pathname.includes('/test')) return '/test'
+    if (pathname.includes('/temario')) return '/temario'
+    if (pathname.includes('/simulacros')) return '/simulacros'
+    return '' // Ir a la página principal de la oposición
+  }
+
   // Opciones disponibles para cambiar de oposición/sección
+  // oposicionId corresponde a las claves en OPOSICION_MENUS del contexto
+  const currentSection = getCurrentSection()
   const oppositionOptions = [
-    { key: 'auxiliar-administrativo-estado', label: '👤 Auxiliar Administrativo Estado', path: '/auxiliar-administrativo-estado' },
-    { key: 'administrativo', label: '👨‍💼 Administrativo del Estado', path: '/administrativo-estado' },
-    { key: 'leyes', label: '⚖️ Leyes', path: '/leyes' },
-    { key: 'teoria', label: '📖 Teoría', path: '/teoria' }
+    { key: 'auxiliar-administrativo-estado', label: '👤 Auxiliar Administrativo Estado', path: `/auxiliar-administrativo-estado${currentSection}`, oposicionId: 'auxiliar_administrativo_estado' },
+    { key: 'administrativo', label: '👨‍💼 Administrativo del Estado', path: `/administrativo-estado${currentSection}`, oposicionId: 'administrativo_estado' },
+    { key: 'leyes', label: '⚖️ Leyes', path: '/leyes', oposicionId: null }, // No es oposición
+    { key: 'teoria', label: '📖 Teoría', path: '/teoria', oposicionId: null } // No es oposición
   ]
 
   // Opciones de sección específicas según contexto
@@ -127,12 +158,62 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     return null
   }
 
+  // Nombres legibles para las oposiciones
+  const OPOSICION_NAMES = {
+    'auxiliar_administrativo_estado': 'Auxiliar Administrativo',
+    'administrativo_estado': 'Administrativo del Estado',
+    'gestion_procesal': 'Gestión Procesal'
+  }
+
   // Función para cambiar de oposición (va a la página principal de la nueva oposición)
-  const changeOpposition = (newOppositionPath) => {
-    // Ir directamente a la página principal de la nueva oposición
-    // No intentar mantener la sección actual porque no todas las oposiciones tienen las mismas secciones
-    router.push(newOppositionPath)
+  const changeOpposition = async (option) => {
+    console.log('🔄 changeOpposition llamado:', option)
     setOpenDropdown(null)
+
+    // Si es una oposición válida (no Leyes/Teoría), actualizar el perfil PRIMERO
+    if (option.oposicionId && user) {
+      console.log('📝 Actualizando oposición directamente en BD para user:', user.id)
+
+      try {
+        const oposicionName = OPOSICION_NAMES[option.oposicionId] || 'Nueva Oposición'
+        const newOposicionData = {
+          id: option.oposicionId,
+          name: oposicionName
+        }
+
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .update({
+            target_oposicion: option.oposicionId,
+            target_oposicion_data: JSON.stringify(newOposicionData),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+          .select()
+
+        console.log('📊 Resultado update:', { data, error, userId: user.id })
+
+        if (error) {
+          console.error('❌ Error actualizando oposición:', error.message || error.code || JSON.stringify(error))
+        } else if (!data || data.length === 0) {
+          console.warn('⚠️ Update no afectó ninguna fila - verificar user_id:', user.id)
+        } else {
+          console.log('✅ Oposición actualizada en BD:', option.oposicionId)
+
+          // Disparar evento para que otros componentes recarguen
+          window.dispatchEvent(new CustomEvent('oposicionAssigned'))
+
+          // Navegar con query param para mostrar feedback en la nueva página
+          router.push(`${option.path}?oposicionCambiada=${encodeURIComponent(oposicionName)}`)
+          return
+        }
+      } catch (err) {
+        console.error('❌ Error en changeOpposition:', err)
+      }
+    }
+
+    // Navegar inmediatamente si no hay usuario, no es oposición, o hubo error
+    router.push(option.path)
   }
 
   // Función para cambiar de sección manteniendo la oposición actual
@@ -215,15 +296,19 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     {oppositionOptions.map((option) => (
                       <button
                         key={option.key}
-                        onClick={() => changeOpposition(option.path)}
+                        onClick={() => changeOpposition(option)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-colors text-sm"
                       >
                         {option.label}
+                        {option.oposicionId && (
+                          <span className="text-xs text-gray-400 ml-2">(objetivo)</span>
+                        )}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
+
             </li>
           )}
 
@@ -344,11 +429,19 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
       {/* Overlay para cerrar dropdowns */}
       {openDropdown && (
-        <div 
-          className="fixed inset-0 z-40" 
+        <div
+          className="fixed inset-0 z-40"
           onClick={() => setOpenDropdown(null)}
         />
       )}
+
+      {/* Toast de confirmación */}
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg">
+          {toast}
+        </div>
+      )}
+
     </nav>
   )
 }

@@ -14,6 +14,7 @@ import '@/lib/debug/medalDebug' // Cargar funciones de debug
 import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
+import { useUserOposicion } from '../components/useUserOposicion'
 // import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 
@@ -31,6 +32,7 @@ export default function HeaderES() {
 
   const { user, loading: authLoading, supabase, isPremium, isLegacy, userProfile } = useAuth()
   const oposicionContext = useOposicion()
+  const { userOposicion: hookUserOposicion } = useUserOposicion() // Hook que SÍ funciona
   const adminNotifications = useAdminNotifications()
   
   // Valores por defecto seguros
@@ -259,17 +261,17 @@ export default function HeaderES() {
     setIsMobileMenuOpen(!isMobileMenuOpen)
   }
 
-  // Función para obtener el enlace a tests de la oposición
+  // Función para obtener el enlace a tests de la oposición objetivo
   const getTestsLink = () => {
-    if (!user || !hasOposicion || loading) return '/auxiliar-administrativo-estado/test'
-    
-    try {
-      const featuredLink = oposicionMenu?.navLinks?.find(link => link?.featured)
-      const basePath = featuredLink?.href || '/auxiliar-administrativo-estado'
-      return `${basePath}/test`
-    } catch (error) {
-      return '/auxiliar-administrativo-estado/test'
+    // Usar el hook que SÍ funciona
+    const oposicionId = hookUserOposicion?.id
+
+    if (oposicionId === 'administrativo_estado') {
+      return '/administrativo-estado/test'
     }
+
+    // Por defecto: auxiliar administrativo (o cualquier otra oposición no disponible)
+    return '/auxiliar-administrativo-estado/test'
   }
 
   // Obtener color dinámico
@@ -687,17 +689,26 @@ export default function HeaderES() {
         )}
       </header>
 
-      {/* Notificación de bienvenida */}
-      {showNotification && notificationData?.name && (
-        <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white px-4 py-3 text-center relative">
+      {/* Notificación de cambio de oposición */}
+      {showNotification && (notificationData?.name || notificationData?.message) && (
+        <div className={`${
+          notificationData.type === 'oposicionChanged'
+            ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
+            : 'bg-gradient-to-r from-emerald-500 to-cyan-500'
+        } text-white px-4 py-3 text-center relative`}>
           <div className="flex items-center justify-center space-x-2">
-            <span className="text-xl">🎉</span>
+            <span className="text-xl">{notificationData.type === 'oposicionChanged' ? '🎯' : '🎉'}</span>
             <span className="font-medium">
-              ¡Perfecto! Ahora estudias: <strong>{notificationData.name}</strong>
+              {notificationData.type === 'oposicionChanged'
+                ? (notificationData.message || <>Tu oposición objetivo se ha cambiado a <strong>{notificationData.name}</strong></>)
+                : <>¡Perfecto! Ahora estudias: <strong>{notificationData.name}</strong></>
+              }
             </span>
-            <span className="text-sm opacity-90">• Acceso rápido activado</span>
+            {notificationData.type !== 'oposicionChanged' && (
+              <span className="text-sm opacity-90">• Acceso rápido activado</span>
+            )}
           </div>
-          <button 
+          <button
             onClick={dismissNotification}
             className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-200"
           >

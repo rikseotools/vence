@@ -3,6 +3,7 @@
 
 'use client'
 import { createContext, useContext, useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { getSupabaseClient } from '../lib/supabase'
 import { useAuth } from './AuthContext' // ← USAR AuthContext
 
@@ -83,6 +84,7 @@ const OposicionContext = createContext({
 // 🎯 Provider del contexto - ARREGLADO PARA USAR AuthContext
 export function OposicionProvider({ children }) {
   const { user, loading: authLoading } = useAuth() // ← USAR AuthContext
+  const pathname = usePathname() // Para detectar cambios de ruta
   const [userOposicion, setUserOposicion] = useState(null)
   const [oposicionMenu, setOposicionMenu] = useState(DEFAULT_MENU)
   const [loading, setLoading] = useState(true)
@@ -104,23 +106,29 @@ export function OposicionProvider({ children }) {
         }
 
         // 2. Cargar oposición asignada
+        console.log('🔍 Buscando oposición para user.id:', user.id)
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('target_oposicion, target_oposicion_data')
-          .eq('user_id', user.id)
+          .eq('id', user.id)
           .single()
 
+        console.log('🔍 Resultado query:', { profile, profileError })
+
         if (profileError || !profile?.target_oposicion) {
-          console.log('📋 Usuario sin oposición asignada - usando menú genérico')
+          console.log('📋 Usuario sin oposición asignada - usando menú genérico', { profileError, target_oposicion: profile?.target_oposicion })
           setUserOposicion(null)
           setOposicionMenu(DEFAULT_MENU)
         } else {
           // 3. Usuario con oposición asignada
           const oposicionId = profile.target_oposicion
-          const oposicionData = profile.target_oposicion_data ? 
-            JSON.parse(profile.target_oposicion_data) : null
+          const oposicionData = profile.target_oposicion_data ?
+            (typeof profile.target_oposicion_data === 'string'
+              ? JSON.parse(profile.target_oposicion_data)
+              : profile.target_oposicion_data)
+            : null
 
-          console.log('✅ Oposición del usuario:', oposicionId)
+          console.log('✅ Oposición del usuario:', oposicionId, 'Data:', oposicionData)
 
           setUserOposicion(oposicionData)
           
@@ -142,20 +150,20 @@ export function OposicionProvider({ children }) {
     if (!authLoading) {
       loadUserOposicion()
     }
-  }, [user, authLoading]) // ← DEPENDER DE user Y authLoading
+  }, [user, authLoading, pathname]) // Recargar también cuando cambia la ruta
 
-  // Resto del código sin cambios...
+  // Verificar si hay notificación de cambio de oposición pendiente
   useEffect(() => {
+    // Notificación de onboarding (asignación inicial)
     const newAssignment = localStorage.getItem('newOposicionAssigned')
-    
     if (newAssignment) {
       const data = JSON.parse(newAssignment)
       const timeDiff = Date.now() - data.timestamp
-      
+
       if (timeDiff < 5 * 60 * 1000) {
         setShowNotification(true)
         setNotificationData(data)
-        
+
         setTimeout(() => {
           localStorage.removeItem('newOposicionAssigned')
           setShowNotification(false)
@@ -164,15 +172,50 @@ export function OposicionProvider({ children }) {
         localStorage.removeItem('newOposicionAssigned')
       }
     }
-  }, [])
 
-  const changeOposicion = async (newOposicionId) => {
-    if (!user) return false
+    // Notificación de cambio de oposición desde breadcrumbs
+    const oposicionChanged = localStorage.getItem('oposicionChanged')
+    console.log('🔔 Verificando localStorage oposicionChanged:', oposicionChanged)
+    if (oposicionChanged) {
+      const data = JSON.parse(oposicionChanged)
+      const timeDiff = Date.now() - data.timestamp
+      console.log('🔔 Datos de notificación:', data, 'timeDiff:', timeDiff)
+
+      if (timeDiff < 30 * 1000) { // 30 segundos de validez
+        console.log('✅ Mostrando notificación de cambio de oposición')
+        localStorage.removeItem('oposicionChanged') // Limpiar inmediatamente para evitar duplicados
+        setShowNotification(true)
+        setNotificationData({
+          type: 'oposicionChanged',
+          message: data.message
+        })
+
+        // Ocultar después de 5 segundos
+        setTimeout(() => {
+          setShowNotification(false)
+        }, 5000)
+      } else {
+        console.log('⏰ Notificación expirada, limpiando localStorage')
+        localStorage.removeItem('oposicionChanged')
+      }
+    }
+  }, [pathname]) // Se ejecuta cada vez que cambia la ruta
+
+  const changeOposicion = async (newOposicionId, showNotificationFlag = true) => {
+    console.log('🎯 OposicionContext.changeOposicion llamado:', { newOposicionId, user: user?.id })
+    if (!user) {
+      console.log('❌ No hay usuario logueado, retornando false')
+      return false
+    }
 
     try {
+      // Obtener nombre legible de la oposición
+      const menuConfig = OPOSICION_MENUS[newOposicionId]
+      const oposicionName = menuConfig?.name || 'Nueva Oposición'
+
       const newOposicionData = {
         id: newOposicionId,
-        name: 'Nueva Oposición'
+        name: oposicionName
       }
 
       const { error } = await supabase
@@ -182,16 +225,26 @@ export function OposicionProvider({ children }) {
           target_oposicion_data: JSON.stringify(newOposicionData),
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', user.id)
+        .eq('id', user.id)
 
       if (error) throw error
 
+      console.log('✅ Oposición actualizada en BD:', newOposicionId)
       setUserOposicion(newOposicionData)
-      setOposicionMenu(OPOSICION_MENUS[newOposicionId] || DEFAULT_MENU)
+      setOposicionMenu(menuConfig || DEFAULT_MENU)
+
+      // Guardar en localStorage para mostrar notificación después de navegación
+      if (showNotificationFlag) {
+        console.log('💾 Guardando en localStorage para notificación')
+        localStorage.setItem('oposicionChanged', JSON.stringify({
+          name: oposicionName,
+          timestamp: Date.now()
+        }))
+      }
 
       return true
     } catch (error) {
-      console.error('Error cambiando oposición:', error)
+      console.error('❌ Error cambiando oposición:', error)
       return false
     }
   }
@@ -199,6 +252,24 @@ export function OposicionProvider({ children }) {
   const dismissNotification = () => {
     setShowNotification(false)
     localStorage.removeItem('newOposicionAssigned')
+    localStorage.removeItem('oposicionChanged')
+  }
+
+  // Función para mostrar notificación de cambio de oposición directamente
+  const showOposicionChangeNotification = (oposicionName) => {
+    console.log('🔔 showOposicionChangeNotification llamado:', oposicionName)
+    setShowNotification(true)
+    setNotificationData({
+      type: 'oposicionChanged',
+      name: oposicionName,
+      message: `Tu oposición objetivo se ha cambiado a ${oposicionName}`
+    })
+
+    // Auto-ocultar después de 5 segundos
+    setTimeout(() => {
+      setShowNotification(false)
+      setNotificationData(null)
+    }, 5000)
   }
 
   const value = {
@@ -209,7 +280,8 @@ export function OposicionProvider({ children }) {
     showNotification,
     notificationData,
     dismissNotification,
-    changeOposicion
+    changeOposicion,
+    showOposicionChangeNotification
   }
 
   return (
