@@ -27,6 +27,7 @@ export default function LawMonitoringTab() {
   const [lastCheck, setLastCheck] = useState(null)
   const [error, setError] = useState(null)
   const [lawFilter, setLawFilter] = useState('') // Filtro por texto de ley
+  const [statusFilter, setStatusFilter] = useState('all') // 'all', 'boe_diff', 'changed', 'ok'
   const [aiVerificationStats, setAiVerificationStats] = useState({}) // { lawId: { lastVerified, pending, fixed } }
 
   const checkLawChanges = async () => {
@@ -192,13 +193,38 @@ export default function LawMonitoringTab() {
     return a.law.localeCompare(b.law)
   })
 
-  // Aplicar filtro por texto de ley
-  const filteredLaws = !lawFilter.trim()
-    ? sortedLaws
-    : sortedLaws.filter(law =>
-        law.law.toLowerCase().includes(lawFilter.toLowerCase()) ||
-        law.name?.toLowerCase().includes(lawFilter.toLowerCase())
-      )
+  // Función para determinar el estado de una ley
+  const getLawStatus = (law) => {
+    if (law.changeStatus === 'changed') return 'changed'
+    if (aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk) return 'boe_diff'
+    if (law.changeStatus === 'reviewed') return 'reviewed'
+    return 'ok'
+  }
+
+  // Aplicar filtros (texto + estado)
+  const filteredLaws = sortedLaws.filter(law => {
+    // Filtro por texto
+    const matchesText = !lawFilter.trim() ||
+      law.law.toLowerCase().includes(lawFilter.toLowerCase()) ||
+      law.name?.toLowerCase().includes(lawFilter.toLowerCase())
+
+    // Filtro por estado
+    const lawStatus = getLawStatus(law)
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'boe_diff' && lawStatus === 'boe_diff') ||
+      (statusFilter === 'changed' && lawStatus === 'changed') ||
+      (statusFilter === 'problems' && (lawStatus === 'boe_diff' || lawStatus === 'changed')) ||
+      (statusFilter === 'ok' && (lawStatus === 'ok' || lawStatus === 'reviewed'))
+
+    return matchesText && matchesStatus
+  })
+
+  // Contar leyes por estado
+  const statusCounts = sortedLaws.reduce((acc, law) => {
+    const status = getLawStatus(law)
+    acc[status] = (acc[status] || 0) + 1
+    return acc
+  }, { changed: 0, boe_diff: 0, reviewed: 0, ok: 0 })
 
   return (
     <div className="p-3 sm:p-6">
@@ -244,6 +270,60 @@ export default function LawMonitoringTab() {
             <span>{loading ? 'Verificando...' : 'Verificar ahora'}</span>
           </button>
         </div>
+      </div>
+
+      {/* Filtros por estado */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            statusFilter === 'all'
+              ? 'bg-gray-800 text-white dark:bg-white dark:text-gray-800'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+          }`}
+        >
+          Todas ({sortedLaws.length})
+        </button>
+        <button
+          onClick={() => setStatusFilter('problems')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            statusFilter === 'problems'
+              ? 'bg-red-600 text-white'
+              : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900'
+          }`}
+        >
+          🚨 Problemas ({statusCounts.changed + statusCounts.boe_diff})
+        </button>
+        <button
+          onClick={() => setStatusFilter('boe_diff')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            statusFilter === 'boe_diff'
+              ? 'bg-orange-600 text-white'
+              : 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/50 dark:text-orange-300 dark:hover:bg-orange-900'
+          }`}
+        >
+          BOE ≠ BD ({statusCounts.boe_diff})
+        </button>
+        <button
+          onClick={() => setStatusFilter('changed')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            statusFilter === 'changed'
+              ? 'bg-yellow-600 text-white'
+              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:hover:bg-yellow-900'
+          }`}
+        >
+          Cambio BOE ({statusCounts.changed})
+        </button>
+        <button
+          onClick={() => setStatusFilter('ok')}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            statusFilter === 'ok'
+              ? 'bg-green-600 text-white'
+              : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900'
+          }`}
+        >
+          ✅ OK ({statusCounts.ok + statusCounts.reviewed})
+        </button>
       </div>
 
       {/* Barra de progreso global */}
@@ -561,9 +641,11 @@ export default function LawMonitoringTab() {
 
       {filteredLaws.length === 0 && !loading && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          {!lawFilter.trim()
+          {!lawFilter.trim() && statusFilter === 'all'
             ? 'No hay leyes configuradas para monitoreo'
-            : `No se encontraron leyes con "${lawFilter}"`}
+            : statusFilter !== 'all' && !lawFilter.trim()
+              ? `No hay leyes con estado "${statusFilter === 'boe_diff' ? 'BOE ≠ BD' : statusFilter === 'problems' ? 'Problemas' : statusFilter}"`
+              : `No se encontraron leyes con "${lawFilter}"${statusFilter !== 'all' ? ` y estado "${statusFilter}"` : ''}`}
         </div>
       )}
     </div>

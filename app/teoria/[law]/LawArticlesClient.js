@@ -7,9 +7,32 @@ import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import ArticleModal from '@/components/ArticleModal'
 import SectionFilterModal from '@/components/SectionFilterModal'
-import { 
+import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
+
+// Función para detectar si una ley es virtual (sin artículos legales reales)
+function isVirtualLaw(law) {
+  return law?.description?.toLowerCase().includes('ficticia') ||
+         law?.description?.toLowerCase().includes('virtual')
+}
+
+// Función para extraer ID de video de YouTube
+function getYouTubeEmbedUrl(url) {
+  if (!url) return null
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+  return match ? `https://www.youtube.com/embed/${match[1]}` : null
+}
+
+// Mapeo temporal de videos para leyes virtuales (hasta que se añada video_url a la BD)
+const VIRTUAL_LAW_VIDEOS = {
+  'Windows 11': 'https://www.youtube.com/watch?v=RuYQ8EqwV4U',
+  'Procesadores de texto': 'https://www.youtube.com/watch?v=zneo5Ys7z-E',
+  'Informática Básica': 'https://www.youtube.com/watch?v=PvMTv5GncMM',
+  'Correo electrónico': 'https://www.youtube.com/watch?v=Tfcug4zeiPw',
+  'Hojas de cálculo. Excel': 'https://www.youtube.com/watch?v=7fmgMflwUXA',
+  'Base de datos: Access': 'https://www.youtube.com/watch?v=X39ZNkBnepM',
+}
 
 export default function LawArticlesClient({ params, searchParams }) {
   const { user, supabase } = useAuth()
@@ -266,6 +289,119 @@ export default function LawArticlesClient({ params, searchParams }) {
   }
 
   const { articles, law } = lawData
+
+  // Detectar si es ley virtual
+  const isVirtual = isVirtualLaw(law)
+  // Usar video_url de BD o del mapeo temporal
+  const videoUrl = law.video_url || VIRTUAL_LAW_VIDEOS[law.short_name]
+  const embedUrl = getYouTubeEmbedUrl(videoUrl)
+
+  console.log('🎥 Ley virtual check:', {
+    shortName: law.short_name,
+    description: law.description,
+    isVirtual,
+    videoUrl,
+    embedUrl
+  })
+
+  // Si es ley virtual con video, mostrar solo el video
+  if (isVirtual) {
+    return (
+      <div className="min-h-screen bg-white">
+        {/* Header */}
+        <div className="border-b border-gray-200">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center space-x-3">
+              <Link
+                href="/teoria"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Volver a Teoría"
+              >
+                <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
+              </Link>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-2xl font-bold text-gray-900">{law.short_name}</h1>
+                  <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-1 rounded">
+                    🎥 Video
+                  </span>
+                </div>
+                {law.name !== law.short_name && (
+                  <p className="text-gray-600 text-sm mt-1">{law.name}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contenido del video */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {embedUrl ? (
+            <div className="space-y-6">
+              {/* Video incrustado */}
+              <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                <iframe
+                  className="absolute top-0 left-0 w-full h-full rounded-xl shadow-lg"
+                  src={embedUrl}
+                  title={law.name}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+
+              {/* Descripción */}
+              {law.description && (
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Sobre este tema</h2>
+                  <p className="text-gray-600">{law.description.replace(/ley ficticia[^.]*\./gi, '').trim() || law.description}</p>
+                </div>
+              )}
+
+              {/* CTA para hacer test */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+                <h3 className="text-lg font-semibold text-blue-900 mb-2">¿Listo para practicar?</h3>
+                <p className="text-blue-700 mb-4">Después de ver el video, pon a prueba tus conocimientos</p>
+                <Link
+                  href={`/leyes/${lawSlug}`}
+                  className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  🎯 Hacer Test de {law.short_name}
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🎥</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Video próximamente
+              </h3>
+              <p className="text-gray-600 mb-6">
+                El contenido en video para {law.short_name} estará disponible pronto.
+              </p>
+              <Link
+                href={`/leyes/${lawSlug}`}
+                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                🎯 Mientras tanto, hacer Test
+              </Link>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="mt-12 pt-6 border-t border-gray-200">
+            <Link
+              href="/teoria"
+              className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors text-sm"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-1" />
+              Volver a todas las leyes
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Filtrar artículos por sección seleccionada
   const filteredArticles = selectedSectionFilter 
