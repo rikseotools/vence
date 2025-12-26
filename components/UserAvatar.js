@@ -3,12 +3,16 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext' // Using context instead of local instance
+import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 // import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 
 export default function UserAvatar() {
   // Using Auth context instead of local state
   const { user, loading: authLoading, signOut, supabase } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminLoading, setAdminLoading] = useState(true)
+  const adminNotifications = useAdminNotifications()
   const [userStats, setUserStats] = useState({
     streak: 0,
     accuracy: 0,
@@ -32,6 +36,37 @@ export default function UserAvatar() {
       })
     }
   }, [user, authLoading, supabase]) // Context dependencies
+
+  // Verificar si es admin
+  useEffect(() => {
+    async function checkAdminStatus() {
+      if (!user || !supabase) {
+        setIsAdmin(false)
+        setAdminLoading(false)
+        return
+      }
+
+      try {
+        const { data, error } = await supabase.rpc('is_current_user_admin')
+
+        if (error) {
+          console.error('Error verificando admin status:', error)
+          setIsAdmin(false)
+        } else {
+          setIsAdmin(data === true)
+        }
+      } catch (err) {
+        console.error('Error en verificación de admin:', err)
+        setIsAdmin(false)
+      } finally {
+        setAdminLoading(false)
+      }
+    }
+
+    if (!authLoading) {
+      checkAdminStatus()
+    }
+  }, [user, supabase, authLoading])
 
   // Load user statistics using RPC function
   const loadUserStats = async (userId) => {
@@ -366,7 +401,27 @@ export default function UserAvatar() {
                 <span>💬</span>
                 <span>Soporte</span>
               </Link>
-              
+
+              {/* Enlace Admin */}
+              {isAdmin && !adminLoading && (
+                <>
+                  <hr className="my-2" />
+                  <Link
+                    href="/admin"
+                    onClick={handleLinkClick}
+                    className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center space-x-3 block relative"
+                  >
+                    <span>👨‍💼</span>
+                    <span>Panel Admin</span>
+                    {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 && (
+                      <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                        {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 9 ? '9+' : (adminNotifications?.feedback + adminNotifications?.impugnaciones)}
+                      </span>
+                    )}
+                  </Link>
+                </>
+              )}
+
               <hr className="my-2" />
               
               <button

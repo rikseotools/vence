@@ -423,29 +423,8 @@ export default function HeaderES() {
               </div>
             </nav>
 
-            {/* DERECHA: Admin + Notificaciones + Menú hamburguesa + Avatar del usuario */}
+            {/* DERECHA: Notificaciones + Menú hamburguesa + Avatar del usuario */}
             <div className="flex items-center space-x-1 flex-shrink-0">
-              {/* 🆕 ENLACE DE ADMIN (solo desktop y solo si es admin) */}
-              {user && isAdmin && !adminLoading && (
-                <Link 
-                  href="/admin"
-                  className={`hidden xl:flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors relative ${
-                    (adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 
-                      ? 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700 hover:text-orange-800 animate-pulse' 
-                      : 'bg-red-50 hover:bg-red-100 border-red-200 text-red-700 hover:text-red-800'
-                  }`}
-                  title={`Panel de Administración${(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 ? ` (${adminNotifications?.feedback + adminNotifications?.impugnaciones} pendientes)` : ''}`}
-                >
-                  <span className="text-sm">👨‍💼</span>
-                  <span className="text-sm font-medium">Admin</span>
-                  {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 && (
-                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-bounce">
-                      {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 9 ? '9+' : (adminNotifications?.feedback + adminNotifications?.impugnaciones)}
-                    </span>
-                  )}
-                </Link>
-              )}
-
               {/* 🎧 BOTÓN DE SOPORTE - Solo en desktop */}
               <button
                 onClick={() => {
