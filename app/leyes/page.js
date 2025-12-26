@@ -164,7 +164,7 @@ export default function TestLeyesEspana() {
           </div>
           <h1 className="text-5xl font-bold text-gray-800 mb-6">
             Test de Leyes España<br/>
-            <span className="text-blue-600">en Vence 2025</span>
+            <span className="text-blue-600">en Vence 2026</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
             Practica con los <strong>tests de leyes</strong> más completos de España en <strong>Vence</strong>. 
@@ -249,15 +249,6 @@ export default function TestLeyesEspana() {
             </div>
           </div>
           
-          {/* Información sobre rendimiento */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="bg-green-50 rounded-lg p-4 text-center">
-              <p className="text-sm text-green-700">
-                <span className="font-semibold">⚡ Página optimizada:</span> 
-                Los datos se cachean por 30 días para garantizar carga ultrarrápida. Un usuario regenera el cache para todos.
-              </p>
-            </div>
-          </div>
         </section>
 
         {/* FAQ */}
