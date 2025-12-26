@@ -37,7 +37,8 @@ export default function OposicionesPage() {
         'Nacionalidad española o UE',
         'Tener 16 años y no exceder edad jubilación'
       ],
-      href: '/auxiliar-administrativo-estado'
+      href: '/auxiliar-administrativo-estado',
+      boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26261'
     },
     {
       id: 'administrativo-estado',
@@ -66,7 +67,8 @@ export default function OposicionesPage() {
         'Nacionalidad española o UE',
         'Tener 16 años y no exceder edad jubilación'
       ],
-      href: '/administrativo-estado'
+      href: '/administrativo-estado',
+      boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26262'
     }
   ]
 
@@ -96,31 +98,23 @@ export default function OposicionesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center max-w-4xl mx-auto">
-            <div className="mb-6">
-              <span className="inline-block text-6xl mb-4">🏛️</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+      <div className="bg-gradient-to-r from-blue-800 to-blue-950 text-white">
+        <div className="container mx-auto px-4 py-10">
+          <div className="text-center">
+            <span className="text-4xl">🏛️</span>
+            <h1 className="text-3xl md:text-4xl font-bold mt-3 mb-2">
               Oposiciones Disponibles
             </h1>
-            <p className="text-xl md:text-2xl text-blue-100 mb-8">
-              Elige tu oposición y comienza a prepararte con nuestro sistema de estudio personalizado
+            <p className="text-lg text-blue-100 mb-4">
+              Elige tu oposición y empieza a hacer tests. Así de fácil.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 text-blue-200">
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">📚</span>
-                <span className="text-sm md:text-base">Temarios completos</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">🎯</span>
-                <span className="text-sm md:text-base">Tests ilimitados</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">📊</span>
-                <span className="text-sm md:text-base">Seguimiento detallado</span>
-              </div>
+            <div className="flex items-center justify-center gap-4 text-blue-100 text-sm">
+              <span className="flex items-center gap-1">
+                <span className="text-green-400">✓</span> Preguntas ilimitadas
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="text-green-400">✓</span> Seguimiento detallado
+              </span>
             </div>
           </div>
         </div>
@@ -162,21 +156,6 @@ export default function OposicionesPage() {
           </div>
         )}
 
-        {/* Instrucciones de uso */}
-        <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
-            Oposiciones Disponibles
-          </h2>
-          <p className="text-gray-600 mb-4 max-w-2xl mx-auto">
-            Preparación completa para las oposiciones de la Administración General del Estado.
-            Temarios actualizados según BOE 22/12/2025.
-          </p>
-          <div className="inline-flex items-center space-x-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm">
-            <span>💡</span>
-            <span>Haz clic en cualquier parte de la tarjeta para ir a la oposición</span>
-          </div>
-        </div>
-
         {/* Grid de Oposiciones */}
         <div className="grid gap-8 max-w-4xl mx-auto">
           {oposiciones.map((oposicion) => (
@@ -186,11 +165,7 @@ export default function OposicionesPage() {
               className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 cursor-pointer group border-gray-200 hover:border-blue-300 hover:shadow-blue-100"
             >
               {/* Header */}
-              <div className={`bg-gradient-to-r ${
-                oposicion.color === 'blue' ? 'from-blue-500 to-indigo-600' :
-                oposicion.color === 'emerald' ? 'from-emerald-500 to-teal-600' :
-                'from-purple-500 to-pink-600'
-              } text-white p-6 relative overflow-hidden`}>
+              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white p-6 relative overflow-hidden">
                 
                 {/* Efecto hover en header */}
                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -210,11 +185,6 @@ export default function OposicionesPage() {
                       </div>
                     </div>
                   </div>
-                  
-                  {/* Indicador de click */}
-                  <div className="opacity-60 group-hover:opacity-100 text-white/80 text-sm font-medium transition-opacity">
-                    Haz clic para explorar
-                  </div>
                 </div>
               </div>
 
@@ -226,21 +196,21 @@ export default function OposicionesPage() {
 
                 {/* Estadísticas */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                    <div className="text-2xl font-bold text-blue-600">{oposicion.temarios}</div>
-                    <div className="text-sm text-blue-700">Temas</div>
+                  <div className="text-center p-3 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                    <div className="text-2xl font-bold text-slate-700">{oposicion.temarios}</div>
+                    <div className="text-sm text-slate-600">Temas</div>
                   </div>
-                  <div className="text-center p-3 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
-                    <div className="text-2xl font-bold text-emerald-600">{oposicion.tests}+</div>
-                    <div className="text-sm text-emerald-700">Tests</div>
+                  <div className="text-center p-3 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                    <div className="text-2xl font-bold text-slate-700">{oposicion.tests}+</div>
+                    <div className="text-sm text-slate-600">Tests</div>
                   </div>
-                  <div className="text-center p-3 bg-purple-50 rounded-lg group-hover:bg-purple-100 transition-colors">
-                    <div className="text-lg font-bold text-purple-600">{oposicion.difficulty}</div>
-                    <div className="text-sm text-purple-700">Dificultad</div>
+                  <div className="text-center p-3 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                    <div className="text-lg font-bold text-slate-700">{oposicion.difficulty}</div>
+                    <div className="text-sm text-slate-600">Dificultad</div>
                   </div>
-                  <div className="text-center p-3 bg-orange-50 rounded-lg group-hover:bg-orange-100 transition-colors">
-                    <div className="text-lg font-bold text-orange-600">{oposicion.duration}</div>
-                    <div className="text-sm text-orange-700">Duración</div>
+                  <div className="text-center p-3 bg-slate-100 rounded-lg group-hover:bg-slate-200 transition-colors">
+                    <div className="text-lg font-bold text-slate-700">{oposicion.duration}</div>
+                    <div className="text-sm text-slate-600">Duración</div>
                   </div>
                 </div>
 
@@ -276,32 +246,42 @@ export default function OposicionesPage() {
                   </div>
                 </div>
 
-                {/* Acciones - SIMPLIFICADAS */}
+                {/* Acciones */}
                 <div className="flex flex-col sm:flex-row gap-3 relative z-10">
-                  <Link 
+                  <Link
                     href={`${oposicion.href}/temario`}
-                    className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors group/btn"
+                    className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-semibold transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <span className="group-hover/btn:animate-bounce">📚</span>
+                    <span>📚</span>
                     <span>Ver Temario</span>
                   </Link>
-                  <Link 
+                  <Link
                     href={`${oposicion.href}/test`}
-                    className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold transition-colors group/btn"
+                    className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-semibold transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <span className="group-hover/btn:animate-pulse">🎯</span>
+                    <span>🎯</span>
                     <span>Hacer Tests</span>
                   </Link>
                 </div>
 
-                {/* Indicador visual de que es clickeable */}
-                <div className="text-center mt-4 opacity-60 group-hover:opacity-100 transition-opacity">
-                  <span className="text-xs text-gray-500">
-                    Haz clic en cualquier parte para explorar esta oposición
-                  </span>
-                </div>
+                {/* Enlace BOE */}
+                {oposicion.boeUrl && (
+                  <div className="mt-4 text-center">
+                    <a
+                      href={oposicion.boeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>📄</span>
+                      <span>Ver convocatoria en BOE</span>
+                      <span>↗</span>
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -309,18 +289,19 @@ export default function OposicionesPage() {
 
         {/* Coming Soon */}
         <div className="mt-16 text-center">
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-8 max-w-2xl mx-auto">
-            <span className="text-4xl mb-4 block">🚀</span>
-            <h3 className="text-2xl font-bold text-purple-800 mb-4">
-              ¡Próximamente más oposiciones!
+          <div className="bg-slate-100 border border-slate-200 rounded-2xl p-8 max-w-2xl mx-auto">
+            <h3 className="text-xl font-bold text-slate-700 mb-3">
+              Próximamente más oposiciones
             </h3>
-            <p className="text-purple-600 mb-6">
+            <p className="text-slate-600 mb-4 text-sm">
               Estamos trabajando para añadir más oposiciones a nuestra plataforma.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-purple-500">
-              <span>⚖️ Gestión Procesal</span>
-              <span>⚖️ Tramitación Procesal</span>
-              <span>⚖️ Auxilio Judicial</span>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
+              <span>Gestión Procesal</span>
+              <span>•</span>
+              <span>Tramitación Procesal</span>
+              <span>•</span>
+              <span>Auxilio Judicial</span>
             </div>
           </div>
         </div>
