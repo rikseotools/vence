@@ -1119,6 +1119,9 @@ export default function ExamLayout({
         onClose={() => setShowUpgradeModal(false)}
         questionsAnswered={questionsToday}
         resetTime={resetTime}
+        supabase={supabase}
+        userId={user?.id}
+        userName={user?.user_metadata?.full_name || user?.user_metadata?.name}
       />
     </div>
   )

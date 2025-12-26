@@ -157,6 +157,16 @@ async function handleCheckoutSessionCompleted(session, supabase) {
         console.error('Error tracking conversion:', trackErr)
       }
 
+      // Marcar conversión en A/B testing de mensajes de upgrade
+      try {
+        await supabase.rpc('mark_upgrade_conversion', {
+          p_user_id: userId
+        })
+        console.log('📊 A/B test conversion marked for upgrade messages')
+      } catch (abErr) {
+        console.error('Error marking A/B conversion:', abErr)
+      }
+
       // Enviar email de notificación al admin
       try {
         const userProfile = data?.[0] || {}

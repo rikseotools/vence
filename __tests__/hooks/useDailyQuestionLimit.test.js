@@ -434,3 +434,235 @@ describe('Escenarios de Deduplicación', () => {
     expect(mockTrackLimitReached).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('Sincronización por Eventos (Cross-Component)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    localStorageMock.clear()
+  })
+
+  test('debe emitir evento dailyLimitUpdated cuando recordAnswer actualiza estado', async () => {
+    const eventListener = jest.fn()
+    window.addEventListener('dailyLimitUpdated', eventListener)
+
+    mockRpc.mockResolvedValue({
+      data: {
+        questions_today: 21,
+        questions_remaining: 4,
+        is_limit_reached: false,
+        is_premium: false,
+        reset_time: new Date().toISOString()
+      },
+      error: null
+    })
+
+    const { result } = renderHook(() => useDailyQuestionLimit())
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    })
+
+    await act(async () => {
+      await result.current.recordAnswer()
+    })
+
+    // Verificar que el evento fue emitido
+    expect(eventListener).toHaveBeenCalled()
+
+    // Verificar que el evento tiene los datos correctos
+    const eventDetail = eventListener.mock.calls[0][0].detail
+    expect(eventDetail.questionsToday).toBe(21)
+    expect(eventDetail.questionsRemaining).toBe(4)
+    expect(eventDetail.isLimitReached).toBe(false)
+
+    window.removeEventListener('dailyLimitUpdated', eventListener)
+  })
+
+  test('debe sincronizar estado entre múltiples instancias del hook', async () => {
+    // Configurar respuesta inicial
+    mockRpc.mockResolvedValue({
+      data: {
+        questions_today: 10,
+        questions_remaining: 15,
+        is_limit_reached: false,
+        is_premium: false,
+        reset_time: new Date().toISOString()
+      },
+      error: null
+    })
+
+    // Crear dos instancias del hook (simula TestLayout y DailyLimitBanner)
+    const { result: hook1 } = renderHook(() => useDailyQuestionLimit())
+    const { result: hook2 } = renderHook(() => useDailyQuestionLimit())
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    })
+
+    // Ambos deben tener el mismo estado inicial
+    expect(hook1.current.questionsToday).toBe(10)
+    expect(hook2.current.questionsToday).toBe(10)
+
+    // Configurar respuesta para incremento
+    mockRpc.mockResolvedValue({
+      data: {
+        questions_today: 11,
+        questions_remaining: 14,
+        is_limit_reached: false,
+        is_premium: false,
+        reset_time: new Date().toISOString()
+      },
+      error: null
+    })
+
+    // Hook 1 llama recordAnswer (simula que TestLayout responde pregunta)
+    await act(async () => {
+      await hook1.current.recordAnswer()
+    })
+
+    // Esperar propagación del evento
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    })
+
+    // AMBOS hooks deben tener el estado actualizado
+    expect(hook1.current.questionsToday).toBe(11)
+    expect(hook2.current.questionsToday).toBe(11)
+    expect(hook1.current.questionsRemaining).toBe(14)
+    expect(hook2.current.questionsRemaining).toBe(14)
+  })
+
+  test('debe sincronizar isLimitReached entre instancias cuando se alcanza límite', async () => {
+    // Distinguir por nombre de RPC
+    mockRpc.mockImplementation((rpcName) => {
+      if (rpcName === 'get_daily_question_status') {
+        return Promise.resolve({
+          data: {
+            questions_today: 24,
+            questions_remaining: 1,
+            is_limit_reached: false,
+            is_premium: false
+          },
+          error: null
+        })
+      }
+      // increment_daily_questions (recordAnswer)
+      return Promise.resolve({
+        data: {
+          questions_today: 25,
+          questions_remaining: 0,
+          is_limit_reached: true,
+          is_premium: false
+        },
+        error: null
+      })
+    })
+
+    const { result: testLayoutHook } = renderHook(() => useDailyQuestionLimit())
+    const { result: bannerHook } = renderHook(() => useDailyQuestionLimit())
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    })
+
+    // Verificar estado inicial - ambos deben NO haber alcanzado límite
+    expect(testLayoutHook.current.isLimitReached).toBe(false)
+    expect(bannerHook.current.isLimitReached).toBe(false)
+    expect(testLayoutHook.current.questionsToday).toBe(24)
+
+    // TestLayout responde última pregunta
+    await act(async () => {
+      await testLayoutHook.current.recordAnswer()
+    })
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    })
+
+    // AMBOS deben saber que se alcanzó el límite (sincronizados por evento)
+    expect(testLayoutHook.current.isLimitReached).toBe(true)
+    expect(bannerHook.current.isLimitReached).toBe(true)
+    expect(testLayoutHook.current.questionsToday).toBe(25)
+    expect(bannerHook.current.questionsToday).toBe(25)
+  })
+
+  test('evento no debe afectar hooks desmontados', async () => {
+    mockRpc.mockResolvedValue({
+      data: {
+        questions_today: 15,
+        questions_remaining: 10,
+        is_limit_reached: false,
+        is_premium: false,
+        reset_time: new Date().toISOString()
+      },
+      error: null
+    })
+
+    const { result: hook1 } = renderHook(() => useDailyQuestionLimit())
+    const { result: hook2, unmount: unmountHook2 } = renderHook(() => useDailyQuestionLimit())
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    })
+
+    // Desmontar hook2 (simula que DailyLimitBanner se desmonta)
+    unmountHook2()
+
+    // Configurar nueva respuesta
+    mockRpc.mockResolvedValue({
+      data: {
+        questions_today: 16,
+        questions_remaining: 9,
+        is_limit_reached: false,
+        is_premium: false
+      },
+      error: null
+    })
+
+    // Hook1 actualiza - no debe causar errores aunque hook2 esté desmontado
+    await act(async () => {
+      await hook1.current.recordAnswer()
+    })
+
+    // Hook1 debe actualizarse correctamente
+    expect(hook1.current.questionsToday).toBe(16)
+    // No debe haber errores (el test pasaría si no hay crashes)
+  })
+
+  test('múltiples recordAnswer secuenciales deben sincronizar correctamente', async () => {
+    let callCount = 20
+    mockRpc.mockImplementation(() => {
+      callCount++
+      return Promise.resolve({
+        data: {
+          questions_today: callCount,
+          questions_remaining: 25 - callCount,
+          is_limit_reached: callCount >= 25,
+          is_premium: false
+        },
+        error: null
+      })
+    })
+
+    const { result: hook1 } = renderHook(() => useDailyQuestionLimit())
+    const { result: hook2 } = renderHook(() => useDailyQuestionLimit())
+
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 50))
+    })
+
+    // Responder 3 preguntas seguidas
+    for (let i = 0; i < 3; i++) {
+      await act(async () => {
+        await hook1.current.recordAnswer()
+      })
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 20))
+      })
+    }
+
+    // Ambos hooks deben estar sincronizados con el último valor
+    expect(hook1.current.questionsToday).toBe(hook2.current.questionsToday)
+    expect(hook1.current.questionsRemaining).toBe(hook2.current.questionsRemaining)
+  })
+})

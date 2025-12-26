@@ -7,8 +7,9 @@ export default function ConversionesPage() {
   const { supabase } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [activeTab, setActiveTab] = useState('funnel') // 'funnel' | 'ab-testing'
 
-  // Estados para datos
+  // Estados para datos del funnel
   const [funnelStats, setFunnelStats] = useState([])
   const [registrationStats, setRegistrationStats] = useState({ total: 0, bySource: {} })
   const [timeAnalysis, setTimeAnalysis] = useState([])
@@ -21,12 +22,24 @@ export default function ConversionesPage() {
   const [stageUsers, setStageUsers] = useState([])
   const [loadingStage, setLoadingStage] = useState(false)
 
+  // Estados para A/B testing
+  const [abStats, setAbStats] = useState([])
+  const [abImpressions, setAbImpressions] = useState([])
+  const [abTotals, setAbTotals] = useState({ impressions: 0, clicks: 0, conversions: 0 })
+
   // Cargar datos
   useEffect(() => {
     if (supabase) {
       loadAllData()
     }
   }, [supabase, dateRange])
+
+  // Cargar datos de A/B testing cuando cambia el tab
+  useEffect(() => {
+    if (supabase && activeTab === 'ab-testing') {
+      loadABTestingData()
+    }
+  }, [supabase, activeTab])
 
   const loadAllData = async () => {
     setLoading(true)
@@ -100,6 +113,76 @@ export default function ConversionesPage() {
     }
 
     setUserJourney(data || [])
+  }
+
+  // Cargar datos de A/B testing de mensajes
+  const loadABTestingData = async () => {
+    try {
+      // Cargar estadisticas de mensajes
+      const { data: messageStats, error: statsError } = await supabase
+        .from('admin_upgrade_message_stats')
+        .select('*')
+        .order('total_impressions', { ascending: false })
+
+      if (statsError) {
+        console.error('Error cargando stats A/B:', statsError)
+      } else {
+        setAbStats(messageStats || [])
+
+        // Calcular totales
+        const totalImpressions = messageStats?.reduce((sum, m) => sum + (m.total_impressions || 0), 0) || 0
+        const totalClicks = messageStats?.reduce((sum, m) => sum + (m.total_clicks || 0), 0) || 0
+        const totalConversions = messageStats?.reduce((sum, m) => sum + (m.total_conversions || 0), 0) || 0
+
+        setAbTotals({
+          impressions: totalImpressions,
+          clicks: totalClicks,
+          conversions: totalConversions,
+          avgClickRate: totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(1) : 0,
+          avgConversionRate: totalImpressions > 0 ? ((totalConversions / totalImpressions) * 100).toFixed(1) : 0
+        })
+      }
+
+      // Cargar impresiones recientes
+      const { data: impressions, error: impError } = await supabase
+        .from('upgrade_message_impressions')
+        .select(`
+          *,
+          upgrade_messages(title, message_key)
+        `)
+        .order('shown_at', { ascending: false })
+        .limit(20)
+
+      if (!impError) {
+        setAbImpressions(impressions || [])
+      }
+    } catch (err) {
+      console.error('Error cargando A/B testing:', err)
+    }
+  }
+
+  // Actualizar peso de un mensaje
+  const updateMessageWeight = async (messageId, newWeight) => {
+    const { error } = await supabase
+      .from('upgrade_messages')
+      .update({ weight: newWeight })
+      .eq('id', messageId)
+
+    if (!error) {
+      loadABTestingData()
+    }
+  }
+
+  // Activar/desactivar mensaje
+  const toggleMessageActive = async (messageId, currentActive) => {
+    const { error } = await supabase
+      .from('upgrade_messages')
+      .update({ is_active: !currentActive })
+      .eq('id', messageId)
+
+    if (!error) {
+      loadABTestingData()
+    }
   }
 
   // Cargar usuarios por etapa del funnel
@@ -207,30 +290,59 @@ export default function ConversionesPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <span>💰</span>
-            Funnel de Conversiones
+            Conversiones
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Tracking completo del journey de usuario hasta el pago
+            Tracking del journey y A/B testing de mensajes
           </p>
         </div>
 
-        {/* Filtro de fecha */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600 dark:text-gray-400">Periodo:</label>
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          >
-            <option value="1">Hoy</option>
-            <option value="7">Ultimos 7 dias</option>
-            <option value="30">Ultimos 30 dias</option>
-            <option value="90">Ultimos 90 dias</option>
-            <option value="365">Todo el ano</option>
-          </select>
-        </div>
+        {/* Filtro de fecha - solo para funnel */}
+        {activeTab === 'funnel' && (
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600 dark:text-gray-400">Periodo:</label>
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            >
+              <option value="1">Hoy</option>
+              <option value="7">Ultimos 7 dias</option>
+              <option value="30">Ultimos 30 dias</option>
+              <option value="90">Ultimos 90 dias</option>
+              <option value="365">Todo el ano</option>
+            </select>
+          </div>
+        )}
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => setActiveTab('funnel')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'funnel'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+          }`}
+        >
+          Funnel de Conversion
+        </button>
+        <button
+          onClick={() => setActiveTab('ab-testing')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'ab-testing'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+          }`}
+        >
+          A/B Testing Mensajes
+        </button>
+      </div>
+
+      {/* ===== TAB: FUNNEL DE CONVERSION ===== */}
+      {activeTab === 'funnel' && (
+        <>
       {/* Guia de Configuracion de Campañas */}
       <details className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
         <summary className="p-4 cursor-pointer font-bold text-blue-800 dark:text-blue-200 flex items-center gap-2">
@@ -723,6 +835,215 @@ export default function ConversionesPage() {
             </div>
           </div>
         </div>
+      )}
+        </>
+      )}
+
+      {/* ===== TAB: A/B TESTING DE MENSAJES ===== */}
+      {activeTab === 'ab-testing' && (
+        <>
+          {/* Totales A/B */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">{abTotals.impressions}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Impresiones totales</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="text-3xl font-bold text-blue-600">{abTotals.clicks}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Clics en upgrade</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="text-3xl font-bold text-green-600">{abTotals.conversions}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Conversiones</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="text-3xl font-bold text-purple-600">{abTotals.avgClickRate}%</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">CTR promedio</div>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="text-3xl font-bold text-orange-600">{abTotals.avgConversionRate}%</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Conversion rate</div>
+            </div>
+          </div>
+
+          {/* Tabla de mensajes */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Rendimiento por Mensaje</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Mensajes que se muestran cuando el usuario toca el limite diario
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Mensaje</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Peso</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Impresiones</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Clics</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">CTR</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Conversiones</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">CVR</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {abStats.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                        No hay datos de A/B testing. Ejecuta la migracion SQL primero.
+                      </td>
+                    </tr>
+                  ) : (
+                    abStats.map((msg) => (
+                      <tr key={msg.id} className={!msg.is_active ? 'bg-gray-50 dark:bg-gray-800/50 opacity-60' : ''}>
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-gray-900 dark:text-white">{msg.title}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{msg.message_key}</div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                            msg.is_active
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>
+                            {msg.is_active ? 'Activo' : 'Inactivo'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <select
+                            value={msg.weight}
+                            onChange={(e) => updateMessageWeight(msg.id, parseInt(e.target.value))}
+                            className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          >
+                            {[1, 2, 3, 4, 5].map(w => (
+                              <option key={w} value={w}>{w}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-6 py-4 text-center font-medium text-gray-900 dark:text-white">{msg.total_impressions || 0}</td>
+                        <td className="px-6 py-4 text-center text-blue-600 font-medium">{msg.total_clicks || 0}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`font-medium ${
+                            (msg.click_rate || 0) > 30 ? 'text-green-600' :
+                            (msg.click_rate || 0) > 20 ? 'text-yellow-600' : 'text-red-600'
+                          }`}>
+                            {msg.click_rate || 0}%
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center text-green-600 font-medium">{msg.total_conversions || 0}</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`font-medium ${
+                            (msg.conversion_rate || 0) > 5 ? 'text-green-600' :
+                            (msg.conversion_rate || 0) > 2 ? 'text-yellow-600' : 'text-gray-600 dark:text-gray-400'
+                          }`}>
+                            {msg.conversion_rate || 0}%
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => toggleMessageActive(msg.id, msg.is_active)}
+                            className={`text-sm px-3 py-1 rounded ${
+                              msg.is_active
+                                ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400'
+                                : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                            }`}
+                          >
+                            {msg.is_active ? 'Desactivar' : 'Activar'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Impresiones recientes */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Impresiones Recientes</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Mensaje</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Preguntas</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Clic Upgrade</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Dismiss</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Convertido</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {abImpressions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                        No hay impresiones registradas aun
+                      </td>
+                    </tr>
+                  ) : (
+                    abImpressions.map((imp) => (
+                      <tr key={imp.id}>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                          {new Date(imp.shown_at).toLocaleString('es-ES')}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {imp.upgrade_messages?.title || 'N/A'}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {imp.upgrade_messages?.message_key || 'N/A'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm text-gray-600 dark:text-gray-300">{imp.questions_answered || '-'}</td>
+                        <td className="px-6 py-4 text-center">
+                          {imp.clicked_upgrade ? (
+                            <span className="text-green-600">Si</span>
+                          ) : (
+                            <span className="text-gray-400">No</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {imp.dismissed ? (
+                            <span className="text-red-600">Si</span>
+                          ) : (
+                            <span className="text-gray-400">No</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {imp.converted_to_premium ? (
+                            <span className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded-full text-xs font-medium">
+                              Premium
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+            <h3 className="font-bold text-blue-900 dark:text-blue-200 mb-2">Como funciona el A/B Testing</h3>
+            <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+              <li>Cada vez que un usuario toca el limite diario, se muestra un mensaje aleatorio</li>
+              <li>El peso determina la probabilidad de que aparezca (peso 2 = doble probabilidad que peso 1)</li>
+              <li>CTR = porcentaje de usuarios que hacen clic en "Upgrade"</li>
+              <li>CVR = porcentaje de usuarios que terminan comprando premium</li>
+              <li>Desactiva los mensajes con bajo rendimiento y aumenta el peso de los mejores</li>
+            </ul>
+          </div>
+        </>
       )}
 
     </div>

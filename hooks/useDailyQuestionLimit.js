@@ -140,6 +140,13 @@ export function useDailyQuestionLimit() {
 
         setStatus(newStatus)
 
+        // Emitir evento para sincronizar otros componentes que usen este hook
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('dailyLimitUpdated', {
+            detail: newStatus
+          }))
+        }
+
         // Mostrar modal si alcanzó el limite
         if (result.is_limit_reached) {
           setShowUpgradeModal(true)
@@ -185,6 +192,23 @@ export function useDailyQuestionLimit() {
       isMountedRef.current = false
     }
   }, [fetchStatus])
+
+  // Escuchar eventos de sincronización de otros componentes
+  useEffect(() => {
+    const handleLimitUpdate = (event) => {
+      if (isMountedRef.current && event.detail) {
+        setStatus(prev => ({
+          ...prev,
+          ...event.detail
+        }))
+      }
+    }
+
+    window.addEventListener('dailyLimitUpdated', handleLimitUpdate)
+    return () => {
+      window.removeEventListener('dailyLimitUpdated', handleLimitUpdate)
+    }
+  }, [])
 
   // Auto-refresh cuando cambia el usuario o perfil
   useEffect(() => {

@@ -178,7 +178,7 @@ function PremiumPageContent() {
                 <div className="text-4xl font-bold text-gray-900 mb-1">59€</div>
                 <div className="text-gray-500 text-sm mb-4">cada 6 meses</div>
                 <div className="text-green-600 text-sm font-medium">
-                  Ahorras 61€ al año
+                  Ahorras 122€ al año
                 </div>
               </div>
             </div>
