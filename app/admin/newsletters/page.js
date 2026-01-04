@@ -2445,7 +2445,7 @@ export default function NewslettersPage() {
       </li>
       <li style="margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;">
         <span style="position: absolute; left: 0;">✅</span>
-        <strong>+5.000 preguntas</strong> de exámenes oficiales y generadas por IA
+        <strong>+20.000 preguntas</strong> de exámenes oficiales y generadas por IA
       </li>
       <li style="margin: 10px 0; color: #065f46; font-size: 15px; padding-left: 28px; position: relative;">
         <span style="position: absolute; left: 0;">✅</span>

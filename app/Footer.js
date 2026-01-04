@@ -99,7 +99,7 @@ export default function FooterES() {
             </div>
             <p className="text-gray-300 mb-6 leading-relaxed">
               La plataforma para preparar oposiciones y estudiar legislación española. 
-              Más de 5.000 preguntas gratuitas, temarios actualizados y simulacros de examen.
+              Más de 20.000 preguntas gratuitas, temarios actualizados y simulacros de examen.
             </p>
           </div>
 

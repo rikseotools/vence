@@ -105,13 +105,13 @@ export default function HomePage() {
             </h2>
             <div className="space-y-3">
               <Link
-                href="/auxiliar-administrativo-estado"
+                href="/auxiliar-administrativo-estado/test"
                 className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
               >
                 Auxiliar Administrativo (C2)
               </Link>
               <Link
-                href="/administrativo-estado"
+                href="/administrativo-estado/test"
                 className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
               >
                 Administrativo del Estado (C1)

@@ -255,8 +255,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-      {/* Migas de pan interactivas SOLO para usuarios logueados */}
-      {user && <InteractiveBreadcrumbs />}
+      {/* Migas de pan interactivas para todos los usuarios */}
+      <InteractiveBreadcrumbs />
       
       <div className="container mx-auto px-4 py-8">
         

@@ -52,7 +52,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     if (pathname.includes('/test')) return '/test'
     if (pathname.includes('/temario')) return '/temario'
     if (pathname.includes('/simulacros')) return '/simulacros'
-    return '' // Ir a la página principal de la oposición
+    return '/test' // Por defecto ir a tests
   }
 
   // Opciones disponibles para cambiar de oposición/sección
@@ -61,8 +61,9 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const oppositionOptions = [
     { key: 'auxiliar-administrativo-estado', label: '👤 Auxiliar Administrativo Estado', path: `/auxiliar-administrativo-estado${currentSection}`, oposicionId: 'auxiliar_administrativo_estado' },
     { key: 'administrativo', label: '👨‍💼 Administrativo del Estado', path: `/administrativo-estado${currentSection}`, oposicionId: 'administrativo_estado' },
-    { key: 'leyes', label: '⚖️ Leyes', path: '/leyes', oposicionId: null }, // No es oposición
-    { key: 'teoria', label: '📖 Teoría', path: '/teoria', oposicionId: null } // No es oposición
+    { key: 'leyes', label: '⚖️ Leyes', path: '/leyes', oposicionId: null },
+    { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos', oposicionId: null },
+    { key: 'teoria', label: '📖 Teoría', path: '/teoria', oposicionId: null }
   ]
 
   // Opciones de sección específicas según contexto
@@ -70,25 +71,27 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     if (isAuxiliarAdmin) {
       return [
         { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' },
-        { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos' }
+        { key: 'temario', label: '📚 Temario', path: '/temario' }
+      ]
+    } else if (isAdministrativo) {
+      return [
+        { key: 'test', label: '🎯 Tests', path: '/test' },
+        { key: 'temario', label: '📚 Temario', path: '/temario' }
       ]
     } else if (isLeyes) {
       return [
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos' }
+        { key: 'test', label: '🎯 Tests', path: '/test' }
       ]
     } else if (isTeoria) {
       return [
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos' }
+        { key: 'test', label: '🎯 Tests', path: '/test' }
+      ]
+    } else if (isPsicotecnicos) {
+      return [
+        { key: 'test', label: '🎯 Tests', path: '/psicotecnicos/test' }
       ]
     } else {
-      // Para psicotécnicos - solo cambiar entre tipos de test
-      return [
-        { key: 'test', label: '🎯 Tests de Leyes', path: '/leyes/test' },
-        { key: 'psicotecnicos', label: '🧩 Tests Psicotécnicos', path: '/psicotecnicos' }
-      ]
+      return []
     }
   }
 
@@ -248,20 +251,22 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       <div className="container mx-auto px-4">
         <ol className="flex items-center space-x-2 text-sm">
           {/* Breadcrumb para Oposición */}
-          {(isAuxiliarAdmin || isAdministrativo || isLeyes || isTeoria) && (
+          {(isAuxiliarAdmin || isAdministrativo || isLeyes || isTeoria || isPsicotecnicos) && (
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Texto clickeable para ir a la página principal (solo si no estamos ya ahí) */}
                 {((isAuxiliarAdmin && pathname !== '/auxiliar-administrativo-estado') ||
                   (isAdministrativo && pathname !== '/administrativo-estado') ||
                   (isLeyes && pathname !== '/leyes') ||
-                  (isTeoria && pathname !== '/teoria')) ? (
+                  (isTeoria && pathname !== '/teoria') ||
+                  (isPsicotecnicos && pathname !== '/psicotecnicos')) ? (
                   <Link
                     href={
                       isAuxiliarAdmin ? '/auxiliar-administrativo-estado' :
                       isAdministrativo ? '/administrativo-estado' :
                       isLeyes ? '/leyes' :
-                      isTeoria ? '/teoria' : '#'
+                      isTeoria ? '/teoria' :
+                      isPsicotecnicos ? '/psicotecnicos' : '#'
                     }
                     className="text-blue-600 hover:text-blue-800 transition-colors"
                   >
@@ -269,6 +274,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     {isAdministrativo && '👨‍💼 Administrativo del Estado'}
                     {isLeyes && '⚖️ Leyes'}
                     {isTeoria && '📖 Teoría'}
+                    {isPsicotecnicos && '🧩 Psicotécnicos'}
                   </Link>
                 ) : (
                   <span className="text-gray-700 font-semibold">
@@ -276,6 +282,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     {isAdministrativo && '👨‍💼 Administrativo del Estado'}
                     {isLeyes && '⚖️ Leyes'}
                     {isTeoria && '📖 Teoría'}
+                    {isPsicotecnicos && '🧩 Psicotécnicos'}
                   </span>
                 )}
                 
@@ -327,18 +334,17 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
           )}
 
           {/* Separador */}
-          {(isAuxiliarAdmin || isAdministrativo || isLeyes || isTeoria) && (isInTests || isPsicotecnicos || isInTemario) && (
+          {(isAuxiliarAdmin || isAdministrativo || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario) && (
             <span className="text-gray-400 mx-2">/</span>
           )}
 
-          {/* Breadcrumb para Sección (Tests/Psicotécnicos/Temario) */}
-          {(isInTests || isPsicotecnicos || isInTemario) && (
+          {/* Breadcrumb para Sección (Tests/Temario) - NO duplicar Psicotécnicos ya que está en el nivel superior */}
+          {(isInTests || isInTemario) && (
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Texto clickeable - no navega porque ya estamos en la sección actual */}
                 <span className="text-gray-700 font-semibold">
                   {isInTests && '🎯 Tests'}
-                  {isPsicotecnicos && '🧩 Psicotécnicos'}
                   {isInTemario && '📚 Temario'}
                 </span>
                 
@@ -362,14 +368,12 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                         onClick={() => changeSection(option.path)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-colors text-sm"
                         disabled={
-                          (option.key === 'test' && isInTests && !isPsicotecnicos) || 
-                          (option.key === 'psicotecnicos' && isPsicotecnicos) ||
+                          (option.key === 'test' && isInTests) ||
                           (option.key === 'temario' && pathname.includes('/temario'))
                         }
                       >
                         {option.label}
-                        {((option.key === 'test' && isInTests && !isPsicotecnicos) || 
-                          (option.key === 'psicotecnicos' && isPsicotecnicos) ||
+                        {((option.key === 'test' && isInTests) ||
                           (option.key === 'temario' && pathname.includes('/temario'))) && (
                           <span className="text-gray-400 ml-2">(actual)</span>
                         )}

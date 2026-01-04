@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { CheckIcon } from '@heroicons/react/24/outline'
+import InteractiveBreadcrumbs from '../../components/InteractiveBreadcrumbs'
 
 export default function PsicotecnicosClient({ psychometricTopics }) {
   const [selectedTopics, setSelectedTopics] = useState(psychometricTopics.map(topic => topic.id))
@@ -24,6 +25,9 @@ export default function PsicotecnicosClient({ psychometricTopics }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
+      <Suspense fallback={<div className="h-12 bg-gray-50 border-b border-gray-200" />}>
+        <InteractiveBreadcrumbs />
+      </Suspense>
       {/* Header Section */}
       <div className="bg-white dark:bg-gray-900 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-8">

@@ -69,6 +69,8 @@ export default function ClientLayoutContent({ children }) {
       {!user && !loading &&
        !pathname.startsWith('/leyes') &&
        !pathname.startsWith('/teoria') &&
+       !pathname.startsWith('/auxiliar-administrativo-estado/test') &&
+       !pathname.startsWith('/administrativo-estado/test') &&
        !pathname.includes('/constitucion-titulos') &&
        !pathname.includes('/test-de-la-constitucion-espanola-de-1978') && (
         <Breadcrumbs
