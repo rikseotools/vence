@@ -47,12 +47,14 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   // Combinar etiquetas por defecto con personalizadas
   const labels = { ...defaultLabels, ...customLabels }
 
-  // Detectar la sección actual (test, temario, etc.)
+  // Detectar la sección actual (test, temario, info, etc.)
   const getCurrentSection = () => {
     if (pathname.includes('/test')) return '/test'
     if (pathname.includes('/temario')) return '/temario'
     if (pathname.includes('/simulacros')) return '/simulacros'
-    return '/test' // Por defecto ir a tests
+    // Si estamos en página principal de oposición (información), mantener vacío
+    if (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado') return ''
+    return '/test' // Por defecto ir a tests (para otras páginas como /leyes)
   }
 
   // Opciones disponibles para cambiar de oposición/sección
