@@ -161,9 +161,17 @@ git push origin main
 - `package.json` - Dependencias y scripts
 
 ### Documentación de Base de Datos
-- **docs/database/tablas.md:** Documentación detallada de todas las tablas y su estructura
-- Para verificar estructura de tablas, consultar `docs/database/tablas.md` antes de hacer queries
-- Evita asumir nombres de columnas, siempre verificar con `information_schema.columns` o el README
+
+#### Drizzle ORM (Schema Tipado)
+- **`db/schema.ts`** - Schema completo con 85 tablas tipadas, índices, foreign keys y RLS policies
+- **`db/relations.ts`** - Relaciones entre tablas
+- **`drizzle.config.ts`** - Configuración de Drizzle
+- **IMPORTANTE:** Consultar `db/schema.ts` para conocer la estructura exacta de cualquier tabla
+- Para regenerar el schema: `DATABASE_URL="..." npx drizzle-kit introspect`
+
+#### Documentación Adicional
+- **docs/database/tablas.md:** Documentación detallada de todas las tablas
+- Para verificar estructura de tablas, consultar primero `db/schema.ts` (fuente de verdad)
 
 ### Consultas a Base de Datos desde Claude Code
 Claude puede consultar la base de datos Supabase directamente usando Node.js con `@supabase/supabase-js`:
