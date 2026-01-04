@@ -1,0 +1,2695 @@
+{
+  "nuevas": [
+    {
+      "question": "A tenor del artículo 57 de la Constitución Española, la Princesa heredera actual, tiene la dignidad de Princesa de Asturias desde:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Su nacimiento."
+        },
+        {
+          "letter": "B",
+          "text": "Que se produjo el hecho que originó el llamamiento."
+        },
+        {
+          "letter": "C",
+          "text": "Su ascenso al trono."
+        },
+        {
+          "letter": "D",
+          "text": "El fallecimiento del Rey."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 57.\n2. El Príncipe heredero, desde su nacimiento o desde que se produzca el hecho que origine el llamamiento, tendrá la dignidad de Príncipe de Asturias y los demás títulos vinculados tradicionalmente al sucesor de la Corona de España.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Señale la respuesta incorrecta en relación a lo establecido en el Título II de la Constitución:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "La persona del Rey no está sujeta a responsabilidad."
+        },
+        {
+          "letter": "B",
+          "text": "La persona que ostente el trono de España tendrá el título de Rey de España y tendrá la obligación de utilizar los demás títulos que correspondan a la Corona."
+        },
+        {
+          "letter": "C",
+          "text": "El Rey asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica."
+        },
+        {
+          "letter": "D",
+          "text": "La única función constitucional que puede asumir la Reina consorte es la Regencia."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Artículo 56 Constitución Española\n1. El Rey es el Jefe del Estado, símbolo de su unidad y permanencia, arbitra y modera el funcionamiento regular de las instituciones, asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica, y ejerce las funciones que le atribuyen expresamente la Constitución y las leyes.\n2. Su título es el de Rey de España y podrá utilizar los demás que correspondan a la Corona.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65, 2.\nArtículo 58 Constitución Española\nLa Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Señale quién refrenda el acto del Rey por el que se nombra al Presidente del Gobierno tras la votación de investidura:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Ministro de Administraciones Públicas en funciones."
+        },
+        {
+          "letter": "B",
+          "text": "El Presidente del Congreso de los Diputados."
+        },
+        {
+          "letter": "C",
+          "text": "Los Presidentes del Congreso y del Senado."
+        },
+        {
+          "letter": "D",
+          "text": "El Presidente del Senado."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 64.\n1. Los actos del Rey serán refrendados por el Presidente del Gobierno y, en su caso, por los Ministros competentes. La propuesta y el nombramiento del Presidente del Gobierno, y la disolución prevista en el artículo 99, serán refrendados por el Presidente del Congreso.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Los miembros civiles y militares de la Casa del Rey, son:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Nombrados y relevados por las Cortes Generales, en nombre del Rey."
+        },
+        {
+          "letter": "B",
+          "text": "Nombrados y relevados por el Rey, en nombre de las Cortes Generales."
+        },
+        {
+          "letter": "C",
+          "text": "Nombrados y relevados por el Rey, con consentimiento de su consorte."
+        },
+        {
+          "letter": "D",
+          "text": "Nombrados y relevados libremente por éste."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 65.\n2. El Rey nombra y releva libremente a los miembros civiles y militares de su Casa.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "De acuerdo con lo establecido en la Constitución, los actos del Rey deberán estar refrendados salvo:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El nombramiento de los miembros del Tribunal Constitucional."
+        },
+        {
+          "letter": "B",
+          "text": "La propuesta del Presidente del Gobierno."
+        },
+        {
+          "letter": "C",
+          "text": "El nombramiento del Presidente del Gobierno."
+        },
+        {
+          "letter": "D",
+          "text": "El nombramiento de los miembros civiles y militares de su Casa."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\n Artículo 56.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65.2.\nArtículo 65.\n2. El Rey nombra y releva libremente a los miembros civiles y militares de su Casa",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según la Constitución Española, el Rey es:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Jefe del Estado y símbolo de su unidad y permanencia."
+        },
+        {
+          "letter": "B",
+          "text": "Jefe del Estado y del Gobierno."
+        },
+        {
+          "letter": "C",
+          "text": "El Alto Comisionado del Estado."
+        },
+        {
+          "letter": "D",
+          "text": "Jefe del Gobierno."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 56.\n1. El Rey es el Jefe del Estado, símbolo de su unidad y permanencia, arbitra y modera el funcionamiento regular de las instituciones, asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica, y ejerce las funciones que le atribuyen expresamente la Constitución y las leyes.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según la Constitución Española, el Jefe de Estado en España tiene el título de:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Rey de España y las naciones de su comunidad histórica."
+        },
+        {
+          "letter": "B",
+          "text": "Rey de España."
+        },
+        {
+          "letter": "C",
+          "text": "Rey de España Plus Ultra."
+        },
+        {
+          "letter": "D",
+          "text": "Rey de Castilla, Aragón, Navarra y Granada."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 56.\n2. Su título es el de Rey de España y podrá utilizar los demás que correspondan a la Corona.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "¿Desde cuándo el Principe Heredero de la Corona de España tendrá la dignidad de Príncipe de Asturias?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Desde su nacimiento."
+        },
+        {
+          "letter": "B",
+          "text": "Desde que alcance la mayoría de edad."
+        },
+        {
+          "letter": "C",
+          "text": "Desde que se produzca el hecho que origine el llamamiento"
+        },
+        {
+          "letter": "D",
+          "text": "Son correctas la a y la c."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 57.\n2. El Príncipe heredero, desde su nacimiento o desde que se produzca el hecho que origine el llamamiento, tendrá la dignidad de Príncipe de Asturias y los demás títulos vinculados tradicionalmente al sucesor de la Corona de España.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "De acuerdo con lo dispuesto en el Título II de la Constitución Española, dedicado a la Corona:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Las abdicaciones y renuncias se resolverán por una ley orgánica."
+        },
+        {
+          "letter": "B",
+          "text": "Todos los actos del Rey estarán siempre refrendados y carecerán de validez sin dicho refrendo."
+        },
+        {
+          "letter": "C",
+          "text": "Para ejercer la regencia es preciso ser español, mayor de edad y haber sido nombrado por las Cortes Generales."
+        },
+        {
+          "letter": "D",
+          "text": "Sólo el Rey puede conceder indultos generales."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 57.\n5. Las abdicaciones y renuncias y cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona se resolverán por una ley orgánica.\nArtículo 56.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65, 2.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.\n2. Si el Rey se inhabilitare para el ejercicio de su autoridad y la imposibilidad fuere reconocida por las Cortes Generales, entrará a ejercer inmediatamente la Regencia el Príncipe heredero de la Corona, si fuere mayor de edad. Si no lo fuere, se procederá de la manera prevista en el apartado anterior, hasta que el Príncipe heredero alcance la mayoría de edad.\n3. Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas.\n4. Para ejercer la Regencia es preciso ser español y mayor de edad.\n5. La Regencia se ejercerá por mandato constitucional y siempre en nombre del Rey.\nArtículo 62.\nCorresponde al Rey:\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según la Constitución, con carácter general, ¿qué tipo de funciones no podrá asumir la Reina Consorte?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Las gubernamentales."
+        },
+        {
+          "letter": "B",
+          "text": "Las representativas."
+        },
+        {
+          "letter": "C",
+          "text": "Las constitucionales."
+        },
+        {
+          "letter": "D",
+          "text": "Las competenciales."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 58.\nLa Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "¿Cuál de los siguientes actos del Rey es refrendado por el Presidente del Congreso?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "La disolución de las Cámaras."
+        },
+        {
+          "letter": "B",
+          "text": "El nombramiento de los miembros del Gobierno."
+        },
+        {
+          "letter": "C",
+          "text": "La propuesta y nombramiento del Presidente del Gobierno."
+        },
+        {
+          "letter": "D",
+          "text": "La firma de los Tratados internacionales correspondientes, en el caso de que las Cámaras estén disueltas."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución española.\nArtículo 64.\n1. Los actos del Rey serán refrendados por el Presidente del Gobierno y, en su caso, por los Ministros competentes. La propuesta y el nombramiento del Presidente del Gobierno, y la disolución prevista en el artículo 99, serán refrendados por el Presidente del Congreso.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Conforme al artículo 56 de la Constitución Española de 1978, debido a la inviolabilidad y falta de responsabilidad del Rey si sus actos no están refrendados:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Serán válidos si el Rey se compromete a responder con el patrimonio de la Casa Real por los perjuicios causados."
+        },
+        {
+          "letter": "B",
+          "text": "Carecerán de validez."
+        },
+        {
+          "letter": "C",
+          "text": "Dejarán de ser válidos si no son refrendados en el plazo de un mes por los obligados a dicha acción."
+        },
+        {
+          "letter": "D",
+          "text": "Serán válidos, respondiendo el Estado Español en defecto de refrendo."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 56.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65, 2.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "¿Qué Salas del Tribunal Supremo conocerán de la tramitación y enjuiciamiento de las acciones civiles y penales dirigidas contra la Reina consorte o el consorte de la Reina, la Princesa o Príncipe de Asturias y su consorte, así como contra el Rey o Reina que hubiere abdicado y su consorte?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Una Sala especial según el art.61 LOPJ"
+        },
+        {
+          "letter": "B",
+          "text": "No conoce ninguna Sala del Tribunal Supremo, sino que conoce el Tribunal Constitucional."
+        },
+        {
+          "letter": "C",
+          "text": "No conoce ninguna Sala del Tribunal Supremo, sino que conoce la Audiencia Nacional."
+        },
+        {
+          "letter": "D",
+          "text": "La Sala de lo Penal y la Sala de lo Civil."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Ley Orgánica 6/1985, de 1 de julio, del Poder Judicial.\nArtículo 55 bis.\nAdemás de las competencias atribuidas a las Salas de lo Civil y de lo Penal del Tribunal Supremo en los artículos 56 y 57, dichas Salas conocerán de la tramitación y enjuiciamiento de las acciones civiles y penales, respectivamente, dirigidas contra la Reina consorte o el consorte de la Reina, la Princesa o Príncipe de Asturias y su consorte, así como contra el Rey o Reina que hubiere abdicado y su consorte.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "La institución de la Corona se encuentra blindada en la Constitución de 1978, lo que implica que:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "No es posible su derogación."
+        },
+        {
+          "letter": "B",
+          "text": "La Familia Real es inviolable y no está sujeta a responsabilidad."
+        },
+        {
+          "letter": "C",
+          "text": "Su reforma exige el procedimiento agravado."
+        },
+        {
+          "letter": "D",
+          "text": "El Rey puede destituir al Gobierno en caso de mala gestión."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 168.\n1. Cuando se propusiere la revisión total de la Constitución o una parcial que afecte al Título preliminar, al Capítulo segundo, Sección primera del Título I, o al Título II, se procederá a la aprobación del principio por mayoría de dos tercios de cada Cámara, y a la disolución inmediata de las Cortes.\n2. Las Cámaras elegidas deberán ratificar la decisión y proceder al estudio del nuevo texto constitucional, que deberá ser aprobado por mayoría de dos tercios de ambas Cámaras.\n3. Aprobada la reforma por las Cortes Generales, será sometida a referéndum para su ratificación.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "¿Que artículo de la Constitución señala que la forma política del Estado español es la Monarquía parlamentaria?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El artículo 5."
+        },
+        {
+          "letter": "B",
+          "text": "El artículo 1.2."
+        },
+        {
+          "letter": "C",
+          "text": "El artículo 3.1."
+        },
+        {
+          "letter": "D",
+          "text": "El artículo 1.3."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 1.\n3. La forma política del Estado español es la Monarquía parlamentaria.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "En base a lo establecido en el Título II de la Constitución, no serán responsables de los actos del Rey:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Presidente del Senado."
+        },
+        {
+          "letter": "B",
+          "text": "Los Ministros."
+        },
+        {
+          "letter": "C",
+          "text": "El Presidente del Gobierno."
+        },
+        {
+          "letter": "D",
+          "text": "El Presidente del Congreso."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución española.\nArtículo 64.\n1. Los actos del Rey serán refrendados por el Presidente del Gobierno y, en su caso, por los Ministros competentes. La propuesta y el nombramiento del Presidente del Gobierno, y la disolución prevista en el artículo 99, serán refrendados por el Presidente del Congreso.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Señale la respuesta correcta en relación con la Regencia:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por el Senado, y se compondrá de tres o cinco personas."
+        },
+        {
+          "letter": "B",
+          "text": "La Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia."
+        },
+        {
+          "letter": "C",
+          "text": "Para ejercer la Regencia es preciso ser español y mayor de veintiún años."
+        },
+        {
+          "letter": "D",
+          "text": "Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento, acumulando los cargos de Regente y tutor."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 58.\nLa Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según el artículo 56 de la Constitución, el Rey es el Jefe del Estado:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Símbolo de su unidad y permanencia"
+        },
+        {
+          "letter": "B",
+          "text": "Símbolo de su unidad"
+        },
+        {
+          "letter": "C",
+          "text": "Símbolo de su unidad y estabilidad"
+        },
+        {
+          "letter": "D",
+          "text": "Símbolo de su unidad, estabilidad y permanencia"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 56.\n1. El Rey es el Jefe del Estado, símbolo de su unidad y permanencia, arbitra y modera el funcionamiento regular de las instituciones, asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica, y ejerce las funciones que le atribuyen expresamente la Constitución y las leyes.\n2. Su título es el de Rey de España y podrá utilizar los demás que correspondan a la Corona.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65, 2.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según el artículo 57 de la Constitución, el Príncipe heredero tendrá la dignidad de:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Infante de España y los demás títulos vinculados tradicionalmente al sucesor de la Corona de España."
+        },
+        {
+          "letter": "B",
+          "text": "Príncipe de Gerona y Archiduque de Austria."
+        },
+        {
+          "letter": "C",
+          "text": "Alteza Real e Infante de España."
+        },
+        {
+          "letter": "D",
+          "text": "Príncipe de Asturias y los demás títulos vinculados tradicionalmente al sucesor de la Corona de España."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 57.\n2. El Príncipe heredero, desde su nacimiento o desde que se produzca el hecho que origine el llamamiento, tendrá la dignidad de Príncipe de Asturias y los demás títulos vinculados tradicionalmente al sucesor de la Corona de España.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según el apartado segundo del art. 56 CE, el título que ostenta el Rey, además de los que señalen otras leyes, es el de:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Jefe de Estado."
+        },
+        {
+          "letter": "B",
+          "text": "Rey de España."
+        },
+        {
+          "letter": "C",
+          "text": "Archiduque de Austria"
+        },
+        {
+          "letter": "D",
+          "text": "Rey de Castilla."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 56.\n2. Su título es el de Rey de España y podrá utilizar los demás que correspondan a la Corona.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "La inviolabilidad y la falta de responsabilidad a la que se refiere el artículo 56 de la Constitución Española, será de aplicación:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Exclusivamente a la persona del Rey."
+        },
+        {
+          "letter": "B",
+          "text": "Al Rey y su consorte."
+        },
+        {
+          "letter": "C",
+          "text": "A toda la familia Real."
+        },
+        {
+          "letter": "D",
+          "text": "A todo el que ostente o haya ostentado el trono español, incluidos los supuestos de abdicación."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 56.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65, 2.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según el artículo 56 de la Constitución, la persona del Rey:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Ninguna respuesta es correcta."
+        },
+        {
+          "letter": "B",
+          "text": "Es inmune y está sujeta a responsabilidad."
+        },
+        {
+          "letter": "C",
+          "text": "Es inviolable y está sujeta a responsabilidad."
+        },
+        {
+          "letter": "D",
+          "text": "Es inviolable y no está sujeta a responsabilidad."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 56.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65, 2.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según el precepto 65 de la Constitución, el Rey recibe de los Presupuestos del Estado:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Una cantidad global para el sostenimiento exclusivo de su Familia, y distribuye libremente la misma."
+        },
+        {
+          "letter": "B",
+          "text": "Una cantidad global para el sostenimiento exclusivo de su Familia, que no distribuye libremente ."
+        },
+        {
+          "letter": "C",
+          "text": "Una cantidad global para el sostenimiento de su Familia y Casa, que no distribuye libremente."
+        },
+        {
+          "letter": "D",
+          "text": "Una cantidad global para el sostenimiento de su Familia y Casa, y distribuye libremente la misma."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 65.\n1. El Rey recibe de los Presupuestos del Estado una cantidad global para el sostenimiento de su Familia y Casa, y distribuye libremente la misma.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según la Constitución, con carácter general, la Reina consorte o el consorte de la Reina:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "No podrán asumir funciones representativas."
+        },
+        {
+          "letter": "B",
+          "text": "No podrán asumir funciones constitucionales."
+        },
+        {
+          "letter": "C",
+          "text": "Podrán asumir funciones representativas."
+        },
+        {
+          "letter": "D",
+          "text": "No podrán asumir funciones gubernamentales."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 58.\nLa Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Una de las siguientes no es función constitucional del Rey. Indique cuál:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Sancionar y promulgar las leyes."
+        },
+        {
+          "letter": "B",
+          "text": "El mando supremo de las Fuerzas Armadas."
+        },
+        {
+          "letter": "C",
+          "text": "Aprobar los Estatutos de Autonomía."
+        },
+        {
+          "letter": "D",
+          "text": "Convocar a referéndum en los casos previstos en la Constitución."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "De acuerdo con el artículo 61 de la Constitución Española de 1978, ¿cuándo prestará el Príncipe heredero juramento de desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes y respetar los derechos de los ciudadanos y de las Comunidades Autónomas?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Cuando asuma el Título de Príncipe de Asturias."
+        },
+        {
+          "letter": "B",
+          "text": "Cuando alcance la mayoría de edad."
+        },
+        {
+          "letter": "C",
+          "text": "Nunca, ese juramento solo lo realizará el Rey al ser proclamado ante las Cortes Generales."
+        },
+        {
+          "letter": "D",
+          "text": "Cuando termine su formación militar."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 61.\n1. El Rey, al ser proclamado ante las Cortes Generales, prestará juramento de desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes y respetar los derechos de los ciudadanos y de las Comunidades Autónomas.\n2. El Príncipe heredero, al alcanzar la mayoría de edad, y el Regente o Regentes al hacerse cargo de sus funciones, prestarán el mismo juramento, así como el de fidelidad al Rey.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según la Constitución, ¿quién no podrá asumir funciones constitucionales, salvo lo dispuesto para la regencia?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Regente."
+        },
+        {
+          "letter": "B",
+          "text": "Ninguna es correcta."
+        },
+        {
+          "letter": "C",
+          "text": "El Rey."
+        },
+        {
+          "letter": "D",
+          "text": "La Reina consorte o el consorte de la Reina."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 58.\nLa Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Indique cuál de los siguientes actos del Rey está exceptuado del refrendo:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El nombramiento de los miembros civiles y militares de la Casa Real."
+        },
+        {
+          "letter": "B",
+          "text": "La separación de los Ministros."
+        },
+        {
+          "letter": "C",
+          "text": "El nombramiento del Presidente del Gobierno."
+        },
+        {
+          "letter": "D",
+          "text": "La acreditación de los embajadores extranjeros en España."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 65.\n1. El Rey recibe de los Presupuestos del Estado una cantidad global para el sostenimiento de su Familia y Casa, y distribuye libremente la misma.\n2. El Rey nombra y releva libremente a los miembros civiles y militares de su Casa.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "El consorte de la Reina, ¿puede asumir funciones constitucionales?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Sí, por delegación de la Reina."
+        },
+        {
+          "letter": "B",
+          "text": "No, en ningún caso."
+        },
+        {
+          "letter": "C",
+          "text": "No, salvo lo dispuesto para la Regencia."
+        },
+        {
+          "letter": "D",
+          "text": "Sí, previa autorización de las Cortes Generales."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 58.\nLa Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Podrá presidir las sesiones del Consejo de Ministros:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El/la Presidente/-a del Congreso de los Diputados."
+        },
+        {
+          "letter": "B",
+          "text": "El Rey."
+        },
+        {
+          "letter": "C",
+          "text": "El/la Presidente/-a del Senado."
+        },
+        {
+          "letter": "D",
+          "text": "El Rey, a petición del Presidente del Gobierno."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Artículo 62 CE. \nCorresponde al Rey:\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Al Rey corresponde:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Declarar la guerra y hacer la paz, previa autorización del Gobierno."
+        },
+        {
+          "letter": "B",
+          "text": "Declarar la guerra y hacer la paz, previa autorización del Senado."
+        },
+        {
+          "letter": "C",
+          "text": "Declarar la guerra y hacer la paz."
+        },
+        {
+          "letter": "D",
+          "text": "Declarar la guerra y hacer la paz, previa autorización de las Cortes Generales."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española\nArtículo 63\n3. Al Rey corresponde, previa autorización de las Cortes Generales, declarar la guerra y hacer la paz.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Arbitrar y moderar el funcionamiento regular de las instituciones es una función que corresponde:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Al pueblo español."
+        },
+        {
+          "letter": "B",
+          "text": "A los Tribunales de Justicia."
+        },
+        {
+          "letter": "C",
+          "text": "Al Presidente del Gobierno."
+        },
+        {
+          "letter": "D",
+          "text": "Al Rey."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 56.\n1. El Rey es el Jefe del Estado, símbolo de su unidad y permanencia, arbitra y modera el funcionamiento regular de las instituciones, asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica, y ejerce las funciones que le atribuyen expresamente la Constitución y las leyes.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "De acuerdo con la Constitución española, ¿quién acredita a los embajadores y otros representantes diplomáticos?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Ministro competente en materia de asuntos exteriores."
+        },
+        {
+          "letter": "B",
+          "text": "El Presidente del Gobierno."
+        },
+        {
+          "letter": "C",
+          "text": "El Consejo de ministros a propuesta del Ministro competente en materia de asuntos exteriores."
+        },
+        {
+          "letter": "D",
+          "text": "El Rey."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Artículo 63 Constitución Española\n1. El Rey acredita a los embajadores y otros representantes diplomáticos. Los representantes extranjeros en España están acreditados ante él.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "El Presidente del Tribunal Supremo será nombrado por:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Presidente del Gobierno a propuesta del Gobierno."
+        },
+        {
+          "letter": "B",
+          "text": "El Presidente del Tribunal Constitucional a propuesta del Consejo General del Poder Judicial."
+        },
+        {
+          "letter": "C",
+          "text": "El Rey a propuesta del Consejo General del Poder Judicial, en la forma que determine la Ley."
+        },
+        {
+          "letter": "D",
+          "text": "El Presidente del Gobierno a propuesta del Congreso."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española\nArtículo 123\n2. El Presidente del Tribunal Supremo será nombrado por el Rey, a propuesta del Consejo General del Poder Judicial, en la forma que determine la ley.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes es una función:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Del Presiente del Gobierno."
+        },
+        {
+          "letter": "B",
+          "text": "Del Rey."
+        },
+        {
+          "letter": "C",
+          "text": "Del Gobierno."
+        },
+        {
+          "letter": "D",
+          "text": "De las Cortes Generales."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 63.\n2. Al Rey corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Según lo establecido en el artículo 63 de la Constitución, indique cuál de las siguientes afirmaciones es incorrecta:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Al Rey corresponde, previa autorización del Gobierno, declarar la guerra y hacer la paz."
+        },
+        {
+          "letter": "B",
+          "text": "Los representantes extranjeros en España están acreditados ante el Rey."
+        },
+        {
+          "letter": "C",
+          "text": "El Rey acredita a los embajadores y otros representantes diplomáticos."
+        },
+        {
+          "letter": "D",
+          "text": "Al Rey corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 63.\n1. El Rey acredita a los embajadores y otros representantes diplomáticos. Los representantes extranjeros en España están acreditados ante él.\n2. Al Rey corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes.\n3. Al Rey corresponde, previa autorización de las Cortes Generales, declarar la guerra y hacer la paz.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Según la Constitución Española, ¿a quien corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Al Presidente del Gobierno."
+        },
+        {
+          "letter": "B",
+          "text": "Al Congreso de los Diputados."
+        },
+        {
+          "letter": "C",
+          "text": "Al Rey."
+        },
+        {
+          "letter": "D",
+          "text": "A las Cortes Generales."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 63.\n2. Al Rey corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "De acuerdo con el artículo 62 de la Constitución, ¿cuál de las siguientes NO es una función que le corresponda al Rey?:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente."
+        },
+        {
+          "letter": "B",
+          "text": "Convocar a referéndum en los casos previstos en la Constitución."
+        },
+        {
+          "letter": "C",
+          "text": "Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución."
+        },
+        {
+          "letter": "D",
+          "text": "Aprobar y refrendar las leyes."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "El artículo 56 de la CE establece que el Rey asume la más alta representación del Estado español en las relaciones internacionales, y especialmente:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Con las naciones iberoamericanas."
+        },
+        {
+          "letter": "B",
+          "text": "Con las naciones de su comunidad histórica."
+        },
+        {
+          "letter": "C",
+          "text": "Con las naciones de la Unión Europea."
+        },
+        {
+          "letter": "D",
+          "text": "Con las naciones de su comunidad cultura."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 56.\n1. El Rey es el Jefe del Estado, símbolo de su unidad y permanencia, arbitra y modera el funcionamiento regular de las instituciones, asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica, y ejerce las funciones que le atribuyen expresamente la Constitución y las leyes.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "En relación con los Tratados Internacionales, ¿qué función ejerce el Rey?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Prestar el consentimiento del Estado para obligarse internacionalmente."
+        },
+        {
+          "letter": "B",
+          "text": "Manifestar el consentimiento del Estado para obligarse internacionalmente."
+        },
+        {
+          "letter": "C",
+          "text": "Sancionar el tratado internacional."
+        },
+        {
+          "letter": "D",
+          "text": "Autorizar los tratados internacionales a los que se refiere el art. 94 CE"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 63.\n2. Al Rey corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Según el artículo 65.2 de la Constitución Española de 1978:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Ministro de Presidencia nombra y releva a los miembros civiles de la Casa del Rey y el Ministro de Defensa a los Miembros militares."
+        },
+        {
+          "letter": "B",
+          "text": "El Rey nombra y releva libremente a los miembros civiles y militares de su Casa."
+        },
+        {
+          "letter": "C",
+          "text": "El Gobierno nombra y releva libremente a los miembros civiles y militares de la Casa del Rey."
+        },
+        {
+          "letter": "D",
+          "text": "El Parlamento nombra y releva a los miembros civiles y militares de la Casa del Rey a propuesta del Gobierno."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española\nArtículo 65\n2. El Rey nombra y releva libremente a los miembros civiles y militares de su Casa.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Corresponde al Rey, según la Constitución:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Ejercer el derecho de gracia, incluyendo los indultos generales y particulares."
+        },
+        {
+          "letter": "B",
+          "text": "Sancionar y promulgar las leyes, ejerciendo en su caso, el derecho de veto."
+        },
+        {
+          "letter": "C",
+          "text": "Convocar a referéndum en los casos previstos en la propia Constitución."
+        },
+        {
+          "letter": "D",
+          "text": "Autorizar la celebración de Tratados internacionales de carácter militar."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "En relación con los referéndums, ¿qué función corresponde al Rey?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Autorizarlos."
+        },
+        {
+          "letter": "B",
+          "text": "Proponerlos."
+        },
+        {
+          "letter": "C",
+          "text": "Convocarlos."
+        },
+        {
+          "letter": "D",
+          "text": "Sancionarlos."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.\nArtículo 92.\n2. El referéndum será convocado por el Rey, mediante propuesta del Presidente del Gobierno, previamente autorizada por el Congreso de los Diputados.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "A tenor de lo establecido en la Constitución, es una función constitucional del Rey:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Declarar los estados de alarma, excepción y sitio."
+        },
+        {
+          "letter": "B",
+          "text": "Nombrar a los Presidentes de las Comunidades Autónomas."
+        },
+        {
+          "letter": "C",
+          "text": "Sustituir al Presidente del Gobierno en caso de Guerra."
+        },
+        {
+          "letter": "D",
+          "text": "Interponer el recurso de inconstitucionalidad."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 152.\n1. En los Estatutos aprobados por el procedimiento a que se refiere el artículo anterior, la organización institucional autonómica se basará en una Asamblea Legislativa, elegida por sufragio universal, con arreglo a un sistema de representación proporcional que asegure, además, la representación de las diversas zonas del territorio; un Consejo de Gobierno con funciones ejecutivas y administrativas y un Presidente, elegido por la Asamblea, de entre sus miembros, y nombrado por el Rey, al que corresponde la dirección del Consejo de Gobierno, la suprema representación de la respectiva Comunidad y la ordinaria del Estado en aquélla. El Presidente y los miembros del Consejo de Gobierno serán políticamente responsables ante la Asamblea.\nUn Tribunal Superior de Justicia, sin perjuicio de la jurisdicción que corresponde al Tribunal Supremo, culminará la organización judicial en el ámbito territorial de la Comunidad Autónoma. En los Estatutos de las Comunidades Autónomas podrán establecerse los supuestos y las formas de participación de aquéllas en la organización de las demarcaciones judiciales del territorio. Todo ello de conformidad con lo previsto en la ley orgánica del poder judicial y dentro de la unidad e independencia de éste.\nSin perjuicio de lo dispuesto en el artículo 123, las sucesivas instancias procesales, en su caso, se agotarán ante órganos judiciales radicados en el mismo territorio de la Comunidad Autónoma en que esté el órgano competente en primera instancia.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "De acuerdo con la Constitución, el Rey no podrá:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Conceder indultos generales."
+        },
+        {
+          "letter": "B",
+          "text": "Declarar la guerra."
+        },
+        {
+          "letter": "C",
+          "text": "Nombrar y separar a los miembros del Gobierno."
+        },
+        {
+          "letter": "D",
+          "text": "Nombrar y relevar libremente a los miembros civiles y militares de su Casa."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Indique cuál de los siguientes actos no corresponde formalmente al Rey:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Nombrar a un Presidente de Comunidad Autónoma"
+        },
+        {
+          "letter": "B",
+          "text": "Convocar referéndum en los casos previstos en la Constitución Española"
+        },
+        {
+          "letter": "C",
+          "text": "Expedir una orden ministerial"
+        },
+        {
+          "letter": "D",
+          "text": "Ejercer el derecho de gracia"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.\nArtículo 152.\n1. En los Estatutos aprobados por el procedimiento a que se refiere el artículo anterior, la organización institucional autonómica se basará en una Asamblea Legislativa, elegida por sufragio universal, con arreglo a un sistema de representación proporcional que asegure, además, la representación de las diversas zonas del territorio; un Consejo de Gobierno con funciones ejecutivas y administrativas y un Presidente, elegido por la Asamblea, de entre sus miembros, y nombrado por el Rey, al que corresponde la dirección del Consejo de Gobierno, la suprema representación de la respectiva Comunidad y la ordinaria del Estado en aquélla. El Presidente y los miembros del Consejo de Gobierno serán políticamente responsables ante la Asamblea.\nUn Tribunal Superior de Justicia, sin perjuicio de la jurisdicción que corresponde al Tribunal Supremo, culminará la organización judicial en el ámbito territorial de la Comunidad Autónoma. En los Estatutos de las Comunidades Autónomas podrán establecerse los supuestos y las formas de participación de aquéllas en la organización de las demarcaciones judiciales del territorio. Todo ello de conformidad con lo previsto en la ley orgánica del poder judicial y dentro de la unidad e independencia de éste.\nSin perjuicio de lo dispuesto en el artículo 123, las sucesivas instancias procesales, en su caso, se agotarán ante órganos judiciales radicados en el mismo territorio de la Comunidad Autónoma en que esté el órgano competente en primera instancia.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "De conformidad con el Título II de la Constitución Española de 1978, señala la respuesta CORRECTA:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Rey recibe de los Presupuestos del Estado una cantidad global para el sostenimiento de su Familia y Casa, y distribuye libremente la misma."
+        },
+        {
+          "letter": "B",
+          "text": "Corresponde al Rey declarar la guerra y hacer la paz, previa autorización del Congreso de los Diputados."
+        },
+        {
+          "letter": "C",
+          "text": "El Rey ejerce el derecho de gracia con arreglo a la ley, que podrá autorizar indultos generales."
+        },
+        {
+          "letter": "D",
+          "text": "El Rey presta el consentimiento del Estado para obligarse por medio de tratados."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 65.\n1. El Rey recibe de los Presupuestos del Estado una cantidad global para el sostenimiento de su Familia y Casa, y distribuye libremente la misma.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Sobre el derecho de gracia que corresponde al Rey, señala la Constitución:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Que no podrá autorizar indultos generales"
+        },
+        {
+          "letter": "B",
+          "text": "Que no será aplicable a ninguno de los supuestos relativos a la responsabilidad criminal del Presidente y los demás miembros del Gobierno."
+        },
+        {
+          "letter": "C",
+          "text": "Que no cabe la iniciativa popular en esta materia."
+        },
+        {
+          "letter": "D",
+          "text": "Todas las respuestas anteriores son correctas."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española\nArtículo 62\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.\nArtículo 87\n3. Una ley orgánica regulará las formas de ejercicio y requisitos de la iniciativa popular para la presentación de proposiciones de ley. En todo caso se exigirán no menos de 500.000 firmas acreditadas. No procederá dicha iniciativa en materias propias de ley orgánica, tributarias o de carácter internacional, ni en lo relativo a la prerrogativa de gracia.\nArtículo 102\n3. La prerrogativa real de gracia no será aplicable a ninguno de los supuestos del presente artículo.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "De acuerdo con el artículo 62 de la Constitución, no corresponde al Rey:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Ejercer el derecho de gracia con arreglo a la ley."
+        },
+        {
+          "letter": "B",
+          "text": "El Alto Patronazgo de las Reales Academias."
+        },
+        {
+          "letter": "C",
+          "text": "Dirigir la política de defensa."
+        },
+        {
+          "letter": "D",
+          "text": "Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "En base al artículo 63 de la Constitución, el rey en relación a los embajadores y otros representantes diplomáticos deberá:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Acreditarlos."
+        },
+        {
+          "letter": "B",
+          "text": "Nombrarlos."
+        },
+        {
+          "letter": "C",
+          "text": "Proponerlos."
+        },
+        {
+          "letter": "D",
+          "text": "Cesarlos."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Artículo 63 Constitución Española\n1. El Rey acredita a los embajadores y otros representantes diplomáticos. Los representantes extranjeros en España están acreditados ante él.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "¿Cuál de las siguientes funciones está atribuida expresamente por la Constitución al Rey?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Elaborar los Presupuestos de su Casa, para su posterior remisión a las Cortes Generales."
+        },
+        {
+          "letter": "B",
+          "text": "Representar al pueblo español."
+        },
+        {
+          "letter": "C",
+          "text": "Nombrar libremente al personal civil y militar de su Casa."
+        },
+        {
+          "letter": "D",
+          "text": "Aprobación de los Presupuestos Generales del Estado."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 65.\n1. El Rey recibe de los Presupuestos del Estado una cantidad global para el sostenimiento de su Familia y Casa, y distribuye libremente la misma.\n2. El Rey nombra y releva libremente a los miembros civiles y militares de su Casa.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "La Constitución establece que el mando supremo de las Fuerzas Armadas corresponde a:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El titular el Ministerio competente en materia de Defensa."
+        },
+        {
+          "letter": "B",
+          "text": "El Presidente del Gobierno."
+        },
+        {
+          "letter": "C",
+          "text": "El Rey."
+        },
+        {
+          "letter": "D",
+          "text": "Ninguno de los anteriores."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "De conformidad con el artículo 62 de la Constitución, corresponde al Rey:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Sancionar y promulgar las Leyes y ordenar la publicación de las Órdenes Ministeriales."
+        },
+        {
+          "letter": "B",
+          "text": "Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución."
+        },
+        {
+          "letter": "C",
+          "text": "El mando supremo de los Cuerpos y Fuerzas de Seguridad del Estado."
+        },
+        {
+          "letter": "D",
+          "text": "Ejercer el derecho de gracia de acuerdo con los Tratados Internacionales."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "De acuerdo con la Constitución de 1978 el Rey deberá sancionar y promulgar las leyes tras su aprobación por las cortes generales en el plazo de:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Una semana."
+        },
+        {
+          "letter": "B",
+          "text": "15 días."
+        },
+        {
+          "letter": "C",
+          "text": "20 días."
+        },
+        {
+          "letter": "D",
+          "text": "Un mes."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 91.\nEl Rey sancionará en el plazo de quince días las leyes aprobadas por las Cortes Generales, y las promulgará y ordenará su inmediata publicación.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "De acuerdo con el artículo 63 de la Constitución Española de 1978, ¿a quién corresponde declarar la guerra y hacer la paz?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Al Congreso de los Diputados, previa autorización del Rey."
+        },
+        {
+          "letter": "B",
+          "text": "Al Gobierno, previa autorización del Rey."
+        },
+        {
+          "letter": "C",
+          "text": "Al Rey, previa autorización de las Cortes Generales."
+        },
+        {
+          "letter": "D",
+          "text": "Al Rey, previa autorización del Congreso de los Diputados."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española\nArtículo 63\n3. Al Rey corresponde, previa autorización de las Cortes Generales, declarar la guerra y hacer la paz.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "A tenor de lo establecido en el artículo 63 de la CE:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Al Rey corresponde, previa autorización del Presidente del Gobierno, declarar la guerra y hacer la paz."
+        },
+        {
+          "letter": "B",
+          "text": "Al Rey corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes."
+        },
+        {
+          "letter": "C",
+          "text": "Los representantes extranjeros en España están acreditados ante él, si así lo establece la Constitución en sus países de origen."
+        },
+        {
+          "letter": "D",
+          "text": "El Rey acredita a los embajadores y otros representantes diplomáticos, previa autorización de las Cortes Generales."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 63.\n1. El Rey acredita a los embajadores y otros representantes diplomáticos. Los representantes extranjeros en España están acreditados ante él.\n2. Al Rey corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes.\n3. Al Rey corresponde, previa autorización de las Cortes Generales, declarar la guerra y hacer la paz.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Tal y como establece el artículo 56 de la Constitución Española, el Rey asume la más alta representación del Estado Español en las relaciones internacionales, pero matiza que dicha representación será especialmente con:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Con las naciones integrantes de la Unión Europea"
+        },
+        {
+          "letter": "B",
+          "text": "Con las naciones de su comunidad histórica"
+        },
+        {
+          "letter": "C",
+          "text": "Con las naciones iberoamericanas"
+        },
+        {
+          "letter": "D",
+          "text": "Con las naciones de su entorno cultural y geográfico"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 56.\n1. El Rey es el Jefe del Estado, símbolo de su unidad y permanencia, arbitra y modera el funcionamiento regular de las instituciones, asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica, y ejerce las funciones que le atribuyen expresamente la Constitución y las leyes.\n2. Su título es el de Rey de España y podrá utilizar los demás que correspondan a la Corona.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65, 2.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "En relación a los embajadores y otros representantes diplomáticos, el Rey los:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Designa."
+        },
+        {
+          "letter": "B",
+          "text": "Propone."
+        },
+        {
+          "letter": "C",
+          "text": "Acredita."
+        },
+        {
+          "letter": "D",
+          "text": "Elige."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Artículo 63 Constitución Española\n1. El Rey acredita a los embajadores y otros representantes diplomáticos. Los representantes extranjeros en España están acreditados ante él.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Corresponde al Rey conforme al artículo 62 de la Constitución Española:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Sancionar y promulgar las leyes"
+        },
+        {
+          "letter": "B",
+          "text": "Nombrar comisiones de investigación sobre cualquier asunto de interés público"
+        },
+        {
+          "letter": "C",
+          "text": "Declarar el estado de excepción"
+        },
+        {
+          "letter": "D",
+          "text": "Autorizar indultos generales"
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Señale cuál de las siguientes funciones no le corresponden al Rey, según la Constitución:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la propia Constitución."
+        },
+        {
+          "letter": "B",
+          "text": "El Alto Patronazgo de las Reales Academias."
+        },
+        {
+          "letter": "C",
+          "text": "Nombrar y separar a los miembros del Gobierno, a propuesta del Consejo de Ministros."
+        },
+        {
+          "letter": "D",
+          "text": "El mando supremo de las Fuerzas Armadas."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 62.\nCorresponde al Rey:\na) Sancionar y promulgar las leyes.\nb) Convocar y disolver las Cortes Generales y convocar elecciones en los términos previstos en la Constitución.\nc) Convocar a referéndum en los casos previstos en la Constitución.\nd) Proponer el candidato a Presidente del Gobierno y, en su caso, nombrarlo, así como poner fin a sus funciones en los términos previstos en la Constitución.\ne) Nombrar y separar a los miembros del Gobierno, a propuesta de su Presidente.\nf) Expedir los decretos acordados en el Consejo de Ministros, conferir los empleos civiles y militares y conceder honores y distinciones con arreglo a las leyes.\ng) Ser informado de los asuntos de Estado y presidir, a estos efectos, las sesiones del Consejo de Ministros, cuando lo estime oportuno, a petición del Presidente del Gobierno.\nh) El mando supremo de las Fuerzas Armadas.\ni) Ejercer el derecho de gracia con arreglo a la ley, que no podrá autorizar indultos generales.\nj) El Alto Patronazgo de las Reales Academias.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Señale la respuesta incorrecta en relación a lo establecido en el Título II de la Constitución:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "La persona que ostente el trono de España tendrá el título de Rey de España y tendrá la obligación de utilizar los demás títulos que correspondan a la Corona."
+        },
+        {
+          "letter": "B",
+          "text": "La persona del Rey no está sujeta a responsabilidad."
+        },
+        {
+          "letter": "C",
+          "text": "El Rey asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica."
+        },
+        {
+          "letter": "D",
+          "text": "La única función constitucional que puede asumir la Reina consorte es la Regencia."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Artículo 56 Constitución Española\n1. El Rey es el Jefe del Estado, símbolo de su unidad y permanencia, arbitra y modera el funcionamiento regular de las instituciones, asume la más alta representación del Estado español en las relaciones internacionales, especialmente con las naciones de su comunidad histórica, y ejerce las funciones que le atribuyen expresamente la Constitución y las leyes.\n2. Su título es el de Rey de España y podrá utilizar los demás que correspondan a la Corona.\n3. La persona del Rey es inviolable y no está sujeta a responsabilidad. Sus actos estarán siempre refrendados en la forma establecida en el artículo 64, careciendo de validez sin dicho refrendo, salvo lo dispuesto en el artículo 65, 2.\nArtículo 58 Constitución Española\nLa Reina consorte o el consorte de la Reina no podrán asumir funciones constitucionales, salvo lo dispuesto para la Regencia.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Señale quién refrenda el acto del Rey por el que se nombra al Presidente del Gobierno tras la votación de investidura:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Los Presidentes del Congreso y del Senado."
+        },
+        {
+          "letter": "B",
+          "text": "El Presidente del Senado."
+        },
+        {
+          "letter": "C",
+          "text": "El Presidente del Congreso de los Diputados."
+        },
+        {
+          "letter": "D",
+          "text": "El Ministro de Administraciones Públicas en funciones."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 64.\n1. Los actos del Rey serán refrendados por el Presidente del Gobierno y, en su caso, por los Ministros competentes. La propuesta y el nombramiento del Presidente del Gobierno, y la disolución prevista en el artículo 99, serán refrendados por el Presidente del Congreso.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "El artículo 61 de la Constitución Española dispone que, el Rey al ser proclamado ante las Cortes Generales:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Prestará juramento o promesa de desempeñar fielmente sus funciones, guardar y hacer guarda la Constitución y las Leyes, y respetar los derechos de los ciudadanos y de las Comunidades Autónomas"
+        },
+        {
+          "letter": "B",
+          "text": "Prestará juramento de desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las Leyes, y respetar los derechos de los ciudadanos, las Comunidades Autonómicas y las entidades locales"
+        },
+        {
+          "letter": "C",
+          "text": "Prestará juramento de desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las Leyes, y respetar los derechos de los ciudadanos y de las Comunidades Autónomas"
+        },
+        {
+          "letter": "D",
+          "text": "Prestará promesa de desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las Leyes, y respetar los derechos de los ciudadanos, las Comunidades Autonómicas y las entidades locales"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 61.\n1. El Rey, al ser proclamado ante las Cortes Generales, prestará juramento de desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes y respetar los derechos de los ciudadanos y de las Comunidades Autónomas.\n2. El Príncipe heredero, al alcanzar la mayoría de edad, y el Regente o Regentes al hacerse cargo de sus funciones, prestarán el mismo juramento, así como el de fidelidad al Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Será tutor del Rey menor en primer lugar:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El padre o la madre mientras permanezcan viudos."
+        },
+        {
+          "letter": "B",
+          "text": "El Ministro de Justicia."
+        },
+        {
+          "letter": "C",
+          "text": "La persona que designen las Cortes Generales."
+        },
+        {
+          "letter": "D",
+          "text": "La persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 60.\n1. Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto, lo nombrarán las Cortes Generales, pero no podrán acumularse los cargos de Regente y de tutor sino en el padre, madre o ascendientes directos del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "A tenor de la literalidad del artículo 57 de la Consitución, la sucesión en el trono seguirá el orden regular de primogenitura y representación, teniendo en cuenta en primer lugar:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "En la misma línea, el grado más próximo al más remoto."
+        },
+        {
+          "letter": "B",
+          "text": "La línea anterior a las posteriores."
+        },
+        {
+          "letter": "C",
+          "text": "En el mismo sexo, la persona de más edad a la de menos."
+        },
+        {
+          "letter": "D",
+          "text": "En el mismo grado, el varón a la mujer."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 57.\n1. La Corona de España es hereditaria en los sucesores de S. M. Don Juan Carlos I de Borbón, legítimo heredero de la dinastía histórica. La sucesión en el trono seguirá el orden regular de primogenitura y representación, siendo preferida siempre la línea anterior a las posteriores; en la misma línea, el grado más próximo al más remoto; en el mismo grado, el varón a la mujer, y en el mismo sexo, la persona de más edad a la de menos.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "¿En qué consistirá el juramento del príncipe heredero al cumplir la mayoría de edad?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Jurará fidelidad al Rey, desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes y respetar los derechos de los ciudadanos."
+        },
+        {
+          "letter": "B",
+          "text": "Jurará fidelidad al Rey, desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes y respetar los derechos de los ciudadanos y las Comunidades Autónomas."
+        },
+        {
+          "letter": "C",
+          "text": "Jurará desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes y respetar los derechos de los ciudadanos y de las Comunidades Autónomas."
+        },
+        {
+          "letter": "D",
+          "text": "El príncipe heredero no jurará al cumplir la mayoría de edad, sino al ser proclamado Rey."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 61.\n1. El Rey, al ser proclamado ante las Cortes Generales, prestará juramento de desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes y respetar los derechos de los ciudadanos y de las Comunidades Autónomas.\n2. El Príncipe heredero, al alcanzar la mayoría de edad, y el Regente o Regentes al hacerse cargo de sus funciones, prestarán el mismo juramento, así como el de fidelidad al Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según lo establecido en el artículo 60 de la Constitución Española, ¿quién puede acumular en sí mismo los cargos de Regente y tutor?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El padre, madre o ascendientes directos del Rey."
+        },
+        {
+          "letter": "B",
+          "text": "La persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento."
+        },
+        {
+          "letter": "C",
+          "text": "El padre o la madre mientras siempre y cuando permanezcan viudos."
+        },
+        {
+          "letter": "D",
+          "text": "Todas las anteriores son correctas."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 60.\n1. Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto, lo nombrarán las Cortes Generales, pero no podrán acumularse los cargos de Regente y de tutor sino en el padre, madre o ascendientes directos del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "De acuerdo con lo establecido en la Constitución Española, cuando el Rey fuere menor de edad, entrará a ejercer inmediatamente la Regencia, el padre o la madre del Rey y, en su defecto:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El pariente mayor de edad más próximo a suceder en la Corona."
+        },
+        {
+          "letter": "B",
+          "text": "Las Cortes Generales."
+        },
+        {
+          "letter": "C",
+          "text": "La persona que sea designada por el Rey para tal situación."
+        },
+        {
+          "letter": "D",
+          "text": "El pariente de menor edad más próximo a suceder en la Corona."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Señale la opción incorrecta. Según la Constitución, la Regencia:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Podrá ser ejercida por una persona que será nombrada por las Cortes Generales."
+        },
+        {
+          "letter": "B",
+          "text": "Podrá ser ejercida por un menor de edad."
+        },
+        {
+          "letter": "C",
+          "text": "Se ejercerá por mandato constitucional y siempre en nombre del Rey."
+        },
+        {
+          "letter": "D",
+          "text": "Para poder ser ejercida es preciso ser español."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.\n2. Si el Rey se inhabilitare para el ejercicio de su autoridad y la imposibilidad fuere reconocida por las Cortes Generales, entrará a ejercer inmediatamente la Regencia el Príncipe heredero de la Corona, si fuere mayor de edad. Si no lo fuere, se procederá de la manera prevista en el apartado anterior, hasta que el Príncipe heredero alcance la mayoría de edad.\n3. Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas.\n4. Para ejercer la Regencia es preciso ser español y mayor de edad.\n5. La Regencia se ejercerá por mandato constitucional y siempre en nombre del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Las abdicaciones y renuncias y cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Se resolverán mediante Ley ordinaria"
+        },
+        {
+          "letter": "B",
+          "text": "Se resolverán mediante Decreto del Presidente del Gobierno"
+        },
+        {
+          "letter": "C",
+          "text": "Se resolverán mediante Ley Orgánica"
+        },
+        {
+          "letter": "D",
+          "text": "Se resolverán mediante Decreto Ley"
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 57.\n5. Las abdicaciones y renuncias y cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona se resolverán por una ley orgánica.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según la Constitución, aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio contra la expresa prohibición del Rey y de las Cortes Generales:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Quedarán excluidas en la sucesión a la Corona."
+        },
+        {
+          "letter": "B",
+          "text": "Quedarán excluidos de la sucesión a la Corona sus descendientes."
+        },
+        {
+          "letter": "C",
+          "text": "No podrán asumir funciones constitucionales."
+        },
+        {
+          "letter": "D",
+          "text": "Las opciones a) y b) son correctas."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 57.\n4. Aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio contra la expresa prohibición del Rey y de las Cortes Generales, quedarán excluidas en la sucesión a la Corona por sí y sus descendientes.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "El ejercicio de la tutela, reconocido en el artículo 60 de la Constitución, será incompatible, en todo caso, con:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Con el desempeño de toda actividad mercantil o industrial."
+        },
+        {
+          "letter": "B",
+          "text": "Con el ejercicio de la Regencia."
+        },
+        {
+          "letter": "C",
+          "text": "Con el ejercicio de todo cargo o mandato de representación política."
+        },
+        {
+          "letter": "D",
+          "text": "Con la administración de su patrimonio personal."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 60.\n2. El ejercicio de la tutela es también incompatible con el de todo cargo o representación política.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "¿Quién reconocerá la imposibilidad del Rey para el ejercicio de su autoridad?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Tribunal Constitucional."
+        },
+        {
+          "letter": "B",
+          "text": "Las Cortes Generales."
+        },
+        {
+          "letter": "C",
+          "text": "El Presidente del Gobierno."
+        },
+        {
+          "letter": "D",
+          "text": "El Tribunal Supremo."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 59.\n2. Si el Rey se inhabilitare para el ejercicio de su autoridad y la imposibilidad fuere reconocida por las Cortes Generales, entrará a ejercer inmediatamente la Regencia el Príncipe heredero de la Corona, si fuere mayor de edad. Si no lo fuere, se procederá de la manera prevista en el apartado anterior, hasta que el Príncipe heredero alcance la mayoría de edad.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según lo establecido en el artículo 61 de la Constitución Española, ¿en qué se diferencian los juramentos del Rey y del Príncipe heredero?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "En que el Príncipe heredero debe prestar juramento de respeto a la Casa Real."
+        },
+        {
+          "letter": "B",
+          "text": "En que el Rey debe prestar juramento de guardar y hacer guardar la Constitución y las leyes."
+        },
+        {
+          "letter": "C",
+          "text": "En que el Príncipe heredero debe prestar juramento de fidelidad al Rey."
+        },
+        {
+          "letter": "D",
+          "text": "En que el Rey debe prestar juramento de respetar los derechos de los ciudadanos."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 61.\n2. El Príncipe heredero, al alcanzar la mayoría de edad, y el Regente o Regentes al hacerse cargo de sus funciones, prestarán el mismo juramento, así como el de fidelidad al Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "La Constitución prevé que cuando el Rey fuera menor de edad entrará a ejercer la Regencia:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "La persona que en su testamento hubiera nombrado el Rey difunto, y en su defecto quienes designen las Cortes Generales."
+        },
+        {
+          "letter": "B",
+          "text": "El padre y la madre del Rey conjuntamente y, en su defecto, el hermano mayor de edad más próximo a suceder en la Corona."
+        },
+        {
+          "letter": "C",
+          "text": "Aquel que tuviera a su cargo la tutela del Rey."
+        },
+        {
+          "letter": "D",
+          "text": "El padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Artículo 59 Constitución Española\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según lo establecido en el artículo 60 de la Constitución Española, será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Separados."
+        },
+        {
+          "letter": "B",
+          "text": "Viudos."
+        },
+        {
+          "letter": "C",
+          "text": "Casados."
+        },
+        {
+          "letter": "D",
+          "text": "Vivos."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 60.\n1. Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto, lo nombrarán las Cortes Generales, pero no podrán acumularse los cargos de Regente y de tutor sino en el padre, madre o ascendientes directos del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según la Constitución, para ejercer la Regencia de la Corona se requiere:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Ser mayor de edad"
+        },
+        {
+          "letter": "B",
+          "text": "Ser español, mayor de edad y estar en el pleno ejercicio de los derechos civiles"
+        },
+        {
+          "letter": "C",
+          "text": "Ser español, mayor de edad y diputado en Cortes"
+        },
+        {
+          "letter": "D",
+          "text": "Ser español y mayor de edad"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.\n2. Si el Rey se inhabilitare para el ejercicio de su autoridad y la imposibilidad fuere reconocida por las Cortes Generales, entrará a ejercer inmediatamente la Regencia el Príncipe heredero de la Corona, si fuere mayor de edad. Si no lo fuere, se procederá de la manera prevista en el apartado anterior, hasta que el Príncipe heredero alcance la mayoría de edad.\n3. Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas.\n4. Para ejercer la Regencia es preciso ser español y mayor de edad.\n5. La Regencia se ejercerá por mandato constitucional y siempre en nombre del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según el artículo 57 de la Constitución, ¿cuál es el primer requisito que se contempla para determinar la sucesión al trono?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El varón a la mujer."
+        },
+        {
+          "letter": "B",
+          "text": "El grado más próximo al más remoto."
+        },
+        {
+          "letter": "C",
+          "text": "La persona de más edad a la de menos."
+        },
+        {
+          "letter": "D",
+          "text": "La línea anterior a las posteriores."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 57.\n1. La Corona de España es hereditaria en los sucesores de S. M. Don Juan Carlos I de Borbón, legítimo heredero de la dinastía histórica. La sucesión en el trono seguirá el orden regular de primogenitura y representación, siendo preferida siempre la línea anterior a las posteriores; en la misma línea, el grado más próximo al más remoto; en el mismo grado, el varón a la mujer, y en el mismo sexo, la persona de más edad a la de menos.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "A falta de nombramiento en el testamento del Rey difunto, ¿a quién corresponde la tutela del Rey menor?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Al padre o la madre mientras permanezcan viudos."
+        },
+        {
+          "letter": "B",
+          "text": "Al padre o la madre."
+        },
+        {
+          "letter": "C",
+          "text": "A la persona que nombren las Cortes generales."
+        },
+        {
+          "letter": "D",
+          "text": "A la persona que nombre el Gobierno."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 60.\n1. Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto, lo nombrarán las Cortes Generales, pero no podrán acumularse los cargos de Regente y de tutor sino en el padre, madre o ascendientes directos del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "De acuerdo con lo establecido en la Constitución Española, cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Hasta que el Rey cumpla los dieciséis años."
+        },
+        {
+          "letter": "B",
+          "text": "De forma indefinida."
+        },
+        {
+          "letter": "C",
+          "text": "Durante el tiempo de la minoría de edad del Rey."
+        },
+        {
+          "letter": "D",
+          "text": "Durante un plazo máximo de dos años."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "En relación con la sucesión en la Corona regulada en el artículo 57 de la CE, extinguidas todas las líneas llamadas en derecho:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Las Cortes Generales proveerán a la sucesión a la Corona en la forma que más convenga a los intereses de España."
+        },
+        {
+          "letter": "B",
+          "text": "El Congreso de los Diputados proveerá a la sucesión a la Corona en la forma que más convenga a los intereses de los españoles."
+        },
+        {
+          "letter": "C",
+          "text": "El Gobierno proveerá a la sucesión a la Corona en la forma que más convenga a los intereses de España."
+        },
+        {
+          "letter": "D",
+          "text": "El Gobierno proveerá a la sucesión a la Corona en la forma que más convenga a los intereses de los españoles."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución española.\nArtículo 57. \n3. Extinguidas todas las líneas llamadas en Derecho, las Cortes Generales proveerán a la sucesión en la Corona en la forma que más convenga a los intereses de España.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según lo establecido en el artículo 60 de la Constitución Española, es incompatible con el ejercicio de todo cargo o representación política:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El ejercicio del Alto Patronazgo de las Reales Academias."
+        },
+        {
+          "letter": "B",
+          "text": "El ejercicio de la tutela del Rey."
+        },
+        {
+          "letter": "C",
+          "text": "El mando supremo de las Fuerzas Armadas."
+        },
+        {
+          "letter": "D",
+          "text": "El cargo de embajador y otros representantes diplomáticos."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 60.\n2. El ejercicio de la tutela es también incompatible con el de todo cargo o representación política.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Extinguidas todas las líneas llamadas en Derecho a la sucesión a la Corona:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Se convocará un referéndum consultivo para proveer a la sucesión a la Corona de España."
+        },
+        {
+          "letter": "B",
+          "text": "El Gobierno proveerá a la sucesión a la Corona en la forma que más convenga a los intereses de España."
+        },
+        {
+          "letter": "C",
+          "text": "Las Cortes Generales proveerán a la sucesión en la Corona en la forma que más convenga a los intereses de España."
+        },
+        {
+          "letter": "D",
+          "text": "El Congreso proveerá a la sucesión a la Corona en la forma que más convenga a los intereses de España."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Artículo 57.3 CE: \n3. Extinguidas todas las líneas llamadas en Derecho, las Cortes Generales proveerán a la sucesión en la Corona en la forma que más convenga a los intereses de España.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según el artículo 57 de la Constitución, la sucesión en el trono seguirá el orden regular de primogenitura y representación, siendo preferido/a siempre:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El grado más próximo al más remoto; en el mismo grado, la línea anterior a las posteriores; en la misma línea, el varón a la mujer, y en el mismo sexo, la persona de más edad a la de menos."
+        },
+        {
+          "letter": "B",
+          "text": "La línea anterior a las posteriores; en la misma línea, la persona de más edad a la de menos; en la misma edad, el grado más próximo al más remoto, y en el mismo grado, el varón a la mujer."
+        },
+        {
+          "letter": "C",
+          "text": "El grado más próximo al más remoto; en el mismo grado, la línea anterior a las posteriores; en la misma línea, la persona de más edad a la de menos, y en la misma edad, el varón a la mujer."
+        },
+        {
+          "letter": "D",
+          "text": "La línea anterior a las posteriores; en la misma línea, el grado más próximo al más remoto; en el mismo grado, el varón a la mujer y en el mismo sexo, la persona de más edad a la de menos."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 57.\n1. La Corona de España es hereditaria en los sucesores de S. M. Don Juan Carlos I de Borbón, legítimo heredero de la dinastía histórica. La sucesión en el trono seguirá el orden regular de primogenitura y representación, siendo preferida siempre la línea anterior a las posteriores; en la misma línea, el grado más próximo al más remoto; en el mismo grado, el varón a la mujer, y en el mismo sexo, la persona de más edad a la de menos.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Señale la respuesta incorrecta en relación con la sucesión a la Corona de España:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "En el mismo grado será preferido el varón a la mujer."
+        },
+        {
+          "letter": "B",
+          "text": "Será preferida la línea posterior a las anteriores."
+        },
+        {
+          "letter": "C",
+          "text": "Dentro del mismo sexo será preferida la persona de más edad a la de menos."
+        },
+        {
+          "letter": "D",
+          "text": "En la misma línea será preferido el grado más próximo al más remoto."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 57.\n1. La Corona de España es hereditaria en los sucesores de S. M. Don Juan Carlos I de Borbón, legítimo heredero de la dinastía histórica. La sucesión en el trono seguirá el orden regular de primogenitura y representación, siendo preferida siempre la línea anterior a las posteriores; en la misma línea, el grado más próximo al más remoto; en el mismo grado, el varón a la mujer, y en el mismo sexo, la persona de más edad a la de menos.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según el artículo 59.3 de la Constitución, si no hubiere ninguna persona a quien corresponda la Regencia:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Ésta será nombrada por el Congreso, y se compondrá de una, tres o cinco personas."
+        },
+        {
+          "letter": "B",
+          "text": "Ésta será nombrada por las Cortes Generales, y se compondrá de una, dos o cuatro personas."
+        },
+        {
+          "letter": "C",
+          "text": "Ésta será nombrada por el Congreso, y se compondrá de una, dos o cuatro personas."
+        },
+        {
+          "letter": "D",
+          "text": "Ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 59.\n3. Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según lo establecido en el artículo 60 de la Constitución Española, será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Lo nombrará el Presidente del Gobierno."
+        },
+        {
+          "letter": "B",
+          "text": "Lo nombrará el Presidente del Tribunal Supremo."
+        },
+        {
+          "letter": "C",
+          "text": "Lo nombrarán las Cortes Generales."
+        },
+        {
+          "letter": "D",
+          "text": "Lo nombrará el Presidente del Tribunal Constitucional."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 60.\n1. Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto, lo nombrarán las Cortes Generales, pero no podrán acumularse los cargos de Regente y de tutor sino en el padre, madre o ascendientes directos del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según la Constitución Española, ¿quién tendrá que ser español de nacimiento?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El regente del Rey menor."
+        },
+        {
+          "letter": "B",
+          "text": "El tutor del Rey menor, nombrado por el Rey difunto en su testamento."
+        },
+        {
+          "letter": "C",
+          "text": "El tutor del Rey menor, nombrado por las Cortes Generales."
+        },
+        {
+          "letter": "D",
+          "text": "Todas las anteriores son correctas."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 60.\n1. Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto, lo nombrarán las Cortes Generales, pero no podrán acumularse los cargos de Regente y de tutor sino en el padre, madre o ascendientes directos del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "De acuerdo con lo establecido en la Constitución, ¿en qué caso las Cortes Generales nombrarán al titular de la Regencia?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "En caso de que el Rey lo hubiese establecido así en su testamento."
+        },
+        {
+          "letter": "B",
+          "text": "En caso de autorización expresa del Rey."
+        },
+        {
+          "letter": "C",
+          "text": "En caso de que el príncipe heredero sea menor de edad."
+        },
+        {
+          "letter": "D",
+          "text": "En caso de que no hubiere ninguna persona a quien corresponda la Regencia."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 59.\n3. Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según la Constitución, quedarán excluidas en la sucesión a la Corona por sí y sus descendientes:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio contra la expresa prohibición del Rey y de las Cortes Generales."
+        },
+        {
+          "letter": "B",
+          "text": "Aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio contra la expresa prohibición del Rey y del Congreso de los Diputados."
+        },
+        {
+          "letter": "C",
+          "text": "Aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio contra la expresa prohibición del Rey y de la Reina Consorte."
+        },
+        {
+          "letter": "D",
+          "text": "Aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio con una persona no apta, declarada así por el Rey y las Cortes Generales."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 57.\n4. Aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio contra la expresa prohibición del Rey y de las Cortes Generales, quedarán excluidas en la sucesión a la Corona por sí y sus descendientes.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según la Constitución Española, las abdicaciones, renuncias y cualquier duda de hecho o derecho que ocurra en el orden de sucesión a la Corona se resolverán por:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Real Decreto."
+        },
+        {
+          "letter": "B",
+          "text": "Ley Orgánica."
+        },
+        {
+          "letter": "C",
+          "text": "Orden Ministerial."
+        },
+        {
+          "letter": "D",
+          "text": "Reglamento Sucesorio."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 57.\n5. Las abdicaciones y renuncias y cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona se resolverán por una ley orgánica.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "De acuerdo con lo establecido en la Constitución Española, ¿en qué casos el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona entrará a ejercer inmediatamente la Regencia?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Cuando el Rey no estuviese dispuesto a ejercer sus funciones."
+        },
+        {
+          "letter": "B",
+          "text": "Cuando el Rey no estuviere en territorio nacional durante un periodo superior a dos meses."
+        },
+        {
+          "letter": "C",
+          "text": "Cuando el Rey fuere menor de edad."
+        },
+        {
+          "letter": "D",
+          "text": "Cuando el Rey no estuviere en territorio nacional durante un periodo superior a tres meses."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según lo regulado en la Constitución, ¿para la toma de cuál de las siguientes decisiones no es necesaria la mayoría absoluta del Congreso de los Diputados?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Para la propuesta de nombramiento del tutor del Rey menor."
+        },
+        {
+          "letter": "B",
+          "text": "Para la resolución de dudas en el orden de sucesión al trono."
+        },
+        {
+          "letter": "C",
+          "text": "Para los asuntos relacionados con las abdicaciones."
+        },
+        {
+          "letter": "D",
+          "text": "Para resolver las renuncias al trono."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española\nArtículo 57\n5. Las abdicaciones y renuncias y cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona se resolverán por una ley orgánica.\nJurisprudencia\nArtículo 81\n1. Son leyes orgánicas las relativas al desarrollo de los derechos fundamentales y de las libertades públicas, las que aprueben los Estatutos de Autonomía y el régimen electoral general y las demás previstas en la Constitución.\n2. La aprobación, modificación o derogación de las leyes orgánicas exigirá mayoría absoluta del Congreso, en una votación final sobre el conjunto del proyecto.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "¿Qué órgano debe reconocer la imposibilidad del Rey para el ejercicio de su autoridad?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Consejo de Ministros"
+        },
+        {
+          "letter": "B",
+          "text": "Las Cortes Generales"
+        },
+        {
+          "letter": "C",
+          "text": "El Congreso"
+        },
+        {
+          "letter": "D",
+          "text": "El Senado"
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.\n2. Si el Rey se inhabilitare para el ejercicio de su autoridad y la imposibilidad fuere reconocida por las Cortes Generales, entrará a ejercer inmediatamente la Regencia el Príncipe heredero de la Corona, si fuere mayor de edad. Si no lo fuere, se procederá de la manera prevista en el apartado anterior, hasta que el Príncipe heredero alcance la mayoría de edad.\n3. Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas.\n4. Para ejercer la Regencia es preciso ser español y mayor de edad.\n5. La Regencia se ejercerá por mandato constitucional y siempre en nombre del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "El Príncipe heredero de la Corona, ¿debe prestar algún juramento?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "No, no debe efectuar juramento alguno."
+        },
+        {
+          "letter": "B",
+          "text": "Sí, al ser designado heredero debe jurar fidelidad al Rey y a la Corona."
+        },
+        {
+          "letter": "C",
+          "text": "Sí, al ser designado heredero debe jurar desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes, respetar los derechos de los ciudadanos y de las Comunidades Autónomas, y guardar fidelidad al Rey."
+        },
+        {
+          "letter": "D",
+          "text": "Sí, al alcanzar la mayoría de edad debe jurar desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes, respetar los derechos de los ciudadanos y de las Comunidades Autónomas, y guardar fidelidad al Rey."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 61.\n2. El Príncipe heredero, al alcanzar la mayoría de edad, y el Regente o Regentes al hacerse cargo de sus funciones, prestarán el mismo juramento, así como el de fidelidad al Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "A tenor de los dispuesto en el artículo 57 de la Constitución, señale la opción correcta:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El príncipe heredero tendrá la dignidad de príncipe de Asturias, en todo caso, desde su nacimiento."
+        },
+        {
+          "letter": "B",
+          "text": "Cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona se resolverán por una norma con rango de ley."
+        },
+        {
+          "letter": "C",
+          "text": "Aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio contra la expresa prohibición del Rey y de las Cortes Generales, quedarán excluidas en la sucesión a la Corona por sí y sus descendientes."
+        },
+        {
+          "letter": "D",
+          "text": "Extinguidas todas las líneas llamadas en derecho, el Congreso de los Diputados proveerán a la sucesión en la Corona en la forma que más convenga a los intereses de España."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 57.\n1. La Corona de España es hereditaria en los sucesores de S. M. Don  Juan Carlos I de Borbón, legítimo heredero de la dinastía histórica. La sucesión en el trono seguirá el orden regular de primogenitura y representación, siendo preferida siempre la línea anterior a las posteriores; en la misma línea, el grado más próximo al más remoto; en el mismo grado, el varón a la mujer, y en el mismo sexo, la persona de más edad a la de menos.\n2. El Príncipe heredero, desde su nacimiento o desde que se produzca el hecho que origine el llamamiento, tendrá la dignidad de Príncipe de Asturias y los demás títulos vinculados tradicionalmente al sucesor de la Corona de España.\n3. Extinguidas todas las líneas llamadas en Derecho, las Cortes Generales proveerán a la sucesión en la Corona en la forma que más convenga a los intereses de España.\n4. Aquellas personas que teniendo derecho a la sucesión en el trono contrajeren matrimonio contra la expresa prohibición del Rey y de las Cortes Generales, quedarán excluidas en la sucesión a la Corona por sí y sus descendientes.\n5. Las abdicaciones y renuncias y cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona se resolverán por una ley orgánica.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "De acuerdo con lo establecido en la Constitución Española, ¿qué es lo que se ejercerá por mandato constitucional y siempre en nombre del Rey?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "La disolución de las Cortes Generales."
+        },
+        {
+          "letter": "B",
+          "text": "La Regencia."
+        },
+        {
+          "letter": "C",
+          "text": "La sucesión del Rey."
+        },
+        {
+          "letter": "D",
+          "text": "La Tutela."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 59.\n5. La Regencia se ejercerá por mandato constitucional y siempre en nombre del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según lo establecido en el artículo 61 de la Constitución Española, el Rey prestará juramento de desempeñar fielmente sus funciones:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Al ser proclamado ante las Cortes Generales."
+        },
+        {
+          "letter": "B",
+          "text": "Al ser proclamado ante el Pleno del Tribunal Constitucional."
+        },
+        {
+          "letter": "C",
+          "text": "Al ser proclamado ante el Pleno del Tribunal Supremo."
+        },
+        {
+          "letter": "D",
+          "text": "Al ser proclamado en sesión extraordinaria del Consejo de Ministros."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Artículo 61 de la Constitución Española:\n1. El Rey, al ser proclamado ante las Cortes Generales, prestará juramento de desempeñar fielmente sus funciones, guardar y hacer guardar la Constitución y las leyes y respetar los derechos de los ciudadanos y de las Comunidades Autónomas.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "De acuerdo con lo establecido en el Título II de la Constitución, indique cuál de las siguientes afirmaciones es correcta:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "La Regencia se ejercerá por mandato constitucional y siempre en nombre del Estado."
+        },
+        {
+          "letter": "B",
+          "text": "La Reina consorte o el consorte de la Reina podrán, con carácter excepcional, asumir otras funciones constitucionales, además de lo dispuesto para la Regencia."
+        },
+        {
+          "letter": "C",
+          "text": "Para ejercer la Regencia es preciso ser español y mayor de edad."
+        },
+        {
+          "letter": "D",
+          "text": "El ejercicio de la tutela es incompatible con el de todo alto cargo o representación política, así como con la Regencia."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 59\n4. Para ejercer la Regencia es preciso ser español y mayor de edad.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según el artículo 57 de la Constitución, la sucesión en el trono seguirá el orden regular de:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Primogenitura y correspondencia."
+        },
+        {
+          "letter": "B",
+          "text": "Primogenitura y representación."
+        },
+        {
+          "letter": "C",
+          "text": "Mayorazgo y conveniencia."
+        },
+        {
+          "letter": "D",
+          "text": "Representación y correspondencia."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 57.\n1. La Corona de España es hereditaria en los sucesores de S. M. Don Juan Carlos I de Borbón, legítimo heredero de la dinastía histórica. La sucesión en el trono seguirá el orden regular de primogenitura y representación, siendo preferida siempre la línea anterior a las posteriores; en la misma línea, el grado más próximo al más remoto; en el mismo grado, el varón a la mujer, y en el mismo sexo, la persona de más edad a la de menos.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Señale la respuesta incorrecta en relación con la tutela del Rey menor de edad:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El ejercicio de la tutela es compatible con el de todo cargo o representación política."
+        },
+        {
+          "letter": "B",
+          "text": "Sólo podrán acumularse los cargos de Regente y de tutor en el padre, madre o ascendientes directos del Rey."
+        },
+        {
+          "letter": "C",
+          "text": "Si no hubiese persona llamada a ejercer el cargo lo designarán las Cortes Generales."
+        },
+        {
+          "letter": "D",
+          "text": "Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre, mientras permanezcan viudos."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española.\nArtículo 60.\n1. Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto, lo nombrarán las Cortes Generales, pero no podrán acumularse los cargos de Regente y de tutor sino en el padre, madre o ascendientes directos del Rey.\n2. El ejercicio de la tutela es también incompatible con el de todo cargo o representación política.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "¿Quién tendrá preferencia para ocupar la Regencia en caso de inhabilitación del Rey?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El pariente de mayor edad más próximo a suceder."
+        },
+        {
+          "letter": "B",
+          "text": "La persona que designen las Cortes Generales."
+        },
+        {
+          "letter": "C",
+          "text": "El padre o la madre del Rey."
+        },
+        {
+          "letter": "D",
+          "text": "El Príncipe heredero, si fuere mayor de edad."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.\n2. Si el Rey se inhabilitare para el ejercicio de su autoridad y la imposibilidad fuere reconocida por las Cortes Generales, entrará a ejercer inmediatamente la Regencia el Príncipe heredero de la Corona, si fuere mayor de edad. Si no lo fuere, se procederá de la manera prevista en el apartado anterior, hasta que el Príncipe heredero alcance la mayoría de edad.\n3. Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas.\n4. Para ejercer la Regencia es preciso ser español y mayor de edad.\n5. La Regencia se ejercerá por mandato constitucional y siempre en nombre del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según el artículo 57 de la Constitución, ¿en qué casos las Cortes Generales proveerán a la sucesión en la Corona en la forma que más convenga a los intereses de España?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Cuando así lo acuerden éstas por mayoría de tres quintas partes de sus miembros."
+        },
+        {
+          "letter": "B",
+          "text": "Cuando exista igualdad en las preferencias a suceder el trono."
+        },
+        {
+          "letter": "C",
+          "text": "Una vez extinguidas todas las líneas llamadas en Derecho."
+        },
+        {
+          "letter": "D",
+          "text": "Cuando así lo acuerden éstas por mayoría de dos terceras partes de sus miembros."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución española.\nArtículo 57. \n3. Extinguidas todas las líneas llamadas en Derecho, las Cortes Generales proveerán a la sucesión en la Corona en la forma que más convenga a los intereses de España.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según la Constitución, se resolverán por una ley orgánica:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El nombramiento y separación de los miembros del Gobierno."
+        },
+        {
+          "letter": "B",
+          "text": "Las decisiones que adopte el Gobierno en caso de extraordinaria y urgente necesidad."
+        },
+        {
+          "letter": "C",
+          "text": "Las abdicaciones y renuncias y cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona."
+        },
+        {
+          "letter": "D",
+          "text": "Las convocatorias de referéndum en los casos previstos en la Constitución."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española.\nArtículo 57.\n5. Las abdicaciones y renuncias y cualquier duda de hecho o de derecho que ocurra en el orden de sucesión a la Corona se resolverán por una ley orgánica.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "La Regencia de la Corona se ejercerá:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Por mandato legal y siempre en nombre de las Cortes Generales"
+        },
+        {
+          "letter": "B",
+          "text": "Por mandato legal y siempre en nombre del Rey"
+        },
+        {
+          "letter": "C",
+          "text": "Por mandato constitucional y siempre en nombre del pueblo español"
+        },
+        {
+          "letter": "D",
+          "text": "Por mandato constitucional y siempre en nombre del Rey"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 59.\n1. Cuando el Rey fuere menor de edad, el padre o la madre del Rey y, en su defecto, el pariente mayor de edad más próximo a suceder en la Corona, según el orden establecido en la Constitución, entrará a ejercer inmediatamente la Regencia y la ejercerá durante el tiempo de la minoría de edad del Rey.\n2. Si el Rey se inhabilitare para el ejercicio de su autoridad y la imposibilidad fuere reconocida por las Cortes Generales, entrará a ejercer inmediatamente la Regencia el Príncipe heredero de la Corona, si fuere mayor de edad. Si no lo fuere, se procederá de la manera prevista en el apartado anterior, hasta que el Príncipe heredero alcance la mayoría de edad.\n3. Si no hubiere ninguna persona a quien corresponda la Regencia, ésta será nombrada por las Cortes Generales, y se compondrá de una, tres o cinco personas.\n4. Para ejercer la Regencia es preciso ser español y mayor de edad.\n5. La Regencia se ejercerá por mandato constitucional y siempre en nombre del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "Según el artículo 57 de la Constitución, la Corona de España es hereditaria en los sucesores de S.M Don Juan Carlos I de Borbón, legítimo heredero:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "De la Corona Española."
+        },
+        {
+          "letter": "B",
+          "text": "De la Casa de los Borbones."
+        },
+        {
+          "letter": "C",
+          "text": "De la Monarquía Española."
+        },
+        {
+          "letter": "D",
+          "text": "De la dinastía histórica."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 57.\n1. La Corona de España es hereditaria en los sucesores de S. M. Don Juan Carlos I de Borbón, legítimo heredero de la dinastía histórica. La sucesión en el trono seguirá el orden regular de primogenitura y representación, siendo preferida siempre la línea anterior a las posteriores; en la misma línea, el grado más próximo al más remoto; en el mismo grado, el varón a la mujer, y en el mismo sexo, la persona de más edad a la de menos.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "¿Podrán acumularse los cargos de Regente y de tutor?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "En ningún caso."
+        },
+        {
+          "letter": "B",
+          "text": "Solo en el caso del padre o la madre del Rey."
+        },
+        {
+          "letter": "C",
+          "text": "Solo cuando lo autoricen las Cortes Generales."
+        },
+        {
+          "letter": "D",
+          "text": "Siempre que se trate de ascendientes directos del Rey."
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 60.\n1. Será tutor del Rey menor la persona que en su testamento hubiese nombrado el Rey difunto, siempre que sea mayor de edad y español de nacimiento; si no lo hubiese nombrado, será tutor el padre o la madre mientras permanezcan viudos. En su defecto, lo nombrarán las Cortes Generales, pero no podrán acumularse los cargos de Regente y de tutor sino en el padre, madre o ascendientes directos del Rey.",
+      "subtema": "Sucesión y regencia"
+    },
+    {
+      "question": "A tenor del artículo 57 de la Constitución Española, la Princesa heredera actual, tiene la dignidad de Princesa de Asturias desde:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Su nacimiento."
+        },
+        {
+          "letter": "B",
+          "text": "Que se produjo el hecho que originó el llamamiento."
+        },
+        {
+          "letter": "C",
+          "text": "El fallecimiento del Rey."
+        },
+        {
+          "letter": "D",
+          "text": "Su ascenso al trono."
+        }
+      ],
+      "correctAnswer": "B",
+      "explanation": "Constitución Española.\nArtículo 57.\n2. El Príncipe heredero, desde su nacimiento o desde que se produzca el hecho que origine el llamamiento, tendrá la dignidad de Príncipe de Asturias y los demás títulos vinculados tradicionalmente al sucesor de la Corona de España.",
+      "subtema": "Sucesión y regencia"
+    }
+  ],
+  "duplicadas": [
+    {
+      "question": "Conforme con el artículo 64 de la Constitución Española, de los actos del Rey serán responsables:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Los Presidentes del Congreso de los Diputados y del Senado en todo caso."
+        },
+        {
+          "letter": "B",
+          "text": "Los Presidentes de las Comunidades Autónomas."
+        },
+        {
+          "letter": "C",
+          "text": "Las personas que los refrenden."
+        },
+        {
+          "letter": "D",
+          "text": "El tutor del Rey, en su caso."
+        }
+      ],
+      "correctAnswer": "C",
+      "explanation": "Constitución Española\nArtículo 64\n2. De los actos del Rey serán responsables las personas que los refrenden.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "¿Con carácter general quien refrenda los actos del Rey?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "El Fiscal General del Estado"
+        },
+        {
+          "letter": "B",
+          "text": "El Presidente del Senado"
+        },
+        {
+          "letter": "C",
+          "text": "El Presidente del Congreso"
+        },
+        {
+          "letter": "D",
+          "text": "El Presidente del Gobierno y, en su caso, los Ministros competentes"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución española.\nArtículo 64.\n1. Los actos del Rey serán refrendados por el Presidente del Gobierno y, en su caso, por los Ministros competentes. La propuesta y el nombramiento del Presidente del Gobierno, y la disolución prevista en el artículo 99, serán refrendados por el Presidente del Congreso.\n2. De los actos del Rey serán responsables las personas que los refrenden.",
+      "subtema": "La institución de la corona"
+    },
+    {
+      "question": "Según nuestra Constitución ¿A quién le corresponde declarar la guerra y firmar la paz?",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Al Presidente del Gobierno, previa autorización de las Cortes Generales"
+        },
+        {
+          "letter": "B",
+          "text": "Al Presidente del Gobierno, previa autorización del Rey"
+        },
+        {
+          "letter": "C",
+          "text": "Al Rey, previa autorización del Presidente del Gobierno"
+        },
+        {
+          "letter": "D",
+          "text": "Al Rey, previa autorización de las Cortes Generales"
+        }
+      ],
+      "correctAnswer": "D",
+      "explanation": "Constitución Española.\nArtículo 63.\n1. El Rey acredita a los embajadores y otros representantes diplomáticos. Los representantes extranjeros en España están acreditados ante él.\n2. Al Rey corresponde manifestar el consentimiento del Estado para obligarse internacionalmente por medio de tratados, de conformidad con la Constitución y las leyes.\n3. Al Rey corresponde, previa autorización de las Cortes Generales, declarar la guerra y hacer la paz.",
+      "subtema": "Las funciones del Rey"
+    },
+    {
+      "question": "Conforme con el artículo 64 de la Constitución Española, de los actos del Rey serán responsables:",
+      "options": [
+        {
+          "letter": "A",
+          "text": "Las personas que los refrenden."
+        },
+        {
+          "letter": "B",
+          "text": "Los Presidentes de las Comunidades Autónomas."
+        },
+        {
+          "letter": "C",
+          "text": "Los Presidentes del Congreso de los Diputados y del Senado en todo caso."
+        },
+        {
+          "letter": "D",
+          "text": "El tutor del Rey, en su caso."
+        }
+      ],
+      "correctAnswer": "A",
+      "explanation": "Constitución Española\nArtículo 64\n2. De los actos del Rey serán responsables las personas que los refrenden.",
+      "subtema": "Sucesión y regencia"
+    }
+  ],
+  "total": 112
+}

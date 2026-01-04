@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import TelegramLogin from '@/components/Admin/Marca/TelegramLogin'
 import TelegramAlerts from '@/components/Admin/Marca/TelegramAlerts'
 import TelegramGroups from '@/components/Admin/Marca/TelegramGroups'
+import TelegramSearch from '@/components/Admin/Marca/TelegramSearch'
 
 function TelegramPageContent() {
   const { supabase, user, loading: authLoading } = useAuth()
@@ -138,6 +139,7 @@ function TelegramPageContent() {
 
   const tabs = [
     { id: 'alerts', label: 'Alertas', icon: '🔔' },
+    { id: 'search', label: 'Buscar', icon: '🔍' },
     { id: 'groups', label: 'Grupos', icon: '👥' },
     { id: 'config', label: 'Configuración', icon: '⚙️' },
   ]
@@ -233,6 +235,7 @@ function TelegramPageContent() {
           {/* Tab Content */}
           <div className="mt-4">
             {activeTab === 'alerts' && <TelegramAlerts />}
+            {activeTab === 'search' && <TelegramSearch />}
             {activeTab === 'groups' && (
               <TelegramGroups onGroupsChange={checkMonitorStatus} />
             )}

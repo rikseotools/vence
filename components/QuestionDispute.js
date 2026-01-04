@@ -17,13 +17,13 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
   const handleSubmit = async (e) => {
     e.preventDefault()
     e.stopPropagation() // ✅ PREVENIR BUBBLING
-    
-    
+
+
     if (!user) {
       alert('Debes estar registrado para impugnar preguntas')
       return
     }
-    
+
     if (!disputeType) {
       alert('Por favor selecciona un motivo de impugnación')
       return
@@ -116,8 +116,8 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
     }
   }
 
-  // 🔥 FIX: Validación simplificada - solo requiere tipo seleccionado
-  const canSubmit = disputeType && !submitting
+  // 🔥 FIX: Validación - requiere questionId válido y tipo seleccionado
+  const canSubmit = questionId && disputeType && !submitting
 
   // Si está controlado externamente, renderizar como modal
   if (externalIsOpen !== null) {
@@ -143,10 +143,26 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
                 
                 {/* Contenido del modal */}
                 <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-                  
+
+                  {/* Mensaje cuando no hay pregunta detectada */}
+                  {!questionId && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4 text-center">
+                      <div className="text-3xl mb-3">⚠️</div>
+                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+                        No se detectó ninguna pregunta
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+                        Para impugnar una pregunta, debes hacerlo desde el test mientras visualizas la pregunta.
+                      </p>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                        Usa el botón <strong>"Impugnar pregunta"</strong> que aparece debajo de cada pregunta después de responderla.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Estado de enviado */}
-                  {submitted ? (
-                    <div 
+                  {questionId && submitted && (
+                    <div
                       data-success-message
                       className="text-center py-6"
                     >
@@ -158,8 +174,10 @@ export default function QuestionDispute({ questionId, user, supabase, isOpen: ex
                         Tu impugnación ha sido registrada y será revisada lo antes posible.
                       </p>
                     </div>
-                  ) : (
-                    /* Formulario de impugnación (mismo contenido que abajo) */
+                  )}
+
+                  {/* Formulario de impugnación - solo si hay questionId y no se ha enviado */}
+                  {questionId && !submitted && (
                     <form onSubmit={handleSubmit} className="space-y-4">
                       {/* Tipo de impugnación */}
                       <div>

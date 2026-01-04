@@ -27,6 +27,9 @@ function normalizeArticleNumber(num) {
 function spanishTextToNumber(text) {
   if (!text) return null
 
+  // Eliminar punto final antes de procesar
+  text = text.replace(/\.+$/, '').trim()
+
   const suffixMatch = text.match(/^(.+?)\s+(bis|ter|quater|quinquies|sexies|septies)\.?$/i)
   let mainText = suffixMatch ? suffixMatch[1].trim() : text.trim()
   const suffix = suffixMatch ? suffixMatch[2].toLowerCase() : ''
@@ -128,7 +131,7 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
 
     // Buscar todos los bloques de artículos y encontrar el que coincida
     // Termina solo al encontrar el siguiente div.bloque o el final del documento
-    const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="a[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|$)/gi
+    const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="(?:a|art)[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|$)/gi
 
     let match
     while ((match = articleBlockRegex.exec(html)) !== null) {
@@ -140,14 +143,14 @@ async function fetchArticleFromBOE(boeUrl, articleNumber) {
       // Primero intentar formato numérico: "Artículo 207.", "Artículo 4 bis.", "Artículo 22 octies.", "Artículo 216 bis 4."
       // Lista completa de sufijos latinos: bis, ter, quater/quáter, quinquies, sexies, septies, octies, nonies, decies
       // También soporta números adicionales después del sufijo (ej: "216 bis 2", "216 bis 3")
-      const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([^<]*)<\/h5>/i)
+      const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\.?)\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([^<]*)<\/h5>/i)
 
       if (numericMatch) {
         foundArticle = normalizeArticleNumber(numericMatch[1])
         title = numericMatch[2] ? numericMatch[2].trim().replace(/\.$/, '') : ''
       } else {
         // Intentar formato texto: "Artículo doscientos siete", "Artículo primero"
-        const textMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+([^<]+)<\/h5>/i)
+        const textMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\.?)\s+([^<]+)<\/h5>/i)
         if (textMatch) {
           let textContent = textMatch[1].trim()
 

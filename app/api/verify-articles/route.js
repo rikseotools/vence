@@ -14,6 +14,9 @@ const supabase = createClient(
 function spanishTextToNumber(text) {
   if (!text) return null
 
+  // Eliminar punto final antes de procesar
+  text = text.replace(/\.+$/, '').trim()
+
   // Separar posible sufijo (bis, ter, etc.)
   const suffixMatch = text.match(/^(.+?)\s+(bis|ter|quater|quinquies|sexies|septies)\.?$/i)
   let mainText = suffixMatch ? suffixMatch[1].trim() : text.trim()
@@ -120,10 +123,10 @@ function spanishTextToNumber(text) {
 function extractArticlesFromBOE(html) {
   const articles = []
 
-  // Regex más flexible: captura cualquier div.bloque con id que empiece por "a"
-  // Algunos BOEs usan id="a1", otros id="aprimero", "asegundo", etc.
+  // Regex más flexible: captura cualquier div.bloque con id que empiece por "a" o "art"
+  // Algunos BOEs usan id="a1", otros id="art1", otros id="aprimero", "asegundo", etc.
   // Termina solo al encontrar el siguiente div.bloque o el final del documento
-  const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="a[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|$)/gi
+  const articleBlockRegex = /<div[^>]*class="bloque"[^>]*id="(?:a|art)[^"]*"[^>]*>([\s\S]*?)(?=<div[^>]*class="bloque"|$)/gi
 
   let match
   while ((match = articleBlockRegex.exec(html)) !== null) {
@@ -135,17 +138,18 @@ function extractArticlesFromBOE(html) {
     let articleNumber = null
     let title = ''
 
-    // Primero intentar formato numérico: "Artículo 1.", "Artículo 4 bis.", "Artículo 22 octies.", "Artículo 216 bis 4."
+    // Primero intentar formato numérico: "Artículo 1.", "Art. 1.", "Artículo 4 bis.", "Artículo 22 octies.", "Artículo 216 bis 4."
     // Lista completa de sufijos latinos: bis, ter, quater/quáter, quinquies, sexies, septies, octies, nonies, decies
     // También soporta números adicionales después del sufijo (ej: "216 bis 2", "216 bis 3")
-    const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([^<]*)<\/h5>/i)
+    // Soporta tanto "Artículo" como "Art." (algunos BOEs antiguos usan "Art.")
+    const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\.?)\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([^<]*)<\/h5>/i)
 
     if (numericMatch) {
       articleNumber = numericMatch[1].trim().replace(/\s+/g, ' ')
       title = numericMatch[2]?.trim().replace(/\.$/, '') || ''
     } else {
-      // Intentar formato texto: "Artículo primero", "Artículo ciento ochenta y cuatro. Título aquí"
-      const textMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>Artículo\s+([^<]+)<\/h5>/i)
+      // Intentar formato texto: "Artículo primero", "Art. primero", "Artículo ciento ochenta y cuatro. Título aquí"
+      const textMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\.?)\s+([^<]+)<\/h5>/i)
       if (textMatch) {
         let textContent = textMatch[1].trim()
 

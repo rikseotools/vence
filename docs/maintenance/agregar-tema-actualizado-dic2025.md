@@ -37,12 +37,41 @@ Este documento describe el proceso completo para añadir preguntas scrapeadas a 
 
 ## Resumen del Proceso
 
-1. **Scrapear preguntas** de OpositaTest
-2. **Comparar duplicados** contra la BD
-3. **Verificar/añadir leyes** al panel de monitoreo
-4. **Añadir artículos** necesarios desde el panel admin
-5. **Mapear preguntas** a sus artículos correspondientes
-6. **Subir preguntas** a la base de datos
+### ⚠️ REGLA FUNDAMENTAL: PARAR SI FALTA ALGO
+
+**Claude debe PARAR y avisar al usuario si detecta que faltan leyes o artículos.**
+El usuario añadirá lo faltante desde `/admin/monitoreo`. NO intentar añadir manualmente.
+
+### ⚠️ REGLA FUNDAMENTAL: NO DETECTAR ARTÍCULOS CON SCRIPTS
+
+**Claude debe usar su conocimiento de IA para identificar a qué ley pertenece cada artículo DE CADA PREGUNTA.**
+
+❌ **NO hacer:** Usar regex/scripts para detectar automáticamente qué artículos pertenecen a qué ley.
+
+✅ **SÍ hacer:** Leer la explicación de cada pregunta y usar conocimiento legal para determinar la ley correcta.
+
+**¿Por qué es peligroso usar scripts?**
+- Una explicación puede mencionar artículos de MÚLTIPLES leyes
+- Ejemplo: "Artículo 86 LOPJ... procedimiento del artículo 781 bis de la Ley 1/2000"
+- Un script detectaría erróneamente que el art. 781 es de LOPJ cuando es de la LEC
+- Esto causa asignaciones incorrectas de artículo→ley→topic_scope
+
+**Proceso correcto:**
+1. Leer la explicación de la pregunta
+2. Identificar cuál es la LEY PRINCIPAL que la pregunta está evaluando
+3. Identificar el ARTÍCULO PRINCIPAL de esa ley
+4. Asignar manualmente o verificar con conocimiento legal
+
+### Pasos en orden:
+
+1. **Analizar preguntas scrapeadas** - Extraer TODAS las leyes y artículos referenciados
+2. **Verificar leyes en BD** - ¿Existen todas? ¿Tienen `boe_url`?
+   - Si falta ley → PARAR, informar, usuario la añade en `/admin/monitoreo`
+3. **Verificar artículos en BD** - Para cada ley, ¿existen los artículos necesarios?
+   - Si faltan artículos → PARAR, informar, usuario los añade en `/admin/monitoreo` → Verificar artículos → Añadir faltantes
+4. **Configurar topic_scope** - Solo cuando TODO existe
+5. **Comparar duplicados** - Identificar preguntas nuevas vs existentes
+6. **Subir preguntas** - Solo las nuevas, mapeadas a sus artículos
 
 ---
 
@@ -137,6 +166,18 @@ function normalize(text) {
 ---
 
 ## 3. Verificar/Añadir Leyes al Monitoreo
+
+### ⚠️ IMPORTANTE: Consultar el mapeo de leyes
+
+Antes de buscar una ley en la BD, **consultar `lib/lawMappingUtils.js`** para ver cómo está registrada.
+
+Ejemplo: LOPJ puede estar como `LO 6/1985` en lugar de `LOPJ`.
+
+```javascript
+// En lib/lawMappingUtils.js encontrarás:
+'lopj': 'LO 6/1985',
+'ley-organica-poder-judicial': 'LO 6/1985',
+```
 
 ### Requisito
 
@@ -364,16 +405,28 @@ console.log('Preguntas del tema:', count);
 
 El `topic_scope` vincula temas con leyes y artículos. **Sin esto, las preguntas no aparecerán en los tests.**
 
-### Importante: Cubrir TODOS los artículos con preguntas
+### ⚠️ CRÍTICO: Cubrir TODOS los artículos de TODAS las leyes
 
-El topic_scope debe incluir **todos los artículos de las preguntas del tema**. Esto incluye:
+El topic_scope debe incluir **TODAS las leyes y artículos referenciados en TODAS las preguntas del tema**.
 
+**Un tema puede tener preguntas de MÚLTIPLES leyes.** Por ejemplo, Tema 7 (Transparencia) podría tener:
+- 150 preguntas de Ley 19/2013
+- 5 preguntas que refieren CE art. 105
+- 3 preguntas de Ley 40/2015
+
+→ El topic_scope necesita **3 entradas** (una por cada ley) con sus artículos respectivos.
+
+**Incluir tanto preguntas nuevas como duplicadas:**
 - Artículos de preguntas **nuevas** que subimos
 - Artículos de preguntas **duplicadas** (que ya existían en la BD y no subimos)
 
 **¿Por qué incluir duplicadas?** Las preguntas duplicadas ya están en la BD vinculadas a sus artículos. Si el topic_scope no incluye esos artículos, esas preguntas existentes no aparecerán en los tests del tema.
 
-**Consejo:** Analizar TODAS las explicaciones de las preguntas scrapeadas (incluidas las duplicadas) para identificar todos los artículos necesarios antes de configurar el topic_scope.
+**Proceso correcto:**
+1. Leer TODAS las preguntas scrapeadas (nuevas + duplicadas)
+2. Para cada pregunta, identificar LEY + ARTÍCULO (usando conocimiento legal, NO scripts)
+3. Agrupar: {Ley1: [art1, art2...], Ley2: [art5, art8...]}
+4. Crear una entrada en topic_scope por cada ley
 
 ### Estructura de topic_scope
 

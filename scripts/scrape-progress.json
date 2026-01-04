@@ -1,0 +1,1825 @@
+{
+  "estructura": {
+    "bloques": [
+      {
+        "index": 0,
+        "title": "Organización del Estado y de la Administración Pública",
+        "temas": [
+          {
+            "index": 0,
+            "title": "Tema 1, Constitución Española de 1978",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Estructura y contenido de la Constitución Española"
+              },
+              {
+                "index": 1,
+                "title": "Derechos y deberes fundamentales. Su garantía y suspensión"
+              },
+              {
+                "index": 2,
+                "title": "El Tribunal Constitucional"
+              },
+              {
+                "index": 3,
+                "title": "El Defensor del Pueblo"
+              },
+              {
+                "index": 4,
+                "title": "La Reforma de la Constitución Española"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "title": "Tema 2, La Corona",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "La institución de la corona"
+              },
+              {
+                "index": 1,
+                "title": "Sucesión y regencia"
+              },
+              {
+                "index": 2,
+                "title": "Las funciones del Rey"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "title": "Tema 3, Las Cortes Generales",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Composición"
+              },
+              {
+                "index": 1,
+                "title": "Estructura"
+              },
+              {
+                "index": 2,
+                "title": "Ordenación del trabajo parlamentario"
+              },
+              {
+                "index": 3,
+                "title": "Funciones de las Cortes Generales"
+              },
+              {
+                "index": 4,
+                "title": "Elaboración de las leyes"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "title": "Tema 4, El Poder Judicial",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El Poder Judicial"
+              },
+              {
+                "index": 1,
+                "title": "El Consejo General del Poder Judicial"
+              },
+              {
+                "index": 2,
+                "title": "El Tribunal Supremo"
+              },
+              {
+                "index": 3,
+                "title": "La organización judicial española"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "title": "Tema 5, El Gobierno",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El Gobierno y la Administración"
+              },
+              {
+                "index": 1,
+                "title": "El Gobierno: El presidente del gobierno y el Consejo de Ministros"
+              },
+              {
+                "index": 2,
+                "title": "Relaciones entre el Gobierno y las Cortes Generales"
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "title": "Tema 6, Gobierno Abierto y Agenda 2030",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El Gobierno Abierto"
+              },
+              {
+                "index": 1,
+                "title": "La Agenda 2030 y los Objetivos de Desarrollo Sostenible"
+              }
+            ]
+          },
+          {
+            "index": 6,
+            "title": "Tema 7, La Ley de transparencia, acceso a la información pública y buen gobierno",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Introducción. Transparencia de la actividad pública"
+              },
+              {
+                "index": 1,
+                "title": "Buen Gobierno"
+              },
+              {
+                "index": 2,
+                "title": "El Consejo de Transparencia y Buen Gobierno"
+              }
+            ]
+          },
+          {
+            "index": 7,
+            "title": "Tema 8, La Administración General del Estado",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Los órganos administrativos.Organización administrativa española"
+              },
+              {
+                "index": 1,
+                "title": "Los Ministerios y su estructura interna"
+              },
+              {
+                "index": 2,
+                "title": "La administración periférica del Estado. La Administración General del Estado en el exterior"
+              },
+              {
+                "index": 3,
+                "title": "Otros órganos administrativos"
+              }
+            ]
+          },
+          {
+            "index": 8,
+            "title": "Tema 9, La Organización territorial del Estado",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Organización territorial: Las Comunidades Autónomas y los Estatutos del Autonomía"
+              },
+              {
+                "index": 1,
+                "title": "Constitución y distribución de competencias entre el Estado y las Comunidades Autónomas"
+              }
+            ]
+          },
+          {
+            "index": 9,
+            "title": "Tema 10, La Administración Local",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "La Administración Local: Entidades que la integran"
+              },
+              {
+                "index": 1,
+                "title": "El municipio"
+              },
+              {
+                "index": 2,
+                "title": "La provincia"
+              },
+              {
+                "index": 3,
+                "title": "Otras entidades locales"
+              },
+              {
+                "index": 4,
+                "title": "Disposiciones comunes a las Entidades Locales"
+              }
+            ]
+          },
+          {
+            "index": 10,
+            "title": "Tema 11, La organización de la Unión Europea",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Organización de la Unión Europea"
+              },
+              {
+                "index": 1,
+                "title": "Instituciones y órganos de la Unión Europea"
+              },
+              {
+                "index": 2,
+                "title": "El Parlamento Europeo"
+              },
+              {
+                "index": 3,
+                "title": "El Consejo Europeo"
+              },
+              {
+                "index": 4,
+                "title": "El Consejo de la Unión Europea"
+              },
+              {
+                "index": 5,
+                "title": "La Comisión Europea"
+              },
+              {
+                "index": 6,
+                "title": "El Tribunal de Justicia de la Unión Europea"
+              },
+              {
+                "index": 7,
+                "title": "Efectos de la integración europea sobre la organización del Estado Español"
+              },
+              {
+                "index": 8,
+                "title": "Competencias de las instituciones"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "title": "Organización de oficinas públicas",
+        "temas": [
+          {
+            "index": 0,
+            "title": "Tema 1, Atención al público",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Atención al público"
+              },
+              {
+                "index": 1,
+                "title": "Atención de personas con discapacidad"
+              },
+              {
+                "index": 2,
+                "title": "Los servicios de información administrativa. Información general y particular al ciudadano"
+              },
+              {
+                "index": 3,
+                "title": "Iniciativas. Reclamaciones. Quejas"
+              },
+              {
+                "index": 4,
+                "title": "Peticiones"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "title": "Tema 2, Documento, registro y archivo",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Documento"
+              },
+              {
+                "index": 1,
+                "title": "Registro"
+              },
+              {
+                "index": 2,
+                "title": "Archivo"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "title": "Tema 3, Administración Electrónica",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Administración electrónica y servicios al ciudadano"
+              },
+              {
+                "index": 1,
+                "title": "Portal de Internet. Análisis de las principales páginas web de carácter público"
+              },
+              {
+                "index": 2,
+                "title": "Sede electrónica. Comunicaciones y notificaciones electrónicas. Relaciones y colaboración entre las Administraciones Públicas para el funcionamiento del sector público por medios electrónicos"
+              },
+              {
+                "index": 3,
+                "title": "Identificación y firma"
+              },
+              {
+                "index": 4,
+                "title": "Cartas de servicio"
+              },
+              {
+                "index": 5,
+                "title": "Oficinas integradas de atención al ciudadano. Ventanilla única empresarial. Carpeta Ciudadana del sector público estatal. El Punto de Acceso General de la Administración General del Estado"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "title": "Tema 4, Protección de datos personales",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "La protección de datos personales. Régimen Jurídico"
+              },
+              {
+                "index": 1,
+                "title": "Principios"
+              },
+              {
+                "index": 2,
+                "title": "Derechos"
+              },
+              {
+                "index": 3,
+                "title": "Responsable del tratamiento, encargado del tratamiento y delegado de protección de datos"
+              },
+              {
+                "index": 4,
+                "title": "Autoridades de protección de datos"
+              },
+              {
+                "index": 5,
+                "title": "Garantía de los derechos digitales"
+              },
+              {
+                "index": 6,
+                "title": "Breve referencia al régimen sancionador"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "title": "Derecho administrativo general",
+        "temas": [
+          {
+            "index": 0,
+            "title": "Tema 1, Fuentes del derecho administrativo",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Fuentes del derecho administrativo. Jerarquía de las fuentes"
+              },
+              {
+                "index": 1,
+                "title": "La Ley"
+              },
+              {
+                "index": 2,
+                "title": "El Reglamento"
+              },
+              {
+                "index": 3,
+                "title": "Iniciativa legislativa y potestad reglamentaria del ejecutivo"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "title": "Tema 2, El acto administrativo",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El acto administrativo: Concepto, clases y elementos."
+              },
+              {
+                "index": 1,
+                "title": "Eficacia y validez de los actos administrativos"
+              },
+              {
+                "index": 2,
+                "title": "Notificación"
+              },
+              {
+                "index": 3,
+                "title": "Nulidad y anulabilidad"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "title": "Tema 3, Ley 39/2015, Ley 40/2015 y jurisdicción contencioso-administrativa",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Conceptos generales de las Leyes del Procedimiento Administrativo Común de las Administraciones Públicas y del Régimen Jurídico del Sector Público y su normativa de desarrollo"
+              },
+              {
+                "index": 1,
+                "title": "El procedimiento administrativo"
+              },
+              {
+                "index": 2,
+                "title": "Términos y plazos de la actividad de las Administraciones Públicas"
+              },
+              {
+                "index": 3,
+                "title": "La revisión de oficio"
+              },
+              {
+                "index": 4,
+                "title": "Los recursos administrativos"
+              },
+              {
+                "index": 5,
+                "title": "La jurisdicción contencioso-administrativa"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "title": "Tema 4, Contratos del sector público",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Los contratos del sector público: Objeto y clases"
+              },
+              {
+                "index": 1,
+                "title": "Partes del contrato"
+              },
+              {
+                "index": 2,
+                "title": "Elementos objetivos del contrato"
+              },
+              {
+                "index": 3,
+                "title": "Procedimiento de contratación"
+              },
+              {
+                "index": 4,
+                "title": "El recurso especial en materia de contratación"
+              },
+              {
+                "index": 5,
+                "title": "Efectos, cumplimiento y extinción de los contratos"
+              },
+              {
+                "index": 6,
+                "title": "Contrato de obras"
+              },
+              {
+                "index": 7,
+                "title": "Contrato de concesión de obras"
+              },
+              {
+                "index": 8,
+                "title": "Contrato de concesión de servicios"
+              },
+              {
+                "index": 9,
+                "title": "Contrato de suministros"
+              },
+              {
+                "index": 10,
+                "title": "Contrato de servicios"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "title": "Tema 5, Procedimientos y formas de la actividad administrativa",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Procedimientos y formas de la actividad administrativa. La actividad de limitación, arbitral, de servicio público y de fomento"
+              },
+              {
+                "index": 1,
+                "title": "Las subvenciones públicas"
+              },
+              {
+                "index": 2,
+                "title": "Formas de gestión de los servicios públicos"
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "title": "Tema 6, La responsabilidad patrimonial de las Administraciones públicas",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "La responsabilidad patrimonial de las Administraciones Públicas"
+              },
+              {
+                "index": 1,
+                "title": "El procedimiento de responsabilidad patrimonial"
+              }
+            ]
+          },
+          {
+            "index": 6,
+            "title": "Tema 7, Políticas de igualdad y contra la violencia de género y discapacidad y dependencia",
+            "apartados": [
+              {
+                "index": 1,
+                "title": "Igualdad efectiva entre hombres y mujeres"
+              },
+              {
+                "index": 3,
+                "title": "Violencia de género"
+              },
+              {
+                "index": 4,
+                "title": "Discapacidad y dependencia"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "title": "Gestión de personal",
+        "temas": [
+          {
+            "index": 0,
+            "title": "Tema 1, El personal al servicio de las Administraciones públicas",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El texto refundido del Estatuto Básico del Empleado Público y demás normativa vigente"
+              },
+              {
+                "index": 1,
+                "title": "Personal al servicio de las Administraciones Públicas"
+              },
+              {
+                "index": 2,
+                "title": "Competencias en materia de personal"
+              },
+              {
+                "index": 3,
+                "title": "Registro Central de Personal"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "title": "Tema 2, Selección de personal",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Principios constitucionales y rectores"
+              },
+              {
+                "index": 1,
+                "title": "Normas Generales"
+              },
+              {
+                "index": 2,
+                "title": "Oferta de Empleo Público"
+              },
+              {
+                "index": 3,
+                "title": "Órganos de selección"
+              },
+              {
+                "index": 4,
+                "title": "Desarrollo del proceso selectivo"
+              },
+              {
+                "index": 5,
+                "title": "Acceso al empleo público y provisión de puestos de trabajo de las personas con discapacidad"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "title": "Tema 3, El personal funcionario al servicio de las Administraciones públicas",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El personal funcionario al servicio de las Administraciones públicas"
+              },
+              {
+                "index": 1,
+                "title": "La selección de los funcionarios interinos"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "title": "Tema 4, Adquisición y pérdida de la condición de funcionario",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Adquisición y pérdida de la condición de funcionario"
+              },
+              {
+                "index": 1,
+                "title": "Situaciones administrativas de los funcionarios"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "title": "Tema 5, Provisión de puestos de trabajo en la función pública",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Provisión de puestos de trabajo en la función pública"
+              },
+              {
+                "index": 1,
+                "title": "Los deberes y derechos de los funcionarios"
+              },
+              {
+                "index": 2,
+                "title": "Derecho a la carrera profesional y a la promoción interna"
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "title": "Tema 6, Las incompatibilidades y régimen disciplinario",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Las incompatibilidades"
+              },
+              {
+                "index": 1,
+                "title": "Régimen disciplinario"
+              }
+            ]
+          },
+          {
+            "index": 6,
+            "title": "Tema 7, El régimen de la Seguridad Social de los funcionarios",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El Régimen de la Seguridad Social de los funcionarios"
+              },
+              {
+                "index": 1,
+                "title": "MUFACE"
+              },
+              {
+                "index": 2,
+                "title": "Clases Pasivas"
+              }
+            ]
+          },
+          {
+            "index": 7,
+            "title": "Tema 8, El personal laboral al servicio de las Administraciones públicas",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Selección, derechos, deberes e incompatibilidades"
+              },
+              {
+                "index": 1,
+                "title": "IV Convenio único para el personal laboral de la Administración General del Estado"
+              }
+            ]
+          },
+          {
+            "index": 8,
+            "title": "Tema 9, El régimen de la Seguridad Social del personal laboral",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El régimen de la Seguridad Social del personal laboral"
+              },
+              {
+                "index": 1,
+                "title": "Acción protectora"
+              },
+              {
+                "index": 2,
+                "title": "Tipos y características de las prestaciones"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "title": "Gestión Financiera",
+        "temas": [
+          {
+            "index": 0,
+            "title": "Tema 1, Concepto y aspectos generales del presupuesto",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "El presupuesto: concepto y características"
+              },
+              {
+                "index": 1,
+                "title": "Los principios presupuestarios"
+              },
+              {
+                "index": 2,
+                "title": "El ciclo presupuestario"
+              },
+              {
+                "index": 3,
+                "title": "El presupuesto por programas. Presupuesto en base cero"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "title": "Tema 2, El presupuesto del Estado en España, créditos presupuestarios y sus modificaciones",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Concepto y estructura del Presupuesto del Estado"
+              },
+              {
+                "index": 1,
+                "title": "Los créditos y sus modificaciones"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "title": "Tema 3, El procedimiento administrativo de ejecución del presupuesto de gasto",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Procedimiento administrativo de ejecución del presupuesto. Órganos competentes"
+              },
+              {
+                "index": 1,
+                "title": "Fases del procedimiento y sus documentos contables. Compromiso de gasto para ejercicios posteriores"
+              },
+              {
+                "index": 2,
+                "title": "Control del gasto público"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "title": "Tema 4, Las retribuciones de los funcionarios públicos y del personal laboral al servicio de la Administración pública",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Las retribuciones e indemnizaciones de los funcionarios públicos y del personal laboral al servicio de la Administración pública"
+              },
+              {
+                "index": 1,
+                "title": "Nóminas"
+              },
+              {
+                "index": 2,
+                "title": "Devengo y liquidación de derechos económicos. Pago de las retribuciones"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "title": "Tema 5, Gastos para la compra de bienes y servicios, de inversión, de transferencias y pagos",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Gastos para la compra de bienes y servicios, de inversión y transferencias"
+              },
+              {
+                "index": 1,
+                "title": "Pagos: concepto y tipos. Pagos por obligaciones presupuestarias. Anticipos de caja fija. Pagos «a justificar»"
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "title": "Tema 6, Gestión económica y financiera de los contratos del sector público y de las subvenciones",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Gestión económica y financiera de los contratos del sector público"
+              },
+              {
+                "index": 1,
+                "title": "Gestión económica y financiera de subvenciones"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "title": "Informática básica y ofimática",
+        "temas": [
+          {
+            "index": 0,
+            "title": "Tema 1. Informática básica",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Introducción a la informática"
+              },
+              {
+                "index": 1,
+                "title": "El hardware"
+              },
+              {
+                "index": 2,
+                "title": "El software"
+              },
+              {
+                "index": 3,
+                "title": "Nociones básicas de seguridad informática"
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "title": "Tema 4. Procesadores de texto",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Principales funciones y utilidades."
+              },
+              {
+                "index": 1,
+                "title": "Formatos de fuente, página y párrafo."
+              },
+              {
+                "index": 2,
+                "title": "Imágenes, tablas, gráficos e iconos."
+              },
+              {
+                "index": 3,
+                "title": "Correspondencia."
+              },
+              {
+                "index": 4,
+                "title": "Menús vista, referencias y revisar."
+              },
+              {
+                "index": 5,
+                "title": "Atajos de teclado"
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "title": "Tema 5. Hojas de cálculo",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Utilidades de las hojas de cálculo"
+              },
+              {
+                "index": 1,
+                "title": "Formato de celdas y formato condicional"
+              },
+              {
+                "index": 2,
+                "title": "Análisis de datos y demás opciones"
+              },
+              {
+                "index": 3,
+                "title": "Fórmulas y funciones."
+              },
+              {
+                "index": 4,
+                "title": "Atajos de teclado"
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "title": "Tema 6. Bases de datos",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Principales funciones y utilidades"
+              },
+              {
+                "index": 1,
+                "title": "Tablas, consultas y relaciones"
+              },
+              {
+                "index": 2,
+                "title": "Informes, formularios, macros y vinculación"
+              },
+              {
+                "index": 3,
+                "title": "Atajos de teclado"
+              }
+            ]
+          },
+          {
+            "index": 4,
+            "title": "Tema 7. Correo electrónico",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Conceptos elementales y funcionamiento."
+              },
+              {
+                "index": 1,
+                "title": "El entorno de trabajo: Enviar, recibir, responder, reenviar mensajes, creación de mensajes, reglas de mensaje y libreta de direcciones."
+              },
+              {
+                "index": 2,
+                "title": "Atajos de teclado"
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "title": "Tema 8. La Red Internet",
+            "apartados": [
+              {
+                "index": 0,
+                "title": "Origen, evolución y estado actual de Internet"
+              },
+              {
+                "index": 1,
+                "title": "Conceptos elementales sobre protocolos y servicios en Internet"
+              },
+              {
+                "index": 2,
+                "title": "Funcionalidades básicas de los navegadores web"
+              },
+              {
+                "index": 3,
+                "title": "Atajos de teclado"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "scrapeados": {
+    "Tema 1, Constitución Española de 1978::Estructura y contenido de la Constitución Española": {
+      "done": true,
+      "questions": 57,
+      "date": "2025-12-25T21:12:05.360Z"
+    },
+    "Tema 1, Constitución Española de 1978::Derechos y deberes fundamentales. Su garantía y suspensión": {
+      "done": true,
+      "questions": 95,
+      "date": "2025-12-25T21:13:04.332Z"
+    },
+    "Tema 1, Constitución Española de 1978::El Tribunal Constitucional": {
+      "done": true,
+      "questions": 56,
+      "date": "2025-12-25T21:13:58.842Z"
+    },
+    "Tema 1, Constitución Española de 1978::El Defensor del Pueblo": {
+      "done": true,
+      "questions": 70,
+      "date": "2025-12-25T21:15:03.975Z"
+    },
+    "Tema 1, Constitución Española de 1978::La Reforma de la Constitución Española": {
+      "done": true,
+      "questions": 34,
+      "date": "2025-12-25T21:15:52.972Z"
+    },
+    "Tema 2, La Corona::La institución de la corona": {
+      "done": true,
+      "questions": 31,
+      "date": "2025-12-25T21:18:36.662Z"
+    },
+    "Tema 2, La Corona::Sucesión y regencia": {
+      "done": true,
+      "questions": 47,
+      "date": "2025-12-25T21:19:23.220Z"
+    },
+    "Tema 2, La Corona::Las funciones del Rey": {
+      "done": true,
+      "questions": 34,
+      "date": "2025-12-25T21:20:11.199Z"
+    },
+    "Tema 3, Las Cortes Generales::Composición": {
+      "done": true,
+      "questions": 87,
+      "date": "2025-12-25T21:22:26.482Z"
+    },
+    "Tema 3, Las Cortes Generales::Estructura": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T21:23:05.490Z"
+    },
+    "Tema 3, Las Cortes Generales::Ordenación del trabajo parlamentario": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T21:23:44.168Z"
+    },
+    "Tema 3, Las Cortes Generales::Funciones de las Cortes Generales": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T21:24:22.547Z"
+    },
+    "Tema 3, Las Cortes Generales::Elaboración de las leyes": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T21:25:03.873Z"
+    },
+    "Tema 4, El Poder Judicial::El Poder Judicial": {
+      "done": true,
+      "questions": 75,
+      "date": "2025-12-25T21:31:24.436Z"
+    },
+    "Tema 4, El Poder Judicial::El Consejo General del Poder Judicial": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T21:32:41.895Z"
+    },
+    "Tema 4, El Poder Judicial::El Tribunal Supremo": {
+      "done": true,
+      "questions": 50,
+      "date": "2025-12-25T21:33:30.040Z"
+    },
+    "Tema 4, El Poder Judicial::La organización judicial española": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T21:34:52.779Z"
+    },
+    "Tema 5, El Gobierno::El Gobierno y la Administración": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T21:35:30.198Z"
+    },
+    "Tema 5, El Gobierno::El Gobierno: El presidente del gobierno y el Consejo de Ministros": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T21:36:48.638Z"
+    },
+    "Tema 5, El Gobierno::Relaciones entre el Gobierno y las Cortes Generales": {
+      "done": true,
+      "questions": 57,
+      "date": "2025-12-25T21:37:36.810Z"
+    },
+    "Tema 6, Gobierno Abierto y Agenda 2030::El Gobierno Abierto": {
+      "done": true,
+      "questions": 58,
+      "date": "2025-12-25T21:38:27.471Z"
+    },
+    "Tema 6, Gobierno Abierto y Agenda 2030::La Agenda 2030 y los Objetivos de Desarrollo Sostenible": {
+      "done": true,
+      "questions": 49,
+      "date": "2025-12-25T21:39:30.862Z"
+    },
+    "Tema 7, La Ley de transparencia, acceso a la información pública y buen gobierno::Introducción. Transparencia de la actividad pública": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T21:40:48.516Z"
+    },
+    "Tema 7, La Ley de transparencia, acceso a la información pública y buen gobierno::Buen Gobierno": {
+      "done": true,
+      "questions": 55,
+      "date": "2025-12-25T21:41:53.733Z"
+    },
+    "Tema 7, La Ley de transparencia, acceso a la información pública y buen gobierno::El Consejo de Transparencia y Buen Gobierno": {
+      "done": true,
+      "questions": 26,
+      "date": "2025-12-25T21:42:33.561Z"
+    },
+    "Tema 8, La Administración General del Estado::Los órganos administrativos.Organización administrativa española": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T21:43:21.606Z"
+    },
+    "Tema 8, La Administración General del Estado::Los Ministerios y su estructura interna": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T21:44:54.372Z"
+    },
+    "Tema 8, La Administración General del Estado::La administración periférica del Estado. La Administración General del Estado en el exterior": {
+      "done": true,
+      "questions": 94,
+      "date": "2025-12-25T21:46:07.580Z"
+    },
+    "Tema 8, La Administración General del Estado::Otros órganos administrativos": {
+      "done": true,
+      "questions": 28,
+      "date": "2025-12-25T21:46:46.388Z"
+    },
+    "Tema 9, La Organización territorial del Estado::Organización territorial: Las Comunidades Autónomas y los Estatutos del Autonomía": {
+      "done": true,
+      "questions": 59,
+      "date": "2025-12-25T21:47:33.753Z"
+    },
+    "Tema 9, La Organización territorial del Estado::Constitución y distribución de competencias entre el Estado y las Comunidades Autónomas": {
+      "done": true,
+      "questions": 87,
+      "date": "2025-12-25T21:48:32.474Z"
+    },
+    "Tema 10, La Administración Local::La Administración Local: Entidades que la integran": {
+      "done": true,
+      "questions": 29,
+      "date": "2025-12-25T21:49:11.970Z"
+    },
+    "Tema 10, La Administración Local::El municipio": {
+      "done": true,
+      "questions": 61,
+      "date": "2025-12-25T21:50:05.437Z"
+    },
+    "Tema 10, La Administración Local::La provincia": {
+      "done": true,
+      "questions": 53,
+      "date": "2025-12-25T21:50:51.904Z"
+    },
+    "Tema 10, La Administración Local::Otras entidades locales": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T21:51:29.069Z"
+    },
+    "Tema 10, La Administración Local::Disposiciones comunes a las Entidades Locales": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T21:52:02.939Z"
+    },
+    "Tema 11, La organización de la Unión Europea::Organización de la Unión Europea": {
+      "done": true,
+      "questions": 48,
+      "date": "2025-12-25T21:52:46.225Z"
+    },
+    "Tema 11, La organización de la Unión Europea::Instituciones y órganos de la Unión Europea": {
+      "done": true,
+      "questions": 37,
+      "date": "2025-12-25T21:53:24.562Z"
+    },
+    "Tema 11, La organización de la Unión Europea::El Parlamento Europeo": {
+      "done": true,
+      "questions": 62,
+      "date": "2025-12-25T21:54:09.494Z"
+    },
+    "Tema 11, La organización de la Unión Europea::El Consejo Europeo": {
+      "done": true,
+      "questions": 40,
+      "date": "2025-12-25T21:54:52.878Z"
+    },
+    "Tema 11, La organización de la Unión Europea::El Consejo de la Unión Europea": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T21:55:31.258Z"
+    },
+    "Tema 11, La organización de la Unión Europea::La Comisión Europea": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T21:56:07.162Z"
+    },
+    "Tema 11, La organización de la Unión Europea::El Tribunal de Justicia de la Unión Europea": {
+      "done": true,
+      "questions": 52,
+      "date": "2025-12-25T21:57:00.025Z"
+    },
+    "Tema 11, La organización de la Unión Europea::Efectos de la integración europea sobre la organización del Estado Español": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T21:57:38.225Z"
+    },
+    "Tema 11, La organización de la Unión Europea::Competencias de las instituciones": {
+      "done": true,
+      "questions": 41,
+      "date": "2025-12-25T21:58:24.826Z"
+    },
+    "Tema 1, Atención al público::Atención al público": {
+      "done": true,
+      "questions": 38,
+      "date": "2025-12-25T21:59:09.071Z"
+    },
+    "Tema 1, Atención al público::Atención de personas con discapacidad": {
+      "done": true,
+      "questions": 34,
+      "date": "2025-12-25T21:59:47.625Z"
+    },
+    "Tema 1, Atención al público::Los servicios de información administrativa. Información general y particular al ciudadano": {
+      "done": true,
+      "questions": 50,
+      "date": "2025-12-25T22:00:31.028Z"
+    },
+    "Tema 1, Atención al público::Iniciativas. Reclamaciones. Quejas": {
+      "done": true,
+      "questions": 31,
+      "date": "2025-12-25T22:01:11.800Z"
+    },
+    "Tema 1, Atención al público::Peticiones": {
+      "done": true,
+      "questions": 39,
+      "date": "2025-12-25T22:01:53.313Z"
+    },
+    "Tema 2, Documento, registro y archivo::Documento": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:02:31.452Z"
+    },
+    "Tema 2, Documento, registro y archivo::Registro": {
+      "done": true,
+      "questions": 49,
+      "date": "2025-12-25T22:03:23.409Z"
+    },
+    "Tema 2, Documento, registro y archivo::Archivo": {
+      "done": true,
+      "questions": 75,
+      "date": "2025-12-25T22:04:19.533Z"
+    },
+    "Tema 3, Administración Electrónica::Administración electrónica y servicios al ciudadano": {
+      "done": true,
+      "questions": 39,
+      "date": "2025-12-25T22:05:04.208Z"
+    },
+    "Tema 3, Administración Electrónica::Portal de Internet. Análisis de las principales páginas web de carácter público": {
+      "done": true,
+      "questions": 31,
+      "date": "2025-12-25T22:05:43.499Z"
+    },
+    "Tema 3, Administración Electrónica::Sede electrónica. Comunicaciones y notificaciones electrónicas. Relaciones y colaboración entre las Administraciones Públicas para el funcionamiento del sector público por medios electrónicos": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:06:19.684Z"
+    },
+    "Tema 3, Administración Electrónica::Identificación y firma": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:07:02.168Z"
+    },
+    "Tema 3, Administración Electrónica::Cartas de servicio": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:07:45.383Z"
+    },
+    "Tema 3, Administración Electrónica::Oficinas integradas de atención al ciudadano. Ventanilla única empresarial. Carpeta Ciudadana del sector público estatal. El Punto de Acceso General de la Administración General del Estado": {
+      "done": true,
+      "questions": 29,
+      "date": "2025-12-25T22:08:20.571Z"
+    },
+    "Tema 4, Protección de datos personales::La protección de datos personales. Régimen Jurídico": {
+      "done": true,
+      "questions": 50,
+      "date": "2025-12-25T22:09:16.050Z"
+    },
+    "Tema 4, Protección de datos personales::Principios": {
+      "done": true,
+      "questions": 39,
+      "date": "2025-12-25T22:10:02.940Z"
+    },
+    "Tema 4, Protección de datos personales::Derechos": {
+      "done": true,
+      "questions": 49,
+      "date": "2025-12-25T22:10:46.905Z"
+    },
+    "Tema 4, Protección de datos personales::Responsable del tratamiento, encargado del tratamiento y delegado de protección de datos": {
+      "done": true,
+      "questions": 45,
+      "date": "2025-12-25T22:11:32.898Z"
+    },
+    "Tema 4, Protección de datos personales::Autoridades de protección de datos": {
+      "done": true,
+      "questions": 41,
+      "date": "2025-12-25T22:12:21.135Z"
+    },
+    "Tema 4, Protección de datos personales::Garantía de los derechos digitales": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:12:56.585Z"
+    },
+    "Tema 4, Protección de datos personales::Breve referencia al régimen sancionador": {
+      "done": true,
+      "questions": 29,
+      "date": "2025-12-25T22:13:32.041Z"
+    },
+    "Tema 1, Fuentes del derecho administrativo::Fuentes del derecho administrativo. Jerarquía de las fuentes": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:14:05.795Z"
+    },
+    "Tema 1, Fuentes del derecho administrativo::La Ley": {
+      "done": true,
+      "questions": 40,
+      "date": "2025-12-25T22:14:44.991Z"
+    },
+    "Tema 1, Fuentes del derecho administrativo::El Reglamento": {
+      "done": true,
+      "questions": 10,
+      "date": "2025-12-25T22:15:13.309Z"
+    },
+    "Tema 1, Fuentes del derecho administrativo::Iniciativa legislativa y potestad reglamentaria del ejecutivo": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T22:15:53.266Z"
+    },
+    "Tema 2, El acto administrativo::El acto administrativo: Concepto, clases y elementos.": {
+      "done": true,
+      "questions": 69,
+      "date": "2025-12-25T22:16:49.229Z"
+    },
+    "Tema 2, El acto administrativo::Eficacia y validez de los actos administrativos": {
+      "done": true,
+      "questions": 38,
+      "date": "2025-12-25T22:17:32.939Z"
+    },
+    "Tema 2, El acto administrativo::Notificación": {
+      "done": true,
+      "questions": 51,
+      "date": "2025-12-25T22:18:26.486Z"
+    },
+    "Tema 2, El acto administrativo::Nulidad y anulabilidad": {
+      "done": true,
+      "questions": 46,
+      "date": "2025-12-25T22:19:22.154Z"
+    },
+    "Tema 3, Ley 39/2015, Ley 40/2015 y jurisdicción contencioso-administrativa::Conceptos generales de las Leyes del Procedimiento Administrativo Común de las Administraciones Públicas y del Régimen Jurídico del Sector Público y su normativa de desarrollo": {
+      "done": true,
+      "questions": 31,
+      "date": "2025-12-25T22:20:08.518Z"
+    },
+    "Tema 3, Ley 39/2015, Ley 40/2015 y jurisdicción contencioso-administrativa::El procedimiento administrativo": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T22:21:25.761Z"
+    },
+    "Tema 3, Ley 39/2015, Ley 40/2015 y jurisdicción contencioso-administrativa::Términos y plazos de la actividad de las Administraciones Públicas": {
+      "done": true,
+      "questions": 41,
+      "date": "2025-12-25T22:22:11.212Z"
+    },
+    "Tema 3, Ley 39/2015, Ley 40/2015 y jurisdicción contencioso-administrativa::La revisión de oficio": {
+      "done": true,
+      "questions": 38,
+      "date": "2025-12-25T22:22:53.278Z"
+    },
+    "Tema 3, Ley 39/2015, Ley 40/2015 y jurisdicción contencioso-administrativa::Los recursos administrativos": {
+      "done": true,
+      "questions": 69,
+      "date": "2025-12-25T22:23:51.964Z"
+    },
+    "Tema 3, Ley 39/2015, Ley 40/2015 y jurisdicción contencioso-administrativa::La jurisdicción contencioso-administrativa": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T22:25:02.856Z"
+    },
+    "Tema 4, Contratos del sector público::Los contratos del sector público: Objeto y clases": {
+      "done": true,
+      "questions": 82,
+      "date": "2025-12-25T22:26:06.686Z"
+    },
+    "Tema 4, Contratos del sector público::Partes del contrato": {
+      "done": true,
+      "questions": 82,
+      "date": "2025-12-25T22:27:11.835Z"
+    },
+    "Tema 4, Contratos del sector público::Elementos objetivos del contrato": {
+      "done": true,
+      "questions": 56,
+      "date": "2025-12-25T22:28:08.392Z"
+    },
+    "Tema 4, Contratos del sector público::Procedimiento de contratación": {
+      "done": true,
+      "questions": 52,
+      "date": "2025-12-25T22:28:59.924Z"
+    },
+    "Tema 4, Contratos del sector público::El recurso especial en materia de contratación": {
+      "done": true,
+      "questions": 36,
+      "date": "2025-12-25T22:29:43.833Z"
+    },
+    "Tema 4, Contratos del sector público::Efectos, cumplimiento y extinción de los contratos": {
+      "done": true,
+      "questions": 41,
+      "date": "2025-12-25T22:30:34.938Z"
+    },
+    "Tema 4, Contratos del sector público::Contrato de obras": {
+      "done": true,
+      "questions": 37,
+      "date": "2025-12-25T22:31:20.379Z"
+    },
+    "Tema 4, Contratos del sector público::Contrato de concesión de obras": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:32:02.819Z"
+    },
+    "Tema 4, Contratos del sector público::Contrato de concesión de servicios": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:32:42.612Z"
+    },
+    "Tema 4, Contratos del sector público::Contrato de suministros": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:33:16.967Z"
+    },
+    "Tema 4, Contratos del sector público::Contrato de servicios": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:33:57.682Z"
+    },
+    "Tema 5, Procedimientos y formas de la actividad administrativa::Procedimientos y formas de la actividad administrativa. La actividad de limitación, arbitral, de servicio público y de fomento": {
+      "done": true,
+      "questions": 48,
+      "date": "2025-12-25T22:34:49.149Z"
+    },
+    "Tema 5, Procedimientos y formas de la actividad administrativa::Las subvenciones públicas": {
+      "done": true,
+      "questions": 78,
+      "date": "2025-12-25T22:35:56.789Z"
+    },
+    "Tema 5, Procedimientos y formas de la actividad administrativa::Formas de gestión de los servicios públicos": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:36:46.643Z"
+    },
+    "Tema 6, La responsabilidad patrimonial de las Administraciones públicas::La responsabilidad patrimonial de las Administraciones Públicas": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T22:38:01.259Z"
+    },
+    "Tema 6, La responsabilidad patrimonial de las Administraciones públicas::El procedimiento de responsabilidad patrimonial": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T22:38:50.653Z"
+    },
+    "Tema 7, Políticas de igualdad y contra la violencia de género y discapacidad y dependencia::Ley 15/2022, de 12 de julio, integral para la igualdad de trato y la no discriminación": {
+      "done": true,
+      "questions": 31,
+      "date": "2025-12-25T22:39:33.202Z"
+    },
+    "Tema 7, Políticas de igualdad y contra la violencia de género y discapacidad y dependencia::Igualdad efectiva entre hombres y mujeres": {
+      "done": true,
+      "questions": 44,
+      "date": "2025-12-25T22:40:36.159Z"
+    },
+    "Tema 7, Políticas de igualdad y contra la violencia de género y discapacidad y dependencia::Ley 4/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garantía de los derechos de las personas LGTBI": {
+      "done": true,
+      "questions": 47,
+      "date": "2025-12-25T22:41:29.634Z"
+    },
+    "Tema 7, Políticas de igualdad y contra la violencia de género y discapacidad y dependencia::Violencia de género": {
+      "done": true,
+      "questions": 36,
+      "date": "2025-12-25T22:42:10.651Z"
+    },
+    "Tema 7, Políticas de igualdad y contra la violencia de género y discapacidad y dependencia::Discapacidad y dependencia": {
+      "done": true,
+      "questions": 47,
+      "date": "2025-12-25T22:43:03.710Z"
+    },
+    "Tema 1, El personal al servicio de las Administraciones públicas::El texto refundido del Estatuto Básico del Empleado Público y demás normativa vigente": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:43:51.341Z"
+    },
+    "Tema 1, El personal al servicio de las Administraciones públicas::Personal al servicio de las Administraciones Públicas": {
+      "done": true,
+      "questions": 60,
+      "date": "2025-12-25T22:44:54.367Z"
+    },
+    "Tema 1, El personal al servicio de las Administraciones públicas::Competencias en materia de personal": {
+      "done": true,
+      "questions": 33,
+      "date": "2025-12-25T22:45:55.625Z"
+    },
+    "Tema 1, El personal al servicio de las Administraciones públicas::Registro Central de Personal": {
+      "done": true,
+      "questions": 63,
+      "date": "2025-12-25T22:47:06.080Z"
+    },
+    "Tema 2, Selección de personal::Principios constitucionales y rectores": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:47:53.370Z"
+    },
+    "Tema 2, Selección de personal::Normas Generales": {
+      "done": true,
+      "questions": 56,
+      "date": "2025-12-25T22:48:53.154Z"
+    },
+    "Tema 2, Selección de personal::Oferta de Empleo Público": {
+      "done": true,
+      "questions": 38,
+      "date": "2025-12-25T22:49:46.185Z"
+    },
+    "Tema 2, Selección de personal::Órganos de selección": {
+      "done": true,
+      "questions": 35,
+      "date": "2025-12-25T22:50:30.525Z"
+    },
+    "Tema 2, Selección de personal::Desarrollo del proceso selectivo": {
+      "done": true,
+      "questions": 31,
+      "date": "2025-12-25T22:51:19.094Z"
+    },
+    "Tema 2, Selección de personal::Acceso al empleo público y provisión de puestos de trabajo de las personas con discapacidad": {
+      "done": true,
+      "questions": 36,
+      "date": "2025-12-25T22:52:07.488Z"
+    },
+    "Tema 3, El personal funcionario al servicio de las Administraciones públicas::El personal funcionario al servicio de las Administraciones públicas": {
+      "done": true,
+      "questions": 31,
+      "date": "2025-12-25T22:52:53.760Z"
+    },
+    "Tema 3, El personal funcionario al servicio de las Administraciones públicas::La selección de los funcionarios interinos": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T22:53:31.301Z"
+    },
+    "Tema 4, Adquisición y pérdida de la condición de funcionario::Adquisición y pérdida de la condición de funcionario": {
+      "done": true,
+      "questions": 35,
+      "date": "2025-12-25T22:54:21.116Z"
+    },
+    "Tema 4, Adquisición y pérdida de la condición de funcionario::Situaciones administrativas de los funcionarios": {
+      "done": true,
+      "questions": 77,
+      "date": "2025-12-25T22:55:41.187Z"
+    },
+    "Tema 5, Provisión de puestos de trabajo en la función pública::Provisión de puestos de trabajo en la función pública": {
+      "done": true,
+      "questions": 55,
+      "date": "2025-12-25T22:56:40.543Z"
+    },
+    "Tema 5, Provisión de puestos de trabajo en la función pública::Los deberes y derechos de los funcionarios": {
+      "done": true,
+      "questions": 97,
+      "date": "2025-12-25T22:58:20.879Z"
+    },
+    "Tema 5, Provisión de puestos de trabajo en la función pública::Derecho a la carrera profesional y a la promoción interna": {
+      "done": true,
+      "questions": 47,
+      "date": "2025-12-25T22:59:11.562Z"
+    },
+    "Tema 6, Las incompatibilidades y régimen disciplinario::Las incompatibilidades": {
+      "done": true,
+      "questions": 40,
+      "date": "2025-12-25T23:00:01.501Z"
+    },
+    "Tema 6, Las incompatibilidades y régimen disciplinario::Régimen disciplinario": {
+      "done": true,
+      "questions": 69,
+      "date": "2025-12-25T23:01:01.076Z"
+    },
+    "Tema 7, El régimen de la Seguridad Social de los funcionarios::El Régimen de la Seguridad Social de los funcionarios": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T23:01:48.116Z"
+    },
+    "Tema 7, El régimen de la Seguridad Social de los funcionarios::MUFACE": {
+      "done": true,
+      "questions": 76,
+      "date": "2025-12-25T23:02:56.294Z"
+    },
+    "Tema 7, El régimen de la Seguridad Social de los funcionarios::Clases Pasivas": {
+      "done": true,
+      "questions": 39,
+      "date": "2025-12-25T23:03:45.195Z"
+    },
+    "Tema 8, El personal laboral al servicio de las Administraciones públicas::Selección, derechos, deberes e incompatibilidades": {
+      "done": true,
+      "questions": 36,
+      "date": "2025-12-25T23:04:34.785Z"
+    },
+    "Tema 8, El personal laboral al servicio de las Administraciones públicas::IV Convenio único para el personal laboral de la Administración General del Estado": {
+      "done": true,
+      "questions": 46,
+      "date": "2025-12-25T23:05:27.038Z"
+    },
+    "Tema 9, El régimen de la Seguridad Social del personal laboral::El régimen de la Seguridad Social del personal laboral": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T23:06:11.012Z"
+    },
+    "Tema 9, El régimen de la Seguridad Social del personal laboral::Acción protectora": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T23:06:51.225Z"
+    },
+    "Tema 9, El régimen de la Seguridad Social del personal laboral::Tipos y características de las prestaciones": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T23:07:36.616Z"
+    },
+    "Tema 1, Concepto y aspectos generales del presupuesto::El presupuesto: concepto y características": {
+      "done": true,
+      "questions": 33,
+      "date": "2025-12-25T23:08:19.697Z"
+    },
+    "Tema 1, Concepto y aspectos generales del presupuesto::Los principios presupuestarios": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T23:09:02.936Z"
+    },
+    "Tema 1, Concepto y aspectos generales del presupuesto::El ciclo presupuestario": {
+      "done": true,
+      "questions": 75,
+      "date": "2025-12-25T23:10:08.046Z"
+    },
+    "Tema 1, Concepto y aspectos generales del presupuesto::El presupuesto por programas. Presupuesto en base cero": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T23:10:52.054Z"
+    },
+    "Tema 2, El presupuesto del Estado en España, créditos presupuestarios y sus modificaciones::Concepto y estructura del Presupuesto del Estado": {
+      "done": true,
+      "questions": 32,
+      "date": "2025-12-25T23:11:39.076Z"
+    },
+    "Tema 2, El presupuesto del Estado en España, créditos presupuestarios y sus modificaciones::Los créditos y sus modificaciones": {
+      "done": true,
+      "questions": 84,
+      "date": "2025-12-25T23:12:48.077Z"
+    },
+    "Tema 3, El procedimiento administrativo de ejecución del presupuesto de gasto::Procedimiento administrativo de ejecución del presupuesto. Órganos competentes": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T23:13:31.529Z"
+    },
+    "Tema 3, El procedimiento administrativo de ejecución del presupuesto de gasto::Fases del procedimiento y sus documentos contables. Compromiso de gasto para ejercicios posteriores": {
+      "done": true,
+      "questions": 67,
+      "date": "2025-12-25T23:14:42.534Z"
+    },
+    "Tema 3, El procedimiento administrativo de ejecución del presupuesto de gasto::Control del gasto público": {
+      "done": true,
+      "questions": 84,
+      "date": "2025-12-25T23:15:52.851Z"
+    },
+    "Tema 4, Las retribuciones de los funcionarios públicos y del personal laboral al servicio de la Administración pública::Las retribuciones e indemnizaciones de los funcionarios públicos y del personal laboral al servicio de la Administración pública": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:17:09.367Z"
+    },
+    "Tema 4, Las retribuciones de los funcionarios públicos y del personal laboral al servicio de la Administración pública::Nóminas": {
+      "done": true,
+      "questions": 37,
+      "date": "2025-12-25T23:17:57.451Z"
+    },
+    "Tema 4, Las retribuciones de los funcionarios públicos y del personal laboral al servicio de la Administración pública::Devengo y liquidación de derechos económicos. Pago de las retribuciones": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T23:18:34.899Z"
+    },
+    "Tema 5, Gastos para la compra de bienes y servicios, de inversión, de transferencias y pagos::Gastos para la compra de bienes y servicios, de inversión y transferencias": {
+      "done": true,
+      "questions": 52,
+      "date": "2025-12-25T23:19:41.793Z"
+    },
+    "Tema 5, Gastos para la compra de bienes y servicios, de inversión, de transferencias y pagos::Pagos: concepto y tipos. Pagos por obligaciones presupuestarias. Anticipos de caja fija. Pagos «a justificar»": {
+      "done": true,
+      "questions": 53,
+      "date": "2025-12-25T23:20:43.448Z"
+    },
+    "Tema 6, Gestión económica y financiera de los contratos del sector público y de las subvenciones::Gestión económica y financiera de los contratos del sector público": {
+      "done": true,
+      "questions": 30,
+      "date": "2025-12-25T23:21:27.700Z"
+    },
+    "Tema 6, Gestión económica y financiera de los contratos del sector público y de las subvenciones::Gestión económica y financiera de subvenciones": {
+      "done": true,
+      "questions": 33,
+      "date": "2025-12-25T23:22:11.357Z"
+    },
+    "Tema 1. Informática básica::Introducción a la informática": {
+      "done": true,
+      "questions": 80,
+      "date": "2025-12-25T23:23:20.680Z"
+    },
+    "Tema 1. Informática básica::El hardware": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:24:23.794Z"
+    },
+    "Tema 1. Informática básica::El software": {
+      "done": true,
+      "questions": 75,
+      "date": "2025-12-25T23:25:26.679Z"
+    },
+    "Tema 1. Informática básica::Nociones básicas de seguridad informática": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:26:42.506Z"
+    },
+    "Tema 4. Procesadores de texto::Principales funciones y utilidades.": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:28:11.744Z"
+    },
+    "Tema 4. Procesadores de texto::Formatos de fuente, página y párrafo.": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:29:37.135Z"
+    },
+    "Tema 4. Procesadores de texto::Imágenes, tablas, gráficos e iconos.": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:31:04.439Z"
+    },
+    "Tema 4. Procesadores de texto::Correspondencia.": {
+      "done": true,
+      "questions": 79,
+      "date": "2025-12-25T23:32:13.048Z"
+    },
+    "Tema 4. Procesadores de texto::Menús vista, referencias y revisar.": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:33:47.597Z"
+    },
+    "Tema 4. Procesadores de texto::Atajos de teclado": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:35:06.550Z"
+    },
+    "Tema 5. Hojas de cálculo::Utilidades de las hojas de cálculo": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:36:37.122Z"
+    },
+    "Tema 5. Hojas de cálculo::Formato de celdas y formato condicional": {
+      "done": true,
+      "questions": 46,
+      "date": "2025-12-25T23:37:32.895Z"
+    },
+    "Tema 5. Hojas de cálculo::Análisis de datos y demás opciones": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:39:04.716Z"
+    },
+    "Tema 5. Hojas de cálculo::Fórmulas y funciones.": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:40:21.114Z"
+    },
+    "Tema 5. Hojas de cálculo::Atajos de teclado": {
+      "done": true,
+      "questions": 65,
+      "date": "2025-12-25T23:41:11.364Z"
+    },
+    "Tema 6. Bases de datos::Principales funciones y utilidades": {
+      "done": true,
+      "questions": 72,
+      "date": "2025-12-25T23:42:04.951Z"
+    },
+    "Tema 6. Bases de datos::Tablas, consultas y relaciones": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:43:15.038Z"
+    },
+    "Tema 6. Bases de datos::Informes, formularios, macros y vinculación": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:44:37.563Z"
+    },
+    "Tema 6. Bases de datos::Atajos de teclado": {
+      "done": true,
+      "questions": 15,
+      "date": "2025-12-25T23:45:10.594Z"
+    },
+    "Tema 7. Correo electrónico::Conceptos elementales y funcionamiento.": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:46:18.231Z"
+    },
+    "Tema 7. Correo electrónico::El entorno de trabajo: Enviar, recibir, responder, reenviar mensajes, creación de mensajes, reglas de mensaje y libreta de direcciones.": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:47:33.598Z"
+    },
+    "Tema 7. Correo electrónico::Atajos de teclado": {
+      "done": true,
+      "questions": 88,
+      "date": "2025-12-25T23:48:35.120Z"
+    },
+    "Tema 8. La Red Internet::Origen, evolución y estado actual de Internet": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:49:41.081Z"
+    },
+    "Tema 8. La Red Internet::Conceptos elementales sobre protocolos y servicios en Internet": {
+      "done": true,
+      "questions": 100,
+      "date": "2025-12-25T23:50:51.720Z"
+    },
+    "Tema 8. La Red Internet::Funcionalidades básicas de los navegadores web": {
+      "done": true,
+      "questions": 91,
+      "date": "2025-12-25T23:51:54.785Z"
+    },
+    "Tema 8. La Red Internet::Atajos de teclado": {
+      "done": true,
+      "questions": 43,
+      "date": "2025-12-25T23:52:38.628Z"
+    }
+  },
+  "lastUpdate": "2025-12-25T23:52:38.628Z"
+}

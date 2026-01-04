@@ -2104,25 +2104,47 @@ export default function VerificarArticulosPage() {
               </div>
             </div>
 
-            <div className="flex justify-between">
+            <div className="flex justify-between items-center">
               <button
                 onClick={() => setCurrentStep(0)}
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               >
                 ← Volver a verificar
               </button>
-              {(summary.title_mismatch > 0 || (summary.content_mismatch || 0) > 0) ? (
-                <button
-                  onClick={() => setCurrentStep(2)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Seleccionar artículos a actualizar →
-                </button>
-              ) : (
-                <span className="text-green-600 dark:text-green-400 font-medium">
-                  ✓ No hay artículos que actualizar
-                </span>
-              )}
+              <div className="flex items-center gap-3">
+                {/* Botón para añadir artículos faltantes */}
+                {summary.missing_in_db > 0 && (
+                  <button
+                    onClick={addAllMissingArticles}
+                    disabled={addingMissing}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                  >
+                    {addingMissing ? (
+                      <>
+                        <Spinner size="sm" />
+                        <span>Añadiendo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>➕</span>
+                        <span>Añadir {summary.missing_in_db} artículos faltantes</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                {(summary.title_mismatch > 0 || (summary.content_mismatch || 0) > 0) ? (
+                  <button
+                    onClick={() => setCurrentStep(2)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Seleccionar artículos a actualizar →
+                  </button>
+                ) : summary.missing_in_db === 0 && (
+                  <span className="text-green-600 dark:text-green-400 font-medium">
+                    ✓ No hay artículos que actualizar
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}
