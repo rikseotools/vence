@@ -70,13 +70,14 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const getSectionOptions = () => {
     if (isAuxiliarAdmin) {
       return [
+        { key: 'info', label: 'ℹ️ Información', path: '' },
         { key: 'test', label: '🎯 Tests', path: '/test' },
         { key: 'temario', label: '📚 Temario', path: '/temario' }
       ]
     } else if (isAdministrativo) {
       return [
-        { key: 'test', label: '🎯 Tests', path: '/test' },
-        { key: 'temario', label: '📚 Temario', path: '/temario' }
+        { key: 'info', label: 'ℹ️ Información', path: '' },
+        { key: 'test', label: '🎯 Tests', path: '/test' }
       ]
     } else if (isLeyes) {
       return [
@@ -109,6 +110,9 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const isInTests = pathname.includes('/test')
   const isPsicotecnicos = pathname.includes('/psicotecnicos')
   const isInTemario = pathname.includes('/temario')
+
+  // Detectar si estamos en página de información (página principal de oposición)
+  const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado')
   
   // Detectar si estamos en una ley específica
   const isInSpecificLaw = pathname.startsWith('/leyes/') && pathname !== '/leyes' && !pathname.includes('/test')
@@ -334,16 +338,17 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
           )}
 
           {/* Separador */}
-          {(isAuxiliarAdmin || isAdministrativo || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario) && (
+          {(isAuxiliarAdmin || isAdministrativo || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
             <span className="text-gray-400 mx-2">/</span>
           )}
 
-          {/* Breadcrumb para Sección (Tests/Temario) - NO duplicar Psicotécnicos ya que está en el nivel superior */}
-          {(isInTests || isInTemario) && (
+          {/* Breadcrumb para Sección (Tests/Temario/Información) - NO duplicar Psicotécnicos ya que está en el nivel superior */}
+          {(isInTests || isInTemario || isInInfo) && (
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Texto clickeable - no navega porque ya estamos en la sección actual */}
                 <span className="text-gray-700 font-semibold">
+                  {isInInfo && 'ℹ️ Información'}
                   {isInTests && '🎯 Tests'}
                   {isInTemario && '📚 Temario'}
                 </span>
@@ -368,12 +373,14 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                         onClick={() => changeSection(option.path)}
                         className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-colors text-sm"
                         disabled={
+                          (option.key === 'info' && isInInfo) ||
                           (option.key === 'test' && isInTests) ||
                           (option.key === 'temario' && pathname.includes('/temario'))
                         }
                       >
                         {option.label}
-                        {((option.key === 'test' && isInTests) ||
+                        {((option.key === 'info' && isInInfo) ||
+                          (option.key === 'test' && isInTests) ||
                           (option.key === 'temario' && pathname.includes('/temario'))) && (
                           <span className="text-gray-400 ml-2">(actual)</span>
                         )}
