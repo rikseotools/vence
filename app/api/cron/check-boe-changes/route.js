@@ -307,12 +307,44 @@ export async function GET(request) {
     }
 
     const duration = Date.now() - startTime
+    const durationFormatted = `${(duration / 1000).toFixed(1)}s`
 
-    console.log(`✅ Verificación completada: ${stats.checked} leyes, ${stats.changesDetected} cambios, ${(duration/1000).toFixed(1)}s`)
+    console.log(`✅ Verificación completada: ${stats.checked} leyes, ${stats.changesDetected} cambios, ${durationFormatted}`)
+
+    // Enviar email si hay cambios detectados
+    if (stats.changesDetected > 0) {
+      try {
+        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_URL || 'https://www.vence.es'}/api/emails/send-admin-notification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'boe_change',
+            adminEmail: process.env.ADMIN_EMAIL || 'manueltrader@gmail.com',
+            data: {
+              changesCount: stats.changesDetected,
+              changes,
+              stats: {
+                checked: stats.checked,
+                duration: durationFormatted,
+                totalBytesFormatted: stats.totalBytes > 1024*1024
+                  ? `${(stats.totalBytes / 1024 / 1024).toFixed(1)} MB`
+                  : `${(stats.totalBytes / 1024).toFixed(1)} KB`
+              },
+              timestamp: now.toISOString(),
+              adminUrl: 'https://www.vence.es/admin/monitoreo'
+            }
+          })
+        })
+        const emailResult = await emailResponse.json()
+        console.log(`📧 Email enviado:`, emailResult.success ? '✅' : '❌', emailResult)
+      } catch (emailError) {
+        console.error('❌ Error enviando email:', emailError)
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      duration: `${(duration / 1000).toFixed(1)}s`,
+      duration: durationFormatted,
       stats: {
         ...stats,
         totalBytesFormatted: stats.totalBytes > 1024*1024

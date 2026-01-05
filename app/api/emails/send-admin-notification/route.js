@@ -54,6 +54,13 @@ export async function POST(request) {
         }
         break
 
+      case 'boe_change':
+        emailContent = {
+          subject: `🚨 ¡Cambio detectado en BOE! - ${data.changesCount} ley(es) modificada(s)`,
+          html: generateBOEChangeEmailHTML(data)
+        }
+        break
+
       default:
         return NextResponse.json(
           { success: false, error: 'Tipo de notificación no válido' },
@@ -326,6 +333,93 @@ function generateChatResponseEmailHTML(data) {
 
           <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
             <p style="margin: 0;">Vence - info@vence.es</p>
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `
+}
+
+function generateBOEChangeEmailHTML(data) {
+  const changesHtml = data.changes?.map(change => `
+    <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+        <strong style="color: #1e40af;">${change.law}</strong><br>
+        <span style="font-size: 13px; color: #6b7280;">${change.name}</span>
+      </td>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+        <span style="background: #fef2f2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-size: 13px;">${change.oldDate}</span>
+      </td>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+        <span style="font-size: 18px;">→</span>
+      </td>
+      <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+        <span style="background: #ecfdf5; color: #065f46; padding: 4px 8px; border-radius: 4px; font-size: 13px;">${change.newDate}</span>
+      </td>
+    </tr>
+  `).join('') || ''
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Cambio detectado en BOE</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
+        <div style="max-width: 700px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+
+          <div style="text-align: center; border-bottom: 2px solid #dc2626; padding-bottom: 20px; margin-bottom: 20px; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: #991b1b; margin: 0;">🚨 ¡Cambio Detectado en BOE!</h1>
+            <p style="color: #b91c1c; margin: 10px 0 0 0; font-size: 18px;">${data.changesCount} ley(es) han sido actualizadas</p>
+          </div>
+
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+            <h3 style="color: #92400e; margin: 0 0 10px 0;">⚠️ Acción Requerida</h3>
+            <p style="margin: 0; color: #78350f;">Las siguientes leyes han sido modificadas en el BOE. Es necesario revisar los cambios y actualizar las preguntas afectadas.</p>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #374151; margin-bottom: 15px;">📋 Leyes Modificadas:</h3>
+            <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 8px; overflow: hidden;">
+              <thead>
+                <tr style="background: #e5e7eb;">
+                  <th style="padding: 12px; text-align: left; color: #374151;">Ley</th>
+                  <th style="padding: 12px; text-align: center; color: #374151;">Fecha Anterior</th>
+                  <th style="padding: 12px; text-align: center; color: #374151;"></th>
+                  <th style="padding: 12px; text-align: center; color: #374151;">Nueva Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${changesHtml}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #1e40af; margin: 0 0 10px 0;">📊 Estadísticas de Verificación:</h3>
+            <p style="margin: 5px 0;"><strong>Leyes verificadas:</strong> ${data.stats?.checked || 0}</p>
+            <p style="margin: 5px 0;"><strong>Duración:</strong> ${data.stats?.duration || '?'}</p>
+            <p style="margin: 5px 0;"><strong>Datos descargados:</strong> ${data.stats?.totalBytesFormatted || '?'}</p>
+            <p style="margin: 5px 0;"><strong>Fecha:</strong> ${new Date(data.timestamp).toLocaleString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}</p>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="${data.adminUrl || 'https://www.vence.es/admin/monitoreo'}"
+               style="background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+              🔍 Revisar en Panel de Monitoreo
+            </a>
+          </div>
+
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+            <p style="margin: 0;">Vence Pro - Sistema de Monitorización BOE</p>
           </div>
 
         </div>
