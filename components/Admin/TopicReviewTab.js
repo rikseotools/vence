@@ -116,6 +116,12 @@ export default function TopicReviewTab() {
   const [verificationQueue, setVerificationQueue] = useState({})
   const [loadingQueue, setLoadingQueue] = useState(false)
 
+  // Estado de verificación directa en navegador
+  const [verifyingDirect, setVerifyingDirect] = useState({}) // { topicId: { current, total } }
+
+  // Menú desplegable para elegir modo de verificación
+  const [verifyMenuOpen, setVerifyMenuOpen] = useState(null) // topicId del menú abierto
+
   // Cargar oposiciones disponibles
   useEffect(() => {
     loadPositions()
@@ -251,8 +257,8 @@ export default function TopicReviewTab() {
   }
 
   // Encolar verificación de un tema (se procesa en background)
-  const verifyTopicPending = async (topicId, e) => {
-    e.stopPropagation()
+  const verifyTopicQueue = async (topicId) => {
+    setVerifyMenuOpen(null)
     if (!selectedProvider || !selectedModel) {
       setError('Selecciona un proveedor y modelo de IA')
       return
@@ -285,6 +291,113 @@ export default function TopicReviewTab() {
       setError('Error al encolar verificación: ' + err.message)
     }
   }
+
+  // Verificación directa en navegador (más rápida para pocas preguntas)
+  const verifyTopicDirect = async (topicId, totalPending) => {
+    setVerifyMenuOpen(null)
+    if (!selectedProvider || !selectedModel) {
+      setError('Selecciona un proveedor y modelo de IA')
+      return
+    }
+
+    try {
+      setError(null)
+      setVerifyingDirect(prev => ({ ...prev, [topicId]: { current: 0, total: totalPending } }))
+
+      // Obtener preguntas pendientes del tema
+      const detailResponse = await fetch(`/api/topic-review?topic_id=${topicId}`)
+      const detailData = await detailResponse.json()
+
+      if (!detailData.success) {
+        setError('Error obteniendo preguntas del tema')
+        setVerifyingDirect(prev => {
+          const newState = { ...prev }
+          delete newState[topicId]
+          return newState
+        })
+        return
+      }
+
+      // Filtrar solo las pendientes
+      const pendingQuestions = detailData.questions?.filter(q =>
+        !q.topic_review_status || q.topic_review_status === 'pending'
+      ) || []
+
+      if (pendingQuestions.length === 0) {
+        setError('No hay preguntas pendientes en este tema')
+        setVerifyingDirect(prev => {
+          const newState = { ...prev }
+          delete newState[topicId]
+          return newState
+        })
+        return
+      }
+
+      // Verificar en lotes de 5
+      const BATCH_SIZE = 5
+      let processed = 0
+
+      for (let i = 0; i < pendingQuestions.length; i += BATCH_SIZE) {
+        const batch = pendingQuestions.slice(i, i + BATCH_SIZE)
+        const batchIds = batch.map(q => q.id)
+
+        const verifyResponse = await fetch('/api/topic-review/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionIds: batchIds,
+            provider: selectedProvider,
+            model: selectedModel
+          })
+        })
+
+        const verifyResult = await verifyResponse.json()
+
+        if (!verifyResult.success && !verifyResult.results) {
+          console.error('Error verificando batch:', verifyResult.error)
+        }
+
+        processed += batch.length
+        setVerifyingDirect(prev => ({
+          ...prev,
+          [topicId]: { current: processed, total: pendingQuestions.length }
+        }))
+      }
+
+      // Finalizar - limpiar estado y recargar temas
+      setVerifyingDirect(prev => {
+        const newState = { ...prev }
+        delete newState[topicId]
+        return newState
+      })
+
+      // Recargar lista de temas para actualizar stats
+      await loadTopics()
+
+    } catch (err) {
+      setError('Error verificando: ' + err.message)
+      setVerifyingDirect(prev => {
+        const newState = { ...prev }
+        delete newState[topicId]
+        return newState
+      })
+    }
+  }
+
+  // Toggle menú de verificación
+  const toggleVerifyMenu = (topicId, e) => {
+    e.stopPropagation()
+    setVerifyMenuOpen(prev => prev === topicId ? null : topicId)
+  }
+
+  // Cerrar menú al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = () => setVerifyMenuOpen(null)
+    if (verifyMenuOpen) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [verifyMenuOpen])
 
   // Obtener estado de verificación de un tema
   const getTopicQueueStatus = (topicId) => {
@@ -551,11 +664,24 @@ export default function TopicReviewTab() {
                         )}
                       </div>
 
-                      {/* Botón verificar pendientes o estado de cola */}
+                      {/* Botón verificar pendientes o estado de cola/directo */}
                       {(() => {
                         const queueStatus = getTopicQueueStatus(topic.id)
+                        const directStatus = verifyingDirect[topic.id]
 
-                        // Si está en cola o procesándose
+                        // Si está verificándose directamente en navegador
+                        if (directStatus) {
+                          return (
+                            <div className="px-2 py-1 bg-blue-600 text-white text-xs rounded flex items-center gap-1 shrink-0">
+                              <Spinner size="sm" />
+                              <span>
+                                {directStatus.current}/{directStatus.total}
+                              </span>
+                            </div>
+                          )
+                        }
+
+                        // Si está en cola o procesándose en background
                         if (queueStatus && ['pending', 'processing'].includes(queueStatus.status)) {
                           return (
                             <div className="px-2 py-1 bg-purple-600 text-white text-xs rounded flex items-center gap-1 shrink-0">
@@ -568,16 +694,48 @@ export default function TopicReviewTab() {
                           )
                         }
 
-                        // Si hay pendientes y hay IA configurada, mostrar botón
+                        // Si hay pendientes y hay IA configurada, mostrar botón con menú
                         if (topic.stats?.pending > 0 && aiConfigs.length > 0) {
                           return (
-                            <button
-                              onClick={(e) => verifyTopicPending(topic.id, e)}
-                              className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded flex items-center gap-1 shrink-0"
-                              title={`Verificar ${topic.stats.pending} pendientes con IA (en background)`}
-                            >
-                              🤖 Verificar ({topic.stats.pending})
-                            </button>
+                            <div className="relative shrink-0">
+                              <button
+                                onClick={(e) => toggleVerifyMenu(topic.id, e)}
+                                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded flex items-center gap-1"
+                                title={`Verificar ${topic.stats.pending} pendientes con IA`}
+                              >
+                                🤖 Verificar ({topic.stats.pending})
+                                <span className="ml-1">▼</span>
+                              </button>
+
+                              {/* Menú desplegable */}
+                              {verifyMenuOpen === topic.id && (
+                                <div
+                                  className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[160px]"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    onClick={() => verifyTopicDirect(topic.id, topic.stats.pending)}
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg flex items-center gap-2"
+                                  >
+                                    <span>🖥️</span>
+                                    <div>
+                                      <div className="font-medium text-gray-900 dark:text-white">En navegador</div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">Más rápido, no cerrar</div>
+                                    </div>
+                                  </button>
+                                  <button
+                                    onClick={() => verifyTopicQueue(topic.id)}
+                                    className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg flex items-center gap-2 border-t border-gray-100 dark:border-gray-700"
+                                  >
+                                    <span>📥</span>
+                                    <div>
+                                      <div className="font-medium text-gray-900 dark:text-white">En cola</div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">Background, puedes cerrar</div>
+                                    </div>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           )
                         }
 
