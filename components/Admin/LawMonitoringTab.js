@@ -22,78 +22,51 @@ export default function LawMonitoringTab() {
   const router = useRouter()
   const [laws, setLaws] = useState([])
   const [loading, setLoading] = useState(false)
-  const [processingLaws, setProcessingLaws] = useState(new Set()) // IDs de leyes siendo procesadas
-  const [completedLaws, setCompletedLaws] = useState(new Set()) // IDs de leyes completadas
   const [lastCheck, setLastCheck] = useState(null)
   const [error, setError] = useState(null)
+  const [checkStats, setCheckStats] = useState(null) // Estadísticas de última verificación
   const [lawFilter, setLawFilter] = useState('') // Filtro por texto de ley
   const [statusFilter, setStatusFilter] = useState('all') // 'all', 'boe_diff', 'changed', 'ok'
   const [aiVerificationStats, setAiVerificationStats] = useState({}) // { lawId: { lastVerified, pending, fixed } }
+  const [showInfoModal, setShowInfoModal] = useState(false) // Modal de información
 
   const checkLawChanges = async () => {
     try {
       setLoading(true)
       setError(null)
-      setProcessingLaws(new Set())
-      setCompletedLaws(new Set())
-      
-      // Primero obtener lista de leyes
-      const initialResponse = await fetch('/api/law-changes')
-      const initialData = await initialResponse.json()
-      
-      if (!initialData.success) {
-        setError(initialData.error || 'Error obteniendo lista de leyes')
+      setCheckStats(null)
+
+      // Usar endpoint optimizado (descarga parcial + cache de posiciones)
+      const response = await fetch('/api/law-changes/check-optimized?skipRecent=false')
+      const data = await response.json()
+
+      if (!data.success) {
+        setError(data.error || 'Error detectando cambios')
         return
       }
-      
-      // Mostrar leyes iniciales
-      setLaws(initialData.results)
-      
-      // Verificar cada ley individualmente para mostrar progreso
-      const lawsToCheck = initialData.results
-      
-      for (const law of lawsToCheck) {
-        try {
-          // Marcar ley como procesándose
-          setProcessingLaws(prev => new Set([...prev, law.id]))
-          
-          // Verificar ley específica
-          const response = await fetch(`/api/law-changes?law=${encodeURIComponent(law.law)}`)
-          const data = await response.json()
-          
-          if (data.success && data.results.length > 0) {
-            const updatedLaw = data.results[0]
-            
-            // Actualizar solo esta ley en el estado
-            setLaws(prev => prev.map(l => 
-              l.id === law.id ? updatedLaw : l
-            ))
-          }
-          
-          // Pequeña pausa entre verificaciones
-          await new Promise(resolve => setTimeout(resolve, 500))
-          
-        } catch (err) {
-          console.error(`Error verificando ${law.law}:`, err)
-        } finally {
-          // Remover ley de procesándose y marcar como completada
-          setProcessingLaws(prev => {
-            const newSet = new Set(prev)
-            newSet.delete(law.id)
-            return newSet
-          })
-          setCompletedLaws(prev => new Set([...prev, law.id]))
-        }
+
+      // Guardar estadísticas de la verificación
+      setCheckStats(data.stats)
+
+      // Si hay cambios detectados, mostrar alerta
+      if (data.changes && data.changes.length > 0) {
+        console.log('🚨 Cambios detectados:', data.changes)
       }
-      
+
+      // Recargar lista de leyes con datos actualizados
+      const reloadResponse = await fetch('/api/law-changes?readonly=true')
+      const reloadData = await reloadResponse.json()
+
+      if (reloadData.success) {
+        setLaws(reloadData.results)
+      }
+
       setLastCheck(new Date().toISOString())
-      
+
     } catch (err) {
       setError('Error conectando con el servidor')
     } finally {
       setLoading(false)
-      setProcessingLaws(new Set())
-      setCompletedLaws(new Set())
     }
   }
 
@@ -130,6 +103,52 @@ export default function LawMonitoringTab() {
   // Navegar a la página de verificación de artículos
   const goToVerifyArticles = (lawId) => {
     router.push(`/admin/verificar-articulos/${lawId}`)
+  }
+
+  // Estado para sincronización
+  const [syncingLaws, setSyncingLaws] = useState(new Set())
+  const [syncResults, setSyncResults] = useState({}) // { lawId: { success, stats } }
+
+  // Sincronizar todos los artículos de una ley desde el BOE
+  const syncAllArticles = async (lawId, lawName) => {
+    try {
+      setSyncingLaws(prev => new Set([...prev, lawId]))
+      setSyncResults(prev => ({ ...prev, [lawId]: null }))
+
+      const response = await fetch('/api/verify-articles/sync-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lawId })
+      })
+
+      const data = await response.json()
+
+      setSyncResults(prev => ({
+        ...prev,
+        [lawId]: {
+          success: data.success,
+          stats: data.stats,
+          error: data.error
+        }
+      }))
+
+      if (data.success) {
+        // Recargar estadísticas de verificación
+        await loadAiVerificationStats()
+      }
+
+    } catch (err) {
+      setSyncResults(prev => ({
+        ...prev,
+        [lawId]: { success: false, error: 'Error de conexión' }
+      }))
+    } finally {
+      setSyncingLaws(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(lawId)
+        return newSet
+      })
+    }
   }
 
   // Cargar estadísticas de verificación IA por ley
@@ -198,7 +217,10 @@ export default function LawMonitoringTab() {
     if (law.changeStatus === 'changed') return 'changed'
     if (aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk) return 'boe_diff'
     if (law.changeStatus === 'reviewed') return 'reviewed'
-    return 'ok'
+    // Solo marcar como OK si realmente se ha verificado y está bien
+    if (aiVerificationStats[law.id]?.lastVerified && aiVerificationStats[law.id]?.isOk) return 'ok'
+    // Si no se ha verificado, mostrar como pendiente
+    return 'not_verified'
   }
 
   // Aplicar filtros (texto + estado)
@@ -214,6 +236,7 @@ export default function LawMonitoringTab() {
       (statusFilter === 'boe_diff' && lawStatus === 'boe_diff') ||
       (statusFilter === 'changed' && lawStatus === 'changed') ||
       (statusFilter === 'problems' && (lawStatus === 'boe_diff' || lawStatus === 'changed')) ||
+      (statusFilter === 'not_verified' && lawStatus === 'not_verified') ||
       (statusFilter === 'ok' && (lawStatus === 'ok' || lawStatus === 'reviewed'))
 
     return matchesText && matchesStatus
@@ -224,7 +247,7 @@ export default function LawMonitoringTab() {
     const status = getLawStatus(law)
     acc[status] = (acc[status] || 0) + 1
     return acc
-  }, { changed: 0, boe_diff: 0, reviewed: 0, ok: 0 })
+  }, { changed: 0, boe_diff: 0, reviewed: 0, ok: 0, not_verified: 0 })
 
   return (
     <div className="p-3 sm:p-6">
@@ -261,14 +284,25 @@ export default function LawMonitoringTab() {
             )}
           </div>
 
-          <button
-            onClick={checkLawChanges}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto flex items-center justify-center space-x-2"
-          >
-            {loading && <Spinner size="sm" />}
-            <span>{loading ? 'Verificando...' : 'Verificar ahora'}</span>
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={checkLawChanges}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm sm:text-base flex-1 sm:flex-none flex items-center justify-center space-x-2"
+            >
+              {loading && <Spinner size="sm" />}
+              <span>{loading ? 'Detectando...' : 'Detectar cambios BOE'}</span>
+            </button>
+            <button
+              onClick={() => setShowInfoModal(true)}
+              className="p-2 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+              title="¿Qué hace este botón?"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -324,35 +358,54 @@ export default function LawMonitoringTab() {
         >
           ✅ OK ({statusCounts.ok + statusCounts.reviewed})
         </button>
+        {statusCounts.not_verified > 0 && (
+          <button
+            onClick={() => setStatusFilter('not_verified')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              statusFilter === 'not_verified'
+                ? 'bg-gray-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500'
+            }`}
+          >
+            ⏳ Sin verificar ({statusCounts.not_verified})
+          </button>
+        )}
       </div>
 
-      {/* Barra de progreso global */}
-      {loading && laws.length > 0 && (
+      {/* Indicador de carga */}
+      {loading && (
         <div className="mb-6">
-          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <div className="flex justify-between items-center mb-2">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <Spinner size="md" />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Progreso de verificación
-              </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {completedLaws.size} / {laws.length}
+                Detectando cambios en {laws.length} leyes (optimizado)...
               </span>
             </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{
-                  width: `${laws.length > 0 ? (completedLaws.size / laws.length) * 100 : 0}%`
-                }}
-              ></div>
+          </div>
+        </div>
+      )}
+
+      {/* Estadísticas de última verificación */}
+      {checkStats && !loading && (
+        <div className="mb-6">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              <span className="font-medium text-green-700 dark:text-green-300">
+                ✅ Completado en {checkStats.duration || 'N/A'}
+              </span>
+              <span className="text-gray-600 dark:text-gray-400">
+                📊 {checkStats.totalBytesFormatted}
+              </span>
+              <span className="text-gray-600 dark:text-gray-400">
+                ⚡ {checkStats.efficiency}
+              </span>
+              {checkStats.changesDetected > 0 && (
+                <span className="text-orange-600 dark:text-orange-400 font-medium">
+                  🚨 {checkStats.changesDetected} cambios
+                </span>
+              )}
             </div>
-            {processingLaws.size > 0 && (
-              <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                Verificando: {[...processingLaws].map(id =>
-                  laws.find(l => l.id === id)?.law
-                ).filter(Boolean).join(', ')}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -414,14 +467,7 @@ export default function LawMonitoringTab() {
                 </td>
                 
                 <td className="px-6 py-4">
-                  {processingLaws.has(law.id) ? (
-                    <div className="flex items-center space-x-2">
-                      <Spinner size="sm" />
-                      <span className="text-sm text-blue-600 dark:text-blue-400">
-                        Verificando...
-                      </span>
-                    </div>
-                  ) : law.status === 'error' ? (
+                  {law.status === 'error' ? (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200">
                       ❌ Error
                     </span>
@@ -507,6 +553,37 @@ export default function LawMonitoringTab() {
                         Marcar como revisado
                       </button>
                     )}
+                    {/* Botón Sincronizar - para leyes con BOE ≠ BD o sin verificar */}
+                    {((aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk) || !aiVerificationStats[law.id]?.lastVerified) && (
+                      <button
+                        onClick={() => syncAllArticles(law.id, law.law)}
+                        disabled={syncingLaws.has(law.id)}
+                        className={`${!aiVerificationStats[law.id]?.lastVerified ? 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400' : 'bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400'} text-white px-3 py-1 rounded text-xs transition-colors flex items-center justify-center space-x-1`}
+                      >
+                        {syncingLaws.has(law.id) ? (
+                          <>
+                            <Spinner size="sm" />
+                            <span>Sincronizando...</span>
+                          </>
+                        ) : (
+                          <span>🔄 Sincronizar BOE</span>
+                        )}
+                      </button>
+                    )}
+                    {/* Resultado de sincronización */}
+                    {syncResults[law.id] && (
+                      <div className={`text-xs px-2 py-1 rounded ${
+                        syncResults[law.id].success
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'
+                      }`}>
+                        {syncResults[law.id].success ? (
+                          <span>+{syncResults[law.id].stats?.added || 0} 🔄{syncResults[law.id].stats?.updated || 0}</span>
+                        ) : (
+                          <span>❌ {syncResults[law.id].error}</span>
+                        )}
+                      </div>
+                    )}
                     <button
                       onClick={() => goToVerifyArticles(law.id)}
                       className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition-colors"
@@ -546,14 +623,7 @@ export default function LawMonitoringTab() {
 
             {/* Status */}
             <div className="mb-3">
-              {processingLaws.has(law.id) ? (
-                <div className="flex items-center space-x-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <Spinner size="sm" />
-                  <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                    Verificando en BOE...
-                  </span>
-                </div>
-              ) : law.status === 'error' ? (
+              {law.status === 'error' ? (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200">
                   ❌ Error
                 </span>
@@ -628,6 +698,37 @@ export default function LawMonitoringTab() {
                   Marcar como revisado
                 </button>
               )}
+              {/* Botón Sincronizar - para leyes con BOE ≠ BD o sin verificar */}
+              {((aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk) || !aiVerificationStats[law.id]?.lastVerified) && (
+                <button
+                  onClick={() => syncAllArticles(law.id, law.law)}
+                  disabled={syncingLaws.has(law.id)}
+                  className={`w-full ${!aiVerificationStats[law.id]?.lastVerified ? 'bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400' : 'bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400'} text-white px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-center space-x-2`}
+                >
+                  {syncingLaws.has(law.id) ? (
+                    <>
+                      <Spinner size="sm" />
+                      <span>Sincronizando...</span>
+                    </>
+                  ) : (
+                    <span>🔄 Sincronizar BOE</span>
+                  )}
+                </button>
+              )}
+              {/* Resultado de sincronización */}
+              {syncResults[law.id] && (
+                <div className={`text-sm px-3 py-2 rounded-md ${
+                  syncResults[law.id].success
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-200'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200'
+                }`}>
+                  {syncResults[law.id].success ? (
+                    <span>✅ +{syncResults[law.id].stats?.added || 0} añadidos, 🔄{syncResults[law.id].stats?.updated || 0} actualizados</span>
+                  ) : (
+                    <span>❌ {syncResults[law.id].error}</span>
+                  )}
+                </div>
+              )}
               <button
                 onClick={() => goToVerifyArticles(law.id)}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-md text-sm transition-colors"
@@ -646,6 +747,59 @@ export default function LawMonitoringTab() {
             : statusFilter !== 'all' && !lawFilter.trim()
               ? `No hay leyes con estado "${statusFilter === 'boe_diff' ? 'BOE ≠ BD' : statusFilter === 'problems' ? 'Problemas' : statusFilter}"`
               : `No se encontraron leyes con "${lawFilter}"${statusFilter !== 'all' ? ` y estado "${statusFilter}"` : ''}`}
+        </div>
+      )}
+
+      {/* Modal informativo */}
+      {showInfoModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-lg w-full p-6 shadow-2xl">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                ℹ️ ¿Cómo funciona el monitoreo?
+              </h3>
+              <button
+                onClick={() => setShowInfoModal(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-1">🔍 Detectar cambios BOE</h4>
+                <p>Descarga cada ley del BOE y comprueba si la fecha de "Última actualización" ha cambiado. <strong>NO compara artículos</strong>, solo detecta si el BOE ha publicado modificaciones.</p>
+              </div>
+
+              <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                <h4 className="font-semibold text-purple-800 dark:text-purple-200 mb-1">📋 Verificar artículos</h4>
+                <p>Compara artículo por artículo el contenido del BOE con tu base de datos. Detecta títulos diferentes, contenido modificado y artículos faltantes.</p>
+              </div>
+
+              <div className="p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg">
+                <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-1">🔄 Sincronizar BOE</h4>
+                <p>Copia todos los artículos del BOE a tu base de datos. Añade los nuevos, actualiza los modificados y desactiva los eliminados.</p>
+              </div>
+
+              <div className="p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">📊 Estados</h4>
+                <ul className="list-disc list-inside space-y-1 mt-2">
+                  <li><span className="text-yellow-600">Cambio BOE</span>: El BOE actualizó esta ley</li>
+                  <li><span className="text-orange-600">BOE ≠ BD</span>: Hay diferencias entre BOE y tu BD</li>
+                  <li><span className="text-green-600">OK</span>: Todo sincronizado correctamente</li>
+                  <li><span className="text-gray-500">Sin verificar</span>: No se han comparado artículos</li>
+                </ul>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowInfoModal(false)}
+              className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"
+            >
+              Entendido
+            </button>
+          </div>
         </div>
       )}
     </div>

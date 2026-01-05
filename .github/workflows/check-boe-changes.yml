@@ -1,0 +1,38 @@
+name: Check BOE Law Changes
+
+on:
+  schedule:
+    # Ejecutar todos los días a las 8:00 AM UTC (9:00 AM España invierno, 10:00 AM verano)
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  check-boe:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check BOE for law changes
+        id: check
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "https://www.vence.es/api/cron/check-boe-changes")
+
+          echo "Response: $RESPONSE"
+
+          # Extraer estadísticas
+          CHANGES=$(echo $RESPONSE | jq -r '.stats.changesDetected // 0')
+          CHECKED=$(echo $RESPONSE | jq -r '.stats.checked // 0')
+          DURATION=$(echo $RESPONSE | jq -r '.duration // "?"')
+
+          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
+          echo "checked=$CHECKED" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+
+      - name: Log results
+        run: |
+          echo "📋 BOE Check completado - $(date)"
+          echo "   Leyes verificadas: ${{ steps.check.outputs.checked }}"
+          echo "   Cambios detectados: ${{ steps.check.outputs.changes }}"
+          echo "   Duración: ${{ steps.check.outputs.duration }}"
