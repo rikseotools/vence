@@ -61,6 +61,16 @@
 | `boe_consolidation_url` | text | YES | null |
 | `next_verification_date` | date | YES | null |
 | `verification_status` | text | YES | null |
+| `boe_url` | text | YES | null |
+| `boe_id` | text | YES | null |
+| `content_hash` | text | YES | null |
+| `last_checked` | timestamp with time zone | YES | null |
+| `change_status` | text | YES | null |
+| `last_update_boe` | text | YES | null |
+| `video_url` | text | YES | null |
+| `is_derogated` | boolean | YES | false |
+| `derogated_by` | text | YES | null |
+| `derogated_at` | date | YES | null |
 
 ### **TABLA: `articles`**
 | Campo | Tipo | Nullable | Default |

@@ -109,11 +109,15 @@ function extractArticlesFromBOE(html) {
     let title = ''
 
     // Soporta tanto "Artículo 1." como "Art. 1." (algunos BOEs usan formato abreviado)
-    const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\.?)\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([^<]*)<\/h5>/i)
+    // También maneja títulos con HTML interno (ej: links a otras leyes)
+    const numericMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\.?)\s+(\d+(?:\s+(?:bis|ter|qu[aá]ter|quinquies|sexies|septies|octies|nonies|decies))?(?:\s+\d+)?)\.?\s*([\s\S]*?)<\/h5>/i)
 
     if (numericMatch) {
       articleNumber = numericMatch[1].trim().replace(/\s+/g, ' ')
-      title = numericMatch[2]?.trim().replace(/\.$/, '') || ''
+      // Limpiar HTML del título (puede contener <a>, <span>, etc.)
+      let rawTitle = numericMatch[2] || ''
+      rawTitle = rawTitle.replace(/<[^>]*>/g, '').trim().replace(/\.$/, '')
+      title = rawTitle || ''
     } else {
       const textMatch = blockContent.match(/<h5[^>]*class="articulo"[^>]*>(?:Artículo|Art\.?)\s+([^<]+)<\/h5>/i)
       if (textMatch) {

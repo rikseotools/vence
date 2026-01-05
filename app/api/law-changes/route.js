@@ -122,6 +122,7 @@ export async function GET(request) {
       .from('laws')
       .select('id, short_name, name, boe_url, content_hash, last_checked, change_status, last_update_boe')
       .not('boe_url', 'is', null)
+      .or('is_derogated.is.null,is_derogated.eq.false') // Excluir leyes derogadas
 
     if (lawShortName) {
       query = query.eq('short_name', lawShortName)
@@ -139,6 +140,7 @@ export async function GET(request) {
         id: law.id,
         law: law.short_name,
         name: law.name,
+        boeUrl: law.boe_url,
         status: 'unchanged', // No verificamos, solo mostramos estado actual
         changeStatus: law.change_status || 'none',
         lastChecked: law.last_checked,
@@ -198,12 +200,12 @@ export async function GET(request) {
         
         // ESTRATEGIA OFICIAL: Usar FECHAS BOE como detección principal (según manual)
         // Solo usar fecha de "Última actualización publicada el XX/XX/XXXX" del BOE
-        const dateChanged = currentLastUpdate && law.last_update_boe && 
+        const dateChanged = currentLastUpdate && law.last_update_boe &&
                            law.last_update_boe !== currentLastUpdate
-        
+
         // Primera vez sin fecha almacenada = establecer baseline, no cambio
         const isFirstTimeWithDate = currentLastUpdate && !law.last_update_boe
-        
+
         // CAMBIO REAL = Solo cuando fecha BOE oficial cambia (no primera vez)
         // Hash se mantiene para tracking interno pero NO para detección
         const hasChanged = dateChanged && !isFirstTimeWithDate
@@ -221,6 +223,7 @@ export async function GET(request) {
           id: law.id,
           law: law.short_name,
           name: law.name,
+          boeUrl: law.boe_url,
           status: hasChanged ? 'changed' : 'unchanged',
           changeStatus: law.change_status || 'none',
           lastChecked: lastChecked?.toISOString(),

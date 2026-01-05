@@ -353,7 +353,7 @@ export default function VerificarArticulosPage() {
   const [verifyingPostUpdate, setVerifyingPostUpdate] = useState(false)
 
   // Tabs
-  const [activeTab, setActiveTab] = useState('verificacion') // 'verificacion' | 'verificar-preguntas' | 'reparar' | 'todos-articulos'
+  const [activeTab, setActiveTab] = useState('verificacion') // 'verificacion' | 'seleccionar-articulos' | 'verificar-preguntas' | 'reparar' | 'todos-articulos'
   const [historyData, setHistoryData] = useState([])
 
   // Tab: Todos los artículos (verificación rutinaria)
@@ -1745,6 +1745,22 @@ export default function VerificarArticulosPage() {
               🔍 Inspeccionar artículos
             </button>
             <button
+              onClick={async () => {
+                // Si no hay resultados de verificación con detalles, ejecutar primero
+                if (!verificationResults?.comparison?.details) {
+                  await runVerification()
+                }
+                setActiveTab('seleccionar-articulos')
+              }}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === 'seleccionar-articulos'
+                  ? 'bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 border border-b-0 border-gray-200 dark:border-gray-700'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              📋 Ver artículos
+            </button>
+            <button
               onClick={openHistory}
               className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
                 activeTab === 'verificar-preguntas'
@@ -1864,21 +1880,9 @@ export default function VerificarArticulosPage() {
                   </p>
                 </div>
 
-                {/* Resumen expandible */}
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setShowSavedSummary(!showSavedSummary)}
-                    className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      📊 Ver resumen de verificación
-                    </span>
-                    <span className="text-gray-500">
-                      {showSavedSummary ? '▲' : '▼'}
-                    </span>
-                  </button>
-                  {showSavedSummary && savedVerification.summary && (
-                    <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                {/* Resumen de verificación */}
+                {savedVerification.summary && (
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 text-center">
                           <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
@@ -1931,9 +1935,8 @@ export default function VerificarArticulosPage() {
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Botones de acción */}
                 <div className="flex flex-wrap justify-center gap-4">
@@ -1955,7 +1958,13 @@ export default function VerificarArticulosPage() {
                     )}
                   </button>
                   <button
-                    onClick={() => runVerificationAndGoToStep(2)}
+                    onClick={async () => {
+                      // Si no hay detalles de verificación, ejecutar primero
+                      if (!verificationResults?.comparison?.details) {
+                        await runVerification()
+                      }
+                      setActiveTab('seleccionar-articulos')
+                    }}
                     disabled={verifying}
                     className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
                   >
@@ -2148,9 +2157,11 @@ export default function VerificarArticulosPage() {
             </div>
           </div>
         )}
+          </>
+        )}
 
-        {/* ===================== PASO 2: Seleccionar artículos para actualizar ===================== */}
-        {currentStep === 2 && (
+        {/* ===================== TAB: SELECCIONAR ARTÍCULOS ===================== */}
+        {activeTab === 'seleccionar-articulos' && (
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
@@ -2997,8 +3008,6 @@ export default function VerificarArticulosPage() {
               </button>
             </div>
           </div>
-        )}
-          </>
         )}
 
         {/* ===================== TAB: VERIFICAR PREGUNTAS ===================== */}
