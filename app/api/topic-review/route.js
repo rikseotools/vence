@@ -12,11 +12,18 @@ const supabase = createClient(
  *
  * Query params:
  * - position: tipo de oposición (ej: 'auxiliar_administrativo')
+ * - topic_id: UUID del tema para obtener sus preguntas (para verificación directa)
  */
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const positionType = searchParams.get('position')
+    const topicId = searchParams.get('topic_id')
+
+    // Si se solicita un topic_id específico, devolver las preguntas de ese tema
+    if (topicId) {
+      return await getTopicQuestions(topicId)
+    }
 
     // 1. Obtener oposiciones disponibles (para el selector)
     const { data: positions, error: posError } = await supabase
@@ -261,6 +268,97 @@ export async function GET(request) {
     return Response.json({
       success: false,
       error: 'Error interno del servidor',
+      details: error.message
+    }, { status: 500 })
+  }
+}
+
+/**
+ * Obtiene las preguntas de un tema específico para verificación directa
+ */
+async function getTopicQuestions(topicId) {
+  try {
+    // 1. Obtener el tema
+    const { data: topic, error: topicError } = await supabase
+      .from('topics')
+      .select('id, title, topic_number')
+      .eq('id', topicId)
+      .single()
+
+    if (topicError || !topic) {
+      return Response.json({
+        success: false,
+        error: 'Tema no encontrado'
+      }, { status: 404 })
+    }
+
+    // 2. Obtener scope del tema (leyes y artículos)
+    const { data: topicScopes } = await supabase
+      .from('topic_scope')
+      .select(`
+        article_numbers,
+        laws (id, short_name)
+      `)
+      .eq('topic_id', topicId)
+
+    // 3. Obtener artículos por cada ley específica
+    let allArticleIds = []
+    for (const scope of topicScopes || []) {
+      if (!scope.laws?.id || !scope.article_numbers?.length) continue
+
+      const { data: articles } = await supabase
+        .from('articles')
+        .select('id')
+        .eq('law_id', scope.laws.id)
+        .in('article_number', scope.article_numbers)
+
+      if (articles) {
+        allArticleIds.push(...articles.map(a => a.id))
+      }
+    }
+
+    if (allArticleIds.length === 0) {
+      return Response.json({
+        success: true,
+        topic,
+        questions: []
+      })
+    }
+
+    // 4. Obtener preguntas de esos artículos
+    const { data: questions, error: questionsError } = await supabase
+      .from('questions')
+      .select(`
+        id,
+        question_text,
+        topic_review_status,
+        verified_at,
+        verification_status,
+        primary_article_id
+      `)
+      .in('primary_article_id', allArticleIds)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+
+    if (questionsError) {
+      return Response.json({
+        success: false,
+        error: 'Error obteniendo preguntas',
+        details: questionsError.message
+      }, { status: 500 })
+    }
+
+    return Response.json({
+      success: true,
+      topic,
+      questions: questions || []
+    })
+
+  } catch (error) {
+    console.error('Error en getTopicQuestions:', error)
+    return Response.json({
+      success: false,
+      error: 'Error interno',
       details: error.message
     }, { status: 500 })
   }
