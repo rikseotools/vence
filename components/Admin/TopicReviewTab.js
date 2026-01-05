@@ -103,9 +103,23 @@ export default function TopicReviewTab() {
   const [error, setError] = useState(null)
   const [searchFilter, setSearchFilter] = useState('')
 
+  // Estado para bloques colapsables
+  const [expandedBlocks, setExpandedBlocks] = useState(new Set())
+
+  // Configuración de IA para verificación
+  const [aiConfigs, setAiConfigs] = useState([])
+  const [selectedProvider, setSelectedProvider] = useState('')
+  const [selectedModel, setSelectedModel] = useState('')
+  const [loadingAiConfig, setLoadingAiConfig] = useState(true)
+
+  // Estado de verificación por tema
+  const [verifyingTopic, setVerifyingTopic] = useState(null)
+  const [verifyProgress, setVerifyProgress] = useState({ current: 0, total: 0, startTime: null })
+
   // Cargar oposiciones disponibles
   useEffect(() => {
     loadPositions()
+    loadAiConfig()
   }, [])
 
   // Cargar temas cuando cambia la oposición
@@ -156,6 +170,172 @@ export default function TopicReviewTab() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Cargar configuración de IA
+  const loadAiConfig = async () => {
+    try {
+      setLoadingAiConfig(true)
+      const response = await fetch('/api/admin/ai-config')
+      const data = await response.json()
+
+      if (data.success && data.configs) {
+        const activeConfigs = data.configs.filter(c =>
+          c.is_active &&
+          c.has_key &&
+          c.available_models?.some(m => m.status === 'working')
+        )
+        setAiConfigs(activeConfigs)
+
+        if (activeConfigs.length > 0) {
+          const firstConfig = activeConfigs[0]
+          setSelectedProvider(firstConfig.provider)
+          const workingModel = firstConfig.available_models?.find(m => m.status === 'working')
+          if (workingModel) {
+            setSelectedModel(workingModel.id)
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando config IA:', err)
+    } finally {
+      setLoadingAiConfig(false)
+    }
+  }
+
+  // Obtener modelos del proveedor seleccionado
+  const getAvailableModels = () => {
+    const config = aiConfigs.find(c => c.provider === selectedProvider)
+    return config?.available_models?.filter(m => m.status === 'working') || []
+  }
+
+  // Cambiar proveedor
+  const handleProviderChange = (provider) => {
+    setSelectedProvider(provider)
+    const config = aiConfigs.find(c => c.provider === provider)
+    const workingModel = config?.available_models?.find(m => m.status === 'working')
+    if (workingModel) {
+      setSelectedModel(workingModel.id)
+    }
+  }
+
+  // Verificar pendientes de un tema
+  const verifyTopicPending = async (topicId, e) => {
+    e.stopPropagation()
+    if (!selectedProvider || !selectedModel) {
+      setError('Selecciona un proveedor y modelo de IA')
+      return
+    }
+
+    try {
+      setVerifyingTopic(topicId)
+      setError(null)
+
+      // Primero obtener las preguntas pendientes del tema
+      const detailResponse = await fetch(`/api/topic-review/${topicId}`)
+      const detailData = await detailResponse.json()
+
+      if (!detailData.success) {
+        setError(detailData.error || 'Error obteniendo preguntas')
+        return
+      }
+
+      // Extraer IDs de preguntas pendientes
+      const pendingIds = []
+      detailData.laws?.forEach(law => {
+        law.articles?.forEach(article => {
+          article.questions?.forEach(q => {
+            if (q.review_status === 'pending') {
+              pendingIds.push(q.id)
+            }
+          })
+        })
+      })
+
+      if (pendingIds.length === 0) {
+        setError('No hay preguntas pendientes en este tema')
+        setVerifyingTopic(null)
+        return
+      }
+
+      const BATCH_SIZE = 10
+      const totalQuestions = pendingIds.length
+      const startTime = Date.now()
+      setVerifyProgress({ current: 0, total: totalQuestions, startTime })
+
+      // Dividir en lotes
+      const batches = []
+      for (let i = 0; i < pendingIds.length; i += BATCH_SIZE) {
+        batches.push(pendingIds.slice(i, i + BATCH_SIZE))
+      }
+
+      // Procesar cada lote
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex]
+
+        await fetch('/api/topic-review/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionIds: batch,
+            provider: selectedProvider,
+            model: selectedModel
+          })
+        })
+
+        const processed = Math.min((batchIndex + 1) * BATCH_SIZE, totalQuestions)
+        setVerifyProgress({ current: processed, total: totalQuestions, startTime })
+      }
+
+      // Recargar temas para actualizar stats
+      await loadTopics()
+
+    } catch (err) {
+      setError('Error durante la verificación: ' + err.message)
+    } finally {
+      setVerifyingTopic(null)
+    }
+  }
+
+  // Calcular tiempo restante estimado
+  const getEstimatedTimeRemaining = () => {
+    if (!verifyProgress.startTime || verifyProgress.current === 0) return null
+
+    const elapsed = Date.now() - verifyProgress.startTime
+    const avgTimePerQuestion = elapsed / verifyProgress.current
+    const remaining = verifyProgress.total - verifyProgress.current
+    const estimatedMs = remaining * avgTimePerQuestion
+
+    if (estimatedMs < 60000) {
+      return `~${Math.ceil(estimatedMs / 1000)}s`
+    } else {
+      const mins = Math.floor(estimatedMs / 60000)
+      const secs = Math.ceil((estimatedMs % 60000) / 1000)
+      return `~${mins}m ${secs}s`
+    }
+  }
+
+  // Toggle expandir bloque
+  const toggleBlock = (blockId) => {
+    setExpandedBlocks(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(blockId)) {
+        newSet.delete(blockId)
+      } else {
+        newSet.add(blockId)
+      }
+      return newSet
+    })
+  }
+
+  // Expandir todos los bloques
+  const expandAllBlocks = () => {
+    setExpandedBlocks(new Set(blocks.map(b => b.id)))
+  }
+
+  // Colapsar todos los bloques
+  const collapseAllBlocks = () => {
+    setExpandedBlocks(new Set())
   }
 
   // Navegar al detalle del tema
@@ -229,8 +409,29 @@ export default function TopicReviewTab() {
               </button>
             )}
           </div>
+
+          {/* Botones expandir/colapsar bloques */}
+          {!loading && blocks.length > 0 && (
+            <div className="flex items-center gap-1 text-xs">
+              <button
+                onClick={expandAllBlocks}
+                className="px-2 py-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                title="Expandir todos los bloques"
+              >
+                ▼ Todos
+              </button>
+              <button
+                onClick={collapseAllBlocks}
+                className="px-2 py-1 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                title="Colapsar todos los bloques"
+              >
+                ▶ Todos
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
 
       {/* Error */}
       {error && (
@@ -251,96 +452,168 @@ export default function TopicReviewTab() {
       {!loading && blocks.map(block => {
         const filteredTopics = filterTopics(block.topics)
         if (filteredTopics.length === 0 && searchFilter) return null
+        const isExpanded = expandedBlocks.has(block.id)
+
+        // Calcular stats del bloque
+        const blockStats = filteredTopics.reduce((acc, topic) => {
+          acc.total += topic.stats?.total_questions || 0
+          acc.pending += topic.stats?.pending || 0
+          acc.perfect += (topic.stats?.perfect || 0) + (topic.stats?.tech_perfect || 0)
+          return acc
+        }, { total: 0, pending: 0, perfect: 0 })
 
         return (
-          <div key={block.id} className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
-              {block.title}
-            </h2>
-
-            <div className="flex flex-col gap-2">
-              {filteredTopics.map(topic => (
-                <div
-                  key={topic.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => goToTopicDetail(topic.id)}
-                >
-                  {/* Fila única con toda la info */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                    {/* Título del tema */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                        <span className="text-gray-500 dark:text-gray-400">T{topic.topic_number}:</span> {topic.title}
-                      </h3>
-                    </div>
-
-                    {/* Stats inline */}
-                    <div className="flex flex-wrap items-center gap-2 text-xs shrink-0">
-                      <span className="text-gray-600 dark:text-gray-400">
-                        📊 {topic.stats?.total_questions || 0}
-                      </span>
-                      {topic.stats?.perfect > 0 && (
-                        <span className="text-green-600 dark:text-green-400">
-                          ✅ {topic.stats.perfect}
-                        </span>
-                      )}
-                      {/* Estados técnicos */}
-                      {topic.stats?.tech_perfect > 0 && (
-                        <span className="text-cyan-600 dark:text-cyan-400">
-                          💻✅ {topic.stats.tech_perfect}
-                        </span>
-                      )}
-                      {(topic.stats?.bad_explanation > 0 || topic.stats?.bad_answer > 0 || topic.stats?.bad_answer_and_explanation > 0) && (
-                        <span className="text-orange-600 dark:text-orange-400">
-                          ⚠️ {(topic.stats?.bad_explanation || 0) + (topic.stats?.bad_answer || 0) + (topic.stats?.bad_answer_and_explanation || 0)}
-                        </span>
-                      )}
-                      {(topic.stats?.tech_bad_explanation > 0 || topic.stats?.tech_bad_answer > 0 || topic.stats?.tech_bad_answer_and_explanation > 0) && (
-                        <span className="text-cyan-500 dark:text-cyan-400">
-                          💻⚠️ {(topic.stats?.tech_bad_explanation || 0) + (topic.stats?.tech_bad_answer || 0) + (topic.stats?.tech_bad_answer_and_explanation || 0)}
-                        </span>
-                      )}
-                      {(topic.stats?.wrong_article > 0 || topic.stats?.wrong_article_bad_explanation > 0 || topic.stats?.wrong_article_bad_answer > 0 || topic.stats?.all_wrong > 0) && (
-                        <span className="text-purple-600 dark:text-purple-400">
-                          🔗 {(topic.stats?.wrong_article || 0) + (topic.stats?.wrong_article_bad_explanation || 0) + (topic.stats?.wrong_article_bad_answer || 0) + (topic.stats?.all_wrong || 0)}
-                        </span>
-                      )}
-                      {topic.stats?.pending > 0 && (
-                        <span className="text-gray-500 dark:text-gray-400">
-                          ⏳ {topic.stats.pending}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Leyes inline */}
-                    <div className="flex flex-wrap gap-1 shrink-0">
-                      {topic.laws?.slice(0, 3).map(law => (
-                        <span
-                          key={law.id}
-                          className={`px-1.5 py-0.5 rounded text-xs ${
-                            law.is_virtual
-                              ? 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300'
-                              : 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
-                          }`}
-                        >
-                          {law.is_virtual && '💻'}{law.short_name}
-                        </span>
-                      ))}
-                      {topic.laws?.length > 3 && (
-                        <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs">
-                          +{topic.laws.length - 3}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Flecha */}
-                    <span className="text-gray-400 dark:text-gray-500 hidden sm:block">→</span>
-                  </div>
-                </div>
-              ))}
+          <div key={block.id} className="mb-4">
+            {/* Header del bloque colapsable */}
+            <div
+              onClick={() => toggleBlock(block.id)}
+              className="flex items-center justify-between bg-gray-100 dark:bg-gray-700 rounded-lg px-4 py-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-lg">{isExpanded ? '📂' : '📁'}</span>
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                  {block.title}
+                </h2>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  ({filteredTopics.length} temas)
+                </span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-gray-600 dark:text-gray-400">
+                  📊 {blockStats.total}
+                </span>
+                {blockStats.perfect > 0 && (
+                  <span className="text-green-600 dark:text-green-400">
+                    ✅ {blockStats.perfect}
+                  </span>
+                )}
+                {blockStats.pending > 0 && (
+                  <span className="text-gray-500 dark:text-gray-400">
+                    ⏳ {blockStats.pending}
+                  </span>
+                )}
+                <span className="text-xl text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+              </div>
             </div>
 
-            {filteredTopics.length === 0 && !searchFilter && (
+            {/* Contenido del bloque (temas) */}
+            {isExpanded && (
+              <div className="flex flex-col gap-2 mt-2 pl-2">
+                {filteredTopics.map(topic => (
+                  <div
+                    key={topic.id}
+                    className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-3 hover:shadow-md transition-shadow"
+                  >
+                    {/* Fila única con toda la info */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                      {/* Título del tema - clickeable para ir al detalle */}
+                      <div
+                        className="flex-1 min-w-0 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+                        onClick={() => goToTopicDetail(topic.id)}
+                      >
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                          <span className="text-gray-500 dark:text-gray-400">T{topic.topic_number}:</span> {topic.title}
+                        </h3>
+                      </div>
+
+                      {/* Stats inline */}
+                      <div className="flex flex-wrap items-center gap-2 text-xs shrink-0">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          📊 {topic.stats?.total_questions || 0}
+                        </span>
+                        {topic.stats?.perfect > 0 && (
+                          <span className="text-green-600 dark:text-green-400">
+                            ✅ {topic.stats.perfect}
+                          </span>
+                        )}
+                        {/* Estados técnicos */}
+                        {topic.stats?.tech_perfect > 0 && (
+                          <span className="text-cyan-600 dark:text-cyan-400">
+                            💻✅ {topic.stats.tech_perfect}
+                          </span>
+                        )}
+                        {(topic.stats?.bad_explanation > 0 || topic.stats?.bad_answer > 0 || topic.stats?.bad_answer_and_explanation > 0) && (
+                          <span className="text-orange-600 dark:text-orange-400">
+                            ⚠️ {(topic.stats?.bad_explanation || 0) + (topic.stats?.bad_answer || 0) + (topic.stats?.bad_answer_and_explanation || 0)}
+                          </span>
+                        )}
+                        {(topic.stats?.tech_bad_explanation > 0 || topic.stats?.tech_bad_answer > 0 || topic.stats?.tech_bad_answer_and_explanation > 0) && (
+                          <span className="text-cyan-500 dark:text-cyan-400">
+                            💻⚠️ {(topic.stats?.tech_bad_explanation || 0) + (topic.stats?.tech_bad_answer || 0) + (topic.stats?.tech_bad_answer_and_explanation || 0)}
+                          </span>
+                        )}
+                        {(topic.stats?.wrong_article > 0 || topic.stats?.wrong_article_bad_explanation > 0 || topic.stats?.wrong_article_bad_answer > 0 || topic.stats?.all_wrong > 0) && (
+                          <span className="text-purple-600 dark:text-purple-400">
+                            🔗 {(topic.stats?.wrong_article || 0) + (topic.stats?.wrong_article_bad_explanation || 0) + (topic.stats?.wrong_article_bad_answer || 0) + (topic.stats?.all_wrong || 0)}
+                          </span>
+                        )}
+                        {topic.stats?.pending > 0 && (
+                          <span className="text-gray-500 dark:text-gray-400">
+                            ⏳ {topic.stats.pending}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Leyes inline */}
+                      <div className="flex flex-wrap gap-1 shrink-0">
+                        {topic.laws?.slice(0, 3).map(law => (
+                          <span
+                            key={law.id}
+                            className={`px-1.5 py-0.5 rounded text-xs ${
+                              law.is_virtual
+                                ? 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300'
+                                : 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                            }`}
+                          >
+                            {law.is_virtual && '💻'}{law.short_name}
+                          </span>
+                        ))}
+                        {topic.laws?.length > 3 && (
+                          <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded text-xs">
+                            +{topic.laws.length - 3}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Botón verificar pendientes */}
+                      {topic.stats?.pending > 0 && aiConfigs.length > 0 && (
+                        <button
+                          onClick={(e) => verifyTopicPending(topic.id, e)}
+                          disabled={verifyingTopic === topic.id}
+                          className="px-2 py-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-xs rounded flex items-center gap-1 shrink-0"
+                          title={`Verificar ${topic.stats.pending} pendientes con IA`}
+                        >
+                          {verifyingTopic === topic.id ? (
+                            <>
+                              <Spinner size="sm" />
+                              <span>{verifyProgress.current}/{verifyProgress.total}</span>
+                              {getEstimatedTimeRemaining() && (
+                                <span className="text-purple-200">{getEstimatedTimeRemaining()}</span>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              🤖 Verificar ({topic.stats.pending})
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Flecha para ir al detalle */}
+                      <span
+                        className="text-gray-400 dark:text-gray-500 hidden sm:block cursor-pointer hover:text-blue-500"
+                        onClick={() => goToTopicDetail(topic.id)}
+                        title="Ver detalle del tema"
+                      >
+                        →
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isExpanded && filteredTopics.length === 0 && !searchFilter && (
               <p className="text-gray-500 dark:text-gray-400 text-center py-8">
                 No hay temas en este bloque
               </p>

@@ -111,17 +111,24 @@ export async function GET(request) {
         }
 
         if (lawIds.length > 0) {
-          // Obtener todos los artículos del topic_scope
-          const articleNumbers = topicScopes?.flatMap(ts => ts.article_numbers || []) || []
+          // Obtener artículos por cada ley específica según su scope
+          // (evita mezclar artículos de diferentes leyes con el mismo número)
+          let allArticleIds = []
+          for (const scope of topicScopes || []) {
+            if (!scope.laws?.id || !scope.article_numbers?.length) continue
 
-          // Obtener artículos con sus preguntas
-          const { data: articles } = await supabase
-            .from('articles')
-            .select('id')
-            .in('law_id', lawIds)
-            .in('article_number', articleNumbers)
+            const { data: articles } = await supabase
+              .from('articles')
+              .select('id')
+              .eq('law_id', scope.laws.id)
+              .in('article_number', scope.article_numbers)
 
-          const articleIds = articles?.map(a => a.id) || []
+            if (articles) {
+              allArticleIds.push(...articles.map(a => a.id))
+            }
+          }
+
+          const articleIds = allArticleIds
 
           if (articleIds.length > 0) {
             // Obtener preguntas vinculadas a esos artículos
@@ -194,6 +201,7 @@ export async function GET(request) {
 
     if (positionType === 'administrativo') {
       // Administrativo del Estado (C1) - 6 bloques, 45 temas
+      // Numeración: Bloque I: 1-11, Bloque II: 201-204, Bloque III: 301-307, etc.
       blocks = [
         {
           id: 'block1',
@@ -203,27 +211,27 @@ export async function GET(request) {
         {
           id: 'block2',
           title: 'Bloque II: Organización de Oficinas Públicas (4 temas)',
-          topics: topicsWithStats.filter(t => t.topic_number >= 12 && t.topic_number <= 15)
+          topics: topicsWithStats.filter(t => t.topic_number >= 201 && t.topic_number <= 204)
         },
         {
           id: 'block3',
           title: 'Bloque III: Derecho Administrativo General (7 temas)',
-          topics: topicsWithStats.filter(t => t.topic_number >= 16 && t.topic_number <= 22)
+          topics: topicsWithStats.filter(t => t.topic_number >= 301 && t.topic_number <= 307)
         },
         {
           id: 'block4',
           title: 'Bloque IV: Gestión de Personal (9 temas)',
-          topics: topicsWithStats.filter(t => t.topic_number >= 23 && t.topic_number <= 31)
+          topics: topicsWithStats.filter(t => t.topic_number >= 401 && t.topic_number <= 409)
         },
         {
           id: 'block5',
           title: 'Bloque V: Gestión Financiera (6 temas)',
-          topics: topicsWithStats.filter(t => t.topic_number >= 32 && t.topic_number <= 37)
+          topics: topicsWithStats.filter(t => t.topic_number >= 501 && t.topic_number <= 506)
         },
         {
           id: 'block6',
           title: 'Bloque VI: Informática Básica y Ofimática (8 temas)',
-          topics: topicsWithStats.filter(t => t.topic_number >= 38 && t.topic_number <= 45)
+          topics: topicsWithStats.filter(t => t.topic_number >= 601 && t.topic_number <= 608)
         }
       ]
     } else {
