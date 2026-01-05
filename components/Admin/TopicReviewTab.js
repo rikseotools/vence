@@ -112,14 +112,20 @@ export default function TopicReviewTab() {
   const [selectedModel, setSelectedModel] = useState('')
   const [loadingAiConfig, setLoadingAiConfig] = useState(true)
 
-  // Estado de verificación por tema
-  const [verifyingTopic, setVerifyingTopic] = useState(null)
-  const [verifyProgress, setVerifyProgress] = useState({ current: 0, total: 0, startTime: null })
+  // Estado de verificación en cola (background)
+  const [verificationQueue, setVerificationQueue] = useState({})
+  const [loadingQueue, setLoadingQueue] = useState(false)
 
   // Cargar oposiciones disponibles
   useEffect(() => {
     loadPositions()
     loadAiConfig()
+    loadVerificationQueue()
+
+    // Polling para actualizar progreso de verificaciones cada 10 segundos
+    const interval = setInterval(loadVerificationQueue, 10000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Cargar temas cuando cambia la oposición
@@ -219,7 +225,32 @@ export default function TopicReviewTab() {
     }
   }
 
-  // Verificar pendientes de un tema
+  // Cargar estado de la cola de verificaciones
+  const loadVerificationQueue = async () => {
+    try {
+      const response = await fetch('/api/verification-queue')
+      const data = await response.json()
+
+      if (data.success && data.queue) {
+        // Crear mapa de topic_id -> estado de verificación
+        const queueMap = {}
+        for (const item of data.queue) {
+          queueMap[item.topic_id] = item
+        }
+        setVerificationQueue(queueMap)
+
+        // Si hay alguna completada, recargar temas
+        const hasCompleted = data.queue.some(q => q.status === 'completed')
+        if (hasCompleted) {
+          loadTopics()
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando cola de verificaciones:', err)
+    }
+  }
+
+  // Encolar verificación de un tema (se procesa en background)
   const verifyTopicPending = async (topicId, e) => {
     e.stopPropagation()
     if (!selectedProvider || !selectedModel) {
@@ -228,91 +259,36 @@ export default function TopicReviewTab() {
     }
 
     try {
-      setVerifyingTopic(topicId)
       setError(null)
 
-      // Primero obtener las preguntas pendientes del tema
-      const detailResponse = await fetch(`/api/topic-review/${topicId}`)
-      const detailData = await detailResponse.json()
-
-      if (!detailData.success) {
-        setError(detailData.error || 'Error obteniendo preguntas')
-        return
-      }
-
-      // Extraer IDs de preguntas pendientes
-      const pendingIds = []
-      detailData.laws?.forEach(law => {
-        law.articles?.forEach(article => {
-          article.questions?.forEach(q => {
-            if (q.review_status === 'pending') {
-              pendingIds.push(q.id)
-            }
-          })
+      const response = await fetch('/api/verification-queue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic_id: topicId,
+          provider: selectedProvider,
+          model: selectedModel
         })
       })
 
-      if (pendingIds.length === 0) {
-        setError('No hay preguntas pendientes en este tema')
-        setVerifyingTopic(null)
+      const data = await response.json()
+
+      if (!data.success) {
+        setError(data.error || 'Error al encolar verificación')
         return
       }
 
-      const BATCH_SIZE = 10
-      const totalQuestions = pendingIds.length
-      const startTime = Date.now()
-      setVerifyProgress({ current: 0, total: totalQuestions, startTime })
-
-      // Dividir en lotes
-      const batches = []
-      for (let i = 0; i < pendingIds.length; i += BATCH_SIZE) {
-        batches.push(pendingIds.slice(i, i + BATCH_SIZE))
-      }
-
-      // Procesar cada lote
-      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-        const batch = batches[batchIndex]
-
-        await fetch('/api/topic-review/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            questionIds: batch,
-            provider: selectedProvider,
-            model: selectedModel
-          })
-        })
-
-        const processed = Math.min((batchIndex + 1) * BATCH_SIZE, totalQuestions)
-        setVerifyProgress({ current: processed, total: totalQuestions, startTime })
-      }
-
-      // Recargar temas para actualizar stats
-      await loadTopics()
+      // Actualizar cola inmediatamente
+      await loadVerificationQueue()
 
     } catch (err) {
-      setError('Error durante la verificación: ' + err.message)
-    } finally {
-      setVerifyingTopic(null)
+      setError('Error al encolar verificación: ' + err.message)
     }
   }
 
-  // Calcular tiempo restante estimado
-  const getEstimatedTimeRemaining = () => {
-    if (!verifyProgress.startTime || verifyProgress.current === 0) return null
-
-    const elapsed = Date.now() - verifyProgress.startTime
-    const avgTimePerQuestion = elapsed / verifyProgress.current
-    const remaining = verifyProgress.total - verifyProgress.current
-    const estimatedMs = remaining * avgTimePerQuestion
-
-    if (estimatedMs < 60000) {
-      return `~${Math.ceil(estimatedMs / 1000)}s`
-    } else {
-      const mins = Math.floor(estimatedMs / 60000)
-      const secs = Math.ceil((estimatedMs % 60000) / 1000)
-      return `~${mins}m ${secs}s`
-    }
+  // Obtener estado de verificación de un tema
+  const getTopicQueueStatus = (topicId) => {
+    return verificationQueue[topicId] || null
   }
 
   // Toggle expandir bloque
@@ -575,29 +551,38 @@ export default function TopicReviewTab() {
                         )}
                       </div>
 
-                      {/* Botón verificar pendientes */}
-                      {topic.stats?.pending > 0 && aiConfigs.length > 0 && (
-                        <button
-                          onClick={(e) => verifyTopicPending(topic.id, e)}
-                          disabled={verifyingTopic === topic.id}
-                          className="px-2 py-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white text-xs rounded flex items-center gap-1 shrink-0"
-                          title={`Verificar ${topic.stats.pending} pendientes con IA`}
-                        >
-                          {verifyingTopic === topic.id ? (
-                            <>
+                      {/* Botón verificar pendientes o estado de cola */}
+                      {(() => {
+                        const queueStatus = getTopicQueueStatus(topic.id)
+
+                        // Si está en cola o procesándose
+                        if (queueStatus && ['pending', 'processing'].includes(queueStatus.status)) {
+                          return (
+                            <div className="px-2 py-1 bg-purple-600 text-white text-xs rounded flex items-center gap-1 shrink-0">
                               <Spinner size="sm" />
-                              <span>{verifyProgress.current}/{verifyProgress.total}</span>
-                              {getEstimatedTimeRemaining() && (
-                                <span className="text-purple-200">{getEstimatedTimeRemaining()}</span>
-                              )}
-                            </>
-                          ) : (
-                            <>
+                              <span>
+                                {queueStatus.status === 'pending' ? 'En cola...' :
+                                  `${queueStatus.processed_questions}/${queueStatus.total_questions}`}
+                              </span>
+                            </div>
+                          )
+                        }
+
+                        // Si hay pendientes y hay IA configurada, mostrar botón
+                        if (topic.stats?.pending > 0 && aiConfigs.length > 0) {
+                          return (
+                            <button
+                              onClick={(e) => verifyTopicPending(topic.id, e)}
+                              className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded flex items-center gap-1 shrink-0"
+                              title={`Verificar ${topic.stats.pending} pendientes con IA (en background)`}
+                            >
                               🤖 Verificar ({topic.stats.pending})
-                            </>
-                          )}
-                        </button>
-                      )}
+                            </button>
+                          )
+                        }
+
+                        return null
+                      })()}
 
                       {/* Flecha para ir al detalle */}
                       <span

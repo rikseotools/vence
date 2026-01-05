@@ -1,0 +1,48 @@
+name: Process Verification Queue
+
+on:
+  schedule:
+    # Ejecutar cada 5 minutos (mínimo práctico de GitHub Actions)
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  process-queue:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Process verification queue
+        id: process
+        run: |
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "https://www.vence.es/api/cron/process-verification-queue")
+
+          echo "Response: $RESPONSE"
+
+          # Extraer estadísticas
+          SUCCESS=$(echo $RESPONSE | jq -r '.success // false')
+          PROCESSED=$(echo $RESPONSE | jq -r '.processed // 0')
+          TOTAL=$(echo $RESPONSE | jq -r '.total // 0')
+          REMAINING=$(echo $RESPONSE | jq -r '.remaining // 0')
+          IS_COMPLETE=$(echo $RESPONSE | jq -r '.is_complete // false')
+          MESSAGE=$(echo $RESPONSE | jq -r '.message // ""')
+
+          echo "success=$SUCCESS" >> $GITHUB_OUTPUT
+          echo "processed=$PROCESSED" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "remaining=$REMAINING" >> $GITHUB_OUTPUT
+          echo "is_complete=$IS_COMPLETE" >> $GITHUB_OUTPUT
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: Log results
+        run: |
+          echo "🤖 Verification Queue - $(date)"
+          if [ "${{ steps.process.outputs.message }}" != "" ]; then
+            echo "   Mensaje: ${{ steps.process.outputs.message }}"
+          else
+            echo "   Procesadas: ${{ steps.process.outputs.processed }}/${{ steps.process.outputs.total }}"
+            echo "   Restantes: ${{ steps.process.outputs.remaining }}"
+            echo "   Completado: ${{ steps.process.outputs.is_complete }}"
+          fi
