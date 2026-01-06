@@ -126,7 +126,10 @@ export default function ExamLayout({
     hasLimit,
     isLimitReached,
     questionsToday,
+    questionsRemaining,
+    dailyLimit,
     resetTime,
+    loading: limitLoading,
     showUpgradeModal,
     setShowUpgradeModal,
     recordAnswer
@@ -138,6 +141,11 @@ export default function ExamLayout({
   const [score, setScore] = useState(0)
   const [startTime] = useState(Date.now())
   const [elapsedTime, setElapsedTime] = useState(0) // Tiempo transcurrido en segundos
+
+  // 🔒 Estados para límite de preguntas (usuarios FREE)
+  const [effectiveQuestions, setEffectiveQuestions] = useState(questions || [])
+  const [wasLimited, setWasLimited] = useState(false)
+  const [originalCount, setOriginalCount] = useState(questions?.length || 0)
 
   // Estados de sesión
   const [currentTestSession, setCurrentTestSession] = useState(null)
@@ -165,6 +173,41 @@ export default function ExamLayout({
   const pageLoadTime = useRef(Date.now())
   const sessionCreationRef = useRef(false) // ✅ Cambiar a boolean simple
   const currentTestSessionRef = useRef(null) // ✅ Ref para mantener el test ID
+
+  // 🔒 LIMITAR PREGUNTAS para usuarios FREE según su límite diario
+  useEffect(() => {
+    if (limitLoading || !questions?.length) return
+
+    // Si el usuario no tiene límite (premium, admin, etc.), usar todas las preguntas
+    if (!hasLimit) {
+      setEffectiveQuestions(questions)
+      setWasLimited(false)
+      setOriginalCount(questions.length)
+      return
+    }
+
+    // Si ya llegó al límite, no puede hacer el examen
+    if (isLimitReached || questionsRemaining <= 0) {
+      setEffectiveQuestions([])
+      setWasLimited(true)
+      setOriginalCount(questions.length)
+      return
+    }
+
+    // Limitar las preguntas a las que le quedan disponibles
+    const maxQuestions = Math.min(questions.length, questionsRemaining)
+
+    if (maxQuestions < questions.length) {
+      console.log(`🔒 Limitando examen de ${questions.length} a ${maxQuestions} preguntas (quedan ${questionsRemaining} del límite diario)`)
+      setEffectiveQuestions(questions.slice(0, maxQuestions))
+      setWasLimited(true)
+      setOriginalCount(questions.length)
+    } else {
+      setEffectiveQuestions(questions)
+      setWasLimited(false)
+      setOriginalCount(questions.length)
+    }
+  }, [questions, hasLimit, isLimitReached, questionsRemaining, limitLoading])
 
   // ✅ CRONÓMETRO: Actualizar cada segundo
   useEffect(() => {
@@ -381,13 +424,13 @@ export default function ExamLayout({
     const totalTimeSeconds = Math.round((endTime - startTime) / 1000)
 
     console.log(`⏱️  Tiempo total: ${totalTimeSeconds} segundos (${Math.round(totalTimeSeconds / 60)} min)`)
-    console.log(`📝 Total preguntas: ${questions.length}`)
+    console.log(`📝 Total preguntas: ${effectiveQuestions.length}`)
     console.log(`📋 Test Session ID: ${currentTestSession?.id || 'NO DISPONIBLE'}`)
     console.log('')
 
     // Calcular correctas sin guardar todavía
-    for (let i = 0; i < questions.length; i++) {
-      const question = questions[i]
+    for (let i = 0; i < effectiveQuestions.length; i++) {
+      const question = effectiveQuestions[i]
       const selectedOption = userAnswers[i]
       const correctIndex = typeof question.correct_option === 'number'
         ? question.correct_option
@@ -405,7 +448,7 @@ export default function ExamLayout({
     }
 
     console.log('')
-    console.log(`📊 RESULTADO CALCULADO: ${correctCount}/${questions.length} correctas (${Math.round((correctCount / questions.length) * 100)}%)`)
+    console.log(`📊 RESULTADO CALCULADO: ${correctCount}/${effectiveQuestions.length} correctas (${Math.round((correctCount / effectiveQuestions.length) * 100)}%)`)
     console.log('')
 
     // ✅ MOSTRAR RESULTADOS INMEDIATAMENTE (sin esperar guardado)
@@ -448,7 +491,7 @@ export default function ExamLayout({
     console.log('💾 ═══════════════════════════════════════════')
 
     try {
-      const timePerQuestion = Math.round(totalTimeSeconds / questions.length)
+      const timePerQuestion = Math.round(totalTimeSeconds / effectiveQuestions.length)
       console.log(`⏱️  Tiempo por pregunta (promedio): ${timePerQuestion}s`)
       console.log(`📋 Test Session ID: ${currentTestSession?.id}`)
       console.log('')
@@ -458,8 +501,8 @@ export default function ExamLayout({
       const allAnswers = [] // Array para completeDetailedTest
 
       // Guardar todas las preguntas
-      for (let i = 0; i < questions.length; i++) {
-        const question = questions[i]
+      for (let i = 0; i < effectiveQuestions.length; i++) {
+        const question = effectiveQuestions[i]
         const selectedOption = userAnswers[i]
         const answerIndex = selectedOption ? selectedOption.charCodeAt(0) - 97 : null
         const correctIndex = typeof question.correct_option === 'number'
@@ -468,7 +511,7 @@ export default function ExamLayout({
         const correctOptionLetter = String.fromCharCode(97 + correctIndex)
         const isCorrect = selectedOption ? selectedOption === correctOptionLetter : false
 
-        console.log(`📝 PREGUNTA ${i + 1}/${questions.length}`)
+        console.log(`📝 PREGUNTA ${i + 1}/${effectiveQuestions.length}`)
         console.log(`   Respuesta usuario: ${selectedOption ? selectedOption.toUpperCase() : 'NO RESPONDIDA'} (índice: ${answerIndex})`)
         console.log(`   Respuesta correcta: ${correctOptionLetter.toUpperCase()} (índice: ${correctIndex})`)
         console.log(`   ¿Correcta?: ${isCorrect ? 'SÍ ✅' : 'NO ❌'}`)
@@ -525,7 +568,7 @@ export default function ExamLayout({
 
             if (result?.success) {
               savedCount++
-              console.log(`   ✅ Guardada exitosamente (${savedCount}/${questions.length})`)
+              console.log(`   ✅ Guardada exitosamente (${savedCount}/${effectiveQuestions.length})`)
             } else {
               errorCount++
               console.log(`   ⚠️  Error al guardar (acción: ${result?.action})`)
@@ -542,7 +585,7 @@ export default function ExamLayout({
       console.log('')
       console.log(`───────────────────────────────────────────`)
       console.log(`📊 RESUMEN DE GUARDADO:`)
-      console.log(`   Guardadas exitosamente: ${savedCount}/${questions.length}`)
+      console.log(`   Guardadas exitosamente: ${savedCount}/${effectiveQuestions.length}`)
       console.log(`   Con errores: ${errorCount}`)
       console.log('')
 
@@ -550,7 +593,7 @@ export default function ExamLayout({
       if (currentTestSession?.id) {
         console.log(`🔢 Actualizando score del test...`)
         console.log(`   Test ID: ${currentTestSession.id}`)
-        console.log(`   Score: ${correctCount}/${questions.length}`)
+        console.log(`   Score: ${correctCount}/${effectiveQuestions.length}`)
 
         await updateTestScore(currentTestSession.id, correctCount)
         console.log(`✅ Score actualizado en BD`)
@@ -564,7 +607,7 @@ export default function ExamLayout({
           currentTestSession.id,
           correctCount,
           allAnswers,
-          questions,
+          effectiveQuestions,
           startTime,
           [], // interactionEvents - no los tenemos en modo examen
           userSession
@@ -581,8 +624,8 @@ export default function ExamLayout({
       console.log('')
       console.log(`💾 ═══════════════════════════════════════════`)
       console.log(`💾 GUARDADO COMPLETADO`)
-      console.log(`💾 Total guardadas: ${savedCount}/${questions.length}`)
-      console.log(`💾 Score final: ${correctCount}/${questions.length} (${Math.round((correctCount / questions.length) * 100)}%)`)
+      console.log(`💾 Total guardadas: ${savedCount}/${effectiveQuestions.length}`)
+      console.log(`💾 Score final: ${correctCount}/${effectiveQuestions.length} (${Math.round((correctCount / effectiveQuestions.length) * 100)}%)`)
       console.log(`💾 ═══════════════════════════════════════════`)
 
     } catch (error) {
@@ -626,7 +669,7 @@ export default function ExamLayout({
   }
 
   // ✅ LOADING STATE
-  if (!questions || questions.length === 0) {
+  if (limitLoading || !questions || questions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -637,7 +680,37 @@ export default function ExamLayout({
     )
   }
 
-  const totalQuestions = questions.length
+  // 🔒 Si el usuario llegó al límite y no tiene preguntas disponibles
+  if (hasLimit && effectiveQuestions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg p-6 max-w-md text-center">
+          <div className="text-5xl mb-4">🔒</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Límite diario alcanzado</h2>
+          <p className="text-gray-600 mb-4">
+            Has respondido {dailyLimit} preguntas hoy. El límite se reinicia a medianoche.
+          </p>
+          <p className="text-sm text-gray-500 mb-4">
+            ¿Quieres estudiar sin límites?
+          </p>
+          <button
+            onClick={() => setShowUpgradeModal(true)}
+            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold py-3 px-6 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all"
+          >
+            ⭐ Hazte Premium
+          </button>
+          <Link
+            href="/auxiliar-administrativo-estado"
+            className="block mt-3 text-blue-600 hover:underline text-sm"
+          >
+            ← Volver al menú
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const totalQuestions = effectiveQuestions.length
   const answeredCount = Object.keys(userAnswers).length
   const accuracy = isSubmitted && totalQuestions > 0 ? (score / totalQuestions * 100).toFixed(1) : 0
 
@@ -663,6 +736,22 @@ export default function ExamLayout({
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">📝 Modo Examen</h1>
             <p className="text-sm text-gray-600">Tema {tema} - {totalQuestions} preguntas</p>
           </div>
+
+          {/* 🔒 Banner de límite (si se redujo el número de preguntas) */}
+          {wasLimited && totalQuestions > 0 && (
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm text-amber-800">
+                <span className="font-medium">⚠️ Examen reducido:</span> Solo puedes hacer {totalQuestions} preguntas hoy (de {originalCount} originales).
+                {' '}
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="text-amber-700 underline hover:text-amber-900 font-medium"
+                >
+                  Hazte Premium para estudiar sin límites
+                </button>
+              </p>
+            </div>
+          )}
 
           {/* Grid de métricas: Cronómetro + Respondidas (responsive) */}
           <div className="grid grid-cols-2 gap-3 mb-4">
@@ -871,7 +960,7 @@ export default function ExamLayout({
 
         {/* ✅ LISTA DE PREGUNTAS */}
         <div className="space-y-6">
-          {questions.map((question, index) => {
+          {effectiveQuestions.map((question, index) => {
             const selectedOption = userAnswers[index]
             // Convertir correct_option numérico a letra
             const correctIndex = typeof question.correct_option === 'number'
