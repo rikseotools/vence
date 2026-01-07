@@ -453,25 +453,25 @@ export default function AIChatWidget() {
                   <>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Sobre esta pregunta:</p>
                     <button
-                      onClick={() => useSuggestion('Explícame esta pregunta y por qué la respuesta correcta es esa', 'explicar_respuesta')}
+                      onClick={() => useSuggestion(`Explícame por qué la respuesta correcta es "${currentQuestionContext.correctAnswer}" en la pregunta: "${currentQuestionContext.questionText?.substring(0, 100)}..."`, 'explicar_respuesta')}
                       className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
                     >
                       💡 Explícame la respuesta correcta
                     </button>
                     <button
-                      onClick={() => useSuggestion('¿Qué artículo de la ley regula esto?', 'que_articulo')}
+                      onClick={() => useSuggestion(`¿Qué artículo de la ley regula esta pregunta: "${currentQuestionContext.questionText?.substring(0, 80)}..."?`, 'que_articulo')}
                       className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
                     >
                       📖 ¿Qué artículo regula esto?
                     </button>
                     <button
-                      onClick={() => useSuggestion('Dame un truco para recordar esto', 'truco_memoria')}
+                      onClick={() => useSuggestion(`Dame un truco nemotécnico para recordar la respuesta a: "${currentQuestionContext.questionText?.substring(0, 80)}..."`, 'truco_memoria')}
                       className="block w-full text-left px-3 py-2 text-xs bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition text-green-700 dark:text-green-300"
                     >
                       🧠 Dame un truco para recordarlo
                     </button>
                     <button
-                      onClick={() => useSuggestion('¿Esta pregunta está correctamente formulada? Verifica si hay errores', 'verificar_errores')}
+                      onClick={() => useSuggestion(`Verifica si hay errores en esta pregunta: "${currentQuestionContext.questionText}"`, 'verificar_errores')}
                       className="block w-full text-left px-3 py-2 text-xs bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition text-amber-700 dark:text-amber-300"
                     >
                       ⚠️ Verificar si hay errores
@@ -565,7 +565,19 @@ export default function AIChatWidget() {
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-md'
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  {/* Indicador de "pensando" cuando está cargando */}
+                  {msg.isStreaming && !msg.content ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Pensando</span>
+                      <span className="flex gap-1">
+                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  )}
                   {msg.potentialErrorDetected && (
                     <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 rounded-lg">
                       <p className="text-xs font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1">
