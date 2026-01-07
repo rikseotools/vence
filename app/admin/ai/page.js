@@ -447,7 +447,12 @@ export default function AdminAIPage() {
   const [loading, setLoading] = useState(true)
   const [usage, setUsage] = useState(null)
   const [loadingUsage, setLoadingUsage] = useState(false)
-  const [activeTab, setActiveTab] = useState('config') // 'config' | 'usage'
+  const [activeTab, setActiveTab] = useState('config') // 'config' | 'usage' | 'logs'
+  // Estado para logs
+  const [logs, setLogs] = useState(null)
+  const [loadingLogs, setLoadingLogs] = useState(false)
+  const [logsPage, setLogsPage] = useState(1)
+  const [feedbackFilter, setFeedbackFilter] = useState('all')
 
   useEffect(() => {
     loadConfigs()
@@ -479,6 +484,27 @@ export default function AdminAIPage() {
       console.error('Error cargando uso:', err)
     } finally {
       setLoadingUsage(false)
+    }
+  }
+
+  const loadLogs = async (page = 1, filter = feedbackFilter) => {
+    setLoadingLogs(true)
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20',
+        feedback: filter
+      })
+      const response = await fetch(`/api/admin/ai-chat-logs?${params}`)
+      const data = await response.json()
+      if (data.success) {
+        setLogs(data)
+        setLogsPage(page)
+      }
+    } catch (err) {
+      console.error('Error cargando logs:', err)
+    } finally {
+      setLoadingLogs(false)
     }
   }
 
@@ -517,6 +543,9 @@ export default function AdminAIPage() {
   useEffect(() => {
     if (activeTab === 'usage' && !usage) {
       loadUsage()
+    }
+    if (activeTab === 'logs' && !logs) {
+      loadLogs()
     }
   }, [activeTab])
 
@@ -567,6 +596,16 @@ export default function AdminAIPage() {
               }`}
             >
               📊 Uso y costes
+            </button>
+            <button
+              onClick={() => setActiveTab('logs')}
+              className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                activeTab === 'logs'
+                  ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 border border-b-0 border-gray-200 dark:border-gray-700'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              }`}
+            >
+              💬 Chat Logs
             </button>
           </div>
         </div>
@@ -704,6 +743,228 @@ export default function AdminAIPage() {
                 </li>
               </ul>
             </div>
+          </div>
+        )}
+
+        {/* Tab: Logs del Chat */}
+        {activeTab === 'logs' && (
+          <div className="space-y-6">
+            {/* Header con estadísticas */}
+            <div className="flex flex-wrap justify-between items-start gap-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Logs del Chat de IA
+              </h2>
+              <button
+                onClick={() => loadLogs(1, feedbackFilter)}
+                disabled={loadingLogs}
+                className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+              >
+                {loadingLogs ? <Spinner size="sm" /> : '🔄'}
+                <span>Actualizar</span>
+              </button>
+            </div>
+
+            {loadingLogs && !logs ? (
+              <div className="flex justify-center py-12">
+                <Spinner size="lg" />
+              </div>
+            ) : logs ? (
+              <>
+                {/* Tarjetas de estadísticas */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{logs.stats?.total || 0}</div>
+                    <div className="text-xs text-gray-500">Total chats</div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-green-200 dark:border-green-800">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">{logs.stats?.positive || 0}</div>
+                    <div className="text-xs text-gray-500">👍 Positivos</div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-red-200 dark:border-red-800">
+                    <div className="text-2xl font-bold text-red-600 dark:text-red-400">{logs.stats?.negative || 0}</div>
+                    <div className="text-xs text-gray-500">👎 Negativos</div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {logs.stats?.satisfactionRate !== null ? `${logs.stats.satisfactionRate}%` : '-'}
+                    </div>
+                    <div className="text-xs text-gray-500">Satisfacción</div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{logs.stats?.avgResponseTime || 0}ms</div>
+                    <div className="text-xs text-gray-500">Tiempo resp.</div>
+                  </div>
+                </div>
+
+                {/* Top sugerencias y leyes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {logs.topSuggestions?.length > 0 && (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">🎯 Sugerencias más usadas</h4>
+                      <div className="space-y-2">
+                        {logs.topSuggestions.map((s, i) => (
+                          <div key={i} className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400 truncate">{s.name}</span>
+                            <span className="text-gray-900 dark:text-white font-medium">{s.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {logs.topLaws?.length > 0 && (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">📚 Leyes más consultadas</h4>
+                      <div className="space-y-2">
+                        {logs.topLaws.map((l, i) => (
+                          <div key={i} className="flex justify-between text-sm">
+                            <span className="text-gray-600 dark:text-gray-400">{l.name}</span>
+                            <span className="text-gray-900 dark:text-white font-medium">{l.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filtros */}
+                <div className="flex gap-2 flex-wrap">
+                  {['all', 'positive', 'negative', 'none'].map(filter => (
+                    <button
+                      key={filter}
+                      onClick={() => {
+                        setFeedbackFilter(filter)
+                        loadLogs(1, filter)
+                      }}
+                      className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                        feedbackFilter === filter
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      {filter === 'all' && '📋 Todos'}
+                      {filter === 'positive' && '👍 Positivos'}
+                      {filter === 'negative' && '👎 Negativos'}
+                      {filter === 'none' && '❓ Sin feedback'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Lista de logs */}
+                <div className="space-y-3">
+                  {logs.logs?.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <div className="text-5xl mb-4">📭</div>
+                      <p>No hay logs de chat</p>
+                    </div>
+                  ) : (
+                    logs.logs?.map(log => (
+                      <div
+                        key={log.id}
+                        className={`bg-white dark:bg-gray-800 rounded-xl p-4 border ${
+                          log.feedback === 'positive'
+                            ? 'border-green-200 dark:border-green-800'
+                            : log.feedback === 'negative'
+                              ? 'border-red-200 dark:border-red-800'
+                              : log.had_error
+                                ? 'border-red-300 dark:border-red-700'
+                                : 'border-gray-200 dark:border-gray-700'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1 min-w-0">
+                            {/* Usuario y fecha */}
+                            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                              <span>{log.user?.display_name || log.user?.email || 'Anónimo'}</span>
+                              <span>•</span>
+                              <span>{new Date(log.created_at).toLocaleString('es-ES')}</span>
+                              {log.response_time_ms && (
+                                <>
+                                  <span>•</span>
+                                  <span>{log.response_time_ms}ms</span>
+                                </>
+                              )}
+                              {log.suggestion_used && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-purple-600 dark:text-purple-400">🎯 {log.suggestion_used}</span>
+                                </>
+                              )}
+                            </div>
+                            {/* Mensaje */}
+                            <p className="text-sm text-gray-900 dark:text-white font-medium mb-1">
+                              {log.message}
+                            </p>
+                            {/* Respuesta preview */}
+                            {log.response_preview && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                                {log.response_preview}
+                              </p>
+                            )}
+                            {/* Tags */}
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {log.question_context_law && (
+                                <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full">
+                                  📖 {log.question_context_law}
+                                </span>
+                              )}
+                              {log.detected_laws?.map((law, i) => (
+                                <span key={i} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full">
+                                  {law}
+                                </span>
+                              ))}
+                              {log.had_error && (
+                                <span className="text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-full">
+                                  ❌ Error
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {/* Feedback */}
+                          <div className="flex-shrink-0">
+                            {log.feedback === 'positive' && (
+                              <span className="text-2xl">👍</span>
+                            )}
+                            {log.feedback === 'negative' && (
+                              <span className="text-2xl">👎</span>
+                            )}
+                            {!log.feedback && !log.had_error && (
+                              <span className="text-gray-300 dark:text-gray-600">—</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Paginación */}
+                {logs.logs?.length > 0 && (
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={() => loadLogs(logsPage - 1, feedbackFilter)}
+                      disabled={logsPage === 1 || loadingLogs}
+                      className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      ← Anterior
+                    </button>
+                    <span className="px-4 py-2 text-gray-600 dark:text-gray-400">
+                      Página {logsPage}
+                    </span>
+                    <button
+                      onClick={() => loadLogs(logsPage + 1, feedbackFilter)}
+                      disabled={!logs.pagination?.hasMore || loadingLogs}
+                      className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      Siguiente →
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <p>Error cargando logs</p>
+              </div>
+            )}
           </div>
         )}
       </div>
