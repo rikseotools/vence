@@ -86,6 +86,7 @@ export function OposicionProvider({ children }) {
   const { user, loading: authLoading } = useAuth() // ← USAR AuthContext
   const pathname = usePathname() // Para detectar cambios de ruta
   const [userOposicion, setUserOposicion] = useState(null)
+  const [oposicionId, setOposicionId] = useState(null) // ID de la oposición (ej: 'auxiliar_administrativo_estado')
   const [oposicionMenu, setOposicionMenu] = useState(DEFAULT_MENU)
   const [loading, setLoading] = useState(true)
   const [showNotification, setShowNotification] = useState(false)
@@ -100,6 +101,7 @@ export function OposicionProvider({ children }) {
         if (!user) {
           console.log('👤 Usuario no autenticado - usando menú genérico')
           setUserOposicion(null)
+          setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
           setLoading(false)
           return
@@ -118,28 +120,31 @@ export function OposicionProvider({ children }) {
         if (profileError || !profile?.target_oposicion) {
           console.log('📋 Usuario sin oposición asignada - usando menú genérico', { profileError, target_oposicion: profile?.target_oposicion })
           setUserOposicion(null)
+          setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
         } else {
           // 3. Usuario con oposición asignada
-          const oposicionId = profile.target_oposicion
+          const opoId = profile.target_oposicion
           const oposicionData = profile.target_oposicion_data ?
             (typeof profile.target_oposicion_data === 'string'
               ? JSON.parse(profile.target_oposicion_data)
               : profile.target_oposicion_data)
             : null
 
-          console.log('✅ Oposición del usuario:', oposicionId, 'Data:', oposicionData)
+          console.log('✅ Oposición del usuario:', opoId, 'Data:', oposicionData)
 
           setUserOposicion(oposicionData)
-          
+          setOposicionId(opoId) // Guardar el ID (ej: 'auxiliar_administrativo_estado')
+
           // 4. Configurar menú personalizado
-          const menuConfig = OPOSICION_MENUS[oposicionId] || DEFAULT_MENU
+          const menuConfig = OPOSICION_MENUS[opoId] || DEFAULT_MENU
           setOposicionMenu(menuConfig)
         }
 
       } catch (error) {
         console.error('❌ Error cargando oposición de usuario:', error)
         setUserOposicion(null)
+        setOposicionId(null)
         setOposicionMenu(DEFAULT_MENU)
       } finally {
         setLoading(false)
@@ -274,6 +279,7 @@ export function OposicionProvider({ children }) {
 
   const value = {
     userOposicion,
+    oposicionId, // ID de la oposición (ej: 'auxiliar_administrativo_estado')
     oposicionMenu,
     loading,
     hasOposicion: !!userOposicion,

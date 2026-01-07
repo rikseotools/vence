@@ -1095,11 +1095,12 @@ Da recomendaciones específicas basadas en sus puntos débiles.
     }
 
     // Intentar búsqueda semántica con embeddings
-    // ⚠️ SALTAR para psicotécnicos - no tiene sentido buscar leyes
+    // ⚠️ SALTAR para psicotécnicos y consultas de info de oposición - no tiene sentido buscar leyes
     let articles = []
     let searchMethod = 'none'
+    const skipArticleSearch = isPsicotecnico || queryType === 'oposicion_info' || queryType === 'ambiguous_exam'
 
-    if (!isPsicotecnico) {
+    if (!skipArticleSearch) {
       // Si hay contexto de pregunta, usar el texto de la pregunta para mejor búsqueda semántica
       const searchText = questionContext?.questionText
         ? `${questionContext.questionText} ${message}`
@@ -1122,7 +1123,7 @@ Da recomendaciones específicas basadas en sus puntos débiles.
         searchMethod = 'keywords'
       }
     } else {
-      console.log('🧠 Pregunta de psicotécnico - saltando búsqueda de artículos')
+      console.log(`🧠 Saltando búsqueda de artículos (psicotecnico: ${isPsicotecnico}, queryType: ${queryType})`)
     }
 
     const context = isPsicotecnico ? '' : formatContext(articles) + examStatsContext + userStatsContext + ambiguousExamContext + oposicionInfoContext

@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext'
 export default function AIChatWidget() {
   const pathname = usePathname()
   const { currentQuestionContext } = useQuestionContext()
-  const { userOposicion } = useOposicion()
+  const { oposicionId } = useOposicion()
   const { user, isPremium } = useAuth()
 
   // Detectar si estamos en psicotécnicos
@@ -274,7 +274,7 @@ export default function AIChatWidget() {
         message: String(userMessage),
         history: cleanHistory,
         questionContext: cleanQuestionContext,
-        userOposicion: userOposicion?.id ? String(userOposicion.id) : null,
+        userOposicion: oposicionId || null,
         stream: true,
         userId: user?.id ? String(user.id) : null,
         suggestionUsed: currentSuggestion ? String(currentSuggestion) : null,
@@ -404,7 +404,7 @@ export default function AIChatWidget() {
       setIsStreaming(false)
       abortControllerRef.current = null
     }
-  }, [input, isLoading, isStreaming, messages, currentQuestionContext, userOposicion, user, suggestionUsed, isPremium])
+  }, [input, isLoading, isStreaming, messages, currentQuestionContext, oposicionId, user, suggestionUsed, isPremium])
 
   // Actualizar ref para uso externo (evita dependencia circular)
   useEffect(() => {
