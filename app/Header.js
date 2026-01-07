@@ -82,6 +82,14 @@ export default function HeaderES() {
     }
 
     loadUserStreak()
+
+    // 🔥 Escuchar evento para refrescar racha cuando se guarda una respuesta
+    const handleRefreshStreak = () => {
+      console.log('🔥 Refrescando racha del usuario...')
+      loadUserStreak()
+    }
+    window.addEventListener('refreshUserStreak', handleRefreshStreak)
+    return () => window.removeEventListener('refreshUserStreak', handleRefreshStreak)
   }, [user, supabase])
 
 

@@ -242,6 +242,11 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
 
     console.log('✅ Respuesta guardada exitosamente')
 
+    // 🔥 Notificar al Header para refrescar la racha
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('refreshUserStreak'))
+    }
+
     return {
       success: true,
       question_id: questionId,
