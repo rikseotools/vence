@@ -211,8 +211,7 @@ function PremiumPageContent() {
             <div className="grid md:grid-cols-2 gap-3">
               {[
                 "Preguntas ilimitadas",
-                "Acceso a todos los temas",
-                "Sé el primero en probar las últimas novedades de la plataforma"
+                "Chat AI ilimitado"
               ].map((feature, index) => (
                 <div key={index} className="flex items-center">
                   <span className="text-green-500 mr-2">✓</span>

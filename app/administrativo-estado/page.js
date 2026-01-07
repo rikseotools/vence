@@ -230,6 +230,24 @@ export default function AdministrativoEstado() {
               Temario oficial según BOE 22/12/2025. Examen previsto mayo 2026.
             </p>
 
+            {/* CTA Principal */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+              <Link
+                href="/administrativo-estado/test"
+                className="inline-flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              >
+                <span className="text-2xl">🎯</span>
+                <span>Empezar a Practicar</span>
+              </Link>
+              <Link
+                href="/administrativo-estado/test/aleatorio"
+                className="inline-flex items-center justify-center space-x-2 bg-white hover:bg-gray-50 text-gray-800 px-6 py-4 rounded-xl font-semibold border-2 border-gray-200 hover:border-blue-300 transition-all"
+              >
+                <span className="text-xl">🎲</span>
+                <span>Test Aleatorio</span>
+              </Link>
+            </div>
+
             {/* Estadísticas */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
               {estadisticas.map((stat, index) => (

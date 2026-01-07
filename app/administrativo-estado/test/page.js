@@ -27,7 +27,7 @@ export default function TestsAdministrativoEstado() {
       }
     }
     return {
-      bloque1: false,
+      bloque1: true,  // Expandido por defecto para que usuarios vean los temas
       bloque2: false,
       bloque3: false,
       bloque4: false,
@@ -131,58 +131,58 @@ export default function TestsAdministrativoEstado() {
       { id: 11, title: 'La Organización de la Unión Europea', href: `${basePath}/11` }
     ]
 
-    // Bloque II: Organización de oficinas públicas (4 temas)
+    // Bloque II: Organización de oficinas públicas (4 temas) - Numeración 201-204
     const bloque2Themes = [
-      { id: 12, title: 'Atención al Público', href: `${basePath}/12`, displayNumber: 1 },
-      { id: 13, title: 'Documento, Registro y Archivo', href: `${basePath}/13`, displayNumber: 2 },
-      { id: 14, title: 'Administración Electrónica', href: `${basePath}/14`, displayNumber: 3 },
-      { id: 15, title: 'Protección de Datos Personales', href: `${basePath}/15`, displayNumber: 4 }
+      { id: 201, title: 'Atención al Público', href: `${basePath}/201`, displayNumber: 1 },
+      { id: 202, title: 'Documento, Registro y Archivo', href: `${basePath}/202`, displayNumber: 2 },
+      { id: 203, title: 'Administración Electrónica', href: `${basePath}/203`, displayNumber: 3 },
+      { id: 204, title: 'Protección de Datos Personales', href: `${basePath}/204`, displayNumber: 4 }
     ]
 
-    // Bloque III: Derecho administrativo general (7 temas)
+    // Bloque III: Derecho administrativo general (7 temas) - Numeración 301-307
     const bloque3Themes = [
-      { id: 16, title: 'Las Fuentes del Derecho Administrativo', href: `${basePath}/16`, displayNumber: 1 },
-      { id: 17, title: 'El Acto Administrativo', href: `${basePath}/17`, displayNumber: 2 },
-      { id: 18, title: 'Las Leyes del Procedimiento Administrativo', href: `${basePath}/18`, displayNumber: 3 },
-      { id: 19, title: 'Los Contratos del Sector Público', href: `${basePath}/19`, displayNumber: 4 },
-      { id: 20, title: 'Procedimientos y Formas de la Actividad Administrativa', href: `${basePath}/20`, displayNumber: 5 },
-      { id: 21, title: 'La Responsabilidad Patrimonial', href: `${basePath}/21`, displayNumber: 6 },
-      { id: 22, title: 'Políticas de Igualdad', href: `${basePath}/22`, displayNumber: 7 }
+      { id: 301, title: 'Las Fuentes del Derecho Administrativo', href: `${basePath}/301`, displayNumber: 1 },
+      { id: 302, title: 'El Acto Administrativo', href: `${basePath}/302`, displayNumber: 2 },
+      { id: 303, title: 'Las Leyes del Procedimiento Administrativo', href: `${basePath}/303`, displayNumber: 3 },
+      { id: 304, title: 'Los Contratos del Sector Público', href: `${basePath}/304`, displayNumber: 4 },
+      { id: 305, title: 'Procedimientos y Formas de la Actividad Administrativa', href: `${basePath}/305`, displayNumber: 5 },
+      { id: 306, title: 'La Responsabilidad Patrimonial', href: `${basePath}/306`, displayNumber: 6 },
+      { id: 307, title: 'Políticas de Igualdad', href: `${basePath}/307`, displayNumber: 7 }
     ]
 
-    // Bloque IV: Gestión de personal (9 temas)
+    // Bloque IV: Gestión de personal (9 temas) - Numeración 401-409
     const bloque4Themes = [
-      { id: 23, title: 'El Personal al Servicio de las Administraciones Públicas', href: `${basePath}/23`, displayNumber: 1 },
-      { id: 24, title: 'Selección de Personal', href: `${basePath}/24`, displayNumber: 2 },
-      { id: 25, title: 'El Personal Funcionario', href: `${basePath}/25`, displayNumber: 3 },
-      { id: 26, title: 'Adquisición y Pérdida de la Condición de Funcionario', href: `${basePath}/26`, displayNumber: 4 },
-      { id: 27, title: 'Provisión de Puestos de Trabajo', href: `${basePath}/27`, displayNumber: 5 },
-      { id: 28, title: 'Las Incompatibilidades y Régimen Disciplinario', href: `${basePath}/28`, displayNumber: 6 },
-      { id: 29, title: 'El Régimen de la Seguridad Social de los Funcionarios', href: `${basePath}/29`, displayNumber: 7 },
-      { id: 30, title: 'El Personal Laboral', href: `${basePath}/30`, displayNumber: 8 },
-      { id: 31, title: 'El Régimen de la Seguridad Social del Personal Laboral', href: `${basePath}/31`, displayNumber: 9 }
+      { id: 401, title: 'El Personal al Servicio de las Administraciones Públicas', href: `${basePath}/401`, displayNumber: 1 },
+      { id: 402, title: 'Selección de Personal', href: `${basePath}/402`, displayNumber: 2 },
+      { id: 403, title: 'El Personal Funcionario', href: `${basePath}/403`, displayNumber: 3 },
+      { id: 404, title: 'Adquisición y Pérdida de la Condición de Funcionario', href: `${basePath}/404`, displayNumber: 4 },
+      { id: 405, title: 'Provisión de Puestos de Trabajo', href: `${basePath}/405`, displayNumber: 5 },
+      { id: 406, title: 'Las Incompatibilidades y Régimen Disciplinario', href: `${basePath}/406`, displayNumber: 6 },
+      { id: 407, title: 'El Régimen de la Seguridad Social de los Funcionarios', href: `${basePath}/407`, displayNumber: 7 },
+      { id: 408, title: 'El Personal Laboral', href: `${basePath}/408`, displayNumber: 8 },
+      { id: 409, title: 'El Régimen de la Seguridad Social del Personal Laboral', href: `${basePath}/409`, displayNumber: 9 }
     ]
 
-    // Bloque V: Gestión financiera (6 temas)
+    // Bloque V: Gestión financiera (6 temas) - Numeración 501-506
     const bloque5Themes = [
-      { id: 32, title: 'El Presupuesto', href: `${basePath}/32`, displayNumber: 1 },
-      { id: 33, title: 'El Presupuesto del Estado en España', href: `${basePath}/33`, displayNumber: 2 },
-      { id: 34, title: 'El Procedimiento de Ejecución del Presupuesto de Gasto', href: `${basePath}/34`, displayNumber: 3 },
-      { id: 35, title: 'Las Retribuciones e Indemnizaciones', href: `${basePath}/35`, displayNumber: 4 },
-      { id: 36, title: 'Gastos para la Compra de Bienes y Servicios', href: `${basePath}/36`, displayNumber: 5 },
-      { id: 37, title: 'Gestión Económica y Financiera', href: `${basePath}/37`, displayNumber: 6 }
+      { id: 501, title: 'El Presupuesto', href: `${basePath}/501`, displayNumber: 1 },
+      { id: 502, title: 'El Presupuesto del Estado en España', href: `${basePath}/502`, displayNumber: 2 },
+      { id: 503, title: 'El Procedimiento de Ejecución del Presupuesto de Gasto', href: `${basePath}/503`, displayNumber: 3 },
+      { id: 504, title: 'Las Retribuciones e Indemnizaciones', href: `${basePath}/504`, displayNumber: 4 },
+      { id: 505, title: 'Gastos para la Compra de Bienes y Servicios', href: `${basePath}/505`, displayNumber: 5 },
+      { id: 506, title: 'Gestión Económica y Financiera', href: `${basePath}/506`, displayNumber: 6 }
     ]
 
-    // Bloque VI: Informática básica y ofimática (8 temas)
+    // Bloque VI: Informática básica y ofimática (8 temas) - Numeración 601-608
     const bloque6Themes = [
-      { id: 38, title: 'Informática Básica', href: `${basePath}/38`, displayNumber: 1 },
-      { id: 39, title: 'Sistema Operativo Windows', href: `${basePath}/39`, displayNumber: 2 },
-      { id: 40, title: 'El Explorador de Windows', href: `${basePath}/40`, displayNumber: 3 },
-      { id: 41, title: 'Procesadores de Texto: Word 365', href: `${basePath}/41`, displayNumber: 4 },
-      { id: 42, title: 'Hojas de Cálculo: Excel 365', href: `${basePath}/42`, displayNumber: 5 },
-      { id: 43, title: 'Bases de Datos: Access 365', href: `${basePath}/43`, displayNumber: 6 },
-      { id: 44, title: 'Correo Electrónico: Outlook 365', href: `${basePath}/44`, displayNumber: 7 },
-      { id: 45, title: 'La Red Internet', href: `${basePath}/45`, displayNumber: 8 }
+      { id: 601, title: 'Informática Básica', href: `${basePath}/601`, displayNumber: 1 },
+      { id: 602, title: 'Sistema Operativo Windows', href: `${basePath}/602`, displayNumber: 2 },
+      { id: 603, title: 'El Explorador de Windows', href: `${basePath}/603`, displayNumber: 3 },
+      { id: 604, title: 'Procesadores de Texto: Word 365', href: `${basePath}/604`, displayNumber: 4 },
+      { id: 605, title: 'Hojas de Cálculo: Excel 365', href: `${basePath}/605`, displayNumber: 5 },
+      { id: 606, title: 'Bases de Datos: Access 365', href: `${basePath}/606`, displayNumber: 6 },
+      { id: 607, title: 'Correo Electrónico: Outlook 365', href: `${basePath}/607`, displayNumber: 7 },
+      { id: 608, title: 'La Red Internet', href: `${basePath}/608`, displayNumber: 8 }
     ]
 
     const processThemes = (themes) => {

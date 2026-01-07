@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 export default function TestAleatorioPage() {
   const { user, loading } = useAuth()
@@ -711,18 +712,10 @@ export default function TestAleatorioPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <InteractiveBreadcrumbs />
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link 
-            href="/auxiliar-administrativo-estado/test"
-            className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Volver a Tests
-          </Link>
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
             🎲 Test Aleatorio
           </h1>
