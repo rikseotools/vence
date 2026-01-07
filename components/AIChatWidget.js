@@ -481,23 +481,30 @@ export default function AIChatWidget() {
     }, 300)
   }, [])
 
-  // Manejar selección de ley
+  // Manejar selección de ley (soporta objetos {shortName, name} y strings)
   const toggleLawSelection = useCallback((law) => {
-    setSelectedLaws(prev =>
-      prev.includes(law)
-        ? prev.filter(l => l !== law)
-        : [...prev, law]
-    )
+    const lawId = typeof law === 'object' ? law.shortName : law
+    setSelectedLaws(prev => {
+      const isSelected = prev.some(s => (typeof s === 'object' ? s.shortName : s) === lawId)
+      if (isSelected) {
+        return prev.filter(s => (typeof s === 'object' ? s.shortName : s) !== lawId)
+      } else {
+        return [...prev, law]
+      }
+    })
   }, [])
 
   // Crear test con las leyes seleccionadas
   const handleCreateTest = useCallback(() => {
     if (selectedLaws.length === 0) return
 
+    // Extraer shortNames para la URL y display
+    const lawShortNames = selectedLaws.map(l => typeof l === 'object' ? l.shortName : l)
+
     // Añadir mensaje confirmando
     setMessages(prev => [...prev, {
       role: 'user',
-      content: `Test de: ${selectedLaws.join(', ')}`
+      content: `Test de: ${lawShortNames.join(', ')}`
     }])
 
     setTimeout(() => {
@@ -506,10 +513,10 @@ export default function AIChatWidget() {
         content: '¡Abriendo test en nueva pestaña!'
       }])
 
-      // Construir URL con parámetros como el sistema normal
+      // Construir URL con parámetros (usar shortNames)
       const params = new URLSearchParams({
         n: '10',
-        selected_laws: JSON.stringify(selectedLaws),
+        selected_laws: JSON.stringify(lawShortNames),
         from_chat: 'true'
       })
 
@@ -533,7 +540,7 @@ export default function AIChatWidget() {
             ? 'bg-gray-700 hover:bg-gray-800'
             : 'bg-blue-900 hover:bg-blue-950 hover:scale-105'
         }`}
-        aria-label={isOpen ? 'Minimizar chat' : 'Abrir IA de Vence'}
+        aria-label={isOpen ? 'Minimizar chat' : 'Abrir Nila AI'}
       >
         {isOpen ? (
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,7 +580,7 @@ export default function AIChatWidget() {
               </svg>
             </div>
             <div>
-              <h3 className="text-white font-semibold text-sm">IA de Vence</h3>
+              <h3 className="text-white font-semibold text-sm">Nila AI</h3>
               {currentQuestionContext ? (
                 <p className="text-green-200 text-xs flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse"></span>
@@ -653,7 +660,7 @@ export default function AIChatWidget() {
                 {/* Texto de bienvenida */}
                 <div className="flex-1 pt-1">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Hola{user?.user_metadata?.name ? <span className="text-blue-500 dark:text-blue-400"> {user.user_metadata.name.split(' ')[0]}</span> : ''}, soy la IA de Vence
+                    Hola{user?.user_metadata?.name ? <span className="text-blue-500 dark:text-blue-400"> {user.user_metadata.name.split(' ')[0]}</span> : ''}, soy <span className="font-semibold text-purple-600 dark:text-purple-400">Nila</span>
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {currentQuestionContext
@@ -729,13 +736,6 @@ export default function AIChatWidget() {
                       >
                         📖 ¿Qué artículo regula esto?
                       </button>
-                      <button
-                        onClick={() => useSuggestion(`Verifica si hay errores en esta pregunta: "${currentQuestionContext.questionText}"`, 'verificar_errores')}
-                        className="block w-full text-left px-3 py-2 text-xs bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition text-amber-700 dark:text-amber-300"
-                      >
-                        ⚠️ Verificar si hay errores
-                      </button>
-
                       {/* Sugerencias específicas de la ley */}
                       {currentQuestionContext.lawName && (
                         <>
@@ -1009,19 +1009,27 @@ export default function AIChatWidget() {
                   {msg.isLawSelector && testFlowState === 'selecting_laws' && (
                     <div className="mt-3 space-y-2">
                       <div className="flex flex-wrap gap-2">
-                        {availableLaws.map((law, i) => (
-                          <button
-                            key={i}
-                            onClick={() => toggleLawSelection(law)}
-                            className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
-                              selectedLaws.includes(law)
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:bg-gray-200 dark:hover:bg-gray-500'
-                            }`}
-                          >
-                            {selectedLaws.includes(law) && '✓ '}{law}
-                          </button>
-                        ))}
+                        {availableLaws.map((law, i) => {
+                          // Manejar tanto objetos {shortName, name} como strings legacy
+                          const lawId = typeof law === 'object' ? law.shortName : law
+                          const lawDisplay = typeof law === 'object' ? law.shortName : law
+                          const isSelected = selectedLaws.some(s =>
+                            (typeof s === 'object' ? s.shortName : s) === lawId
+                          )
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => toggleLawSelection(law)}
+                              className={`text-xs px-3 py-1.5 rounded-full transition-all border ${
+                                isSelected
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500 hover:bg-gray-200 dark:hover:bg-gray-500'
+                              }`}
+                            >
+                              {isSelected && '✓ '}{lawDisplay}
+                            </button>
+                          )
+                        })}
                       </div>
                       {selectedLaws.length > 0 && (
                         <button

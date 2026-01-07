@@ -139,13 +139,13 @@ function detectMentionedLaws(message) {
   const msgLower = message.toLowerCase()
   const mentionedLaws = []
 
-  // Ley 39/2015, LPAC
-  if (/ley\s*39|39\/2015|lpac/.test(msgLower)) {
+  // Ley 39/2015, LPAC - incluye formas coloquiales como "la 39"
+  if (/ley\s*39|39\/2015|lpac|\bla\s+39\b/.test(msgLower)) {
     mentionedLaws.push('Ley 39/2015')
   }
 
-  // Ley 40/2015, LRJSP
-  if (/ley\s*40|40\/2015|lrjsp/.test(msgLower)) {
+  // Ley 40/2015, LRJSP - incluye formas coloquiales como "la 40"
+  if (/ley\s*40|40\/2015|lrjsp|\bla\s+40\b/.test(msgLower)) {
     mentionedLaws.push('Ley 40/2015')
   }
 
@@ -165,6 +165,27 @@ function detectMentionedLaws(message) {
   }
 
   return mentionedLaws
+}
+
+// 🆕 Detectar leyes mencionadas en el historial reciente (para mantener contexto)
+function detectMentionedLawsFromHistory(history, currentLaws) {
+  // Si el mensaje actual ya tiene leyes, usarlas
+  if (currentLaws.length > 0) return currentLaws
+
+  // Buscar en los últimos 4 mensajes del historial (2 intercambios)
+  const recentHistory = history.slice(-4)
+
+  for (const msg of recentHistory) {
+    if (msg.role === 'user') {
+      const lawsInMsg = detectMentionedLaws(msg.content)
+      if (lawsInMsg.length > 0) {
+        console.log(`🔄 Ley detectada en historial: ${lawsInMsg.join(', ')}`)
+        return lawsInMsg
+      }
+    }
+  }
+
+  return []
 }
 
 // Detectar si el usuario pregunta por estadísticas de exámenes oficiales
@@ -477,17 +498,162 @@ async function getUserStats(userId, lawShortName = null, limit = 10) {
   }
 }
 
+// 🆕 Buscar artículos DIRECTAMENTE de una ley específica (con filtro opcional por keywords)
+// searchTerms: palabras clave para buscar dentro del contenido (opcional)
+async function searchArticlesByLawDirect(lawShortName, limit = 15, searchTerms = null) {
+  // Primero buscar el ID de la ley
+  const { data: law, error: lawError } = await supabase
+    .from('laws')
+    .select('id, short_name, name, is_derogated')
+    .eq('short_name', lawShortName)
+    .single()
+
+  if (lawError || !law) {
+    console.log(`⚠️ Ley no encontrada: ${lawShortName}`)
+    return []
+  }
+
+  if (law.is_derogated) {
+    console.log(`🚫 Ley derogada: ${lawShortName}`)
+    return []
+  }
+
+  let query = supabase
+    .from('articles')
+    .select('id, law_id, article_number, title, content')
+    .eq('law_id', law.id)
+    .eq('is_active', true)
+
+  // Si hay términos de búsqueda, filtrar por ellos
+  if (searchTerms && searchTerms.length > 0) {
+    // Buscar artículos que contengan ALGUNO de los términos en título o contenido
+    const orConditions = searchTerms.map(term =>
+      `title.ilike.%${term}%,content.ilike.%${term}%`
+    ).join(',')
+    query = query.or(orConditions)
+    console.log(`🔍 Buscando en ${lawShortName} con términos: ${searchTerms.join(', ')}`)
+  }
+
+  const { data: articles, error } = await query
+    .order('article_number', { ascending: true })
+    .limit(limit)
+
+  if (error || !articles) {
+    console.error('Error buscando artículos directamente:', error)
+    return []
+  }
+
+  console.log(`📚 Búsqueda directa: ${articles.length} artículos de ${lawShortName}`)
+
+  // Formatear como los resultados de la búsqueda semántica
+  return articles.map(a => ({
+    ...a,
+    law_short_name: law.short_name,
+    law_name: law.name,
+    law: { short_name: law.short_name, name: law.name }, // Para compatibilidad
+    similarity: 1.0 // Máxima relevancia porque es exactamente lo que pidió
+  }))
+}
+
+// Extraer términos de búsqueda relevantes del mensaje del usuario
+function extractSearchTerms(message) {
+  const msgLower = message.toLowerCase()
+
+  // Palabras clave legales que buscar
+  const legalKeywords = [
+    'plazo', 'plazos', 'término', 'termino', 'días', 'dias',
+    'silencio', 'administrativo', 'positivo', 'negativo',
+    'recurso', 'recursos', 'alzada', 'reposición', 'reposicion',
+    'notificación', 'notificacion', 'notificar',
+    'procedimiento', 'procedimientos',
+    'delegación', 'delegacion', 'competencia', 'competencias', 'avocación', 'avocacion',
+    'órgano', 'organo', 'colegiado', 'colegiados',
+    'convenio', 'convenios', 'acuerdo', 'acuerdos',
+    'responsabilidad', 'patrimonial',
+    'sanción', 'sancion', 'sanciones', 'sancionador',
+    'interesado', 'interesados',
+    'resolución', 'resolucion', 'resolver',
+    'subsanación', 'subsanacion', 'subsanar',
+    'alegación', 'alegacion', 'alegaciones',
+    'audiencia', 'trámite', 'tramite',
+    'caducidad', 'prescripción', 'prescripcion',
+    'nulidad', 'anulabilidad', 'revisión', 'revision',
+    'ejecución', 'ejecutivo', 'ejecutiva'
+  ]
+
+  // Encontrar qué keywords aparecen en el mensaje
+  const foundTerms = legalKeywords.filter(keyword => msgLower.includes(keyword))
+
+  // Si no encontró keywords específicos, devolver null para no filtrar
+  if (foundTerms.length === 0) {
+    return null
+  }
+
+  // Devolver los términos únicos encontrados (máximo 5)
+  return [...new Set(foundTerms)].slice(0, 5)
+}
+
+// Detectar si es una consulta genérica sobre una ley (sin pregunta específica)
+// Una consulta es genérica si SOLO menciona la ley sin especificar qué aspecto
+// lawFromHistory: true si la ley se detectó del historial (respuesta de seguimiento)
+function isGenericLawQuery(message, mentionedLaws, lawFromHistory = false) {
+  if (mentionedLaws.length === 0) return false
+
+  // 🆕 Si la ley viene del historial (es una respuesta de seguimiento como "plazos"),
+  // NO es genérica - el usuario está respondiendo a nuestra pregunta
+  if (lawFromHistory) {
+    console.log('📋 Ley del historial - tratando como consulta específica de seguimiento')
+    return false
+  }
+
+  const msgLower = message.toLowerCase().trim()
+
+  // Si el mensaje es largo (>30 chars), probablemente tiene contexto específico
+  if (message.length > 30) {
+    const wordsWithoutLaw = msgLower
+      .replace(/ley\s*\d+\/?\d*/g, '')
+      .replace(/\bla\s+\d+\b/g, '')
+      .trim()
+      .split(/\s+/)
+      .filter(w => w.length > 2)
+
+    if (wordsWithoutLaw.length >= 2) {
+      return false
+    }
+  }
+
+  // Solo es genérica si el mensaje ES la mención de la ley sin nada más
+  // Ej: "Ley 40/2015" (13 chars), "la 40" (5 chars)
+  if (message.length < 18) return true
+
+  // Patrones de consultas verdaderamente genéricas
+  const genericPatterns = [
+    /^(que|qué|cual|cuál)\s+(es|son)\s+(la|el)?\s*(ley|l)\s*\d/i,
+    /^(explica|explícame|explicame)\s+(la|el)?\s*(ley|l)\s*\d/i,
+    /^resumen\s+(de)?\s*(la|el)?\s*(ley|l)\s*\d/i,
+    /^info(rmación)?\s*(de|sobre)?\s*(la|el)?\s*(ley|l)\s*\d/i
+  ]
+
+  return genericPatterns.some(p => p.test(message))
+}
+
 // Buscar artículos por similitud semántica (solo leyes vigentes)
 // priorityLawIds: IDs de leyes de la oposición del usuario para priorizar
 // mentionedLawNames: nombres de leyes mencionadas explícitamente en la pregunta (filtro estricto)
 // contextLawName: ley del contexto de pregunta (prioriza pero NO filtra)
 async function searchArticlesBySimilarity(embedding, limit = 10, priorityLawIds = [], mentionedLawNames = [], contextLawName = null) {
-  // Pedir más resultados para compensar los que filtremos y para poder priorizar
+  // 🆕 Si hay leyes mencionadas, pedir MUCHOS más resultados porque filtraremos después
+  // El problema: si el usuario pregunta "plazos de la 40", el embedding puede ser más similar
+  // a artículos de otras leyes, así que necesitamos más resultados antes de filtrar
+  const multiplier = mentionedLawNames.length > 0 ? 15 : 4
+
   const { data: articles, error } = await supabase.rpc('match_articles', {
     query_embedding: embedding,
-    match_threshold: 0.25,
-    match_count: limit * 4 // Pedir más para filtrar y priorizar
+    match_threshold: 0.2, // 🆕 Threshold más bajo para capturar más artículos relevantes
+    match_count: limit * multiplier // Más resultados cuando hay ley específica
   })
+
+  console.log(`🔍 match_articles: threshold=0.2, count=${limit * multiplier}, results=${articles?.length || 0}`)
 
   if (error) {
     console.error('Error en match_articles:', error)
@@ -529,7 +695,10 @@ async function searchArticlesBySimilarity(embedding, limit = 10, priorityLawIds 
       console.log(`📚 Filtrando por leyes mencionadas: ${mentionedLawNames.join(', ')} → ${mentionedArticles.length} artículos`)
       validArticles = mentionedArticles
     } else {
-      console.log(`⚠️ No se encontraron artículos de las leyes mencionadas: ${mentionedLawNames.join(', ')}`)
+      // 🆕 FIX: Si no encontró artículos de la ley mencionada, devolver vacío
+      // (NO devolver artículos de otras leyes porque confunde al usuario)
+      console.log(`⚠️ No se encontraron artículos de las leyes mencionadas: ${mentionedLawNames.join(', ')} - devolviendo vacío`)
+      return [] // Forzar búsqueda directa como fallback
     }
   }
 
@@ -652,10 +821,11 @@ function formatContext(articles) {
 
 // Generar system prompt para psicotécnicos
 function generatePsicotecnicoSystemPrompt(questionContextText) {
-  return `Eres el asistente de IA de Vence, una plataforma de preparación para oposiciones en España.
+  return `Eres Nila, la asistente de IA de Vence, una plataforma de preparación para oposiciones en España.
 
 SOBRE TI:
-- Eres un tutor especializado en tests psicotécnicos para oposiciones
+- Te llamas Nila y eres la asistente de IA de Vence
+- Eres una tutora especializada en tests psicotécnicos para oposiciones
 - Ayudas a los usuarios a resolver y entender ejercicios de razonamiento lógico, series numéricas, gráficos, tablas, etc.
 
 ESTILO DE INTERACCIÓN:
@@ -680,9 +850,10 @@ function generateSystemPrompt(context, questionContextText, userOposicion) {
     ? `El usuario está preparando la oposición de ${userOposicion.replace(/_/g, ' ')}.`
     : ''
 
-  return `Eres el asistente de IA de Vence, una plataforma de preparación para oposiciones en España.
+  return `Eres Nila, la asistente de IA de Vence, una plataforma de preparación para oposiciones en España.
 
 SOBRE TI:
+- Te llamas Nila y eres la asistente de IA de Vence
 - Tienes acceso a una base de datos con 176 leyes y 21.000+ artículos de legislación española actualizada
 - Tu conocimiento proviene de esta base de datos, NO de un entrenamiento genérico
 - Cuando el usuario pregunta, buscas en la base de datos los artículos más relevantes
@@ -695,15 +866,16 @@ ESTILO DE INTERACCIÓN:
 - Si hay varios temas relacionados, ofrece opciones al usuario
 - No des respuestas largas si el usuario no ha especificado qué necesita exactamente
 
-INSTRUCCIONES:
-- Responde de forma concisa pero completa
-- Cita SIEMPRE los artículos específicos del contexto (ej: "Según el Art. 14 de la CE...")
-- Basa tus respuestas ÚNICAMENTE en el contexto proporcionado abajo
-- Si el contexto no contiene información relevante, pregunta al usuario si puede reformular o ser más específico
-- NO inventes información ni uses conocimiento externo
+INSTRUCCIONES CRÍTICAS:
+- USA TODOS los artículos del CONTEXTO de abajo para elaborar tu respuesta
+- Tienes acceso a múltiples artículos relevantes - úsalos TODOS, no solo 2-3
+- NUNCA inventes números de artículos ni cites artículos que no estén en el contexto
+- Cita los artículos así: "Según el Art. X de [Ley]..."
+- Si el contexto tiene muchos artículos, organízalos por tema y explica cada uno brevemente
+- NO uses tu conocimiento general de leyes españolas - SOLO el contexto proporcionado
 - Si preguntan sobre ti, explica que eres el asistente de Vence con acceso a 176 leyes españolas
 - Si la pregunta no está relacionada con oposiciones o legislación, indica educadamente que solo puedes ayudar con esos temas
-- NUNCA generes tests, cuestionarios o preguntas de examen directamente. Si el usuario pide un test, dile que puede usar el botón "¿Te preparo un test?" que aparece debajo de cada respuesta para crear un test real con seguimiento de progreso
+- NUNCA generes tests ni cuestionarios. Si piden un test, dile que use el botón "¿Te preparo un test?"
 ${questionContextText}
 CONTEXTO (artículos relevantes encontrados en la base de datos):
 ${context}`
@@ -711,11 +883,20 @@ ${context}`
 
 // Generar sugerencias de seguimiento basadas en la respuesta
 function generateFollowUpSuggestions(sources, response, questionContext, queryType = null, mentionedLaw = null) {
-  // Obtener las leyes únicas mencionadas en las fuentes
-  const lawsInSources = [...new Set(sources.map(s => s.law).filter(Boolean))]
+  // Obtener las leyes únicas con su nombre completo
+  const lawMap = {}
+  sources.forEach(s => {
+    if (s.law && !lawMap[s.law]) {
+      lawMap[s.law] = {
+        shortName: s.law,
+        name: s.lawName || s.law // Nombre completo o fallback al short
+      }
+    }
+  })
+  const lawsInSources = Object.values(lawMap)
 
-  // No mostrar sugerencias cuando se pide clarificación (consulta ambigua)
-  if (queryType === 'ambiguous_exam' || queryType === 'oposicion_info') {
+  // No mostrar sugerencias cuando se pide clarificación (consulta ambigua o genérica sobre leyes)
+  if (queryType === 'ambiguous_exam' || queryType === 'oposicion_info' || queryType === 'generic_law_query') {
     return {
       offerTest: false,
       laws: [],
@@ -838,7 +1019,17 @@ export async function POST(request) {
     const isPsicotecnico = questionContext?.isPsicotecnico === true
 
     // 🎯 Detectar menciones de leyes específicas en el mensaje
+    // 🆕 Si no hay en el mensaje actual, buscar en el historial reciente (mantener contexto)
     let mentionedLaws = isPsicotecnico ? [] : detectMentionedLaws(message)
+    let lawFromHistory = false // 🆕 Flag para saber si la ley vino del historial
+
+    if (mentionedLaws.length === 0 && !isPsicotecnico) {
+      mentionedLaws = detectMentionedLawsFromHistory(history, mentionedLaws)
+      if (mentionedLaws.length > 0) {
+        lawFromHistory = true // La ley se detectó del historial, es una respuesta de seguimiento
+        console.log(`📋 Ley del historial: ${mentionedLaws.join(', ')}`)
+      }
+    }
 
     // 🎯 Si hay contexto de pregunta con ley, guardarla para priorizar (NO filtrar)
     let contextLawName = null
@@ -1113,33 +1304,89 @@ NO inventes fechas ni datos. Solo pregunta cuál oposición.
     let searchMethod = 'none'
     const skipArticleSearch = isPsicotecnico || queryType === 'oposicion_info' || queryType === 'ambiguous_exam'
 
+    // 🆕 Variable para manejar consultas genéricas sobre leyes
+    let genericLawQueryContext = ''
+
     if (!skipArticleSearch) {
-      // Si hay contexto de pregunta, usar el texto de la pregunta para mejor búsqueda semántica
-      const searchText = questionContext?.questionText
-        ? `${questionContext.questionText} ${message}`
-        : message
+      // 🆕 PRIMERO: Si es una consulta genérica sobre una ley, pedir que concrete
+      // Pasar lawFromHistory para que respuestas de seguimiento no se consideren genéricas
+      const isGenericQuery = isGenericLawQuery(message, mentionedLaws, lawFromHistory)
 
-      try {
-        const embedding = await generateEmbedding(openai, searchText)
-        articles = await searchArticlesBySimilarity(embedding, 10, priorityLawIds, mentionedLaws, contextLawName)
+      if (isGenericQuery && mentionedLaws.length > 0 && !lawFromHistory) {
+        // Solo preguntar si la ley se mencionó en ESTE mensaje (no del historial)
+        console.log(`📚 Consulta genérica sobre ley detectada: ${mentionedLaws.join(', ')} - pidiendo concreción`)
+        queryType = 'generic_law_query' // Para evitar sugerencias de test
 
-        if (articles.length > 0) {
-          searchMethod = 'semantic'
+        // Generar contexto para que el AI pida concreción
+        const lawName = mentionedLaws[0]
+        genericLawQueryContext = `
+IMPORTANTE: El usuario ha preguntado sobre "${lawName}" de forma muy genérica.
+Esta ley tiene muchos artículos y temas. Para dar una respuesta precisa y no inventar:
+
+Responde de forma amable preguntando qué aspecto específico le interesa. Sugiere opciones como:
+- Plazos y términos
+- Órganos administrativos (colegiados, Gobierno, Ministros)
+- Delegación de competencias
+- Convenios y acuerdos
+- Responsabilidad patrimonial
+- Potestad sancionadora
+- Etc.
+
+Ejemplo: "La ${lawName} es muy amplia. ¿Qué aspecto te interesa en particular? Por ejemplo: plazos, órganos colegiados, delegación de competencias, convenios..."
+NO inventes contenido. Solo pregunta para concretar.
+`
+        // No buscar artículos para consultas genéricas
+      } else {
+        // 🆕 Construir búsqueda inteligente combinando contexto
+        let searchText = message
+
+        // Si la ley viene del historial, combinar para búsqueda completa
+        if (lawFromHistory && mentionedLaws.length > 0) {
+          searchText = `${message} ${mentionedLaws[0]}`
+          console.log(`🔍 Búsqueda enriquecida: "${searchText}"`)
+        } else if (questionContext?.questionText) {
+          searchText = `${questionContext.questionText} ${message}`
         }
-      } catch (embeddingError) {
-        console.log('Embeddings no disponibles, usando keywords:', embeddingError.message)
-      }
 
-      // Fallback a keywords si no hay resultados con embeddings
-      if (articles.length === 0) {
-        articles = await searchArticlesByKeywords(message)
-        searchMethod = 'keywords'
+        try {
+          const embedding = await generateEmbedding(openai, searchText)
+          articles = await searchArticlesBySimilarity(embedding, 10, priorityLawIds, mentionedLaws, contextLawName)
+
+          if (articles.length > 0) {
+            searchMethod = 'semantic'
+          }
+        } catch (embeddingError) {
+          console.log('Embeddings no disponibles, usando keywords:', embeddingError.message)
+        }
+
+        // 🆕 Fallback a búsqueda DIRECTA por ley si semántica no encontró artículos de esa ley
+        if (articles.length === 0 && mentionedLaws.length > 0) {
+          console.log(`🔄 Búsqueda semántica vacía para ${mentionedLaws.join(', ')} - intentando búsqueda directa`)
+
+          // Extraer términos de búsqueda del mensaje (palabras clave relevantes)
+          const searchTerms = extractSearchTerms(message)
+
+          for (const lawName of mentionedLaws) {
+            const directArticles = await searchArticlesByLawDirect(lawName, 15, searchTerms)
+            articles = [...articles, ...directArticles]
+          }
+          if (articles.length > 0) {
+            searchMethod = 'direct'
+            console.log(`✅ Búsqueda directa: ${articles.length} artículos encontrados`)
+          }
+        }
+
+        // Fallback a keywords si no hay resultados con embeddings ni directa
+        if (articles.length === 0) {
+          articles = await searchArticlesByKeywords(message)
+          searchMethod = 'keywords'
+        }
       }
     } else {
       console.log(`🧠 Saltando búsqueda de artículos (psicotecnico: ${isPsicotecnico}, queryType: ${queryType})`)
     }
 
-    const context = isPsicotecnico ? '' : formatContext(articles) + examStatsContext + userStatsContext + ambiguousExamContext + oposicionInfoContext
+    const context = isPsicotecnico ? '' : formatContext(articles) + examStatsContext + userStatsContext + ambiguousExamContext + oposicionInfoContext + genericLawQueryContext
 
     // Formatear contexto de pregunta si existe
     let questionContextText = ''
@@ -1292,6 +1539,7 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
     // Preparar sources para enviar (vacío para psicotécnicos)
     const sources = isPsicotecnico ? [] : articles.map(a => ({
       law: a.law?.short_name || a.law?.name,
+      lawName: a.law?.name || a.law_name || null, // Nombre completo para mostrar al usuario
       article: a.article_number,
       title: a.title,
       similarity: a.similarity ? Math.round(a.similarity * 100) : null
