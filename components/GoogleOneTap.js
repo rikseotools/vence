@@ -10,20 +10,6 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasPrompted, setHasPrompted] = useState(false)
 
-  // Generar nonce para seguridad
-  const generateNonce = useCallback(async () => {
-    const nonce = btoa(
-      String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))
-    )
-    const encoder = new TextEncoder()
-    const encodedNonce = encoder.encode(nonce)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', encodedNonce)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    const hashedNonce = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-
-    return { nonce, hashedNonce }
-  }, [])
-
   // Manejar respuesta de Google
   const handleCredentialResponse = useCallback(async (response) => {
     console.log('🎯 Google One Tap: Credential recibido')
@@ -34,13 +20,10 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
         throw new Error('Supabase client no disponible')
       }
 
-      // Obtener el nonce guardado
-      const nonce = sessionStorage.getItem('google_one_tap_nonce')
-
+      // signInWithIdToken sin nonce (más compatible con FedCM)
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: response.credential,
-        nonce: nonce || undefined,
       })
 
       if (error) {
@@ -50,9 +33,6 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
       }
 
       console.log('✅ Google One Tap: Login exitoso', data.user?.email)
-
-      // Limpiar nonce
-      sessionStorage.removeItem('google_one_tap_nonce')
 
       // Disparar evento global de auth
       if (typeof window !== 'undefined') {
@@ -70,20 +50,15 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
   }, [onSuccess, onError])
 
   // Inicializar Google One Tap
-  const initializeOneTap = useCallback(async () => {
+  const initializeOneTap = useCallback(() => {
     if (!window.google || hasPrompted || disabled) return
 
     try {
-      // Generar y guardar nonce
-      const { nonce, hashedNonce } = await generateNonce()
-      sessionStorage.setItem('google_one_tap_nonce', nonce)
-
       console.log('🚀 Inicializando Google One Tap...')
 
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: handleCredentialResponse,
-        nonce: hashedNonce,
         auto_select: false, // No auto-seleccionar, dejar que el usuario elija
         cancel_on_tap_outside: true,
         context: 'signin',
@@ -112,7 +87,7 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
     } catch (error) {
       console.error('❌ Error inicializando One Tap:', error)
     }
-  }, [generateNonce, handleCredentialResponse, hasPrompted, disabled])
+  }, [handleCredentialResponse, hasPrompted, disabled])
 
   // Cargar script de Google
   useEffect(() => {
