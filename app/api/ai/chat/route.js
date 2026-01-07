@@ -1038,60 +1038,73 @@ Da recomendaciones específicas basadas en sus puntos débiles.
 
     // 📋 Detectar si pregunta por información de la oposición (plazas, fechas, temario, etc.)
     let oposicionInfoContext = ''
-    if (isOposicionInfoQuery(message) && userOposicion && !isPsicotecnico) {
+    if (isOposicionInfoQuery(message) && !isPsicotecnico) {
       console.log('📋 Detectada pregunta sobre información de la oposición')
-      queryType = 'oposicion_info'
+      queryType = 'oposicion_info' // Siempre setear para evitar sugerencias de test
 
-      // Obtener datos de la oposición
-      const oposicionInfo = await getOposicionInfo(userOposicion)
-      const temario = await getTemario(userOposicion, 30)
+      if (userOposicion) {
+        // Usuario tiene oposición en su perfil - dar info directamente
+        const oposicionInfo = await getOposicionInfo(userOposicion)
+        const temario = await getTemario(userOposicion, 30)
 
-      // Formatear nombre de oposición para mostrar
-      const oposicionNombre = userOposicion === 'auxiliar_administrativo_estado'
-        ? 'Auxiliar Administrativo del Estado (C2)'
-        : 'Administrativo del Estado (C1)'
+        // Formatear nombre de oposición para mostrar
+        const oposicionNombre = userOposicion === 'auxiliar_administrativo_estado'
+          ? 'Auxiliar Administrativo del Estado (C2)'
+          : 'Administrativo del Estado (C1)'
 
-      let infoText = `\n\nINFORMACIÓN DE LA OPOSICIÓN DEL USUARIO: ${oposicionNombre}\n`
+        let infoText = `\n\nINFORMACIÓN DE LA OPOSICIÓN DEL USUARIO: ${oposicionNombre}\n`
 
-      if (oposicionInfo) {
-        infoText += `\nDATOS DE LA CONVOCATORIA:`
-        if (oposicionInfo.plazas_libres) infoText += `\n- Plazas (acceso libre): ${oposicionInfo.plazas_libres}`
-        if (oposicionInfo.plazas_promocion_interna) infoText += `\n- Plazas (promoción interna): ${oposicionInfo.plazas_promocion_interna}`
-        if (oposicionInfo.plazas_discapacidad) infoText += `\n- Plazas (discapacidad): ${oposicionInfo.plazas_discapacidad}`
-        if (oposicionInfo.exam_date) infoText += `\n- Fecha de examen: ${oposicionInfo.exam_date}`
-        if (oposicionInfo.inscription_start) infoText += `\n- Inicio inscripción: ${oposicionInfo.inscription_start}`
-        if (oposicionInfo.inscription_deadline) infoText += `\n- Fin inscripción: ${oposicionInfo.inscription_deadline}`
-        if (oposicionInfo.titulo_requerido) infoText += `\n- Titulación requerida: ${oposicionInfo.titulo_requerido}`
-        if (oposicionInfo.salario_min || oposicionInfo.salario_max) {
-          infoText += `\n- Salario aproximado: ${oposicionInfo.salario_min || '?'}€ - ${oposicionInfo.salario_max || '?'}€ brutos/año`
+        if (oposicionInfo) {
+          infoText += `\nDATOS DE LA CONVOCATORIA:`
+          if (oposicionInfo.plazas_libres) infoText += `\n- Plazas (acceso libre): ${oposicionInfo.plazas_libres}`
+          if (oposicionInfo.plazas_promocion_interna) infoText += `\n- Plazas (promoción interna): ${oposicionInfo.plazas_promocion_interna}`
+          if (oposicionInfo.plazas_discapacidad) infoText += `\n- Plazas (discapacidad): ${oposicionInfo.plazas_discapacidad}`
+          if (oposicionInfo.exam_date) infoText += `\n- Fecha de examen: ${oposicionInfo.exam_date}`
+          if (oposicionInfo.inscription_start) infoText += `\n- Inicio inscripción: ${oposicionInfo.inscription_start}`
+          if (oposicionInfo.inscription_deadline) infoText += `\n- Fin inscripción: ${oposicionInfo.inscription_deadline}`
+          if (oposicionInfo.titulo_requerido) infoText += `\n- Titulación requerida: ${oposicionInfo.titulo_requerido}`
+          if (oposicionInfo.salario_min || oposicionInfo.salario_max) {
+            infoText += `\n- Salario aproximado: ${oposicionInfo.salario_min || '?'}€ - ${oposicionInfo.salario_max || '?'}€ brutos/año`
+          }
+          if (oposicionInfo.is_convocatoria_activa) {
+            infoText += `\n- Estado: CONVOCATORIA ACTIVA`
+          }
+          if (oposicionInfo.boe_reference) infoText += `\n- Referencia BOE: ${oposicionInfo.boe_reference}`
         }
-        if (oposicionInfo.is_convocatoria_activa) {
-          infoText += `\n- Estado: CONVOCATORIA ACTIVA`
-        }
-        if (oposicionInfo.boe_reference) infoText += `\n- Referencia BOE: ${oposicionInfo.boe_reference}`
-      }
 
-      if (temario && temario.length > 0) {
-        infoText += `\n\nTEMARIO (${temario.length} temas):`
-        // Agrupar por bloque
-        const byBloque = {}
-        temario.forEach(t => {
-          const bloque = t.bloque || 'General'
-          if (!byBloque[bloque]) byBloque[bloque] = []
-          byBloque[bloque].push(t)
-        })
-        Object.entries(byBloque).forEach(([bloque, temas]) => {
-          infoText += `\n\nBloque ${bloque}:`
-          temas.forEach(t => {
-            infoText += `\n  - ${t.name}`
+        if (temario && temario.length > 0) {
+          infoText += `\n\nTEMARIO (${temario.length} temas):`
+          // Agrupar por bloque
+          const byBloque = {}
+          temario.forEach(t => {
+            const bloque = t.bloque || 'General'
+            if (!byBloque[bloque]) byBloque[bloque] = []
+            byBloque[bloque].push(t)
           })
-        })
+          Object.entries(byBloque).forEach(([bloque, temas]) => {
+            infoText += `\n\nBloque ${bloque}:`
+            temas.forEach(t => {
+              infoText += `\n  - ${t.name}`
+            })
+          })
+        }
+
+        infoText += `\n\nIMPORTANTE: Esta información es de nuestra base de datos. Si algún dato no está disponible, indica que el usuario puede consultar el BOE oficial para información actualizada.`
+
+        oposicionInfoContext = infoText
+        console.log('📋 Información de oposición cargada')
+      } else {
+        // Usuario SIN oposición en su perfil - pedir que especifique
+        oposicionInfoContext = `
+
+CONSULTA SOBRE INFORMACIÓN DE OPOSICIÓN (sin perfil configurado):
+El usuario pregunta sobre fechas, plazas o información de una oposición pero NO tiene configurada su oposición en su perfil.
+Responde amablemente preguntando qué oposición le interesa. Por ejemplo:
+"Para darte información precisa sobre fechas y plazas, ¿me puedes decir qué oposición te interesa? Por ejemplo: Auxiliar Administrativo del Estado (C2) o Administrativo del Estado (C1)."
+NO inventes fechas ni datos. Solo pregunta cuál oposición.
+`
+        console.log('📋 Usuario sin oposición configurada - pidiendo clarificación')
       }
-
-      infoText += `\n\nIMPORTANTE: Esta información es de nuestra base de datos. Si algún dato no está disponible, indica que el usuario puede consultar el BOE oficial para información actualizada.`
-
-      oposicionInfoContext = infoText
-      console.log('📋 Información de oposición cargada')
     }
 
     // Intentar búsqueda semántica con embeddings
