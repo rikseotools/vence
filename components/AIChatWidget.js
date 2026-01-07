@@ -532,36 +532,9 @@ export default function AIChatWidget() {
 
   return (
     <>
-      {/* Botón flotante con IA */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-24 right-4 z-50 px-4 h-12 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${
-          isOpen
-            ? 'bg-gray-700 hover:bg-gray-800'
-            : 'bg-blue-900 hover:bg-blue-950 hover:scale-105'
-        }`}
-        aria-label={isOpen ? 'Minimizar chat' : 'Abrir Nila AI'}
-      >
-        {isOpen ? (
-          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        ) : (
-          <>
-            {/* Icono de estrellitas IA (sparkles) */}
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
-              <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
-              <path d="M9.5 14l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L6 18l2.5-1 1-2.5z"/>
-            </svg>
-            <span className="text-white font-semibold text-sm">IA</span>
-          </>
-        )}
-      </button>
-
       {/* Panel de chat */}
       <div
-        className={`fixed bottom-28 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl transition-all duration-300 ${
+        className={`fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl transition-all duration-300 ${
           isOpen
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 translate-y-4 pointer-events-none'

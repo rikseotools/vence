@@ -387,6 +387,20 @@ export default function HeaderES() {
                     <span>Hazte Premium</span>
                   </Link>
                 )}
+
+                {/* Botón de Nila AI - Móvil */}
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('openAIChat', { detail: {} }))}
+                  className="flex items-center gap-1 px-2 py-1 bg-blue-900 text-white rounded-lg text-xs font-semibold shadow-sm"
+                  title="Abrir Nila AI"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
+                    <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
+                    <path d="M9.5 14l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L6 18l2.5-1 1-2.5z"/>
+                  </svg>
+                  <span>IA</span>
+                </button>
               </div>
             )}
             
@@ -450,6 +464,22 @@ export default function HeaderES() {
                   <span>👑</span>
                   <span className="text-sm">Hazte Premium</span>
                 </Link>
+              )}
+
+              {/* Botón de Nila AI - Desktop */}
+              {user && (
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('openAIChat', { detail: {} }))}
+                  className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-900 hover:bg-blue-950 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+                  title="Abrir Nila AI"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
+                    <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
+                    <path d="M9.5 14l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L6 18l2.5-1 1-2.5z"/>
+                  </svg>
+                  <span className="text-sm">IA</span>
+                </button>
               )}
 
               {/* Icono de ranking/liga y racha (solo usuarios logueados) */}

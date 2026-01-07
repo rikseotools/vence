@@ -1,5 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
+// Queries tipadas con Drizzle
+import {
+  getTemario as getTemarioTyped,
+  getOposicionInfo as getOposicionInfoTyped,
+  getOposicionLawIds as getOposicionLawIdsTyped,
+  getOpenAIKey as getOpenAIKeyTyped,
+  getUserOposicion,
+  getExamStats as getExamStatsTyped,
+  getUserStats as getUserStatsTyped
+} from '@/lib/api/chat/queries'
+import { validateChatRequest } from '@/lib/api/chat/schemas'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -1377,8 +1388,29 @@ CONTEXTO (artículos relevantes encontrados en la base de datos):
 ${context}`
 }
 
+// Validar que una ley tiene preguntas disponibles
+async function validateLawHasQuestions(lawShortName) {
+  try {
+    const { count, error } = await supabase
+      .from('questions')
+      .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('articles.laws.short_name', lawShortName)
+
+    if (error) {
+      console.warn(`⚠️ Error validando ley ${lawShortName}:`, error.message)
+      return false
+    }
+
+    return (count || 0) > 0
+  } catch (error) {
+    console.warn(`⚠️ Error en validateLawHasQuestions para ${lawShortName}:`, error.message)
+    return false
+  }
+}
+
 // Generar sugerencias de seguimiento basadas en la respuesta
-function generateFollowUpSuggestions(sources, response, questionContext, queryType = null, mentionedLaw = null) {
+async function generateFollowUpSuggestions(sources, response, questionContext, queryType = null, mentionedLaw = null) {
   // Obtener las leyes únicas con su nombre completo
   const lawMap = {}
   sources.forEach(s => {
@@ -1400,11 +1432,24 @@ function generateFollowUpSuggestions(sources, response, questionContext, queryTy
     }
   }
 
+  // Validar que las leyes tienen preguntas antes de ofrecerlas
+  const validatedLaws = []
+  for (const law of lawsInSources) {
+    const hasQuestions = await validateLawHasQuestions(law.shortName)
+    if (hasQuestions) {
+      validatedLaws.push(law)
+    } else {
+      console.log(`🚫 Ley ${law.shortName} excluida de oferta de test: sin preguntas`)
+    }
+  }
+
   // Sugerencias específicas para consultas de exámenes (solo si hay ley mencionada)
   if (queryType === 'exam_stats' && mentionedLaw) {
+    // Verificar si la ley mencionada tiene preguntas
+    const mentionedLawHasQuestions = await validateLawHasQuestions(mentionedLaw)
     return {
       offerTest: false,
-      laws: lawsInSources,
+      laws: validatedLaws,
       followUpQuestions: [
         {
           text: `¿Cómo voy yo en ${mentionedLaw}?`,
@@ -1414,28 +1459,29 @@ function generateFollowUpSuggestions(sources, response, questionContext, queryTy
           text: `¿Qué artículos de ${mentionedLaw} debería repasar?`,
           label: 'que_repasar_examen'
         },
-        {
+        // Solo ofrecer test si la ley tiene preguntas
+        ...(mentionedLawHasQuestions ? [{
           text: `Prepárame un test de ${mentionedLaw}`,
           label: 'test_articulos_examen'
-        }
+        }] : [])
       ]
     }
   }
 
   // Sugerencias específicas para consultas de progreso del usuario
-  // Solo ofrecer botón de test si hay leyes en los puntos débiles
+  // Solo ofrecer botón de test si hay leyes validadas con preguntas
   if (queryType === 'user_stats') {
     return {
-      offerTest: lawsInSources.length > 0,
-      laws: lawsInSources
+      offerTest: validatedLaws.length > 0,
+      laws: validatedLaws
     }
   }
 
-  // Si hay leyes, ofrecer preparar test
-  if (lawsInSources.length > 0) {
+  // Si hay leyes validadas, ofrecer preparar test
+  if (validatedLaws.length > 0) {
     return {
       offerTest: true,
-      laws: lawsInSources
+      laws: validatedLaws
     }
   }
 
@@ -1464,18 +1510,13 @@ export async function POST(request) {
       }, { status: 400 })
     }
 
-    // 🔄 Si no recibimos oposición del frontend pero tenemos userId, obtenerla de la BD
+    // 🔄 Si no recibimos oposición del frontend pero tenemos userId, obtenerla de la BD (query tipada con Drizzle)
     let resolvedOposicion = userOposicion
     if (!userOposicion && userId) {
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('target_oposicion')
-        .eq('id', userId)
-        .single()
-
-      if (profile?.target_oposicion) {
-        resolvedOposicion = profile.target_oposicion
-        console.log(`🔄 Oposición obtenida de BD: ${resolvedOposicion}`)
+      const oposicionFromDb = await getUserOposicion(userId)
+      if (oposicionFromDb) {
+        resolvedOposicion = oposicionFromDb
+        console.log(`🔄 Oposición obtenida de BD (Drizzle): ${resolvedOposicion}`)
       }
     }
 
@@ -1500,7 +1541,7 @@ export async function POST(request) {
     }
 
     // Obtener API key
-    const apiKey = await getOpenAIKey()
+    const apiKey = await getOpenAIKeyTyped()
     if (!apiKey) {
       return Response.json({
         success: false,
@@ -1511,7 +1552,7 @@ export async function POST(request) {
     const openai = new OpenAI({ apiKey })
 
     // Obtener leyes prioritarias de la oposición del usuario
-    const priorityLawIds = await getOposicionLawIds(userOposicionFinal)
+    const priorityLawIds = await getOposicionLawIdsTyped(userOposicionFinal)
     if (priorityLawIds.length > 0) {
       console.log(`📚 Usuario con oposición ${userOposicionFinal}: ${priorityLawIds.length} leyes prioritarias`)
     } else if (userOposicionFinal) {
@@ -1814,8 +1855,8 @@ Da recomendaciones específicas basadas en sus puntos débiles.
 
       if (oposicionToUse) {
         // Tenemos oposición (del mensaje o del perfil) - dar info directamente
-        const oposicionInfo = await getOposicionInfo(oposicionToUse)
-        const temario = await getTemario(oposicionToUse, 50)
+        const oposicionInfo = await getOposicionInfoTyped(oposicionToUse)
+        const temario = await getTemarioTyped(oposicionToUse, 50)
 
         // Formatear nombre de oposición para mostrar
         const oposicionNombre = oposicionToUse === 'auxiliar_administrativo_estado'
@@ -1826,34 +1867,34 @@ Da recomendaciones específicas basadas en sus puntos débiles.
 
         if (oposicionInfo) {
           infoText += `\nDATOS DE LA CONVOCATORIA:`
-          if (oposicionInfo.plazas_libres) infoText += `\n- Plazas (acceso libre): ${oposicionInfo.plazas_libres}`
-          if (oposicionInfo.plazas_promocion_interna) infoText += `\n- Plazas (promoción interna): ${oposicionInfo.plazas_promocion_interna}`
-          if (oposicionInfo.plazas_discapacidad) infoText += `\n- Plazas (discapacidad): ${oposicionInfo.plazas_discapacidad}`
-          if (oposicionInfo.exam_date) infoText += `\n- Fecha de examen: ${oposicionInfo.exam_date}`
-          if (oposicionInfo.inscription_start) infoText += `\n- Inicio inscripción: ${oposicionInfo.inscription_start}`
-          if (oposicionInfo.inscription_deadline) infoText += `\n- Fin inscripción: ${oposicionInfo.inscription_deadline}`
-          if (oposicionInfo.titulo_requerido) infoText += `\n- Titulación requerida: ${oposicionInfo.titulo_requerido}`
-          if (oposicionInfo.salario_min || oposicionInfo.salario_max) {
-            infoText += `\n- Salario aproximado: ${oposicionInfo.salario_min || '?'}€ - ${oposicionInfo.salario_max || '?'}€ brutos/año`
+          if (oposicionInfo.plazasLibres) infoText += `\n- Plazas (acceso libre): ${oposicionInfo.plazasLibres}`
+          if (oposicionInfo.plazasPromocionInterna) infoText += `\n- Plazas (promoción interna): ${oposicionInfo.plazasPromocionInterna}`
+          if (oposicionInfo.plazasDiscapacidad) infoText += `\n- Plazas (discapacidad): ${oposicionInfo.plazasDiscapacidad}`
+          if (oposicionInfo.examDate) infoText += `\n- Fecha de examen: ${oposicionInfo.examDate}`
+          if (oposicionInfo.inscriptionStart) infoText += `\n- Inicio inscripción: ${oposicionInfo.inscriptionStart}`
+          if (oposicionInfo.inscriptionDeadline) infoText += `\n- Fin inscripción: ${oposicionInfo.inscriptionDeadline}`
+          if (oposicionInfo.tituloRequerido) infoText += `\n- Titulación requerida: ${oposicionInfo.tituloRequerido}`
+          if (oposicionInfo.salarioMin || oposicionInfo.salarioMax) {
+            infoText += `\n- Salario aproximado: ${oposicionInfo.salarioMin || '?'}€ - ${oposicionInfo.salarioMax || '?'}€ brutos/año`
           }
-          if (oposicionInfo.is_convocatoria_activa) {
+          if (oposicionInfo.isConvocatoriaActiva) {
             infoText += `\n- Estado: CONVOCATORIA ACTIVA`
           }
-          if (oposicionInfo.boe_reference) infoText += `\n- Referencia BOE: ${oposicionInfo.boe_reference}`
+          if (oposicionInfo.boeReference) infoText += `\n- Referencia BOE: ${oposicionInfo.boeReference}`
         }
 
         if (temario && temario.length > 0) {
           infoText += `\n\nTEMARIO OFICIAL (${temario.length} temas):`
-          // Agrupar por bloque según número de tema
+          // Agrupar por bloque según número de tema (camelCase desde Drizzle)
           const byBloque = {}
           temario.forEach(t => {
             let bloque
-            if (t.topic_number <= 16) bloque = 'I - Organización del Estado'
-            else if (t.topic_number >= 201 && t.topic_number <= 207) bloque = 'II - Derecho Administrativo'
-            else if (t.topic_number >= 301 && t.topic_number <= 307) bloque = 'III - Gestión de Personal'
-            else if (t.topic_number >= 401 && t.topic_number <= 409) bloque = 'IV - Gestión Financiera'
-            else if (t.topic_number >= 501 && t.topic_number <= 506) bloque = 'V - Informática'
-            else if (t.topic_number >= 601 && t.topic_number <= 608) bloque = 'VI - Informática (Ofimática)'
+            if (t.topicNumber <= 16) bloque = 'I - Organización del Estado'
+            else if (t.topicNumber >= 201 && t.topicNumber <= 207) bloque = 'II - Derecho Administrativo'
+            else if (t.topicNumber >= 301 && t.topicNumber <= 307) bloque = 'III - Gestión de Personal'
+            else if (t.topicNumber >= 401 && t.topicNumber <= 409) bloque = 'IV - Gestión Financiera'
+            else if (t.topicNumber >= 501 && t.topicNumber <= 506) bloque = 'V - Informática'
+            else if (t.topicNumber >= 601 && t.topicNumber <= 608) bloque = 'VI - Informática (Ofimática)'
             else bloque = 'General'
             if (!byBloque[bloque]) byBloque[bloque] = []
             byBloque[bloque].push(t)
@@ -1861,7 +1902,7 @@ Da recomendaciones específicas basadas en sus puntos débiles.
           Object.entries(byBloque).forEach(([bloque, temas]) => {
             infoText += `\n\nBloque ${bloque}:`
             temas.forEach(t => {
-              infoText += `\n  - Tema ${t.topic_number}: ${t.title}`
+              infoText += `\n  - Tema ${t.topicNumber}: ${t.title}`
               if (t.description) infoText += `\n    Epígrafe: ${t.description}`
             })
           })
@@ -2203,7 +2244,7 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
                                             fullResponse.includes('⚠️')
 
             // Generar sugerencias de seguimiento basadas en las fuentes
-            const suggestions = generateFollowUpSuggestions(sources, fullResponse, questionContext, queryType, queryLaw)
+            const suggestions = await generateFollowUpSuggestions(sources, fullResponse, questionContext, queryType, queryLaw)
 
             // Enviar evento de finalización con sugerencias
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -2284,7 +2325,7 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
                                     response.includes('⚠️')
 
     // Generar sugerencias de seguimiento
-    const suggestions = generateFollowUpSuggestions(sources, response, questionContext, queryType, queryLaw)
+    const suggestions = await generateFollowUpSuggestions(sources, response, questionContext, queryType, queryLaw)
 
     // Loguear interacción exitosa
     const responseTime = Date.now() - startTime
