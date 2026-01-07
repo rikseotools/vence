@@ -1,5 +1,11 @@
-import { pgTable, index, foreignKey, pgPolicy, uuid, text, jsonb, integer, timestamp, unique, check, boolean, varchar, numeric, date, uniqueIndex, interval, inet, point, serial, time, bigint, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, pgSchema, index, foreignKey, pgPolicy, uuid, text, jsonb, integer, timestamp, unique, check, boolean, varchar, numeric, date, uniqueIndex, interval, inet, point, serial, time, bigint, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
+
+// Referencia a la tabla auth.users de Supabase (schema auth)
+const authSchema = pgSchema("auth")
+export const users = authSchema.table("users", {
+  id: uuid().primaryKey().notNull(),
+})
 
 export const difficultyLevel = pgEnum("difficulty_level", ['easy', 'medium', 'hard', 'extreme'])
 
@@ -408,7 +414,7 @@ export const questionArticles = pgTable("question_articles", {
 export const convocatorias = pgTable("convocatorias", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	oposicionId: uuid("oposicion_id"),
-	"año": integer("año").notNull(),
+	anio: integer("año").notNull(),
 	fechaExamen: date("fecha_examen"),
 	tipoExamen: text("tipo_examen").default('ordinaria'),
 	boeNumero: text("boe_numero"),
@@ -417,13 +423,13 @@ export const convocatorias = pgTable("convocatorias", {
 	observaciones: text(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
-	index("idx_convocatorias_oposicion_año").using("btree", table.oposicionId.asc().nullsLast().op("int4_ops"), table."año".asc().nullsLast().op("int4_ops")),
+	index("idx_convocatorias_oposicion_año").using("btree", table.oposicionId.asc().nullsLast().op("int4_ops"), table.anio.asc().nullsLast().op("int4_ops")),
 	foreignKey({
 			columns: [table.oposicionId],
 			foreignColumns: [oposiciones.id],
 			name: "convocatorias_oposicion_id_fkey"
 		}).onDelete("cascade"),
-	unique("convocatorias_oposicion_id_año_tipo_examen_key").on(table.oposicionId, table."año", table.tipoExamen),
+	unique("convocatorias_oposicion_id_año_tipo_examen_key").on(table.oposicionId, table.anio, table.tipoExamen),
 	check("convocatorias_año_check", sql`("año" >= 2000) AND ("año" <= 2030)`),
 	check("convocatorias_tipo_examen_check", sql`tipo_examen = ANY (ARRAY['ordinaria'::text, 'extraordinaria'::text, 'estabilizacion'::text])`),
 ]);
@@ -733,7 +739,7 @@ export const userTestSessions = pgTable("user_test_sessions", {
 	totalQuestions: integer("total_questions").notNull(),
 	timeSeconds: integer("time_seconds").default(0),
 	questionsAnswered: jsonb("questions_answered").default([]),
-	failedQuestions: integer("failed_questions").array().default([RAY]),
+	failedQuestions: integer("failed_questions").array().default([]),
 	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
@@ -785,7 +791,7 @@ export const articleExamStats = pgTable("article_exam_stats", {
 	articleId: uuid("article_id"),
 	oposicionId: uuid("oposicion_id"),
 	totalAppearances: integer("total_appearances").default(0),
-	yearsAppeared: integer("years_appeared").array().default([RAY]),
+	yearsAppeared: integer("years_appeared").array().default([]),
 	firstAppearance: date("first_appearance"),
 	lastAppearance: date("last_appearance"),
 	classification: text(),
@@ -1364,8 +1370,8 @@ export const userNotificationSettings = pgTable("user_notification_settings", {
 export const userActivityPatterns = pgTable("user_activity_patterns", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id"),
-	preferredHours: integer("preferred_hours").array().default([RAY[9, 14, 2]),
-	activeDays: integer("active_days").array().default([RAY[1, 2, 3, 4, 5, 6, ]),
+	preferredHours: integer("preferred_hours").array().default([9, 14, 20]),
+	activeDays: integer("active_days").array().default([1, 2, 3, 4, 5, 6]),
 	avgSessionDuration: integer("avg_session_duration").default(15),
 	peakPerformanceTime: time("peak_performance_time"),
 	streakPattern: text("streak_pattern"),
