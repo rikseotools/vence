@@ -285,20 +285,25 @@ async function getOposicionInfo(userOposicion) {
 }
 
 // Obtener temario de la oposición
-async function getTemario(userOposicion, limit = 30) {
+async function getTemario(userOposicion, limit = 50) {
   if (!userOposicion) return null
 
   try {
     const positionType = OPOSICION_TO_POSITION_TYPE[userOposicion]
     if (!positionType) return null
 
-    const { data: topics } = await supabase
+    const { data: topics, error } = await supabase
       .from('topics')
-      .select('id, name, description, bloque, order_index')
+      .select('topic_number, title, description')
       .eq('position_type', positionType)
-      .order('bloque', { ascending: true })
-      .order('order_index', { ascending: true })
+      .eq('is_active', true)
+      .order('topic_number', { ascending: true })
       .limit(limit)
+
+    if (error) {
+      console.error('Error obteniendo temario:', error)
+      return []
+    }
 
     return topics || []
   } catch (err) {
@@ -1810,7 +1815,7 @@ Da recomendaciones específicas basadas en sus puntos débiles.
       if (oposicionToUse) {
         // Tenemos oposición (del mensaje o del perfil) - dar info directamente
         const oposicionInfo = await getOposicionInfo(oposicionToUse)
-        const temario = await getTemario(oposicionToUse, 30)
+        const temario = await getTemario(oposicionToUse, 50)
 
         // Formatear nombre de oposición para mostrar
         const oposicionNombre = oposicionToUse === 'auxiliar_administrativo_estado'
@@ -1838,18 +1843,26 @@ Da recomendaciones específicas basadas en sus puntos débiles.
         }
 
         if (temario && temario.length > 0) {
-          infoText += `\n\nTEMARIO (${temario.length} temas):`
-          // Agrupar por bloque
+          infoText += `\n\nTEMARIO OFICIAL (${temario.length} temas):`
+          // Agrupar por bloque según número de tema
           const byBloque = {}
           temario.forEach(t => {
-            const bloque = t.bloque || 'General'
+            let bloque
+            if (t.topic_number <= 16) bloque = 'I - Organización del Estado'
+            else if (t.topic_number >= 201 && t.topic_number <= 207) bloque = 'II - Derecho Administrativo'
+            else if (t.topic_number >= 301 && t.topic_number <= 307) bloque = 'III - Gestión de Personal'
+            else if (t.topic_number >= 401 && t.topic_number <= 409) bloque = 'IV - Gestión Financiera'
+            else if (t.topic_number >= 501 && t.topic_number <= 506) bloque = 'V - Informática'
+            else if (t.topic_number >= 601 && t.topic_number <= 608) bloque = 'VI - Informática (Ofimática)'
+            else bloque = 'General'
             if (!byBloque[bloque]) byBloque[bloque] = []
             byBloque[bloque].push(t)
           })
           Object.entries(byBloque).forEach(([bloque, temas]) => {
             infoText += `\n\nBloque ${bloque}:`
             temas.forEach(t => {
-              infoText += `\n  - ${t.name}`
+              infoText += `\n  - Tema ${t.topic_number}: ${t.title}`
+              if (t.description) infoText += `\n    Epígrafe: ${t.description}`
             })
           })
         }
