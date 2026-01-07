@@ -85,13 +85,26 @@ export default function AIChatWidget() {
     abortControllerRef.current = new AbortController()
 
     try {
+      // Limpiar el contexto de pregunta para evitar referencias circulares de React
+      const cleanQuestionContext = currentQuestionContext ? {
+        id: currentQuestionContext.id,
+        questionText: currentQuestionContext.questionText,
+        options: currentQuestionContext.options,
+        correctAnswer: currentQuestionContext.correctAnswer,
+        explanation: currentQuestionContext.explanation,
+        lawName: currentQuestionContext.lawName,
+        articleNumber: currentQuestionContext.articleNumber,
+        difficulty: currentQuestionContext.difficulty,
+        source: currentQuestionContext.source
+      } : null
+
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage,
-          history: messages.slice(-6),
-          questionContext: currentQuestionContext,
+          history: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
+          questionContext: cleanQuestionContext,
           userOposicion: userOposicion?.id || null,
           stream: true,
           userId: user?.id || null,
