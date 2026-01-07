@@ -203,7 +203,8 @@ function isUserStatsQuery(message) {
 // Detectar si pregunta por información de la oposición (plazas, fechas, temario, etc.)
 function isOposicionInfoQuery(message) {
   const msgLower = message.toLowerCase()
-  return /cu[aá]ntas?\s*plazas|n[uú]mero.*plazas|plazas\s*(hay|son|convoca)|cu[aá]ndo.*examen|fecha.*examen|cu[aá]ndo.*inscri|plazo.*inscri|requisitos|t[ií]tulo.*necesit|qu[eé].*necesito|temario|cu[aá]ntos?\s*temas|qu[eé]\s*temas|bloques|sueldo|salario|cu[aá]nto\s*(pagan|gana|cobr)|convocatoria/i.test(msgLower)
+  // Detecta: "cuando es el examen", "examen cuando es", "fecha examen", etc.
+  return /cu[aá]ntas?\s*plazas|n[uú]mero.*plazas|plazas\s*(hay|son|convoca)|cu[aá]ndo.*examen|examen.*cu[aá]ndo|fecha.*examen|examen.*fecha|cu[aá]ndo.*inscri|plazo.*inscri|requisitos|t[ií]tulo.*necesit|qu[eé].*necesito|temario|cu[aá]ntos?\s*temas|qu[eé]\s*temas|bloques|sueldo|salario|cu[aá]nto\s*(pagan|gana|cobr)|convocatoria/i.test(msgLower)
 }
 
 // Obtener información de la oposición del usuario
