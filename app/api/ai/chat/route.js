@@ -197,9 +197,13 @@ function isExamStatsQuery(message) {
   // - "qué cae/preguntas caen/aparece en examen"
   // - "estadísticas de examen"
   // - "más preguntado"
-  // - "que preguntas caen en el examen" (nuevo patrón)
-  // - "que cae en el examen"
-  return /art[ií]culos?.*(ca[ií]do|caen|aparec|pregunta|examen|oficial)|examen.*oficial.*(art|pregunta)|qu[eé].*preguntas?.*(cae|caen|aparec).*examen|qu[eé].*(cae|caen).*examen|estad[ií]stica.*examen|m[aá]s preguntad|preguntas?.*caen.*examen|(cae|caen).*en.*examen/i.test(msgLower)
+  // - "qué preguntas suelen caer" (sin mencionar examen explícitamente)
+  // - "qué tipo de preguntas caen/suelen"
+  // - "qué suele caer de la ley X"
+  return /art[ií]culos?.*(ca[ií]do|caen|aparec|pregunta|examen|oficial)|examen.*oficial.*(art|pregunta)|qu[eé].*preguntas?.*(cae|caen|aparec|suele)/i.test(msgLower) ||
+    /qu[eé].*(cae|caen|suele).*examen|estad[ií]stica.*examen|m[aá]s preguntad|preguntas?.*caen.*examen|(cae|caen).*en.*examen/i.test(msgLower) ||
+    /qu[eé]\s*(tipo|clase)\s*(de)?\s*preguntas/i.test(msgLower) ||
+    /preguntas?\s*suele|suele.*caer/i.test(msgLower)
 }
 
 // Detectar si el usuario menciona "examen" de forma ambigua (sin contexto claro)
@@ -218,7 +222,15 @@ function isAmbiguousExamQuery(message) {
 // Detectar si el usuario pregunta por su propio progreso/estadísticas
 function isUserStatsQuery(message) {
   const msgLower = message.toLowerCase()
-  return /mi[s]?\s*(progreso|estad[ií]stica|resultado|fallo|error|acierto|rendimiento|punto.*d[eé]bil|[aá]rea.*d[eé]bil)|qu[eé].*(he\s*fallado|fallo\s*m[aá]s|me\s*cuesta)|d[oó]nde\s*(fallo|tengo.*problema)|c[oó]mo\s*voy|en\s*qu[eé]\s*debo\s*(mejorar|estudiar|repasar)/i.test(msgLower)
+  // Patrones que indican pregunta sobre progreso personal:
+  // - "mis fallos/errores/áreas débiles"
+  // - "qué he fallado / dónde fallo"
+  // - "cómo voy"
+  // - "en qué debo mejorar/estudiar/repasar"
+  // - "qué artículos/temas debería repasar"
+  // - "debería repasar urgentemente"
+  // - "necesito mejorar/repasar"
+  return /mi[s]?\s*(progreso|estad[ií]stica|resultado|fallo|error|acierto|rendimiento|punto.*d[eé]bil|[aá]rea.*d[eé]bil)|qu[eé].*(he\s*fallado|fallo\s*m[aá]s|me\s*cuesta)|d[oó]nde\s*(fallo|tengo.*problema)|c[oó]mo\s*voy|en\s*qu[eé]\s*debo\s*(mejorar|estudiar|repasar)|qu[eé]\s*(art[ií]culos?|temas?|leyes?|partes?)\s*(deber[ií]a|tengo\s*que|necesito)\s*repasar|(deber[ií]a|necesito|tengo\s*que)\s*repasar\s*(urgente|m[aá]s)?|repasar\s*urgente/i.test(msgLower)
 }
 
 // Detectar si pregunta por información de la oposición (plazas, fechas, temario, etc.)
@@ -1377,22 +1389,22 @@ function generateFollowUpSuggestions(sources, response, questionContext, queryTy
     }
   }
 
-  // Sugerencias específicas para consultas de exámenes
-  if (queryType === 'exam_stats') {
+  // Sugerencias específicas para consultas de exámenes (solo si hay ley mencionada)
+  if (queryType === 'exam_stats' && mentionedLaw) {
     return {
       offerTest: false,
       laws: lawsInSources,
       followUpQuestions: [
         {
-          text: '¿Cómo voy yo en esos artículos?',
+          text: `¿Cómo voy yo en ${mentionedLaw}?`,
           label: 'mi_progreso_articulos'
         },
         {
-          text: '¿Cuáles de esos debería repasar?',
+          text: `¿Qué artículos de ${mentionedLaw} debería repasar?`,
           label: 'que_repasar_examen'
         },
         {
-          text: mentionedLaw ? `Prepárame un test de ${mentionedLaw}` : 'Prepárame un test con esos artículos',
+          text: `Prepárame un test de ${mentionedLaw}`,
           label: 'test_articulos_examen'
         }
       ]
@@ -1402,20 +1414,12 @@ function generateFollowUpSuggestions(sources, response, questionContext, queryTy
   // Sugerencias específicas para consultas de progreso del usuario
   if (queryType === 'user_stats') {
     return {
-      offerTest: false,
+      offerTest: lawsInSources.length > 0, // Ofrecer test si hay leyes en los puntos débiles
       laws: lawsInSources,
       followUpQuestions: [
         {
           text: '¿Qué artículos caen más en examen de esas leyes?',
           label: 'articulos_examen_debiles'
-        },
-        {
-          text: 'Dame un plan de estudio para mejorar',
-          label: 'plan_estudio'
-        },
-        {
-          text: 'Prepárame un test con mis puntos débiles',
-          label: 'test_puntos_debiles'
         }
       ]
     }
