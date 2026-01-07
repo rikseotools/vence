@@ -1,5 +1,5 @@
 // lib/api/chat/queries.ts - Queries tipadas para el chat AI
-import { db } from '@/db/client'
+import { getDb } from '@/db/client'
 import {
   topics,
   topicScope,
@@ -38,7 +38,7 @@ export async function getTemario(
   const positionType = OPOSICION_TO_POSITION_TYPE[userOposicion]
   if (!positionType) return []
 
-  const result = await db
+  const result = await getDb()
     .select({
       topicNumber: topics.topicNumber,
       title: topics.title,
@@ -65,7 +65,7 @@ export async function getOposicionLawIds(userOposicion: string | null): Promise<
   if (!positionType) return []
 
   // Obtener todos los topics de esta oposición
-  const topicsResult = await db
+  const topicsResult = await getDb()
     .select({ id: topics.id })
     .from(topics)
     .where(eq(topics.positionType, positionType))
@@ -75,7 +75,7 @@ export async function getOposicionLawIds(userOposicion: string | null): Promise<
   const topicIds = topicsResult.map(t => t.id)
 
   // Obtener las leyes de estos topics desde topic_scope
-  const scopesResult = await db
+  const scopesResult = await getDb()
     .select({ lawId: topicScope.lawId })
     .from(topicScope)
     .where(inArray(topicScope.topicId, topicIds))
@@ -121,7 +121,7 @@ export async function getOposicionInfo(userOposicion: string): Promise<Oposicion
   // Buscar por nombre similar
   const searchTerm = userOposicion.includes('auxiliar') ? 'Auxiliar' : 'Administrativo'
 
-  const result = await db
+  const result = await getDb()
     .select({
       id: oposiciones.id,
       nombre: oposiciones.nombre,
@@ -151,7 +151,7 @@ export async function getOposicionInfo(userOposicion: string): Promise<Oposicion
 // API KEY
 // ============================================
 export async function getOpenAIKey(): Promise<string | null> {
-  const result = await db
+  const result = await getDb()
     .select({ apiKeyEncrypted: aiApiConfig.apiKeyEncrypted })
     .from(aiApiConfig)
     .where(and(
@@ -169,7 +169,7 @@ export async function getOpenAIKey(): Promise<string | null> {
 // OPOSICIÓN DEL USUARIO
 // ============================================
 export async function getUserOposicion(userId: string): Promise<string | null> {
-  const result = await db
+  const result = await getDb()
     .select({ targetOposicion: userProfiles.targetOposicion })
     .from(userProfiles)
     .where(eq(userProfiles.id, userId))
@@ -194,7 +194,7 @@ export async function getExamStats(
   examPosition: string | null = null
 ): Promise<ExamArticleStat[]> {
   // Query base con join a articles y laws
-  let query = db
+  let query = getDb()
     .select({
       articleNumber: articles.articleNumber,
       lawShortName: laws.shortName,
@@ -267,7 +267,7 @@ export async function getUserStats(
   limit = 10
 ): Promise<UserArticleStat[]> {
   // Query con join a questions, articles y laws
-  let query = db
+  let query = getDb()
     .select({
       articleNumber: articles.articleNumber,
       lawShortName: laws.shortName,
