@@ -553,7 +553,7 @@ export default function AIChatWidget() {
               </svg>
             </div>
             <div>
-              <h3 className="text-white font-semibold text-sm">Nila AI</h3>
+              <h3 className="text-white font-semibold text-sm">Vence AI</h3>
               {currentQuestionContext ? (
                 <p className="text-green-200 text-xs flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse"></span>
@@ -633,7 +633,7 @@ export default function AIChatWidget() {
                 {/* Texto de bienvenida */}
                 <div className="flex-1 pt-1">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Hola{user?.user_metadata?.name ? <span className="text-blue-500 dark:text-blue-400"> {user.user_metadata.name.split(' ')[0]}</span> : ''}, soy <span className="font-semibold text-purple-600 dark:text-purple-400">Nila AI</span>
+                    Hola{user?.user_metadata?.name ? <span className="text-blue-500 dark:text-blue-400"> {user.user_metadata.name.split(' ')[0]}</span> : ''}, soy <span className="font-semibold text-purple-600 dark:text-purple-400">Vence AI</span>
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {currentQuestionContext

@@ -388,11 +388,11 @@ export default function HeaderES() {
                   </Link>
                 )}
 
-                {/* Botón de Nila AI - Móvil */}
+                {/* Botón de Vence AI - Móvil */}
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('openAIChat', { detail: {} }))}
                   className="flex items-center gap-1 px-2 py-1 bg-blue-900 text-white rounded-lg text-xs font-semibold shadow-sm"
-                  title="Abrir Nila AI"
+                  title="Abrir Vence AI"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
@@ -466,12 +466,12 @@ export default function HeaderES() {
                 </Link>
               )}
 
-              {/* Botón de Nila AI - Desktop */}
+              {/* Botón de Vence AI - Desktop */}
               {user && (
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('openAIChat', { detail: {} }))}
                   className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-900 hover:bg-blue-950 text-white font-semibold shadow-md hover:shadow-lg transition-all"
-                  title="Abrir Nila AI"
+                  title="Abrir Vence AI"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
