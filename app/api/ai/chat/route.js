@@ -1490,8 +1490,10 @@ async function generateFollowUpSuggestions(sources, response, questionContext, q
 
 export async function POST(request) {
   const startTime = Date.now()
+  console.log('🚀 [CHAT API] Iniciando request...')
 
   try {
+    console.log('🚀 [CHAT API] Parseando JSON...')
     const {
       message,
       history = [],
@@ -1502,6 +1504,7 @@ export async function POST(request) {
       suggestionUsed = null,
       isPremium = false
     } = await request.json()
+    console.log('🚀 [CHAT API] JSON parseado, mensaje:', message?.substring(0, 50))
 
     if (!message || typeof message !== 'string') {
       return Response.json({
@@ -1541,7 +1544,9 @@ export async function POST(request) {
     }
 
     // Obtener API key
+    console.log('🚀 [CHAT API] Obteniendo API key...')
     const apiKey = await getOpenAIKeyTyped()
+    console.log('🚀 [CHAT API] API key obtenida:', apiKey ? 'OK' : 'NULL')
     if (!apiKey) {
       return Response.json({
         success: false,
@@ -1549,7 +1554,9 @@ export async function POST(request) {
       }, { status: 503 })
     }
 
+    console.log('🚀 [CHAT API] Creando cliente OpenAI...')
     const openai = new OpenAI({ apiKey })
+    console.log('🚀 [CHAT API] Cliente OpenAI creado')
 
     // Obtener leyes prioritarias de la oposición del usuario
     const priorityLawIds = await getOposicionLawIdsTyped(userOposicionFinal)
@@ -2358,7 +2365,9 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
     })
 
   } catch (error) {
-    console.error('Error en chat IA:', error)
+    console.error('❌ [CHAT API] Error en chat IA:', error)
+    console.error('❌ [CHAT API] Stack:', error.stack)
+    console.error('❌ [CHAT API] Message:', error.message)
 
     // Loguear error general
     const responseTime = Date.now() - startTime
