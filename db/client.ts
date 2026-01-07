@@ -3,39 +3,54 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import * as schema from './schema'
 
-console.log('🔌 [Drizzle] Inicializando cliente...')
-
 // Singleton para evitar múltiples conexiones en desarrollo
 const globalForDb = globalThis as unknown as {
   conn: postgres.Sql | undefined
+  db: ReturnType<typeof drizzle<typeof schema>> | undefined
 }
 
-const connectionString = process.env.DATABASE_URL
+// Función para obtener el cliente de forma lazy (solo cuando se necesita)
+function getDb() {
+  // Si ya existe el cliente, devolverlo
+  if (globalForDb.db) {
+    return globalForDb.db
+  }
 
-if (!connectionString) {
-  console.error('❌ [Drizzle] DATABASE_URL no está definida!')
-  throw new Error('DATABASE_URL environment variable is not set')
+  const connectionString = process.env.DATABASE_URL
+
+  if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is not set')
+  }
+
+  // Crear conexión postgres
+  const conn = globalForDb.conn ?? postgres(connectionString, {
+    max: 1, // Limitar conexiones en serverless
+    idle_timeout: 20,
+    connect_timeout: 10,
+  })
+
+  if (process.env.NODE_ENV !== 'production') {
+    globalForDb.conn = conn
+  }
+
+  // Crear cliente Drizzle
+  const db = drizzle(conn, { schema })
+
+  // Cache en desarrollo
+  if (process.env.NODE_ENV !== 'production') {
+    globalForDb.db = db
+  }
+
+  return db
 }
 
-console.log('🔌 [Drizzle] DATABASE_URL encontrada, creando conexión...')
-
-// Usar conexión existente en desarrollo, crear nueva en producción
-const conn = globalForDb.conn ?? postgres(connectionString, {
-  max: 1, // Limitar conexiones en serverless
-  idle_timeout: 20,
-  connect_timeout: 10,
+// Exportar como proxy que inicializa lazy
+export const db = new Proxy({} as ReturnType<typeof drizzle<typeof schema>>, {
+  get(_, prop) {
+    const realDb = getDb()
+    return (realDb as any)[prop]
+  }
 })
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForDb.conn = conn
-}
-
-console.log('🔌 [Drizzle] Conexión postgres creada, inicializando Drizzle ORM...')
-
-// Cliente Drizzle con schema para relaciones y tipos
-export const db = drizzle(conn, { schema })
-
-console.log('✅ [Drizzle] Cliente inicializado correctamente')
 
 // Re-exportar tipos útiles
 export type DbClient = typeof db
