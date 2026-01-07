@@ -58,10 +58,10 @@ export default function AIChatWidget() {
     }
   }, [isOpen])
 
-  const sendMessage = useCallback(async (suggestionLabel = null) => {
-    if (!input.trim() || isLoading || isStreaming) return
+  const sendMessage = useCallback(async (messageOverride = null, suggestionLabel = null) => {
+    const userMessage = (messageOverride || input).trim()
+    if (!userMessage || isLoading || isStreaming) return
 
-    const userMessage = input.trim()
     const currentSuggestion = suggestionLabel || suggestionUsed
     setInput('')
     setError(null)
@@ -85,31 +85,56 @@ export default function AIChatWidget() {
     abortControllerRef.current = new AbortController()
 
     try {
-      // Limpiar el contexto de pregunta para evitar referencias circulares de React
-      const cleanQuestionContext = currentQuestionContext ? {
-        id: currentQuestionContext.id,
-        questionText: currentQuestionContext.questionText,
-        options: currentQuestionContext.options,
-        correctAnswer: currentQuestionContext.correctAnswer,
-        explanation: currentQuestionContext.explanation,
-        lawName: currentQuestionContext.lawName,
-        articleNumber: currentQuestionContext.articleNumber,
-        difficulty: currentQuestionContext.difficulty,
-        source: currentQuestionContext.source
-      } : null
+      // Limpiar el contexto de pregunta - extraer SOLO valores primitivos
+      let cleanQuestionContext = null
+      if (currentQuestionContext) {
+        try {
+          cleanQuestionContext = {
+            id: currentQuestionContext.id ? String(currentQuestionContext.id) : null,
+            questionText: currentQuestionContext.questionText ? String(currentQuestionContext.questionText) : null,
+            options: currentQuestionContext.options ? {
+              a: currentQuestionContext.options.a ? String(currentQuestionContext.options.a) : '',
+              b: currentQuestionContext.options.b ? String(currentQuestionContext.options.b) : '',
+              c: currentQuestionContext.options.c ? String(currentQuestionContext.options.c) : '',
+              d: currentQuestionContext.options.d ? String(currentQuestionContext.options.d) : ''
+            } : null,
+            correctAnswer: currentQuestionContext.correctAnswer ? String(currentQuestionContext.correctAnswer) : null,
+            explanation: currentQuestionContext.explanation ? String(currentQuestionContext.explanation) : null,
+            lawName: currentQuestionContext.lawName ? String(currentQuestionContext.lawName) : null,
+            articleNumber: currentQuestionContext.articleNumber ? String(currentQuestionContext.articleNumber) : null,
+            difficulty: currentQuestionContext.difficulty ? String(currentQuestionContext.difficulty) : null,
+            source: currentQuestionContext.source ? String(currentQuestionContext.source) : null
+          }
+        } catch (e) {
+          console.error('❌ Error limpiando questionContext:', e)
+          cleanQuestionContext = null
+        }
+      }
+
+      // Limpiar historial de mensajes
+      const cleanHistory = messages.slice(-6).map(m => ({
+        role: String(m.role || 'user'),
+        content: String(m.content || '')
+      }))
+
+      // Construir body de forma segura
+      const requestBody = {
+        message: String(userMessage),
+        history: cleanHistory,
+        questionContext: cleanQuestionContext,
+        userOposicion: userOposicion?.id ? String(userOposicion.id) : null,
+        stream: true,
+        userId: user?.id ? String(user.id) : null,
+        suggestionUsed: currentSuggestion ? String(currentSuggestion) : null
+      }
+
+      // Serializar body
+      const bodyString = JSON.stringify(requestBody)
 
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage,
-          history: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
-          questionContext: cleanQuestionContext,
-          userOposicion: userOposicion?.id || null,
-          stream: true,
-          userId: user?.id || null,
-          suggestionUsed: currentSuggestion
-        }),
+        body: bodyString,
         signal: abortControllerRef.current.signal
       })
 
@@ -219,11 +244,10 @@ export default function AIChatWidget() {
     }
   }, [input, isLoading, isStreaming, messages, currentQuestionContext, userOposicion, user, suggestionUsed])
 
-  // Helper para usar sugerencias predefinidas (guarda la etiqueta para tracking)
+  // Helper para usar sugerencias predefinidas - envía directamente
   const useSuggestion = useCallback((text, label) => {
-    setInput(text)
-    setSuggestionUsed(label)
-  }, [])
+    sendMessage(text, label)
+  }, [sendMessage])
 
   // Enviar feedback (pulgar arriba/abajo)
   const sendFeedback = useCallback(async (logId, feedback, msgIndex) => {
@@ -337,7 +361,7 @@ export default function AIChatWidget() {
       {/* Botón flotante con IA */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-4 right-4 z-50 px-4 h-12 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+        className={`fixed bottom-24 right-4 z-50 px-4 h-12 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${
           isOpen
             ? 'bg-gray-700 hover:bg-gray-800'
             : 'bg-blue-900 hover:bg-blue-950 hover:scale-105'
@@ -363,7 +387,7 @@ export default function AIChatWidget() {
 
       {/* Panel de chat */}
       <div
-        className={`fixed bottom-20 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl transition-all duration-300 ${
+        className={`fixed bottom-28 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl transition-all duration-300 ${
           isOpen
             ? 'opacity-100 translate-y-0 pointer-events-auto'
             : 'opacity-0 translate-y-4 pointer-events-none'
@@ -555,8 +579,8 @@ export default function AIChatWidget() {
                       </p>
                     </div>
                   )}
-                  {/* Oferta de test */}
-                  {msg.suggestions?.offerTest && !msg.isStreaming && testFlowState !== 'selecting_laws' && (
+                  {/* Oferta de test - NO mostrar si ya está en un test */}
+                  {msg.suggestions?.offerTest && !msg.isStreaming && testFlowState !== 'selecting_laws' && !currentQuestionContext && (
                     <div className="mt-3">
                       <button
                         onClick={() => handleOfferTestClick(msg.suggestions.laws)}
@@ -695,7 +719,7 @@ export default function AIChatWidget() {
               className="flex-1 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
             />
             <button
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
               disabled={!input.trim() || isLoading || isStreaming}
               className="w-10 h-10 bg-blue-900 hover:bg-blue-950 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-full flex items-center justify-center transition"
             >

@@ -410,7 +410,31 @@ export async function POST(request) {
     let questionContextText = ''
     if (questionContext) {
       const options = questionContext.options
-      const correctLetter = questionContext.correctAnswer?.toUpperCase() || '?'
+      // Obtener letra correcta (puede venir como 1,2,3,4 o a,b,c,d o A,B,C,D)
+      let correctLetter = '?'
+      let correctText = ''
+      const rawCorrect = questionContext.correctAnswer
+
+      if (rawCorrect !== null && rawCorrect !== undefined) {
+        // IMPORTANTE: La BD usa 0-indexed (0=A, 1=B, 2=C, 3=D)
+        // Pero el QuestionContext ya convierte a letra, así que puede llegar como 'A', 'B', 'C', 'D'
+        const num = parseInt(rawCorrect, 10)
+        if (!isNaN(num) && num >= 0 && num <= 3) {
+          // Es número 0-indexed
+          correctLetter = ['A', 'B', 'C', 'D'][num]
+        } else if (typeof rawCorrect === 'string' && /^[a-dA-D]$/.test(rawCorrect)) {
+          // Ya es letra
+          correctLetter = rawCorrect.toUpperCase()
+        } else {
+          correctLetter = String(rawCorrect).toUpperCase()
+        }
+
+        // Obtener el texto de la opción correcta
+        const optionKey = correctLetter.toLowerCase()
+        correctText = options?.[optionKey] || ''
+      }
+
+
       questionContextText = `
 
 PREGUNTA DE TEST ACTUAL:
@@ -424,17 +448,17 @@ B) ${options?.b || 'Sin opción'}
 C) ${options?.c || 'Sin opción'}
 D) ${options?.d || 'Sin opción'}
 
-Respuesta correcta: ${correctLetter}
-${questionContext.explanation ? `Explicación: ${questionContext.explanation}` : ''}
+⭐ RESPUESTA CORRECTA: ${correctLetter}) ${correctText}
+${questionContext.explanation ? `Explicación oficial: ${questionContext.explanation}` : ''}
 ${questionContext.lawName ? `Ley: ${questionContext.lawName}` : ''}
 ${questionContext.articleNumber ? `Artículo: ${questionContext.articleNumber}` : ''}
 
 INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
-- Si el usuario pregunta sobre esta pregunta, explica por qué la respuesta correcta es "${correctLetter}"
-- Si detectas un posible ERROR en la pregunta (respuesta incorrecta, texto incorrecto, artículo mal citado), indica claramente:
-  "⚠️ POSIBLE ERROR DETECTADO: [descripción del error]"
+- IMPORTANTE: La respuesta correcta es "${correctLetter}" (${correctText}). NO cambies esta respuesta.
+- Cuando expliques la pregunta, di siempre "La respuesta correcta es ${correctLetter}) ${correctText}"
+- Explica POR QUÉ esta respuesta es correcta basándote en la legislación
+- Si detectas un posible ERROR en la pregunta, indícalo con "⚠️ POSIBLE ERROR DETECTADO:"
 - Verifica la información con los artículos de la base de datos
-- Si la pregunta cita un artículo, busca ese artículo en el contexto para verificar
 `
     }
 

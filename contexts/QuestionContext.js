@@ -7,6 +7,26 @@ const QuestionContext = createContext(null)
 export function QuestionProvider({ children }) {
   const [currentQuestionContext, setCurrentQuestionContext] = useState(null)
 
+  // Convertir respuesta correcta a letra (A, B, C, D)
+  // IMPORTANTE: La base de datos usa 0-indexed (0=A, 1=B, 2=C, 3=D)
+  const formatCorrectAnswer = (correct) => {
+    if (correct === null || correct === undefined) return null
+
+    // Si ya es una letra, devolverla en mayúscula
+    if (typeof correct === 'string' && /^[a-dA-D]$/.test(correct)) {
+      return correct.toUpperCase()
+    }
+
+    // Si es un número, convertir usando 0-indexed: 0->A, 1->B, 2->C, 3->D
+    const num = parseInt(correct, 10)
+    if (!isNaN(num) && num >= 0 && num <= 3) {
+      const letters = ['A', 'B', 'C', 'D']
+      return letters[num]
+    }
+
+    return String(correct).toUpperCase()
+  }
+
   // Establecer contexto de pregunta actual (desde TestLayout)
   const setQuestionContext = useCallback((questionData) => {
     if (questionData) {
@@ -19,7 +39,7 @@ export function QuestionProvider({ children }) {
           c: questionData.option_c,
           d: questionData.option_d
         },
-        correctAnswer: questionData.correct,
+        correctAnswer: formatCorrectAnswer(questionData.correct),
         explanation: questionData.explanation,
         lawName: questionData.law?.short_name || questionData.law?.name || null,
         articleNumber: questionData.article_number || null,
