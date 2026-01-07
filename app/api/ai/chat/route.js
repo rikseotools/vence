@@ -401,6 +401,115 @@ async function getExamStats(lawShortName = null, limit = 15, examPosition = null
   }
 }
 
+// 🆕 Obtener ejemplos de preguntas oficiales reales de una ley
+async function getOfficialQuestionExamples(lawShortName, limit = 8, examPosition = null) {
+  try {
+    // Primero obtener el ID de la ley
+    const { data: law, error: lawError } = await supabase
+      .from('laws')
+      .select('id, short_name, name')
+      .eq('short_name', lawShortName)
+      .single()
+
+    if (lawError || !law) {
+      console.log(`⚠️ Ley no encontrada para ejemplos: ${lawShortName}`)
+      return []
+    }
+
+    // Buscar preguntas oficiales de esta ley
+    let query = supabase
+      .from('questions')
+      .select(`
+        id,
+        question_text,
+        article_number,
+        option_a,
+        option_b,
+        option_c,
+        option_d,
+        correct_answer,
+        explanation,
+        exam_year,
+        exam_position
+      `)
+      .eq('law_id', law.id)
+      .eq('is_active', true)
+      .eq('is_official_exam', true)
+      .not('question_text', 'is', null)
+      .limit(limit * 2) // Pedir más para variedad
+
+    // Filtrar por oposición si se especifica
+    if (examPosition) {
+      query = query.eq('exam_position', examPosition)
+    }
+
+    const { data: questions, error } = await query
+
+    if (error || !questions?.length) {
+      console.log(`No se encontraron preguntas oficiales para ${lawShortName}:`, error?.message)
+      return []
+    }
+
+    // Seleccionar una muestra variada (por diferentes artículos si es posible)
+    const byArticle = {}
+    questions.forEach(q => {
+      const art = q.article_number || 'general'
+      if (!byArticle[art]) byArticle[art] = []
+      byArticle[art].push(q)
+    })
+
+    // Tomar una pregunta de cada artículo primero, luego completar si hace falta
+    const selected = []
+    const articles = Object.keys(byArticle).sort(() => Math.random() - 0.5)
+
+    for (const art of articles) {
+      if (selected.length >= limit) break
+      const randomQ = byArticle[art][Math.floor(Math.random() * byArticle[art].length)]
+      selected.push(randomQ)
+    }
+
+    console.log(`📝 Encontradas ${selected.length} preguntas oficiales de ejemplo para ${lawShortName}`)
+    return selected
+
+  } catch (err) {
+    console.error('Error obteniendo ejemplos de preguntas oficiales:', err)
+    return []
+  }
+}
+
+// 🆕 Obtener contenido de artículos específicos (para explicar de qué tratan)
+async function getArticleContents(lawShortName, articleNumbers, limit = 10) {
+  if (!lawShortName || !articleNumbers?.length) return []
+
+  try {
+    // Primero obtener el ID de la ley
+    const { data: law } = await supabase
+      .from('laws')
+      .select('id')
+      .eq('short_name', lawShortName)
+      .single()
+
+    if (!law) return []
+
+    // Buscar los artículos
+    const { data: articles, error } = await supabase
+      .from('articles')
+      .select('article_number, title, content')
+      .eq('law_id', law.id)
+      .eq('is_active', true)
+      .in('article_number', articleNumbers.slice(0, limit))
+
+    if (error || !articles) return []
+
+    console.log(`📖 Obtenido contenido de ${articles.length} artículos de ${lawShortName}`)
+    return articles
+
+  } catch (err) {
+    console.error('Error obteniendo contenido de artículos:', err)
+    return []
+  }
+}
+
 // Obtener estadísticas del usuario (artículos fallados, áreas débiles)
 async function getUserStats(userId, lawShortName = null, limit = 10) {
   if (!userId) return null
@@ -1112,6 +1221,19 @@ NO inventes datos. PREGUNTA PRIMERO qué quiere el usuario.
         // Tiene filtro, buscar datos
         const stats = await getExamStats(lawForStats, 15, oposicionForStats)
 
+        // 🆕 Obtener ejemplos de preguntas oficiales REALES si hay ley específica
+        let questionExamples = []
+        if (lawForStats) {
+          questionExamples = await getOfficialQuestionExamples(lawForStats, 6, oposicionForStats)
+        }
+
+        // 🆕 Obtener contenido de los artículos más preguntados
+        let articleContents = []
+        if (lawForStats && stats?.topArticles?.length > 0) {
+          const topArticleNumbers = stats.topArticles.slice(0, 8).map(a => a.article)
+          articleContents = await getArticleContents(lawForStats, topArticleNumbers, 8)
+        }
+
         if (stats && stats.topArticles.length > 0) {
           // Determinar si la oposición vino del perfil o del mensaje
           const oposicionFromProfile = !detectOposicion(message) && userOposicion
@@ -1154,21 +1276,66 @@ Ejemplo: "Como estás preparando ${oposicionName}, te muestro los artículos má
 `
             : ''
 
+          // 🆕 Formatear ejemplos de preguntas reales
+          let questionExamplesText = ''
+          if (questionExamples.length > 0) {
+            const formatQuestion = (q, i) => {
+              let text = `\n--- EJEMPLO ${i + 1} ---`
+              if (q.article_number) text += ` (Art. ${q.article_number})`
+              if (q.exam_year) text += ` [Examen ${q.exam_year}]`
+              text += `\nPregunta: ${q.question_text?.substring(0, 200)}${q.question_text?.length > 200 ? '...' : ''}`
+              text += `\nOpciones: A) ${q.option_a?.substring(0, 50)}... B) ${q.option_b?.substring(0, 50)}...`
+              text += `\nRespuesta correcta: ${q.correct_answer}`
+              return text
+            }
+
+            questionExamplesText = `
+
+EJEMPLOS DE PREGUNTAS OFICIALES REALES DE ${lawForStats}:
+(Estas son preguntas que han caído en exámenes oficiales anteriores)
+${questionExamples.map(formatQuestion).join('\n')}
+`
+          }
+
+          // 🆕 Formatear contenido de artículos top
+          let articleContentsText = ''
+          if (articleContents.length > 0) {
+            const formatArticleContent = (art) => {
+              const title = art.title ? ` - ${art.title}` : ''
+              const content = art.content?.substring(0, 300) || 'Sin contenido'
+              return `• Art. ${art.article_number}${title}: ${content}${art.content?.length > 300 ? '...' : ''}`
+            }
+            articleContentsText = `
+
+CONTENIDO DE LOS ARTÍCULOS MÁS PREGUNTADOS (de qué tratan):
+${articleContents.map(formatArticleContent).join('\n\n')}
+`
+          }
+
           examStatsContext = `
 
 DATOS DE EXÁMENES OFICIALES EN LA BASE DE DATOS:
 ${filterText}
 Total de preguntas de exámenes oficiales: ${stats.totalOfficialQuestions}
 
-ARTÍCULOS MÁS PREGUNTADOS EN EXÁMENES OFICIALES:
+ARTÍCULOS MÁS PREGUNTADOS EN EXÁMENES OFICIALES (con frecuencia real):
 ${stats.topArticles.map(formatArticle).join('\n')}
+${articleContentsText}
+${questionExamplesText}
 ${profileInstruction}
-IMPORTANTE: Estos datos son REALES de nuestra base de datos de preguntas de exámenes oficiales.
+TODOS ESTOS DATOS SON REALES de nuestra base de datos.
 - "Aux.C2" = Auxiliar Administrativo del Estado (C2)
 - "Admin.C1" = Administrativo del Estado (C1)
-Responde con esta información de forma clara y útil. Puedes sugerir que el usuario pregunte sobre su progreso personal en estos artículos o que prepare un test con estos temas.
+
+CÓMO RESPONDER:
+1. Di que has consultado la base de datos de exámenes oficiales reales
+2. Menciona el total de preguntas oficiales encontradas
+3. Lista los artículos MÁS PREGUNTADOS con su frecuencia EXACTA (copia los números del contexto arriba)
+4. Explica brevemente DE QUÉ TRATA cada artículo top (usa el contenido que te he dado)
+5. Analiza qué TIPO de conceptos preguntan basándote en los ejemplos reales
+6. Sugiere preparar un test con esos artículos
 `
-          console.log(`📊 Encontradas ${stats.totalOfficialQuestions} preguntas oficiales, top ${stats.topArticles.length} artículos`)
+          console.log(`📊 Encontradas ${stats.totalOfficialQuestions} preguntas oficiales, top ${stats.topArticles.length} artículos, ${questionExamples.length} ejemplos`)
         }
       }
     }
