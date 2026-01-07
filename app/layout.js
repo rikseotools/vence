@@ -4,6 +4,7 @@ import GoogleAnalytics from '../components/GoogleAnalytics'
 import { AuthProvider } from '../contexts/AuthContext'
 import { QuestionProvider } from '../contexts/QuestionContext'
 import AIChatWidget from '../components/AIChatWidget'
+import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
 
 export default function SpanishLayout({ children }) {
   return (
@@ -20,6 +21,7 @@ export default function SpanishLayout({ children }) {
               </ClientLayoutContent>
             </div>
             <AIChatWidget />
+            <GoogleOneTapWrapper />
           </QuestionProvider>
         </AuthProvider>
         <GoogleAnalytics />
