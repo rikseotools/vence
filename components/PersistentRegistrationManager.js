@@ -66,45 +66,50 @@ export default function PersistentRegistrationManager({
     return () => subscription.unsubscribe()
   }, [])
 
-  // 🎯 MODAL AL INICIAR TEST
+  // 🎯 MODAL AL INICIAR TEST (después de 10 segundos)
   useEffect(() => {
     if (!enabled || user || showModal || attempt !== 1 || !totalQuestions || userRejected) return
-    
+
     console.log('🎯 Trigger: Test iniciado sin usuario')
     const timer = setTimeout(() => {
       setShowModal(true)
-    }, 15000)
-    
+    }, 10000) // Reducido de 15s a 10s
+
     return () => clearTimeout(timer)
   }, [enabled, user, showModal, attempt, totalQuestions, userRejected])
 
-  // 🎯 TRIGGERS CADA 3 PREGUNTAS RESPONDIDAS  
+  // 🎯 TRIGGERS PROGRESIVOS: cada 2 preguntas, luego cada pregunta
   useEffect(() => {
-    console.log('🔍 DEBUG Trigger:', { 
-      enabled, 
-      user: !!user, 
-      showResult, 
-      userRejected, 
-      showModal, 
+    console.log('🔍 DEBUG Trigger:', {
+      enabled,
+      user: !!user,
+      showResult,
+      userRejected,
+      showModal,
       currentQuestion,
-      attempt 
+      attempt
     })
-    
+
     if (!enabled || user || !showResult || userRejected || showModal) return
-    
+
+    const questionNum = currentQuestion + 1
+
+    // Lógica progresiva más agresiva:
+    // - Preguntas 1-6: cada 2 preguntas (2, 4, 6)
+    // - Preguntas 7+: cada pregunta
     const shouldTrigger = (
-      (currentQuestion + 1) % 3 === 0 &&         // Cada 3 preguntas (3, 6, 9, 12...)
-      currentQuestion >= 2                        // A partir de la 3ª pregunta
+      (questionNum <= 6 && questionNum % 2 === 0) ||  // Cada 2 preguntas hasta la 6
+      (questionNum > 6)                                 // Cada pregunta después de la 6
     )
-    
-    console.log('🎯 Should trigger?', shouldTrigger, 'Pregunta:', currentQuestion + 1)
-    
+
+    console.log('🎯 Should trigger?', shouldTrigger, 'Pregunta:', questionNum)
+
     if (shouldTrigger) {
-      console.log('🎯 Trigger cada 3 preguntas: Pregunta', currentQuestion + 1, '- Intento', attempt)
+      console.log('🎯 Trigger progresivo: Pregunta', questionNum, '- Intento', attempt)
       setTimeout(() => {
         setShowModal(true)
         setAttempt(prev => prev + 1)
-      }, 1500)
+      }, 1000) // Reducido de 1500ms a 1000ms
     }
   }, [enabled, user, showResult, currentQuestion, attempt, userRejected, showModal])
 
@@ -130,14 +135,9 @@ export default function PersistentRegistrationManager({
 
   const handleRegistrationSkip = () => {
     setShowModal(false)
-    if (attempt >= 6) {
-      // Si ya es "última oportunidad", marcar como rechazado permanentemente
-      setUserRejected(true)
-      console.log('🚫 Usuario rechazó definitivamente el registro')
-    } else {
-      setAttempt(prev => prev + 1)
-      console.log('👋 Usuario saltó registro, attempt:', attempt + 1)
-    }
+    // Nunca dejar de mostrar - el popup aparecerá siempre hasta que se registre
+    setAttempt(prev => prev + 1)
+    console.log('👋 Usuario saltó registro, attempt:', attempt + 1)
   }
 
   // Función para trigger manual desde el banner
