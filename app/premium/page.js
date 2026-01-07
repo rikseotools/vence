@@ -17,10 +17,11 @@ function PremiumPageContent() {
   useEffect(() => {
     if (user && supabase && !hasTrackedPageView.current && !authLoading) {
       const referrer = document.referrer || null
-      trackPremiumPageView(supabase, user.id, referrer)
+      const fromSource = searchParams.get('from') || null // ej: 'ai_chat_limit'
+      trackPremiumPageView(supabase, user.id, referrer, fromSource)
       hasTrackedPageView.current = true
     }
-  }, [user, supabase, authLoading])
+  }, [user, supabase, authLoading, searchParams])
 
   // Auto-iniciar checkout después de login exitoso
   const hasTriedAutoCheckout = useRef(false)
@@ -353,19 +354,6 @@ function PremiumPageContent() {
             </div>
           </div>
         </div>
-
-        {/* Debug Info en desarrollo */}
-        {process.env.NODE_ENV === 'development' && user && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg max-w-md mx-auto">
-            <h3 className="font-bold mb-2">🔍 Debug Info:</h3>
-            <div className="text-sm space-y-1">
-              <div>User ID: {user.id}</div>
-              <div>Email: {user.email}</div>
-              <div>Plan Type: {user.plan_type}</div>
-              <div>Selected Plan: {selectedPlan}</div>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>
