@@ -1344,6 +1344,12 @@ SOBRE TI:
 - Cuando el usuario pregunta, buscas en la base de datos los artículos más relevantes
 ${oposicionInfo}
 
+IMPORTANTE - OPOSICIONES AGE (son DIFERENTES, no confundirlas):
+- Auxiliar Administrativo del Estado (C2): Grupo C2, requiere ESO/Bachiller, funciones administrativas básicas
+- Administrativo del Estado (C1): Grupo C1, requiere FP Grado Superior/Bachiller, funciones de mayor responsabilidad
+- Son DOS oposiciones distintas con temarios diferentes, aunque pueden celebrarse el mismo día
+- NUNCA digas que son "el mismo puesto" o "la misma oposición"
+
 ESTILO DE INTERACCIÓN:
 - Sé conversacional y cercano, como un tutor de oposiciones
 - Si la pregunta es ambigua o muy general, PREGUNTA para clarificar antes de responder
@@ -1412,16 +1418,11 @@ function generateFollowUpSuggestions(sources, response, questionContext, queryTy
   }
 
   // Sugerencias específicas para consultas de progreso del usuario
+  // Solo ofrecer botón de test si hay leyes en los puntos débiles
   if (queryType === 'user_stats') {
     return {
-      offerTest: lawsInSources.length > 0, // Ofrecer test si hay leyes en los puntos débiles
-      laws: lawsInSources,
-      followUpQuestions: [
-        {
-          text: '¿Qué artículos caen más en examen de esas leyes?',
-          label: 'articulos_examen_debiles'
-        }
-      ]
+      offerTest: lawsInSources.length > 0,
+      laws: lawsInSources
     }
   }
 
@@ -1458,6 +1459,24 @@ export async function POST(request) {
       }, { status: 400 })
     }
 
+    // 🔄 Si no recibimos oposición del frontend pero tenemos userId, obtenerla de la BD
+    let resolvedOposicion = userOposicion
+    if (!userOposicion && userId) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('target_oposicion')
+        .eq('id', userId)
+        .single()
+
+      if (profile?.target_oposicion) {
+        resolvedOposicion = profile.target_oposicion
+        console.log(`🔄 Oposición obtenida de BD: ${resolvedOposicion}`)
+      }
+    }
+
+    // Usar la oposición resuelta en lugar de la del frontend
+    const userOposicionFinal = resolvedOposicion
+
     // 🔒 Verificar límite diario para usuarios free
     if (!isPremium && userId) {
       const dailyCount = await getUserDailyMessageCount(userId)
@@ -1487,13 +1506,13 @@ export async function POST(request) {
     const openai = new OpenAI({ apiKey })
 
     // Obtener leyes prioritarias de la oposición del usuario
-    const priorityLawIds = await getOposicionLawIds(userOposicion)
+    const priorityLawIds = await getOposicionLawIds(userOposicionFinal)
     if (priorityLawIds.length > 0) {
-      console.log(`📚 Usuario con oposición ${userOposicion}: ${priorityLawIds.length} leyes prioritarias`)
-    } else if (userOposicion) {
-      console.log(`⚠️ Usuario con oposición ${userOposicion} pero sin leyes prioritarias configuradas`)
+      console.log(`📚 Usuario con oposición ${userOposicionFinal}: ${priorityLawIds.length} leyes prioritarias`)
+    } else if (userOposicionFinal) {
+      console.log(`⚠️ Usuario con oposición ${userOposicionFinal} pero sin leyes prioritarias configuradas`)
     } else {
-      console.log(`👤 Usuario sin oposición configurada en perfil`)
+      console.log(`👤 Usuario sin oposición configurada`)
     }
 
     // 🎯 Detectar si es una pregunta de psicotécnico (no necesita búsqueda de artículos)
@@ -1547,15 +1566,15 @@ export async function POST(request) {
       let oposicionForStats = detectOposicion(message)
 
       // Si no especificó oposición en el mensaje pero tiene una en su perfil, usarla
-      if (!oposicionForStats && userOposicion) {
+      if (!oposicionForStats && userOposicionFinal) {
         // Mapear el formato de userOposicion al formato de exam_position
         const oposicionMap = {
           'auxiliar_administrativo_estado': 'auxiliar_administrativo',
           'administrativo_estado': 'administrativo'
         }
-        oposicionForStats = oposicionMap[userOposicion] || null
+        oposicionForStats = oposicionMap[userOposicionFinal] || null
         if (oposicionForStats) {
-          console.log(`📊 Usando oposición del perfil del usuario: ${userOposicion} -> ${oposicionForStats}`)
+          console.log(`📊 Usando oposición del perfil del usuario: ${userOposicionFinal} -> ${oposicionForStats}`)
         }
       }
 
@@ -1646,7 +1665,7 @@ El usuario tiene configurado en su perfil que está preparando "${oposicionName}
 DEBES mencionar esto al principio de tu respuesta para demostrar que conoces su perfil.
 Ejemplo: "Como estás preparando ${oposicionName}, te muestro los artículos más preguntados en esos exámenes oficiales..."
 `
-            : !userOposicion && lawForStats
+            : !userOposicionFinal && lawForStats
               ? `
 NOTA: El usuario NO tiene oposición configurada en su perfil.
 Si muestras datos, menciona que los datos son GENERALES de todos los exámenes.
@@ -1774,22 +1793,31 @@ Da recomendaciones específicas basadas en sus puntos débiles.
     }
 
     // 📋 Detectar si pregunta por información de la oposición (plazas, fechas, temario, etc.)
+    // También detectar si el mensaje menciona una oposición específica (ej: "auxiliar administrativo")
     let oposicionInfoContext = ''
-    if (isOposicionInfoQuery(message) && !isPsicotecnico) {
-      console.log('📋 Detectada pregunta sobre información de la oposición')
+    const oposicionMencionada = detectOposicion(message)
+    const isOposicionQuery = isOposicionInfoQuery(message) || oposicionMencionada
+
+    if (isOposicionQuery && !isPsicotecnico) {
+      console.log('📋 Detectada pregunta sobre información de la oposición', { oposicionMencionada, userOposicionFinal })
       queryType = 'oposicion_info' // Siempre setear para evitar sugerencias de test
 
-      if (userOposicion) {
-        // Usuario tiene oposición en su perfil - dar info directamente
-        const oposicionInfo = await getOposicionInfo(userOposicion)
-        const temario = await getTemario(userOposicion, 30)
+      // Usar oposición mencionada en mensaje, o la del perfil como fallback
+      const oposicionToUse = oposicionMencionada
+        ? (oposicionMencionada === 'auxiliar_administrativo' ? 'auxiliar_administrativo_estado' : 'administrativo_estado')
+        : userOposicionFinal
+
+      if (oposicionToUse) {
+        // Tenemos oposición (del mensaje o del perfil) - dar info directamente
+        const oposicionInfo = await getOposicionInfo(oposicionToUse)
+        const temario = await getTemario(oposicionToUse, 30)
 
         // Formatear nombre de oposición para mostrar
-        const oposicionNombre = userOposicion === 'auxiliar_administrativo_estado'
+        const oposicionNombre = oposicionToUse === 'auxiliar_administrativo_estado'
           ? 'Auxiliar Administrativo del Estado (C2)'
           : 'Administrativo del Estado (C1)'
 
-        let infoText = `\n\nINFORMACIÓN DE LA OPOSICIÓN DEL USUARIO: ${oposicionNombre}\n`
+        let infoText = `\n\nINFORMACIÓN DE LA OPOSICIÓN: ${oposicionNombre}\n`
 
         if (oposicionInfo) {
           infoText += `\nDATOS DE LA CONVOCATORIA:`
@@ -2103,7 +2131,7 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
     // Preparar mensajes para OpenAI - usar prompt específico para psicotécnicos
     const systemPrompt = isPsicotecnico
       ? generatePsicotecnicoSystemPrompt(questionContextText)
-      : generateSystemPrompt(context, questionContextText, userOposicion)
+      : generateSystemPrompt(context, questionContextText, userOposicionFinal)
 
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -2184,7 +2212,7 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
               suggestionUsed,
               responseTimeMs: responseTime,
               hadError: false,
-              userOposicion,
+              userOposicion: userOposicionFinal,
               detectedLaws: mentionedLaws
             })
 
@@ -2210,7 +2238,7 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
               responseTimeMs: responseTime,
               hadError: true,
               errorMessage: error.message,
-              userOposicion,
+              userOposicion: userOposicionFinal,
               detectedLaws: mentionedLaws
             })
 
@@ -2258,7 +2286,7 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
       responseTimeMs: responseTime,
       tokensUsed: completion.usage?.total_tokens,
       hadError: false,
-      userOposicion,
+      userOposicion: userOposicionFinal,
       detectedLaws: mentionedLaws
     })
 

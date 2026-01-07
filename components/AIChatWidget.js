@@ -833,18 +833,6 @@ export default function AIChatWidget() {
                               >
                                 ❌ ¿Dónde fallo más?
                               </button>
-                              <button
-                                onClick={() => { useSuggestion('¿Qué artículos debería repasar urgentemente?', 'que_repasar'); setShowProgressMenu(false); }}
-                                className="block w-full text-left px-3 py-1.5 text-xs bg-green-50/50 dark:bg-green-900/20 rounded hover:bg-green-100 dark:hover:bg-green-900/40 transition text-green-600 dark:text-green-400"
-                              >
-                                📚 ¿Qué debo repasar?
-                              </button>
-                              <button
-                                onClick={() => { useSuggestion('Dame consejos personalizados para mejorar mi rendimiento', 'consejos_mejorar'); setShowProgressMenu(false); }}
-                                className="block w-full text-left px-3 py-1.5 text-xs bg-green-50/50 dark:bg-green-900/20 rounded hover:bg-green-100 dark:hover:bg-green-900/40 transition text-green-600 dark:text-green-400"
-                              >
-                                💡 Consejos para mejorar
-                              </button>
                             </div>
                           )}
                         </div>
