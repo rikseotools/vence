@@ -404,39 +404,30 @@ async function getExamStats(lawShortName = null, limit = 15, examPosition = null
 // 🆕 Obtener ejemplos de preguntas oficiales reales de una ley
 async function getOfficialQuestionExamples(lawShortName, limit = 8, examPosition = null) {
   try {
-    // Primero obtener el ID de la ley
-    const { data: law, error: lawError } = await supabase
-      .from('laws')
-      .select('id, short_name, name')
-      .eq('short_name', lawShortName)
-      .single()
-
-    if (lawError || !law) {
-      console.log(`⚠️ Ley no encontrada para ejemplos: ${lawShortName}`)
-      return []
-    }
-
-    // Buscar preguntas oficiales de esta ley
+    // Buscar preguntas oficiales de esta ley (join a través de articles)
     let query = supabase
       .from('questions')
       .select(`
         id,
         question_text,
-        article_number,
         option_a,
         option_b,
         option_c,
         option_d,
-        correct_answer,
+        correct_option,
         explanation,
-        exam_year,
-        exam_position
+        exam_date,
+        exam_position,
+        article:articles!primary_article_id(
+          article_number,
+          law:laws!law_id(short_name)
+        )
       `)
-      .eq('law_id', law.id)
       .eq('is_active', true)
       .eq('is_official_exam', true)
+      .eq('article.law.short_name', lawShortName)
       .not('question_text', 'is', null)
-      .limit(limit * 2) // Pedir más para variedad
+      .limit(limit * 3) // Pedir más para variedad
 
     // Filtrar por oposición si se especifica
     if (examPosition) {
@@ -450,12 +441,27 @@ async function getOfficialQuestionExamples(lawShortName, limit = 8, examPosition
       return []
     }
 
+    // Filtrar las que realmente tienen el artículo de la ley correcta
+    const filteredQuestions = questions.filter(q =>
+      q.article?.law?.short_name === lawShortName
+    )
+
+    if (filteredQuestions.length === 0) {
+      console.log(`No hay preguntas oficiales con artículo para ${lawShortName}`)
+      return []
+    }
+
     // Seleccionar una muestra variada (por diferentes artículos si es posible)
     const byArticle = {}
-    questions.forEach(q => {
-      const art = q.article_number || 'general'
+    filteredQuestions.forEach(q => {
+      const art = q.article?.article_number || 'general'
       if (!byArticle[art]) byArticle[art] = []
-      byArticle[art].push(q)
+      byArticle[art].push({
+        ...q,
+        article_number: q.article?.article_number,
+        correct_answer: ['A', 'B', 'C', 'D'][q.correct_option] || q.correct_option,
+        exam_year: q.exam_date ? new Date(q.exam_date).getFullYear() : null
+      })
     })
 
     // Tomar una pregunta de cada artículo primero, luego completar si hace falta
@@ -1480,6 +1486,10 @@ export async function POST(request) {
     const priorityLawIds = await getOposicionLawIds(userOposicion)
     if (priorityLawIds.length > 0) {
       console.log(`📚 Usuario con oposición ${userOposicion}: ${priorityLawIds.length} leyes prioritarias`)
+    } else if (userOposicion) {
+      console.log(`⚠️ Usuario con oposición ${userOposicion} pero sin leyes prioritarias configuradas`)
+    } else {
+      console.log(`👤 Usuario sin oposición configurada en perfil`)
     }
 
     // 🎯 Detectar si es una pregunta de psicotécnico (no necesita búsqueda de artículos)
@@ -1632,7 +1642,14 @@ El usuario tiene configurado en su perfil que está preparando "${oposicionName}
 DEBES mencionar esto al principio de tu respuesta para demostrar que conoces su perfil.
 Ejemplo: "Como estás preparando ${oposicionName}, te muestro los artículos más preguntados en esos exámenes oficiales..."
 `
-            : ''
+            : !userOposicion && lawForStats
+              ? `
+NOTA: El usuario NO tiene oposición configurada en su perfil.
+Si muestras datos, menciona que los datos son GENERALES de todos los exámenes.
+Si hay datos por oposición (Aux.C2, Admin.C1), explica las diferencias.
+Al final, sugiere: "Para datos más personalizados, puedes indicarme si preparas Auxiliar (C2) o Administrativo (C1)."
+`
+              : ''
 
           // 🆕 Formatear ejemplos de preguntas reales
           let questionExamplesText = ''
