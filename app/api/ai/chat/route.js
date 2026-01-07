@@ -510,45 +510,406 @@ async function getArticleContents(lawShortName, articleNumbers, limit = 10) {
   }
 }
 
+// ============================================================================
+// 🎯 SISTEMA DE PATTERN MATCHING PARA QUERIES FRECUENTES
+// ============================================================================
+
+// Definición de patrones frecuentes y sus búsquedas específicas
+const QUERY_PATTERNS = {
+  // Patrón: Plazos (ej: "plazos de la Ley 40", "plazo para recurso de alzada")
+  plazos: {
+    name: 'plazos',
+    detect: (msg) => /plazos?|t[eé]rminos?|d[ií]as?\s*(h[aá]biles?|naturales?)|\bcu[aá]nto\s*tiempo\b|\bcu[aá]ntos?\s*d[ií]as?\b/i.test(msg),
+    keywords: ['plazo', 'plazos', 'término', 'términos', 'días', 'hábiles', 'naturales', 'tiempo', 'máximo'],
+    description: 'Consulta sobre plazos y términos legales'
+  },
+
+  // Patrón: Definiciones (ej: "qué es silencio administrativo", "define recurso")
+  definiciones: {
+    name: 'definiciones',
+    detect: (msg) => /\bqu[eé]\s+(es|son|significa)\b|\bdefin[ei]|concepto\s+de|\bexplica\s+(qu[eé]\s+es|el|la)\b/i.test(msg),
+    keywords: ['definición', 'concepto', 'significa', 'entiende'],
+    description: 'Consulta sobre definiciones y conceptos'
+  },
+
+  // Patrón: Órganos (ej: "órganos colegiados", "qué órganos tiene la Ley 40")
+  organos: {
+    name: 'organos',
+    detect: (msg) => /[oó]rganos?\s*(colegiados?|administrativos?|competentes?)|\bconsejo\s+de\s+ministros\b|\bgobierno\b|\bministros?\b|\bsecretar[ií]os?\b|\bsubsecretar[ií]os?\b|\bdirectores?\s+generales?\b/i.test(msg),
+    keywords: ['órgano', 'órganos', 'colegiado', 'colegiados', 'consejo', 'ministro', 'gobierno', 'secretario', 'director'],
+    description: 'Consulta sobre órganos administrativos'
+  },
+
+  // Patrón: Recursos (ej: "recurso de alzada", "cómo recurrir")
+  recursos: {
+    name: 'recursos',
+    detect: (msg) => /recursos?\s*(de)?\s*(alzada|reposici[oó]n|extraordinario|contencioso|administrativo)|\bc[oó]mo\s+recurr|\bimpugnar\b/i.test(msg),
+    keywords: ['recurso', 'recursos', 'alzada', 'reposición', 'impugnar', 'impugnación', 'recurrente'],
+    description: 'Consulta sobre recursos administrativos'
+  },
+
+  // Patrón: Silencio administrativo (muy frecuente)
+  silencio: {
+    name: 'silencio',
+    detect: (msg) => /silencio\s*(administrativo|positivo|negativo)|\bfalta\s+de\s+resoluci[oó]n\b/i.test(msg),
+    keywords: ['silencio', 'administrativo', 'positivo', 'negativo', 'desestimatorio', 'estimatorio'],
+    description: 'Consulta sobre silencio administrativo'
+  },
+
+  // Patrón: Notificaciones
+  notificaciones: {
+    name: 'notificaciones',
+    detect: (msg) => /notificaci[oó]n|notificar|notificaciones|\bc[oó]mo\s+se\s+notifica\b|\bd[oó]nde\s+se\s+notifica\b/i.test(msg),
+    keywords: ['notificación', 'notificaciones', 'notificar', 'publicación', 'edicto', 'electrónica'],
+    description: 'Consulta sobre notificaciones administrativas'
+  },
+
+  // Patrón: Delegación de competencias
+  delegacion: {
+    name: 'delegacion',
+    detect: (msg) => /delegaci[oó]n|delegar|\bavocaci[oó]n\b|\bencomienda\s+de\s+gesti[oó]n\b|\bsuplencia\b|\bsustituc/i.test(msg),
+    keywords: ['delegación', 'delegar', 'avocación', 'encomienda', 'suplencia', 'sustitución', 'competencia'],
+    description: 'Consulta sobre delegación de competencias'
+  },
+
+  // Patrón: Responsabilidad patrimonial
+  responsabilidad: {
+    name: 'responsabilidad',
+    detect: (msg) => /responsabilidad\s*(patrimonial|del\s+estado|administraci[oó]n)|\bindemnizaci[oó]n|\bda[ñn]os?\s*(y\s*perjuicios)?/i.test(msg),
+    keywords: ['responsabilidad', 'patrimonial', 'indemnización', 'daños', 'perjuicios', 'lesión'],
+    description: 'Consulta sobre responsabilidad patrimonial'
+  },
+
+  // Patrón: Nulidad y anulabilidad
+  nulidad: {
+    name: 'nulidad',
+    detect: (msg) => /nulidad|anulabilidad|nulos?\s+de\s+pleno|anulable|vicios?|revisi[oó]n\s+de\s+oficio/i.test(msg),
+    keywords: ['nulidad', 'anulabilidad', 'nulo', 'anulable', 'vicio', 'revisión', 'oficio'],
+    description: 'Consulta sobre nulidad y anulabilidad de actos'
+  },
+
+  // Patrón: Procedimiento sancionador
+  sancionador: {
+    name: 'sancionador',
+    detect: (msg) => /procedimiento\s+sancionador|potestad\s+sancionadora|sanci[oó]n|sanciones|infracci[oó]n|multa/i.test(msg),
+    keywords: ['sanción', 'sanciones', 'sancionador', 'infracción', 'multa', 'potestad', 'expediente'],
+    description: 'Consulta sobre procedimiento sancionador'
+  },
+
+  // Patrón: Interesados
+  interesados: {
+    name: 'interesados',
+    detect: (msg) => /\binteresados?\b.*procedimiento|\bqui[eé]n\s+(puede|es)\s+interesado|\bcapacidad\s+de\s+obrar\b|\blegitimaci[oó]n\b/i.test(msg),
+    keywords: ['interesado', 'interesados', 'capacidad', 'legitimación', 'representación'],
+    description: 'Consulta sobre interesados en el procedimiento'
+  },
+
+  // Patrón: Convenios
+  convenios: {
+    name: 'convenios',
+    detect: (msg) => /convenios?\s*(administrativos?|colaboraci[oó]n)?|\bacuerdos?\s+de\s+colaboraci[oó]n\b/i.test(msg),
+    keywords: ['convenio', 'convenios', 'acuerdo', 'colaboración', 'coordinación'],
+    description: 'Consulta sobre convenios administrativos'
+  }
+}
+
+// Detectar qué patrón coincide con el mensaje
+function detectQueryPattern(message) {
+  const msgLower = message.toLowerCase()
+
+  for (const [patternId, pattern] of Object.entries(QUERY_PATTERNS)) {
+    if (pattern.detect(msgLower)) {
+      console.log(`🎯 Patrón detectado: ${pattern.name} - "${pattern.description}"`)
+      return { id: patternId, ...pattern }
+    }
+  }
+
+  return null
+}
+
+// Buscar artículos específicos para un patrón
+async function searchArticlesForPattern(pattern, lawShortName = null, limit = 15) {
+  try {
+    // Si hay ley específica, buscar solo en esa ley
+    let lawId = null
+    let lawInfo = null
+    if (lawShortName) {
+      const { data: law } = await supabase
+        .from('laws')
+        .select('id, short_name, name')
+        .eq('short_name', lawShortName)
+        .single()
+
+      if (law) {
+        lawId = law.id
+        lawInfo = law
+      } else {
+        console.log(`⚠️ Ley no encontrada para patrón: ${lawShortName}`)
+      }
+    }
+
+    // Construir búsqueda con keywords del patrón
+    const keywords = pattern.keywords
+    const orConditions = keywords.flatMap(term => [
+      `title.ilike.%${term}%`,
+      `content.ilike.%${term}%`
+    ]).join(',')
+
+    let query = supabase
+      .from('articles')
+      .select(`
+        id,
+        article_number,
+        title,
+        content,
+        law_id,
+        law:laws!inner(id, short_name, name, is_derogated)
+      `)
+      .eq('is_active', true)
+      .eq('law.is_derogated', false)
+      .or(orConditions)
+
+    // Filtrar por ley si se especificó
+    if (lawId) {
+      query = query.eq('law_id', lawId)
+    }
+
+    const { data: articles, error } = await query
+      .order('article_number', { ascending: true })
+      .limit(limit * 2) // Pedir más para filtrar
+
+    if (error) {
+      console.error(`Error buscando artículos para patrón ${pattern.name}:`, error)
+      return []
+    }
+
+    if (!articles || articles.length === 0) {
+      console.log(`📭 No se encontraron artículos para patrón ${pattern.name}${lawShortName ? ` en ${lawShortName}` : ''}`)
+      return []
+    }
+
+    // Rankear por relevancia (cuántos keywords contiene)
+    const rankedArticles = articles.map(art => {
+      const text = `${art.title || ''} ${art.content || ''}`.toLowerCase()
+      let score = 0
+      keywords.forEach(kw => {
+        const regex = new RegExp(kw, 'gi')
+        const matches = text.match(regex)
+        if (matches) score += matches.length
+      })
+      return { ...art, relevanceScore: score }
+    })
+
+    // Ordenar por relevancia y limitar
+    const sortedArticles = rankedArticles
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .slice(0, limit)
+
+    console.log(`🎯 Patrón "${pattern.name}": ${sortedArticles.length} artículos encontrados${lawShortName ? ` en ${lawShortName}` : ''}`)
+
+    return sortedArticles.map(a => ({
+      ...a,
+      law: a.law,
+      similarity: Math.min(1, a.relevanceScore / 10) // Convertir score a "similarity"
+    }))
+
+  } catch (err) {
+    console.error(`Error en searchArticlesForPattern:`, err)
+    return []
+  }
+}
+
+// Extraer datos específicos de los artículos según el patrón
+function extractPatternData(pattern, articles) {
+  if (!articles || articles.length === 0) return null
+
+  const extractedData = {
+    patternName: pattern.name,
+    patternDescription: pattern.description,
+    articlesFound: articles.length,
+    details: []
+  }
+
+  // Extraer información específica según el patrón
+  switch (pattern.name) {
+    case 'plazos':
+      // Buscar plazos específicos en el contenido
+      articles.forEach(art => {
+        const content = art.content || ''
+        // Regex para encontrar plazos
+        const plazoRegex = /(\d+)\s*(d[ií]as?|meses?|a[ñn]os?)\s*(h[aá]biles?|naturales?)?/gi
+        const plazos = content.match(plazoRegex) || []
+        if (plazos.length > 0 || content.toLowerCase().includes('plazo')) {
+          extractedData.details.push({
+            article: art.article_number,
+            law: art.law?.short_name,
+            title: art.title,
+            plazos: [...new Set(plazos)].slice(0, 5),
+            snippet: content.substring(0, 300)
+          })
+        }
+      })
+      break
+
+    case 'silencio':
+      articles.forEach(art => {
+        const content = (art.content || '').toLowerCase()
+        const tipoSilencio = content.includes('positivo') ? 'positivo' :
+                           content.includes('negativo') ? 'negativo' : 'general'
+        extractedData.details.push({
+          article: art.article_number,
+          law: art.law?.short_name,
+          title: art.title,
+          tipoSilencio,
+          snippet: art.content?.substring(0, 400)
+        })
+      })
+      break
+
+    case 'recursos':
+      articles.forEach(art => {
+        const content = (art.content || '').toLowerCase()
+        const tipoRecurso = content.includes('alzada') ? 'alzada' :
+                          content.includes('reposición') ? 'reposición' :
+                          content.includes('extraordinario') ? 'extraordinario' : 'general'
+        extractedData.details.push({
+          article: art.article_number,
+          law: art.law?.short_name,
+          title: art.title,
+          tipoRecurso,
+          snippet: art.content?.substring(0, 400)
+        })
+      })
+      break
+
+    default:
+      // Extracción genérica
+      articles.forEach(art => {
+        extractedData.details.push({
+          article: art.article_number,
+          law: art.law?.short_name,
+          title: art.title,
+          snippet: art.content?.substring(0, 400)
+        })
+      })
+  }
+
+  return extractedData
+}
+
+// Formatear contexto específico para un patrón
+function formatPatternContext(pattern, patternData, lawShortName = null) {
+  if (!patternData || patternData.details.length === 0) {
+    return ''
+  }
+
+  let context = `\n\n🎯 DATOS ESPECÍFICOS ENCONTRADOS PARA: ${pattern.description.toUpperCase()}\n`
+  if (lawShortName) {
+    context += `Ley filtrada: ${lawShortName}\n`
+  }
+  context += `Artículos relevantes encontrados: ${patternData.articlesFound}\n\n`
+
+  // Formatear según el tipo de patrón
+  switch (pattern.name) {
+    case 'plazos':
+      context += `PLAZOS ENCONTRADOS EN LA LEGISLACIÓN:\n`
+      patternData.details.forEach((d, i) => {
+        context += `\n${i + 1}. ${d.law} Art. ${d.article}${d.title ? ` - ${d.title}` : ''}\n`
+        if (d.plazos && d.plazos.length > 0) {
+          context += `   Plazos mencionados: ${d.plazos.join(', ')}\n`
+        }
+        context += `   Contenido: ${d.snippet}...\n`
+      })
+      context += `\nINSTRUCCIONES: Lista TODOS los plazos encontrados con sus artículos exactos. NO inventes plazos.`
+      break
+
+    case 'silencio':
+      context += `REGULACIÓN DEL SILENCIO ADMINISTRATIVO:\n`
+      patternData.details.forEach((d, i) => {
+        context += `\n${i + 1}. ${d.law} Art. ${d.article}${d.title ? ` - ${d.title}` : ''}\n`
+        context += `   Tipo de silencio: ${d.tipoSilencio}\n`
+        context += `   Contenido: ${d.snippet}...\n`
+      })
+      context += `\nINSTRUCCIONES: Explica cuándo aplica silencio positivo vs negativo según los artículos.`
+      break
+
+    case 'recursos':
+      context += `INFORMACIÓN SOBRE RECURSOS ADMINISTRATIVOS:\n`
+      patternData.details.forEach((d, i) => {
+        context += `\n${i + 1}. ${d.law} Art. ${d.article}${d.title ? ` - ${d.title}` : ''}\n`
+        context += `   Tipo de recurso: ${d.tipoRecurso}\n`
+        context += `   Contenido: ${d.snippet}...\n`
+      })
+      context += `\nINSTRUCCIONES: Explica plazos, órgano ante el que se interpone, y efectos de cada recurso.`
+      break
+
+    default:
+      context += `ARTÍCULOS RELEVANTES:\n`
+      patternData.details.forEach((d, i) => {
+        context += `\n${i + 1}. ${d.law} Art. ${d.article}${d.title ? ` - ${d.title}` : ''}\n`
+        context += `   ${d.snippet}...\n`
+      })
+  }
+
+  context += `\n\nTODOS LOS DATOS ANTERIORES SON REALES de nuestra base de datos de legislación.`
+
+  return context
+}
+
 // Obtener estadísticas del usuario (artículos fallados, áreas débiles)
 async function getUserStats(userId, lawShortName = null, limit = 10) {
   if (!userId) return null
 
   try {
-    // Obtener respuestas del usuario con info de pregunta y ley
-    let query = supabase
-      .from('detailed_answers')
+    // Obtener historial de respuestas del usuario con info de pregunta, artículo y ley
+    // Usamos user_question_history que tiene agregados por pregunta
+    const { data: history, error } = await supabase
+      .from('user_question_history')
       .select(`
-        is_correct,
-        question:questions!inner(
+        id,
+        question_id,
+        total_attempts,
+        correct_attempts,
+        success_rate,
+        question:questions!question_id(
           id,
-          article_number,
-          law:laws(id, short_name, name)
+          primary_article_id,
+          article:articles!primary_article_id(
+            article_number,
+            law:laws!law_id(short_name, name)
+          )
         )
       `)
       .eq('user_id', userId)
-      .not('question.article_number', 'is', null)
+      .gt('total_attempts', 0)
 
-    const { data: answers, error } = await query
-
-    if (error || !answers?.length) {
+    if (error || !history?.length) {
       console.log('No se encontraron respuestas del usuario:', error?.message)
       return null
     }
 
+    // Filtrar solo los que tienen artículo asociado
+    let filteredHistory = history.filter(h =>
+      h.question?.article?.article_number != null
+    )
+
     // Filtrar por ley si se especifica
-    let filteredAnswers = answers
     if (lawShortName) {
-      filteredAnswers = answers.filter(a =>
-        a.question?.law?.short_name === lawShortName
+      filteredHistory = filteredHistory.filter(h =>
+        h.question?.article?.law?.short_name === lawShortName
       )
+    }
+
+    if (filteredHistory.length === 0) {
+      console.log('No hay historial con artículos para este filtro')
+      return null
     }
 
     // Agrupar por artículo
     const articleStats = {}
-    filteredAnswers.forEach(a => {
-      const law = a.question?.law?.short_name || a.question?.law?.name || 'Ley'
-      const article = a.question?.article_number
+    filteredHistory.forEach(h => {
+      const law = h.question?.article?.law?.short_name || h.question?.article?.law?.name || 'Ley'
+      const article = h.question?.article?.article_number
       if (!article) return
 
       const key = `${law} Art. ${article}`
@@ -561,12 +922,9 @@ async function getUserStats(userId, lawShortName = null, limit = 10) {
           failed: 0
         }
       }
-      articleStats[key].total++
-      if (a.is_correct) {
-        articleStats[key].correct++
-      } else {
-        articleStats[key].failed++
-      }
+      articleStats[key].total += h.total_attempts || 0
+      articleStats[key].correct += h.correct_attempts || 0
+      articleStats[key].failed += (h.total_attempts || 0) - (h.correct_attempts || 0)
     })
 
     // Calcular porcentaje de acierto y ordenar por más fallados
@@ -587,9 +945,9 @@ async function getUserStats(userId, lawShortName = null, limit = 10) {
       .sort((a, b) => a.accuracy - b.accuracy)
       .slice(0, limit)
 
-    // Estadísticas generales
-    const totalAnswers = filteredAnswers.length
-    const totalCorrect = filteredAnswers.filter(a => a.is_correct).length
+    // Estadísticas generales (sumando todos los intentos)
+    const totalAnswers = filteredHistory.reduce((sum, h) => sum + (h.total_attempts || 0), 0)
+    const totalCorrect = filteredHistory.reduce((sum, h) => sum + (h.correct_attempts || 0), 0)
     const overallAccuracy = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 100) : 0
 
     return {
@@ -1474,19 +1832,49 @@ NO inventes fechas ni datos. Solo pregunta cuál oposición.
     // 🆕 Variable para manejar consultas genéricas sobre leyes
     let genericLawQueryContext = ''
 
+    // 🎯 Variable para contexto de pattern matching
+    let patternContext = ''
+    let detectedPattern = null
+
     if (!skipArticleSearch) {
-      // 🆕 PRIMERO: Si es una consulta genérica sobre una ley, pedir que concrete
-      // Pasar lawFromHistory para que respuestas de seguimiento no se consideren genéricas
-      const isGenericQuery = isGenericLawQuery(message, mentionedLaws, lawFromHistory)
+      // 🎯 PASO 1: Detectar si hay un patrón conocido en la consulta
+      detectedPattern = detectQueryPattern(message)
 
-      if (isGenericQuery && mentionedLaws.length > 0 && !lawFromHistory) {
-        // Solo preguntar si la ley se mencionó en ESTE mensaje (no del historial)
-        console.log(`📚 Consulta genérica sobre ley detectada: ${mentionedLaws.join(', ')} - pidiendo concreción`)
-        queryType = 'generic_law_query' // Para evitar sugerencias de test
+      if (detectedPattern) {
+        // Pattern matching detectado - usar búsqueda específica
+        console.log(`🎯 Usando PATTERN MATCHING: ${detectedPattern.name}`)
+        const lawForPattern = mentionedLaws.length > 0 ? mentionedLaws[0] : null
 
-        // Generar contexto para que el AI pida concreción
-        const lawName = mentionedLaws[0]
-        genericLawQueryContext = `
+        // Buscar artículos específicos para este patrón
+        const patternArticles = await searchArticlesForPattern(detectedPattern, lawForPattern, 12)
+
+        if (patternArticles.length > 0) {
+          articles = patternArticles
+          searchMethod = 'pattern'
+
+          // Extraer datos específicos y formatear contexto
+          const patternData = extractPatternData(detectedPattern, patternArticles)
+          patternContext = formatPatternContext(detectedPattern, patternData, lawForPattern)
+
+          console.log(`✅ Pattern matching exitoso: ${articles.length} artículos relevantes para "${detectedPattern.name}"`)
+        } else {
+          console.log(`⚠️ Pattern matching sin resultados para "${detectedPattern.name}" - fallback a búsqueda normal`)
+          detectedPattern = null // Reset para usar búsqueda normal
+        }
+      }
+
+      // 🆕 PASO 2: Si NO hubo pattern matching, verificar si es consulta genérica
+      if (!detectedPattern) {
+        const isGenericQuery = isGenericLawQuery(message, mentionedLaws, lawFromHistory)
+
+        if (isGenericQuery && mentionedLaws.length > 0 && !lawFromHistory) {
+          // Solo preguntar si la ley se mencionó en ESTE mensaje (no del historial)
+          console.log(`📚 Consulta genérica sobre ley detectada: ${mentionedLaws.join(', ')} - pidiendo concreción`)
+          queryType = 'generic_law_query' // Para evitar sugerencias de test
+
+          // Generar contexto para que el AI pida concreción
+          const lawName = mentionedLaws[0]
+          genericLawQueryContext = `
 IMPORTANTE: El usuario ha preguntado sobre "${lawName}" de forma muy genérica.
 Esta ley tiene muchos artículos y temas. Para dar una respuesta precisa y no inventar:
 
@@ -1502,58 +1890,60 @@ Responde de forma amable preguntando qué aspecto específico le interesa. Sugie
 Ejemplo: "La ${lawName} es muy amplia. ¿Qué aspecto te interesa en particular? Por ejemplo: plazos, órganos colegiados, delegación de competencias, convenios..."
 NO inventes contenido. Solo pregunta para concretar.
 `
-        // No buscar artículos para consultas genéricas
-      } else {
-        // 🆕 Construir búsqueda inteligente combinando contexto
-        let searchText = message
+          // No buscar artículos para consultas genéricas
+        } else if (articles.length === 0) {
+          // 🆕 PASO 3: Búsqueda semántica/directa/keywords (fallback normal)
+          let searchText = message
 
-        // Si la ley viene del historial, combinar para búsqueda completa
-        if (lawFromHistory && mentionedLaws.length > 0) {
-          searchText = `${message} ${mentionedLaws[0]}`
-          console.log(`🔍 Búsqueda enriquecida: "${searchText}"`)
-        } else if (questionContext?.questionText) {
-          searchText = `${questionContext.questionText} ${message}`
-        }
-
-        try {
-          const embedding = await generateEmbedding(openai, searchText)
-          articles = await searchArticlesBySimilarity(embedding, 10, priorityLawIds, mentionedLaws, contextLawName)
-
-          if (articles.length > 0) {
-            searchMethod = 'semantic'
+          // Si la ley viene del historial, combinar para búsqueda completa
+          if (lawFromHistory && mentionedLaws.length > 0) {
+            searchText = `${message} ${mentionedLaws[0]}`
+            console.log(`🔍 Búsqueda enriquecida: "${searchText}"`)
+          } else if (questionContext?.questionText) {
+            searchText = `${questionContext.questionText} ${message}`
           }
-        } catch (embeddingError) {
-          console.log('Embeddings no disponibles, usando keywords:', embeddingError.message)
-        }
 
-        // 🆕 Fallback a búsqueda DIRECTA por ley si semántica no encontró artículos de esa ley
-        if (articles.length === 0 && mentionedLaws.length > 0) {
-          console.log(`🔄 Búsqueda semántica vacía para ${mentionedLaws.join(', ')} - intentando búsqueda directa`)
+          try {
+            const embedding = await generateEmbedding(openai, searchText)
+            articles = await searchArticlesBySimilarity(embedding, 10, priorityLawIds, mentionedLaws, contextLawName)
 
-          // Extraer términos de búsqueda del mensaje (palabras clave relevantes)
-          const searchTerms = extractSearchTerms(message)
-
-          for (const lawName of mentionedLaws) {
-            const directArticles = await searchArticlesByLawDirect(lawName, 15, searchTerms)
-            articles = [...articles, ...directArticles]
+            if (articles.length > 0) {
+              searchMethod = 'semantic'
+            }
+          } catch (embeddingError) {
+            console.log('Embeddings no disponibles, usando keywords:', embeddingError.message)
           }
-          if (articles.length > 0) {
-            searchMethod = 'direct'
-            console.log(`✅ Búsqueda directa: ${articles.length} artículos encontrados`)
-          }
-        }
 
-        // Fallback a keywords si no hay resultados con embeddings ni directa
-        if (articles.length === 0) {
-          articles = await searchArticlesByKeywords(message)
-          searchMethod = 'keywords'
+          // 🆕 Fallback a búsqueda DIRECTA por ley si semántica no encontró artículos de esa ley
+          if (articles.length === 0 && mentionedLaws.length > 0) {
+            console.log(`🔄 Búsqueda semántica vacía para ${mentionedLaws.join(', ')} - intentando búsqueda directa`)
+
+            // Extraer términos de búsqueda del mensaje (palabras clave relevantes)
+            const searchTerms = extractSearchTerms(message)
+
+            for (const lawName of mentionedLaws) {
+              const directArticles = await searchArticlesByLawDirect(lawName, 15, searchTerms)
+              articles = [...articles, ...directArticles]
+            }
+            if (articles.length > 0) {
+              searchMethod = 'direct'
+              console.log(`✅ Búsqueda directa: ${articles.length} artículos encontrados`)
+            }
+          }
+
+          // Fallback a keywords si no hay resultados con embeddings ni directa
+          if (articles.length === 0) {
+            articles = await searchArticlesByKeywords(message)
+            searchMethod = 'keywords'
+          }
         }
       }
     } else {
       console.log(`🧠 Saltando búsqueda de artículos (psicotecnico: ${isPsicotecnico}, queryType: ${queryType})`)
     }
 
-    const context = isPsicotecnico ? '' : formatContext(articles) + examStatsContext + userStatsContext + ambiguousExamContext + oposicionInfoContext + genericLawQueryContext
+    // 🎯 Incluir contexto de pattern matching si existe
+    const context = isPsicotecnico ? '' : formatContext(articles) + patternContext + examStatsContext + userStatsContext + ambiguousExamContext + oposicionInfoContext + genericLawQueryContext
 
     // Formatear contexto de pregunta si existe
     let questionContextText = ''
@@ -1719,8 +2109,13 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
       const streamResponse = new ReadableStream({
         async start(controller) {
           try {
-            // Enviar metadata primero
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'meta', sources, searchMethod })}\n\n`))
+            // Enviar metadata primero (incluir patrón detectado)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'meta',
+              sources,
+              searchMethod,
+              patternDetected: detectedPattern ? detectedPattern.name : null
+            })}\n\n`))
 
             // Crear stream de OpenAI
             const completion = await openai.chat.completions.create({
@@ -1851,6 +2246,7 @@ INSTRUCCIONES ESPECIALES PARA PREGUNTAS DE TEST:
       success: true,
       response,
       searchMethod,
+      patternDetected: detectedPattern ? detectedPattern.name : null, // 🎯 Info de pattern matching
       hasQuestionContext: !!questionContext,
       potentialErrorDetected,
       questionId: questionContext?.id || null,
