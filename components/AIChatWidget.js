@@ -730,12 +730,6 @@ export default function AIChatWidget() {
                       >
                         💡 Explícame la respuesta correcta
                       </button>
-                      <button
-                        onClick={() => useSuggestion(`¿Qué artículo de la ley regula esta pregunta: "${currentQuestionContext.questionText?.substring(0, 80)}..."?`, 'que_articulo')}
-                        className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
-                      >
-                        📖 ¿Qué artículo regula esto?
-                      </button>
                       {/* Sugerencias específicas de la ley */}
                       {currentQuestionContext.lawName && (
                         <>
@@ -747,12 +741,6 @@ export default function AIChatWidget() {
                             ⏱️ Plazos de {currentQuestionContext.lawName}
                           </button>
                           <button
-                            onClick={() => useSuggestion(`¿Qué artículos de la ${currentQuestionContext.lawName} han caído en exámenes oficiales?`, 'articulos_examen')}
-                            className="block w-full text-left px-3 py-2 text-xs bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition text-purple-700 dark:text-purple-300"
-                          >
-                            📝 Artículos que caen en examen
-                          </button>
-                          <button
                             onClick={() => useSuggestion(`¿Qué tipo de preguntas suelen caer de la ${currentQuestionContext.lawName}?`, 'preguntas_tipicas')}
                             className="block w-full text-left px-3 py-2 text-xs bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition text-purple-700 dark:text-purple-300"
                           >
@@ -761,49 +749,62 @@ export default function AIChatWidget() {
                         </>
                       )}
 
-                      {/* 📝 Artículos de examen - Menú expandible */}
+                      {/* 📝 Artículos de examen - Contextual o Menú expandible */}
                       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <button
-                          onClick={() => setShowExamMenu(!showExamMenu)}
-                          className="w-full flex items-center justify-between px-3 py-2 text-xs bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 transition text-orange-700 dark:text-orange-300"
-                        >
-                          <span>📝 Artículos que caen en exámenes</span>
-                          <span className={`transform transition-transform ${showExamMenu ? 'rotate-180' : ''}`}>▼</span>
-                        </button>
+                        {/* Si hay ley en el contexto, mostrar botón directo */}
+                        {currentQuestionContext?.lawName ? (
+                          <button
+                            onClick={() => useSuggestion(`¿Qué artículos de la ${currentQuestionContext.lawName} han caído más en exámenes oficiales?`, 'exam_contextual')}
+                            className="w-full text-left px-3 py-2 text-xs bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 transition text-orange-700 dark:text-orange-300"
+                          >
+                            📝 Artículos de {currentQuestionContext.lawName} en exámenes
+                          </button>
+                        ) : (
+                          /* Si no hay ley, mostrar menú expandible */
+                          <>
+                            <button
+                              onClick={() => setShowExamMenu(!showExamMenu)}
+                              className="w-full flex items-center justify-between px-3 py-2 text-xs bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 transition text-orange-700 dark:text-orange-300"
+                            >
+                              <span>📝 Artículos que caen en exámenes</span>
+                              <span className={`transform transition-transform ${showExamMenu ? 'rotate-180' : ''}`}>▼</span>
+                            </button>
 
-                        {showExamMenu && (
-                          <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-orange-200 dark:border-orange-700">
-                            <button
-                              onClick={() => { useSuggestion('¿Qué artículos de la Constitución Española han caído más en exámenes oficiales?', 'exam_ce'); setShowExamMenu(false); }}
-                              className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
-                            >
-                              🏛️ Constitución Española
-                            </button>
-                            <button
-                              onClick={() => { useSuggestion('¿Qué artículos de la Ley 39/2015 (LPAC) han caído más en exámenes oficiales?', 'exam_lpac'); setShowExamMenu(false); }}
-                              className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
-                            >
-                              📋 Ley 39/2015 (LPAC)
-                            </button>
-                            <button
-                              onClick={() => { useSuggestion('¿Qué artículos de la Ley 40/2015 (LRJSP) han caído más en exámenes oficiales?', 'exam_lrjsp'); setShowExamMenu(false); }}
-                              className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
-                            >
-                              🏢 Ley 40/2015 (LRJSP)
-                            </button>
-                            <button
-                              onClick={() => { useSuggestion('¿Qué artículos del TREBEP han caído más en exámenes oficiales?', 'exam_trebep'); setShowExamMenu(false); }}
-                              className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
-                            >
-                              👔 TREBEP
-                            </button>
-                            <button
-                              onClick={() => { useSuggestion('¿Cuáles son los artículos más preguntados en exámenes oficiales de todas las leyes?', 'exam_todas'); setShowExamMenu(false); }}
-                              className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
-                            >
-                              📊 Todas las leyes
-                            </button>
-                          </div>
+                            {showExamMenu && (
+                              <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-orange-200 dark:border-orange-700">
+                                <button
+                                  onClick={() => { useSuggestion('¿Qué artículos de la Constitución Española han caído más en exámenes oficiales?', 'exam_ce'); setShowExamMenu(false); }}
+                                  className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
+                                >
+                                  🏛️ Constitución Española
+                                </button>
+                                <button
+                                  onClick={() => { useSuggestion('¿Qué artículos de la Ley 39/2015 (LPAC) han caído más en exámenes oficiales?', 'exam_lpac'); setShowExamMenu(false); }}
+                                  className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
+                                >
+                                  📋 Ley 39/2015 (LPAC)
+                                </button>
+                                <button
+                                  onClick={() => { useSuggestion('¿Qué artículos de la Ley 40/2015 (LRJSP) han caído más en exámenes oficiales?', 'exam_lrjsp'); setShowExamMenu(false); }}
+                                  className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
+                                >
+                                  🏢 Ley 40/2015 (LRJSP)
+                                </button>
+                                <button
+                                  onClick={() => { useSuggestion('¿Qué artículos del TREBEP han caído más en exámenes oficiales?', 'exam_trebep'); setShowExamMenu(false); }}
+                                  className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
+                                >
+                                  👔 TREBEP
+                                </button>
+                                <button
+                                  onClick={() => { useSuggestion('¿Cuáles son los artículos más preguntados en exámenes oficiales de todas las leyes?', 'exam_todas'); setShowExamMenu(false); }}
+                                  className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50/50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/40 transition text-orange-600 dark:text-orange-400"
+                                >
+                                  📊 Todas las leyes
+                                </button>
+                              </div>
+                            )}
+                          </>
                         )}
                       </div>
 
