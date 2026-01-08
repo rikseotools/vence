@@ -2673,3 +2673,24 @@ export const adminShareAnalytics = pgView("admin_share_analytics", {	fecha: time
 	usuariosUnicos: bigint("usuarios_unicos", { mode: "number" }),
 	notaPromedioCompartida: numeric("nota_promedio_compartida"),
 }).as(sql`SELECT date_trunc('day'::text, created_at) AS fecha, share_type, platform, count(*) AS total_shares, count(DISTINCT user_id) AS usuarios_unicos, avg(score) AS nota_promedio_compartida FROM share_events GROUP BY (date_trunc('day'::text, created_at)), share_type, platform ORDER BY (date_trunc('day'::text, created_at)) DESC`);
+
+// Base de conocimiento para el chat IA: FAQs, info de planes, funcionalidades
+export const aiKnowledgeBase = pgTable("ai_knowledge_base", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	category: text().notNull(), // 'planes', 'funcionalidades', 'faq', 'plataforma', 'oposiciones'
+	subcategory: text(),
+	title: text().notNull(), // Título/pregunta: "¿Qué incluye el plan Free?"
+	content: text().notNull(), // Respuesta completa en markdown
+	shortAnswer: text("short_answer"), // Respuesta corta para respuestas rápidas
+	keywords: text().array().default([]), // Keywords para fallback sin embeddings
+	// embedding: vector(1536) - Se añade con migración SQL (pgvector)
+	priority: integer().default(0), // Mayor = más prioridad
+	isActive: boolean("is_active").default(true),
+	metadata: jsonb().default({}), // Info extra: precios, links, etc.
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_ai_knowledge_base_category").using("btree", table.category.asc().nullsLast()),
+	index("idx_ai_knowledge_base_active").using("btree", table.isActive.asc().nullsLast()),
+	pgPolicy("Anyone can read knowledge base", { as: "permissive", for: "select", to: ["public"], using: sql`is_active = true` }),
+]);

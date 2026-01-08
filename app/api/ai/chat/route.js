@@ -1138,6 +1138,51 @@ function isGenericLawQuery(message, mentionedLaws, lawFromHistory = false) {
   return genericPatterns.some(p => p.test(message))
 }
 
+// 🆕 Buscar en la base de conocimiento (FAQs, planes, plataforma)
+// Devuelve info sobre la plataforma si la pregunta es sobre planes, funcionalidades, etc.
+async function searchKnowledgeBase(embedding, threshold = 0.40, limit = 3) {
+  try {
+    const { data, error } = await supabase.rpc('match_knowledge_base', {
+      query_embedding: embedding,
+      match_threshold: threshold,
+      match_count: limit,
+      filter_category: null // Buscar en todas las categorías
+    })
+
+    if (error) {
+      console.error('Error en match_knowledge_base:', error)
+      return []
+    }
+
+    if (data && data.length > 0) {
+      console.log(`💡 Knowledge base: ${data.length} resultados (mejor: ${(data[0].similarity * 100).toFixed(1)}%)`)
+    }
+
+    return data || []
+  } catch (err) {
+    console.error('Error en searchKnowledgeBase:', err)
+    return []
+  }
+}
+
+// Formatear contexto de knowledge base para el system prompt
+function formatKnowledgeBaseContext(kbResults) {
+  if (!kbResults || kbResults.length === 0) return ''
+
+  let context = '\n\n📋 INFORMACIÓN DE LA PLATAFORMA VENCE:\n'
+  context += 'El usuario está preguntando sobre la plataforma. Usa esta información para responder:\n\n'
+
+  kbResults.forEach((kb, i) => {
+    context += `--- ${kb.title} ---\n`
+    context += `${kb.content}\n\n`
+  })
+
+  context += 'IMPORTANTE: Responde de forma natural y amigable usando esta información. '
+  context += 'No digas "según la base de conocimiento" ni cites la fuente, simplemente responde como si lo supieras.\n'
+
+  return context
+}
+
 // Buscar artículos por similitud semántica (solo leyes vigentes)
 // priorityLawIds: IDs de leyes de la oposición del usuario para priorizar
 // mentionedLawNames: nombres de leyes mencionadas explícitamente en la pregunta (filtro estricto)
@@ -1946,7 +1991,34 @@ NO inventes fechas ni datos. Solo pregunta cuál oposición.
     let patternContext = ''
     let detectedPattern = null
 
-    if (!skipArticleSearch) {
+    // 💡 Variable para contexto de knowledge base (FAQs, planes, plataforma)
+    let knowledgeBaseContext = ''
+
+    // 💡 PASO 0: Buscar primero en knowledge base (preguntas sobre la plataforma/planes)
+    // Solo si NO es pregunta sobre leyes específicas (mentionedLaws vacío)
+    if (!isPsicotecnico && mentionedLaws.length === 0 && !questionContext) {
+      try {
+        const kbEmbedding = await generateEmbedding(openai, message)
+        const kbResults = await searchKnowledgeBase(kbEmbedding, 0.40, 2)
+
+        if (kbResults.length > 0 && kbResults[0].similarity > 0.45) {
+          // Match de alta confianza en knowledge base
+          knowledgeBaseContext = formatKnowledgeBaseContext(kbResults)
+          console.log(`💡 Knowledge base match: "${kbResults[0].title}" (${(kbResults[0].similarity * 100).toFixed(1)}%)`)
+
+          // Si el match es muy alto (>60%), es una pregunta puramente sobre la plataforma
+          // No buscar artículos de leyes
+          if (kbResults[0].similarity > 0.55) {
+            searchMethod = 'knowledge_base'
+            console.log(`💡 Pregunta sobre plataforma detectada - saltando búsqueda de artículos`)
+          }
+        }
+      } catch (kbError) {
+        console.log('Knowledge base search skipped:', kbError.message)
+      }
+    }
+
+    if (!skipArticleSearch && searchMethod !== 'knowledge_base') {
       // 🎯 PASO 1: Detectar si hay un patrón conocido en la consulta
       detectedPattern = detectQueryPattern(message)
 
@@ -2052,8 +2124,8 @@ NO inventes contenido. Solo pregunta para concretar.
       console.log(`🧠 Saltando búsqueda de artículos (psicotecnico: ${isPsicotecnico}, queryType: ${queryType})`)
     }
 
-    // 🎯 Incluir contexto de pattern matching si existe
-    const context = isPsicotecnico ? '' : formatContext(articles) + patternContext + examStatsContext + userStatsContext + ambiguousExamContext + oposicionInfoContext + genericLawQueryContext
+    // 🎯 Incluir contexto de pattern matching y knowledge base si existen
+    const context = isPsicotecnico ? '' : formatContext(articles) + patternContext + examStatsContext + userStatsContext + ambiguousExamContext + oposicionInfoContext + genericLawQueryContext + knowledgeBaseContext
 
     // Formatear contexto de pregunta si existe
     let questionContextText = ''
