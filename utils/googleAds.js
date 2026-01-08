@@ -1,5 +1,5 @@
 // utils/googleAds.js - Tracking via GA4 events (importados a Google Ads)
-// Google Ads ID: AW-16813286691 (configurado en GoogleAnalytics.js)
+// Google Ads ID: AW-7929322521 (configurado en GoogleAnalytics.js)
 
 // Generar ID único para transacciones
 const generateTransactionId = () => {
@@ -48,7 +48,7 @@ export const debugGoogleAds = () => {
   if (typeof window !== 'undefined') {
     console.log('🎯 Google Ads Debug:', {
       gtagExists: !!window.gtag,
-      conversionId: 'AW-16813286691',
+      conversionId: 'AW-7929322521',
       dataLayerLength: window.dataLayer?.length || 0
     })
   }

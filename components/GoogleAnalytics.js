@@ -51,7 +51,7 @@ export default function GoogleAnalytics() {
           gtag('config', 'G-WXQ069CRY9');
           
           // Google Ads configuration (Nueva cuenta Enero 2026)
-          gtag('config', 'AW-16813286691');
+          gtag('config', 'AW-7929322521');
         `}
       </Script>
     </>
