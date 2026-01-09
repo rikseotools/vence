@@ -46,25 +46,49 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
       return await getUserStatsFallback(userId)
     }
 
-    // 🚀 NUEVO: Obtener themePerformance basado en topic_scope (más preciso)
+    // 🚀 OPTIMIZADO: Leer de caché en lugar de función lenta
     let scopeBasedThemePerformance: ThemePerformance[] | null = null
     try {
-      const scopeResult = await db.execute(
-        sql`SELECT * FROM get_theme_performance_by_scope(${userId}::uuid)`
+      // Intentar leer de la tabla caché (actualizada diariamente a las 00:00)
+      const cacheResult = await db.execute(
+        sql`SELECT topic_number, topic_title, total_questions, correct_answers,
+            accuracy, average_time, last_practiced, calculated_at
+            FROM user_theme_performance_cache
+            WHERE user_id = ${userId}::uuid
+            ORDER BY topic_number`
       )
-      if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
-        scopeBasedThemePerformance = (scopeResult as any[]).map(row => ({
+
+      if (cacheResult && Array.isArray(cacheResult) && cacheResult.length > 0) {
+        scopeBasedThemePerformance = (cacheResult as any[]).map(row => ({
           temaNumber: row.topic_number,
-          title: row.topic_title || null, // Título del tema desde la BD
+          title: row.topic_title || null,
           totalQuestions: Number(row.total_questions) || 0,
           correctAnswers: Number(row.correct_answers) || 0,
           accuracy: Number(row.accuracy) || 0,
           averageTime: Math.round(Number(row.average_time) || 0),
           lastPracticed: row.last_practiced,
         }))
+        console.log(`📊 Theme performance cargado desde caché (${scopeBasedThemePerformance.length} temas)`)
+      } else {
+        // Si no hay caché, intentar calcular en tiempo real (lento pero funcional)
+        console.warn('⚠️ Caché vacío, calculando en tiempo real...')
+        const scopeResult = await db.execute(
+          sql`SELECT * FROM get_theme_performance_by_scope(${userId}::uuid)`
+        )
+        if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
+          scopeBasedThemePerformance = (scopeResult as any[]).map(row => ({
+            temaNumber: row.topic_number,
+            title: row.topic_title || null,
+            totalQuestions: Number(row.total_questions) || 0,
+            correctAnswers: Number(row.correct_answers) || 0,
+            accuracy: Number(row.accuracy) || 0,
+            averageTime: Math.round(Number(row.average_time) || 0),
+            lastPracticed: row.last_practiced,
+          }))
+        }
       }
     } catch (error) {
-      console.warn('⚠️ get_theme_performance_by_scope no disponible:', error)
+      console.warn('⚠️ Error cargando theme performance:', error)
     }
 
     // Parsear y formatear la respuesta
@@ -367,9 +391,31 @@ async function getRecentTests(db: ReturnType<typeof getDb>, userId: string): Pro
 }
 
 async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string): Promise<ThemePerformance[]> {
-  // 🚀 NUEVO: Usar función que calcula por topic_scope
-  // Esto atribuye cada respuesta a TODOS los temas que cubren ese artículo
+  // 🚀 OPTIMIZADO: Leer de caché en lugar de función lenta
   try {
+    // Intentar leer de la tabla caché primero
+    const cacheResult = await db.execute(
+      sql`SELECT topic_number, topic_title, total_questions, correct_answers,
+          accuracy, average_time, last_practiced
+          FROM user_theme_performance_cache
+          WHERE user_id = ${userId}::uuid
+          ORDER BY topic_number`
+    )
+
+    if (cacheResult && Array.isArray(cacheResult) && cacheResult.length > 0) {
+      return (cacheResult as any[]).map(row => ({
+        temaNumber: row.topic_number,
+        title: row.topic_title || null,
+        totalQuestions: Number(row.total_questions) || 0,
+        correctAnswers: Number(row.correct_answers) || 0,
+        accuracy: Number(row.accuracy) || 0,
+        averageTime: Math.round(Number(row.average_time) || 0),
+        lastPracticed: row.last_practiced,
+      }))
+    }
+
+    // Si no hay caché, usar función en tiempo real (lento)
+    console.warn('⚠️ Caché vacío en fallback, calculando en tiempo real...')
     const scopeResult = await db.execute(
       sql`SELECT * FROM get_theme_performance_by_scope(${userId}::uuid)`
     )
@@ -377,6 +423,7 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
     if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
       return (scopeResult as any[]).map(row => ({
         temaNumber: row.topic_number,
+        title: row.topic_title || null,
         totalQuestions: Number(row.total_questions) || 0,
         correctAnswers: Number(row.correct_answers) || 0,
         accuracy: Number(row.accuracy) || 0,
@@ -385,7 +432,7 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
       }))
     }
   } catch (error) {
-    console.warn('⚠️ get_theme_performance_by_scope no disponible, usando fallback:', error)
+    console.warn('⚠️ Error cargando theme performance, usando fallback básico:', error)
   }
 
   // Fallback al método antiguo si la función no existe

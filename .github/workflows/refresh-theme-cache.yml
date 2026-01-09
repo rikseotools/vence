@@ -1,0 +1,33 @@
+name: Refresh Theme Performance Cache
+
+on:
+  schedule:
+    # Ejecutar todos los días a las 23:00 UTC (00:00 hora española en invierno)
+    - cron: '0 23 * * *'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  refresh-cache:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Refresh Theme Performance Cache
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://www.vence.es/api/cron/refresh-theme-cache)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Status: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Error: HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Log completion
+        run: echo "✅ Caché de rendimiento por tema actualizado - $(date)"
