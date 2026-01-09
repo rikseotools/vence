@@ -1131,6 +1131,17 @@ export default function EstadisticasRevolucionarias() {
           throw new Error(apiData.error || 'Error cargando estadísticas')
         }
 
+        // 🔄 Cargar sesiones de usuario para analytics reales
+        const { data: userSessions } = await supabase
+          .from('user_sessions')
+          .select('total_duration_minutes, engagement_score, session_start, tests_completed, questions_answered')
+          .eq('user_id', user.id)
+          .order('session_start', { ascending: false })
+          .limit(100)
+
+        // Filtrar sesiones con duración válida para promedios
+        const validSessions = userSessions?.filter(s => (s.total_duration_minutes || 0) > 0) || []
+
         // Mapear respuesta de API al formato esperado por componentes
         const { stats: apiStats } = apiData
         const mappedStats = {
@@ -1530,21 +1541,33 @@ export default function EstadisticasRevolucionarias() {
             }
           })() : null,
 
-          // Análisis de sesiones - aproximado desde datos de tests
-          sessionAnalytics: apiStats.main.totalTests >= 5 ? {
-            totalSessions: apiStats.main.totalTests,
-            avgSessionDuration: Math.round(apiStats.main.totalStudyTimeSeconds / Math.max(1, apiStats.main.totalTests) / 60),
-            avgEngagement: Math.min(100, Math.round(apiStats.main.accuracy * 1.1)),
+          // Análisis de sesiones - usando datos reales de user_sessions
+          sessionAnalytics: userSessions && userSessions.length > 0 ? {
+            totalSessions: userSessions.length,
+            avgSessionDuration: validSessions.length > 0
+              ? Math.round(validSessions.reduce((sum, s) => sum + (s.total_duration_minutes || 0), 0) / validSessions.length)
+              : 0,
+            avgEngagement: validSessions.length > 0
+              ? Math.round(validSessions.reduce((sum, s) => sum + (s.engagement_score || 0), 0) / validSessions.length)
+              : 0,
             devicesUsed: 1,
-            recentSessions: apiStats.recentTests.slice(0, 5).map(t => ({
-              date: new Date(t.completedAt).toLocaleDateString('es-ES'),
-              duration: Math.round(t.timeSeconds / 60),
-              engagement: t.accuracy,
+            recentSessions: userSessions.slice(0, 5).map(s => ({
+              date: new Date(s.session_start).toLocaleDateString('es-ES'),
+              duration: s.total_duration_minutes || 0,
+              engagement: s.engagement_score || 0,
               device: 'Web',
-              testsCompleted: 1,
-              questionsAnswered: t.totalQuestions
+              testsCompleted: s.tests_completed || 0,
+              questionsAnswered: s.questions_answered || 0
             })),
-            consistency: Math.min(100, Math.round((apiStats.weeklyProgress.length / 7) * 100))
+            consistency: (() => {
+              const last30Days = userSessions.filter(s => {
+                const sessionDate = new Date(s.session_start)
+                const thirtyDaysAgo = new Date()
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+                return sessionDate >= thirtyDaysAgo
+              })
+              return Math.round((last30Days.length / 30) * 100)
+            })()
           } : null,
 
           // Analytics de dispositivo - básico
