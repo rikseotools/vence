@@ -1,0 +1,33 @@
+name: Fraud Detection
+
+on:
+  schedule:
+    # Ejecutar cada 6 horas (0:00, 6:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  detect-fraud:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Detect Fraud Patterns
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://www.vence.es/api/cron/fraud-detection)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "Error: HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Log completion
+        run: echo "🔍 Detección de fraudes completada - $(date)"

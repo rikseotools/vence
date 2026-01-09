@@ -1,10 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true, // ✅ Tu configuración existente
-  },
-  
-  // ✅ Optimizaciones de rendimiento
+  // ✅ Optimizaciones de rendimiento (estables en Next.js 16)
   experimental: {
     optimizeCss: true,
     cssChunking: 'strict',

@@ -10,7 +10,7 @@ export const chatRequestSchema = z.object({
   })).optional().default([]),
   questionContext: z.object({
     question: z.string().optional(),
-    options: z.record(z.string()).optional(),
+    options: z.record(z.string(), z.string()).optional(),
     correctAnswer: z.string().optional(),
     userAnswer: z.string().optional(),
     explanation: z.string().optional(),

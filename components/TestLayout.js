@@ -30,6 +30,7 @@ import {
 import { testTracker } from '../utils/testTracking.js'
 import { useTestCompletion } from '../hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
+import { useBotDetection, useBehaviorAnalysis } from '../hooks/useBotDetection'
 import DailyLimitBanner from './DailyLimitBanner'
 import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
@@ -73,6 +74,13 @@ export default function TestLayout({
     setShowUpgradeModal,
     recordAnswer
   } = useDailyQuestionLimit()
+
+  // 🤖 Detección de bots y análisis de comportamiento (solo usuarios autenticados)
+  const { isBot, botScore } = useBotDetection(user?.id)
+  const {
+    suspicionScore,
+    recordAnswer: recordBehavior
+  } = useBehaviorAnalysis(user?.id)
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -156,6 +164,71 @@ export default function TestLayout({
     }
     return `Tema ${temaNumber}`
   }
+
+  // 🔄 PERSISTENCIA DE TEST PARA USUARIOS ANÓNIMOS
+  const PENDING_TEST_KEY = 'vence_pending_test'
+
+  // Guardar estado del test en localStorage (solo para usuarios no logueados)
+  const savePendingTestState = (newAnsweredQuestions, newScore, newDetailedAnswers) => {
+    if (user) return // No guardar si ya está logueado
+
+    try {
+      const pendingTest = {
+        tema,
+        testNumber,
+        config,
+        questions: effectiveQuestions?.map(q => ({
+          id: q.id,
+          question: q.question,
+          options: q.options,
+          correct: q.correct,
+          article: q.article,
+          metadata: q.metadata
+        })),
+        currentQuestion,
+        answeredQuestions: newAnsweredQuestions,
+        score: newScore,
+        detailedAnswers: newDetailedAnswers,
+        startTime,
+        savedAt: Date.now(),
+        pageUrl: pathname
+      }
+      localStorage.setItem(PENDING_TEST_KEY, JSON.stringify(pendingTest))
+      console.log('💾 Test guardado en localStorage para usuario anónimo')
+    } catch (e) {
+      console.warn('⚠️ Error guardando test en localStorage:', e)
+    }
+  }
+
+  // Limpiar test pendiente (cuando se completa o el usuario se loguea)
+  const clearPendingTest = () => {
+    try {
+      localStorage.removeItem(PENDING_TEST_KEY)
+      console.log('🗑️ Test pendiente eliminado de localStorage')
+    } catch (e) {
+      console.warn('⚠️ Error limpiando test pendiente:', e)
+    }
+  }
+
+  // Limpiar test pendiente cuando el usuario se loguea
+  useEffect(() => {
+    if (user) {
+      // No limpiar inmediatamente - el callback lo procesará
+      // Solo limpiar si ya pasaron 5 minutos (test ya fue procesado o abandonado)
+      const pendingTest = localStorage.getItem(PENDING_TEST_KEY)
+      if (pendingTest) {
+        try {
+          const parsed = JSON.parse(pendingTest)
+          const age = Date.now() - parsed.savedAt
+          if (age > 5 * 60 * 1000) { // 5 minutos
+            clearPendingTest()
+          }
+        } catch (e) {
+          clearPendingTest()
+        }
+      }
+    }
+  }, [user])
 
   // 🎯 Cargar preferencia de scroll automático desde localStorage
   useEffect(() => {
@@ -660,7 +733,14 @@ export default function TestLayout({
         const isCorrect = answerIndex === currentQ.correct
         const newScore = isCorrect ? score + 1 : score
         const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
-        
+        const responseTimeMs = Date.now() - questionStartTime
+
+        // 🤖 Registrar comportamiento para detección de scrapers
+        // (Los scrapers no "responden" - solo copian contenido rápidamente)
+        if (user?.id) {
+          recordBehavior(responseTimeMs)
+        }
+
         if (isCorrect) {
           setScore(newScore)
           testTracker.trackInteraction('answer_correct', { 
@@ -697,7 +777,38 @@ export default function TestLayout({
         
         setAnsweredQuestions(newAnsweredQuestions)
         setDetailedAnswers(newDetailedAnswers)
-        
+
+        // 💾 Guardar en localStorage para usuarios anónimos
+        savePendingTestState(newAnsweredQuestions, newScore, newDetailedAnswers)
+
+        // 📊 TRACKING: Marcar usuario como activo si es su primera pregunta logueado
+        if (user && answeredQuestions.length === 0) {
+          // Primera pregunta de este test - verificar si es su primera pregunta global
+          (async () => {
+            try {
+              const { data: profile } = await supabase
+                .from('user_profiles')
+                .select('is_active_student')
+                .eq('id', user.id)
+                .single()
+
+              if (profile && !profile.is_active_student) {
+                await supabase
+                  .from('user_profiles')
+                  .update({
+                    is_active_student: true,
+                    first_test_completed_at: new Date().toISOString()
+                  })
+                  .eq('id', user.id)
+
+                console.log('🎯 [TRACKING] Usuario marcado como ACTIVO (primera pregunta logueado)')
+              }
+            } catch (e) {
+              console.warn('⚠️ Error actualizando is_active_student:', e)
+            }
+          })()
+        }
+
         // 🧠 Lógica adaptativa: evaluar % de aciertos
         if (adaptiveMode) {
           // Calcular % de aciertos actual
@@ -1456,15 +1567,25 @@ export default function TestLayout({
                   {/* 🚫 ELIMINADO: No mostrar artículo antes de responder (da pistas) */}
                 </div>
                 
-                <div className="prose max-w-none dark:prose-invert">
+                <div
+                  className="prose max-w-none dark:prose-invert select-none"
+                  onCopy={(e) => e.preventDefault()}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
+                >
                   <p className="text-lg text-gray-800 dark:text-gray-200 leading-relaxed">
                     {currentQ?.question}
                   </p>
                 </div>
               </div>
 
-              {/* Opciones de respuesta con dark mode */}
-              <div className="space-y-3 mb-6">
+              {/* Opciones de respuesta con dark mode - Anti-copia */}
+              <div
+                className="space-y-3 mb-6 select-none"
+                onCopy={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
+                onDragStart={(e) => e.preventDefault()}
+              >
                 {currentQ?.options?.map((option, index) => (
                   <button
                     key={index}
@@ -1611,9 +1732,14 @@ export default function TestLayout({
                       </p>
                     </div>
 
-                    {/* Explicación con dark mode */}
+                    {/* Explicación con dark mode - Anti-copia */}
                     {currentQ?.explanation && (
-                      <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4">
+                      <div
+                        className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4 select-none"
+                        onCopy={(e) => e.preventDefault()}
+                        onContextMenu={(e) => e.preventDefault()}
+                        onDragStart={(e) => e.preventDefault()}
+                      >
                         <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-2">📖 Explicación:</h4>
                         <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed">
                           {currentQ.explanation}

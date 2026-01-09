@@ -29,6 +29,7 @@
     "test-image-upload": "node scripts/test-image-upload.js"
   },
   "dependencies": {
+    "@fingerprintjs/botd": "^2.0.0",
     "@heroicons/react": "^2.2.0",
     "@stripe/react-stripe-js": "^3.7.0",
     "@stripe/stripe-js": "^7.4.0",
@@ -40,7 +41,7 @@
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.45.1",
     "drizzle-zod": "^0.8.3",
-    "next": "^15.3.3",
+    "next": "^16.1.1",
     "openai": "^6.15.0",
     "pdfjs-dist": "^2.16.105",
     "playwright": "^1.56.1",

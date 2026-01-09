@@ -205,7 +205,7 @@ export async function getExamStats(
     .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
     .innerJoin(laws, eq(articles.lawId, laws.id))
     .where(and(
-      eq(questions.isOfficial, true),
+      eq(questions.isOfficialExam, true),
       eq(questions.isActive, true),
       isNotNull(questions.primaryArticleId)
     ))
@@ -267,11 +267,13 @@ export async function getUserStats(
   limit = 10
 ): Promise<UserArticleStat[]> {
   // Query con join a questions, articles y laws
+  // userQuestionHistory almacena datos agregados por pregunta (totalAttempts, correctAttempts)
   let query = getDb()
     .select({
       articleNumber: articles.articleNumber,
       lawShortName: laws.shortName,
-      isCorrect: userQuestionHistory.isCorrect
+      totalAttempts: userQuestionHistory.totalAttempts,
+      correctAttempts: userQuestionHistory.correctAttempts
     })
     .from(userQuestionHistory)
     .innerJoin(questions, eq(userQuestionHistory.questionId, questions.id))
@@ -289,7 +291,7 @@ export async function getUserStats(
 
   const results = await query
 
-  // Agrupar y calcular estadísticas
+  // Agrupar y calcular estadísticas por artículo
   const stats = new Map<string, { total: number; correct: number; articleNumber: string; lawShortName: string }>()
 
   for (const row of results) {
@@ -297,16 +299,18 @@ export async function getUserStats(
 
     const key = `${row.lawShortName}-${row.articleNumber}`
     const existing = stats.get(key)
+    const rowTotal = row.totalAttempts || 0
+    const rowCorrect = row.correctAttempts || 0
 
     if (existing) {
-      existing.total++
-      if (row.isCorrect) existing.correct++
+      existing.total += rowTotal
+      existing.correct += rowCorrect
     } else {
       stats.set(key, {
         articleNumber: row.articleNumber,
         lawShortName: row.lawShortName,
-        total: 1,
-        correct: row.isCorrect ? 1 : 0
+        total: rowTotal,
+        correct: rowCorrect
       })
     }
   }
