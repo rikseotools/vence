@@ -212,9 +212,12 @@ export async function getPendingExams(
     const db = getDb()
 
     // Construir condiciones
+    // FIX: También verificar completed_at IS NULL para evitar mostrar tests
+    // que ya finalizaron pero tienen is_completed=false (finalizados incompletos)
     const conditions = [
       eq(tests.userId, userId),
       eq(tests.isCompleted, false),
+      isNull(tests.completedAt),
     ]
 
     if (testType) {
