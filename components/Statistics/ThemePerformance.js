@@ -20,18 +20,22 @@ const getScoreBg = (percentage) => {
 }
 
 // Formatear número de tema para mostrar al usuario
-const formatThemeName = (num) => {
+const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') => {
   if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
   if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
-  if (num >= 201 && num <= 299) return `Bloque III - Tema ${num - 200}`
-  if (num >= 301 && num <= 399) return `Bloque IV - Tema ${num - 300}`
-  if (num >= 401 && num <= 499) return `Bloque V - Tema ${num - 400}`
-  if (num >= 501 && num <= 599) return `Bloque VI - Tema ${num - 500}`
-  if (num >= 601 && num <= 699) return `Bloque VII - Tema ${num - 600}`
+
+  // Bloques III-VI solo para Administrativo C1
+  if (oposicionSlug === 'administrativo-estado') {
+    if (num >= 201 && num <= 299) return `Bloque III - Tema ${num - 200}`
+    if (num >= 301 && num <= 399) return `Bloque IV - Tema ${num - 300}`
+    if (num >= 401 && num <= 499) return `Bloque V - Tema ${num - 400}`
+    if (num >= 501 && num <= 599) return `Bloque VI - Tema ${num - 500}`
+  }
+
   return `Tema ${num}`
 }
 
-export default function ThemePerformance({ themePerformance, articlePerformance }) {
+export default function ThemePerformance({ themePerformance, articlePerformance, userOposicion }) {
   const [selectedTheme, setSelectedTheme] = useState(null)
   const [modalState, setModalState] = useState({
     isOpen: false,
@@ -220,6 +224,20 @@ export default function ThemePerformance({ themePerformance, articlePerformance 
     mainContent = (
       <div className="bg-white rounded-xl shadow-lg p-6">
       <h3 className="text-xl font-bold text-gray-800 mb-4">📚 Rendimiento por Tema</h3>
+
+      {/* Indicador de oposición seleccionada */}
+      {userOposicion && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <span className="font-medium">📋 Temario:</span> {userOposicion.nombre}
+            <span className="text-blue-600 ml-2">({userOposicion.bloquesCount || 2} bloques, {userOposicion.temasCount || 28} temas)</span>
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            Mostrando temas según tu oposición seleccionada en el perfil
+          </p>
+        </div>
+      )}
+
       <p className="text-gray-600 mb-6">Haz clic en un tema para ver el detalle por artículos</p>
       
       

@@ -39,15 +39,48 @@ const formatTime = (seconds) => {
 }
 
 // ✅ Formatear número de tema interno a nombre legible por bloque
-const formatThemeName = (num) => {
+// oposicionSlug determina qué bloques son válidos para esa oposición
+const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') => {
+  // Bloque I: Común a todas las oposiciones (1-16)
   if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
+  // Bloque II: Común (101-112)
   if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
-  if (num >= 201 && num <= 299) return `Bloque III - Tema ${num - 200}`
-  if (num >= 301 && num <= 399) return `Bloque IV - Tema ${num - 300}`
-  if (num >= 401 && num <= 499) return `Bloque V - Tema ${num - 400}`
-  if (num >= 501 && num <= 599) return `Bloque VI - Tema ${num - 500}`
-  if (num >= 601 && num <= 699) return `Bloque VII - Tema ${num - 600}`
+
+  // Bloques III-VI: Solo para Administrativo C1
+  if (oposicionSlug === 'administrativo-estado') {
+    if (num >= 201 && num <= 299) return `Bloque III - Tema ${num - 200}`
+    if (num >= 301 && num <= 399) return `Bloque IV - Tema ${num - 300}`
+    if (num >= 401 && num <= 499) return `Bloque V - Tema ${num - 400}`
+    if (num >= 501 && num <= 599) return `Bloque VI - Tema ${num - 500}`
+  }
+
   return `Tema ${num}`
+}
+
+// ✅ Obtener los rangos de temas válidos según la oposición
+const getValidThemeRanges = (oposicionSlug) => {
+  if (oposicionSlug === 'administrativo-estado') {
+    // Administrativo C1: 6 bloques
+    return [
+      { min: 1, max: 16 },      // Bloque I
+      { min: 101, max: 112 },   // Bloque II
+      { min: 201, max: 207 },   // Bloque III
+      { min: 301, max: 307 },   // Bloque IV
+      { min: 401, max: 409 },   // Bloque V
+      { min: 501, max: 506 },   // Bloque VI
+    ]
+  }
+  // Auxiliar Administrativo: 2 bloques (por defecto)
+  return [
+    { min: 1, max: 16 },      // Bloque I
+    { min: 101, max: 112 },   // Bloque II
+  ]
+}
+
+// ✅ Verificar si un tema pertenece a la oposición del usuario
+const isThemeValidForOposicion = (themeNumber, oposicionSlug) => {
+  const ranges = getValidThemeRanges(oposicionSlug)
+  return ranges.some(r => themeNumber >= r.min && themeNumber <= r.max)
 }
 
 // ✅ FUNCIONES AUXILIARES MOVIDAS AL INICIO - ANTES DE SU USO
@@ -1116,9 +1149,11 @@ export default function EstadisticasRevolucionarias() {
           weeklyProgress: apiStats.weeklyProgress,
 
           // Tests recientes - mapear al formato esperado por RecentTests.js
-          recentTests: apiStats.recentTests.map(t => ({
+          recentTests: (() => {
+            const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
+            return apiStats.recentTests.map(t => ({
             id: t.id,
-            title: t.title || (t.temaNumber ? formatThemeName(t.temaNumber) : 'Test Aleatorio'),
+            title: t.title || (t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : 'Test Aleatorio'),
             score: t.score,
             total: t.totalQuestions, // RecentTests usa 'total'
             totalQuestions: t.totalQuestions,
@@ -1140,18 +1175,32 @@ export default function EstadisticasRevolucionarias() {
             formattedDuration: t.timeSeconds > 3600
               ? `${Math.floor(t.timeSeconds / 3600)}h ${Math.floor((t.timeSeconds % 3600) / 60)}m`
               : `${Math.floor(t.timeSeconds / 60)}m`
-          })),
+          }))
+          })(),
 
-          // Rendimiento por tema
-          themePerformance: apiStats.themePerformance.map(t => ({
-            theme: t.temaNumber,
-            title: formatThemeName(t.temaNumber),
-            total: t.totalQuestions,
-            correct: t.correctAnswers,
-            accuracy: t.accuracy,
-            avgTime: t.averageTime,
-            status: t.accuracy >= 85 ? 'dominado' : t.accuracy >= 70 ? 'bien' : t.accuracy >= 50 ? 'regular' : 'débil'
-          })),
+          // Rendimiento por tema - filtrado por oposición del usuario
+          themePerformance: (() => {
+            const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
+            return apiStats.themePerformance
+              .filter(t => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
+              .map(t => ({
+                theme: t.temaNumber,
+                title: formatThemeName(t.temaNumber, oposicionSlug),
+                total: t.totalQuestions,
+                correct: t.correctAnswers,
+                accuracy: t.accuracy,
+                avgTime: t.averageTime,
+                status: t.accuracy >= 85 ? 'dominado' : t.accuracy >= 70 ? 'bien' : t.accuracy >= 50 ? 'regular' : 'débil'
+              }))
+          })(),
+
+          // Info de la oposición del usuario para mostrar en UI
+          userOposicion: apiStats.userOposicion ? {
+            nombre: apiStats.userOposicion.nombre,
+            slug: apiStats.userOposicion.slug,
+            bloquesCount: apiStats.userOposicion.bloquesCount,
+            temasCount: apiStats.userOposicion.temasCount
+          } : null,
 
           // Desglose por dificultad
           difficultyBreakdown: apiStats.difficultyBreakdown.map(d => ({
@@ -1894,9 +1943,10 @@ export default function EstadisticasRevolucionarias() {
           {activeTab === 'performance' && (
             <div className="space-y-6">
               <DifficultyBreakdown difficultyBreakdown={stats.difficultyBreakdown} />
-              <ThemePerformance 
-                themePerformance={stats.themePerformance} 
-                articlePerformance={stats.articlePerformance} 
+              <ThemePerformance
+                themePerformance={stats.themePerformance}
+                articlePerformance={stats.articlePerformance}
+                userOposicion={stats.userOposicion} 
               />
               <TimePatterns timePatterns={stats.timePatterns} />
               <SessionAnalytics sessionAnalytics={stats.sessionAnalytics} />
