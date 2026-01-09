@@ -2,9 +2,11 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useAuth } from '../contexts/AuthContext'
 import AdSenseComponent from './AdSenseComponent'
 
 export default function DynamicTest({ titulo, dificultad }) {
+  const { isPremium } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [testData, setTestData] = useState(null)
@@ -450,17 +452,17 @@ export default function DynamicTest({ titulo, dificultad }) {
                       </div>
                     )}
 
-                    {/* Anuncio AdSense después de cada respuesta */}
-                    {currentQuestion > 0 && (
+                    {/* Anuncio AdSense después de cada respuesta - Solo usuarios FREE */}
+                    {!isPremium && currentQuestion > 0 && (
                       <div className="my-6 text-center">
                         <p className="text-xs text-gray-500 mb-3">Publicidad</p>
-                        <AdSenseComponent 
+                        <AdSenseComponent
                           adType="TEST_AFTER_ANSWER"
                           className="max-w-lg mx-auto"
                         />
                       </div>
                     )}
-                    
+
                     {currentQuestion < testData.questions.length - 1 && (
                       <div className="text-center">
                         <button
@@ -521,14 +523,16 @@ export default function DynamicTest({ titulo, dificultad }) {
                 </div>
               </div>
 
-              {/* Anuncio AdSense al finalizar test dinámico */}
-              <div className="my-8 text-center">
-                <p className="text-xs text-gray-500 mb-3">Publicidad</p>
-                <AdSenseComponent 
-                  adType="TEST_COMPLETION"
-                  className="max-w-2xl mx-auto"
-                />
-              </div>
+              {/* Anuncio AdSense al finalizar test - Solo usuarios FREE */}
+              {!isPremium && (
+                <div className="my-8 text-center">
+                  <p className="text-xs text-gray-500 mb-3">Publicidad</p>
+                  <AdSenseComponent
+                    adType="TEST_COMPLETION"
+                    className="max-w-2xl mx-auto"
+                  />
+                </div>
+              )}
 
               <div className="grid md:grid-cols-4 gap-4 max-w-3xl mx-auto">
                 <button

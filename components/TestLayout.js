@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
+import { useQuestionContext } from '../contexts/QuestionContext'
 import PersistentRegistrationManager from './PersistentRegistrationManager'
 import { usePathname } from 'next/navigation'
 import QuestionEvolution from './QuestionEvolution'
@@ -29,8 +30,8 @@ import {
 import { testTracker } from '../utils/testTracking.js'
 import { useTestCompletion } from '../hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
-import AdSenseComponent from './AdSenseComponent'
 import DailyLimitBanner from './DailyLimitBanner'
+import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
 
 // 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar artículo
@@ -60,7 +61,8 @@ export default function TestLayout({
   questions,
   children
 }) {
-  const { user, loading: authLoading, supabase } = useAuth()
+  const { user, loading: authLoading, supabase, isPremium } = useAuth()
+  const { setQuestionContext, clearQuestionContext } = useQuestionContext()
   const { notifyTestCompletion } = useTestCompletion()
   const {
     hasLimit,
@@ -234,6 +236,36 @@ export default function TestLayout({
       }
     }
   }, [answeredQuestions, adaptiveMode, user, isAdaptiveMode])
+
+  // 💬 Actualizar contexto de pregunta para el chat AI
+  useEffect(() => {
+    const currentQ = effectiveQuestions?.[currentQuestion]
+    if (currentQ) {
+      // Los fetchers pueden devolver diferentes formatos:
+      // - question_text o question (transformado)
+      // - option_a/b/c/d o options[] array
+      // - law directo o article.law
+      setQuestionContext({
+        id: currentQ.id,
+        question_text: currentQ.question_text || currentQ.question,
+        option_a: currentQ.option_a || currentQ.options?.[0],
+        option_b: currentQ.option_b || currentQ.options?.[1],
+        option_c: currentQ.option_c || currentQ.options?.[2],
+        option_d: currentQ.option_d || currentQ.options?.[3],
+        correct: currentQ.correct,
+        explanation: currentQ.explanation,
+        law: currentQ.law || currentQ.article?.law_short_name || currentQ.article?.law_name,
+        article_number: currentQ.article_number || currentQ.article?.number,
+        difficulty: currentQ.difficulty || currentQ.metadata?.difficulty,
+        source: currentQ.source || currentQ.metadata?.exam_source
+      })
+    }
+
+    // Limpiar contexto al desmontar el componente
+    return () => {
+      clearQuestionContext()
+    }
+  }, [currentQuestion, effectiveQuestions, setQuestionContext, clearQuestionContext])
 
   // Guardar respuestas previas al registrarse
   const savePreviousAnswersOnRegistration = async (userId, previousAnswers) => {
@@ -1571,15 +1603,13 @@ export default function TestLayout({
                         </span>
                       </div>
                       <p className={`text-sm ${
-                        selectedAnswer === currentQ.correct 
-                          ? 'text-green-700 dark:text-green-400' 
+                        selectedAnswer === currentQ.correct
+                          ? 'text-green-700 dark:text-green-400'
                           : 'text-red-700 dark:text-red-400'
                       }`}>
                         La respuesta correcta es: <strong>{String.fromCharCode(65 + currentQ.correct)}</strong>
                       </p>
                     </div>
-
-                    
 
                     {/* Explicación con dark mode */}
                     {currentQ?.explanation && (
@@ -1588,6 +1618,24 @@ export default function TestLayout({
                         <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed">
                           {currentQ.explanation}
                         </p>
+
+                        {/* 🤖 Botón para pedir explicación a la IA cuando falla */}
+                        {selectedAnswer !== currentQ.correct && (
+                          <button
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('openAIChat', {
+                                detail: {
+                                  message: 'Explícame la respuesta correcta',
+                                  suggestion: 'Explícame la respuesta correcta'
+                                }
+                              }))
+                            }}
+                            className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition-colors text-sm font-medium"
+                          >
+                            <span>✨</span>
+                            <span>Explícamelo con IA, quiero interactuar</span>
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -1687,18 +1735,18 @@ export default function TestLayout({
                             }</span>
                           )}
                         </div>
-                        
-                        {/* Anuncio AdSense después de cada respuesta */}
-                        {currentQuestion > 0 && (
+
+                        {/* Anuncio AdSense después de cada respuesta - Solo usuarios FREE */}
+                        {!isPremium && currentQuestion > 0 && (
                           <div className="my-6 text-center">
                             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Publicidad</p>
-                            <AdSenseComponent 
+                            <AdSenseComponent
                               adType="TEST_AFTER_ANSWER"
                               className="max-w-lg mx-auto"
                             />
                           </div>
                         )}
-                        
+
                         {/* Condición mejorada: Solo mostrar botón si NO es la última pregunta */}
                         {!isExplicitlyCompleted && currentQuestion < effectiveQuestions.length - 1 ? (
                           <div className="space-y-3">
@@ -1827,16 +1875,18 @@ export default function TestLayout({
                               "📚 Repasa el temario y vuelve a intentarlo"
                             )}
                           </div>
-                          
-                          {/* Anuncio AdSense al finalizar test */}
-                          <div className="my-8 text-center">
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Publicidad</p>
-                            <AdSenseComponent 
-                              adType="TEST_COMPLETION"
-                              className="max-w-2xl mx-auto"
-                            />
-                          </div>
-                          
+
+                          {/* Anuncio AdSense al finalizar test - Solo usuarios FREE */}
+                          {!isPremium && (
+                            <div className="my-8 text-center">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Publicidad</p>
+                              <AdSenseComponent
+                                adType="TEST_COMPLETION"
+                                className="max-w-2xl mx-auto"
+                              />
+                            </div>
+                          )}
+
                           {/* Botones simplificados - solo 2 opciones */}
                           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
   
