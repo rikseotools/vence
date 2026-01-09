@@ -1312,6 +1312,19 @@ export default function AdminDashboard() {
               </div>
             </div>
           </a>
+
+          <a
+            href="/admin/fraudes"
+            className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 sm:p-4 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-xl sm:text-2xl">🚨</span>
+              <div className="min-w-0">
+                <h4 className="font-medium text-red-900 dark:text-red-100 text-sm sm:text-base">Fraudes</h4>
+                <p className="text-xs sm:text-sm text-red-600 dark:text-red-400">Cuentas compartidas</p>
+              </div>
+            </div>
+          </a>
         </div>
       </div>
 
