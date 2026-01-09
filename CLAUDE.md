@@ -182,6 +182,22 @@ git push origin main
 - Si se añaden nuevos componentes de test, DEBEN seguir este patrón
 - **Tests:** `__tests__/security/answerValidation.test.js` verifica este comportamiento
 
+#### APIs Securizadas (NO devuelven correct_option):
+| Endpoint | Descripción |
+|----------|-------------|
+| `/api/exam/resume` | Reanudar examen - preguntas sin correct_option |
+| `/api/debug/question/[id]` | Debug de preguntas - sin correct_option |
+| `testFetchers.js` | Fetchers de preguntas normales |
+| `lawFetchers.js` | Fetchers de preguntas de leyes |
+
+#### QuestionContext (contexts/QuestionContext.js):
+- Solo expone `correctAnswer` cuando `showResult = true`
+- Patrón: `correct: showResult ? verifiedCorrectAnswer : null`
+- Usado por `AIChatWidget` para sugerencias contextuales
+
+#### Páginas de Debug:
+- `app/debug/question/[id]/page.js` - Usa validación via API, no expone respuesta
+
 ### Anti-Duplicados
 - Sistema robusto para prevenir respuestas múltiples
 - Uso de Maps globales y timeouts
