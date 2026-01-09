@@ -156,7 +156,8 @@ export default function PsychometricTestLayout({
         option_b: currentQ.option_b,
         option_c: currentQ.option_c,
         option_d: currentQ.option_d,
-        correct: currentQ.correct_option,
+        // 🔒 SEGURIDAD: Solo exponer respuesta correcta DESPUÉS de responder
+        correct: showResult ? verifiedCorrectAnswer : null,
         explanation: currentQ.explanation,
         // Campos específicos de psicotécnicos
         isPsicotecnico: true,
@@ -172,7 +173,7 @@ export default function PsychometricTestLayout({
     return () => {
       clearQuestionContext()
     }
-  }, [currentQuestion, currentQ, setQuestionContext, clearQuestionContext, categoria])
+  }, [currentQuestion, currentQ, setQuestionContext, clearQuestionContext, categoria, showResult, verifiedCorrectAnswer])
 
   const handleAnswer = async (optionIndex) => {
     if (!currentQ || isAnswering || answeredQuestionsGlobal.current.has(currentQ.id)) {

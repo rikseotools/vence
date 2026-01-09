@@ -22,6 +22,10 @@ export default function QuestionDebugPage() {
   const [attemptCount, setAttemptCount] = useState(0)
   const [categoryQuestions, setCategoryQuestions] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
+  // 🔒 SEGURIDAD: Respuesta verificada via API
+  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState(null)
+  const [verifiedExplanation, setVerifiedExplanation] = useState(null)
+  const [isAnswering, setIsAnswering] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -79,32 +83,70 @@ export default function QuestionDebugPage() {
     window.location.href = `/debug/question/${newQuestionId}`
   }
 
-  const handleAnswer = (optionIndex) => {
+  // 🔒 SEGURIDAD: Validar respuesta via API
+  const handleAnswer = async (optionIndex) => {
+    if (isAnswering || showResult) return
+
+    setIsAnswering(true)
     setSelectedAnswer(optionIndex)
-    setShowResult(true)
-    
-    // Si es respuesta incorrecta, incrementar contador de intentos
-    if (optionIndex !== question.correct_option) {
-      setAttemptCount(prev => prev + 1)
+
+    try {
+      // Determinar qué API usar según el tipo de pregunta
+      const apiEndpoint = question.question_type === 'psychometric'
+        ? '/api/answer/psychometric'
+        : '/api/answer'
+
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: question.id,
+          userAnswer: optionIndex
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setVerifiedCorrectAnswer(result.correctAnswer)
+        setVerifiedExplanation(result.explanation)
+
+        // Si es respuesta incorrecta, incrementar contador de intentos
+        if (!result.isCorrect) {
+          setAttemptCount(prev => prev + 1)
+        }
+      } else {
+        console.error('Error validating answer:', result.error)
+      }
+    } catch (err) {
+      console.error('Error calling validation API:', err)
+    } finally {
+      setShowResult(true)
+      setIsAnswering(false)
     }
   }
 
   const resetQuestion = () => {
     setSelectedAnswer(null)
     setShowResult(false)
+    setVerifiedCorrectAnswer(null)
+    setVerifiedExplanation(null)
     // No reiniciar attemptCount para simular múltiples fallos
   }
 
   const renderQuestion = () => {
     if (!question) return null
 
+    // 🔒 SEGURIDAD: Pasar verifiedCorrectAnswer de API
     const questionProps = {
       question: question,
       onAnswer: handleAnswer,
       selectedAnswer: selectedAnswer,
       showResult: showResult,
-      isAnswering: false,
-      attemptCount: attemptCount
+      isAnswering: isAnswering,
+      attemptCount: attemptCount,
+      verifiedCorrectAnswer: verifiedCorrectAnswer,
+      verifiedExplanation: verifiedExplanation
     }
 
     switch (question.question_subtype) {
@@ -144,21 +186,24 @@ export default function QuestionDebugPage() {
             <h3 className="text-xl font-bold text-gray-900 mb-6">
               {question.question_text}
             </h3>
-            
+
             <div className="grid gap-4 mb-8">
               {['A', 'B', 'C', 'D'].map((letter, index) => {
                 const optionText = question.options[letter]
                 const isSelected = selectedAnswer === index
-                const isCorrect = index === question.correct_option
-                
+                // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API
+                const isCorrectOption = showResult && verifiedCorrectAnswer !== null
+                  ? index === verifiedCorrectAnswer
+                  : false
+
                 return (
                   <button
                     key={letter}
-                    onClick={() => !showResult && handleAnswer(index)}
-                    disabled={showResult}
+                    onClick={() => !showResult && !isAnswering && handleAnswer(index)}
+                    disabled={showResult || isAnswering}
                     className={`text-left p-4 rounded-lg border transition-all duration-200 ${
                       showResult
-                        ? isCorrect
+                        ? isCorrectOption
                           ? 'bg-green-100 border-green-500 text-green-800'
                           : isSelected
                             ? 'bg-red-100 border-red-500 text-red-800'
@@ -171,10 +216,10 @@ export default function QuestionDebugPage() {
                     <div className="flex items-start gap-3">
                       <span className="font-bold text-lg">{letter})</span>
                       <span className="flex-1">{optionText}</span>
-                      {showResult && isCorrect && (
+                      {showResult && isCorrectOption && (
                         <span className="text-green-600">✓</span>
                       )}
-                      {showResult && isSelected && !isCorrect && (
+                      {showResult && isSelected && !isCorrectOption && (
                         <span className="text-red-600">✗</span>
                       )}
                     </div>
@@ -182,13 +227,14 @@ export default function QuestionDebugPage() {
                 )
               })}
             </div>
-            
-            {showResult && question.explanation && (
+
+            {/* 🔒 SEGURIDAD: Usar verifiedExplanation de API */}
+            {showResult && (verifiedExplanation || question.explanation) && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
                 <h4 className="font-semibold text-blue-800 mb-2">📝 Explicación:</h4>
-                <div 
+                <div
                   className="text-blue-700 whitespace-pre-line"
-                  dangerouslySetInnerHTML={{ __html: question.explanation.replace(/\n/g, '<br>') }}
+                  dangerouslySetInnerHTML={{ __html: (verifiedExplanation || question.explanation).replace(/\n/g, '<br>') }}
                 />
               </div>
             )}
@@ -285,16 +331,17 @@ export default function QuestionDebugPage() {
       </div>
 
       {/* Información de respuesta (solo después de contestar) */}
-      {showResult && (
+      {/* 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API */}
+      {showResult && verifiedCorrectAnswer !== null && (
         <div className="bg-white border-b">
           <div className="max-w-4xl mx-auto px-4 py-4">
             <div className="text-center">
               <div className={`inline-flex items-center px-4 py-2 rounded-lg ${
-                Number(selectedAnswer) === Number(question?.correct_option)
-                  ? 'bg-green-100 text-green-800' 
+                selectedAnswer === verifiedCorrectAnswer
+                  ? 'bg-green-100 text-green-800'
                   : 'bg-red-100 text-red-800'
               }`}>
-                {Number(selectedAnswer) === Number(question?.correct_option) ? (
+                {selectedAnswer === verifiedCorrectAnswer ? (
                   <>
                     <span className="text-2xl mr-2">✅</span>
                     <span className="font-semibold">¡Correcto!</span>
@@ -303,8 +350,8 @@ export default function QuestionDebugPage() {
                   <>
                     <span className="text-2xl mr-2">❌</span>
                     <span className="font-semibold">
-                      Incorrecto. La respuesta correcta es: 
-                      {question?.correct_answer}) {question?.options[question?.correct_answer]}
+                      Incorrecto. La respuesta correcta es:
+                      {['A', 'B', 'C', 'D'][verifiedCorrectAnswer]}) {question?.options[['A', 'B', 'C', 'D'][verifiedCorrectAnswer]]}
                     </span>
                   </>
                 )}

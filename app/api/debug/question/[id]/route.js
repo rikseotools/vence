@@ -1,5 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
+// 🔒 SEGURIDAD: Esta API es para debug de UI, NO devuelve correct_option
+// La validación de respuestas se hace via /api/answer o /api/answer/psychometric
+
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params
@@ -15,10 +18,12 @@ export async function GET(request, { params }) {
     )
 
     // Primero intentar buscar en la tabla questions (preguntas de leyes)
+    // 🔒 SEGURIDAD: NO seleccionar correct_option
     const { data: lawQuestion, error: lawError } = await supabase
       .from('questions')
       .select(`
-        *,
+        id, question_text, option_a, option_b, option_c, option_d,
+        explanation, primary_article_id, is_active, created_at,
         articles!primary_article_id(
           id, article_number, title,
           laws(id, short_name, official_name)
@@ -28,11 +33,7 @@ export async function GET(request, { params }) {
       .single()
 
     if (lawQuestion && !lawError) {
-      // Determinar la respuesta correcta
-      const correctLetter = lawQuestion.correct_option?.toUpperCase() || 'A'
-      const correctIndex = ['A', 'B', 'C', 'D'].indexOf(correctLetter)
-
-      // Formatear respuesta para pregunta de ley
+      // 🔒 SEGURIDAD: NO incluir correct_option ni correct_answer
       const formattedQuestion = {
         id: lawQuestion.id,
         question_text: lawQuestion.question_text,
@@ -43,8 +44,7 @@ export async function GET(request, { params }) {
           C: lawQuestion.option_c,
           D: lawQuestion.option_d
         },
-        correct_option: correctIndex >= 0 ? correctIndex : 0,
-        correct_answer: correctLetter,
+        // 🔒 correct_option y correct_answer eliminados - validar via API
         content_data: null,
         explanation: lawQuestion.explanation,
         category_id: lawQuestion.articles?.laws?.id || null,
@@ -69,10 +69,12 @@ export async function GET(request, { params }) {
     }
 
     // Si no está en questions, buscar en psychometric_questions
+    // 🔒 SEGURIDAD: NO seleccionar correct_option
     const { data: question, error } = await supabase
       .from('psychometric_questions')
       .select(`
-        *,
+        id, question_text, question_subtype, option_a, option_b, option_c, option_d,
+        content_data, explanation, is_active, created_at,
         psychometric_sections!inner(
           section_key, display_name,
           psychometric_categories!inner(category_key, display_name)
@@ -90,7 +92,7 @@ export async function GET(request, { params }) {
       return Response.json({ error: 'Question not found' }, { status: 404 })
     }
 
-    // Formatear respuesta con datos reales (pregunta psicotécnica)
+    // 🔒 SEGURIDAD: NO incluir correct_option ni correct_answer
     const formattedQuestion = {
       id: question.id,
       question_text: question.question_text,
@@ -101,8 +103,7 @@ export async function GET(request, { params }) {
         C: question.option_c,
         D: question.option_d
       },
-      correct_option: question.correct_option,
-      correct_answer: ['A', 'B', 'C', 'D'][question.correct_option],
+      // 🔒 correct_option y correct_answer eliminados - validar via API
       content_data: question.content_data,
       explanation: question.explanation,
       category: {

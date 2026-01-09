@@ -65,11 +65,12 @@ export async function GET(request) {
     }
 
     // Obtener preguntas completas desde Supabase
+    // 🔒 SEGURIDAD: NO incluir correct_option - se valida via /api/exam/validate
     const { data: fullQuestions, error: questionsError } = await supabase
       .from('questions')
       .select(`
         id, question_text, option_a, option_b, option_c, option_d,
-        correct_option, explanation, difficulty, is_official_exam,
+        difficulty, is_official_exam,
         primary_article_id,
         articles(
           id, article_number, title, content,
