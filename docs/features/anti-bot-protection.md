@@ -7,6 +7,138 @@
 
 Sistema de protección contra scrapers y bots que copian preguntas de tests. **Solo afecta a usuarios autenticados** - no bloquea crawlers de SEO (Google, Bing, etc.).
 
+---
+
+## Estado de Implementación
+
+### ✅ Implementado
+
+| Componente | Descripción | Ubicación |
+|------------|-------------|-----------|
+| **Detección de Bots (BotD)** | Detecta WebDriver, Puppeteer, headless browsers | `hooks/useBotDetection.js` |
+| **Análisis de Comportamiento** | Detecta navegación rápida, tiempos mecánicos, alto volumen | `hooks/useBotDetection.js` |
+| **Rate Limiting** | 300 requests/hora para rutas de test (usuarios autenticados) | `middleware.js` |
+| **API de Reportes** | Endpoint para recibir y almacenar alertas | `app/api/fraud/report/route.js` |
+| **Detección Automática** | GitHub Action cada 6h para detectar patrones | `.github/workflows/fraud-detection.yml` |
+| **Panel de Admin** | Interfaz para revisar alertas y tomar acciones | `app/admin/fraudes/page.js` |
+| **Tabla fraud_alerts** | Almacenamiento de alertas en Supabase | Base de datos |
+
+### ❌ Pendiente de Implementar
+
+| Vulnerabilidad | Descripción | Prioridad | Complejidad |
+|----------------|-------------|-----------|-------------|
+| **Protección de respuestas** | Actualmente `correct_option` se envía al cliente antes de responder. Un scraper puede interceptar la respuesta JSON y obtener todas las respuestas correctas. | 🔴 Alta | Alta |
+| **Honeypot fields** | Campos invisibles en formularios que solo los bots rellenan | 🟡 Media | Baja |
+| **Rutas trampa** | URLs falsas (`/api/v2/questions/export`) que solo scrapers intentan acceder | 🟡 Media | Baja |
+| **Rate limit por IP** | Adicional al rate limit por sesión, limitar por IP | 🟡 Media | Baja |
+| **CAPTCHA tras detección** | Mostrar CAPTCHA cuando se detecta comportamiento sospechoso | 🟡 Media | Media |
+| **Ofuscación de `__NEXT_DATA__`** | Next.js expone datos en script tag JSON que scrapers pueden extraer | 🟠 Media | Alta |
+| **Watermarking de preguntas** | ID único por usuario para rastrear fugas | 🟢 Baja | Media |
+
+### 📋 Detalle de Vulnerabilidades Pendientes
+
+#### 1. Protección de Respuestas (Crítico)
+
+**Problema actual:**
+```javascript
+// lib/testFetchers.js - Las preguntas incluyen la respuesta correcta
+const { data } = await supabase
+  .from('questions')
+  .select('id, question, options, correct_option, explanation, ...')
+  //                              ^^^^^^^^^^^^^^ ← Visible para scrapers
+```
+
+**Riesgo:** Un scraper puede:
+1. Interceptar respuestas de red en DevTools
+2. Usar la misma API con el anon key (públicamente visible)
+3. Obtener pregunta + respuesta correcta sin necesidad de "responder"
+
+**Solución propuesta:**
+```
+FLUJO ACTUAL:
+Cliente ──GET /questions──► Supabase ──► {question, options, correct_option}
+                                                              ↑ EXPUESTO
+
+FLUJO SEGURO:
+Cliente ──GET /questions──► Supabase ──► {question, options}  ← Sin respuesta
+Cliente ──POST /api/answer──► API ──► {isCorrect, correct_option, explanation}
+                                       ↑ Solo después de responder
+```
+
+**Archivos a modificar:**
+- `lib/testFetchers.js` - Excluir `correct_option` del select
+- `components/TestLayout.js` - Llamar API para validar
+- `components/DynamicTest.js` - Igual
+- `app/api/answer/route.js` - **NUEVO** endpoint de validación
+
+**Impacto:** Requiere refactorización significativa pero no rompe la app.
+
+#### 2. Honeypot Fields
+
+**Implementación sugerida:**
+```javascript
+// En formularios de login/registro
+<input
+  type="text"
+  name="website"
+  style={{ position: 'absolute', left: '-9999px' }}
+  tabIndex={-1}
+  autoComplete="off"
+/>
+
+// En el servidor: si website tiene valor → es bot
+if (body.website) {
+  await reportBot(ip, 'honeypot_triggered')
+  return { error: 'Invalid request' }
+}
+```
+
+#### 3. Rutas Trampa
+
+**Implementación sugerida:**
+```javascript
+// app/api/v2/questions/export/route.js
+export async function GET(request) {
+  const ip = getClientIP(request)
+
+  // Registrar intento de scraping
+  await supabase.from('fraud_alerts').insert({
+    alert_type: 'trap_route_accessed',
+    severity: 'high',
+    details: { ip, url: '/api/v2/questions/export', userAgent: request.headers.get('user-agent') }
+  })
+
+  // Respuesta falsa para confundir
+  return Response.json({
+    error: 'API v2 deprecated',
+    migrate_to: '/api/v3/questions' // Otra trampa
+  })
+}
+```
+
+**Rutas trampa sugeridas:**
+- `/api/v2/questions/export`
+- `/api/admin/dump`
+- `/backup/questions.json`
+- `/data/all-answers.csv`
+
+#### 4. Rate Limit por IP
+
+**Estado actual:** Solo por sesión (cookie)
+**Mejora:** Añadir también por IP
+
+```javascript
+// middleware.js - Añadir
+const ipKey = `rate:ip:${ip}`
+const { allowed: ipAllowed } = checkRateLimit(ipKey, { maxRequests: 500 })
+
+if (!ipAllowed) {
+  return new Response('Too many requests from this IP', { status: 429 })
+}
+```
+
+---
+
 ## Arquitectura
 
 ```
