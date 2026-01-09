@@ -270,46 +270,44 @@ export default function DetailedCharts({ weeklyProgress, difficultyBreakdown, th
   const [showInfo, setShowInfo] = useState(false)
 
   // Preparar datos para gráfico de actividad semanal (preguntas respondidas)
-  const weeklyActivityData = weeklyProgress?.slice(-4).map(week => {
-    // Etiquetas completas para las semanas
-    let weekLabel = week.week
-    if (weekLabel.includes('Esta semana')) {
-      weekLabel = 'Esta semana'
-    } else if (weekLabel.includes('Semana pasada')) {
-      weekLabel = 'Semana pasada'
-    } else if (weekLabel.includes('Hace 2')) {
-      weekLabel = 'Hace 2 semanas'
-    } else if (weekLabel.includes('Hace 3')) {
-      weekLabel = 'Hace 3 semanas'
+  const weeklyActivityData = weeklyProgress?.slice(-7).map(item => {
+    // Soporte para formato antiguo (week) y nuevo (day/date de la API)
+    let label = item.week || item.day || ''
+    if (label.includes?.('Esta semana')) {
+      label = 'Esta semana'
+    } else if (label.includes?.('Semana pasada')) {
+      label = 'Semana pasada'
+    } else if (label.includes?.('Hace 2')) {
+      label = 'Hace 2 semanas'
+    } else if (label.includes?.('Hace 3')) {
+      label = 'Hace 3 semanas'
     }
-    
+
     return {
-      label: weekLabel,
-      value: week.questionsAnswered || 0 // Número de preguntas respondidas, no precisión
+      label: label,
+      value: item.questionsAnswered || item.questions || 0
     }
   }) || []
 
-  // Usar datos reales de preguntas difíciles por semana
-  const difficultyEvolutionData = weeklyProgress?.slice(-4).map((week) => {
-    // Calcular precisión en preguntas difíciles para esta semana específica
-    // Por ahora usamos la precisión general hasta tener datos por dificultad
-    const weekAccuracy = week.accuracy || 0
-    
-    // Etiquetas completas para las semanas
-    let weekLabel = week.week
-    if (weekLabel.includes('Esta semana')) {
-      weekLabel = 'Esta semana'
-    } else if (weekLabel.includes('Semana pasada')) {
-      weekLabel = 'Semana pasada'
-    } else if (weekLabel.includes('Hace 2')) {
-      weekLabel = 'Hace 2 semanas'
-    } else if (weekLabel.includes('Hace 3')) {
-      weekLabel = 'Hace 3 semanas'
+  // Usar datos reales de precisión por día/semana
+  const difficultyEvolutionData = weeklyProgress?.slice(-7).map((item) => {
+    const accuracy = item.accuracy || 0
+
+    // Soporte para formato antiguo (week) y nuevo (day de la API)
+    let label = item.week || item.day || ''
+    if (label.includes?.('Esta semana')) {
+      label = 'Esta semana'
+    } else if (label.includes?.('Semana pasada')) {
+      label = 'Semana pasada'
+    } else if (label.includes?.('Hace 2')) {
+      label = 'Hace 2 semanas'
+    } else if (label.includes?.('Hace 3')) {
+      label = 'Hace 3 semanas'
     }
-    
+
     return {
-      label: weekLabel,
-      value: weekAccuracy // Usar datos reales
+      label: label,
+      value: accuracy
     }
   }) || []
 

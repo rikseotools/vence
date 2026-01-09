@@ -45,20 +45,91 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
     return 'bg-red-500'
   }
 
+  // Datos de la oposición (si están disponibles)
+  const oposicionInfo = examPrediction.oposicionInfo || {}
+  const hasOposicionData = oposicionInfo.nombre && oposicionInfo.nombre !== 'tu oposición'
+  const examDateLabel = oposicionInfo.hasRealExamDate
+    ? oposicionInfo.examDateFormatted
+    : 'Fecha por confirmar'
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-2xl font-bold text-gray-800 flex items-center">
-            🎯 Predicción Examen julio 2026
+            🎯 {oposicionInfo.userName ? `${oposicionInfo.userName}, tu ` : ''}Predicción de Examen
           </h3>
-          <p className="text-gray-600">Análisis predictivo basado en tu progreso actual</p>
+          <p className="text-gray-600">
+            {hasOposicionData ? oposicionInfo.nombre : 'Análisis predictivo basado en tu progreso actual'}
+          </p>
         </div>
         <div className="text-right">
           <div className="text-sm text-gray-500">Días restantes</div>
           <div className="text-2xl font-bold text-purple-600">{examPrediction.daysRemaining}</div>
         </div>
       </div>
+
+      {/* Cuenta Regresiva del Examen - PROMINENTE con animación */}
+      {oposicionInfo.hasRealExamDate && (
+        <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-xl p-4 mb-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="text-4xl animate-pulse">🎯</div>
+              <div>
+                <div className="text-sm opacity-90">Examen oficial</div>
+                <div className="text-xl font-bold">{oposicionInfo.examDateFormatted}</div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`text-4xl font-black ${examPrediction.daysRemaining < 90 ? 'animate-pulse' : ''}`}>
+                {examPrediction.daysRemaining}
+              </div>
+              <div className="text-sm opacity-90">días restantes</div>
+            </div>
+          </div>
+          {examPrediction.daysRemaining < 90 && (
+            <div className="mt-3 bg-white bg-opacity-20 rounded-lg p-2 text-center text-sm animate-pulse">
+              ⚡ ¡Menos de 3 meses! Intensifica tu preparación
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Info de la Oposición */}
+      {hasOposicionData && (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            {!oposicionInfo.hasRealExamDate && (
+              <div>
+                <div className="text-xs text-indigo-600 font-medium">📅 Examen</div>
+                <div className="font-bold text-indigo-800">{examDateLabel}</div>
+                <div className="text-xs text-indigo-500">(estimación)</div>
+              </div>
+            )}
+            {oposicionInfo.plazas && (
+              <div>
+                <div className="text-xs text-indigo-600 font-medium">🎫 Plazas</div>
+                <div className="font-bold text-indigo-800">{oposicionInfo.plazas.toLocaleString()}</div>
+              </div>
+            )}
+            {oposicionInfo.inscriptionDeadline && (
+              <div>
+                <div className="text-xs text-indigo-600 font-medium">📝 Inscripción hasta</div>
+                <div className="font-bold text-indigo-800">{oposicionInfo.inscriptionDeadline}</div>
+              </div>
+            )}
+            {oposicionInfo.boeReference && (
+              <div>
+                <div className="text-xs text-indigo-600 font-medium">📰 BOE</div>
+                <div className="font-bold text-indigo-800 text-xs">{oposicionInfo.boeReference}</div>
+                {oposicionInfo.boePublicationDate && (
+                  <div className="text-xs text-indigo-500">{oposicionInfo.boePublicationDate}</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Predicción Principal */}
       <div className={`bg-gradient-to-r ${getReadinessBg(examPrediction.readinessScore)} border rounded-2xl p-6 mb-6 relative`}>
@@ -78,7 +149,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
             {examPrediction.readinessScore}%
           </div>
           <div className="text-lg font-semibold text-gray-700 mb-2">
-            Preparación Estimada para julio 2026
+            Preparación Estimada para {oposicionInfo.hasRealExamDate ? oposicionInfo.examDateFormatted : 'el examen'}
           </div>
           <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${
             examPrediction.readinessLevel === 'excellent' ? 'bg-green-100 text-green-700' :
@@ -100,18 +171,83 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
             <span>{examPrediction.readinessScore}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
+            <div
               className={`h-3 rounded-full transition-all duration-1000 ${getProgressColor(examPrediction.readinessScore)}`}
               style={{ width: `${examPrediction.readinessScore}%` }}
             ></div>
           </div>
-          
+
         </div>
 
         <div className="text-center text-gray-700">
           {examPrediction.mainMessage}
         </div>
       </div>
+
+      {/* Temas Dominados - Sección destacada */}
+      {examPrediction.mastery && (
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="text-4xl">🎓</div>
+              <div>
+                <div className="text-sm text-purple-600 font-medium">Temas dominados</div>
+                <div className="text-2xl font-bold text-purple-800">
+                  {examPrediction.mastery.masteredThemes}
+                  <span className="text-base text-purple-500 ml-1">/{examPrediction.mastery.totalThemes}</span>
+                  <span className="text-sm text-purple-400 ml-2">({examPrediction.mastery.percentage}%)</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              {/* Barra de progreso circular simplificada */}
+              <div className="relative w-16 h-16">
+                <svg className="w-16 h-16 transform -rotate-90">
+                  <circle cx="32" cy="32" r="28" stroke="#e9d5ff" strokeWidth="6" fill="none" />
+                  <circle
+                    cx="32" cy="32" r="28"
+                    stroke="#9333ea"
+                    strokeWidth="6"
+                    fill="none"
+                    strokeDasharray={`${examPrediction.mastery.percentage * 1.76} 176`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-sm font-bold text-purple-700">{examPrediction.mastery.percentage}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Predicción de dominio del temario */}
+          {examPrediction.mastery.projectedMasteryDate && examPrediction.mastery.projectedMasteryDate !== 'completado' && (
+            <div className="mt-3 bg-white bg-opacity-60 rounded-lg p-3 text-center">
+              <p className="text-sm text-purple-700">
+                📅 A este ritmo, <span className="font-bold">{oposicionInfo.userName || 'dominarás'}</span>
+                {oposicionInfo.userName ? ' dominará' : ''} todo el temario para el{' '}
+                <span className="font-bold text-purple-900">{examPrediction.mastery.projectedMasteryDate}</span>
+              </p>
+            </div>
+          )}
+
+          {examPrediction.mastery.projectedMasteryDate === 'completado' && (
+            <div className="mt-3 bg-green-100 rounded-lg p-3 text-center">
+              <p className="text-sm text-green-700 font-bold">
+                ✅ ¡Felicidades! Has dominado todo el temario
+              </p>
+            </div>
+          )}
+
+          {examPrediction.mastery.masteredThemes === 0 && (
+            <div className="mt-3 bg-yellow-50 rounded-lg p-3 text-center">
+              <p className="text-sm text-yellow-700">
+                💡 Un tema se considera dominado cuando alcanzas &ge;80% de precisión en él
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Métricas Clave - COMPACTAS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

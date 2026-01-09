@@ -4,6 +4,9 @@
 export default function KnowledgeRetention({ knowledgeRetention }) {
   if (!knowledgeRetention) return null
 
+  // Asegurar que distribution existe y es un objeto válido
+  const distribution = knowledgeRetention.distribution || { excellent: 0, good: 0, fair: 0, poor: 0 }
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <h3 className="text-xl font-bold text-gray-800 mb-4">🧠 Retención de Conocimiento (IA)</h3>
@@ -29,7 +32,7 @@ export default function KnowledgeRetention({ knowledgeRetention }) {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h4 className="font-bold text-blue-800 mb-3">📈 Distribución</h4>
           <div className="space-y-3">
-            {Object.entries(knowledgeRetention.distribution).map(([level, count]) => (
+            {Object.entries(distribution).map(([level, count]) => (
               <div key={level} className="flex items-center justify-between">
                 <span className="text-sm capitalize">
                   {level === 'excellent' ? '🏆 Excelente' :
@@ -39,14 +42,14 @@ export default function KnowledgeRetention({ knowledgeRetention }) {
                 <div className="flex items-center space-x-2">
                   <div className="text-sm font-bold">{count}</div>
                   <div className="w-16 bg-gray-200 rounded-full h-2">
-                    <div 
+                    <div
                       className={`h-2 rounded-full ${
                         level === 'excellent' ? 'bg-green-500' :
                         level === 'good' ? 'bg-blue-500' :
                         level === 'fair' ? 'bg-yellow-500' : 'bg-red-500'
                       }`}
-                      style={{ 
-                        width: `${(count / Math.max(...Object.values(knowledgeRetention.distribution))) * 100}%` 
+                      style={{
+                        width: `${(count / Math.max(1, ...Object.values(distribution))) * 100}%`
                       }}
                     ></div>
                   </div>

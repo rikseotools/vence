@@ -21,8 +21,13 @@ const getScoreBg = (percentage) => {
 
 // Formatear número de tema para mostrar al usuario
 const formatThemeName = (num) => {
-  if (num >= 101 && num <= 112) return `Bloque II Tema ${num - 100}`
-  if (num >= 1 && num <= 16) return `Bloque I Tema ${num}`
+  if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
+  if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
+  if (num >= 201 && num <= 299) return `Bloque III - Tema ${num - 200}`
+  if (num >= 301 && num <= 399) return `Bloque IV - Tema ${num - 300}`
+  if (num >= 401 && num <= 499) return `Bloque V - Tema ${num - 400}`
+  if (num >= 501 && num <= 599) return `Bloque VI - Tema ${num - 500}`
+  if (num >= 601 && num <= 699) return `Bloque VII - Tema ${num - 600}`
   return `Tema ${num}`
 }
 

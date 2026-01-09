@@ -18,8 +18,6 @@ import ThemePerformance from '@/components/Statistics/ThemePerformance'
 import ArticlePerformance from '@/components/Statistics/ArticlePerformance'
 import TimePatterns from '@/components/Statistics/TimePatterns'
 import SessionAnalytics from '@/components/Statistics/SessionAnalytics'
-import DeviceAnalytics from '@/components/Statistics/DeviceAnalytics'
-import EngagementMetrics from '@/components/Statistics/EngagementMetrics'
 import ExamReadiness from '@/components/Statistics/ExamReadiness'
 import ExamPredictionMarch2025 from '@/components/Statistics/ExamPredictionMarch2025'
 import AIRecommendations from '@/components/Statistics/AIRecommendations'
@@ -221,10 +219,9 @@ export default function EstadisticasRevolucionarias() {
     }
   }
 
-  // Función para cambiar tab con scroll
+  // Función para cambiar tab (sin scroll automático)
   const handleTabChange = (tabId) => {
     setActiveTab(tabId)
-    setTimeout(() => scrollToContent(), 100)
   }
 
   // 🧠 Cargar análisis completo desde todas las tablas
@@ -778,10 +775,16 @@ export default function EstadisticasRevolucionarias() {
     const weeklyProgress = await calculateRealWeeklyProgress(allTests || tests, responses, supabaseClient)
 
     // ANÁLISIS DE SESIONES REAL
+    // Filtrar sesiones con duración > 0 para calcular promedios reales
+    const validSessions = sessions?.filter(s => (s.total_duration_minutes || 0) > 0) || []
     const sessionAnalytics = sessions && sessions.length > 0 ? {
       totalSessions: sessions.length,
-      avgSessionDuration: Math.round(sessions.reduce((sum, s) => sum + (s.total_duration_minutes || 0), 0) / sessions.length),
-      avgEngagement: Math.round(sessions.reduce((sum, s) => sum + (s.engagement_score || 0), 0) / sessions.length),
+      avgSessionDuration: validSessions.length > 0
+        ? Math.round(validSessions.reduce((sum, s) => sum + (s.total_duration_minutes || 0), 0) / validSessions.length)
+        : 0,
+      avgEngagement: validSessions.length > 0
+        ? Math.round(validSessions.reduce((sum, s) => sum + (s.engagement_score || 0), 0) / validSessions.length)
+        : 0,
       devicesUsed: [...new Set(sessions.map(s => s.device_model).filter(Boolean))].length,
       recentSessions: sessions.slice(0, 5).map(session => ({
         date: new Date(session.session_start).toLocaleDateString('es-ES', {
@@ -1081,13 +1084,505 @@ export default function EstadisticasRevolucionarias() {
         setLoading(true)
         setError(null)
 
-        const completeStats = await loadCompleteAnalytics(user.id)
-        setStats(completeStats)
-        
-        console.log('✅ Análisis revolucionario cargado:', completeStats)
+        // 🚀 NUEVO: Usar API optimizada con Drizzle
+        console.log('🚀 Cargando estadísticas desde API optimizada...')
+        const response = await fetch(`/api/stats?userId=${user.id}`)
+        const apiData = await response.json()
+
+        if (!apiData.success) {
+          throw new Error(apiData.error || 'Error cargando estadísticas')
+        }
+
+        // Mapear respuesta de API al formato esperado por componentes
+        const { stats: apiStats } = apiData
+        const mappedStats = {
+          // Estadísticas principales
+          testsCompleted: apiStats.main.totalTests,
+          totalQuestions: apiStats.main.totalQuestions,
+          correctAnswers: apiStats.main.correctAnswers,
+          accuracy: apiStats.main.accuracy,
+          averageTime: apiStats.main.averageTimePerQuestion,
+          totalStudyTime: apiStats.main.totalStudyTimeSeconds,
+          currentStreak: apiStats.main.currentStreak,
+          longestStreak: apiStats.main.longestStreak,
+          bestScore: apiStats.main.bestScore,
+
+          // Progreso semanal
+          weeklyProgress: apiStats.weeklyProgress,
+
+          // Tests recientes - mapear al formato esperado por RecentTests.js
+          recentTests: apiStats.recentTests.map(t => ({
+            id: t.id,
+            title: t.title || `Tema ${t.temaNumber || 'Aleatorio'}`,
+            score: t.score,
+            total: t.totalQuestions, // RecentTests usa 'total'
+            totalQuestions: t.totalQuestions,
+            accuracy: t.accuracy,
+            percentage: t.accuracy, // RecentTests usa 'percentage'
+            date: new Date(t.completedAt).toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              timeZone: 'Europe/Madrid'
+            }),
+            time: t.timeSeconds > 3600
+              ? `${Math.floor(t.timeSeconds / 3600)}h ${Math.floor((t.timeSeconds % 3600) / 60)}m`
+              : `${Math.floor(t.timeSeconds / 60)}m`,
+            avgTimePerQuestion: t.totalQuestions > 0 ? Math.round(t.timeSeconds / t.totalQuestions) : 0,
+            completed_at: t.completedAt,
+            formattedDate: new Date(t.completedAt).toLocaleDateString('es-ES'),
+            duration: t.timeSeconds,
+            formattedDuration: t.timeSeconds > 3600
+              ? `${Math.floor(t.timeSeconds / 3600)}h ${Math.floor((t.timeSeconds % 3600) / 60)}m`
+              : `${Math.floor(t.timeSeconds / 60)}m`
+          })),
+
+          // Rendimiento por tema
+          themePerformance: apiStats.themePerformance.map(t => ({
+            theme: t.temaNumber,
+            title: `Tema ${t.temaNumber}`,
+            total: t.totalQuestions,
+            correct: t.correctAnswers,
+            accuracy: t.accuracy,
+            avgTime: t.averageTime,
+            status: t.accuracy >= 85 ? 'dominado' : t.accuracy >= 70 ? 'bien' : t.accuracy >= 50 ? 'regular' : 'débil'
+          })),
+
+          // Desglose por dificultad
+          difficultyBreakdown: apiStats.difficultyBreakdown.map(d => ({
+            difficulty: d.difficulty,
+            total: d.totalQuestions,
+            correct: d.correctAnswers,
+            accuracy: d.accuracy,
+            avgTime: d.averageTime
+          })),
+
+          // Patrones de tiempo - mapear hourlyDistribution a hourlyStats para TimePatterns.js
+          timePatterns: apiStats.timePatterns ? {
+            ...apiStats.timePatterns,
+            hourlyStats: apiStats.timePatterns.hourlyDistribution, // TimePatterns usa 'hourlyStats'
+          } : null,
+
+          // Artículos débiles y fuertes
+          articlePerformance: [...apiStats.weakArticles, ...apiStats.strongArticles].map(a => ({
+            article: `Art. ${a.articleNumber}`,
+            law: a.lawName,
+            total: a.totalQuestions,
+            correct: a.correctAnswers,
+            accuracy: a.accuracy,
+            status: a.accuracy >= 85 ? 'dominado' : a.accuracy >= 70 ? 'bien' : a.accuracy >= 50 ? 'regular' : 'débil'
+          })),
+
+          // Logros - calculados desde datos básicos
+          achievements: [
+            {
+              id: 'first_steps',
+              title: '🎯 Primeros Pasos',
+              description: 'Completaste tu primer test',
+              unlocked: apiStats.main.totalTests >= 1,
+              progress: `${Math.min(apiStats.main.totalTests, 1)}/1`,
+              category: 'basic'
+            },
+            {
+              id: 'dedicated_student',
+              title: '📚 Estudiante Dedicado',
+              description: 'Completaste 5 tests',
+              unlocked: apiStats.main.totalTests >= 5,
+              progress: `${Math.min(apiStats.main.totalTests, 5)}/5`,
+              category: 'progress'
+            },
+            {
+              id: 'question_master',
+              title: '❓ Maestro de Preguntas',
+              description: 'Respondiste 100 preguntas',
+              unlocked: apiStats.main.totalQuestions >= 100,
+              progress: `${Math.min(apiStats.main.totalQuestions, 100)}/100`,
+              category: 'volume'
+            },
+            {
+              id: 'accuracy_champion',
+              title: '🎓 Campeón de Precisión',
+              description: 'Alcanzaste 80% de precisión global',
+              unlocked: apiStats.main.accuracy >= 80,
+              progress: `${apiStats.main.accuracy}/80%`,
+              category: 'skill'
+            },
+            {
+              id: 'time_warrior',
+              title: '⏰ Guerrero del Tiempo',
+              description: 'Acumulaste 10 horas de estudio',
+              unlocked: apiStats.main.totalStudyTimeSeconds >= 36000,
+              progress: `${Math.min(Math.floor(apiStats.main.totalStudyTimeSeconds / 3600), 10)}/10h`,
+              category: 'dedication'
+            },
+            {
+              id: 'streak_master',
+              title: '🔥 Maestro de la Constancia',
+              description: 'Estudiaste 7 días seguidos',
+              unlocked: apiStats.main.currentStreak >= 7,
+              progress: `${Math.min(apiStats.main.currentStreak, 7)}/7 días`,
+              category: 'habit'
+            }
+          ],
+
+          // AI Impact Data - calculado desde datos disponibles
+          aiImpactData: apiStats.main.totalQuestions >= 20 ? {
+            totalInsights: Math.floor(
+              apiStats.difficultyBreakdown.filter(d => d.accuracy < 70).length +
+              apiStats.weakArticles.length + 3
+            ),
+            problemsDetected: apiStats.weakArticles.length,
+            improvementsRecognized: apiStats.strongArticles.length,
+            timeOptimized: Math.floor(apiStats.main.totalStudyTimeSeconds / 3600 * 0.15),
+            articlesImproved: apiStats.strongArticles.length,
+            motivationalReceived: Math.floor(apiStats.main.currentStreak * 0.5 + apiStats.strongArticles.length),
+            optimalTimeDetected: apiStats.timePatterns?.bestHours?.length > 0
+              ? `${apiStats.timePatterns.bestHours[0]}:00-${apiStats.timePatterns.bestHours[0] + 1}:00`
+              : null,
+            accuracyImprovement: Math.max(0, Math.floor((apiStats.main.accuracy - 50) * 0.3)),
+            speedImprovement: Math.max(0, Math.floor((60 - apiStats.main.averageTimePerQuestion) * 0.1)),
+            studyStreakHelped: Math.floor(apiStats.main.currentStreak * 0.3)
+          } : null,
+
+          // Predicción de examen - calculada con datos REALES de la oposición del usuario
+          examPredictionMarch2025: apiStats.main.totalQuestions >= 20 ? (() => {
+            const oposicion = apiStats.userOposicion
+            const userName = oposicion?.userName?.split(' ')[0] || 'Opositor' // Solo primer nombre
+            const oposicionNombre = oposicion?.nombre || 'tu oposición'
+            const totalThemes = oposicion?.temasCount || 28
+            const studiedThemes = apiStats.themePerformance.length
+            const coveragePercentage = Math.round((studiedThemes / totalThemes) * 100)
+
+            // Temas dominados (accuracy >= 80%)
+            const masteredThemes = apiStats.themePerformance.filter(t => t.accuracy >= 80).length
+            const masteredPercentage = Math.round((masteredThemes / totalThemes) * 100)
+            const accuracy = apiStats.main.accuracy
+
+            // Fecha del examen REAL desde la BD o estimación
+            const examDateStr = oposicion?.examDate
+            const examDate = examDateStr ? new Date(examDateStr) : new Date('2026-07-01')
+            const hasRealExamDate = !!examDateStr
+            const today = new Date()
+            const daysRemaining = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24))
+
+            // Cálculo de preparación
+            let readinessScore
+            if (accuracy < 50) {
+              readinessScore = Math.round(accuracy * 0.2)
+            } else if (coveragePercentage < 50) {
+              readinessScore = Math.round((accuracy + coveragePercentage) / 2 * 0.6)
+            } else {
+              readinessScore = Math.round((accuracy * 0.6) + (coveragePercentage * 0.4))
+            }
+            readinessScore = Math.max(1, readinessScore)
+            if (accuracy < 30) readinessScore = Math.min(readinessScore, 5)
+
+            // Mensaje personalizado con el nombre del usuario
+            const getPersonalizedMessage = () => {
+              if (readinessScore >= 85) {
+                return `¡${userName}, vas muy bien! Mantén este ritmo y estarás listo para ${oposicionNombre}.`
+              } else if (readinessScore >= 70) {
+                return `${userName}, buen progreso. Enfócate en tus puntos débiles para ${oposicionNombre}.`
+              } else if (readinessScore >= 50) {
+                return `${userName}, necesitas acelerar el ritmo para estar listo a tiempo.`
+              }
+              return `${userName}, debes intensificar tu preparación para ${oposicionNombre}.`
+            }
+
+            return {
+              // Datos de la oposición
+              oposicionInfo: {
+                nombre: oposicionNombre,
+                userName: userName,
+                hasRealExamDate,
+                examDateFormatted: examDate.toLocaleDateString('es-ES', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                }),
+                plazas: oposicion?.plazas || null,
+                boeReference: oposicion?.boeReference || null,
+                boePublicationDate: oposicion?.boePublicationDate
+                  ? new Date(oposicion.boePublicationDate).toLocaleDateString('es-ES')
+                  : null,
+                inscriptionDeadline: oposicion?.inscriptionDeadline
+                  ? new Date(oposicion.inscriptionDeadline).toLocaleDateString('es-ES')
+                  : null,
+              },
+              daysRemaining: Math.max(0, daysRemaining),
+              readinessScore,
+              readinessLevel: readinessScore >= 85 ? 'excellent' :
+                             readinessScore >= 70 ? 'good' :
+                             readinessScore >= 50 ? 'developing' : 'needs_improvement',
+              mainMessage: getPersonalizedMessage(),
+              coverage: {
+                studiedThemes,
+                totalThemes,
+                percentage: coveragePercentage
+              },
+              // Temas dominados (>= 80% accuracy)
+              mastery: {
+                masteredThemes,
+                totalThemes,
+                percentage: masteredPercentage,
+                remaining: totalThemes - masteredThemes,
+                // Predicción de cuándo dominará todo el temario
+                projectedMasteryDate: (() => {
+                  if (masteredThemes === 0) return null
+                  if (masteredThemes >= totalThemes) return 'completado'
+
+                  // Calcular ritmo basado en días activos
+                  const activeDays = Math.max(1, apiStats.weeklyProgress.length)
+                  const themesPerWeek = (masteredThemes / activeDays) * 7
+
+                  if (themesPerWeek <= 0) return null
+
+                  const weeksNeeded = Math.ceil((totalThemes - masteredThemes) / themesPerWeek)
+
+                  // Solo mostrar si es razonable (< 2 años)
+                  if (weeksNeeded > 104) return null
+
+                  const projectedDate = new Date()
+                  projectedDate.setDate(projectedDate.getDate() + (weeksNeeded * 7))
+
+                  return projectedDate.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })
+                })(),
+                message: masteredThemes >= totalThemes
+                  ? `¡Felicidades ${userName}! Has dominado todo el temario`
+                  : masteredThemes > 0
+                  ? `${userName}, llevas ${masteredThemes}/${totalThemes} temas dominados (${masteredPercentage}%)`
+                  : `${userName}, aún no tienes temas dominados. Sigue practicando para alcanzar 80% en cada tema.`
+              },
+              accuracy: {
+                current: accuracy,
+                target: 85
+              },
+              dailyProgress: {
+                averageImprovement: 0.1,
+                daysAnalyzed: 7
+              },
+              timeEstimate: {
+                dailyHours: Math.max(1, Math.round((85 - accuracy) / 10))
+              },
+              projection: {
+                estimatedReadinessDate: new Date(today.getTime() + (85 - readinessScore) * 24 * 60 * 60 * 1000).toLocaleDateString('es-ES'),
+                onTrack: daysRemaining > 0 && readinessScore >= 50,
+                questionsNeeded: Math.max(0, Math.round((85 - accuracy) * 10)),
+                themesRemaining: Math.max(0, totalThemes - studiedThemes)
+              },
+              calculations: {
+                testsCompleted: apiStats.main.totalTests,
+                totalQuestions: apiStats.main.totalQuestions,
+                activeDays: Math.min(30, apiStats.weeklyProgress.length),
+                totalStudyTime: `${Math.round(apiStats.main.totalStudyTimeSeconds / 3600)}h`,
+                averageImprovement: 0.1,
+                dailyQuestions: Math.round(apiStats.main.totalQuestions / Math.max(1, apiStats.weeklyProgress.length)),
+                consistency: Math.round((apiStats.weeklyProgress.length / 7) * 100),
+                learningSpeed: '50'
+              },
+              specificRecommendations: [
+                ...(coveragePercentage < 80 ? [{
+                  priority: 'high',
+                  title: 'Ampliar Cobertura Temario',
+                  description: `${userName}, solo has estudiado ${studiedThemes}/${totalThemes} temas (${coveragePercentage}%)`,
+                  action: `Estudiar ${totalThemes - studiedThemes} temas restantes prioritariamente`,
+                  icon: '📚'
+                }] : []),
+                ...(accuracy < 75 ? [{
+                  priority: 'high',
+                  title: 'Mejorar Precisión',
+                  description: `Tu precisión actual (${accuracy}%) está por debajo del objetivo (85%)`,
+                  action: 'Repasar errores frecuentes y reforzar conceptos débiles',
+                  icon: '🎯'
+                }] : []),
+                ...(apiStats.weakArticles.length > 0 ? [{
+                  priority: 'medium',
+                  title: 'Reforzar Artículos Débiles',
+                  description: `${apiStats.weakArticles.length} artículos con menos del 60% de precisión`,
+                  action: 'Practicar tests enfocados en tus puntos débiles',
+                  icon: '📖'
+                }] : []),
+                ...(daysRemaining < 90 && readinessScore < 70 ? [{
+                  priority: 'high',
+                  title: '¡Tiempo Limitado!',
+                  description: `Solo quedan ${daysRemaining} días para el examen`,
+                  action: 'Intensifica tu estudio diario para llegar preparado',
+                  icon: '⏰'
+                }] : [])
+              ]
+            }
+          })() : null,
+
+          // Recomendaciones basadas en datos reales
+          recommendations: apiStats.main.totalQuestions >= 10 ? [
+            ...(apiStats.main.accuracy < 70 ? [{
+              priority: 'high',
+              title: 'Mejorar Precisión General',
+              description: `Tu precisión actual es ${apiStats.main.accuracy}%`,
+              action: 'Revisar los temas con más errores y reforzar conceptos básicos',
+              type: 'accuracy',
+              icon: '🎯'
+            }] : []),
+            ...(apiStats.weakArticles.length > 0 ? [{
+              priority: 'medium',
+              title: 'Reforzar Artículos Débiles',
+              description: `${apiStats.weakArticles.length} artículos con menos del 60% de precisión`,
+              action: `Estudiar específicamente: ${apiStats.weakArticles.slice(0, 3).map(a => `${a.lawName} Art.${a.articleNumber}`).join(', ')}`,
+              type: 'content',
+              icon: '📚'
+            }] : []),
+            ...(apiStats.main.averageTimePerQuestion > 60 ? [{
+              priority: 'low',
+              title: 'Mejorar Velocidad de Respuesta',
+              description: `Tiempo promedio: ${Math.round(apiStats.main.averageTimePerQuestion)}s por pregunta`,
+              action: 'Practicar tests cronometrados para mejorar la velocidad',
+              type: 'speed',
+              icon: '⏱️'
+            }] : [])
+          ] : [],
+
+          // Estilo de aprendizaje - calculado desde tiempo promedio
+          learningStyle: apiStats.main.totalQuestions >= 30 ? (() => {
+            const avgTime = apiStats.main.averageTimePerQuestion
+            const accuracy = apiStats.main.accuracy
+
+            let style = 'Analítico'
+            const characteristics = []
+
+            if (avgTime > 45) {
+              style = 'Reflexivo'
+              characteristics.push('Toma tiempo para analizar', 'Prefiere la precisión', 'Evalúa opciones cuidadosamente')
+            } else if (avgTime < 20) {
+              style = 'Intuitivo'
+              characteristics.push('Respuestas rápidas', 'Confía en primera impresión', 'Procesamiento ágil')
+            } else {
+              characteristics.push('Equilibrio tiempo-precisión', 'Metodología consistente', 'Enfoque sistemático')
+            }
+
+            return {
+              style,
+              characteristics,
+              confidence: apiStats.main.totalQuestions >= 100 ? 'high' : apiStats.main.totalQuestions >= 50 ? 'medium' : 'low',
+              source: 'api_analysis',
+              metrics: {
+                avgTime: Math.round(avgTime),
+                avgInteractions: 1,
+                confidenceAccuracy: Math.round(accuracy)
+              }
+            }
+          })() : null,
+
+          // Análisis de sesiones - aproximado desde datos de tests
+          sessionAnalytics: apiStats.main.totalTests >= 5 ? {
+            totalSessions: apiStats.main.totalTests,
+            avgSessionDuration: Math.round(apiStats.main.totalStudyTimeSeconds / Math.max(1, apiStats.main.totalTests) / 60),
+            avgEngagement: Math.min(100, Math.round(apiStats.main.accuracy * 1.1)),
+            devicesUsed: 1,
+            recentSessions: apiStats.recentTests.slice(0, 5).map(t => ({
+              date: new Date(t.completedAt).toLocaleDateString('es-ES'),
+              duration: Math.round(t.timeSeconds / 60),
+              engagement: t.accuracy,
+              device: 'Web',
+              testsCompleted: 1,
+              questionsAnswered: t.totalQuestions
+            })),
+            consistency: Math.min(100, Math.round((apiStats.weeklyProgress.length / 7) * 100))
+          } : null,
+
+          // Analytics de dispositivo - básico
+          deviceAnalytics: apiStats.main.totalTests >= 1 ? {
+            primaryDevice: 'Web Browser',
+            devices: [{ name: 'Web', sessions: apiStats.main.totalTests, percentage: 100 }],
+            performanceByDevice: [{ device: 'Web', accuracy: apiStats.main.accuracy, avgTime: apiStats.main.averageTimePerQuestion }]
+          } : null,
+
+          // Métricas de engagement
+          engagementMetrics: apiStats.main.totalQuestions >= 10 ? {
+            overallScore: Math.min(100, Math.round(
+              (apiStats.main.accuracy * 0.4) +
+              (Math.min(apiStats.main.currentStreak, 7) / 7 * 30) +
+              (Math.min(apiStats.main.totalTests, 20) / 20 * 30)
+            )),
+            weeklyActivity: apiStats.weeklyProgress.map(w => ({ day: w.day, questions: w.questions })),
+            streakData: {
+              current: apiStats.main.currentStreak,
+              longest: apiStats.main.longestStreak,
+              thisWeek: apiStats.weeklyProgress.filter(w => w.questions > 0).length
+            },
+            completionRate: apiStats.main.totalTests > 0 ? 100 : 0,
+            averageSessionLength: Math.round(apiStats.main.totalStudyTimeSeconds / Math.max(1, apiStats.main.totalTests) / 60)
+          } : null,
+
+          // Retención de conocimiento - basado en artículos fuertes/débiles
+          knowledgeRetention: apiStats.main.totalQuestions >= 50 ? {
+            overallRetention: Math.round(
+              (apiStats.strongArticles.length / Math.max(1, apiStats.strongArticles.length + apiStats.weakArticles.length)) * 100
+            ),
+            byTheme: apiStats.themePerformance.slice(0, 5).map(t => ({
+              theme: t.temaNumber,
+              retention: t.accuracy,
+              lastPracticed: t.lastPracticed
+            })),
+            strongAreas: apiStats.strongArticles.length,
+            weakAreas: apiStats.weakArticles.length,
+            recommendation: apiStats.weakArticles.length > apiStats.strongArticles.length
+              ? 'Enfócate en reforzar los artículos débiles'
+              : 'Buen equilibrio, mantén la práctica constante'
+          } : null,
+
+          // Eficiencia de aprendizaje
+          learningEfficiency: apiStats.main.totalQuestions >= 20 ? {
+            questionsPerHour: apiStats.main.totalStudyTimeSeconds > 0
+              ? Math.round(apiStats.main.totalQuestions / (apiStats.main.totalStudyTimeSeconds / 3600))
+              : 0,
+            accuracyPerHour: apiStats.main.totalStudyTimeSeconds > 0
+              ? Math.round(apiStats.main.correctAnswers / (apiStats.main.totalStudyTimeSeconds / 3600))
+              : 0,
+            efficiencyScore: Math.min(100, Math.round(
+              (apiStats.main.accuracy * 0.6) +
+              (Math.min(60, 60 - apiStats.main.averageTimePerQuestion) / 60 * 40)
+            )),
+            trend: 'stable',
+            recommendation: apiStats.main.averageTimePerQuestion > 45
+              ? 'Intenta responder más rápido sin sacrificar precisión'
+              : apiStats.main.accuracy < 70
+              ? 'Enfócate en mejorar la precisión antes de la velocidad'
+              : 'Buen equilibrio velocidad-precisión'
+          } : null,
+
+          // Análisis de confianza - basado en precisión y consistencia
+          confidenceAnalysis: apiStats.main.totalQuestions >= 30 ? {
+            overallConfidence: Math.round(
+              (apiStats.main.accuracy * 0.7) +
+              (Math.min(apiStats.main.currentStreak, 7) / 7 * 30)
+            ),
+            byDifficulty: apiStats.difficultyBreakdown.map(d => ({
+              difficulty: d.difficulty,
+              confidence: d.accuracy,
+              questions: d.totalQuestions
+            })),
+            trend: apiStats.main.accuracy >= 70 ? 'improving' : 'needs_work',
+            insights: [
+              apiStats.main.accuracy >= 80 ? 'Tu confianza está bien fundamentada en buenos resultados' :
+              apiStats.main.accuracy >= 60 ? 'Estás progresando, sigue practicando' :
+              'Enfócate en los fundamentos para construir confianza'
+            ]
+          } : null,
+
+          // Metadata
+          _cached: apiData.cached,
+          _generatedAt: apiData.generatedAt
+        }
+
+        setStats(mappedStats)
+        console.log('✅ Estadísticas cargadas desde API:', apiData.cached ? '(cached)' : '(fresh)', mappedStats)
 
       } catch (error) {
-        console.error('❌ Error cargando estadísticas revolucionarias:', error)
+        console.error('❌ Error cargando estadísticas:', error)
         setError(error.message)
       } finally {
         setLoading(false)
@@ -1277,37 +1772,38 @@ export default function EstadisticasRevolucionarias() {
           <div className="bg-white rounded-lg shadow-md p-2">
             <div className="flex justify-center space-x-2 md:grid md:grid-cols-4 md:gap-3 max-w-4xl mx-auto">
               {[
-                { 
-                  id: 'overview', 
-                  name: 'General', 
-                  icon: '📊', 
+                {
+                  id: 'overview',
+                  name: 'General',
+                  icon: '📊',
                   subtitle: 'Resumen',
-                  count: '4 análisis',
                   color: 'blue'
                 },
-                { 
-                  id: 'ai_analysis', 
-                  name: 'Análisis IA', 
-                  icon: '✨', 
-                  subtitle: 'Inteligencia',
-                  count: 'IA completa',
+                {
+                  id: 'ai_analysis',
+                  name: 'Análisis Fallos',
+                  icon: '🔍',
+                  subtitle: 'Errores',
                   color: 'purple'
                 },
-                { 
-                  id: 'performance', 
-                  name: 'Rendimiento', 
-                  icon: '📈', 
-                  subtitle: 'Performance',
-                  count: 'Métricas',
+                {
+                  id: 'performance',
+                  name: 'Rendimiento',
+                  icon: '📈',
+                  subtitle: 'Métricas',
                   color: 'green'
                 },
-                { 
-                  id: 'predictions', 
-                  name: 'Predicciones', 
-                  icon: '🔮', 
-                  subtitle: 'Futuro',
-                  count: 'Examen',
-                  color: 'pink'
+                {
+                  id: 'predictions',
+                  name: 'Predicciones',
+                  icon: '🔮',
+                  subtitle: stats?.examPrediction?.oposicionInfo?.hasRealExamDate
+                    ? stats.examPrediction.oposicionInfo.examDateFormatted?.split(' de ')[0] + ' ' + stats.examPrediction.oposicionInfo.examDateFormatted?.split(' de ')[1]?.substring(0, 3)
+                    : 'Examen',
+                  color: 'pink',
+                  // Datos especiales para predicciones
+                  hasExamDate: stats?.examPrediction?.oposicionInfo?.hasRealExamDate,
+                  daysRemaining: stats?.examPrediction?.daysRemaining
                 }
               ].map((tab) => (
                 <button
@@ -1330,15 +1826,27 @@ export default function EstadisticasRevolucionarias() {
                       <span className="hidden md:inline text-xs">✓</span>
                     </div>
                   )}
-                  
+
                   <div className="text-center">
                     <div className="text-lg md:text-xl mb-1">{tab.icon}</div>
                     <div className="font-bold text-xs md:text-sm leading-tight">{tab.name}</div>
-                    <div className={`text-xs leading-tight ${
-                      activeTab === tab.id ? 'text-white opacity-75' : 'text-gray-500'
-                    }`}>
-                      {tab.subtitle}
-                    </div>
+                    {/* Mostrar días restantes parpadeando si hay fecha de examen */}
+                    {tab.id === 'predictions' && tab.hasExamDate ? (
+                      <div className={`text-xs leading-tight ${
+                        activeTab === tab.id ? 'text-white' : 'text-pink-600'
+                      }`}>
+                        <span className={`font-bold ${tab.daysRemaining < 90 ? 'animate-pulse' : ''}`}>
+                          {tab.daysRemaining}d
+                        </span>
+                        <span className="opacity-75 ml-1">{tab.subtitle}</span>
+                      </div>
+                    ) : (
+                      <div className={`text-xs leading-tight ${
+                        activeTab === tab.id ? 'text-white opacity-75' : 'text-gray-500'
+                      }`}>
+                        {tab.subtitle}
+                      </div>
+                    )}
                   </div>
                 </button>
               ))}
@@ -1387,8 +1895,6 @@ export default function EstadisticasRevolucionarias() {
               />
               <TimePatterns timePatterns={stats.timePatterns} />
               <SessionAnalytics sessionAnalytics={stats.sessionAnalytics} />
-              <DeviceAnalytics deviceAnalytics={stats.deviceAnalytics} />
-              <EngagementMetrics engagementMetrics={stats.engagementMetrics} />
             </div>
           )}
 
