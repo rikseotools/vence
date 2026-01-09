@@ -340,8 +340,10 @@ export function AuthProvider({ children, initialUser = null }) {
           // Usuario logueado - asegurar perfil y cargar datos
           console.log('👤 Usuario logueado, procesando perfil...')
 
-          // 📍 TRACKING IP Y LOCALIDAD - Fire and forget, no bloquea
-          trackSessionIP(newUser.id)
+          // 📍 TRACKING IP Y LOCALIDAD - Solo en login/registro real, no en recargas
+          if (event === 'SIGNED_IN' || event === 'SIGNED_UP') {
+            trackSessionIP(newUser.id)
+          }
 
           // 🎯 TRACKING GOOGLE ADS: Solo para nuevos usuarios (SIGNED_UP)
           if (event === 'SIGNED_UP') {
