@@ -96,19 +96,13 @@ describe('QuestionDispute Component', () => {
       const radioIncorrecta = screen.getByLabelText(/respuesta marcada como correcta es errónea/i)
       fireEvent.click(radioIncorrecta)
 
-      // Enviar
-      const submitButton = screen.getByText(/Enviar impugnación/i)
-      fireEvent.click(submitButton)
+      // El botón de enviar debe estar deshabilitado porque questionId es null
+      // Usar getByRole para obtener el button, no el span interno
+      const submitButton = screen.getByRole('button', { name: /Enviar impugnación/i })
+      expect(submitButton).toBeDisabled()
 
-      await waitFor(() => {
-        // Verificar que se insertó con question_id null (el bug original)
-        // Este test documenta el comportamiento actual - el componente no valida
-        expect(mockInsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            question_id: null
-          })
-        )
-      })
+      // Verificar que NO se llama a insert porque el botón está deshabilitado
+      expect(mockInsert).not.toHaveBeenCalled()
     })
 
     test('NO debe enviar impugnación si questionId es undefined', async () => {
@@ -126,16 +120,13 @@ describe('QuestionDispute Component', () => {
       const radioNoLiteral = screen.getByLabelText(/no se ajusta exactamente al artículo/i)
       fireEvent.click(radioNoLiteral)
 
-      const submitButton = screen.getByText(/Enviar impugnación/i)
-      fireEvent.click(submitButton)
+      // El botón de enviar debe estar deshabilitado porque questionId es undefined
+      // Usar getByRole para obtener el button, no el span interno
+      const submitButton = screen.getByRole('button', { name: /Enviar impugnación/i })
+      expect(submitButton).toBeDisabled()
 
-      await waitFor(() => {
-        expect(mockInsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            question_id: undefined
-          })
-        )
-      })
+      // Verificar que NO se llama a insert porque el botón está deshabilitado
+      expect(mockInsert).not.toHaveBeenCalled()
     })
   })
 

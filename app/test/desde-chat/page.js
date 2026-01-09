@@ -15,7 +15,7 @@ function TestDesdeChatContent() {
     try {
       // Leer parámetros de la URL (igual que el sistema normal)
       const selectedLawsParam = searchParams.get('selected_laws')
-      const numQuestions = parseInt(searchParams.get('n') || '25')
+      const numQuestions = parseInt(searchParams.get('n') || '10')
 
       if (!selectedLawsParam) {
         setError('No se especificaron leyes para el test')

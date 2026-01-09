@@ -65,8 +65,18 @@ export default function TemaAdministrativoPage({ params }) {
       setResolvedParams(resolved)
       setTemaNumber(tema)
 
-      // Administrativo tiene 45 temas
-      if (isNaN(tema) || tema < 1 || tema > 45) {
+      // Administrativo: Bloque I (1-11), II (201-204), III (301-307), IV (401-409), V (501-506), VI (601-608)
+      const validRanges = [
+        [1, 11],     // Bloque I
+        [201, 204],  // Bloque II
+        [301, 307],  // Bloque III
+        [401, 409],  // Bloque IV
+        [501, 506],  // Bloque V
+        [601, 608]   // Bloque VI
+      ]
+      const isValidTema = validRanges.some(([min, max]) => tema >= min && tema <= max)
+
+      if (isNaN(tema) || !isValidTema) {
         setTemaNotFound(true)
         setLoading(false)
         return
@@ -471,14 +481,21 @@ export default function TemaAdministrativoPage({ params }) {
     )
   }
 
-  // Obtener bloque según tema
+  // Obtener bloque según tema (nueva numeración: 1-11, 201-204, 301-307, 401-409, 501-506, 601-608)
   const getBloque = (num) => {
-    if (num <= 11) return 'Bloque I'
-    if (num <= 15) return 'Bloque II'
-    if (num <= 22) return 'Bloque III'
-    if (num <= 31) return 'Bloque IV'
-    if (num <= 37) return 'Bloque V'
-    return 'Bloque VI'
+    if (num >= 1 && num <= 11) return 'Bloque I'
+    if (num >= 201 && num <= 204) return 'Bloque II'
+    if (num >= 301 && num <= 307) return 'Bloque III'
+    if (num >= 401 && num <= 409) return 'Bloque IV'
+    if (num >= 501 && num <= 506) return 'Bloque V'
+    if (num >= 601 && num <= 608) return 'Bloque VI'
+    return ''
+  }
+
+  // Obtener número de display (número dentro del bloque)
+  const getDisplayNumber = (num) => {
+    if (num >= 1 && num <= 11) return num  // Bloque I: 1-11
+    return num % 100  // Bloques II-VI: 201→1, 302→2, etc.
   }
 
   return (
@@ -542,7 +559,7 @@ export default function TemaAdministrativoPage({ params }) {
           </div>
 
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-            Tema {temaNumber}: {topicData?.title}
+            Tema {getDisplayNumber(temaNumber)}: {topicData?.title}
           </h1>
 
           {topicData?.description && (
@@ -681,7 +698,7 @@ export default function TemaAdministrativoPage({ params }) {
         {currentUser && userStats && userStats.totalAnswers > 0 && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              📊 Tu Progreso en el Tema {temaNumber}
+              📊 Tu Progreso en el Tema {getDisplayNumber(temaNumber)}
             </h2>
 
             <div className="bg-white rounded-lg shadow-sm p-6">

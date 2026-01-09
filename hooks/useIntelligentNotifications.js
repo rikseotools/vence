@@ -567,7 +567,7 @@ function validateAndMapLawShortName(lawShortName, lawFullName) {
 }
 
 export function useIntelligentNotifications() {
-  const { user, supabase } = useAuth()
+  const { user, userProfile, supabase, loading: authLoading } = useAuth()
   
   // Estados principales
   const [allNotifications, setAllNotifications] = useState([])
@@ -765,14 +765,23 @@ export function useIntelligentNotifications() {
 
   // Cargar todas las notificaciones cuando el usuario cambie
   useEffect(() => {
-    
-    if (user && supabase && !loading) {
+    // Esperar a que termine la autenticación
+    if (authLoading) {
+      return
+    }
+
+    // Esperar a que el perfil esté cargado (userProfile será null mientras carga)
+    if (user && userProfile === null) {
+      console.log('⏳ useIntelligentNotifications: Esperando perfil de usuario...')
+      return
+    }
+
+    if (user && userProfile && supabase && !loading) {
       loadAllNotifications()
     } else if (!user) {
       resetNotifications()
-    } else {
     }
-  }, [user, supabase])
+  }, [user, userProfile, authLoading, supabase])
 
   // Función auxiliar para filtrar notificaciones leídas (OPCIÓN B: desaparecen)
   const filterUnreadNotifications = (notifications) => {

@@ -26,12 +26,21 @@ export default function AdminDashboard() {
         setLoading(true)
         console.log('📊 Cargando datos del dashboard...')
 
-        // 1. Estadísticas generales de usuarios - CORREGIDO: usar vista admin
+        // 1. Estadísticas generales de usuarios - CORREGIDO: leer is_active_student directo de user_profiles
+        // (la vista admin_users_with_roles tiene un bug que calcula is_active_student mal)
         const { data: generalStats, error: generalStatsError } = await supabase
-          .from('admin_users_with_roles')
-          .select('user_id, is_active_student, user_created_at, registration_source')
+          .from('user_profiles')
+          .select('id, is_active_student, created_at, registration_source')
 
         if (generalStatsError) throw generalStatsError
+
+        // Transformar para compatibilidad con el resto del código
+        const generalStatsTransformed = generalStats?.map(u => ({
+          user_id: u.id,
+          is_active_student: u.is_active_student,
+          user_created_at: u.created_at,
+          registration_source: u.registration_source
+        })) || []
 
         // 2. Tests completados últimos 30 días - Ordenados por fecha
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -154,7 +163,7 @@ export default function AdminDashboard() {
         console.log('🔍 DEBUG: Final activity array length:', finalTodayActivity.length)
         console.log('🔍 DEBUG: Final activity estructura completa:', finalTodayActivity)
         
-        const processedStats = processStatistics(generalStats, recentTests, finalTodayActivity, allCompletedTests, dashboardStats, recentTests15Days)
+        const processedStats = processStatistics(generalStatsTransformed, recentTests, finalTodayActivity, allCompletedTests, dashboardStats, recentTests15Days)
         const processedEmailStats = processEmailStatistics(emailData)
 
         setStats(processedStats)
@@ -166,7 +175,7 @@ export default function AdminDashboard() {
         console.log('📅 Tests hoy encontrados:', finalTodayActivity?.length || 0)
         console.log('🔍 Raw finalTodayActivity data:', finalTodayActivity)
         console.log('📅 Fecha de hoy calculada:', new Date().toISOString().split('T')[0])
-        console.log('👥 Usuarios encontrados:', generalStats?.length || 0)
+        console.log('👥 Usuarios encontrados:', generalStatsTransformed?.length || 0)
         
         // 🔍 DEBUG: Ver estructura de cada test de hoy DESPUÉS de combinar
         if (finalTodayActivity?.length > 0) {
@@ -734,17 +743,28 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Engagement Rate - CON EXPLICACIÓN */}
+          {/* Engagement Rate - CON AMBAS MÉTRICAS */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-6 border">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
                 <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
                   Usuarios Activos
                 </p>
-                <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.engagementRate}%</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {stats.usersWhoCompletedTests}/{stats.totalUsers} han completado algún test
+                {/* Métrica principal: Han respondido al menos 1 pregunta */}
+                <p className="text-xl sm:text-2xl font-bold text-green-600">
+                  {stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) : 0}%
                 </p>
+                <p className="text-xs text-green-600 font-medium">
+                  {stats.activeUsers}/{stats.totalUsers} respondieron ≥1 pregunta
+                </p>
+
+                {/* Métrica secundaria: Han completado tests */}
+                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                  <p className="text-sm font-bold text-blue-600">{stats.engagementRate}%</p>
+                  <p className="text-xs text-gray-500">
+                    {stats.usersWhoCompletedTests}/{stats.totalUsers} completaron test
+                  </p>
+                </div>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-lg sm:text-2xl">🎯</span>

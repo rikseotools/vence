@@ -70,8 +70,19 @@ function TestPersonalizadoContent({ params }) {
     )
   }
 
-  // Validar tema (Administrativo tiene 45 temas)
-  if (isNaN(temaNumber) || temaNumber < 1 || temaNumber > 45) {
+  // Validar tema - Administrativo C1:
+  // Bloque I (1-11), II (201-204), III (301-307), IV (401-409), V (501-506), VI (601-608)
+  const validRanges = [
+    [1, 11],     // Bloque I
+    [201, 204],  // Bloque II
+    [301, 307],  // Bloque III
+    [401, 409],  // Bloque IV
+    [501, 506],  // Bloque V
+    [601, 608]   // Bloque VI
+  ]
+  const isValidTema = validRanges.some(([min, max]) => temaNumber >= min && temaNumber <= max)
+
+  if (isNaN(temaNumber) || !isValidTema) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">
@@ -93,14 +104,21 @@ function TestPersonalizadoContent({ params }) {
     )
   }
 
-  // Obtener bloque según tema
+  // Obtener bloque según tema (nueva numeración)
   const getBloque = (num) => {
-    if (num <= 11) return 'Bloque I'
-    if (num <= 15) return 'Bloque II'
-    if (num <= 22) return 'Bloque III'
-    if (num <= 31) return 'Bloque IV'
-    if (num <= 37) return 'Bloque V'
-    return 'Bloque VI'
+    if (num >= 1 && num <= 11) return 'Bloque I'
+    if (num >= 201 && num <= 204) return 'Bloque II'
+    if (num >= 301 && num <= 307) return 'Bloque III'
+    if (num >= 401 && num <= 409) return 'Bloque IV'
+    if (num >= 501 && num <= 506) return 'Bloque V'
+    if (num >= 601 && num <= 608) return 'Bloque VI'
+    return 'Bloque I'
+  }
+
+  // Obtener número de display (número dentro del bloque)
+  const getDisplayNumber = (num) => {
+    if (num >= 1 && num <= 11) return num  // Bloque I: 1-11
+    return num % 100  // Bloques II-VI: 201→1, 302→2, etc.
   }
 
   return (
@@ -108,7 +126,7 @@ function TestPersonalizadoContent({ params }) {
       testType="personalizado"
       tema={temaNumber}
       testConfig={testConfig}
-      customTitle={`Test Personalizado - Tema ${temaNumber} (${getBloque(temaNumber)})`}
+      customTitle={`Test Personalizado - Tema ${getDisplayNumber(temaNumber)} (${getBloque(temaNumber)})`}
       customDescription={`Test personalizado con ${testConfig.numQuestions} preguntas`}
       customIcon="✨"
       customColor="from-blue-600 to-blue-700"

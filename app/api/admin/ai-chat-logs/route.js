@@ -74,11 +74,15 @@ export async function GET(request) {
       if (userIds.length > 0) {
         const { data: users } = await supabase
           .from('user_profiles')
-          .select('id, display_name, email')
+          .select('id, full_name, email')
           .in('id', userIds)
 
         users?.forEach(u => {
-          usersMap[u.id] = u
+          usersMap[u.id] = {
+            id: u.id,
+            display_name: u.full_name,
+            email: u.email
+          }
         })
       }
     }

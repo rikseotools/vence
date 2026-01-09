@@ -14,31 +14,70 @@ function TestExamenContent({ params }) {
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  // 🆕 Estado para reanudar examen
+  const [resumeTestId, setResumeTestId] = useState(null)
+  const [savedAnswers, setSavedAnswers] = useState(null)
 
   // ✅ RESOLVER PARAMS ASYNC
   useEffect(() => {
     async function resolveParams() {
       const resolved = await params
       const tema = parseInt(resolved.numero)
+      const resume = searchParams.get('resume')
 
       setResolvedParams(resolved)
       setTemaNumber(tema)
+      setResumeTestId(resume)
 
       if (process.env.NODE_ENV === 'development') {
         console.log('📝 Test examen tema dinámico:', tema)
         console.log('📋 Parámetros URL:', Object.fromEntries(searchParams.entries()))
+        if (resume) console.log('🔄 Reanudando examen:', resume)
       }
     }
 
     resolveParams()
   }, [params, searchParams])
 
-  // ✅ CARGAR PREGUNTAS
+  // ✅ CARGAR PREGUNTAS (nuevo o reanudando)
   useEffect(() => {
     if (!temaNumber) return
 
-    loadExamQuestions()
-  }, [temaNumber])
+    if (resumeTestId) {
+      loadResumedExam()
+    } else {
+      loadExamQuestions()
+    }
+  }, [temaNumber, resumeTestId])
+
+  // 🆕 CARGAR EXAMEN REANUDADO (via API layer)
+  async function loadResumedExam() {
+    try {
+      setLoading(true)
+      setError(null)
+
+      console.log('🔄 Cargando examen reanudado via API:', resumeTestId)
+
+      // Usar el endpoint /api/exam/resume que usa Drizzle + Zod
+      const response = await fetch(`/api/exam/resume?testId=${resumeTestId}`)
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Error obteniendo datos del examen')
+      }
+
+      console.log('✅ Examen reanudado:', data.totalQuestions, 'preguntas,', data.answeredCount, 'respondidas')
+
+      setQuestions(data.questions)
+      setSavedAnswers(data.savedAnswers)
+      setLoading(false)
+
+    } catch (error) {
+      console.error('❌ Error reanudando examen:', error)
+      setError(error.message)
+      setLoading(false)
+    }
+  }
 
   async function loadExamQuestions() {
     try {
@@ -247,6 +286,9 @@ function TestExamenContent({ params }) {
       testNumber={null}
       config={testConfig}
       questions={questions}
+      // 🆕 Props para reanudar examen
+      resumeTestId={resumeTestId}
+      initialAnswers={savedAnswers}
     />
   )
 }

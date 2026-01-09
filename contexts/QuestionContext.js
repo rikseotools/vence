@@ -27,7 +27,7 @@ export function QuestionProvider({ children }) {
     return String(correct).toUpperCase()
   }
 
-  // Establecer contexto de pregunta actual (desde TestLayout)
+  // Establecer contexto de pregunta actual (desde TestLayout o PsychometricTestLayout)
   const setQuestionContext = useCallback((questionData) => {
     if (questionData) {
       setCurrentQuestionContext({
@@ -41,10 +41,18 @@ export function QuestionProvider({ children }) {
         },
         correctAnswer: formatCorrectAnswer(questionData.correct),
         explanation: questionData.explanation,
-        lawName: questionData.law?.short_name || questionData.law?.name || null,
+        // Campos para tests de leyes
+        lawName: questionData.law?.short_name || questionData.law?.name || questionData.law || null,
         articleNumber: questionData.article_number || null,
         difficulty: questionData.difficulty || null,
-        source: questionData.source || null
+        source: questionData.source || null,
+        // Campos para psicotécnicos
+        isPsicotecnico: questionData.isPsicotecnico || false,
+        questionSubtype: questionData.questionSubtype || null,
+        questionTypeName: questionData.questionTypeName || null,
+        categoria: questionData.categoria || null,
+        // Datos del contenido (gráficos, series, tablas, etc.)
+        contentData: questionData.contentData || null
       })
     } else {
       setCurrentQuestionContext(null)
