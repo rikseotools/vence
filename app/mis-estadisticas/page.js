@@ -1185,7 +1185,7 @@ export default function EstadisticasRevolucionarias() {
               .filter(t => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
               .map(t => ({
                 theme: t.temaNumber,
-                title: formatThemeName(t.temaNumber, oposicionSlug),
+                title: t.title || formatThemeName(t.temaNumber, oposicionSlug),
                 total: t.totalQuestions,
                 correct: t.correctAnswers,
                 accuracy: t.accuracy,

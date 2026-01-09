@@ -53,6 +53,7 @@ export const recentTestSchema = z.object({
 // Rendimiento por tema
 export const themePerformanceSchema = z.object({
   temaNumber: z.number(),
+  title: z.string().nullable().optional(), // Título del tema desde la BD
   totalQuestions: z.number(),
   correctAnswers: z.number(),
   accuracy: z.number(),

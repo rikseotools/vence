@@ -55,6 +55,7 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
       if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
         scopeBasedThemePerformance = (scopeResult as any[]).map(row => ({
           temaNumber: row.topic_number,
+          title: row.topic_title || null, // Título del tema desde la BD
           totalQuestions: Number(row.total_questions) || 0,
           correctAnswers: Number(row.correct_answers) || 0,
           accuracy: Number(row.accuracy) || 0,
