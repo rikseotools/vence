@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function FraudesPage() {
-  const { supabase } = useAuth()
+  const { supabase, user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -14,15 +14,86 @@ export default function FraudesPage() {
   const [suspiciousSessions, setSuspiciousSessions] = useState([])
   const [multiAccountUsers, setMultiAccountUsers] = useState([])
 
+  // Alertas del sistema
+  const [alerts, setAlerts] = useState([])
+  const [alertStats, setAlertStats] = useState(null)
+  const [alertFilter, setAlertFilter] = useState('new')
+
   // Filtros
-  const [activeTab, setActiveTab] = useState('resumen')
+  const [activeTab, setActiveTab] = useState('alertas')
   const [showOnlyPremium, setShowOnlyPremium] = useState(false)
 
   useEffect(() => {
     if (supabase) {
       loadFraudData()
+      loadAlerts()
     }
   }, [supabase])
+
+  useEffect(() => {
+    if (supabase && activeTab === 'alertas') {
+      loadAlerts()
+    }
+  }, [alertFilter])
+
+  async function loadAlerts() {
+    try {
+      // Cargar alertas con filtro de estado
+      const { data: alertsData, error: alertsError } = await supabase
+        .from('fraud_alerts')
+        .select('*')
+        .eq('status', alertFilter)
+        .order('detected_at', { ascending: false })
+        .limit(50)
+
+      if (alertsError) {
+        console.error('Error cargando alertas:', alertsError)
+        // La tabla puede no existir aún
+        setAlerts([])
+      } else {
+        setAlerts(alertsData || [])
+      }
+
+      // Cargar estadísticas de alertas
+      const { data: statsData } = await supabase
+        .from('fraud_alerts')
+        .select('status')
+
+      if (statsData) {
+        const stats = {
+          new: statsData.filter(a => a.status === 'new').length,
+          reviewed: statsData.filter(a => a.status === 'reviewed').length,
+          dismissed: statsData.filter(a => a.status === 'dismissed').length,
+          action_taken: statsData.filter(a => a.status === 'action_taken').length
+        }
+        setAlertStats(stats)
+      }
+    } catch (err) {
+      console.error('Error en loadAlerts:', err)
+    }
+  }
+
+  async function updateAlertStatus(alertId, newStatus, notes = '') {
+    try {
+      const { error } = await supabase
+        .from('fraud_alerts')
+        .update({
+          status: newStatus,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user?.id,
+          notes: notes || null
+        })
+        .eq('id', alertId)
+
+      if (error) throw error
+
+      // Recargar alertas
+      loadAlerts()
+    } catch (err) {
+      console.error('Error actualizando alerta:', err)
+      alert('Error actualizando alerta: ' + err.message)
+    }
+  }
 
   async function loadFraudData() {
     try {
@@ -335,6 +406,7 @@ export default function FraudesPage() {
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="flex space-x-4 overflow-x-auto">
           {[
+            { id: 'alertas', label: 'Alertas Sistema', icon: '🚨', count: alertStats?.new || 0 },
             { id: 'resumen', label: 'Resumen', icon: '📊' },
             { id: 'multicuentas', label: 'Multi-cuentas', icon: '👥', count: stats.multiAccounts },
             { id: 'misma-ip', label: 'Misma IP', icon: '🌐', count: stats.totalIpGroups },
@@ -376,6 +448,157 @@ export default function FraudesPage() {
 
       {/* Contenido según tab */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border">
+
+        {/* Tab Alertas del Sistema */}
+        {activeTab === 'alertas' && (
+          <div className="p-6">
+            {/* Filtros de estado */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                { id: 'new', label: 'Nuevas', count: alertStats?.new, color: 'red' },
+                { id: 'reviewed', label: 'Revisadas', count: alertStats?.reviewed, color: 'yellow' },
+                { id: 'dismissed', label: 'Descartadas', count: alertStats?.dismissed, color: 'gray' },
+                { id: 'action_taken', label: 'Acción tomada', count: alertStats?.action_taken, color: 'green' },
+              ].map(filter => (
+                <button
+                  key={filter.id}
+                  onClick={() => setAlertFilter(filter.id)}
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                    alertFilter === filter.id
+                      ? `bg-${filter.color}-100 text-${filter.color}-800 border-2 border-${filter.color}-400`
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {filter.label}
+                  {filter.count > 0 && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      alertFilter === filter.id ? `bg-${filter.color}-200` : 'bg-gray-200'
+                    }`}>
+                      {filter.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Lista de alertas */}
+            {alerts.length === 0 ? (
+              <div className="text-center py-12">
+                <span className="text-6xl">✅</span>
+                <p className="text-gray-600 dark:text-gray-400 mt-4">
+                  No hay alertas {alertFilter === 'new' ? 'nuevas' : alertFilter === 'reviewed' ? 'revisadas' : alertFilter === 'dismissed' ? 'descartadas' : 'con acción tomada'}
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  El cron de detección se ejecuta periódicamente para buscar patrones sospechosos
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {alerts.map(alert => (
+                  <div
+                    key={alert.id}
+                    className={`p-4 rounded-lg border-l-4 ${
+                      alert.severity === 'critical' ? 'bg-red-50 border-red-500 dark:bg-red-900/20' :
+                      alert.severity === 'high' ? 'bg-orange-50 border-orange-500 dark:bg-orange-900/20' :
+                      alert.severity === 'medium' ? 'bg-yellow-50 border-yellow-500 dark:bg-yellow-900/20' :
+                      'bg-blue-50 border-blue-500 dark:bg-blue-900/20'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xl">
+                            {alert.alert_type === 'same_ip' ? '🌐' :
+                             alert.alert_type === 'same_device' ? '📱' :
+                             alert.alert_type === 'multi_account' ? '👥' :
+                             alert.alert_type === 'suspicious_premium' ? '💳' : '⚠️'}
+                          </span>
+                          <span className="font-semibold capitalize">
+                            {alert.alert_type?.replace(/_/g, ' ')}
+                          </span>
+                          <span className={`px-2 py-0.5 text-xs rounded-full ${
+                            alert.severity === 'critical' ? 'bg-red-200 text-red-800' :
+                            alert.severity === 'high' ? 'bg-orange-200 text-orange-800' :
+                            alert.severity === 'medium' ? 'bg-yellow-200 text-yellow-800' :
+                            'bg-blue-200 text-blue-800'
+                          }`}>
+                            {alert.severity}
+                          </span>
+                          {alert.details?.hasPremium && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-purple-200 text-purple-800">
+                              PREMIUM
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="text-sm text-gray-700 dark:text-gray-300 space-y-1">
+                          {alert.details?.emails && (
+                            <p><strong>Emails:</strong> {alert.details.emails.join(', ')}</p>
+                          )}
+                          {alert.details?.email && !alert.details?.emails && (
+                            <p><strong>Email:</strong> {alert.details.email}</p>
+                          )}
+                          {alert.details?.names && (
+                            <p><strong>Nombres:</strong> {alert.details.names.filter(Boolean).join(', ') || '-'}</p>
+                          )}
+                          {alert.details?.ips && (
+                            <p><strong>IPs:</strong> {alert.details.ips.join(', ')}</p>
+                          )}
+                          {alert.details?.locations && (
+                            <p><strong>Ubicaciones:</strong> {alert.details.locations.join(', ')}</p>
+                          )}
+                          {alert.match_criteria && (
+                            <p><strong>Criterio:</strong> {alert.match_criteria}</p>
+                          )}
+                        </div>
+
+                        <div className="mt-2 text-xs text-gray-500">
+                          Detectado: {formatDate(alert.detected_at)}
+                          {alert.reviewed_at && ` • Revisado: ${formatDate(alert.reviewed_at)}`}
+                        </div>
+
+                        {alert.notes && (
+                          <div className="mt-2 p-2 bg-white/50 rounded text-sm">
+                            <strong>Notas:</strong> {alert.notes}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Acciones */}
+                      {alertFilter === 'new' && (
+                        <div className="flex flex-col gap-2 ml-4">
+                          <button
+                            onClick={() => updateAlertStatus(alert.id, 'reviewed')}
+                            className="px-3 py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                          >
+                            Revisar
+                          </button>
+                          <button
+                            onClick={() => updateAlertStatus(alert.id, 'dismissed')}
+                            className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600"
+                          >
+                            Descartar
+                          </button>
+                          <button
+                            onClick={() => {
+                              const notes = prompt('Notas sobre la acción tomada:')
+                              if (notes !== null) {
+                                updateAlertStatus(alert.id, 'action_taken', notes)
+                              }
+                            }}
+                            className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                          >
+                            Acción
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab Resumen */}
         {activeTab === 'resumen' && (

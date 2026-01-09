@@ -2694,3 +2694,29 @@ export const aiKnowledgeBase = pgTable("ai_knowledge_base", {
 	index("idx_ai_knowledge_base_active").using("btree", table.isActive.asc().nullsLast()),
 	pgPolicy("Anyone can read knowledge base", { as: "permissive", for: "select", to: ["public"], using: sql`is_active = true` }),
 ]);
+
+// Sistema de alertas de fraude: multi-cuentas, IPs compartidas, dispositivos duplicados
+export const fraudAlerts = pgTable("fraud_alerts", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	alertType: text("alert_type").notNull(), // 'same_ip', 'same_device', 'multi_account', 'suspicious_premium', 'location_anomaly'
+	severity: text().notNull().default('medium'), // 'low', 'medium', 'high', 'critical'
+	status: text().notNull().default('new'), // 'new', 'reviewed', 'dismissed', 'action_taken'
+	userIds: uuid("user_ids").array().notNull(), // Array de user_ids involucrados
+	details: jsonb().default({}), // Detalles: IPs, devices, locations, etc.
+	matchCriteria: text("match_criteria"), // Qué criterios coincidieron: 'ip+device', 'name+device', etc.
+	detectedAt: timestamp("detected_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
+	reviewedBy: uuid("reviewed_by"),
+	notes: text(), // Notas del admin
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_fraud_alerts_status").using("btree", table.status.asc().nullsLast()),
+	index("idx_fraud_alerts_type").using("btree", table.alertType.asc().nullsLast()),
+	index("idx_fraud_alerts_severity").using("btree", table.severity.asc().nullsLast()),
+	index("idx_fraud_alerts_detected").using("btree", table.detectedAt.desc().nullsFirst()),
+	foreignKey({
+		columns: [table.reviewedBy],
+		foreignColumns: [users.id],
+		name: "fraud_alerts_reviewed_by_fkey"
+	}).onDelete("set null"),
+]);
