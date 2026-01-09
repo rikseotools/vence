@@ -10,6 +10,25 @@ import { GoogleAdsEvents } from '../utils/googleAds'
 
 const AuthContext = createContext({})
 
+// 🎯 TRACKING DE IP Y LOCALIDAD - Fire and forget, no bloquea UI
+const trackSessionIP = (userId, sessionId = null) => {
+  if (typeof window === 'undefined') return
+
+  // Fire and forget - no await, no bloquea nada
+  fetch('/api/auth/track-session-ip', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, sessionId })
+  }).then(res => {
+    if (res.ok) {
+      console.log('📍 IP y localidad tracked en background')
+    }
+  }).catch(err => {
+    // Silencioso - no es crítico
+    console.warn('⚠️ Error tracking IP (no crítico):', err.message)
+  })
+}
+
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
@@ -320,7 +339,10 @@ export function AuthProvider({ children, initialUser = null }) {
         if (newUser) {
           // Usuario logueado - asegurar perfil y cargar datos
           console.log('👤 Usuario logueado, procesando perfil...')
-          
+
+          // 📍 TRACKING IP Y LOCALIDAD - Fire and forget, no bloquea
+          trackSessionIP(newUser.id)
+
           // 🎯 TRACKING GOOGLE ADS: Solo para nuevos usuarios (SIGNED_UP)
           if (event === 'SIGNED_UP') {
             console.log('🎯 Nuevo usuario registrado, tracking Google Ads conversion')
