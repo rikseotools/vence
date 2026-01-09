@@ -2,8 +2,7 @@
 // API para recuperar tests guardados en localStorage antes del registro
 // Usa Zod para validación + Drizzle para queries
 import { NextRequest, NextResponse } from 'next/server'
-import { safeParseRecoverTest } from '@/lib/api/tests/schemas'
-import { recoverTest } from '@/lib/api/tests/queries'
+import { safeParseRecoverTest, recoverTest } from '@/lib/api/tests'
 
 export async function POST(request: NextRequest) {
   try {
