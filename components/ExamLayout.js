@@ -30,6 +30,62 @@ import {
   formatTime
 } from '../utils/testAnalytics.js'
 
+// 🆕 API para guardar respuestas en tiempo real (permite reanudar exámenes)
+async function saveAnswerToAPI(testId, question, questionIndex, selectedOption, correctOptionLetter) {
+  try {
+    const response = await fetch('/api/exam/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        testId,
+        questionId: question.id || null,
+        questionOrder: questionIndex + 1, // 1-indexed
+        userAnswer: selectedOption,
+        correctAnswer: correctOptionLetter,
+        questionText: question.question_text || '',
+        articleId: question.articles?.id || question.primary_article_id || null,
+        articleNumber: question.articles?.article_number || null,
+        lawName: question.articles?.laws?.short_name || null,
+        temaNumber: question.tema_number || null,
+        difficulty: question.difficulty || null,
+        timeSpentSeconds: 0, // Se actualizará al corregir
+        confidenceLevel: 'sure'
+      })
+    })
+
+    if (!response.ok) {
+      console.warn('⚠️ Error guardando respuesta en API:', response.status)
+      return false
+    }
+
+    const result = await response.json()
+    return result.success
+  } catch (error) {
+    console.error('❌ Error guardando respuesta en API:', error)
+    return false
+  }
+}
+
+// 🆕 API para cargar respuestas guardadas (para reanudar exámenes)
+async function loadSavedAnswers(testId) {
+  try {
+    const response = await fetch(`/api/exam/progress?testId=${testId}`)
+
+    if (!response.ok) {
+      return null
+    }
+
+    const result = await response.json()
+    if (result.success && result.answers) {
+      return result.answers
+    }
+    return null
+  } catch (error) {
+    console.error('❌ Error cargando respuestas guardadas:', error)
+    return null
+  }
+}
+
 // 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar botón "Ver artículo"
 const NON_LEGAL_CONTENT = [
   'Informática Básica',
@@ -297,14 +353,33 @@ export default function ExamLayout({
     }
   }
 
-  // ✅ FUNCIÓN: Manejar selección de respuesta
-  function handleAnswerSelect(questionIndex, option) {
+  // ✅ FUNCIÓN: Manejar selección de respuesta (guarda en API para permitir reanudar)
+  async function handleAnswerSelect(questionIndex, option) {
     if (isSubmitted) return // No permitir cambios después de corregir
 
+    // Actualizar estado local inmediatamente para UX responsiva
     setUserAnswers(prev => ({
       ...prev,
       [questionIndex]: option
     }))
+
+    // 🆕 Guardar en API en background (permite reanudar el examen)
+    const testId = currentTestSession?.id || currentTestSessionRef.current?.id
+    if (testId && effectiveQuestions[questionIndex]) {
+      const question = effectiveQuestions[questionIndex]
+      const correctIndex = typeof question.correct_option === 'number'
+        ? question.correct_option
+        : 0
+      const correctOptionLetter = String.fromCharCode(97 + correctIndex)
+
+      // Guardar sin bloquear la UI
+      saveAnswerToAPI(testId, question, questionIndex, option, correctOptionLetter)
+        .then(success => {
+          if (success) {
+            console.log(`💾 Respuesta ${questionIndex + 1} guardada en API`)
+          }
+        })
+    }
   }
 
   // 📤 FUNCIÓN: Compartir pregunta individual directo a redes (con tracking)
