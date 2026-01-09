@@ -68,19 +68,8 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
       })
 
       // Mostrar el prompt de One Tap
-      window.google.accounts.id.prompt((notification) => {
-        console.log('📱 Google One Tap notification:', notification.getMomentType())
-
-        if (notification.isNotDisplayed()) {
-          console.log('⚠️ One Tap no mostrado:', notification.getNotDisplayedReason())
-        }
-        if (notification.isSkippedMoment()) {
-          console.log('⏭️ One Tap saltado:', notification.getSkippedReason())
-        }
-        if (notification.isDismissedMoment()) {
-          console.log('❌ One Tap descartado:', notification.getDismissedReason())
-        }
-      })
+      // NOTA: No pasamos callback para evitar warnings de FedCM deprecation
+      window.google.accounts.id.prompt()
 
       setHasPrompted(true)
 

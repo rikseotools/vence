@@ -191,11 +191,17 @@ export default function PushNotificationManager() {
     if (!user || !supabase) return
 
     try {
-      const { data: settings } = await supabase
+      // Usar maybeSingle() para evitar error 406 cuando no existe el registro
+      const { data: settings, error } = await supabase
         .from('user_notification_settings')
         .select('*')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
+
+      if (error) {
+        console.log('Error loading notification settings:', error.message)
+        return
+      }
 
       if (settings) {
         setNotificationState(prev => ({

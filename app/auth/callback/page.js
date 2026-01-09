@@ -401,10 +401,41 @@ function AuthCallbackContent() {
           }
         }
         
+        // 🔄 DETECTAR TEST PENDIENTE EN LOCALSTORAGE
+        let redirectUrl = finalReturnUrl
+        const PENDING_TEST_KEY = 'vence_pending_test'
+
+        try {
+          const pendingTestStr = localStorage.getItem(PENDING_TEST_KEY)
+          if (pendingTestStr) {
+            const pendingTest = JSON.parse(pendingTestStr)
+            // Verificar que no sea muy antiguo (máx 1 hora)
+            const age = Date.now() - pendingTest.savedAt
+            if (age < 60 * 60 * 1000 && pendingTest.answeredQuestions?.length > 0) {
+              console.log('🎯 [CALLBACK] ¡Test pendiente detectado!', {
+                preguntas: pendingTest.answeredQuestions.length,
+                tema: pendingTest.tema,
+                edad: Math.round(age / 1000 / 60) + ' minutos'
+              })
+              // Redirigir a página de recuperación de test
+              redirectUrl = '/test-recuperado'
+              setMessage('¡Encontramos tu test! Guardando tu progreso...')
+            } else {
+              // Test muy antiguo o sin respuestas, limpiar
+              localStorage.removeItem(PENDING_TEST_KEY)
+              console.log('🗑️ [CALLBACK] Test pendiente descartado (muy antiguo o vacío)')
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ [CALLBACK] Error procesando test pendiente:', e)
+        }
+
         // Preparar redirección
-        console.log('🔄 [CALLBACK] Preparando redirección a:', finalReturnUrl)
-        setMessage('Redirigiendo de vuelta al test...')
-        
+        console.log('🔄 [CALLBACK] Preparando redirección a:', redirectUrl)
+        setMessage(redirectUrl === '/test-recuperado'
+          ? '¡Encontramos tu test! Guardando tu progreso...'
+          : 'Redirigiendo de vuelta al test...')
+
         // Disparar eventos globales
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('supabaseAuthSuccess', {
@@ -425,14 +456,14 @@ function AuthCallbackContent() {
         }
         
         // REDIRECCIÓN SIMPLIFICADA - SIN VARIABLES EXTERNAS
-        const delay = finalReturnUrl.includes('/premium-ads') ? 1500 : 1000
-        
+        const delay = redirectUrl.includes('/premium-ads') ? 1500 : 1000
+
         console.log('⏰ [CALLBACK] Configurando redirección con delay:', delay, 'ms')
-        
+
         setTimeout(() => {
-          const separator = finalReturnUrl.includes('?') ? '&' : '?'
-          const urlWithSuccess = `${finalReturnUrl}${separator}auth=success&t=${Date.now()}`
-          
+          const separator = redirectUrl.includes('?') ? '&' : '?'
+          const urlWithSuccess = `${redirectUrl}${separator}auth=success&t=${Date.now()}`
+
           console.log('🔄 [CALLBACK] Redirigiendo finalmente a:', urlWithSuccess)
           router.push(urlWithSuccess)
         }, delay)

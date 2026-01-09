@@ -125,11 +125,8 @@ export function OposicionProvider({ children }) {
         } else {
           // 3. Usuario con oposición asignada
           const opoId = profile.target_oposicion
-          const oposicionData = profile.target_oposicion_data ?
-            (typeof profile.target_oposicion_data === 'string'
-              ? JSON.parse(profile.target_oposicion_data)
-              : profile.target_oposicion_data)
-            : null
+          // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
+          const oposicionData = profile.target_oposicion_data || null
 
           console.log('✅ Oposición del usuario:', opoId, 'Data:', oposicionData)
 

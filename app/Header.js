@@ -59,23 +59,20 @@ export default function HeaderES() {
 
       try {
         // ⚡ CONSULTA SÚPER OPTIMIZADA - Una sola query simple
+        // Usar maybeSingle() para evitar error 406 cuando no existe el registro
         const { data: streakData, error: streakError } = await supabase
           .from('user_streaks')
           .select('current_streak')
           .eq('user_id', user.id)
-          .single()
+          .maybeSingle()
 
         if (streakError) {
-          if (streakError.code === 'PGRST116') {
-            // No existe registro, la racha es 0
-            setUserStreak(0)
-          } else {
-            console.warn('Error loading user streak:', streakError)
-            setUserStreak(0)
-          }
+          console.warn('Error loading user streak:', streakError)
+          setUserStreak(0)
           return
         }
 
+        // Si no hay datos (usuario nuevo), la racha es 0
         setUserStreak(streakData?.current_streak || 0)
       } catch (error) {
         console.warn('Error calculating user streak:', error)

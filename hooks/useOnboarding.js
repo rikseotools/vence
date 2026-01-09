@@ -19,32 +19,36 @@ export function useOnboarding() {
 
   useEffect(() => {
     // Solo verificar una vez por sesión
+    // Esperar a que authLoading termine Y que userProfile esté disponible (o confirmemos que no existe)
     if (hasChecked || authLoading || !user) {
       setChecking(false)
       return
     }
 
+    // Esperar a que el perfil esté cargado desde AuthContext
+    // userProfile será null mientras carga, undefined si no existe
+    if (userProfile === null) {
+      // Aún cargando el perfil, esperar
+      return
+    }
+
     checkOnboardingStatus()
-  }, [user, authLoading, hasChecked])
+  }, [user, userProfile, authLoading, hasChecked])
 
   const checkOnboardingStatus = async () => {
     try {
       setChecking(true)
 
-      // Obtener perfil con datos de tracking
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('target_oposicion, onboarding_completed_at, age, gender, daily_study_hours, ciudad, onboarding_skip_count, onboarding_last_skip_at')
-        .eq('id', user.id)
-        .single()
-
-      if (error) {
-        console.error('Error verificando onboarding:', error)
+      // Si no hay perfil aún (usuario recién creado), no mostrar onboarding todavía
+      if (!userProfile) {
+        console.log('🎯 Onboarding: Perfil aún no existe, esperando...')
         setNeedsOnboarding(false)
-        setHasChecked(true)
         setChecking(false)
         return
       }
+
+      // Usar userProfile del AuthContext en lugar de hacer query separada
+      const profile = userProfile
 
       // Verificar si necesita onboarding
       // NOTA: daily_study_hours es OPCIONAL ahora

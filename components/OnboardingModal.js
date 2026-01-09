@@ -496,8 +496,6 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [ciudadTemp, setCiudadTemp] = useState('')
   const [editingCiudad, setEditingCiudad] = useState(false)
-  const [horasTemp, setHorasTemp] = useState('')
-  const [editingHoras, setEditingHoras] = useState(false)
 
   // Datos del formulario (TODO OBLIGATORIO)
   const [formData, setFormData] = useState({
@@ -592,17 +590,19 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
 
       console.log('📍 Ubicación detectada:', data)
 
-      // Pre-rellenar ciudad solo si está vacía
+      // Pre-rellenar y guardar ciudad automáticamente si está vacía
       if (data.city) {
         setFormData(prev => {
           // No sobreescribir si ya tiene ciudad
           if (prev.ciudad) return prev
 
-          // Pre-rellenar campo temporal (no guardar aún)
-          setCiudadTemp(data.city)
-          setEditingCiudad(true)
+          // 🔄 CAMBIO UX: Guardar directamente en formData (sin necesidad de clic en "Guardar")
+          console.log('📍 Auto-rellenando ciudad detectada:', data.city)
 
-          return prev
+          return {
+            ...prev,
+            ciudad: data.city
+          }
         })
       }
     } catch (err) {
@@ -612,6 +612,16 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       setDetectingLocation(false)
     }
   }
+
+  // 🆕 Auto-guardar ciudad detectada cuando el perfil esté listo
+  useEffect(() => {
+    if (!profileLoaded || !formData.ciudad) return
+    // Si hay ciudad en formData pero no estaba completa previamente, guardarla
+    if (!completedFields.ciudad && formData.ciudad.trim()) {
+      console.log('💾 Auto-guardando ciudad en BD:', formData.ciudad)
+      saveField('ciudad', formData.ciudad)
+    }
+  }, [profileLoaded, formData.ciudad, completedFields.ciudad])
 
   // 💾 FUNCIÓN CLAVE: Guardar campo individual progresivamente
   const saveField = async (fieldName, value) => {
@@ -657,8 +667,16 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
     }
   }, [formData.age, profileLoaded])
 
-  // Ciudad ya no se guarda automáticamente con debounce
-  // Ahora se guarda con botón "Guardar"
+  // Auto-save horas de estudio cuando es válida (campo opcional)
+  useEffect(() => {
+    if (!formData.daily_study_hours || !profileLoaded) return
+
+    const hours = parseInt(formData.daily_study_hours)
+    if (hours >= 1 && hours <= 12) {
+      // Guardar inmediatamente si es válida
+      saveField('daily_study_hours', hours)
+    }
+  }, [formData.daily_study_hours, profileLoaded])
 
   const loadCustomOposiciones = async () => {
     try {
@@ -1252,17 +1270,14 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
                 Horas de estudio al día
                 <span className="text-gray-500 text-xs ml-1">(Opcional)</span>
               </label>
-              {formData.daily_study_hours && formData.daily_study_hours >= 1 && formData.daily_study_hours <= 12 && !editingHoras ? (
+              {formData.daily_study_hours && parseInt(formData.daily_study_hours) >= 1 && parseInt(formData.daily_study_hours) <= 12 ? (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-2">
                   <div className="flex items-center justify-between">
                     <span className="text-green-600 dark:text-green-400 font-semibold text-sm">
-                      ✓ {formData.daily_study_hours} {formData.daily_study_hours === 1 ? 'hora' : 'horas'} al día
+                      ✓ {formData.daily_study_hours} {parseInt(formData.daily_study_hours) === 1 ? 'hora' : 'horas'} al día
                     </span>
                     <button
-                      onClick={() => {
-                        setHorasTemp(formData.daily_study_hours.toString())
-                        setEditingHoras(true)
-                      }}
+                      onClick={() => setFormData({...formData, daily_study_hours: ''})}
                       className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 text-xs"
                     >
                       Cambiar
@@ -1270,31 +1285,15 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
                   </div>
                 </div>
               ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
-                    value={horasTemp}
-                    onChange={(e) => setHorasTemp(e.target.value)}
-                    placeholder="Opcional"
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                  <button
-                    onClick={() => {
-                      const hours = parseInt(horasTemp)
-                      if (hours >= 1 && hours <= 12) {
-                        setFormData({...formData, daily_study_hours: hours})
-                        saveField('daily_study_hours', hours)
-                        setEditingHoras(false)
-                      }
-                    }}
-                    disabled={!horasTemp || parseInt(horasTemp) < 1 || parseInt(horasTemp) > 12}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap"
-                  >
-                    ✓ Guardar
-                  </button>
-                </div>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={formData.daily_study_hours}
+                  onChange={(e) => setFormData({...formData, daily_study_hours: e.target.value})}
+                  placeholder="Ej: 3 (opcional)"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                />
               )}
             </div>
             )}

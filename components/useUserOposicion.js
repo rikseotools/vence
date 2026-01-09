@@ -107,17 +107,17 @@ const DEFAULT_MENU = {
 }
 
 export function useUserOposicion() {
-  const { user, supabase, loading: authLoading } = useAuth()
+  const { user, userProfile, supabase, loading: authLoading } = useAuth()
   const [userOposicion, setUserOposicion] = useState(null)
   const [oposicionMenu, setOposicionMenu] = useState(DEFAULT_MENU)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function loadUserOposicion() {
+    function loadUserOposicion() {
       try {
         setLoading(true)
 
-        // 1. Usar usuario del contexto
+        // 1. Esperar a que termine la autenticación
         if (authLoading) {
           console.log('⏳ Esperando autenticación...')
           return
@@ -131,36 +131,28 @@ export function useUserOposicion() {
           return
         }
 
+        // 2. Esperar a que el perfil esté cargado desde AuthContext
+        if (userProfile === null) {
+          // Aún cargando el perfil, esperar
+          console.log('⏳ Esperando perfil de usuario...')
+          return
+        }
+
         console.log('👤 Usuario autenticado:', user.id)
 
-        // 2. Cargar oposición asignada - CAMPO CORREGIDO
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('target_oposicion, target_oposicion_data')
-          .eq('id', user.id)  // ✅ CORREGIDO: era 'user_id'
-          .single()
+        // 3. Usar userProfile del AuthContext (evita query que puede fallar con 406)
+        const profile = userProfile
 
-        console.log('📋 Profile query result:', { profile, profileError })
-
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('❌ Error cargando perfil:', profileError)
-          setUserOposicion(null)
-          setOposicionMenu(DEFAULT_MENU)
-        } else if (!profile?.target_oposicion) {
+        if (!profile?.target_oposicion) {
           console.log('📋 Usuario sin oposición asignada - usando menú genérico')
           setUserOposicion(null)
           setOposicionMenu(DEFAULT_MENU)
         } else {
           // 3. Usuario con oposición asignada
           const oposicionId = profile.target_oposicion
-          let oposicionData = null
-          
-          try {
-            oposicionData = profile.target_oposicion_data ? 
-              JSON.parse(profile.target_oposicion_data) : null
-          } catch (e) {
-            console.warn('⚠️ Error parseando target_oposicion_data:', e)
-          }
+          // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
+          // No necesita JSON.parse()
+          const oposicionData = profile.target_oposicion_data || null
 
           console.log('✅ Oposición del usuario:', oposicionId, oposicionData)
 
@@ -195,7 +187,7 @@ export function useUserOposicion() {
     return () => {
       window.removeEventListener('oposicionAssigned', handleOposicionAssigned)
     }
-  }, [user, authLoading, supabase])
+  }, [user, userProfile, authLoading, supabase])
 
   // Función para cambiar oposición manualmente
   const changeOposicion = async (newOposicionId) => {
@@ -208,14 +200,15 @@ export function useUserOposicion() {
         slug: newOposicionId
       }
 
+      // NOTA: target_oposicion_data es JSONB, no necesita JSON.stringify
       const { error } = await supabase
         .from('user_profiles')
         .update({
           target_oposicion: newOposicionId,
-          target_oposicion_data: JSON.stringify(oposicionData),
+          target_oposicion_data: oposicionData,
           updated_at: new Date().toISOString()
         })
-        .eq('id', user.id)  // ✅ CORREGIDO: era 'user_id'
+        .eq('id', user.id)
 
       if (error) throw error
 
