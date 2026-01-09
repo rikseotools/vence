@@ -38,6 +38,18 @@ const formatTime = (seconds) => {
   return minutes > 0 ? `${minutes}m` : `${seconds}s`
 }
 
+// ✅ Formatear número de tema interno a nombre legible por bloque
+const formatThemeName = (num) => {
+  if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
+  if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
+  if (num >= 201 && num <= 299) return `Bloque III - Tema ${num - 200}`
+  if (num >= 301 && num <= 399) return `Bloque IV - Tema ${num - 300}`
+  if (num >= 401 && num <= 499) return `Bloque V - Tema ${num - 400}`
+  if (num >= 501 && num <= 599) return `Bloque VI - Tema ${num - 500}`
+  if (num >= 601 && num <= 699) return `Bloque VII - Tema ${num - 600}`
+  return `Tema ${num}`
+}
+
 // ✅ FUNCIONES AUXILIARES MOVIDAS AL INICIO - ANTES DE SU USO
 const generateRealRecommendations = (responses, articlePerformance, accuracy) => {
   if (!responses || responses.length < 10) return []
@@ -433,14 +445,7 @@ export default function EstadisticasRevolucionarias() {
       
       responses.forEach((response, index) => {
         const theme = response.tema_number ?? response.theme_number ?? 0
-        // Formatear título del tema correctamente (T102 → Bloque II Tema 2)
-        const formatThemeTitle = (num) => {
-          if (num === 0) return 'Tests aleatorios'
-          if (num >= 101 && num <= 112) return `Bloque II Tema ${num - 100}`
-          if (num >= 1 && num <= 16) return `Bloque I Tema ${num}`
-          return `Tema ${num}`
-        }
-        const themeTitle = response.theme_title || response.tema_title || formatThemeTitle(theme)
+        const themeTitle = response.theme_title || response.tema_title || (theme === 0 ? 'Tests aleatorios' : formatThemeName(theme))
         
         if (index < 10) { // Debug primeras 10 respuestas
           console.log(`Response ${index}:`, {
@@ -1113,7 +1118,7 @@ export default function EstadisticasRevolucionarias() {
           // Tests recientes - mapear al formato esperado por RecentTests.js
           recentTests: apiStats.recentTests.map(t => ({
             id: t.id,
-            title: t.title || `Tema ${t.temaNumber || 'Aleatorio'}`,
+            title: t.title || (t.temaNumber ? formatThemeName(t.temaNumber) : 'Test Aleatorio'),
             score: t.score,
             total: t.totalQuestions, // RecentTests usa 'total'
             totalQuestions: t.totalQuestions,
@@ -1140,7 +1145,7 @@ export default function EstadisticasRevolucionarias() {
           // Rendimiento por tema
           themePerformance: apiStats.themePerformance.map(t => ({
             theme: t.temaNumber,
-            title: `Tema ${t.temaNumber}`,
+            title: formatThemeName(t.temaNumber),
             total: t.totalQuestions,
             correct: t.correctAnswers,
             accuracy: t.accuracy,
