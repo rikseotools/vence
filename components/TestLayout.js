@@ -55,6 +55,72 @@ function isLegalArticle(lawShortName) {
   return !NON_LEGAL_CONTENT.includes(lawShortName)
 }
 
+// 🔒 FUNCIÓN: Validar respuesta de forma segura via API
+// Fase 2 de migración: usa API con fallback a validación local
+async function validateAnswerSecure(questionId, userAnswer, localCorrectAnswer) {
+  // Si no hay questionId válido, usar fallback local
+  if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
+    console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      explanation: null,
+      usedFallback: true
+    }
+  }
+
+  try {
+    const response = await fetch('/api/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId, userAnswer })
+    })
+
+    if (!response.ok) {
+      console.warn('⚠️ [SecureAnswer] API error, usando fallback local')
+      return {
+        isCorrect: userAnswer === localCorrectAnswer,
+        correctAnswer: localCorrectAnswer,
+        explanation: null,
+        usedFallback: true
+      }
+    }
+
+    const data = await response.json()
+
+    if (data.success) {
+      console.log('✅ [SecureAnswer] Respuesta validada via API')
+      return {
+        isCorrect: data.isCorrect,
+        correctAnswer: data.correctAnswer,
+        explanation: data.explanation,
+        articleNumber: data.articleNumber,
+        lawShortName: data.lawShortName,
+        usedFallback: false
+      }
+    }
+
+    // Si la API no encuentra la pregunta, fallback
+    console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API, usando fallback')
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      explanation: null,
+      usedFallback: true
+    }
+
+  } catch (error) {
+    console.error('❌ [SecureAnswer] Error llamando API:', error)
+    // Fallback a validación local en caso de error
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      explanation: null,
+      usedFallback: true
+    }
+  }
+}
+
 export default function TestLayout({
   tema,
   testNumber,
@@ -729,11 +795,20 @@ export default function TestLayout({
       try {
         setShowResult(true)
         scrollToResult()
-        
-        const isCorrect = answerIndex === currentQ.correct
-        const newScore = isCorrect ? score + 1 : score
+
         const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
         const responseTimeMs = Date.now() - questionStartTime
+
+        // 🔒 Validar respuesta de forma segura (API con fallback local)
+        // Fase 2: La API valida, pero tenemos fallback por si falla
+        const validationResult = await validateAnswerSecure(
+          currentQ.id,           // questionId (UUID)
+          answerIndex,           // userAnswer (0-3)
+          currentQ.correct       // localCorrectAnswer (fallback)
+        )
+
+        const isCorrect = validationResult.isCorrect
+        const newScore = isCorrect ? score + 1 : score
 
         // 🤖 Registrar comportamiento para detección de scrapers
         // (Los scrapers no "responden" - solo copian contenido rápidamente)

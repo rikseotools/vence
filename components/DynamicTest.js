@@ -5,6 +5,63 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import AdSenseComponent from './AdSenseComponent'
 
+// 🔒 FUNCIÓN: Validar respuesta de forma segura via API
+// Fase 2 de migración: usa API con fallback a validación local
+async function validateAnswerSecure(questionId, userAnswer, localCorrectAnswer) {
+  // Si no hay questionId válido, usar fallback local
+  if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
+    console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      usedFallback: true
+    }
+  }
+
+  try {
+    const response = await fetch('/api/answer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId, userAnswer })
+    })
+
+    if (!response.ok) {
+      console.warn('⚠️ [SecureAnswer] API error, usando fallback local')
+      return {
+        isCorrect: userAnswer === localCorrectAnswer,
+        correctAnswer: localCorrectAnswer,
+        usedFallback: true
+      }
+    }
+
+    const data = await response.json()
+
+    if (data.success) {
+      console.log('✅ [SecureAnswer] Respuesta validada via API')
+      return {
+        isCorrect: data.isCorrect,
+        correctAnswer: data.correctAnswer,
+        usedFallback: false
+      }
+    }
+
+    // Fallback si la API no encuentra la pregunta
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      usedFallback: true
+    }
+
+  } catch (error) {
+    console.error('❌ [SecureAnswer] Error llamando API:', error)
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      usedFallback: true
+    }
+  }
+}
+
 export default function DynamicTest({ titulo, dificultad }) {
   const { isPremium } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -82,22 +139,31 @@ export default function DynamicTest({ titulo, dificultad }) {
     }
   }
 
-  const handleAnswerClick = (answerIndex) => {
+  const handleAnswerClick = async (answerIndex) => {
     if (showResult) return
-    
+
     setSelectedAnswer(answerIndex)
     setShowResult(true)
-    
-    const isCorrect = answerIndex === testData.questions[currentQuestion].correct
+
+    const currentQ = testData.questions[currentQuestion]
+
+    // 🔒 Validar respuesta de forma segura (API con fallback local)
+    const validationResult = await validateAnswerSecure(
+      currentQ.id,           // questionId (puede no existir en tests IA)
+      answerIndex,           // userAnswer (0-3)
+      currentQ.correct       // localCorrectAnswer (fallback)
+    )
+
+    const isCorrect = validationResult.isCorrect
     if (isCorrect) {
       setScore(score + 1)
     }
-    
+
     setAnsweredQuestions([...answeredQuestions, {
       question: currentQuestion,
       selectedAnswer: answerIndex,
       correct: isCorrect,
-      questionData: testData.questions[currentQuestion]
+      questionData: currentQ
     }])
   }
 
