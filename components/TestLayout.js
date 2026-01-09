@@ -152,6 +152,7 @@ export default function TestLayout({
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [showResult, setShowResult] = useState(false)
+  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState(null) // 🔒 Respuesta correcta validada por API
   const [score, setScore] = useState(0)
   const [answeredQuestions, setAnsweredQuestions] = useState([])
   const [startTime, setStartTime] = useState(Date.now())
@@ -377,6 +378,7 @@ export default function TestLayout({
   }, [answeredQuestions, adaptiveMode, user, isAdaptiveMode])
 
   // 💬 Actualizar contexto de pregunta para el chat AI
+  // 🔒 SEGURIDAD: Solo exponer la respuesta correcta DESPUÉS de que el usuario haya respondido
   useEffect(() => {
     const currentQ = effectiveQuestions?.[currentQuestion]
     if (currentQ) {
@@ -391,7 +393,8 @@ export default function TestLayout({
         option_b: currentQ.option_b || currentQ.options?.[1],
         option_c: currentQ.option_c || currentQ.options?.[2],
         option_d: currentQ.option_d || currentQ.options?.[3],
-        correct: currentQ.correct,
+        // 🔒 Solo exponer la respuesta correcta después de responder
+        correct: showResult ? verifiedCorrectAnswer : null,
         explanation: currentQ.explanation,
         law: currentQ.law || currentQ.article?.law_short_name || currentQ.article?.law_name,
         article_number: currentQ.article_number || currentQ.article?.number,
@@ -404,7 +407,7 @@ export default function TestLayout({
     return () => {
       clearQuestionContext()
     }
-  }, [currentQuestion, effectiveQuestions, setQuestionContext, clearQuestionContext])
+  }, [currentQuestion, effectiveQuestions, setQuestionContext, clearQuestionContext, showResult, verifiedCorrectAnswer])
 
   // Guardar respuestas previas al registrarse
   const savePreviousAnswersOnRegistration = async (userId, previousAnswers) => {
@@ -808,7 +811,11 @@ export default function TestLayout({
         )
 
         const isCorrect = validationResult.isCorrect
+        const apiCorrectAnswer = validationResult.correctAnswer // 🔒 Respuesta verificada por API
         const newScore = isCorrect ? score + 1 : score
+
+        // 🔒 Guardar respuesta correcta verificada para el UI
+        setVerifiedCorrectAnswer(apiCorrectAnswer)
 
         // 🤖 Registrar comportamiento para detección de scrapers
         // (Los scrapers no "responden" - solo copian contenido rápidamente)
@@ -818,26 +825,26 @@ export default function TestLayout({
 
         if (isCorrect) {
           setScore(newScore)
-          testTracker.trackInteraction('answer_correct', { 
+          testTracker.trackInteraction('answer_correct', {
             time_spent: timeSpent,
-            confidence: newConfidence 
+            confidence: newConfidence
           }, currentQuestion)
         } else {
-          testTracker.trackInteraction('answer_incorrect', { 
+          testTracker.trackInteraction('answer_incorrect', {
             time_spent: timeSpent,
             confidence: newConfidence,
-            correct_answer: currentQ.correct
+            correct_answer: apiCorrectAnswer
           }, currentQuestion)
         }
-        
+
         const detailedAnswer = createDetailedAnswer(
-          currentQuestion, 
-          answerIndex, 
-          currentQ.correct, 
-          isCorrect, 
-          timeSpent, 
-          currentQ, 
-          newConfidence, 
+          currentQuestion,
+          answerIndex,
+          apiCorrectAnswer,
+          isCorrect,
+          timeSpent,
+          currentQ,
+          newConfidence,
           interactionCount
         )
         
@@ -1134,6 +1141,7 @@ export default function TestLayout({
       setCurrentQuestion(currentQuestion + 1)
       setSelectedAnswer(null)
       setShowResult(false)
+      setVerifiedCorrectAnswer(null) // 🔒 Resetear respuesta verificada
       setQuestionStartTime(Date.now())
       setFirstInteractionTime(null)
       setInteractionCount(0)
@@ -1667,10 +1675,10 @@ export default function TestLayout({
                     onClick={() => !showResult && handleAnswerClick(index)}
                     disabled={showResult}
                     className={`w-full text-left p-4 rounded-lg border-2 transition-all duration-200 ${
-                      showResult
-                        ? index === currentQ.correct
+                      showResult && verifiedCorrectAnswer !== null
+                        ? index === verifiedCorrectAnswer
                           ? 'border-green-500 bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                          : index === selectedAnswer && selectedAnswer !== currentQ.correct
+                          : index === selectedAnswer && selectedAnswer !== verifiedCorrectAnswer
                           ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300'
                           : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                         : selectedAnswer === index
@@ -1680,10 +1688,10 @@ export default function TestLayout({
                   >
                     <span className="inline-flex items-center">
                       <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-bold mr-3 ${
-                        showResult
-                          ? index === currentQ.correct
+                        showResult && verifiedCorrectAnswer !== null
+                          ? index === verifiedCorrectAnswer
                             ? 'border-green-500 bg-green-500 text-white'
-                            : index === selectedAnswer && selectedAnswer !== currentQ.correct
+                            : index === selectedAnswer && selectedAnswer !== verifiedCorrectAnswer
                             ? 'border-red-500 bg-red-500 text-white'
                             : 'border-gray-300 dark:border-gray-500 text-gray-500 dark:text-gray-400'
                           : selectedAnswer === index
@@ -1695,11 +1703,11 @@ export default function TestLayout({
                       {option}
                     </span>
                     
-                    {showResult && (
+                    {showResult && verifiedCorrectAnswer !== null && (
                       <span className="float-right">
-                        {index === currentQ.correct ? (
+                        {index === verifiedCorrectAnswer ? (
                           <span className="text-green-600 dark:text-green-400">✅</span>
-                        ) : index === selectedAnswer && selectedAnswer !== currentQ.correct ? (
+                        ) : index === selectedAnswer && selectedAnswer !== verifiedCorrectAnswer ? (
                           <span className="text-red-600 dark:text-red-400">❌</span>
                         ) : null}
                       </span>
@@ -1782,28 +1790,28 @@ export default function TestLayout({
                   
                   <div className="border-t dark:border-gray-600 pt-6">
                     <div className={`p-4 rounded-lg mb-4 ${
-                      selectedAnswer === currentQ.correct 
-                        ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700' 
+                      selectedAnswer === verifiedCorrectAnswer
+                        ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700'
                         : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700'
                     }`}>
                       <div className="flex items-center space-x-2 mb-2">
                         <span className="text-2xl">
-                          {selectedAnswer === currentQ.correct ? '🎉' : '😔'}
+                          {selectedAnswer === verifiedCorrectAnswer ? '🎉' : '😔'}
                         </span>
                         <span className={`font-bold ${
-                          selectedAnswer === currentQ.correct 
-                            ? 'text-green-800 dark:text-green-300' 
+                          selectedAnswer === verifiedCorrectAnswer
+                            ? 'text-green-800 dark:text-green-300'
                             : 'text-red-800 dark:text-red-300'
                         }`}>
-                          {selectedAnswer === currentQ.correct ? '¡Correcto!' : 'Incorrecto'}
+                          {selectedAnswer === verifiedCorrectAnswer ? '¡Correcto!' : 'Incorrecto'}
                         </span>
                       </div>
                       <p className={`text-sm ${
-                        selectedAnswer === currentQ.correct
+                        selectedAnswer === verifiedCorrectAnswer
                           ? 'text-green-700 dark:text-green-400'
                           : 'text-red-700 dark:text-red-400'
                       }`}>
-                        La respuesta correcta es: <strong>{String.fromCharCode(65 + currentQ.correct)}</strong>
+                        La respuesta correcta es: <strong>{verifiedCorrectAnswer !== null ? String.fromCharCode(65 + verifiedCorrectAnswer) : '?'}</strong>
                       </p>
                     </div>
 
@@ -1821,7 +1829,7 @@ export default function TestLayout({
                         </p>
 
                         {/* 🤖 Botón para pedir explicación a la IA cuando falla */}
-                        {selectedAnswer !== currentQ.correct && (
+                        {verifiedCorrectAnswer !== null && selectedAnswer !== verifiedCorrectAnswer && (
                           <button
                             onClick={() => {
                               window.dispatchEvent(new CustomEvent('openAIChat', {
@@ -2180,11 +2188,11 @@ export default function TestLayout({
                     {user && currentQuestionUuid && (
                       <>
                         {/* QuestionEvolution - Evolución compacta */}
-                        <QuestionEvolution 
+                        <QuestionEvolution
                           userId={user.id}
                           questionId={currentQuestionUuid}
                           currentResult={{
-                            is_correct: selectedAnswer === currentQ.correct,
+                            is_correct: verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
                             timeSpent: Math.round((Date.now() - questionStartTime) / 1000),
                             confidence: confidenceLevel
                           }}

@@ -70,6 +70,7 @@ export default function DynamicTest({ titulo, dificultad }) {
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [showResult, setShowResult] = useState(false)
+  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState(null) // 🔒 Respuesta correcta validada por API
   const [score, setScore] = useState(0)
   const [answeredQuestions, setAnsweredQuestions] = useState([])
   const [showReview, setShowReview] = useState(false)
@@ -155,6 +156,11 @@ export default function DynamicTest({ titulo, dificultad }) {
     )
 
     const isCorrect = validationResult.isCorrect
+    const apiCorrectAnswer = validationResult.correctAnswer // 🔒 Respuesta verificada por API
+
+    // 🔒 Guardar respuesta correcta verificada para el UI
+    setVerifiedCorrectAnswer(apiCorrectAnswer)
+
     if (isCorrect) {
       setScore(score + 1)
     }
@@ -163,7 +169,7 @@ export default function DynamicTest({ titulo, dificultad }) {
       question: currentQuestion,
       selectedAnswer: answerIndex,
       correct: isCorrect,
-      questionData: currentQ
+      questionData: { ...currentQ, verifiedCorrect: apiCorrectAnswer } // 🔒 Guardar respuesta verificada
     }])
   }
 
@@ -172,6 +178,7 @@ export default function DynamicTest({ titulo, dificultad }) {
       setCurrentQuestion(currentQuestion + 1)
       setSelectedAnswer(null)
       setShowResult(false)
+      setVerifiedCorrectAnswer(null) // 🔒 Resetear respuesta verificada
     }
   }
 
@@ -200,6 +207,7 @@ export default function DynamicTest({ titulo, dificultad }) {
     setCurrentQuestion(0)
     setSelectedAnswer(null)
     setShowResult(false)
+    setVerifiedCorrectAnswer(null) // 🔒 Resetear respuesta verificada
     setScore(0)
     setAnsweredQuestions([])
     setShowReview(false)
@@ -257,12 +265,12 @@ export default function DynamicTest({ titulo, dificultad }) {
 
             <div className="grid gap-3 mb-4">
               {mistake.questionData.options.map((option, optIndex) => (
-                <div 
+                <div
                   key={optIndex}
                   className={`p-3 rounded-lg border-2 ${
-                    optIndex === mistake.questionData.correct 
-                      ? 'border-green-500 bg-green-50 text-green-800' 
-                      : optIndex === mistake.selectedAnswer 
+                    optIndex === mistake.questionData.verifiedCorrect
+                      ? 'border-green-500 bg-green-50 text-green-800'
+                      : optIndex === mistake.selectedAnswer
                       ? 'border-red-500 bg-red-50 text-red-800'
                       : 'border-gray-200 bg-gray-50 text-gray-600'
                   }`}
@@ -275,7 +283,7 @@ export default function DynamicTest({ titulo, dificultad }) {
                       <span className="text-sm">{option}</span>
                     </div>
                     <span className="text-sm">
-                      {optIndex === mistake.questionData.correct ? '✅ Correcta' : 
+                      {optIndex === mistake.questionData.verifiedCorrect ? '✅ Correcta' :
                        optIndex === mistake.selectedAnswer ? '❌ Tu respuesta' : ''}
                     </span>
                   </div>
@@ -419,9 +427,9 @@ export default function DynamicTest({ titulo, dificultad }) {
                 <div className="space-y-3 mb-8">
                   {currentQ.options.map((option, index) => {
                     let buttonClass = "w-full p-4 text-left rounded-lg border-2 transition-all duration-300 font-medium "
-                    
-                    if (showResult) {
-                      if (index === currentQ.correct) {
+
+                    if (showResult && verifiedCorrectAnswer !== null) {
+                      if (index === verifiedCorrectAnswer) {
                         buttonClass += "border-green-500 bg-green-50 text-green-800"
                       } else if (index === selectedAnswer) {
                         buttonClass += "border-red-500 bg-red-50 text-red-800"
@@ -446,10 +454,10 @@ export default function DynamicTest({ titulo, dificultad }) {
                             </span>
                             <span className="leading-relaxed">{option}</span>
                           </div>
-                          
-                          {showResult && (
+
+                          {showResult && verifiedCorrectAnswer !== null && (
                             <span className="text-xl">
-                              {index === currentQ.correct ? '✅' : 
+                              {index === verifiedCorrectAnswer ? '✅' :
                                index === selectedAnswer ? '❌' : ''}
                             </span>
                           )}
@@ -480,22 +488,22 @@ export default function DynamicTest({ titulo, dificultad }) {
                   </div>
                 )}
 
-                {showResult && (
+                {showResult && verifiedCorrectAnswer !== null && (
                   <div className="mb-8">
                     <div className={`p-4 rounded-lg border-l-4 mb-4 ${
-                      selectedAnswer === currentQ.correct 
-                        ? 'bg-green-50 border-green-500' 
+                      selectedAnswer === verifiedCorrectAnswer
+                        ? 'bg-green-50 border-green-500'
                         : 'bg-red-50 border-red-500'
                     }`}>
                       <div className="flex items-center justify-between mb-2">
                         <div className={`flex items-center ${
-                          selectedAnswer === currentQ.correct ? 'text-green-700' : 'text-red-700'
+                          selectedAnswer === verifiedCorrectAnswer ? 'text-green-700' : 'text-red-700'
                         }`}>
                           <span className="text-2xl mr-2">
-                            {selectedAnswer === currentQ.correct ? '🎉' : '😔'}
+                            {selectedAnswer === verifiedCorrectAnswer ? '🎉' : '😔'}
                           </span>
                           <span className="font-bold text-lg">
-                            {selectedAnswer === currentQ.correct ? '¡Correcto!' : 'Incorrecto'}
+                            {selectedAnswer === verifiedCorrectAnswer ? '¡Correcto!' : 'Incorrecto'}
                           </span>
                           <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-1 rounded">
                             IA
