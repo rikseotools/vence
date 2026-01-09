@@ -132,7 +132,8 @@ export default function ExamLayout({
     loading: limitLoading,
     showUpgradeModal,
     setShowUpgradeModal,
-    recordAnswer
+    recordAnswer,
+    refreshStatus
   } = useDailyQuestionLimit()
 
   // Estados del examen
@@ -476,6 +477,9 @@ export default function ExamLayout({
         for (let i = 0; i < answeredCount; i++) {
           await recordAnswer()
         }
+        // 🔄 Forzar refresh del estado para que el próximo test vea el límite actualizado
+        console.log('🔄 Actualizando estado del límite diario...')
+        refreshStatus()
       }
     }).catch(err => {
       console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
