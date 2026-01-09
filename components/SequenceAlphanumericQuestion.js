@@ -1,11 +1,24 @@
 'use client'
 import { useState, useEffect } from 'react'
 
-export default function SequenceAlphanumericQuestion({ 
-  question, onAnswer, selectedAnswer, showResult, isAnswering, attemptCount = 0 
+export default function SequenceAlphanumericQuestion({
+  question,
+  onAnswer,
+  selectedAnswer,
+  showResult,
+  isAnswering,
+  attemptCount = 0,
+  // 🔒 SEGURIDAD: Props para validación segura via API
+  verifiedCorrectAnswer = null,
+  verifiedExplanation = null
 }) {
   const [timeTaken, setTimeTaken] = useState(0)
   const [startTime, setStartTime] = useState(null)
+
+  // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API cuando esté disponible
+  const effectiveCorrectAnswer = showResult && verifiedCorrectAnswer !== null
+    ? verifiedCorrectAnswer
+    : null // NO usamos question.correct_option como fallback
 
   useEffect(() => {
     if (!showResult) {
@@ -21,10 +34,10 @@ export default function SequenceAlphanumericQuestion({
 
   const handleAnswer = (optionIndex) => {
     if (isAnswering || showResult) return
-    
+
     const timeSpent = startTime ? Math.round((Date.now() - startTime) / 1000) : 0
     setTimeTaken(timeSpent)
-    
+
     onAnswer(optionIndex, {
       timeTaken: timeSpent,
       attemptCount: attemptCount,
@@ -54,9 +67,14 @@ export default function SequenceAlphanumericQuestion({
       <div className="space-y-3 mb-6">
         {options.map((option, index) => {
           let buttonClass = 'w-full p-4 text-left border-2 rounded-lg transition-all duration-200 '
-          
+
+          // 🔒 SEGURIDAD: Usar effectiveCorrectAnswer de API
+          const isCorrectOption = showResult && effectiveCorrectAnswer !== null
+            ? index === effectiveCorrectAnswer
+            : false
+
           if (showResult) {
-            if (index === question.correct_option) {
+            if (isCorrectOption) {
               buttonClass += 'border-green-500 bg-green-50 text-green-800'
             } else if (selectedAnswer === index) {
               buttonClass += 'border-red-500 bg-red-50 text-red-800'
@@ -111,7 +129,8 @@ export default function SequenceAlphanumericQuestion({
   const renderExplanation = () => {
     if (!showResult) return null
 
-    const isCorrect = selectedAnswer === question.correct_option
+    // 🔒 SEGURIDAD: Usar effectiveCorrectAnswer de API
+    const isCorrect = effectiveCorrectAnswer !== null && selectedAnswer === effectiveCorrectAnswer
 
     return (
       <div className="mt-6 p-6 bg-gray-50 rounded-lg">
@@ -128,11 +147,12 @@ export default function SequenceAlphanumericQuestion({
         </div>
 
         <div className="space-y-4">
-          {question.explanation && (
+          {/* 🔒 SEGURIDAD: Usar verifiedExplanation de API si está disponible */}
+          {(verifiedExplanation || question.explanation) && (
             <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
               <h5 className="font-semibold text-green-800 mb-2">📝 Explicación:</h5>
               <div className="text-gray-700 text-sm whitespace-pre-line">
-                {question.explanation}
+                {verifiedExplanation || question.explanation}
               </div>
             </div>
           )}
@@ -147,7 +167,7 @@ export default function SequenceAlphanumericQuestion({
         <h3 className="text-xl font-bold text-gray-800 mb-4">
           {question.question_text}
         </h3>
-        
+
         {/* Mostrar la serie alfanumérica destacada si existe */}
         {renderAlphanumericSeries()}
         {renderOptions()}

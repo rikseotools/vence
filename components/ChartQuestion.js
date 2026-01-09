@@ -3,24 +3,32 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 
-export default function ChartQuestion({ 
-  question, 
-  onAnswer, 
-  selectedAnswer, 
-  showResult, 
+export default function ChartQuestion({
+  question,
+  onAnswer,
+  selectedAnswer,
+  showResult,
   isAnswering,
   chartComponent, // Componente específico de renderizado (SVG)
   explanationSections, // Secciones específicas de explicación
-  attemptCount = 0 // Número de intentos previos de esta pregunta
+  attemptCount = 0, // Número de intentos previos de esta pregunta
+  // 🔒 SEGURIDAD: Props para validación segura via API
+  verifiedCorrectAnswer = null,
+  verifiedExplanation = null
 }) {
   const { user } = useAuth()
+
+  // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API cuando esté disponible
+  const effectiveCorrectAnswer = showResult && verifiedCorrectAnswer !== null
+    ? verifiedCorrectAnswer
+    : null // NO usamos effectiveCorrectAnswer como fallback
 
   // Mensajes motivadores basados en el resultado
   const getMotivationalMessage = () => {
     const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'Opositor'
-    
-    // Mensajes de felicitación para respuestas correctas
-    if (selectedAnswer === question.correct_option) {
+
+    // 🔒 SEGURIDAD: Solo mostrar mensaje de acierto si tenemos validación de API
+    if (showResult && effectiveCorrectAnswer !== null && selectedAnswer === effectiveCorrectAnswer) {
       const congratsMessages = [
         {
           title: `¡Bien, ${userName}! 🎉`,
@@ -85,7 +93,10 @@ export default function ChartQuestion({
     { value: question.option_d || question.options?.D }
   ]
 
-  const correctOptionKey = ['A', 'B', 'C', 'D'][question.correct_option]
+  // 🔒 SEGURIDAD: Usar effectiveCorrectAnswer de API
+  const correctOptionKey = effectiveCorrectAnswer !== null
+    ? ['A', 'B', 'C', 'D'][effectiveCorrectAnswer]
+    : null
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
@@ -121,7 +132,7 @@ export default function ChartQuestion({
           let buttonClass = "w-full p-4 text-left border-2 rounded-lg transition-all duration-200 flex items-center gap-3"
           
           if (showResult) {
-            if (index === question.correct_option) {
+            if (index === effectiveCorrectAnswer) {
               // Respuesta correcta
               buttonClass += " border-green-500 bg-green-50 text-green-800"
             } else if (index === selectedAnswer) {
@@ -150,10 +161,10 @@ export default function ChartQuestion({
               <span className="text-lg">
                 {option.value}
               </span>
-              {showResult && index === question.correct_option && (
+              {showResult && index === effectiveCorrectAnswer && (
                 <span className="ml-auto text-green-600">✓</span>
               )}
-              {showResult && index === selectedAnswer && index !== question.correct_option && (
+              {showResult && index === selectedAnswer && index !== effectiveCorrectAnswer && (
                 <span className="ml-auto text-red-600">✗</span>
               )}
             </button>
@@ -219,9 +230,9 @@ export default function ChartQuestion({
           <div className="bg-blue-50 p-6 rounded-lg">
             <div className="flex items-center mb-4">
               <div className={`text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold mr-3 ${
-                selectedAnswer === question.correct_option ? 'bg-green-600' : 'bg-red-600'
+                selectedAnswer === effectiveCorrectAnswer ? 'bg-green-600' : 'bg-red-600'
               }`}>
-                {selectedAnswer === question.correct_option ? '✓' : '✗'}
+                {selectedAnswer === effectiveCorrectAnswer ? '✓' : '✗'}
               </div>
               <h4 className="font-bold text-blue-900 text-lg">
                 {question.psychometric_sections?.psychometric_categories?.display_name?.toUpperCase()}: {question.psychometric_sections?.display_name?.toUpperCase()}
@@ -256,7 +267,7 @@ export default function ChartQuestion({
               userId={user.id}
               questionId={question.id}
               currentResult={{
-                isCorrect: selectedAnswer === question.correct_option - 1,
+                isCorrect: selectedAnswer === effectiveCorrectAnswer - 1,
                 timeSpent: 0, // Se podría calcular si se necesita
                 answer: selectedAnswer
               }}

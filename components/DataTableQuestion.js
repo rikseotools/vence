@@ -2,13 +2,16 @@
 import { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
 
-export default function DataTableQuestion({ 
-  question, 
-  onAnswer, 
-  selectedAnswer, 
-  showResult, 
+export default function DataTableQuestion({
+  question,
+  onAnswer,
+  selectedAnswer,
+  showResult,
   isAnswering,
-  attemptCount = 0
+  attemptCount = 0,
+  // 🔒 SEGURIDAD: Props para validación segura via API
+  verifiedCorrectAnswer = null,
+  verifiedExplanation = null
 }) {
   const [tableComponent, setTableComponent] = useState('')
 
@@ -284,6 +287,8 @@ export default function DataTableQuestion({
       chartComponent={tableComponent}
       explanationSections={explanationSections}
       attemptCount={attemptCount}
+      verifiedCorrectAnswer={verifiedCorrectAnswer}
+      verifiedExplanation={verifiedExplanation}
     />
   )
 }

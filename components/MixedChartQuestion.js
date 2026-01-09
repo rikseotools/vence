@@ -2,13 +2,16 @@
 import { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
 
-export default function MixedChartQuestion({ 
-  question, 
-  onAnswer, 
-  selectedAnswer, 
-  showResult, 
+export default function MixedChartQuestion({
+  question,
+  onAnswer,
+  selectedAnswer,
+  showResult,
   isAnswering,
-  attemptCount = 0
+  attemptCount = 0,
+  // 🔒 SEGURIDAD: Props para validación segura via API
+  verifiedCorrectAnswer = null,
+  verifiedExplanation = null
 }) {
   const [chartSvg, setChartSvg] = useState('')
   // Dark mode desactivado para psicotécnicos
@@ -354,6 +357,8 @@ export default function MixedChartQuestion({
       chartComponent={chartSvg}
       explanationSections={explanationSections}
       attemptCount={attemptCount}
+      verifiedCorrectAnswer={verifiedCorrectAnswer}
+      verifiedExplanation={verifiedExplanation}
     />
   )
 }

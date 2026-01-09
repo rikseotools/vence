@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
+import { useQuestionContext } from '../contexts/QuestionContext'
 import PieChartQuestion from './PieChartQuestion'
 import DataTableQuestion from './DataTableQuestion'
 import BarChartQuestion from './BarChartQuestion'
@@ -21,6 +22,7 @@ export default function PsychometricTestLayout({
   questions
 }) {
   const { user, supabase } = useAuth()
+  const { setQuestionContext, clearQuestionContext } = useQuestionContext()
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -40,6 +42,11 @@ export default function PsychometricTestLayout({
   // Estados para dificultad adaptativa
   const [difficultyInfo, setDifficultyInfo] = useState(null)
   const [isFirstTime, setIsFirstTime] = useState(true)
+
+  // 🔒 SEGURIDAD: Estado para respuesta correcta validada por API
+  // La respuesta correcta SOLO viene de la API después de responder
+  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState(null)
+  const [verifiedExplanation, setVerifiedExplanation] = useState(null)
 
   // Anti-duplicados
   const answeringTimeouts = useRef(new Map())
@@ -118,6 +125,55 @@ export default function PsychometricTestLayout({
     loadDifficultyInfo()
   }, [currentQuestion, currentQ, user, supabase])
 
+  // 💬 Actualizar contexto de pregunta para el chat AI (psicotécnicos)
+  useEffect(() => {
+    if (currentQ) {
+      // Mapear subtype a nombre legible para la IA
+      const subtypeNames = {
+        'sequence_numeric': 'Serie numérica',
+        'sequence_letter': 'Serie de letras',
+        'sequence_alphanumeric': 'Serie alfanumérica',
+        'pie_chart': 'Gráfico circular',
+        'bar_chart': 'Gráfico de barras',
+        'line_chart': 'Gráfico de líneas',
+        'data_table': 'Tabla de datos',
+        'mixed_chart': 'Gráfico mixto',
+        'error_detection': 'Detección de errores',
+        'word_analysis': 'Análisis de palabras',
+        'text_question': 'Pregunta de texto',
+        'calculation': 'Cálculo',
+        'logic': 'Lógica',
+        'analogy': 'Analogía',
+        'comprehension': 'Comprensión',
+        'pattern': 'Patrón',
+        'attention': 'Atención'
+      }
+
+      setQuestionContext({
+        id: currentQ.id,
+        question_text: currentQ.question_text,
+        option_a: currentQ.option_a,
+        option_b: currentQ.option_b,
+        option_c: currentQ.option_c,
+        option_d: currentQ.option_d,
+        correct: currentQ.correct_option,
+        explanation: currentQ.explanation,
+        // Campos específicos de psicotécnicos
+        isPsicotecnico: true,
+        questionSubtype: currentQ.question_subtype,
+        questionTypeName: subtypeNames[currentQ.question_subtype] || currentQ.question_subtype,
+        categoria: categoria,
+        // Datos del contenido (gráficos, series, etc.)
+        contentData: currentQ.content_data || null
+      })
+    }
+
+    // Limpiar contexto al desmontar
+    return () => {
+      clearQuestionContext()
+    }
+  }, [currentQuestion, currentQ, setQuestionContext, clearQuestionContext, categoria])
+
   const handleAnswer = async (optionIndex) => {
     if (!currentQ || isAnswering || answeredQuestionsGlobal.current.has(currentQ.id)) {
       console.log('🚫 Answer blocked - already answered or processing')
@@ -141,9 +197,50 @@ export default function PsychometricTestLayout({
     answeringTimeouts.current.set(timeoutKey, timeout)
 
     try {
-      const isCorrect = optionIndex === currentQ.correct_option
       const questionTime = Date.now() - questionStartTime
       const timeTakenSeconds = Math.floor(questionTime / 1000)
+
+      // 🔒 SEGURIDAD: Validar respuesta via API (NO usar currentQ.correct_option)
+      console.log('🔒 [SecureAnswer] Validando respuesta psicotécnica via API...')
+      let isCorrect = false
+      let correctAnswer = null
+      let explanation = null
+
+      try {
+        const response = await fetch('/api/answer/psychometric', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionId: currentQ.id,
+            userAnswer: optionIndex
+          })
+        })
+
+        const apiResult = await response.json()
+
+        if (apiResult.success) {
+          isCorrect = apiResult.isCorrect
+          correctAnswer = apiResult.correctAnswer
+          explanation = apiResult.explanation
+          setVerifiedCorrectAnswer(correctAnswer)
+          setVerifiedExplanation(explanation || currentQ.explanation)
+          console.log('✅ [SecureAnswer] Respuesta psicotécnica validada via API:', {
+            isCorrect,
+            correctAnswer,
+            userAnswer: optionIndex
+          })
+        } else {
+          console.error('❌ [SecureAnswer] Error en API:', apiResult.error)
+          // Fallback: NO mostrar resultado si la API falla (seguridad)
+          setVerifiedCorrectAnswer(null)
+          setVerifiedExplanation(null)
+        }
+      } catch (apiError) {
+        console.error('❌ [SecureAnswer] Error llamando API:', apiError)
+        // Fallback: NO mostrar resultado si la API falla (seguridad)
+        setVerifiedCorrectAnswer(null)
+        setVerifiedExplanation(null)
+      }
 
       // Actualizar score
       if (isCorrect) {
@@ -151,11 +248,12 @@ export default function PsychometricTestLayout({
       }
 
       // Crear objeto de respuesta detallada (para usuarios logueados y no logueados)
+      // 🔒 SEGURIDAD: Usar correctAnswer de API validada, no de currentQ.correct_option
       const detailedAnswer = {
         questionId: currentQ.id,
         questionText: currentQ.question_text,
         userAnswer: optionIndex,
-        correctAnswer: currentQ.correct_option,
+        correctAnswer: correctAnswer, // 🔒 De la API, no de la pregunta
         isCorrect,
         timeSpent: timeTakenSeconds,
         timestamp: new Date().toISOString(),
@@ -233,6 +331,9 @@ export default function PsychometricTestLayout({
       // Limpiar estados de dificultad para la nueva pregunta
       setDifficultyInfo(null)
       setIsFirstTime(true)
+      // 🔒 SEGURIDAD: Limpiar respuesta verificada para nueva pregunta
+      setVerifiedCorrectAnswer(null)
+      setVerifiedExplanation(null)
     } else {
       // Test completado
       completeTest()
@@ -279,9 +380,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={0}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'bar_chart':
         return (
           <BarChartQuestion
@@ -291,9 +394,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={0}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'line_chart':
         return (
           <LineChartQuestion
@@ -303,9 +408,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={0}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'data_tables':
         return (
           <DataTableQuestion
@@ -315,9 +422,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={0}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'mixed_chart':
         return (
           <MixedChartQuestion
@@ -327,9 +436,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={0}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'error_detection':
         return (
           <ErrorDetectionQuestion
@@ -339,9 +450,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={0}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'word_analysis':
         return (
           <WordAnalysisQuestion
@@ -351,9 +464,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={0}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'sequence_numeric':
         return (
           <SequenceNumericQuestion
@@ -363,9 +478,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={getAttemptCount(currentQ.id)}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'sequence_letter':
         return (
           <SequenceLetterQuestion
@@ -375,9 +492,11 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={getAttemptCount(currentQ.id)}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
-      
+
       case 'sequence_alphanumeric':
         return (
           <SequenceAlphanumericQuestion
@@ -387,6 +506,8 @@ export default function PsychometricTestLayout({
             showResult={showResult}
             isAnswering={isAnswering}
             attemptCount={getAttemptCount(currentQ.id)}
+            verifiedCorrectAnswer={verifiedCorrectAnswer}
+            verifiedExplanation={verifiedExplanation}
           />
         )
       
@@ -396,16 +517,17 @@ export default function PsychometricTestLayout({
             <h3 className="text-xl font-bold text-gray-900 mb-6">
               {currentQ.question_text}
             </h3>
-            
+
             <div className="grid gap-4 mb-8">
               {['A', 'B', 'C', 'D'].map((letter, index) => {
                 const optionKey = `option_${letter.toLowerCase()}`
                 const optionText = currentQ[optionKey]
                 const isSelected = selectedAnswer === index
-                const isCorrect = index === currentQ.correct_option
-                
-                console.log(`DEBUG - Opción ${letter}: ${optionKey} = "${optionText}"`)
-                
+                // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API, no currentQ.correct_option
+                const isCorrectOption = showResult && verifiedCorrectAnswer !== null
+                  ? index === verifiedCorrectAnswer
+                  : false
+
                 return (
                   <button
                     key={letter}
@@ -413,7 +535,7 @@ export default function PsychometricTestLayout({
                     disabled={showResult || isAnswering}
                     className={`text-left p-4 rounded-lg border transition-all duration-200 ${
                       showResult
-                        ? isCorrect
+                        ? isCorrectOption
                           ? 'bg-green-100 border-green-500 text-green-800'
                           : isSelected
                             ? 'bg-red-100 border-red-500 text-red-800'
@@ -426,10 +548,10 @@ export default function PsychometricTestLayout({
                     <div className="flex items-start gap-3">
                       <span className="font-bold text-lg">{letter})</span>
                       <span className="flex-1">{optionText}</span>
-                      {showResult && isCorrect && (
+                      {showResult && isCorrectOption && (
                         <span className="text-green-600">✓</span>
                       )}
-                      {showResult && isSelected && !isCorrect && (
+                      {showResult && isSelected && !isCorrectOption && (
                         <span className="text-red-600">✗</span>
                       )}
                     </div>
@@ -437,13 +559,14 @@ export default function PsychometricTestLayout({
                 )
               })}
             </div>
-            
-            {showResult && currentQ.explanation && (
+
+            {/* 🔒 SEGURIDAD: Usar verifiedExplanation de API */}
+            {showResult && verifiedExplanation && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
                 <h4 className="font-semibold text-blue-800 mb-2">📝 Explicación:</h4>
-                <div 
+                <div
                   className="text-blue-700 whitespace-pre-line"
-                  dangerouslySetInnerHTML={{ __html: currentQ.explanation.replace(/\n/g, '<br>') }}
+                  dangerouslySetInnerHTML={{ __html: verifiedExplanation.replace(/\n/g, '<br>') }}
                 />
               </div>
             )}

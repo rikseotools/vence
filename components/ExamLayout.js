@@ -31,7 +31,8 @@ import {
 } from '../utils/testAnalytics.js'
 
 // 🆕 API para guardar respuestas en tiempo real (permite reanudar exámenes)
-async function saveAnswerToAPI(testId, question, questionIndex, selectedOption, correctOptionLetter) {
+// 🔒 SEGURIDAD: NO enviamos correctAnswer - solo guardamos la respuesta del usuario
+async function saveAnswerToAPI(testId, question, questionIndex, selectedOption) {
   try {
     const response = await fetch('/api/exam/answer', {
       method: 'POST',
@@ -41,7 +42,7 @@ async function saveAnswerToAPI(testId, question, questionIndex, selectedOption, 
         questionId: question.id || null,
         questionOrder: questionIndex + 1, // 1-indexed
         userAnswer: selectedOption,
-        correctAnswer: correctOptionLetter,
+        // 🔒 SEGURIDAD: correctAnswer se validará en /api/exam/validate al enviar el examen
         questionText: question.question_text || '',
         articleId: question.articles?.id || question.primary_article_id || null,
         articleNumber: question.articles?.article_number || null,
@@ -217,10 +218,15 @@ export default function ExamLayout({
   // Control de guardado
   const [isSaving, setIsSaving] = useState(false)
 
+  // 🔒 SEGURIDAD: Estado para respuestas validadas por API
+  // Las respuestas correctas SOLO vienen de la API después de enviar el examen
+  const [validatedResults, setValidatedResults] = useState(null)
+
   // Estados del modal de artículo
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
   const [selectedQuestionForModal, setSelectedQuestionForModal] = useState(null) // 🎨 Para resaltado inteligente
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(null) // 🔒 Índice para validatedResults
 
   // 📤 Estado para compartir resultado
   const [showSharePrompt, setShowSharePrompt] = useState(false)
@@ -391,6 +397,7 @@ export default function ExamLayout({
   }
 
   // ✅ FUNCIÓN: Manejar selección de respuesta (guarda en API para permitir reanudar)
+  // 🔒 SEGURIDAD: NO calculamos ni enviamos correctAnswer - solo la respuesta del usuario
   async function handleAnswerSelect(questionIndex, option) {
     if (isSubmitted) return // No permitir cambios después de corregir
 
@@ -401,16 +408,13 @@ export default function ExamLayout({
     }))
 
     // 🆕 Guardar en API en background (permite reanudar el examen)
+    // 🔒 SEGURIDAD: NO enviamos la respuesta correcta - se validará al enviar el examen
     const testId = currentTestSession?.id || currentTestSessionRef.current?.id
     if (testId && effectiveQuestions[questionIndex]) {
       const question = effectiveQuestions[questionIndex]
-      const correctIndex = typeof question.correct_option === 'number'
-        ? question.correct_option
-        : 0
-      const correctOptionLetter = String.fromCharCode(97 + correctIndex)
 
-      // Guardar sin bloquear la UI
-      saveAnswerToAPI(testId, question, questionIndex, option, correctOptionLetter)
+      // Guardar sin bloquear la UI (sin enviar correctAnswer)
+      saveAnswerToAPI(testId, question, questionIndex, option)
         .then(success => {
           if (success) {
             console.log(`💾 Respuesta ${questionIndex + 1} guardada en API`)
@@ -519,8 +523,8 @@ export default function ExamLayout({
     }
   }
 
-  // ✅ FUNCIÓN: Corregir examen (NO BLOQUEANTE - muestra resultados inmediatamente)
-  function handleSubmitExam() {
+  // ✅ FUNCIÓN: Corregir examen (VALIDACIÓN SEGURA VIA API)
+  async function handleSubmitExam() {
     // 🔒 Verificar límite diario para usuarios FREE
     if (hasLimit && isLimitReached) {
       setShowUpgradeModal(true)
@@ -528,11 +532,9 @@ export default function ExamLayout({
     }
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    console.log('🎯 INICIANDO CORRECCIÓN DE EXAMEN')
+    console.log('🎯 INICIANDO CORRECCIÓN DE EXAMEN (API SEGURA)')
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
-    // 🚀 CALCULAR RESULTADOS INMEDIATAMENTE (sin await)
-    let correctCount = 0
     const endTime = Date.now()
     const totalTimeSeconds = Math.round((endTime - startTime) / 1000)
 
@@ -541,43 +543,64 @@ export default function ExamLayout({
     console.log(`📋 Test Session ID: ${currentTestSession?.id || 'NO DISPONIBLE'}`)
     console.log('')
 
-    // Calcular correctas sin guardar todavía
-    for (let i = 0; i < effectiveQuestions.length; i++) {
-      const question = effectiveQuestions[i]
-      const selectedOption = userAnswers[i]
-      const correctIndex = typeof question.correct_option === 'number'
-        ? question.correct_option
-        : 0
-      const correctOptionLetter = String.fromCharCode(97 + correctIndex)
-      const isCorrect = selectedOption ? selectedOption === correctOptionLetter : false
+    // 🔒 VALIDACIÓN SEGURA: Enviar respuestas a la API para validación
+    setIsSaving(true)
 
-      const icon = isCorrect ? '✅' : selectedOption ? '❌' : '⚪'
-      const userAns = selectedOption ? selectedOption.toUpperCase() : 'SIN RESPUESTA'
-      const correctAns = correctOptionLetter.toUpperCase()
+    try {
+      // Preparar respuestas para la API
+      const answersForApi = effectiveQuestions.map((question, index) => ({
+        questionId: question.id,
+        userAnswer: userAnswers[index] || null
+      }))
 
-      console.log(`${icon} Pregunta ${i + 1}: Usuario=${userAns} | Correcta=${correctAns} | ${isCorrect ? 'CORRECTA' : 'INCORRECTA'}`)
+      console.log('🔒 Enviando respuestas a API /api/exam/validate...')
 
-      if (isCorrect) correctCount++
-    }
+      const response = await fetch('/api/exam/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: answersForApi })
+      })
 
-    console.log('')
-    console.log(`📊 RESULTADO CALCULADO: ${correctCount}/${effectiveQuestions.length} correctas (${Math.round((correctCount / effectiveQuestions.length) * 100)}%)`)
-    console.log('')
+      const apiResult = await response.json()
 
-    // ✅ MOSTRAR RESULTADOS INMEDIATAMENTE (sin esperar guardado)
-    setScore(correctCount)
-    setIsSubmitted(true)
-    setIsSaving(true) // Mostrar "Guardando en segundo plano..."
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (!apiResult.success) {
+        console.error('❌ Error validando examen:', apiResult.error)
+        // Fallback: mostrar error pero permitir continuar
+        setIsSubmitted(true)
+        setIsSaving(false)
+        return
+      }
 
-    // 📤 El usuario puede compartir manualmente con el botón "Compartir resultado"
+      // 🔒 Guardar resultados validados por API
+      setValidatedResults(apiResult)
 
-    console.log(`🚀 MOSTRANDO RESULTADOS AL USUARIO (sin esperar guardado)`)
-    console.log(`💾 Iniciando guardado en segundo plano...`)
-    console.log('')
+      const correctCount = apiResult.summary.totalCorrect
 
-    // 🔄 GUARDAR EN SEGUNDO PLANO (async, no bloqueante)
-    saveExamInBackground(correctCount, totalTimeSeconds).then(async () => {
+      // Log de resultados
+      for (let i = 0; i < apiResult.results.length; i++) {
+        const result = apiResult.results[i]
+        const icon = result.isCorrect ? '✅' : result.userAnswer ? '❌' : '⚪'
+        const userAns = result.userAnswer ? result.userAnswer.toUpperCase() : 'SIN RESPUESTA'
+        const correctAns = result.correctAnswer.toUpperCase()
+
+        console.log(`${icon} Pregunta ${i + 1}: Usuario=${userAns} | Correcta=${correctAns} | ${result.isCorrect ? 'CORRECTA' : 'INCORRECTA'}`)
+      }
+
+      console.log('')
+      console.log(`📊 RESULTADO VALIDADO POR API: ${correctCount}/${effectiveQuestions.length} correctas (${apiResult.summary.percentage}%)`)
+      console.log('')
+
+      // ✅ MOSTRAR RESULTADOS
+      setScore(correctCount)
+      setIsSubmitted(true)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+
+      console.log(`🚀 MOSTRANDO RESULTADOS AL USUARIO`)
+      console.log(`💾 Iniciando guardado en segundo plano...`)
+      console.log('')
+
+      // 🔄 GUARDAR EN SEGUNDO PLANO (async, no bloqueante)
+      saveExamInBackground(correctCount, totalTimeSeconds, apiResult).then(async () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('✅ GUARDADO EN SEGUNDO PLANO COMPLETADO')
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
@@ -593,15 +616,20 @@ export default function ExamLayout({
         console.log('🔄 Actualizando estado del límite diario...')
         refreshStatus()
       }
-    }).catch(err => {
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.error('❌ ERROR EN GUARDADO EN SEGUNDO PLANO:', err)
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    })
+      }).catch(err => {
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.error('❌ ERROR EN GUARDADO EN SEGUNDO PLANO:', err)
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+      })
+
+    } catch (error) {
+      console.error('❌ Error en validación de examen:', error)
+      setIsSaving(false)
+    }
   }
 
   // 🔄 FUNCIÓN AUXILIAR: Guardar en segundo plano
-  async function saveExamInBackground(correctCount, totalTimeSeconds) {
+  async function saveExamInBackground(correctCount, totalTimeSeconds, apiResult) {
     console.log('💾 ═══════════════════════════════════════════')
     console.log('💾 INICIANDO GUARDADO EN SEGUNDO PLANO')
     console.log('💾 ═══════════════════════════════════════════')
@@ -622,18 +650,18 @@ export default function ExamLayout({
         const question = effectiveQuestions[i]
         const selectedOption = userAnswers[i]
         const answerIndex = selectedOption ? selectedOption.charCodeAt(0) - 97 : null
-        const correctIndex = typeof question.correct_option === 'number'
-          ? question.correct_option
-          : 0
-        const correctOptionLetter = String.fromCharCode(97 + correctIndex)
-        const isCorrect = selectedOption ? selectedOption === correctOptionLetter : false
+
+        // 🔒 SEGURIDAD: Usar respuesta correcta de API validada, no de question.correct_option
+        const apiResultForQuestion = apiResult?.results?.[i]
+        const correctIndex = apiResultForQuestion?.correctIndex ?? 0
+        const isCorrect = apiResultForQuestion?.isCorrect ?? false
 
         const questionData = {
           id: question.id,
           question: question.question_text,
           options: [question.option_a, question.option_b, question.option_c, question.option_d],
           correctAnswer: correctIndex,
-          explanation: question.explanation,
+          explanation: apiResultForQuestion?.explanation || question.explanation,
           article: {
             id: question.articles?.id || question.primary_article_id,
             number: question.articles?.article_number,
@@ -718,11 +746,13 @@ export default function ExamLayout({
   }
 
   // ✅ FUNCIÓN: Abrir modal de artículo
-  function openArticleModal(articleNumber, lawName, question = null) {
+  // 🔒 SEGURIDAD: questionIndex se usa para obtener correctAnswer de validatedResults
+  function openArticleModal(articleNumber, lawName, question = null, questionIndex = null) {
     // Convertir nombre de ley a slug (espacios a guiones, barras a guiones)
     const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
     setSelectedArticle({ number: articleNumber, lawSlug })
     setSelectedQuestionForModal(question) // 🎨 Guardar pregunta para resaltado
+    setSelectedQuestionIndex(questionIndex) // 🔒 Guardar índice para validatedResults
     setModalOpen(true)
   }
 
@@ -731,6 +761,7 @@ export default function ExamLayout({
     setModalOpen(false)
     setSelectedArticle({ number: null, lawSlug: null })
     setSelectedQuestionForModal(null) // 🎨 Limpiar pregunta
+    setSelectedQuestionIndex(null) // 🔒 Limpiar índice
   }
 
   // ✅ FUNCIÓN: Formatear tiempo para el cronómetro
@@ -1039,13 +1070,12 @@ export default function ExamLayout({
         <div className="space-y-6">
           {effectiveQuestions.map((question, index) => {
             const selectedOption = userAnswers[index]
-            // Convertir correct_option numérico a letra
-            const correctIndex = typeof question.correct_option === 'number'
-              ? question.correct_option
-              : 0
-            const correctOptionLetter = String.fromCharCode(97 + correctIndex)
-            const isCorrect = selectedOption === correctOptionLetter
-            const showFeedback = isSubmitted
+
+            // 🔒 SEGURIDAD: Usar respuestas validadas por API (solo disponibles después de enviar)
+            const validatedResult = validatedResults?.results?.[index]
+            const correctOptionLetter = validatedResult?.correctAnswer || null
+            const isCorrect = validatedResult?.isCorrect ?? false
+            const showFeedback = isSubmitted && validatedResult
 
             return (
               <div
@@ -1167,7 +1197,8 @@ export default function ExamLayout({
                     onClick={() => openArticleModal(
                       question.articles.article_number,
                       question.articles.laws?.short_name || 'Ley',
-                      question // 🎨 Pasar pregunta completa para resaltado inteligente
+                      question, // 🎨 Pasar pregunta completa para resaltado inteligente
+                      index // 🔒 Pasar índice para obtener correctAnswer de validatedResults
                     )}
                     className="mt-4 text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors flex items-center gap-1"
                   >
@@ -1250,7 +1281,8 @@ export default function ExamLayout({
         lawSlug={selectedArticle.lawSlug}
         // 🎨 Pasar datos de la pregunta para resaltado inteligente
         questionText={selectedQuestionForModal?.question_text}
-        correctAnswer={selectedQuestionForModal?.correct_option}
+        // 🔒 SEGURIDAD: correctAnswer viene de validatedResults (API), no de question.correct_option
+        correctAnswer={selectedQuestionIndex !== null ? validatedResults?.results?.[selectedQuestionIndex]?.correctIndex : null}
         options={selectedQuestionForModal ? [
           selectedQuestionForModal.option_a,
           selectedQuestionForModal.option_b,

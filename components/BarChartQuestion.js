@@ -2,13 +2,16 @@
 import { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
 
-export default function BarChartQuestion({ 
-  question, 
-  onAnswer, 
-  selectedAnswer, 
-  showResult, 
+export default function BarChartQuestion({
+  question,
+  onAnswer,
+  selectedAnswer,
+  showResult,
   isAnswering,
-  attemptCount = 0
+  attemptCount = 0,
+  // 🔒 SEGURIDAD: Props para validación segura via API
+  verifiedCorrectAnswer = null,
+  verifiedExplanation = null
 }) {
   const [chartSvg, setChartSvg] = useState('')
   const [scale, setScale] = useState(1)
@@ -468,6 +471,8 @@ export default function BarChartQuestion({
       chartComponent={chartSvg}
       explanationSections={explanationSections}
       attemptCount={attemptCount}
+      verifiedCorrectAnswer={verifiedCorrectAnswer}
+      verifiedExplanation={verifiedExplanation}
     />
   )
 }

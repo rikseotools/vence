@@ -3,13 +3,16 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import ChartQuestion from './ChartQuestion'
 
-export default function PieChartQuestion({ 
-  question, 
-  onAnswer, 
-  selectedAnswer, 
-  showResult, 
+export default function PieChartQuestion({
+  question,
+  onAnswer,
+  selectedAnswer,
+  showResult,
   isAnswering,
-  attemptCount = 0
+  attemptCount = 0,
+  // 🔒 SEGURIDAD: Props para validación segura via API
+  verifiedCorrectAnswer = null,
+  verifiedExplanation = null
 }) {
   const { user } = useAuth()
   const [chartSvg, setChartSvg] = useState('')
@@ -320,6 +323,8 @@ export default function PieChartQuestion({
       chartComponent={chartComponent}
       explanationSections={explanationSections}
       attemptCount={attemptCount}
+      verifiedCorrectAnswer={verifiedCorrectAnswer}
+      verifiedExplanation={verifiedExplanation}
     />
   )
 }

@@ -2,13 +2,16 @@
 import { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
 
-export default function ErrorDetectionQuestion({ 
-  question, 
-  onAnswer, 
-  selectedAnswer, 
-  showResult, 
+export default function ErrorDetectionQuestion({
+  question,
+  onAnswer,
+  selectedAnswer,
+  showResult,
   isAnswering,
-  attemptCount = 0
+  attemptCount = 0,
+  // 🔒 SEGURIDAD: Props para validación segura via API
+  verifiedCorrectAnswer = null,
+  verifiedExplanation = null
 }) {
   const [textComponent, setTextComponent] = useState('')
 
@@ -84,6 +87,8 @@ export default function ErrorDetectionQuestion({
       chartComponent={textComponent}
       explanationSections={explanationSections}
       attemptCount={attemptCount}
+      verifiedCorrectAnswer={verifiedCorrectAnswer}
+      verifiedExplanation={verifiedExplanation}
     />
   )
 }

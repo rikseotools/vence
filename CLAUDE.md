@@ -10,9 +10,16 @@
 ### Componentes Clave de Tests
 - **`TestLayout.js`** - Componente principal para tests normales/personalizados
 - **`DynamicTest.js`** - Componente para tests generados con IA
+- **`ExamLayout.js`** - Componente para modo examen (todas las preguntas visibles, corrección al final)
+- **`PsychometricTestLayout.js`** - Componente para tests psicotécnicos
 - **`TestPageWrapper.js`** - Wrapper que maneja diferentes tipos de tests
 - **`TestConfigurator.js`** - Configurador avanzado de tests (general)
 - **`LawTestConfigurator.js`** - Configurador específico para tests de leyes individuales
+
+### APIs de Validación Segura
+- **`/api/answer`** - Validación individual de respuestas (tests normales)
+- **`/api/exam/validate`** - Validación batch de exámenes completos
+- **`/api/answer/psychometric`** - Validación de respuestas psicotécnicas
 
 ### Fetchers de Datos
 - **`testFetchers.js`** - Funciones para obtener preguntas por tema
@@ -24,6 +31,37 @@
 - **`testTracking.js`** - Sistema de tracking de interacciones
 
 ## Funcionalidades Recientes
+
+### Sistema de Validación Segura de Respuestas (Implementado: 09/01/2026)
+- **Objetivo:** Prevenir scraping de respuestas correctas por bots
+- **Principio:** La respuesta correcta (`correct_option`) NUNCA se envía al cliente antes de que el usuario responda
+- **Arquitectura:**
+  - Las preguntas se cargan SIN `correct_option`
+  - Cuando el usuario responde, se llama a la API correspondiente
+  - La API valida la respuesta y devuelve `isCorrect`, `correctAnswer` y `explanation`
+  - El cliente usa `verifiedCorrectAnswer` para mostrar feedback
+
+#### APIs de Validación:
+| Endpoint | Uso | Tabla |
+|----------|-----|-------|
+| `/api/answer` | Tests normales (TestLayout, DynamicTest) | `questions` |
+| `/api/exam/validate` | Modo examen batch (ExamLayout) | `questions` |
+| `/api/answer/psychometric` | Tests psicotécnicos | `psychometric_questions` |
+
+#### Componentes Actualizados:
+- **TestLayout.js** - Usa `/api/answer` con estado `verifiedCorrectAnswer`
+- **DynamicTest.js** - Usa `/api/answer` con estado `verifiedCorrectAnswer`
+- **ExamLayout.js** - Usa `/api/exam/validate` con estado `validatedResults`
+- **PsychometricTestLayout.js** - Usa `/api/answer/psychometric`
+- **ChartQuestion.js** - Usa prop `verifiedCorrectAnswer` (NO `question.correct_option`)
+- **10 componentes psicotécnicos** - Reciben `verifiedCorrectAnswer` y `verifiedExplanation`
+
+#### Tests de Seguridad:
+- **`__tests__/security/answerValidation.test.js`** - 34 tests de validación
+
+#### Logs de Debug:
+- `🔒 [SecureAnswer]` - Operaciones de validación segura
+- `✅ [SecureAnswer]` - Validación exitosa via API
 
 ### Configurador de Tests para Leyes Específicas (Implementado: 17/10/2025)
 - **Ubicación:** `app/leyes/[law]/LawTestConfigurator.js`
@@ -73,14 +111,16 @@
 
 ## Flujo de Respuesta a Preguntas
 
-1. **Carga de pregunta** → Muestra opciones A, B, C, D tradicionales
+1. **Carga de pregunta** → Muestra opciones A, B, C, D (SIN `correct_option`)
 2. **Botones rápidos** → Aparecen botones cuadrados azules A/B/C/D al final
 3. **Selección** → Usuario puede usar cualquiera de los dos métodos
-4. **Validación** → Sistema previene respuestas duplicadas
-5. **Tracking** → Registra interacciones y tiempo de respuesta
-6. **Guardado** → Almacena respuesta en Supabase
-7. **Resultado** → Muestra explicación y feedback
-8. **Navegación** → Botón para siguiente pregunta
+4. **Validación anti-duplicados** → Sistema previene respuestas múltiples
+5. **🔒 Validación segura via API** → Se llama a `/api/answer` (o variante)
+6. **Respuesta de API** → Devuelve `isCorrect`, `correctAnswer`, `explanation`
+7. **Tracking** → Registra interacciones y tiempo de respuesta
+8. **Guardado** → Almacena respuesta en Supabase
+9. **Resultado** → Muestra explicación y feedback usando `verifiedCorrectAnswer`
+10. **Navegación** → Botón para siguiente pregunta
 
 ## Comandos de Desarrollo
 
@@ -108,10 +148,14 @@ git push origin main
 
 ### Tablas Principales
 - `questions` - Preguntas de exámenes
-- `test_sessions` - Sesiones de tests de usuarios  
+- `test_sessions` - Sesiones de tests de usuarios
 - `detailed_answers` - Respuestas detalladas con analytics
 - `user_profiles` - Perfiles de usuario
 - `articles` - Artículos de legislación
+
+### Formato de Respuestas (questions.correct_option)
+- **0 = A**, **1 = B**, **2 = C**, **3 = D** (0-indexed)
+- Constraint: `correct_option >= 0 AND correct_option <= 3`
 
 ### Sistema de Tracking de Notificaciones (Implementado: 04/08/2025)
 - `notification_events` - Eventos de notificaciones push (permisos, envíos, clicks, etc.)
@@ -129,6 +173,14 @@ git push origin main
 - `update_user_notification_metrics()` - Trigger automático para actualizar métricas
 
 ## Notas de Implementación
+
+### 🔒 Seguridad Anti-Scraping (CRÍTICO)
+- **NUNCA** exponer `correct_option` al cliente antes de que el usuario responda
+- Las preguntas se cargan desde fetchers SIN el campo `correct_option`
+- La validación SIEMPRE se hace via API (`/api/answer`, `/api/exam/validate`, `/api/answer/psychometric`)
+- Los componentes usan `verifiedCorrectAnswer` (de la API) en vez de `question.correct_option`
+- Si se añaden nuevos componentes de test, DEBEN seguir este patrón
+- **Tests:** `__tests__/security/answerValidation.test.js` verifica este comportamiento
 
 ### Anti-Duplicados
 - Sistema robusto para prevenir respuestas múltiples
@@ -154,6 +206,9 @@ git push origin main
 - Prefijo `💾` para operaciones de guardado
 - Prefijo `🎯` para funcionalidades de test
 - Prefijo `❌` para errores críticos
+- Prefijo `🔒 [SecureAnswer]` para validación segura de respuestas
+- Prefijo `✅ [SecureAnswer]` para validación exitosa via API
+- Prefijo `✅ [API/answer]` para logs de APIs de validación
 
 ### Archivos de Configuración
 - `.env.local` - Variables de entorno
