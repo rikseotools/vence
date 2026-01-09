@@ -3,6 +3,17 @@ import Link from 'next/link'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
+// Fecha dinámica en español para "Última revisión"
+function getFormattedDate() {
+  const now = new Date()
+  const day = now.getDate()
+  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  const month = months[now.getMonth()]
+  const year = now.getFullYear()
+  return `${day} ${month} ${year}`
+}
+
 export const metadata = {
   title: 'Test de Oposiciones y Leyes | Vence',
   description: 'Tests gratuitos de leyes españolas y oposiciones. Constitución Española, Ley 39/2015, Guardia Civil, Administrativo. +5000 preguntas actualizadas.',
@@ -87,7 +98,7 @@ export default function HomePage() {
             +20.000 preguntas
           </p>
           <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-            Última revisión: 26 diciembre 2025
+            Última revisión: {getFormattedDate()}
           </p>
         </div>
 
