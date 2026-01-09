@@ -1252,7 +1252,7 @@ export default function TemaPage({ params }) {
       </div>
       
       {/* ✅ MODAL DE ARTÍCULO */}
-      <ArticleModal 
+      <ArticleModal
         isOpen={modalOpen}
         onClose={closeArticleModal}
         articleNumber={selectedArticle.number}

@@ -21,6 +21,35 @@ export default function UserAvatar() {
     userRegisteredDate: new Date()
   })
   const [statsLoading, setStatsLoading] = useState(false)
+  // 🆕 Estado para exámenes pendientes
+  const [pendingExams, setPendingExams] = useState([])
+  const [pendingExamsExpanded, setPendingExamsExpanded] = useState(false)
+
+  // 🆕 Cargar exámenes pendientes cuando se abre el dropdown
+  useEffect(() => {
+    if (showDropdown && user?.id) {
+      loadPendingExams()
+    }
+    // Reset expanded state when dropdown closes
+    if (!showDropdown) {
+      setPendingExamsExpanded(false)
+    }
+  }, [showDropdown, user?.id])
+
+  async function loadPendingExams() {
+    try {
+      const response = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`)
+      const data = await response.json()
+      if (data.success) {
+        setPendingExams(data.exams || [])
+      }
+    } catch (err) {
+      console.error('Error cargando exámenes pendientes:', err)
+      setPendingExams([])
+    }
+  }
+
+  const pendingExamsCount = pendingExams.length
 
   useEffect(() => {
     // Only load stats if user is available and not loading
@@ -392,6 +421,68 @@ export default function UserAvatar() {
                 <span>📊</span>
                 <span>Mis Estadísticas</span>
               </Link>
+
+              {/* 🆕 Exámenes pendientes - Expandible */}
+              {pendingExamsCount > 0 && (
+                <div>
+                  <button
+                    onClick={() => setPendingExamsExpanded(!pendingExamsExpanded)}
+                    className="w-full text-left px-3 py-2 text-sm text-amber-700 hover:bg-amber-50 rounded-lg flex items-center space-x-3"
+                  >
+                    <span>📝</span>
+                    <span>Exámenes pendientes</span>
+                    <span className="ml-auto flex items-center gap-1">
+                      <span className="bg-amber-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                        {pendingExamsCount > 9 ? '9+' : pendingExamsCount}
+                      </span>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${pendingExamsExpanded ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
+                  </button>
+
+                  {/* Lista expandida de exámenes */}
+                  {pendingExamsExpanded && (
+                    <div className="ml-6 mt-1 space-y-1 border-l-2 border-amber-200 pl-3">
+                      {pendingExams.map(exam => {
+                        const progress = exam.totalQuestions > 0
+                          ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
+                          : 0
+                        const resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+
+                        return (
+                          <Link
+                            key={exam.id}
+                            href={resumeUrl}
+                            onClick={handleLinkClick}
+                            className="block px-3 py-2 text-xs bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors"
+                          >
+                            <div className="font-medium text-amber-800 truncate">
+                              {exam.title || `Tema ${exam.temaNumber}`}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex-1 bg-amber-200 rounded-full h-1.5">
+                                <div
+                                  className="bg-amber-500 h-1.5 rounded-full"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                              <span className="text-amber-600 font-medium">
+                                {exam.answeredQuestions}/{exam.totalQuestions}
+                              </span>
+                            </div>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <Link
                 href="/soporte"

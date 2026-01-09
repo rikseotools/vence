@@ -175,7 +175,10 @@ export default function ExamLayout({
   testNumber,
   config,
   questions,
-  children
+  children,
+  // 🆕 Props para reanudar examen
+  resumeTestId = null,
+  initialAnswers = null
 }) {
   const { user, userProfile, loading: authLoading, supabase } = useAuth()
   const {
@@ -193,11 +196,13 @@ export default function ExamLayout({
   } = useDailyQuestionLimit()
 
   // Estados del examen
-  const [userAnswers, setUserAnswers] = useState({}) // { questionIndex: selectedOption }
+  // 🆕 Inicializar con respuestas guardadas si estamos reanudando
+  const [userAnswers, setUserAnswers] = useState(initialAnswers || {})
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [score, setScore] = useState(0)
   const [startTime] = useState(Date.now())
   const [elapsedTime, setElapsedTime] = useState(0) // Tiempo transcurrido en segundos
+  const [isResuming] = useState(!!resumeTestId) // 🆕 Flag para saber si reanudamos
 
   // 🔒 Estados para límite de preguntas (usuarios FREE)
   const [effectiveQuestions, setEffectiveQuestions] = useState(questions || [])
@@ -288,10 +293,18 @@ export default function ExamLayout({
     }
 
     sessionCreationRef.current = true
-    initializeExamSession()
+
+    // 🆕 Si reanudamos, usar el testId existente en vez de crear uno nuevo
+    if (resumeTestId) {
+      console.log('🔄 Reanudando examen existente:', resumeTestId)
+      setCurrentTestSession({ id: resumeTestId })
+      currentTestSessionRef.current = { id: resumeTestId }
+    } else {
+      initializeExamSession()
+    }
 
     // No limpiar el flag en cleanup para evitar doble creación
-  }, [authLoading, questions?.length, tema])
+  }, [authLoading, questions?.length, tema, resumeTestId])
 
   // ✅ FUNCIÓN: Inicializar sesión de examen
   async function initializeExamSession() {
@@ -339,6 +352,30 @@ export default function ExamLayout({
         console.log('✅ Test session creada con ID:', testSessionData.id)
         // ✅ Guardar en ref para persistencia
         currentTestSessionRef.current = testSessionData
+
+        // 🆕 Guardar TODAS las preguntas del examen para poder reanudar después
+        if (effectiveQuestions?.length > 0) {
+          console.log('💾 Guardando todas las preguntas del examen...')
+          try {
+            const initResponse = await fetch('/api/exam/init', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                testId: testSessionData.id,
+                questions: effectiveQuestions,
+                userId: user?.id
+              })
+            })
+            const initResult = await initResponse.json()
+            if (initResult.success) {
+              console.log(`✅ ${initResult.savedCount} preguntas guardadas para reanudar`)
+            } else {
+              console.warn('⚠️ Error guardando preguntas:', initResult.error)
+            }
+          } catch (initError) {
+            console.warn('⚠️ Error en init de preguntas:', initError)
+          }
+        }
       }
 
       setCurrentTestSession(testSessionData)
@@ -575,11 +612,12 @@ export default function ExamLayout({
       console.log(`📋 Test Session ID: ${currentTestSession?.id}`)
       console.log('')
 
-      let savedCount = 0
-      let errorCount = 0
       const allAnswers = [] // Array para completeDetailedTest
 
-      // Guardar todas las preguntas
+      // 🚀 Las preguntas ya están guardadas via API de examen (init + answer)
+      // Solo preparamos los datos para completeDetailedTest
+      console.log('📋 Preparando datos para análisis (respuestas ya guardadas via API)...')
+
       for (let i = 0; i < effectiveQuestions.length; i++) {
         const question = effectiveQuestions[i]
         const selectedOption = userAnswers[i]
@@ -589,12 +627,6 @@ export default function ExamLayout({
           : 0
         const correctOptionLetter = String.fromCharCode(97 + correctIndex)
         const isCorrect = selectedOption ? selectedOption === correctOptionLetter : false
-
-        console.log(`📝 PREGUNTA ${i + 1}/${effectiveQuestions.length}`)
-        console.log(`   Respuesta usuario: ${selectedOption ? selectedOption.toUpperCase() : 'NO RESPONDIDA'} (índice: ${answerIndex})`)
-        console.log(`   Respuesta correcta: ${correctOptionLetter.toUpperCase()} (índice: ${correctIndex})`)
-        console.log(`   ¿Correcta?: ${isCorrect ? 'SÍ ✅' : 'NO ❌'}`)
-        console.log(`   Tiempo: ${timePerQuestion}s`)
 
         const questionData = {
           id: question.id,
@@ -627,45 +659,9 @@ export default function ExamLayout({
 
         // Agregar al array para completeDetailedTest
         allAnswers.push(answerData)
-
-        if (currentTestSession?.id) {
-          try {
-            console.log(`   💾 Guardando en BD...`)
-            const result = await saveDetailedAnswer(
-              currentTestSession.id,
-              questionData,
-              answerData,
-              tema,
-              selectedOption ? 'sure' : 'guessing',
-              0,
-              startTime,
-              null,
-              [],
-              [],
-              []
-            )
-
-            if (result?.success) {
-              savedCount++
-              console.log(`   ✅ Guardada exitosamente (${savedCount}/${effectiveQuestions.length})`)
-            } else {
-              errorCount++
-              console.log(`   ⚠️  Error al guardar (acción: ${result?.action})`)
-            }
-          } catch (err) {
-            errorCount++
-            console.error(`   ❌ Excepción al guardar:`, err.message)
-          }
-        } else {
-          console.log(`   ⚠️  NO SE GUARDÓ - No hay test session`)
-        }
       }
 
-      console.log('')
-      console.log(`───────────────────────────────────────────`)
-      console.log(`📊 RESUMEN DE GUARDADO:`)
-      console.log(`   Guardadas exitosamente: ${savedCount}/${effectiveQuestions.length}`)
-      console.log(`   Con errores: ${errorCount}`)
+      console.log(`✅ ${allAnswers.length} respuestas preparadas para análisis`)
       console.log('')
 
       // Actualizar score del test
@@ -702,10 +698,12 @@ export default function ExamLayout({
       setSaveStatus('success')
       console.log('')
       console.log(`💾 ═══════════════════════════════════════════`)
-      console.log(`💾 GUARDADO COMPLETADO`)
-      console.log(`💾 Total guardadas: ${savedCount}/${effectiveQuestions.length}`)
+      console.log(`💾 FINALIZACIÓN COMPLETADA`)
       console.log(`💾 Score final: ${correctCount}/${effectiveQuestions.length} (${Math.round((correctCount / effectiveQuestions.length) * 100)}%)`)
       console.log(`💾 ═══════════════════════════════════════════`)
+
+      // 🔄 Notificar al Header para actualizar contador de exámenes pendientes
+      window.dispatchEvent(new CustomEvent('examCompleted'))
 
     } catch (error) {
       console.error('')

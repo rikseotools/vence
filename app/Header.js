@@ -27,6 +27,8 @@ export default function HeaderES() {
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
   const [userStreak, setUserStreak] = useState(0)
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
+  const [pendingExams, setPendingExams] = useState([])
+  const [showPendingExamsDropdown, setShowPendingExamsDropdown] = useState(false)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
 
@@ -125,6 +127,39 @@ export default function HeaderES() {
       checkAdminStatus()
     }
   }, [user, supabase, authLoading])
+
+  // 🆕 CARGAR EXÁMENES PENDIENTES
+  useEffect(() => {
+    async function loadPendingExams() {
+      if (!user) {
+        setPendingExams([])
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/exam/pending?userId=${user.id}&testType=exam&limit=10`)
+        const data = await response.json()
+        if (data.success) {
+          setPendingExams(data.exams || [])
+        }
+      } catch (err) {
+        console.error('Error cargando exámenes pendientes:', err)
+        setPendingExams([])
+      }
+    }
+
+    if (!authLoading && user) {
+      loadPendingExams()
+    }
+
+    // 🔄 Escuchar evento para refrescar cuando se completa un examen
+    const handleExamCompleted = () => {
+      console.log('🔄 Refrescando exámenes pendientes...')
+      loadPendingExams()
+    }
+    window.addEventListener('examCompleted', handleExamCompleted)
+    return () => window.removeEventListener('examCompleted', handleExamCompleted)
+  }, [user, authLoading])
 
   // 🆕 VERIFICAR CONVERSACIONES DE FEEDBACK PENDIENTES (Sistema BD)
   useEffect(() => {
@@ -409,6 +444,20 @@ export default function HeaderES() {
                   </svg>
                   <span>IA</span>
                 </button>
+
+                {/* 📝 Exámenes pendientes - Móvil */}
+                {pendingExams.length > 0 && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
+                      className="flex items-center gap-1 px-2 py-1 bg-amber-500 text-white rounded-lg text-xs font-semibold shadow-sm"
+                      title="Exámenes pendientes"
+                    >
+                      <span>📝</span>
+                      <span>{pendingExams.length}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             
@@ -488,6 +537,20 @@ export default function HeaderES() {
                   </svg>
                   <span className="text-sm">IA</span>
                 </button>
+              )}
+
+              {/* 📝 Exámenes pendientes - Desktop */}
+              {user && pendingExams.length > 0 && (
+                <div className="relative hidden xl:block">
+                  <button
+                    onClick={() => setShowPendingExamsDropdown(!showPendingExamsDropdown)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+                    title="Exámenes pendientes"
+                  >
+                    <span>📝</span>
+                    <span className="text-sm">{pendingExams.length}</span>
+                  </button>
+                </div>
               )}
 
               {/* Icono de ranking/liga y racha (solo usuarios logueados) */}
@@ -734,10 +797,75 @@ export default function HeaderES() {
         </div>
       )}
       
+      {/* Dropdown de exámenes pendientes */}
+      {showPendingExamsDropdown && pendingExams.length > 0 && (
+        <>
+          {/* Overlay para cerrar */}
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setShowPendingExamsDropdown(false)}
+          />
+          {/* Dropdown */}
+          <div className="fixed top-16 right-4 z-50 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-amber-200 dark:border-amber-700 overflow-hidden animate-in slide-in-from-top-2">
+            <div className="bg-amber-100 dark:bg-amber-900 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📝</span>
+                <span className="font-semibold text-amber-800 dark:text-amber-200">
+                  {pendingExams.length === 1 ? 'Examen pendiente' : `${pendingExams.length} exámenes pendientes`}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowPendingExamsDropdown(false)}
+                className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-3 space-y-2 max-h-80 overflow-y-auto">
+              {pendingExams.map(exam => {
+                const progress = exam.totalQuestions > 0
+                  ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
+                  : 0
+                const resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+
+                return (
+                  <Link
+                    key={exam.id}
+                    href={resumeUrl}
+                    onClick={() => setShowPendingExamsDropdown(false)}
+                    className="block p-3 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg border border-amber-200 dark:border-amber-700 transition-colors"
+                  >
+                    <div className="font-medium text-gray-800 dark:text-gray-200 truncate">
+                      {exam.title || `Tema ${exam.temaNumber}`}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex-1 bg-amber-200 dark:bg-amber-800 rounded-full h-2">
+                        <div
+                          className="bg-amber-500 h-2 rounded-full transition-all"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                        {exam.answeredQuestions}/{exam.totalQuestions}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                      Click para continuar →
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Modal de ranking */}
-      <RankingModal 
-        isOpen={showRankingModal} 
-        onClose={() => setShowRankingModal(false)} 
+      <RankingModal
+        isOpen={showRankingModal}
+        onClose={() => setShowRankingModal(false)}
       />
 
       {/* 💬 BOTÓN DE FEEDBACK FLOTANTE - Solo desktop */}

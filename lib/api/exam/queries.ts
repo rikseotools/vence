@@ -237,13 +237,16 @@ export async function getPendingExams(
       .orderBy(desc(tests.createdAt))
       .limit(limit)
 
-    // Para cada test, contar las preguntas respondidas
+    // Para cada test, contar las preguntas respondidas (userAnswer no vacío)
     const examsWithProgress = await Promise.all(
       pendingTests.map(async (test) => {
         const answersCount = await db
           .select({ count: count() })
           .from(testQuestions)
-          .where(eq(testQuestions.testId, test.id))
+          .where(and(
+            eq(testQuestions.testId, test.id),
+            sql`${testQuestions.userAnswer} IS NOT NULL AND ${testQuestions.userAnswer} != ''`
+          ))
 
         const answered = answersCount[0]?.count ?? 0
         const total = test.totalQuestions
@@ -417,5 +420,162 @@ export async function getTestById(testId: string) {
   } catch (error) {
     console.error('Error obteniendo test:', error)
     return null
+  }
+}
+
+// ============================================
+// GUARDAR TODAS LAS PREGUNTAS AL INICIAR EXAMEN
+// ============================================
+
+export type InitExamQuestion = {
+  questionId: string
+  questionOrder: number
+  questionText: string
+  correctAnswer: string
+  articleId?: string | null
+  articleNumber?: string | null
+  lawName?: string | null
+  temaNumber?: number | null
+  difficulty?: string | null
+}
+
+export type InitExamResponse = {
+  success: boolean
+  savedCount?: number
+  error?: string
+}
+
+export async function initExamQuestions(
+  testId: string,
+  questions: InitExamQuestion[]
+): Promise<InitExamResponse> {
+  try {
+    const db = getDb()
+
+    // Preparar datos para inserción batch
+    const values = questions.map(q => ({
+      testId,
+      questionId: q.questionId,
+      questionOrder: q.questionOrder,
+      questionText: q.questionText,
+      userAnswer: '', // Vacío = no respondida
+      correctAnswer: q.correctAnswer,
+      isCorrect: false,
+      articleId: q.articleId,
+      articleNumber: q.articleNumber,
+      lawName: q.lawName,
+      temaNumber: q.temaNumber,
+      difficulty: q.difficulty,
+      timeSpentSeconds: 0,
+    }))
+
+    // Insertar todas las preguntas
+    await db.insert(testQuestions).values(values)
+
+    return {
+      success: true,
+      savedCount: questions.length,
+    }
+  } catch (error) {
+    console.error('Error guardando preguntas iniciales:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+// ============================================
+// OBTENER DATOS PARA REANUDAR EXAMEN
+// ============================================
+
+export type ResumedExamQuestion = {
+  questionOrder: number
+  questionId: string | null
+  userAnswer: string | null
+  correctAnswer: string
+  questionText: string
+}
+
+export type GetResumedExamResponse = {
+  success: boolean
+  testId?: string
+  temaNumber?: number | null
+  totalQuestions?: number
+  answeredCount?: number
+  isCompleted?: boolean
+  questions?: ResumedExamQuestion[]
+  error?: string
+}
+
+export async function getResumedExamData(testId: string): Promise<GetResumedExamResponse> {
+  try {
+    const db = getDb()
+
+    // Obtener info del test
+    const testResult = await db
+      .select({
+        id: tests.id,
+        temaNumber: tests.temaNumber,
+        totalQuestions: tests.totalQuestions,
+        isCompleted: tests.isCompleted,
+      })
+      .from(tests)
+      .where(eq(tests.id, testId))
+      .limit(1)
+
+    if (testResult.length === 0) {
+      return {
+        success: false,
+        error: 'Test no encontrado',
+      }
+    }
+
+    const test = testResult[0]
+
+    if (test.isCompleted) {
+      return {
+        success: false,
+        error: 'Este examen ya está completado',
+      }
+    }
+
+    // Obtener preguntas y respuestas guardadas
+    const questionsResult = await db
+      .select({
+        questionOrder: testQuestions.questionOrder,
+        questionId: testQuestions.questionId,
+        userAnswer: testQuestions.userAnswer,
+        correctAnswer: testQuestions.correctAnswer,
+        questionText: testQuestions.questionText,
+      })
+      .from(testQuestions)
+      .where(eq(testQuestions.testId, testId))
+      .orderBy(testQuestions.questionOrder)
+
+    // Contar solo las que tienen respuesta (no vacía)
+    const answeredCount = questionsResult.filter(q => q.userAnswer && q.userAnswer.trim() !== '').length
+
+    return {
+      success: true,
+      testId: test.id,
+      temaNumber: test.temaNumber,
+      totalQuestions: test.totalQuestions,
+      answeredCount,
+      isCompleted: test.isCompleted ?? false,
+      questions: questionsResult.map(q => ({
+        questionOrder: q.questionOrder,
+        questionId: q.questionId,
+        userAnswer: q.userAnswer,
+        correctAnswer: q.correctAnswer,
+        questionText: q.questionText,
+      })),
+    }
+  } catch (error) {
+    console.error('Error obteniendo datos para reanudar:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
   }
 }
