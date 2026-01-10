@@ -19,8 +19,9 @@ export type SaveAnswerParams = {
   questionId?: string | null
   questionOrder: number
   userAnswer: string
-  correctAnswer: string
-  questionText: string
+  // correctAnswer es opcional - se recupera del registro existente si no se proporciona
+  correctAnswer?: string
+  questionText?: string
   articleId?: string | null
   articleNumber?: string | null
   lawName?: string | null
@@ -33,11 +34,13 @@ export type SaveAnswerParams = {
 export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerResponse> {
   try {
     const db = getDb()
-    const isCorrect = params.userAnswer.toLowerCase() === params.correctAnswer.toLowerCase()
 
     // Verificar si ya existe una respuesta para esta pregunta en este test
     const existing = await db
-      .select({ id: testQuestions.id })
+      .select({
+        id: testQuestions.id,
+        correctAnswer: testQuestions.correctAnswer
+      })
       .from(testQuestions)
       .where(and(
         eq(testQuestions.testId, params.testId),
@@ -46,8 +49,18 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
       .limit(1)
 
     let answerId: string
+    let correctAnswer = params.correctAnswer
 
     if (existing.length > 0) {
+      // Usar correctAnswer del registro existente si no se proporcionó
+      if (!correctAnswer && existing[0].correctAnswer) {
+        correctAnswer = existing[0].correctAnswer
+      }
+
+      const isCorrect = correctAnswer
+        ? params.userAnswer.toLowerCase() === correctAnswer.toLowerCase()
+        : false
+
       // Actualizar respuesta existente
       await db
         .update(testQuestions)
@@ -60,7 +73,26 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         .where(eq(testQuestions.id, existing[0].id))
 
       answerId = existing[0].id
+
+      // Actualizar score del test
+      await updateTestScore(params.testId)
+
+      return {
+        success: true,
+        answerId,
+        isCorrect,
+      }
     } else {
+      // Solo insertar si tenemos correctAnswer (para nuevas preguntas)
+      if (!correctAnswer) {
+        return {
+          success: false,
+          error: 'correctAnswer es requerido para nuevas preguntas',
+        }
+      }
+
+      const isCorrect = params.userAnswer.toLowerCase() === correctAnswer.toLowerCase()
+
       // Insertar nueva respuesta
       const result = await db
         .insert(testQuestions)
@@ -68,9 +100,9 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
           testId: params.testId,
           questionId: params.questionId,
           questionOrder: params.questionOrder,
-          questionText: params.questionText,
+          questionText: params.questionText || '',
           userAnswer: params.userAnswer,
-          correctAnswer: params.correctAnswer,
+          correctAnswer: correctAnswer,
           isCorrect,
           articleId: params.articleId,
           articleNumber: params.articleNumber,
@@ -83,15 +115,15 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         .returning({ id: testQuestions.id })
 
       answerId = result[0].id
-    }
 
-    // Actualizar score del test
-    await updateTestScore(params.testId)
+      // Actualizar score del test
+      await updateTestScore(params.testId)
 
-    return {
-      success: true,
-      answerId,
-      isCorrect,
+      return {
+        success: true,
+        answerId,
+        isCorrect,
+      }
     }
   } catch (error) {
     console.error('Error guardando respuesta:', error)

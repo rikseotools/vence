@@ -10,8 +10,10 @@ export const saveAnswerRequestSchema = z.object({
   questionId: z.string().uuid('ID de pregunta inválido').optional().nullable(),
   questionOrder: z.number().int().min(1, 'Orden de pregunta inválido'),
   userAnswer: z.enum(['a', 'b', 'c', 'd']),
-  correctAnswer: z.enum(['a', 'b', 'c', 'd']),
-  questionText: z.string().min(1, 'Texto de pregunta requerido'),
+  // correctAnswer es opcional porque en modo examen se guarda en /api/exam/init
+  // y se recupera del registro existente al actualizar la respuesta del usuario
+  correctAnswer: z.enum(['a', 'b', 'c', 'd']).optional(),
+  questionText: z.string().optional().default(''),
   // Datos opcionales de la pregunta
   articleId: z.string().uuid().optional().nullable(),
   articleNumber: z.string().optional().nullable(),

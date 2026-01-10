@@ -243,8 +243,13 @@ export default function ExamLayout({
   const currentTestSessionRef = useRef(null) // ✅ Ref para mantener el test ID
 
   // 🔒 LIMITAR PREGUNTAS para usuarios FREE según su límite diario
+  // ⚠️ IMPORTANTE: NO recalcular después de enviar el examen (isSubmitted)
   useEffect(() => {
     if (limitLoading || !questions?.length) return
+
+    // 🔒 FIX: Una vez enviado el examen, NO recalcular las preguntas
+    // Esto evita que al actualizar el límite diario se modifique effectiveQuestions
+    if (isSubmitted) return
 
     // Si el usuario no tiene límite (premium, admin, etc.), usar todas las preguntas
     if (!hasLimit) {
@@ -275,7 +280,7 @@ export default function ExamLayout({
       setWasLimited(false)
       setOriginalCount(questions.length)
     }
-  }, [questions, hasLimit, isLimitReached, questionsRemaining, limitLoading])
+  }, [questions, hasLimit, isLimitReached, questionsRemaining, limitLoading, isSubmitted])
 
   // ✅ CRONÓMETRO: Actualizar cada segundo
   useEffect(() => {
@@ -845,8 +850,8 @@ export default function ExamLayout({
             <p className="text-sm text-gray-600">Tema {tema} - {totalQuestions} preguntas</p>
           </div>
 
-          {/* 🔒 Banner de límite (si se redujo el número de preguntas) */}
-          {wasLimited && totalQuestions > 0 && (
+          {/* 🔒 Banner de límite (si se redujo el número de preguntas) - SOLO antes de corregir */}
+          {wasLimited && totalQuestions > 0 && !isSubmitted && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 <span className="font-medium">⚠️ Examen reducido:</span> Solo puedes hacer {totalQuestions} preguntas hoy (de {originalCount} originales).
