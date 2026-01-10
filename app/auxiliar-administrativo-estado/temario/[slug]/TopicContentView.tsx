@@ -155,6 +155,21 @@ export default function TopicContentView({ content }: TopicContentViewProps) {
               </span>
             )}
           </div>
+
+          {/* Fecha de actualización y registro */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Actualizado a{' '}
+              <span className="font-semibold text-gray-800 dark:text-gray-200">
+                {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+              .{' '}
+              <Link href="/login" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+                Regístrate
+              </Link>
+              {' '}para recibir actualizaciones cuando la legislación cambie.
+            </p>
+          </div>
         </header>
 
         {/* Laws and articles */}
