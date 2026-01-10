@@ -401,12 +401,13 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
 
       if (error) throw error
 
-      // Actualizar estado de conversación
+      // Actualizar estado de conversación y resetear vista del admin para que vea la alerta
       await supabase
         .from('feedback_conversations')
-        .update({ 
+        .update({
           status: 'waiting_admin',
-          last_message_at: new Date().toISOString()
+          last_message_at: new Date().toISOString(),
+          admin_viewed_at: null  // Reset para que aparezca alerta de nuevo mensaje
         })
         .eq('id', conversationId)
 

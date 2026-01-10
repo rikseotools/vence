@@ -1,0 +1,43 @@
+{
+  "created": "2026-01-05",
+  "lastUpdated": "2026-01-05",
+  "sessionSummary": {
+    "questionsImported": 387,
+    "totalInDB": 12533
+  },
+  "completedTopics": {
+    "T103": { "count": 119, "status": "completed", "notes": "Cortes Generales - CE, LOREG, RS, LO 3/1984" },
+    "T104": { "count": 34, "status": "completed", "notes": "Poder Judicial - CE, LOPJ, Ley 50/1981" },
+    "T105": { "count": 13, "status": "completed", "notes": "El Gobierno - CE, Ley 50/1997" },
+    "T108": { "count": 27, "status": "completed", "notes": "AGE - LRJSP, Ley 2/2014" },
+    "T109": { "count": 30, "status": "completed", "notes": "Organización territorial - CE" },
+    "T110": { "count": 29, "status": "completed", "notes": "Administración Local - LBRL" },
+    "T201": { "count": 78, "status": "completed", "notes": "Atención público - LPAC, RD208, RD951, LO4/2001" },
+    "T202": { "count": 8, "status": "partial", "notes": "Documento/registro - LPAC" },
+    "T203": { "count": 7, "status": "partial", "notes": "Administración Electrónica - LPAC" },
+    "T206": { "count": 3, "status": "partial", "notes": "Gobierno Abierto - CE, LRJSP" },
+    "T301": { "count": 117, "status": "existing", "notes": "Personal AAPP" },
+    "T302": { "count": 214, "status": "existing", "notes": "Selección personal" },
+    "T303": { "count": 375, "status": "existing", "notes": "Personal funcionario" },
+    "T306": { "count": 187, "status": "existing", "notes": "Incompatibilidades" },
+    "T307": { "count": 191, "status": "existing", "notes": "Seguridad Social funcionarios" },
+    "T501": { "count": 141, "status": "completed", "notes": "Presupuestos - LGP" },
+    "T502": { "count": 102, "status": "existing", "notes": "Presupuesto España" },
+    "T503": { "count": 181, "status": "existing", "notes": "Contratos - LCSP" },
+    "T504": { "count": 161, "status": "existing", "notes": "Recursos Humanos" },
+    "T505": { "count": 103, "status": "existing", "notes": "Subvenciones - LGS" },
+    "T506": { "count": 63, "status": "existing", "notes": "Responsabilidad" }
+  },
+  "pendingIssues": [
+    "T111 (UE): 9 preguntas sin artículo detectado - requiere TUE/TFUE",
+    "T207 (Igualdad): directorio no encontrado",
+    "Algunos errores de artículos no existentes en varias leyes"
+  ],
+  "lawsAddedThisSession": [
+    "LO 3/1984 - Iniciativa legislativa popular (15 artículos)"
+  ],
+  "extractorUpdates": [
+    "Añadidos ordinales compuestos (decimotercero-vigésimo) al extractor BOE",
+    "Actualizado sync-all/route.js con mismos cambios"
+  ]
+}
