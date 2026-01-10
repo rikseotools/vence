@@ -1,11 +1,11 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Temario Auxiliar Administrativo Estado 2025 | Vence',
-  description: 'Temario completo de Auxiliar Administrativo del Estado actualizado 2025. 16 temas oficiales con teoría, PDFs descargables y sistema progresivo de desbloqueo.',
+  title: 'Temario Auxiliar Administrativo Estado 2026 | Vence',
+  description: 'Temario completo de Auxiliar Administrativo del Estado actualizado 2026. 28 temas oficiales con teoría y PDFs descargables.',
   keywords: [
     'temario auxiliar administrativo estado',
-    'temario auxiliar administrativo 2025',
+    'temario auxiliar administrativo 2026',
     'temario oficial auxiliar administrativo',
     'constitución española temario',
     'temario transparencia 19/2013',
@@ -20,8 +20,8 @@ export const metadata = {
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Temario Auxiliar Administrativo Estado 2025 | Teoría Oficial',
-    description: 'Accede al temario completo y actualizado de Auxiliar Administrativo del Estado. 16 temas oficiales con teoría completa y PDFs.',
+    title: 'Temario Auxiliar Administrativo Estado 2026 | Teoría Oficial',
+    description: 'Accede al temario completo y actualizado de Auxiliar Administrativo del Estado. 28 temas oficiales con teoría completa y PDFs.',
     url: `${SITE_URL}/auxiliar-administrativo-estado/temario`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -38,7 +38,7 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Temario Auxiliar Administrativo Estado | Vence',
-    description: 'Temario completo y actualizado 2025. 16 temas oficiales con teoría y PDFs descargables.',
+    description: 'Temario completo y actualizado 2026. 28 temas oficiales con teoría y PDFs descargables.',
     images: ['/twitter-image-es.jpg'],
   },
   alternates: {
