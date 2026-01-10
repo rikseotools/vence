@@ -3,6 +3,28 @@
 import * as Sentry from "@sentry/nextjs";
 
 export default function SentryExamplePage() {
+  const handleClientError = () => {
+    try {
+      // Esto lanzará un error que Sentry capturará
+      throw new Error("Sentry Test Error - Cliente vence.es");
+    } catch (error) {
+      Sentry.captureException(error);
+      alert("Error enviado a Sentry. Revisa el dashboard.");
+    }
+  };
+
+  const handleApiError = async () => {
+    try {
+      const res = await fetch("/api/sentry-example-api");
+      if (!res.ok) {
+        throw new Error("API returned error");
+      }
+    } catch (error) {
+      Sentry.captureException(error);
+      alert("Error de API enviado a Sentry. Revisa el dashboard.");
+    }
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -12,17 +34,18 @@ export default function SentryExamplePage() {
       minHeight: '100vh',
       padding: '20px',
       fontFamily: 'system-ui, sans-serif',
+      backgroundColor: '#f9fafb',
     }}>
-      <h1 style={{ fontSize: '24px', marginBottom: '16px' }}>
-        Sentry Example Page
+      <h1 style={{ fontSize: '24px', marginBottom: '16px', color: '#111' }}>
+        Sentry Test Page
       </h1>
-      <p style={{ color: '#666', marginBottom: '24px', textAlign: 'center' }}>
-        Haz clic en el botón para probar que Sentry está funcionando correctamente.
+      <p style={{ color: '#666', marginBottom: '24px', textAlign: 'center', maxWidth: '400px' }}>
+        Haz clic en los botones para enviar errores de prueba a Sentry.
       </p>
+
       <button
-        onClick={() => {
-          throw new Error("Sentry Example Frontend Error - Test desde vence.es");
-        }}
+        type="button"
+        onClick={handleClientError}
         style={{
           padding: '12px 24px',
           backgroundColor: '#ef4444',
@@ -32,22 +55,15 @@ export default function SentryExamplePage() {
           cursor: 'pointer',
           fontSize: '16px',
           marginBottom: '12px',
+          fontWeight: '500',
         }}
       >
-        Lanzar Error de Cliente
+        Enviar Error de Cliente
       </button>
+
       <button
-        onClick={async () => {
-          await Sentry.startSpan({
-            name: 'Example Frontend Span',
-            op: 'test'
-          }, async () => {
-            const res = await fetch("/api/sentry-example-api");
-            if (!res.ok) {
-              throw new Error("Sentry Example API Error");
-            }
-          });
-        }}
+        type="button"
+        onClick={handleApiError}
         style={{
           padding: '12px 24px',
           backgroundColor: '#f59e0b',
@@ -56,12 +72,14 @@ export default function SentryExamplePage() {
           borderRadius: '8px',
           cursor: 'pointer',
           fontSize: '16px',
+          fontWeight: '500',
         }}
       >
-        Lanzar Error de API
+        Enviar Error de API
       </button>
+
       <p style={{ marginTop: '24px', fontSize: '14px', color: '#999' }}>
-        Después de probar, elimina esta página y la API de ejemplo.
+        Los errores aparecerán en Sentry → Issues
       </p>
     </div>
   );
