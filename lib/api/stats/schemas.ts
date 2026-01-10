@@ -99,10 +99,14 @@ export const userOposicionSchema = z.object({
   // Datos de la oposición
   slug: z.string().nullable(),
   nombre: z.string().nullable(),
+  tipoAcceso: z.string().nullable(), // 'libre', 'promocion_interna', etc.
   examDate: z.string().nullable(), // ISO date (YYYY-MM-DD)
   inscriptionDeadline: z.string().nullable(),
-  plazas: z.number().nullable(),
+  plazas: z.number().nullable(), // Total de plazas
+  plazasLibres: z.number().nullable(), // Plazas acceso libre
+  plazasPromocionInterna: z.number().nullable(), // Plazas promoción interna
   temasCount: z.number().nullable(),
+  bloquesCount: z.number().nullable(),
   // Datos del BOE
   boePublicationDate: z.string().nullable(),
   boeReference: z.string().nullable(),

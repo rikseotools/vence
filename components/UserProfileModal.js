@@ -383,19 +383,20 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                       })
                       return null
                     })()}
-                    {profileData.target_oposicion?.replace(/-/g, '_') === 'auxiliar_administrativo_estado' && (profileData.mastered_topics || 0) > 1 ? (
+                    {profileData.target_oposicion ? (
                       <div className="text-center">
                         <p className="text-2xl font-bold text-purple-600">
                           {profileData.mastered_topics || 0}
-                          <span className="text-base text-gray-500 ml-1">/28</span>
+                          <span className="text-base text-gray-500 ml-1">/{profileData.total_topics || 28}</span>
                           <span className="text-xs text-gray-400 block">
-                            ({Math.round(((profileData.mastered_topics || 0) / 28) * 100)}%)
+                            ({Math.round(((profileData.mastered_topics || 0) / (profileData.total_topics || 28)) * 100)}%)
                           </span>
                         </p>
                         <p className="text-xs text-gray-500 mt-1">Temas dominados</p>
                         {(() => {
                           const temasDominados = profileData.mastered_topics || 0
-                          const temasPendientes = 28 - temasDominados
+                          const totalTemas = profileData.total_topics || 28
+                          const temasPendientes = totalTemas - temasDominados
 
                           // Calcular ritmo de progreso basado en tiempo en Vence
                           const diasEnVence = profileData.time_in_vence ? (() => {
@@ -413,48 +414,51 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                             return 1
                           })() : 30
 
-                          console.log('📅 Predicción temario:', {
-                            temasDominados,
-                            temasPendientes,
-                            diasEnVence,
-                            timeInVence: profileData.time_in_vence
-                          })
+                          // Si no hay temas dominados, mostrar mensaje de ayuda
+                          if (temasDominados === 0) {
+                            return (
+                              <p className="text-xs text-amber-600 mt-2">
+                                💡 Domina tu primer tema (≥70% precisión + 10 preguntas) para ver tu proyección
+                              </p>
+                            )
+                          }
 
-                          // Si hay temas dominados, calcular ritmo
-                          if (temasDominados > 0 && temasPendientes > 0) {
-                            const temasPoSemana = (temasDominados / diasEnVence) * 7
-                            const semanasNecesarias = Math.ceil(temasPendientes / temasPoSemana)
-
-                            console.log('📊 Cálculo ritmo:', {
-                              temasPoSemana,
-                              semanasNecesarias
-                            })
-
-                            // Calcular fecha proyectada
-                            const fechaProyectada = new Date()
-                            fechaProyectada.setDate(fechaProyectada.getDate() + (semanasNecesarias * 7))
-
-                            // Formatear fecha
-                            const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-                            const fechaFormateada = `${fechaProyectada.getDate()} ${meses[fechaProyectada.getMonth()]} ${fechaProyectada.getFullYear()}`
-
-                            // Solo mostrar si es una proyección razonable (menos de 2 años)
-                            if (semanasNecesarias < 104) {
-                              return (
-                                <p className="text-xs text-green-600 mt-2">
-                                  📅 A este ritmo, {profileData.display_name || 'dominarás'} {profileData.display_name ? 'dominará' : ''} todo el temario para el <span className="font-bold">{fechaFormateada}</span>
-                                </p>
-                              )
-                            }
-                          } else if (temasDominados === 28) {
+                          // Si todos los temas están dominados
+                          if (temasDominados >= totalTemas) {
                             return (
                               <p className="text-xs text-green-600 mt-2">
                                 ✅ ¡Felicidades! Has dominado todo el temario
                               </p>
                             )
                           }
-                          return null
+
+                          // Calcular ritmo si hay temas dominados
+                          const temasPoSemana = (temasDominados / diasEnVence) * 7
+                          const semanasNecesarias = Math.ceil(temasPendientes / temasPoSemana)
+
+                          // Calcular fecha proyectada
+                          const fechaProyectada = new Date()
+                          fechaProyectada.setDate(fechaProyectada.getDate() + (semanasNecesarias * 7))
+
+                          // Formatear fecha
+                          const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                                         'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+                          const fechaFormateada = `${fechaProyectada.getDate()} ${meses[fechaProyectada.getMonth()]} ${fechaProyectada.getFullYear()}`
+
+                          // Solo mostrar si es una proyección razonable (menos de 2 años)
+                          if (semanasNecesarias < 104) {
+                            return (
+                              <p className="text-xs text-green-600 mt-2">
+                                📅 A este ritmo, {profileData.display_name ? `${profileData.display_name} dominará` : 'dominarás'} todo el temario para el <span className="font-bold">{fechaFormateada}</span>
+                              </p>
+                            )
+                          }
+
+                          return (
+                            <p className="text-xs text-gray-500 mt-2">
+                              📊 Sigue practicando para calcular una proyección
+                            </p>
+                          )
                         })()}
                       </div>
                     ) : (

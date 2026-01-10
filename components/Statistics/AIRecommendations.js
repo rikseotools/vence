@@ -6,12 +6,12 @@ export default function AIRecommendations({ recommendations }) {
   if (!recommendations || recommendations.length === 0) {
     return (
       <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-8 text-center">
-        <div className="text-6xl mb-4">🧠</div>
+        <div className="text-6xl mb-4">💡</div>
         <h3 className="text-2xl font-bold text-purple-800 mb-4">
-          ¡Desbloquea el Poder Completo de la IA!
+          ¡Desbloquea Recomendaciones Personalizadas!
         </h3>
         <p className="text-purple-700 mb-6 max-w-2xl mx-auto">
-          Nuestro sistema con IA necesita más datos para generar predicciones precisas y 
+          Necesitamos más datos para generar predicciones precisas y
           recomendaciones personalizadas. Completa más tests para acceder a:
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -21,8 +21,8 @@ export default function AIRecommendations({ recommendations }) {
             <div className="text-sm text-purple-600">De preparación para examen</div>
           </div>
           <div className="bg-white bg-opacity-70 rounded-lg p-4">
-            <div className="text-2xl mb-2">🤖</div>
-            <div className="font-bold text-purple-800">Recomendaciones IA</div>
+            <div className="text-2xl mb-2">💡</div>
+            <div className="font-bold text-purple-800">Recomendaciones</div>
             <div className="text-sm text-purple-600">Personalizadas y específicas</div>
           </div>
           <div className="bg-white bg-opacity-70 rounded-lg p-4">
@@ -36,11 +36,11 @@ export default function AIRecommendations({ recommendations }) {
             <div className="text-sm text-purple-600">Cuándo estarás listo</div>
           </div>
         </div>
-        <Link 
+        <Link
           href="/auxiliar-administrativo-estado/test"
           className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-lg font-bold text-lg hover:opacity-90 transition-opacity inline-block"
         >
-          🚀 Alimentar la IA con Más Datos
+          🚀 Hacer Más Tests
         </Link>
       </div>
     )
@@ -48,7 +48,7 @@ export default function AIRecommendations({ recommendations }) {
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">🤖 Recomendaciones Personalizadas de IA</h3>
+      <h3 className="text-xl font-bold text-gray-800 mb-4">💡 Recomendaciones Personalizadas</h3>
       <div className="space-y-4">
         {recommendations.map((rec, index) => (
           <div key={index} className={`p-4 rounded-lg border ${
@@ -92,7 +92,7 @@ export default function AIRecommendations({ recommendations }) {
                   👉 {rec.action}
                 </div>
                 <div className="text-xs text-gray-500 mt-2">
-                  Tipo: {rec.type} • Generado por IA
+                  Tipo: {rec.type}
                 </div>
               </div>
             </div>

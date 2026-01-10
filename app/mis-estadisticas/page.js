@@ -888,8 +888,21 @@ export default function EstadisticasRevolucionarias() {
       if (accuracy < 30) readinessScore = Math.min(readinessScore, 5) // Máximo 5% si <30% aciertos
 
       // 6. PROYECCIONES
-      const questionsNeeded = Math.round((85 - accuracy) * 10) // Estimación preguntas para llegar a 85%
-      const daysToReady = averageImprovement > 0 ? Math.ceil((85 - readinessScore) / averageImprovement) : daysRemaining
+      // Calcular preguntas necesarias basándose en temas pendientes
+      const themesRemainingCount = totalThemes - studiedThemes
+      const avgQuestionsPerTheme = totalQuestions > 0 && studiedThemes > 0
+        ? Math.round(totalQuestions / studiedThemes)
+        : 30 // Estimación: 30 preguntas por tema
+      const questionsNeeded = themesRemainingCount * avgQuestionsPerTheme
+
+      // Calcular días necesarios basándose en ritmo actual
+      const effectiveDailyQuestions = dailyQuestions > 0 ? dailyQuestions : 10
+      const daysToCompleteThemes = questionsNeeded > 0
+        ? Math.ceil(questionsNeeded / effectiveDailyQuestions)
+        : 0
+      const daysToReady = Math.max(daysToCompleteThemes,
+        averageImprovement > 0 ? Math.ceil((85 - readinessScore) / averageImprovement) : daysRemaining
+      )
       const estimatedReadinessDate = new Date()
       estimatedReadinessDate.setDate(estimatedReadinessDate.getDate() + daysToReady)
       
@@ -967,16 +980,31 @@ export default function EstadisticasRevolucionarias() {
         },
         
         timeEstimate: {
-          dailyHours: Math.max(1, Math.round(questionsNeeded / dailyQuestions / daysRemaining * 24)) || 2
+          dailyHours: Math.max(1, Math.min(8, Math.ceil(questionsNeeded / Math.max(1, daysRemaining) / 20))) || 2
         },
-        
+
         projection: {
           estimatedReadinessDate: estimatedReadinessDate.toLocaleDateString('es-ES', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
             timeZone: 'Europe/Madrid'
           }),
+          // Fecha estimada de cobertura completa del temario (basada en ritmo de estudio)
+          estimatedStudyCompletion: (() => {
+            if (themesRemainingCount <= 0) return null
+            const studyCompletionDate = new Date()
+            studyCompletionDate.setDate(studyCompletionDate.getDate() + daysToCompleteThemes)
+            return studyCompletionDate.toLocaleDateString('es-ES', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              timeZone: 'Europe/Madrid'
+            })
+          })(),
           onTrack: daysToReady <= daysRemaining,
           questionsNeeded: Math.max(0, questionsNeeded),
-          themesRemaining: Math.max(0, totalThemes - studiedThemes)
+          themesRemaining: themesRemainingCount
         },
         
         calculations: {
@@ -1209,8 +1237,17 @@ export default function EstadisticasRevolucionarias() {
           userOposicion: apiStats.userOposicion ? {
             nombre: apiStats.userOposicion.nombre,
             slug: apiStats.userOposicion.slug,
+            userName: apiStats.userOposicion.userName,
+            tipoAcceso: apiStats.userOposicion.tipoAcceso,
             bloquesCount: apiStats.userOposicion.bloquesCount,
-            temasCount: apiStats.userOposicion.temasCount
+            temasCount: apiStats.userOposicion.temasCount,
+            examDate: apiStats.userOposicion.examDate,
+            inscriptionDeadline: apiStats.userOposicion.inscriptionDeadline,
+            plazas: apiStats.userOposicion.plazas, // Total
+            plazasLibres: apiStats.userOposicion.plazasLibres,
+            plazasPromocionInterna: apiStats.userOposicion.plazasPromocionInterna,
+            boeReference: apiStats.userOposicion.boeReference,
+            boePublicationDate: apiStats.userOposicion.boePublicationDate
           } : null,
 
           // Desglose por dificultad
@@ -1314,12 +1351,21 @@ export default function EstadisticasRevolucionarias() {
             const oposicion = apiStats.userOposicion
             const userName = oposicion?.userName?.split(' ')[0] || 'Opositor' // Solo primer nombre
             const oposicionNombre = oposicion?.nombre || 'tu oposición'
+            const oposicionSlug = oposicion?.slug || 'auxiliar-administrativo-estado'
             const totalThemes = oposicion?.temasCount || 28
-            const studiedThemes = apiStats.themePerformance.length
-            const coveragePercentage = Math.round((studiedThemes / totalThemes) * 100)
 
-            // Temas dominados (accuracy >= 80%)
-            const masteredThemes = apiStats.themePerformance.filter(t => t.accuracy >= 80).length
+            // ✅ Filtrar temas por la oposición del usuario (igual que en themePerformance)
+            const filteredThemePerformance = apiStats.themePerformance
+              .filter(t => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
+
+            // Tema "estudiado" = ≥10 preguntas Y ≥50% precisión (criterio similar a desbloqueo)
+            const studiedThemes = filteredThemePerformance
+              .filter(t => t.totalQuestions >= 10 && t.accuracy >= 50).length
+            const coveragePercentage = Math.min(100, Math.round((studiedThemes / totalThemes) * 100))
+
+            // Temas dominados (accuracy >= 80% Y ≥10 preguntas) - también filtrados
+            const masteredThemes = filteredThemePerformance
+              .filter(t => t.totalQuestions >= 10 && t.accuracy >= 80).length
             const masteredPercentage = Math.round((masteredThemes / totalThemes) * 100)
             const accuracy = apiStats.main.accuracy
 
@@ -1359,13 +1405,16 @@ export default function EstadisticasRevolucionarias() {
               oposicionInfo: {
                 nombre: oposicionNombre,
                 userName: userName,
+                tipoAcceso: oposicion?.tipoAcceso || 'libre',
                 hasRealExamDate,
                 examDateFormatted: examDate.toLocaleDateString('es-ES', {
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric'
                 }),
-                plazas: oposicion?.plazas || null,
+                plazas: oposicion?.plazas || null, // Total
+                plazasLibres: oposicion?.plazasLibres || null,
+                plazasPromocionInterna: oposicion?.plazasPromocionInterna || null,
                 boeReference: oposicion?.boeReference || null,
                 boePublicationDate: oposicion?.boePublicationDate
                   ? new Date(oposicion.boePublicationDate).toLocaleDateString('es-ES')
@@ -1392,23 +1441,29 @@ export default function EstadisticasRevolucionarias() {
                 percentage: masteredPercentage,
                 remaining: totalThemes - masteredThemes,
                 // Predicción de cuándo dominará todo el temario
+                // Solo mostrar si tiene al menos 3 temas dominados (datos suficientes)
                 projectedMasteryDate: (() => {
-                  if (masteredThemes === 0) return null
+                  if (masteredThemes < 3) return null // No hay suficientes datos
                   if (masteredThemes >= totalThemes) return 'completado'
 
-                  // Calcular ritmo basado en días activos
-                  const activeDays = Math.max(1, apiStats.weeklyProgress.length)
-                  const themesPerWeek = (masteredThemes / activeDays) * 7
+                  // Calcular cuántos días le tomó dominar los temas actuales
+                  // Usar el total de días desde el primer test
+                  const firstTestDate = apiStats.recentTests.length > 0
+                    ? new Date(apiStats.recentTests[apiStats.recentTests.length - 1].completedAt)
+                    : null
 
-                  if (themesPerWeek <= 0) return null
+                  if (!firstTestDate) return null
 
-                  const weeksNeeded = Math.ceil((totalThemes - masteredThemes) / themesPerWeek)
+                  const daysSinceStart = Math.max(1, Math.ceil((new Date() - firstTestDate) / (1000 * 60 * 60 * 24)))
+                  const daysPerTheme = daysSinceStart / masteredThemes
+                  const themesRemaining = totalThemes - masteredThemes
+                  const daysNeeded = Math.ceil(themesRemaining * daysPerTheme)
 
-                  // Solo mostrar si es razonable (< 2 años)
-                  if (weeksNeeded > 104) return null
+                  // Solo mostrar si es razonable (< 2 años = 730 días)
+                  if (daysNeeded > 730) return null
 
                   const projectedDate = new Date()
-                  projectedDate.setDate(projectedDate.getDate() + (weeksNeeded * 7))
+                  projectedDate.setDate(projectedDate.getDate() + daysNeeded)
 
                   return projectedDate.toLocaleDateString('es-ES', {
                     day: 'numeric',
@@ -1431,12 +1486,50 @@ export default function EstadisticasRevolucionarias() {
                 daysAnalyzed: 7
               },
               timeEstimate: {
-                dailyHours: Math.max(1, Math.round((85 - accuracy) / 10))
+                dailyHours: Math.max(1, Math.min(4, Math.ceil((totalThemes - studiedThemes) * 30 / Math.max(1, daysRemaining) / 20))) || 2
               },
               projection: {
-                estimatedReadinessDate: new Date(today.getTime() + (85 - readinessScore) * 24 * 60 * 60 * 1000).toLocaleDateString('es-ES'),
+                // Calcular fecha realista basada en temas restantes y ritmo
+                estimatedReadinessDate: (() => {
+                  const themesLeft = totalThemes - studiedThemes
+                  const avgQuestionsPerTheme = apiStats.main.totalQuestions > 0 && studiedThemes > 0
+                    ? Math.round(apiStats.main.totalQuestions / studiedThemes)
+                    : 30
+                  const questionsLeft = themesLeft * avgQuestionsPerTheme
+                  const dailyQ = Math.max(10, Math.round(apiStats.main.totalQuestions / Math.max(1, apiStats.weeklyProgress.length)))
+                  const daysNeeded = Math.ceil(questionsLeft / dailyQ)
+                  const projectedDate = new Date(today.getTime() + daysNeeded * 24 * 60 * 60 * 1000)
+                  return projectedDate.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })
+                })(),
                 onTrack: daysRemaining > 0 && readinessScore >= 50,
-                questionsNeeded: Math.max(0, Math.round((85 - accuracy) * 10)),
+                // Fecha estimada de cobertura completa (basada en ritmo de estudio)
+                estimatedStudyCompletion: (() => {
+                  const themesLeft = totalThemes - studiedThemes
+                  if (themesLeft <= 0) return null
+                  const avgQuestionsPerTheme = apiStats.main.totalQuestions > 0 && studiedThemes > 0
+                    ? Math.round(apiStats.main.totalQuestions / studiedThemes)
+                    : 30
+                  const questionsLeft = themesLeft * avgQuestionsPerTheme
+                  const dailyQ = Math.max(10, Math.round(apiStats.main.totalQuestions / Math.max(1, apiStats.weeklyProgress.length)))
+                  const daysNeeded = Math.ceil(questionsLeft / dailyQ)
+                  const projectedDate = new Date(today.getTime() + daysNeeded * 24 * 60 * 60 * 1000)
+                  return projectedDate.toLocaleDateString('es-ES', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  })
+                })(),
+                questionsNeeded: (() => {
+                  const themesLeft = totalThemes - studiedThemes
+                  const avgQuestionsPerTheme = apiStats.main.totalQuestions > 0 && studiedThemes > 0
+                    ? Math.round(apiStats.main.totalQuestions / studiedThemes)
+                    : 30
+                  return Math.max(0, themesLeft * avgQuestionsPerTheme)
+                })(),
                 themesRemaining: Math.max(0, totalThemes - studiedThemes)
               },
               calculations: {

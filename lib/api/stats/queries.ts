@@ -597,7 +597,8 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       .limit(1)
 
     const profile = profileResult[0]
-    const targetOposicion = profile?.targetOposicion
+    // Normalizar slug: convertir guiones bajos a guiones normales
+    const targetOposicion = profile?.targetOposicion?.replace(/_/g, '-') || null
 
     if (!targetOposicion) {
       // Devolver al menos el nombre del usuario
@@ -605,10 +606,14 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
         userName: profile?.fullName || null,
         slug: null,
         nombre: null,
+        tipoAcceso: null,
         examDate: null,
         inscriptionDeadline: null,
         plazas: null,
+        plazasLibres: null,
+        plazasPromocionInterna: null,
         temasCount: null,
+        bloquesCount: null,
         boePublicationDate: null,
         boeReference: null,
       }
@@ -619,11 +624,13 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       .select({
         slug: oposiciones.slug,
         nombre: oposiciones.nombre,
+        tipoAcceso: oposiciones.tipoAcceso,
         examDate: oposiciones.examDate,
         inscriptionDeadline: oposiciones.inscriptionDeadline,
         plazasLibres: oposiciones.plazasLibres,
         plazasPromocionInterna: oposiciones.plazasPromocionInterna,
         temasCount: oposiciones.temasCount,
+        bloquesCount: oposiciones.bloquesCount,
         boePublicationDate: oposiciones.boePublicationDate,
         boeReference: oposiciones.boeReference,
       })
@@ -638,10 +645,14 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
         userName: profile?.fullName || null,
         slug: targetOposicion,
         nombre: null,
+        tipoAcceso: null,
         examDate: null,
         inscriptionDeadline: null,
         plazas: null,
+        plazasLibres: null,
+        plazasPromocionInterna: null,
         temasCount: null,
+        bloquesCount: null,
         boePublicationDate: null,
         boeReference: null,
       }
@@ -651,10 +662,14 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       userName: profile?.fullName || null,
       slug: oposicion.slug,
       nombre: oposicion.nombre,
+      tipoAcceso: oposicion.tipoAcceso || 'libre',
       examDate: oposicion.examDate,
       inscriptionDeadline: oposicion.inscriptionDeadline,
-      plazas: (oposicion.plazasLibres || 0) + (oposicion.plazasPromocionInterna || 0),
+      plazas: (oposicion.plazasLibres || 0) + (oposicion.plazasPromocionInterna || 0), // Total
+      plazasLibres: oposicion.plazasLibres || 0,
+      plazasPromocionInterna: oposicion.plazasPromocionInterna || 0,
       temasCount: oposicion.temasCount,
+      bloquesCount: oposicion.bloquesCount,
       boePublicationDate: oposicion.boePublicationDate,
       boeReference: oposicion.boeReference,
     }

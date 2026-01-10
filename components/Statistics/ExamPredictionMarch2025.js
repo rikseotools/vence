@@ -45,6 +45,20 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
     return 'bg-red-500'
   }
 
+  // Convertir días en formato "X meses y Y días"
+  const formatDaysRemaining = (days) => {
+    if (days <= 0) return '0 días'
+    const months = Math.floor(days / 30)
+    const remainingDays = days % 30
+
+    if (months === 0) return `${days} días`
+    if (remainingDays === 0) return months === 1 ? '1 mes' : `${months} meses`
+
+    const monthsText = months === 1 ? '1 mes' : `${months} meses`
+    const daysText = remainingDays === 1 ? '1 día' : `${remainingDays} días`
+    return `${monthsText} y ${daysText}`
+  }
+
   // Datos de la oposición (si están disponibles)
   const oposicionInfo = examPrediction.oposicionInfo || {}
   const hasOposicionData = oposicionInfo.nombre && oposicionInfo.nombre !== 'tu oposición'
@@ -64,8 +78,30 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
           </p>
         </div>
         <div className="text-right">
-          <div className="text-sm text-gray-500">Días restantes</div>
-          <div className="text-2xl font-bold text-purple-600">{examPrediction.daysRemaining}</div>
+          {oposicionInfo.hasRealExamDate ? (
+            <>
+              <div className="text-sm text-gray-500">📅 Fecha examen</div>
+              <div className="text-lg font-bold text-purple-600">{oposicionInfo.examDateFormatted}</div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm text-gray-500">Días restantes</div>
+              <div className="text-2xl font-bold text-purple-600">{examPrediction.daysRemaining}</div>
+            </>
+          )}
+          {oposicionInfo.boeReference && (
+            <a
+              href={`https://www.boe.es/diario_boe/txt.php?id=${oposicionInfo.boeReference}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1"
+            >
+              📰 {oposicionInfo.boeReference}
+              <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          )}
         </div>
       </div>
 
@@ -81,10 +117,10 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
               </div>
             </div>
             <div className="text-right">
-              <div className={`text-4xl font-black ${examPrediction.daysRemaining < 90 ? 'animate-pulse' : ''}`}>
-                {examPrediction.daysRemaining}
+              <div className={`text-2xl font-black ${examPrediction.daysRemaining < 90 ? 'animate-pulse' : ''}`}>
+                {formatDaysRemaining(examPrediction.daysRemaining)}
               </div>
-              <div className="text-sm opacity-90">días restantes</div>
+              <div className="text-sm opacity-90">restantes</div>
             </div>
           </div>
           {examPrediction.daysRemaining < 90 && (
@@ -98,6 +134,13 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
       {/* Info de la Oposición */}
       {hasOposicionData && (
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 mb-6">
+          {/* Nombre de la oposición */}
+          <div className="text-center mb-3 pb-2 border-b border-indigo-200">
+            <div className="font-bold text-indigo-800">{oposicionInfo.nombre}</div>
+            {oposicionInfo.tipoAcceso && (
+              <div className="text-xs text-indigo-600 capitalize">{oposicionInfo.tipoAcceso === 'libre' ? 'Acceso libre' : oposicionInfo.tipoAcceso}</div>
+            )}
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             {!oposicionInfo.hasRealExamDate && (
               <div>
@@ -106,10 +149,12 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
                 <div className="text-xs text-indigo-500">(estimación)</div>
               </div>
             )}
-            {oposicionInfo.plazas && (
+            {(oposicionInfo.plazasLibres || oposicionInfo.plazas) && (
               <div>
-                <div className="text-xs text-indigo-600 font-medium">🎫 Plazas</div>
-                <div className="font-bold text-indigo-800">{oposicionInfo.plazas.toLocaleString()}</div>
+                <div className="text-xs text-indigo-600 font-medium">🎫 Plazas (acceso libre)</div>
+                <div className="font-bold text-indigo-800">
+                  {(oposicionInfo.plazasLibres || oposicionInfo.plazas).toLocaleString()}
+                </div>
               </div>
             )}
             {oposicionInfo.inscriptionDeadline && (
@@ -131,121 +176,117 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
         </div>
       )}
 
-      {/* Predicción Principal */}
-      <div className={`bg-gradient-to-r ${getReadinessBg(examPrediction.readinessScore)} border rounded-2xl p-6 mb-6 relative`}>
-        {/* Botón de información en esquina superior derecha */}
+      {/* Predicción Principal - COMPACTA */}
+      <div className={`bg-gradient-to-r ${getReadinessBg(examPrediction.readinessScore)} border rounded-xl p-4 mb-4 relative`}>
         <button
           onClick={() => setShowProgressInfo(true)}
-          className="absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 hover:bg-white hover:bg-opacity-50 rounded-full transition-colors"
-          title="¿Cómo se calcula el progreso?"
+          className="absolute top-2 right-2 p-1 text-gray-400 hover:text-gray-600"
+          title="¿Cómo se calcula?"
         >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
           </svg>
         </button>
 
-        <div className="text-center mb-6">
-          <div className={`text-6xl font-bold mb-2 ${getReadinessColor(examPrediction.readinessScore)}`}>
-            {examPrediction.readinessScore}%
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className={`text-4xl font-bold ${getReadinessColor(examPrediction.readinessScore)}`}>
+              {examPrediction.readinessScore}%
+            </div>
+            <div>
+              <div className="text-sm font-medium text-gray-700">Preparación estimada</div>
+              <div className={`text-xs px-2 py-0.5 rounded-full inline-block ${
+                examPrediction.readinessLevel === 'excellent' ? 'bg-green-100 text-green-700' :
+                examPrediction.readinessLevel === 'good' ? 'bg-blue-100 text-blue-700' :
+                examPrediction.readinessLevel === 'developing' ? 'bg-yellow-100 text-yellow-700' :
+                'bg-red-100 text-red-700'
+              }`}>
+                {examPrediction.readinessLevel === 'excellent' ? '🏆 Excelente' :
+                 examPrediction.readinessLevel === 'good' ? '👍 Buena' :
+                 examPrediction.readinessLevel === 'developing' ? '📈 En desarrollo' :
+                 '⚠️ Mejora necesaria'}
+              </div>
+            </div>
           </div>
-          <div className="text-lg font-semibold text-gray-700 mb-2">
-            Preparación Estimada para {oposicionInfo.hasRealExamDate ? oposicionInfo.examDateFormatted : 'el examen'}
-          </div>
-          <div className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${
-            examPrediction.readinessLevel === 'excellent' ? 'bg-green-100 text-green-700' :
-            examPrediction.readinessLevel === 'good' ? 'bg-blue-100 text-blue-700' :
-            examPrediction.readinessLevel === 'developing' ? 'bg-yellow-100 text-yellow-700' :
-            'bg-red-100 text-red-700'
-          }`}>
-            {examPrediction.readinessLevel === 'excellent' ? '🏆 Excelente preparación' :
-             examPrediction.readinessLevel === 'good' ? '👍 Buena preparación' :
-             examPrediction.readinessLevel === 'developing' ? '📈 En desarrollo' :
-             '⚠️ Necesita mejora'}
-          </div>
+
+          {/* Temas dominados integrado */}
+          {examPrediction.mastery && (
+            <div className="text-right">
+              <button
+                onClick={() => setShowMetricInfo('mastery')}
+                className="text-xs text-gray-500 hover:text-gray-700 cursor-pointer flex items-center justify-end gap-1"
+              >
+                🎓 Temas dominados
+                <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <div className="text-lg font-bold text-purple-700">
+                {examPrediction.mastery.masteredThemes}/{examPrediction.mastery.totalThemes}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Barra de progreso global */}
-        <div className="mb-4">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Progreso de preparación</span>
-            <span>{examPrediction.readinessScore}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
+        {/* Barra de progreso compacta */}
+        <div className="mt-3">
+          <div className="w-full bg-gray-200 rounded-full h-2">
             <div
-              className={`h-3 rounded-full transition-all duration-1000 ${getProgressColor(examPrediction.readinessScore)}`}
+              className={`h-2 rounded-full transition-all duration-1000 ${getProgressColor(examPrediction.readinessScore)}`}
               style={{ width: `${examPrediction.readinessScore}%` }}
             ></div>
           </div>
-
         </div>
 
-        <div className="text-center text-gray-700">
-          {examPrediction.mainMessage}
-        </div>
+        {examPrediction.mainMessage && (
+          <div className="mt-2 text-xs text-gray-600 text-center">
+            {examPrediction.mainMessage}
+          </div>
+        )}
       </div>
 
-      {/* Temas Dominados - Sección destacada */}
-      {examPrediction.mastery && (
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="text-4xl">🎓</div>
-              <div>
-                <div className="text-sm text-purple-600 font-medium">Temas dominados</div>
-                <div className="text-2xl font-bold text-purple-800">
-                  {examPrediction.mastery.masteredThemes}
-                  <span className="text-base text-purple-500 ml-1">/{examPrediction.mastery.totalThemes}</span>
-                  <span className="text-sm text-purple-400 ml-2">({examPrediction.mastery.percentage}%)</span>
-                </div>
-              </div>
-            </div>
-            <div className="text-right">
-              {/* Barra de progreso circular simplificada */}
-              <div className="relative w-16 h-16">
-                <svg className="w-16 h-16 transform -rotate-90">
-                  <circle cx="32" cy="32" r="28" stroke="#e9d5ff" strokeWidth="6" fill="none" />
-                  <circle
-                    cx="32" cy="32" r="28"
-                    stroke="#9333ea"
-                    strokeWidth="6"
-                    fill="none"
-                    strokeDasharray={`${examPrediction.mastery.percentage * 1.76} 176`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-bold text-purple-700">{examPrediction.mastery.percentage}%</span>
-                </div>
-              </div>
+      {/* Proyección de preparación - SIEMPRE visible */}
+      {examPrediction.mastery?.projectedMasteryDate === 'completado' ? (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-center">
+          <p className="text-sm text-green-700 font-bold">✅ ¡Felicidades! Has dominado todo el temario</p>
+        </div>
+      ) : examPrediction.mastery?.projectedMasteryDate ? (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4 text-center">
+          <p className="text-sm text-purple-700">
+            📅 A este ritmo, dominarás todo el temario para el{' '}
+            <span className="font-bold">{examPrediction.mastery.projectedMasteryDate}</span>
+          </p>
+        </div>
+      ) : examPrediction.projection?.estimatedStudyCompletion ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-center">
+          <p className="text-sm text-blue-700">
+            📚 A tu ritmo actual, estudiarás todo el temario para el{' '}
+            <span className="font-bold">{examPrediction.projection.estimatedStudyCompletion}</span>
+          </p>
+          <p className="text-xs text-blue-500 mt-1">
+            Basado en {examPrediction.calculations?.dailyQuestions || 0} preguntas/día
+          </p>
+        </div>
+      ) : (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-center">
+          <p className="text-sm text-gray-600">
+            📊 Empieza a estudiar para ver tu proyección de preparación
+          </p>
+        </div>
+      )}
+
+      {/* Info sobre temas estudiados vs dominados */}
+      {examPrediction.mastery && examPrediction.mastery.masteredThemes < examPrediction.coverage?.studiedThemes && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-4">
+          <div className="text-xs text-center space-y-1">
+            <span className="text-amber-700">
+              Tienes <strong>{examPrediction.coverage.studiedThemes}</strong> temas estudiados pero solo <strong>{examPrediction.mastery.masteredThemes}</strong> dominados
+            </span>
+            <div className="flex justify-center gap-4 mt-1">
+              <span className="text-blue-600">📚 Estudiado: ≥50% precisión</span>
+              <span className="text-purple-600">🎓 Dominado: ≥80% precisión</span>
             </div>
           </div>
-
-          {/* Predicción de dominio del temario */}
-          {examPrediction.mastery.projectedMasteryDate && examPrediction.mastery.projectedMasteryDate !== 'completado' && (
-            <div className="mt-3 bg-white bg-opacity-60 rounded-lg p-3 text-center">
-              <p className="text-sm text-purple-700">
-                📅 A este ritmo, <span className="font-bold">{oposicionInfo.userName || 'dominarás'}</span>
-                {oposicionInfo.userName ? ' dominará' : ''} todo el temario para el{' '}
-                <span className="font-bold text-purple-900">{examPrediction.mastery.projectedMasteryDate}</span>
-              </p>
-            </div>
-          )}
-
-          {examPrediction.mastery.projectedMasteryDate === 'completado' && (
-            <div className="mt-3 bg-green-100 rounded-lg p-3 text-center">
-              <p className="text-sm text-green-700 font-bold">
-                ✅ ¡Felicidades! Has dominado todo el temario
-              </p>
-            </div>
-          )}
-
-          {examPrediction.mastery.masteredThemes === 0 && (
-            <div className="mt-3 bg-yellow-50 rounded-lg p-3 text-center">
-              <p className="text-sm text-yellow-700">
-                💡 Un tema se considera dominado cuando alcanzas &ge;80% de precisión en él
-              </p>
-            </div>
-          )}
         </div>
       )}
 
@@ -337,40 +378,42 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
         </div>
       </div>
 
-      {/* Proyección Temporal */}
+      {/* Proyección Temporal - Usa fecha REAL del examen */}
       <div className="bg-gray-50 rounded-lg p-6 mb-6">
-        <h4 className="font-bold text-gray-800 mb-4">📊 Proyección Temporal</h4>
+        <h4 className="font-bold text-gray-800 mb-4">📊 Tu Preparación para el Examen</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          
+
           <div className="text-center">
             <div className="font-bold text-gray-700 text-lg">
-              {examPrediction.projection.estimatedReadinessDate}
+              {oposicionInfo.hasRealExamDate ? oposicionInfo.examDateFormatted : 'Por confirmar'}
             </div>
-            <div className="text-sm text-gray-600">Fecha estimada 85% preparación</div>
+            <div className="text-sm text-gray-600">Fecha del examen</div>
             <div className={`text-xs mt-1 ${
-              examPrediction.projection.onTrack ? 'text-green-600' : 'text-red-600'
+              examPrediction.projection.onTrack ? 'text-green-600' : 'text-amber-600'
             }`}>
-              {examPrediction.projection.onTrack ? '✅ A tiempo' : '⚠️ Retraso estimado'}
+              {examPrediction.projection.onTrack
+                ? '✅ Vas bien para estar preparado'
+                : '⚠️ Necesitas intensificar el estudio'}
             </div>
           </div>
 
           <div className="text-center">
             <div className="font-bold text-gray-700 text-lg">
-              {examPrediction.projection.questionsNeeded}
+              {examPrediction.projection.questionsNeeded.toLocaleString()}
             </div>
-            <div className="text-sm text-gray-600">Preguntas restantes estimadas</div>
+            <div className="text-sm text-gray-600">Preguntas para cubrir temario</div>
             <div className="text-xs text-gray-500 mt-1">
-              Basado en tu ritmo actual
+              ~{Math.ceil(examPrediction.projection.questionsNeeded / Math.max(1, examPrediction.daysRemaining))} preguntas/día
             </div>
           </div>
 
           <div className="text-center">
             <div className="font-bold text-gray-700 text-lg">
-              {examPrediction.projection.themesRemaining}
+              {examPrediction.projection.themesRemaining} de {examPrediction.coverage.totalThemes}
             </div>
             <div className="text-sm text-gray-600">Temas pendientes</div>
             <div className="text-xs text-gray-500 mt-1">
-              Para cobertura completa
+              {examPrediction.coverage.studiedThemes} ya estudiados
             </div>
           </div>
         </div>
@@ -567,6 +610,7 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
                   {showMetricInfo === 'accuracy' && '🎯 Precisión de Aciertos'}
                   {showMetricInfo === 'improvement' && '📈 Mejora Diaria'}
                   {showMetricInfo === 'time' && '⏰ Tiempo Recomendado'}
+                  {showMetricInfo === 'mastery' && '🎓 Temas Dominados'}
                 </h3>
                 <button
                   onClick={() => setShowMetricInfo(null)}
@@ -583,21 +627,31 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
                 {showMetricInfo === 'coverage' && (
                   <div>
                     <p className="text-gray-600 text-sm mb-4">
-                      Muestra qué porcentaje del temario oficial has estudiado y cuántos temas has completado.
+                      Indica cuántos temas del temario has trabajado con un mínimo de dedicación y acierto.
                     </p>
                     <div className="space-y-3">
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <h4 className="font-semibold text-gray-900 mb-2">📚 Tema ESTUDIADO vs 🎓 Tema DOMINADO</h4>
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-start space-x-2">
+                            <span className="text-blue-600 font-bold">📚 Estudiado:</span>
+                            <span className="text-gray-600">≥10 preguntas respondidas Y ≥50% de precisión</span>
+                          </div>
+                          <div className="flex items-start space-x-2">
+                            <span className="text-purple-600 font-bold">🎓 Dominado:</span>
+                            <span className="text-gray-600">≥10 preguntas respondidas Y ≥80% de precisión</span>
+                          </div>
+                        </div>
+                      </div>
                       <div>
-                        <h4 className="font-semibold text-gray-900 mb-1">¿Cómo se calcula?</h4>
+                        <h4 className="font-semibold text-gray-900 mb-1">¿Cómo se calcula el porcentaje?</h4>
                         <p className="text-gray-500 text-xs">
-                          (Temas estudiados / Total de temas) × 100
-                        </p>
-                        <p className="text-gray-500 text-xs mt-1">
-                          Un tema se considera "estudiado" cuando has respondido al menos 10 preguntas de ese tema.
+                          (Temas estudiados / Total de temas de tu oposición) × 100
                         </p>
                       </div>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-blue-800 text-sm">
-                          <strong>💡 Consejo:</strong> Intenta estudiar todos los temas del temario para tener una preparación completa. Un 80% de cobertura es un buen objetivo inicial.
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p className="text-amber-800 text-sm">
+                          <strong>💡 Objetivo:</strong> Primero estudia todos los temas (cobertura), luego domínalos (≥80% precisión en cada uno).
                         </p>
                       </div>
                     </div>
@@ -673,6 +727,35 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
                       <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                         <p className="text-orange-800 text-sm">
                           <strong>💡 Consejo:</strong> Es mejor estudiar consistentemente cada día que hacer sesiones muy largas esporádicas. 1-2 horas diarias son ideales.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {showMetricInfo === 'mastery' && (
+                  <div>
+                    <p className="text-gray-600 text-sm mb-4">
+                      Indica cuántos temas has dominado completamente del total de tu oposición.
+                    </p>
+                    <div className="space-y-3">
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <h4 className="font-semibold text-purple-900 mb-2">🎓 ¿Cuándo se considera un tema DOMINADO?</h4>
+                        <ul className="text-purple-700 text-sm space-y-1">
+                          <li>• Has respondido <strong>≥10 preguntas</strong> de ese tema</li>
+                          <li>• Tienes <strong>≥80% de precisión</strong> en esas preguntas</li>
+                        </ul>
+                      </div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <h4 className="font-semibold text-blue-900 mb-2">📚 ¿Y un tema ESTUDIADO?</h4>
+                        <ul className="text-blue-700 text-sm space-y-1">
+                          <li>• Has respondido <strong>≥10 preguntas</strong> de ese tema</li>
+                          <li>• Tienes <strong>≥50% de precisión</strong> en esas preguntas</li>
+                        </ul>
+                      </div>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-green-800 text-sm">
+                          <strong>💡 Objetivo:</strong> Primero estudia todos los temas (cobertura 100%), luego trabaja para dominarlos uno a uno (≥80% precisión en cada uno).
                         </p>
                       </div>
                     </div>
