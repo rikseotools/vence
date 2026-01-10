@@ -6,9 +6,18 @@ import * as Sentry from '@sentry/nextjs';
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Debug: ALWAYS log to see what's happening
+if (typeof window !== 'undefined') {
+  console.log('[Sentry] DSN check:', {
+    dsn: dsn ? dsn.substring(0, 30) + '...' : 'UNDEFINED',
+    hasDsn: !!dsn,
+    env: process.env.NODE_ENV
+  });
+}
+
 // Initialize Sentry on the client side
 if (typeof window !== 'undefined' && dsn) {
-  console.log('[Sentry] Client SDK initializing...', { hasDsn: !!dsn, env: process.env.NODE_ENV });
+  console.log('[Sentry] Client SDK initializing...');
 
   Sentry.init({
     dsn,
