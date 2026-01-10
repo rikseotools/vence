@@ -303,15 +303,29 @@ export default function HeaderES() {
 
   // Función para obtener el enlace a tests de la oposición objetivo
   const getTestsLink = () => {
-    // Usar el hook que SÍ funciona
-    const oposicionId = hookUserOposicion?.id
+    // hookUserOposicion puede ser un string JSON o un objeto
+    let oposicionData = hookUserOposicion
+    if (typeof hookUserOposicion === 'string') {
+      try {
+        oposicionData = JSON.parse(hookUserOposicion)
+      } catch (e) {
+        oposicionData = null
+      }
+    }
+    const oposicionId = oposicionData?.id || oposicionData?.slug
 
-    if (oposicionId === 'administrativo_estado') {
+    // Administrativo del Estado (C1)
+    if (oposicionId === 'administrativo-estado' || oposicionId === 'administrativo_estado') {
       return '/administrativo-estado/test'
     }
 
-    // Por defecto: auxiliar administrativo (o cualquier otra oposición no disponible)
-    return '/auxiliar-administrativo-estado/test'
+    // Auxiliar Administrativo del Estado (C2)
+    if (oposicionId === 'auxiliar-administrativo-estado' || oposicionId === 'auxiliar_administrativo_estado') {
+      return '/auxiliar-administrativo-estado/test'
+    }
+
+    // Si es otra oposición o no hay oposición definida, ir a home
+    return '/'
   }
 
   // Obtener color dinámico

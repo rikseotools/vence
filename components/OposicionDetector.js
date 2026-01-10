@@ -111,6 +111,7 @@ export default function OposicionDetector() {
             window.dispatchEvent(new CustomEvent('oposicionAssigned', {
               detail: { oposicion: detectedOposicion }
             }))
+            window.dispatchEvent(new CustomEvent('profileUpdated'))
           }
         }
 

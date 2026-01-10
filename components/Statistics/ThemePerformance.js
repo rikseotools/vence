@@ -21,16 +21,20 @@ const getScoreBg = (percentage) => {
 
 // Formatear número de tema para mostrar al usuario
 const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') => {
+  // Administrativo del Estado (C1) - Estructura según /administrativo-estado/test
+  if (oposicionSlug === 'administrativo-estado') {
+    if (num >= 1 && num <= 11) return `Bloque I - Tema ${num}`
+    if (num >= 201 && num <= 204) return `Bloque II - Tema ${num - 200}`
+    if (num >= 301 && num <= 307) return `Bloque III - Tema ${num - 300}`
+    if (num >= 401 && num <= 409) return `Bloque IV - Tema ${num - 400}`
+    if (num >= 501 && num <= 506) return `Bloque V - Tema ${num - 500}`
+    if (num >= 601 && num <= 608) return `Bloque VI - Tema ${num - 600}`
+    return `Tema ${num}`
+  }
+
+  // Auxiliar Administrativo del Estado (C2) - Estructura por defecto
   if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
   if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
-
-  // Bloques III-VI solo para Administrativo C1
-  if (oposicionSlug === 'administrativo-estado') {
-    if (num >= 201 && num <= 299) return `Bloque III - Tema ${num - 200}`
-    if (num >= 301 && num <= 399) return `Bloque IV - Tema ${num - 300}`
-    if (num >= 401 && num <= 499) return `Bloque V - Tema ${num - 400}`
-    if (num >= 501 && num <= 599) return `Bloque VI - Tema ${num - 500}`
-  }
 
   return `Tema ${num}`
 }
@@ -102,7 +106,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-xl font-bold text-gray-800">
-              📖 {themeData.title || formatThemeName(selectedTheme)} - Artículos
+              📖 {themeData.title || formatThemeName(selectedTheme, userOposicion?.slug)} - Artículos
             </h3>
             <p className="text-gray-600">Rendimiento detallado por artículo</p>
           </div>
@@ -144,7 +148,7 @@ export default function ThemePerformance({ themePerformance, articlePerformance,
         {/* Lista de artículos */}
         {themeArticles.length > 0 ? (
           <div className="space-y-3">
-            <h4 className="font-bold text-gray-800 mb-3">📋 Artículos del {formatThemeName(selectedTheme)}</h4>
+            <h4 className="font-bold text-gray-800 mb-3">📋 Artículos del {formatThemeName(selectedTheme, userOposicion?.slug)}</h4>
             {themeArticles.map((article, index) => {
               // Preparar datos para el modal del artículo
               const lawName = article.law || 'Ley desconocida'

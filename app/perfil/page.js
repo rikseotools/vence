@@ -690,6 +690,12 @@ function PerfilPageContent() {
       // Limpiar estado de cambios
       setHasChanges(false)
 
+      // Notificar a otros componentes del cambio de oposición
+      window.dispatchEvent(new CustomEvent('oposicionAssigned'))
+
+      // También notificar al AuthContext para que recargue el perfil
+      window.dispatchEvent(new CustomEvent('profileUpdated'))
+
       // Mostrar mensaje de éxito
       setMessage('✅ Perfil guardado correctamente')
       setTimeout(() => setMessage(''), 3000)

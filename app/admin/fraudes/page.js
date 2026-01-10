@@ -47,8 +47,11 @@ export default function FraudesPage() {
         .limit(50)
 
       if (alertsError) {
-        console.error('Error cargando alertas:', alertsError)
-        // La tabla puede no existir aún
+        // Solo loguear si es un error real (no tabla inexistente)
+        if (alertsError.code && alertsError.code !== '42P01') {
+          console.error('Error cargando alertas:', alertsError.message || alertsError)
+        }
+        // La tabla puede no existir aún - es esperado
         setAlerts([])
       } else {
         setAlerts(alertsData || [])

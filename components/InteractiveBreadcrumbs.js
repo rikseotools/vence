@@ -211,6 +211,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
           // Disparar evento para que otros componentes recarguen
           window.dispatchEvent(new CustomEvent('oposicionAssigned'))
+          window.dispatchEvent(new CustomEvent('profileUpdated'))
 
           // Navegar con query param para mostrar feedback en la nueva página
           router.push(`${option.path}?oposicionCambiada=${encodeURIComponent(oposicionName)}`)

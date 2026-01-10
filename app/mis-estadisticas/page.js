@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext' // ✅ USAR CONTEXTO GLOBAL
+import { useOposicion } from '@/contexts/OposicionContext' // ✅ Para obtener oposición del usuario
 
 // Importar todos los componentes
 import MainStats from '@/components/Statistics/MainStats'
@@ -41,18 +42,20 @@ const formatTime = (seconds) => {
 // ✅ Formatear número de tema interno a nombre legible por bloque
 // oposicionSlug determina qué bloques son válidos para esa oposición
 const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') => {
-  // Bloque I: Común a todas las oposiciones (1-16)
-  if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
-  // Bloque II: Común (101-112)
-  if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
-
-  // Bloques III-VI: Solo para Administrativo C1
+  // Administrativo del Estado (C1) - Estructura según /administrativo-estado/test
   if (oposicionSlug === 'administrativo-estado') {
-    if (num >= 201 && num <= 299) return `Bloque III - Tema ${num - 200}`
-    if (num >= 301 && num <= 399) return `Bloque IV - Tema ${num - 300}`
-    if (num >= 401 && num <= 499) return `Bloque V - Tema ${num - 400}`
-    if (num >= 501 && num <= 599) return `Bloque VI - Tema ${num - 500}`
+    if (num >= 1 && num <= 11) return `Bloque I - Tema ${num}`
+    if (num >= 201 && num <= 204) return `Bloque II - Tema ${num - 200}`
+    if (num >= 301 && num <= 307) return `Bloque III - Tema ${num - 300}`
+    if (num >= 401 && num <= 409) return `Bloque IV - Tema ${num - 400}`
+    if (num >= 501 && num <= 506) return `Bloque V - Tema ${num - 500}`
+    if (num >= 601 && num <= 608) return `Bloque VI - Tema ${num - 600}`
+    return `Tema ${num}`
   }
+
+  // Auxiliar Administrativo del Estado (C2) - Estructura por defecto
+  if (num >= 1 && num <= 16) return `Bloque I - Tema ${num}`
+  if (num >= 101 && num <= 112) return `Bloque II - Tema ${num - 100}`
 
   return `Tema ${num}`
 }
@@ -60,20 +63,20 @@ const formatThemeName = (num, oposicionSlug = 'auxiliar-administrativo-estado') 
 // ✅ Obtener los rangos de temas válidos según la oposición
 const getValidThemeRanges = (oposicionSlug) => {
   if (oposicionSlug === 'administrativo-estado') {
-    // Administrativo C1: 6 bloques
+    // Administrativo C1: 6 bloques (según /administrativo-estado/test)
     return [
-      { min: 1, max: 16 },      // Bloque I
-      { min: 101, max: 112 },   // Bloque II
-      { min: 201, max: 207 },   // Bloque III
-      { min: 301, max: 307 },   // Bloque IV
-      { min: 401, max: 409 },   // Bloque V
-      { min: 501, max: 506 },   // Bloque VI
+      { min: 1, max: 11 },      // Bloque I: 11 temas
+      { min: 201, max: 204 },   // Bloque II: 4 temas
+      { min: 301, max: 307 },   // Bloque III: 7 temas
+      { min: 401, max: 409 },   // Bloque IV: 9 temas
+      { min: 501, max: 506 },   // Bloque V: 6 temas
+      { min: 601, max: 608 },   // Bloque VI: 8 temas
     ]
   }
-  // Auxiliar Administrativo: 2 bloques (por defecto)
+  // Auxiliar Administrativo C2: 2 bloques (por defecto)
   return [
-    { min: 1, max: 16 },      // Bloque I
-    { min: 101, max: 112 },   // Bloque II
+    { min: 1, max: 16 },      // Bloque I: 16 temas
+    { min: 101, max: 112 },   // Bloque II: 12 temas
   ]
 }
 
@@ -246,7 +249,12 @@ const createEmptyStats = () => ({
 export default function EstadisticasRevolucionarias() {
   // ✅ USAR CONTEXTO GLOBAL EN LUGAR DE ESTADO LOCAL
   const { user, loading: authLoading, supabase } = useAuth()
-  
+  const { oposicionId } = useOposicion() // ✅ Para obtener oposición del usuario
+
+  // Obtener slug de oposición del usuario (formato con guiones para formatThemeName)
+  // oposicionId usa guiones bajos (administrativo_estado), formatThemeName espera guiones (administrativo-estado)
+  const userOposicionSlug = oposicionId?.replace(/_/g, '-') || 'auxiliar-administrativo-estado'
+
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState(createEmptyStats())
   const [error, setError] = useState(null)
@@ -392,18 +400,18 @@ export default function EstadisticasRevolucionarias() {
       }
 
       // 🧠 PROCESAMIENTO INTELIGENTE DE TODOS LOS DATOS
-      const processedStats = await processCompleteAnalytics(tests, responses, learningAnalytics, sessions, optimizedCounts, supabase, allTests)
-      
+      const processedStats = await processCompleteAnalytics(tests, responses, learningAnalytics, sessions, optimizedCounts, supabase, allTests, userOposicionSlug)
+
       return processedStats
 
     } catch (error) {
       console.error('❌ Error cargando análisis completo:', error)
       throw error
     }
-  }, [supabase])
+  }, [supabase, oposicionId])
 
   // 🧠 Procesamiento SOLO con datos reales - sin inventar nada
-  const processCompleteAnalytics = useCallback(async (tests, responses, learningAnalytics, sessions, optimizedCounts, supabaseClient, allTests) => {
+  const processCompleteAnalytics = useCallback(async (tests, responses, learningAnalytics, sessions, optimizedCounts, supabaseClient, allTests, oposicionSlug = 'auxiliar-administrativo-estado') => {
     console.log('🧠 Procesando análisis con datos 100% reales...')
 
     // ESTADÍSTICAS BÁSICAS - USAR CONTEOS OPTIMIZADOS para gráficos básicos
@@ -474,25 +482,22 @@ export default function EstadisticasRevolucionarias() {
     // ANÁLISIS POR TEMA - NUEVO
     const themePerformance = responses && responses.length > 0 ? (() => {
       const themeMap = {}
-      console.log('🎯 Analizando temas desde', responses.length, 'respuestas')
-      
+
       responses.forEach((response, index) => {
         const theme = response.tema_number ?? response.theme_number ?? 0
-        const themeTitle = response.theme_title || response.tema_title || (theme === 0 ? 'Tests aleatorios' : formatThemeName(theme))
-        
-        if (index < 10) { // Debug primeras 10 respuestas
-          console.log(`Response ${index}:`, {
-            tema_number: response.tema_number,
-            theme_number: response.theme_number,
-            is_correct: response.is_correct,
-            article_number: response.article_number
-          })
-        }
-        
+
         if (theme === null || theme === undefined) {
-          console.log('⚠️ Respuesta sin tema:', response)
           return // Skip si no hay tema
         }
+
+        // Generar título con formato "Bloque X - Tema Y: Nombre descriptivo"
+        const bloquePrefix = formatThemeName(theme, oposicionSlug)
+        const descriptiveName = response.theme_title || response.tema_title || ''
+        const themeTitle = theme === 0
+          ? 'Tests aleatorios'
+          : descriptiveName
+            ? `${bloquePrefix}: ${descriptiveName}`
+            : bloquePrefix
 
         if (!themeMap[theme]) {
           themeMap[theme] = {
@@ -510,12 +515,6 @@ export default function EstadisticasRevolucionarias() {
         themeMap[theme].totalTime += response.time_spent_seconds || 0
         if (response.article_number) themeMap[theme].articles.add(response.article_number)
       })
-      
-      console.log('📊 Temas encontrados:', Object.keys(themeMap).map(t => ({
-        tema: t,
-        total: themeMap[t].total,
-        correct: themeMap[t].correct
-      })))
 
       return Object.values(themeMap)
         .filter(theme => theme.total >= 1) // Incluir todos los temas con al menos 1 respuesta
@@ -1190,47 +1189,61 @@ export default function EstadisticasRevolucionarias() {
           // Tests recientes - mapear al formato esperado por RecentTests.js
           recentTests: (() => {
             const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
-            return apiStats.recentTests.map(t => ({
-            id: t.id,
-            title: t.title || (t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : 'Test Aleatorio'),
-            score: t.score,
-            total: t.totalQuestions, // RecentTests usa 'total'
-            totalQuestions: t.totalQuestions,
-            accuracy: t.accuracy,
-            percentage: t.accuracy, // RecentTests usa 'percentage'
-            date: new Date(t.completedAt).toLocaleDateString('es-ES', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              timeZone: 'Europe/Madrid'
-            }),
-            time: t.timeSeconds > 3600
-              ? `${Math.floor(t.timeSeconds / 3600)}h ${Math.floor((t.timeSeconds % 3600) / 60)}m`
-              : `${Math.floor(t.timeSeconds / 60)}m`,
-            avgTimePerQuestion: t.totalQuestions > 0 ? Math.round(t.timeSeconds / t.totalQuestions) : 0,
-            completed_at: t.completedAt,
-            formattedDate: new Date(t.completedAt).toLocaleDateString('es-ES'),
-            duration: t.timeSeconds,
-            formattedDuration: t.timeSeconds > 3600
-              ? `${Math.floor(t.timeSeconds / 3600)}h ${Math.floor((t.timeSeconds % 3600) / 60)}m`
-              : `${Math.floor(t.timeSeconds / 60)}m`
-          }))
+            return apiStats.recentTests.map(t => {
+              const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
+              // Combinar: "Bloque I - Tema 1: La Constitución..." o solo el prefijo si no hay título
+              const fullTitle = t.temaNumber
+                ? (t.title ? `${bloquePrefix}: ${t.title}` : bloquePrefix)
+                : (t.title || 'Test Aleatorio')
+              return {
+                id: t.id,
+                title: fullTitle,
+                score: t.score,
+                total: t.totalQuestions,
+                totalQuestions: t.totalQuestions,
+                accuracy: t.accuracy,
+                percentage: t.accuracy,
+                date: new Date(t.completedAt).toLocaleDateString('es-ES', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  timeZone: 'Europe/Madrid'
+                }),
+                time: t.timeSeconds > 3600
+                  ? `${Math.floor(t.timeSeconds / 3600)}h ${Math.floor((t.timeSeconds % 3600) / 60)}m`
+                  : `${Math.floor(t.timeSeconds / 60)}m`,
+                avgTimePerQuestion: t.totalQuestions > 0 ? Math.round(t.timeSeconds / t.totalQuestions) : 0,
+                completed_at: t.completedAt,
+                formattedDate: new Date(t.completedAt).toLocaleDateString('es-ES'),
+                duration: t.timeSeconds,
+                formattedDuration: t.timeSeconds > 3600
+                  ? `${Math.floor(t.timeSeconds / 3600)}h ${Math.floor((t.timeSeconds % 3600) / 60)}m`
+                  : `${Math.floor(t.timeSeconds / 60)}m`
+              }
+            })
           })(),
 
           // Rendimiento por tema - filtrado por oposición del usuario
           themePerformance: (() => {
             const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
-            return apiStats.themePerformance
+            const filtered = apiStats.themePerformance
               .filter(t => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
-              .map(t => ({
-                theme: t.temaNumber,
-                title: t.title || formatThemeName(t.temaNumber, oposicionSlug),
-                total: t.totalQuestions,
-                correct: t.correctAnswers,
-                accuracy: t.accuracy,
-                avgTime: t.averageTime,
-                status: t.accuracy >= 85 ? 'dominado' : t.accuracy >= 70 ? 'bien' : t.accuracy >= 50 ? 'regular' : 'débil'
-              }))
+            return filtered.map(t => {
+                const bloquePrefix = formatThemeName(t.temaNumber, oposicionSlug)
+                // Combinar: "Bloque I - Tema 1: La Constitución..."
+                const fullTitle = t.title
+                  ? `${bloquePrefix}: ${t.title}`
+                  : bloquePrefix
+                return {
+                  theme: t.temaNumber,
+                  title: fullTitle,
+                  total: t.totalQuestions,
+                  correct: t.correctAnswers,
+                  accuracy: t.accuracy,
+                  avgTime: t.averageTime,
+                  status: t.accuracy >= 85 ? 'dominado' : t.accuracy >= 70 ? 'bien' : t.accuracy >= 50 ? 'regular' : 'débil'
+                }
+              })
           })(),
 
           // Info de la oposición del usuario para mostrar en UI

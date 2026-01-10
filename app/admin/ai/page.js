@@ -453,6 +453,7 @@ export default function AdminAIPage() {
   const [loadingLogs, setLoadingLogs] = useState(false)
   const [logsPage, setLogsPage] = useState(1)
   const [feedbackFilter, setFeedbackFilter] = useState('all')
+  const [selectedLog, setSelectedLog] = useState(null)
 
   useEffect(() => {
     loadConfigs()
@@ -860,14 +861,15 @@ export default function AdminAIPage() {
                     logs.logs?.map(log => (
                       <div
                         key={log.id}
-                        className={`bg-white dark:bg-gray-800 rounded-xl p-4 border ${
+                        onClick={() => setSelectedLog(log)}
+                        className={`bg-white dark:bg-gray-800 rounded-xl p-4 border cursor-pointer hover:shadow-md transition-shadow ${
                           log.feedback === 'positive'
-                            ? 'border-green-200 dark:border-green-800'
+                            ? 'border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700'
                             : log.feedback === 'negative'
-                              ? 'border-red-200 dark:border-red-800'
+                              ? 'border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
                               : log.had_error
                                 ? 'border-red-300 dark:border-red-700'
-                                : 'border-gray-200 dark:border-gray-700'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                       >
                         <div className="flex justify-between items-start gap-4">
@@ -968,6 +970,134 @@ export default function AdminAIPage() {
           </div>
         )}
       </div>
+
+      {/* Modal para ver conversación completa */}
+      {selectedLog && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedLog(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                  <span className="text-lg">💬</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                    {selectedLog.user?.display_name || selectedLog.user?.email || 'Usuario anónimo'}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {new Date(selectedLog.created_at).toLocaleString('es-ES')}
+                    {selectedLog.response_time_ms && ` · ${selectedLog.response_time_ms}ms`}
+                    {selectedLog.tokens_used && ` · ${selectedLog.tokens_used} tokens`}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Contenido scrollable */}
+            <div className="overflow-y-auto max-h-[calc(90vh-140px)] p-4 space-y-4">
+              {/* Contexto si hay */}
+              {(selectedLog.suggestion_used || selectedLog.question_context_law || selectedLog.detected_laws?.length > 0) && (
+                <div className="flex flex-wrap gap-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                  {selectedLog.suggestion_used && (
+                    <span className="text-xs px-3 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-full">
+                      🎯 {selectedLog.suggestion_used}
+                    </span>
+                  )}
+                  {selectedLog.question_context_law && (
+                    <span className="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full">
+                      📖 Pregunta sobre: {selectedLog.question_context_law}
+                    </span>
+                  )}
+                  {selectedLog.detected_laws?.map((law, i) => (
+                    <span key={i} className="text-xs px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full">
+                      📚 {law}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Mensaje del usuario */}
+              <div className="flex justify-end">
+                <div className="max-w-[85%] bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-3">
+                  <p className="text-sm whitespace-pre-wrap">{selectedLog.message}</p>
+                </div>
+              </div>
+
+              {/* Respuesta del bot */}
+              <div className="flex justify-start">
+                <div className="max-w-[85%] bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl rounded-tl-sm px-4 py-3">
+                  {selectedLog.had_error ? (
+                    <div className="text-red-600 dark:text-red-400">
+                      <p className="font-medium mb-1">Error al generar respuesta</p>
+                      <p className="text-xs text-red-500 dark:text-red-400">{selectedLog.error_message}</p>
+                    </div>
+                  ) : (
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
+                      <p className="whitespace-pre-wrap">{selectedLog.full_response || selectedLog.response_preview}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sources si hay */}
+              {selectedLog.sources_used && selectedLog.sources_used.length > 0 && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <p className="font-medium mb-1">Fuentes consultadas:</p>
+                  <ul className="list-disc list-inside">
+                    {selectedLog.sources_used.map((source, i) => (
+                      <li key={i}>{source}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Footer con feedback */}
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Feedback:</span>
+                  {selectedLog.feedback === 'positive' && (
+                    <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                      <span className="text-xl">👍</span>
+                      <span className="text-sm">Positivo</span>
+                    </span>
+                  )}
+                  {selectedLog.feedback === 'negative' && (
+                    <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                      <span className="text-xl">👎</span>
+                      <span className="text-sm">Negativo</span>
+                    </span>
+                  )}
+                  {!selectedLog.feedback && (
+                    <span className="text-sm text-gray-400">Sin feedback</span>
+                  )}
+                </div>
+                {selectedLog.feedback_comment && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400 italic">
+                    "{selectedLog.feedback_comment}"
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

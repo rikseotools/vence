@@ -218,6 +218,7 @@ export function useUserOposicion() {
 
       // Disparar evento para otros componentes
       window.dispatchEvent(new CustomEvent('oposicionAssigned'))
+      window.dispatchEvent(new CustomEvent('profileUpdated'))
 
       return true
     } catch (error) {

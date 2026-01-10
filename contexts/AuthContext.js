@@ -438,9 +438,19 @@ export function AuthProvider({ children, initialUser = null }) {
 
     // Escuchar eventos de sincronización
     window.addEventListener('supabaseAuthSync', handleAuthSync)
-    
+
+    // Escuchar evento de perfil actualizado (desde página de perfil)
+    const handleProfileUpdated = () => {
+      console.log('🔄 Perfil actualizado, recargando...')
+      if (user?.id) {
+        loadUserProfile(user.id)
+      }
+    }
+    window.addEventListener('profileUpdated', handleProfileUpdated)
+
     return () => {
       window.removeEventListener('supabaseAuthSync', handleAuthSync)
+      window.removeEventListener('profileUpdated', handleProfileUpdated)
     }
   }, [user?.id, loadUserProfile])
 
