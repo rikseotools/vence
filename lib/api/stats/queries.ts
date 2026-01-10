@@ -91,6 +91,11 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
       console.warn('⚠️ Error cargando theme performance:', error)
     }
 
+    // 🔧 SIEMPRE usar getArticleStats para tener temaNumber (la función SQL no lo devuelve)
+    const articleStats = await getArticleStats(db, userId)
+    const weakArticles = articleStats.filter(a => a.accuracy < 60).slice(0, 20)
+    const strongArticles = articleStats.filter(a => a.accuracy >= 80).slice(0, 20)
+
     // Parsear y formatear la respuesta
     const response: GetUserStatsResponse = {
       success: true,
@@ -150,22 +155,8 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
           worstHours: getWorstHours(statsJson.timePatterns?.hourlyDistribution || []),
           averageSessionMinutes: statsJson.timePatterns?.averageSessionMinutes || 0,
         },
-        weakArticles: (statsJson.weakArticles || []).map((a: any) => ({
-          articleId: a.articleId,
-          articleNumber: a.articleNumber,
-          lawName: a.lawName,
-          totalQuestions: a.totalQuestions || 0,
-          correctAnswers: a.correctAnswers || 0,
-          accuracy: a.accuracy || 0,
-        })),
-        strongArticles: (statsJson.strongArticles || []).map((a: any) => ({
-          articleId: a.articleId,
-          articleNumber: a.articleNumber,
-          lawName: a.lawName,
-          totalQuestions: a.totalQuestions || 0,
-          correctAnswers: a.correctAnswers || 0,
-          accuracy: a.accuracy || 0,
-        })),
+        weakArticles, // Usando getArticleStats con temaNumber
+        strongArticles, // Usando getArticleStats con temaNumber
         userOposicion: await getUserOposicion(db, userId),
       },
       generatedAt: now.toISOString(),
@@ -544,6 +535,7 @@ async function getArticleStats(db: ReturnType<typeof getDb>, userId: string): Pr
       articleId: testQuestions.articleId,
       articleNumber: testQuestions.articleNumber,
       lawName: testQuestions.lawName,
+      temaNumber: testQuestions.temaNumber,
       totalQuestions: sql<number>`COUNT(*)::int`,
       correctAnswers: sql<number>`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::int`,
     })
@@ -553,14 +545,15 @@ async function getArticleStats(db: ReturnType<typeof getDb>, userId: string): Pr
       eq(tests.userId, userId),
       isNotNull(testQuestions.articleNumber)
     ))
-    .groupBy(testQuestions.articleId, testQuestions.articleNumber, testQuestions.lawName)
-    .having(sql`COUNT(*) >= 3`) // Mínimo 3 preguntas para ser significativo
+    .groupBy(testQuestions.articleId, testQuestions.articleNumber, testQuestions.lawName, testQuestions.temaNumber)
+    .having(sql`COUNT(*) >= 2`) // Mínimo 2 preguntas para ser significativo
     .orderBy(sql`SUM(CASE WHEN ${testQuestions.isCorrect} THEN 1 ELSE 0 END)::float / COUNT(*)`)
 
   return result.map(row => ({
     articleId: row.articleId,
     articleNumber: row.articleNumber,
     lawName: row.lawName,
+    temaNumber: row.temaNumber,
     totalQuestions: row.totalQuestions,
     correctAnswers: row.correctAnswers,
     accuracy: row.totalQuestions > 0 ? Math.round((row.correctAnswers / row.totalQuestions) * 100) : 0,
@@ -586,11 +579,12 @@ async function getStreakData(db: ReturnType<typeof getDb>, userId: string) {
 
 async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): Promise<UserOposicion | null> {
   try {
-    // Obtener el perfil del usuario con su nombre y oposición objetivo
+    // Obtener el perfil del usuario con su nombre, oposición objetivo y fecha de registro
     const profileResult = await db
       .select({
         fullName: userProfiles.fullName,
         targetOposicion: userProfiles.targetOposicion,
+        createdAt: userProfiles.createdAt,
       })
       .from(userProfiles)
       .where(eq(userProfiles.id, userId))
@@ -600,8 +594,13 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
     // Normalizar slug: convertir guiones bajos a guiones normales
     const targetOposicion = profile?.targetOposicion?.replace(/_/g, '-') || null
 
+    // Calcular días desde registro (para predicciones de estudio)
+    const daysSinceJoin = profile?.createdAt
+      ? Math.max(1, Math.ceil((Date.now() - new Date(profile.createdAt).getTime()) / (1000 * 60 * 60 * 24)))
+      : 30 // Default 30 días si no hay fecha
+
     if (!targetOposicion) {
-      // Devolver al menos el nombre del usuario
+      // Devolver al menos el nombre del usuario y días desde registro
       return {
         userName: profile?.fullName || null,
         slug: null,
@@ -616,6 +615,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
         bloquesCount: null,
         boePublicationDate: null,
         boeReference: null,
+        daysSinceJoin,
       }
     }
 
@@ -655,6 +655,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
         bloquesCount: null,
         boePublicationDate: null,
         boeReference: null,
+        daysSinceJoin,
       }
     }
 
@@ -672,6 +673,7 @@ async function getUserOposicion(db: ReturnType<typeof getDb>, userId: string): P
       bloquesCount: oposicion.bloquesCount,
       boePublicationDate: oposicion.boePublicationDate,
       boeReference: oposicion.boeReference,
+      daysSinceJoin,
     }
   } catch (error) {
     console.error('Error obteniendo oposición del usuario:', error)

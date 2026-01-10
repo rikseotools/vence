@@ -87,6 +87,7 @@ export const articlePerformanceSchema = z.object({
   articleId: z.string().uuid().nullable(),
   articleNumber: z.string().nullable(),
   lawName: z.string().nullable(),
+  temaNumber: z.number().nullable(), // Para filtrar por tema
   totalQuestions: z.number(),
   correctAnswers: z.number(),
   accuracy: z.number(),
@@ -110,6 +111,8 @@ export const userOposicionSchema = z.object({
   // Datos del BOE
   boePublicationDate: z.string().nullable(),
   boeReference: z.string().nullable(),
+  // Datos para predicciones
+  daysSinceJoin: z.number().nullable(), // Días desde registro (para calcular ritmo de estudio)
 })
 
 // Response completo

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 
 export default function ExamPredictionMarch2025({ examPrediction }) {
-  const [showCalculationDetails, setShowCalculationDetails] = useState(false)
   const [showProgressInfo, setShowProgressInfo] = useState(false)
   const [showMetricInfo, setShowMetricInfo] = useState(null)
 
@@ -260,11 +259,23 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
       ) : examPrediction.projection?.estimatedStudyCompletion ? (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-center">
           <p className="text-sm text-blue-700">
-            📚 A tu ritmo actual, estudiarás todo el temario para el{' '}
+            📚 A tu ritmo actual, dominarás todo el temario para el{' '}
             <span className="font-bold">{examPrediction.projection.estimatedStudyCompletion}</span>
           </p>
           <p className="text-xs text-blue-500 mt-1">
-            Basado en {examPrediction.calculations?.dailyQuestions || 0} preguntas/día
+            Basado en {examPrediction.calculations?.temasPoSemana || examPrediction.projection?.temasPoSemana || 0} temas/semana
+          </p>
+        </div>
+      ) : examPrediction.projection?.noMasteredYet ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-center">
+          <p className="text-sm text-amber-700">
+            💡 Domina tu primer tema (≥80% precisión) para ver tu proyección
+          </p>
+        </div>
+      ) : examPrediction.projection?.allMastered ? (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-center">
+          <p className="text-sm text-green-700">
+            ✅ ¡Felicidades! Has dominado todo el temario
           </p>
         </div>
       ) : (
@@ -377,144 +388,6 @@ export default function ExamPredictionMarch2025({ examPrediction }) {
           </div>
         </div>
       </div>
-
-      {/* Proyección Temporal - Usa fecha REAL del examen */}
-      <div className="bg-gray-50 rounded-lg p-6 mb-6">
-        <h4 className="font-bold text-gray-800 mb-4">📊 Tu Preparación para el Examen</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-          <div className="text-center">
-            <div className="font-bold text-gray-700 text-lg">
-              {oposicionInfo.hasRealExamDate ? oposicionInfo.examDateFormatted : 'Por confirmar'}
-            </div>
-            <div className="text-sm text-gray-600">Fecha del examen</div>
-            <div className={`text-xs mt-1 ${
-              examPrediction.projection.onTrack ? 'text-green-600' : 'text-amber-600'
-            }`}>
-              {examPrediction.projection.onTrack
-                ? '✅ Vas bien para estar preparado'
-                : '⚠️ Necesitas intensificar el estudio'}
-            </div>
-          </div>
-
-          <div className="text-center">
-            <div className="font-bold text-gray-700 text-lg">
-              {examPrediction.projection.questionsNeeded.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-600">Preguntas para cubrir temario</div>
-            <div className="text-xs text-gray-500 mt-1">
-              ~{Math.ceil(examPrediction.projection.questionsNeeded / Math.max(1, examPrediction.daysRemaining))} preguntas/día
-            </div>
-          </div>
-
-          <div className="text-center">
-            <div className="font-bold text-gray-700 text-lg">
-              {examPrediction.projection.themesRemaining} de {examPrediction.coverage.totalThemes}
-            </div>
-            <div className="text-sm text-gray-600">Temas pendientes</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {examPrediction.coverage.studiedThemes} ya estudiados
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Cálculos y Metodología */}
-      <div className="border border-gray-200 rounded-lg">
-        <button
-          onClick={() => setShowCalculationDetails(!showCalculationDetails)}
-          className="w-full p-4 text-left flex items-center justify-between hover:bg-gray-50"
-        >
-          <div className="flex items-center space-x-3">
-            <span className="text-xl">🔬</span>
-            <div>
-              <div className="font-bold text-gray-800">Metodología de Cálculo</div>
-              <div className="text-sm text-gray-600">Ver cómo se calculó esta predicción</div>
-            </div>
-          </div>
-          <div className="text-gray-400">
-            {showCalculationDetails ? '▼' : '▶'}
-          </div>
-        </button>
-
-        {showCalculationDetails && (
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
-            <h5 className="font-bold text-gray-800 mb-3">📋 Datos Empleados en el Cálculo:</h5>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <div className="bg-white rounded p-3">
-                <h6 className="font-semibold text-gray-700 mb-2">📊 Datos Base</h6>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• Tests completados: <strong>{examPrediction.calculations.testsCompleted}</strong></li>
-                  <li>• Preguntas respondidas: <strong>{examPrediction.calculations.totalQuestions}</strong></li>
-                  <li>• Días de actividad: <strong>{examPrediction.calculations.activeDays}</strong></li>
-                  <li>• Tiempo total estudio: <strong>{examPrediction.calculations.totalStudyTime}</strong></li>
-                </ul>
-              </div>
-
-              <div className="bg-white rounded p-3">
-                <h6 className="font-semibold text-gray-700 mb-2">🎯 Tendencias</h6>
-                <ul className="text-sm text-gray-600 space-y-1">
-                  <li>• Mejora promedio: <strong>+{examPrediction.calculations.averageImprovement}%/día</strong></li>
-                  <li>• Ritmo de estudio: <strong>{examPrediction.calculations.dailyQuestions} preguntas/día</strong></li>
-                  <li>• Consistencia: <strong>{examPrediction.calculations.consistency}%</strong></li>
-                  <li>• Velocidad aprendizaje: <strong>{examPrediction.calculations.learningSpeed}</strong></li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-4">
-              <h6 className="font-semibold text-blue-800 mb-2">🧮 Fórmula de Predicción</h6>
-              <div className="text-sm text-blue-700">
-                <strong>Preparación Estimada = </strong>
-                <span className="block mt-1 ml-4">
-                  (Precisión Actual × 0.4) + <br/>
-                  (Cobertura Temario × 0.3) + <br/>
-                  (Consistencia × 0.2) + <br/>
-                  (Velocidad Aprendizaje × 0.1)
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-              <h6 className="font-semibold text-yellow-800 mb-2">⚠️ Consideraciones</h6>
-              <ul className="text-sm text-yellow-700 space-y-1">
-                <li>• Esta predicción se basa en tu progreso histórico</li>
-                <li>• Los resultados pueden variar según tu dedicación futura</li>
-                <li>• Se recomienda mantener un ritmo constante de estudio</li>
-                <li>• La fecha del examen es una estimación (julio 2026)</li>
-              </ul>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Recomendaciones Específicas */}
-      {examPrediction.specificRecommendations && examPrediction.specificRecommendations.length > 0 && (
-        <div className="mt-6">
-          <h4 className="font-bold text-gray-800 mb-4">💡 Recomendaciones Específicas</h4>
-          <div className="space-y-3">
-            {examPrediction.specificRecommendations.map((rec, index) => (
-              <div key={index} className={`p-3 rounded-lg border ${
-                rec.priority === 'high' ? 'bg-red-50 border-red-200' :
-                rec.priority === 'medium' ? 'bg-yellow-50 border-yellow-200' :
-                'bg-blue-50 border-blue-200'
-              }`}>
-                <div className="flex items-start space-x-3">
-                  <span className="text-xl">{rec.icon}</span>
-                  <div>
-                    <div className="font-semibold text-gray-800">{rec.title}</div>
-                    <div className="text-sm text-gray-600">{rec.description}</div>
-                    <div className="text-sm font-medium text-gray-700 mt-1">
-                      👉 {rec.action}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Modal de información del progreso */}
       {showProgressInfo && (

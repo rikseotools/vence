@@ -10,19 +10,12 @@ import MainStats from '@/components/Statistics/MainStats'
 import WeeklyProgress from '@/components/Statistics/WeeklyProgress'
 import RecentTests from '@/components/Statistics/RecentTests'
 import Achievements from '@/components/Statistics/Achievements'
-import LearningStyle from '@/components/Statistics/LearningStyle'
-import ConfidenceAnalysis from '@/components/Statistics/ConfidenceAnalysis'
-import KnowledgeRetention from '@/components/Statistics/KnowledgeRetention'
-import LearningEfficiency from '@/components/Statistics/LearningEfficiency'
 import DifficultyBreakdown from '@/components/Statistics/DifficultyBreakdown'
 import ThemePerformance from '@/components/Statistics/ThemePerformance'
 import ArticlePerformance from '@/components/Statistics/ArticlePerformance'
 import TimePatterns from '@/components/Statistics/TimePatterns'
-import SessionAnalytics from '@/components/Statistics/SessionAnalytics'
 import ExamReadiness from '@/components/Statistics/ExamReadiness'
 import ExamPredictionMarch2025 from '@/components/Statistics/ExamPredictionMarch2025'
-import AIRecommendations from '@/components/Statistics/AIRecommendations'
-import AIImpactAnalysis from '@/components/Statistics/AIImpactAnalysis'
 import PersonalDifficultyInsights from '@/components/Statistics/PersonalDifficultyInsights'
 import DetailedCharts from '@/components/Statistics/DetailedCharts'
 
@@ -318,33 +311,54 @@ export default function EstadisticasRevolucionarias() {
 
       if (statsError) {
         console.warn('RPC no disponible, usando método tradicional con límite:', statsError)
-        // Fallback: cargar datos limitados si la RPC no existe
-        const { data: responses, error: responsesError } = await supabase
-          .from('test_questions')
-          .select(`
-            *,
-            tests!inner(user_id)
-          `)
-          .eq('tests.user_id', userId)
+        // Fallback: cargar datos en 2 pasos (evita timeout del join)
+        const { data: fallbackTests } = await supabase
+          .from('tests')
+          .select('id')
+          .eq('user_id', userId)
           .order('created_at', { ascending: false })
-          .limit(5000)
+          .limit(300)
 
-        if (responsesError) throw responsesError
+        let responses = []
+        if (fallbackTests && fallbackTests.length > 0) {
+          const testIds = fallbackTests.map(t => t.id)
+          const { data: responsesData, error: responsesError } = await supabase
+            .from('test_questions')
+            .select('*')
+            .in('test_id', testIds)
+            .limit(5000)
+
+          if (responsesError) throw responsesError
+          responses = responsesData || []
+        }
         return { responses, completeStats: null }
       }
 
-      // Para el detalle visual, cargar solo los últimos 1000 registros
-      const { data: responses, error: responsesError } = await supabase
-        .from('test_questions')
-        .select(`
-          *,
-          tests!inner(user_id)
-        `)
-        .eq('tests.user_id', userId)
+      // Para el detalle visual - optimizado en 2 pasos para evitar timeout
+      // Paso 1: obtener IDs de tests del usuario (rápido)
+      const { data: userTests, error: userTestsError } = await supabase
+        .from('tests')
+        .select('id')
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .limit(1000) // Solo para visualización, las estadísticas vienen de la RPC
+        .limit(200) // Últimos 200 tests
 
-      if (responsesError) throw responsesError
+      if (userTestsError) throw userTestsError
+
+      // Paso 2: obtener respuestas de esos tests (sin join, más rápido)
+      let responses = []
+      if (userTests && userTests.length > 0) {
+        const testIds = userTests.map(t => t.id)
+        const { data: responsesData, error: responsesError } = await supabase
+          .from('test_questions')
+          .select('*')
+          .in('test_id', testIds)
+          .order('created_at', { ascending: false })
+          .limit(2000) // Más registros porque es más eficiente sin join
+
+        if (responsesError) throw responsesError
+        responses = responsesData || []
+      }
 
       // 3. ✅ ANÁLISIS DE APRENDIZAJE desde user_learning_analytics  
       const { data: learningAnalytics, error: learningError } = await supabase
@@ -1278,10 +1292,11 @@ export default function EstadisticasRevolucionarias() {
             hourlyStats: apiStats.timePatterns.hourlyDistribution, // TimePatterns usa 'hourlyStats'
           } : null,
 
-          // Artículos débiles y fuertes
+          // Artículos débiles y fuertes - incluir theme para filtrado por tema
           articlePerformance: [...apiStats.weakArticles, ...apiStats.strongArticles].map(a => ({
             article: `Art. ${a.articleNumber}`,
             law: a.lawName,
+            theme: a.temaNumber, // Necesario para getArticlesForTheme
             total: a.totalQuestions,
             correct: a.correctAnswers,
             accuracy: a.accuracy,
@@ -1501,60 +1516,91 @@ export default function EstadisticasRevolucionarias() {
               timeEstimate: {
                 dailyHours: Math.max(1, Math.min(4, Math.ceil((totalThemes - studiedThemes) * 30 / Math.max(1, daysRemaining) / 20))) || 2
               },
-              projection: {
-                // Calcular fecha realista basada en temas restantes y ritmo
-                estimatedReadinessDate: (() => {
-                  const themesLeft = totalThemes - studiedThemes
-                  const avgQuestionsPerTheme = apiStats.main.totalQuestions > 0 && studiedThemes > 0
-                    ? Math.round(apiStats.main.totalQuestions / studiedThemes)
-                    : 30
-                  const questionsLeft = themesLeft * avgQuestionsPerTheme
-                  const dailyQ = Math.max(10, Math.round(apiStats.main.totalQuestions / Math.max(1, apiStats.weeklyProgress.length)))
-                  const daysNeeded = Math.ceil(questionsLeft / dailyQ)
-                  const projectedDate = new Date(today.getTime() + daysNeeded * 24 * 60 * 60 * 1000)
-                  return projectedDate.toLocaleDateString('es-ES', {
+              projection: (() => {
+                // 🔧 CÁLCULO IGUAL QUE EN UserProfileModal:
+                // Ritmo = temas dominados / días en Vence * 7 = temas por semana
+                // Semanas necesarias = temas pendientes / temas por semana
+
+                const themesLeftToMaster = totalThemes - masteredThemes
+                const diasEnVence = oposicion?.daysSinceJoin || 30 // Default 30 días
+
+                // Si no hay temas dominados, no podemos calcular proyección
+                if (masteredThemes === 0) {
+                  return {
+                    estimatedReadinessDate: null,
+                    onTrack: false,
+                    estimatedStudyCompletion: null,
+                    questionsNeeded: themesLeftToMaster * 50, // Estimación
+                    themesRemaining: themesLeftToMaster,
+                    noMasteredYet: true
+                  }
+                }
+
+                // Si ya dominó todos los temas
+                if (themesLeftToMaster <= 0) {
+                  return {
+                    estimatedReadinessDate: null,
+                    onTrack: true,
+                    estimatedStudyCompletion: null,
+                    questionsNeeded: 0,
+                    themesRemaining: 0,
+                    allMastered: true
+                  }
+                }
+
+                // Calcular ritmo: temas dominados por semana
+                const temasPoSemana = (masteredThemes / diasEnVence) * 7
+                const semanasNecesarias = Math.ceil(themesLeftToMaster / temasPoSemana)
+
+                // Calcular fecha proyectada
+                const projectedDate = new Date(today.getTime() + semanasNecesarias * 7 * 24 * 60 * 60 * 1000)
+
+                // Solo mostrar si es razonable (menos de 2 años)
+                const isReasonable = semanasNecesarias < 104
+
+                return {
+                  estimatedReadinessDate: isReasonable ? projectedDate.toLocaleDateString('es-ES', {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric'
-                  })
-                })(),
-                onTrack: daysRemaining > 0 && readinessScore >= 50,
-                // Fecha estimada de cobertura completa (basada en ritmo de estudio)
-                estimatedStudyCompletion: (() => {
-                  const themesLeft = totalThemes - studiedThemes
-                  if (themesLeft <= 0) return null
-                  const avgQuestionsPerTheme = apiStats.main.totalQuestions > 0 && studiedThemes > 0
-                    ? Math.round(apiStats.main.totalQuestions / studiedThemes)
-                    : 30
-                  const questionsLeft = themesLeft * avgQuestionsPerTheme
-                  const dailyQ = Math.max(10, Math.round(apiStats.main.totalQuestions / Math.max(1, apiStats.weeklyProgress.length)))
-                  const daysNeeded = Math.ceil(questionsLeft / dailyQ)
-                  const projectedDate = new Date(today.getTime() + daysNeeded * 24 * 60 * 60 * 1000)
-                  return projectedDate.toLocaleDateString('es-ES', {
+                  }) : null,
+                  onTrack: daysRemaining > 0 && readinessScore >= 50,
+                  estimatedStudyCompletion: isReasonable ? projectedDate.toLocaleDateString('es-ES', {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric'
-                  })
-                })(),
-                questionsNeeded: (() => {
-                  const themesLeft = totalThemes - studiedThemes
-                  const avgQuestionsPerTheme = apiStats.main.totalQuestions > 0 && studiedThemes > 0
-                    ? Math.round(apiStats.main.totalQuestions / studiedThemes)
-                    : 30
-                  return Math.max(0, themesLeft * avgQuestionsPerTheme)
-                })(),
-                themesRemaining: Math.max(0, totalThemes - studiedThemes)
-              },
-              calculations: {
-                testsCompleted: apiStats.main.totalTests,
-                totalQuestions: apiStats.main.totalQuestions,
-                activeDays: Math.min(30, apiStats.weeklyProgress.length),
-                totalStudyTime: `${Math.round(apiStats.main.totalStudyTimeSeconds / 3600)}h`,
-                averageImprovement: 0.1,
-                dailyQuestions: Math.round(apiStats.main.totalQuestions / Math.max(1, apiStats.weeklyProgress.length)),
-                consistency: Math.round((apiStats.weeklyProgress.length / 7) * 100),
-                learningSpeed: '50'
-              },
+                  }) : null,
+                  questionsNeeded: themesLeftToMaster * 50, // Estimación
+                  themesRemaining: themesLeftToMaster,
+                  temasPoSemana: Math.round(temasPoSemana * 10) / 10 // Para mostrar el ritmo
+                }
+              })(),
+              calculations: (() => {
+                // 🔧 Métricas basadas en ritmo de dominio (igual que UserProfileModal)
+                const diasEnVence = oposicion?.daysSinceJoin || 30
+                const temasPoSemana = diasEnVence > 0 && masteredThemes > 0
+                  ? Math.round((masteredThemes / diasEnVence) * 7 * 10) / 10
+                  : 0
+
+                // También mostrar preguntas recientes
+                const weeklyQuestions = apiStats.weeklyProgress.reduce((sum, day) => sum + day.questions, 0)
+                const activeDaysInWeek = apiStats.weeklyProgress.filter(d => d.questions > 0).length
+                const dailyQ = activeDaysInWeek > 0
+                  ? Math.round(weeklyQuestions / activeDaysInWeek)
+                  : 0
+
+                return {
+                  testsCompleted: apiStats.main.totalTests,
+                  totalQuestions: apiStats.main.totalQuestions,
+                  activeDays: diasEnVence, // Días desde registro
+                  totalStudyTime: `${Math.round(apiStats.main.totalStudyTimeSeconds / 3600)}h`,
+                  averageImprovement: 0.1,
+                  dailyQuestions: dailyQ, // Preguntas/día (última semana)
+                  temasPoSemana, // Ritmo de dominio de temas
+                  consistency: Math.round((activeDaysInWeek / 7) * 100),
+                  learningSpeed: '50'
+                }
+              })(),
               specificRecommendations: [
                 ...(coveragePercentage < 80 ? [{
                   priority: 'high',
@@ -2060,12 +2106,7 @@ export default function EstadisticasRevolucionarias() {
 
           {activeTab === 'ai_analysis' && (
             <div className="space-y-6">
-              <AIImpactAnalysis aiImpactData={stats.aiImpactData} />
               <PersonalDifficultyInsights />
-              <LearningStyle learningStyle={stats.learningStyle} />
-              <ConfidenceAnalysis confidenceAnalysis={stats.confidenceAnalysis} />
-              <KnowledgeRetention knowledgeRetention={stats.knowledgeRetention} />
-              <LearningEfficiency learningEfficiency={stats.learningEfficiency} />
             </div>
           )}
 
@@ -2078,14 +2119,12 @@ export default function EstadisticasRevolucionarias() {
                 userOposicion={stats.userOposicion} 
               />
               <TimePatterns timePatterns={stats.timePatterns} />
-              <SessionAnalytics sessionAnalytics={stats.sessionAnalytics} />
             </div>
           )}
 
           {activeTab === 'predictions' && (
             <div className="space-y-6">
               <ExamPredictionMarch2025 examPrediction={stats.examPredictionMarch2025} />
-              <AIRecommendations recommendations={stats.recommendations} />
             </div>
           )}
         </div>

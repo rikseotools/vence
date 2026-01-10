@@ -78,11 +78,6 @@ export default function MainStats({ stats }) {
             </div>
           </div>
           
-          <div className="text-right">
-            <div className="text-xs text-gray-500">
-              📅 {stats.currentStreak === 0 ? 'Sin actividad reciente' : 'Mantén la racha activa'}
-            </div>
-          </div>
         </div>
       </div>
     </div>

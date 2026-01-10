@@ -13,13 +13,16 @@ export default function PersonalDifficultyInsights() {
   const [masteredQuestions, setMasteredQuestions] = useState([])
   const [recommendations, setRecommendations] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('struggling')
   const [showInfo, setShowInfo] = useState(false)
 
   useEffect(() => {
     const initializeData = async () => {
       if (user) {
-        await loadAllData(user.id)
+        // Cargar métricas primero (rápido) para mostrar algo inmediatamente
+        await loadMetrics(user.id)
+        // Luego cargar el resto en segundo plano (sin bloquear)
+        loadSecondaryData(user.id)
       }
       setIsLoading(false)
     }
@@ -27,24 +30,35 @@ export default function PersonalDifficultyInsights() {
     initializeData()
   }, [user])
 
-  const loadAllData = async (userId) => {
+  // Cargar solo métricas (rápido ~300ms)
+  const loadMetrics = async (userId) => {
     try {
-      const [metricsData, trendsData, strugglingData, masteredData, recommendationsData] = await Promise.all([
-        adaptiveDifficultyService.getUserDifficultyMetrics(userId),
-        adaptiveDifficultyService.getUserProgressTrends(userId),
-        adaptiveDifficultyService.getStrugglingQuestions(userId, 5),
-        adaptiveDifficultyService.getMasteredQuestions(userId, 5),
-        adaptiveDifficultyService.getPersonalizedRecommendations(userId)
-      ])
-
+      const metricsData = await adaptiveDifficultyService.getUserDifficultyMetrics(userId)
       setMetrics(metricsData)
-      setTrends(trendsData)
-      setStrugglingQuestions(strugglingData)
-      setMasteredQuestions(masteredData)
-      setRecommendations(recommendationsData)
     } catch (error) {
-      console.error('Error loading personal difficulty data:', error)
+      console.error('Error loading metrics:', error)
+      setMetrics({ total_questions_attempted: 0 }) // Fallback
     }
+  }
+
+  // Cargar datos secundarios en paralelo (puede ser lento)
+  const loadSecondaryData = async (userId) => {
+    // Cargar cada uno independientemente para no bloquear si uno falla
+    adaptiveDifficultyService.getUserProgressTrends(userId)
+      .then(data => setTrends(data))
+      .catch(err => console.warn('Trends timeout/error:', err.message))
+
+    adaptiveDifficultyService.getStrugglingQuestions(userId, 5)
+      .then(data => setStrugglingQuestions(data))
+      .catch(err => console.warn('Struggling questions timeout/error:', err.message))
+
+    adaptiveDifficultyService.getMasteredQuestions(userId, 5)
+      .then(data => setMasteredQuestions(data))
+      .catch(err => console.warn('Mastered questions timeout/error:', err.message))
+
+    adaptiveDifficultyService.getPersonalizedRecommendations(userId)
+      .then(data => setRecommendations(data))
+      .catch(err => console.warn('Recommendations timeout/error:', err.message))
   }
 
   if (isLoading) {
@@ -72,7 +86,7 @@ export default function PersonalDifficultyInsights() {
   if (metrics.total_questions_attempted === 0) {
     return (
       <div className="bg-blue-50 rounded-xl p-6 text-center border border-blue-200">
-        <h3 className="text-lg font-bold text-blue-800 mb-2">✨ Dificultad Personal IA</h3>
+        <h3 className="text-lg font-bold text-blue-800 mb-2">🎯 Análisis de tu Rendimiento</h3>
         <p className="text-blue-700 mb-3">Responde preguntas para activar tu análisis personalizado</p>
         
         <button 
@@ -122,7 +136,7 @@ export default function PersonalDifficultyInsights() {
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-gray-800">✨ Dificultad Personal IA</h3>
+        <h3 className="text-xl font-bold text-gray-800">🎯 Análisis de tu Rendimiento</h3>
         <button 
           onClick={() => setShowInfo(!showInfo)}
           className="text-blue-600 hover:text-blue-800 transition-colors"
@@ -140,8 +154,7 @@ export default function PersonalDifficultyInsights() {
       {/* Tabs compactos */}
       <div className="flex space-x-1 mb-4">
         {[
-          { id: 'overview', label: 'Resumen', icon: '📊' },
-          { id: 'struggling', label: 'Mejorar', icon: '💪' },
+          { id: 'struggling', label: 'Áreas a mejorar', icon: '💪' },
           { id: 'mastered', label: 'Dominadas', icon: '✅' },
           { id: 'recommendations', label: 'Consejos', icon: '💡' }
         ].map(tab => (
@@ -159,55 +172,6 @@ export default function PersonalDifficultyInsights() {
           </button>
         ))}
       </div>
-
-      {/* Overview Tab */}
-      {activeTab === 'overview' && (
-        <div className="space-y-4">
-          {/* Métricas compactas */}
-          <div className="flex justify-center space-x-3 mb-4">
-            <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">{metrics.total_questions_attempted}</div>
-              <div className="text-xs text-blue-600">Intentadas</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-green-600">{metrics.questions_mastered}</div>
-              <div className="text-xs text-green-600">Dominadas</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-red-600">{metrics.questions_struggling}</div>
-              <div className="text-xs text-red-600">Difíciles</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-purple-600">{metrics.avg_personal_difficulty?.toFixed(1)}</div>
-              <div className="text-xs text-purple-600">Dificultad</div>
-            </div>
-          </div>
-
-          {/* Tendencias compactas */}
-          {trends && trends.total > 0 && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <h4 className="font-bold text-gray-800 mb-2 text-sm">📈 Tendencias</h4>
-              <div className="flex justify-center space-x-4 text-center">
-                <div className={`${getProgressColor('improving')}`}>
-                  <span className="text-lg">{getProgressIcon('improving')}</span>
-                  <div className="font-bold">{trends.improving}</div>
-                  <div className="text-xs">Mejorando</div>
-                </div>
-                <div className={`${getProgressColor('stable')}`}>
-                  <span className="text-lg">{getProgressIcon('stable')}</span>
-                  <div className="font-bold">{trends.stable}</div>
-                  <div className="text-xs">Estable</div>
-                </div>
-                <div className={`${getProgressColor('declining')}`}>
-                  <span className="text-lg">{getProgressIcon('declining')}</span>
-                  <div className="font-bold">{trends.declining}</div>
-                  <div className="text-xs">Declive</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Struggling Questions Tab */}
       {activeTab === 'struggling' && (
