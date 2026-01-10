@@ -656,6 +656,20 @@ export default function HeaderES() {
                 </Link>
               )}
 
+              {/* 📚 ICONO DE TEMARIO - Solo en móvil */}
+              {user && (
+                <Link
+                  href={(() => {
+                    const testsLink = getTestsLink()
+                    return testsLink === '/' ? '/auxiliar-administrativo-estado/temario' : testsLink.replace('/test', '/temario')
+                  })()}
+                  className="xl:hidden p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
+                  aria-label="Ir a Temario"
+                  title="Ver Temario"
+                >
+                  <span className="text-xl">📚</span>
+                </Link>
+              )}
 
               {/* 🧩 ICONO DE PSICOTÉCNICOS - Solo en móvil */}
               {user && (
