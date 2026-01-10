@@ -72,6 +72,7 @@ export default function ClientLayoutContent({ children }) {
        !pathname.startsWith('/auxiliar-administrativo-estado/test') &&
        !pathname.startsWith('/auxiliar-administrativo-estado/temario') &&
        !pathname.startsWith('/administrativo-estado/test') &&
+       !pathname.startsWith('/administrativo-estado/temario') &&
        !pathname.includes('/constitucion-titulos') &&
        !pathname.includes('/test-de-la-constitucion-espanola-de-1978') && (
         <Breadcrumbs
