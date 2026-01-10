@@ -41,19 +41,20 @@ export default function TemarioPage() {
   ]
 
   // Bloque II: Actividad Administrativa y Ofimática (12 temas, internamente 101-112)
+  // Temas 105-112 son de informática y no tienen contenido legal disponible
   const bloque2Temas = [
     { id: 101, displayNum: 1, titulo: 'Atención al público', descripcion: 'Acogida e información. Atención de personas con discapacidad. Los servicios de información administrativa.' },
     { id: 102, displayNum: 2, titulo: 'Los servicios de información administrativa', descripcion: 'Información general y particular. Iniciativas, reclamaciones y quejas. Lenguas cooficiales.' },
     { id: 103, displayNum: 3, titulo: 'Concepto de documento, registro y archivo', descripcion: 'Funciones del registro. Tipos de archivos. Sistema de Interconexión de Registros.' },
     { id: 104, displayNum: 4, titulo: 'Administración electrónica', descripcion: 'Servicios al ciudadano. La firma electrónica. Notificación y sede electrónica. Cl@ve.' },
-    { id: 105, displayNum: 5, titulo: 'Informática básica', descripcion: 'Conceptos fundamentales sobre hardware y software. Sistemas operativos. Almacenamiento de datos.' },
-    { id: 106, displayNum: 6, titulo: 'Introducción a Windows 11', descripcion: 'Fundamentos. Trabajo en el entorno gráfico. Configuración del sistema.' },
-    { id: 107, displayNum: 7, titulo: 'El Explorador de Windows 11', descripcion: 'Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas del sistema.' },
-    { id: 108, displayNum: 8, titulo: 'Procesadores de texto: Word', descripcion: 'Principales funciones y utilidades. Creación y estructuración del documento. Gestión, grabación e impresión.' },
-    { id: 109, displayNum: 9, titulo: 'Hojas de cálculo: Excel', descripcion: 'Principales funciones y utilidades. Libros, hojas y celdas. Configuración. Fórmulas y funciones. Gráficos.' },
-    { id: 110, displayNum: 10, titulo: 'Bases de datos: Access', descripcion: 'Principales funciones y utilidades. Tablas, consultas, formularios e informes. Relaciones.' },
-    { id: 111, displayNum: 11, titulo: 'Correo electrónico', descripcion: 'Conceptos elementales y funcionamiento. Microsoft 365: Outlook. Libreta de direcciones. Enviar y recibir mensajes.' },
-    { id: 112, displayNum: 12, titulo: 'La Red Internet', descripcion: 'Conceptos elementales. Navegación, favoritos e historial. Buscadores. Seguridad y protección.' }
+    { id: 105, displayNum: 5, titulo: 'Informática básica', descripcion: 'Conceptos fundamentales sobre hardware y software. Sistemas operativos. Almacenamiento de datos.', disponible: false },
+    { id: 106, displayNum: 6, titulo: 'Introducción a Windows 11', descripcion: 'Fundamentos. Trabajo en el entorno gráfico. Configuración del sistema.', disponible: false },
+    { id: 107, displayNum: 7, titulo: 'El Explorador de Windows 11', descripcion: 'Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas del sistema.', disponible: false },
+    { id: 108, displayNum: 8, titulo: 'Procesadores de texto: Word', descripcion: 'Principales funciones y utilidades. Creación y estructuración del documento. Gestión, grabación e impresión.', disponible: false },
+    { id: 109, displayNum: 9, titulo: 'Hojas de cálculo: Excel', descripcion: 'Principales funciones y utilidades. Libros, hojas y celdas. Configuración. Fórmulas y funciones. Gráficos.', disponible: false },
+    { id: 110, displayNum: 10, titulo: 'Bases de datos: Access', descripcion: 'Principales funciones y utilidades. Tablas, consultas, formularios e informes. Relaciones.', disponible: false },
+    { id: 111, displayNum: 11, titulo: 'Correo electrónico', descripcion: 'Conceptos elementales y funcionamiento. Microsoft 365: Outlook. Libreta de direcciones. Enviar y recibir mensajes.', disponible: false },
+    { id: 112, displayNum: 12, titulo: 'La Red Internet', descripcion: 'Conceptos elementales. Navegación, favoritos e historial. Buscadores. Seguridad y protección.', disponible: false }
   ]
 
   const getProgressColor = (accuracy) => {
@@ -69,20 +70,56 @@ export default function TemarioPage() {
   }
 
   // Renderizar un tema individual
-  const renderTema = (tema, bloqueColor) => {
+  const renderTema = (tema) => {
     const progress = user ? getTopicProgress(tema.id) : { accuracy: 0, questionsAnswered: 0 }
     const hasProgress = progress.questionsAnswered > 0
     const displayNumber = tema.displayNum || tema.id
+    const isDisponible = tema.disponible !== false
+
+    // Tema no disponible - renderizar como div no clickeable
+    if (!isDisponible) {
+      return (
+        <div
+          key={tema.id}
+          className="flex items-center gap-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 opacity-60"
+        >
+          {/* Número del tema */}
+          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <span className="text-base font-bold text-gray-400 dark:text-gray-500">
+              {displayNumber}
+            </span>
+          </div>
+
+          {/* Contenido */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-500 dark:text-gray-400">
+              {tema.titulo}
+            </h3>
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              Tema no disponible
+            </p>
+          </div>
+
+          {/* Icono de candado y texto */}
+          <div className="flex-shrink-0 flex items-center gap-1.5 text-gray-400">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span className="text-xs font-medium hidden sm:inline">No disponible</span>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <Link
         key={tema.id}
         href={`/auxiliar-administrativo-estado/temario/tema-${tema.id}`}
-        className={`group flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-${bloqueColor}-300 dark:hover:border-${bloqueColor}-600 hover:shadow-md transition-all duration-200 ${hasProgress ? getProgressBg(progress.accuracy) : ''}`}
+        className={`group flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all duration-200 ${hasProgress ? getProgressBg(progress.accuracy) : ''}`}
       >
         {/* Número del tema */}
-        <div className={`flex-shrink-0 w-10 h-10 rounded-lg bg-${bloqueColor}-100 dark:bg-${bloqueColor}-900/30 flex items-center justify-center`}>
-          <span className={`text-base font-bold text-${bloqueColor}-600 dark:text-${bloqueColor}-400`}>
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <span className="text-base font-bold text-blue-600 dark:text-blue-400">
             {displayNumber}
           </span>
         </div>
@@ -239,7 +276,7 @@ export default function TemarioPage() {
 
             {expandedBlocks.bloque1 && (
               <div className="p-4 space-y-2 bg-gray-50 dark:bg-gray-900/50">
-                {bloque1Temas.map((tema) => renderTema(tema, 'blue'))}
+                {bloque1Temas.map((tema) => renderTema(tema))}
               </div>
             )}
           </div>
@@ -248,7 +285,7 @@ export default function TemarioPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
             <button
               onClick={() => toggleBlock('bloque2')}
-              className="w-full bg-gradient-to-r from-teal-600 to-teal-700 text-white py-4 px-6 text-left font-semibold transition-all duration-300 hover:from-teal-700 hover:to-teal-800 focus:outline-none"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 text-left font-semibold transition-all duration-300 hover:from-blue-700 hover:to-blue-800 focus:outline-none"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -273,7 +310,7 @@ export default function TemarioPage() {
 
             {expandedBlocks.bloque2 && (
               <div className="p-4 space-y-2 bg-gray-50 dark:bg-gray-900/50">
-                {bloque2Temas.map((tema) => renderTema(tema, 'teal'))}
+                {bloque2Temas.map((tema) => renderTema(tema))}
               </div>
             )}
           </div>

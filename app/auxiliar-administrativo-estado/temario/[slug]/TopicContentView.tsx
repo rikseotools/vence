@@ -9,10 +9,22 @@ interface TopicContentViewProps {
   content: TopicContent
 }
 
+// Determinar el bloque según el número de tema (auxiliar administrativo)
+function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {
+  if (topicNumber >= 1 && topicNumber <= 16) {
+    return { block: 'Bloque I', displayNum: topicNumber }
+  } else if (topicNumber >= 101 && topicNumber <= 112) {
+    return { block: 'Bloque II', displayNum: topicNumber - 100 }
+  }
+  return { block: '', displayNum: topicNumber }
+}
+
 export default function TopicContentView({ content }: TopicContentViewProps) {
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set(content.laws.map((l) => l.law.id))
   )
+
+  const blockInfo = getBlockInfo(content.topicNumber)
 
   const toggleLaw = (lawId: string) => {
     setExpandedLaws((prev) => {
@@ -122,8 +134,13 @@ export default function TopicContentView({ content }: TopicContentViewProps) {
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <header className="print-header mb-8">
+          {blockInfo.block && (
+            <span className="inline-block px-3 py-1 mb-3 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+              {blockInfo.block}
+            </span>
+          )}
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-            Tema {content.topicNumber}: {content.title.replace(/^Tema \d+:\s*/, '')}
+            Tema {blockInfo.displayNum}: {content.title.replace(/^Tema \d+:\s*/, '')}
           </h1>
 
           {content.description && (

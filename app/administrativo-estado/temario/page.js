@@ -82,15 +82,16 @@ export default function TemarioPage() {
   ]
 
   // Bloque VI: Informática básica y ofimática (8 temas)
+  // Temas de informática no tienen contenido legal disponible
   const bloque6Temas = [
-    { id: 601, displayNum: 1, titulo: 'Informática Básica', descripcion: 'Hardware y software. Sistemas operativos. Almacenamiento de datos.' },
-    { id: 602, displayNum: 2, titulo: 'Sistema Operativo Windows', descripcion: 'Fundamentos. Configuración del sistema.' },
-    { id: 603, displayNum: 3, titulo: 'El Explorador de Windows', descripcion: 'Gestión de carpetas y archivos. Búsquedas.' },
-    { id: 604, displayNum: 4, titulo: 'Procesadores de Texto: Word 365', descripcion: 'Edición y formato de documentos. Tablas. Combinación de correspondencia.' },
-    { id: 605, displayNum: 5, titulo: 'Hojas de Cálculo: Excel 365', descripcion: 'Fórmulas y funciones. Gráficos. Tablas dinámicas.' },
-    { id: 606, displayNum: 6, titulo: 'Bases de Datos: Access 365', descripcion: 'Tablas, consultas, formularios e informes. Relaciones.' },
-    { id: 607, displayNum: 7, titulo: 'Correo Electrónico: Outlook 365', descripcion: 'Envío y recepción. Calendario. Contactos.' },
-    { id: 608, displayNum: 8, titulo: 'La Red Internet', descripcion: 'Navegación. Buscadores. Seguridad en la red.' }
+    { id: 601, displayNum: 1, titulo: 'Informática Básica', descripcion: 'Hardware y software. Sistemas operativos. Almacenamiento de datos.', disponible: false },
+    { id: 602, displayNum: 2, titulo: 'Sistema Operativo Windows', descripcion: 'Fundamentos. Configuración del sistema.', disponible: false },
+    { id: 603, displayNum: 3, titulo: 'El Explorador de Windows', descripcion: 'Gestión de carpetas y archivos. Búsquedas.', disponible: false },
+    { id: 604, displayNum: 4, titulo: 'Procesadores de Texto: Word 365', descripcion: 'Edición y formato de documentos. Tablas. Combinación de correspondencia.', disponible: false },
+    { id: 605, displayNum: 5, titulo: 'Hojas de Cálculo: Excel 365', descripcion: 'Fórmulas y funciones. Gráficos. Tablas dinámicas.', disponible: false },
+    { id: 606, displayNum: 6, titulo: 'Bases de Datos: Access 365', descripcion: 'Tablas, consultas, formularios e informes. Relaciones.', disponible: false },
+    { id: 607, displayNum: 7, titulo: 'Correo Electrónico: Outlook 365', descripcion: 'Envío y recepción. Calendario. Contactos.', disponible: false },
+    { id: 608, displayNum: 8, titulo: 'La Red Internet', descripcion: 'Navegación. Buscadores. Seguridad en la red.', disponible: false }
   ]
 
   const getProgressColor = (accuracy) => {
@@ -106,20 +107,56 @@ export default function TemarioPage() {
   }
 
   // Renderizar un tema individual
-  const renderTema = (tema, bloqueColor) => {
+  const renderTema = (tema) => {
     const progress = user ? getTopicProgress(tema.id) : { accuracy: 0, questionsAnswered: 0 }
     const hasProgress = progress.questionsAnswered > 0
     const displayNumber = tema.displayNum || tema.id
+    const isDisponible = tema.disponible !== false
+
+    // Tema no disponible - renderizar como div no clickeable
+    if (!isDisponible) {
+      return (
+        <div
+          key={tema.id}
+          className="flex items-center gap-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 opacity-60"
+        >
+          {/* Número del tema */}
+          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <span className="text-base font-bold text-gray-400 dark:text-gray-500">
+              {displayNumber}
+            </span>
+          </div>
+
+          {/* Contenido */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-500 dark:text-gray-400">
+              {tema.titulo}
+            </h3>
+            <p className="text-sm text-gray-400 dark:text-gray-500">
+              Tema no disponible
+            </p>
+          </div>
+
+          {/* Icono de candado y texto */}
+          <div className="flex-shrink-0 flex items-center gap-1.5 text-gray-400">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span className="text-xs font-medium hidden sm:inline">No disponible</span>
+          </div>
+        </div>
+      )
+    }
 
     return (
       <Link
         key={tema.id}
         href={`/administrativo-estado/temario/tema-${tema.id}`}
-        className={`group flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-${bloqueColor}-300 dark:hover:border-${bloqueColor}-600 hover:shadow-md transition-all duration-200 ${hasProgress ? getProgressBg(progress.accuracy) : ''}`}
+        className={`group flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all duration-200 ${hasProgress ? getProgressBg(progress.accuracy) : ''}`}
       >
         {/* Número del tema */}
-        <div className={`flex-shrink-0 w-10 h-10 rounded-lg bg-${bloqueColor}-100 dark:bg-${bloqueColor}-900/30 flex items-center justify-center`}>
-          <span className={`text-base font-bold text-${bloqueColor}-600 dark:text-${bloqueColor}-400`}>
+        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+          <span className="text-base font-bold text-blue-600 dark:text-blue-400">
             {displayNumber}
           </span>
         </div>
@@ -164,22 +201,13 @@ export default function TemarioPage() {
 
   // Configuración de bloques
   const bloques = [
-    { id: 'bloque1', titulo: 'Bloque I: Organización del Estado', icon: '🏛️', color: 'blue', temas: bloque1Temas, count: 11 },
-    { id: 'bloque2', titulo: 'Bloque II: Organización de Oficinas Públicas', icon: '🏢', color: 'green', temas: bloque2Temas, count: 4 },
-    { id: 'bloque3', titulo: 'Bloque III: Derecho Administrativo General', icon: '⚖️', color: 'purple', temas: bloque3Temas, count: 7 },
-    { id: 'bloque4', titulo: 'Bloque IV: Gestión de Personal', icon: '👥', color: 'orange', temas: bloque4Temas, count: 9 },
-    { id: 'bloque5', titulo: 'Bloque V: Gestión Financiera', icon: '💰', color: 'red', temas: bloque5Temas, count: 6 },
-    { id: 'bloque6', titulo: 'Bloque VI: Informática y Ofimática', icon: '💻', color: 'teal', temas: bloque6Temas, count: 8 }
+    { id: 'bloque1', titulo: 'Bloque I: Organización del Estado', icon: '🏛️', temas: bloque1Temas, count: 11 },
+    { id: 'bloque2', titulo: 'Bloque II: Organización de Oficinas Públicas', icon: '🏢', temas: bloque2Temas, count: 4 },
+    { id: 'bloque3', titulo: 'Bloque III: Derecho Administrativo General', icon: '⚖️', temas: bloque3Temas, count: 7 },
+    { id: 'bloque4', titulo: 'Bloque IV: Gestión de Personal', icon: '👥', temas: bloque4Temas, count: 9 },
+    { id: 'bloque5', titulo: 'Bloque V: Gestión Financiera', icon: '💰', temas: bloque5Temas, count: 6 },
+    { id: 'bloque6', titulo: 'Bloque VI: Informática y Ofimática', icon: '💻', temas: bloque6Temas, count: 8 }
   ]
-
-  const gradientColors = {
-    blue: 'from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800',
-    green: 'from-green-600 to-green-700 hover:from-green-700 hover:to-green-800',
-    purple: 'from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800',
-    orange: 'from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800',
-    red: 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800',
-    teal: 'from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800'
-  }
 
   if (loading) {
     return (
@@ -269,7 +297,7 @@ export default function TemarioPage() {
             <div key={bloque.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
               <button
                 onClick={() => toggleBlock(bloque.id)}
-                className={`w-full bg-gradient-to-r ${gradientColors[bloque.color]} text-white py-4 px-6 text-left font-semibold transition-all duration-300 focus:outline-none`}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white py-4 px-6 text-left font-semibold transition-all duration-300 focus:outline-none"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -294,7 +322,7 @@ export default function TemarioPage() {
 
               {expandedBlocks[bloque.id] && (
                 <div className="p-4 space-y-2 bg-gray-50 dark:bg-gray-900/50">
-                  {bloque.temas.map((tema) => renderTema(tema, bloque.color))}
+                  {bloque.temas.map((tema) => renderTema(tema))}
                 </div>
               )}
             </div>

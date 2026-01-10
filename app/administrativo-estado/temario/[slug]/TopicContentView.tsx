@@ -10,10 +10,30 @@ interface TopicContentViewProps {
   oposicion?: string
 }
 
+// Determinar el bloque según el número de tema (administrativo estado)
+function getBlockInfo(topicNumber: number): { block: string; displayNum: number } {
+  if (topicNumber >= 1 && topicNumber <= 11) {
+    return { block: 'Bloque I', displayNum: topicNumber }
+  } else if (topicNumber >= 201 && topicNumber <= 204) {
+    return { block: 'Bloque II', displayNum: topicNumber - 200 }
+  } else if (topicNumber >= 301 && topicNumber <= 307) {
+    return { block: 'Bloque III', displayNum: topicNumber - 300 }
+  } else if (topicNumber >= 401 && topicNumber <= 409) {
+    return { block: 'Bloque IV', displayNum: topicNumber - 400 }
+  } else if (topicNumber >= 501 && topicNumber <= 506) {
+    return { block: 'Bloque V', displayNum: topicNumber - 500 }
+  } else if (topicNumber >= 601 && topicNumber <= 608) {
+    return { block: 'Bloque VI', displayNum: topicNumber - 600 }
+  }
+  return { block: '', displayNum: topicNumber }
+}
+
 export default function TopicContentView({ content, oposicion = 'administrativo-estado' }: TopicContentViewProps) {
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set(content.laws.map((l) => l.law.id))
   )
+
+  const blockInfo = getBlockInfo(content.topicNumber)
 
   const toggleLaw = (lawId: string) => {
     setExpandedLaws((prev) => {
@@ -125,8 +145,13 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
       <main className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <header className="print-header mb-8">
+          {blockInfo.block && (
+            <span className="inline-block px-3 py-1 mb-3 text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+              {blockInfo.block}
+            </span>
+          )}
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-            Tema {content.topicNumber}: {content.title.replace(/^Tema \d+:\s*/, '')}
+            Tema {blockInfo.displayNum}: {content.title.replace(/^Tema \d+:\s*/, '')}
           </h1>
 
           {content.description && (
