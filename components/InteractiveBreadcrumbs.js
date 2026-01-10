@@ -349,12 +349,33 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
           {(isInTests || isInTemario || isInInfo) && (
             <li className="flex items-center relative">
               <div className="flex items-center">
-                {/* Texto clickeable - no navega porque ya estamos en la sección actual */}
-                <span className="text-gray-700 font-semibold">
-                  {isInInfo && 'ℹ️ Información'}
-                  {isInTests && '🎯 Tests'}
-                  {isInTemario && '📚 Temario'}
-                </span>
+                {/* Si estamos en una página específica dentro de la sección, hacer clickeable para volver al índice */}
+                {(() => {
+                  const basePath = isAuxiliarAdmin ? '/auxiliar-administrativo-estado' :
+                                   isAdministrativo ? '/administrativo-estado' : ''
+                  const isInSpecificPage = pathname.includes('/tema-') || pathname.includes('/test/')
+
+                  if (isInSpecificPage && basePath) {
+                    return (
+                      <Link
+                        href={`${basePath}${isInTemario ? '/temario' : isInTests ? '/test' : ''}`}
+                        className="text-blue-600 hover:text-blue-800 transition-colors"
+                      >
+                        {isInInfo && 'ℹ️ Información'}
+                        {isInTests && '🎯 Tests'}
+                        {isInTemario && '📚 Temario'}
+                      </Link>
+                    )
+                  }
+
+                  return (
+                    <span className="text-gray-700 font-semibold">
+                      {isInInfo && 'ℹ️ Información'}
+                      {isInTests && '🎯 Tests'}
+                      {isInTemario && '📚 Temario'}
+                    </span>
+                  )
+                })()}
                 
                 {/* Flecha para dropdown */}
                 <button
