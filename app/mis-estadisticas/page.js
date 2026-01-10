@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { useAuth } from '@/contexts/AuthContext' // ✅ USAR CONTEXTO GLOBAL
 import { useOposicion } from '@/contexts/OposicionContext' // ✅ Para obtener oposición del usuario
 
@@ -18,7 +19,19 @@ import ExamReadiness from '@/components/Statistics/ExamReadiness'
 import ExamPredictionMarch2025 from '@/components/Statistics/ExamPredictionMarch2025'
 import PersonalDifficultyInsights from '@/components/Statistics/PersonalDifficultyInsights'
 import DetailedCharts from '@/components/Statistics/DetailedCharts'
-import PsychometricStatsTab from '@/components/Statistics/PsychometricStatsTab'
+
+// Lazy load PsychometricStatsTab - solo se carga cuando se usa
+const PsychometricStatsTab = dynamic(
+  () => import('@/components/Statistics/PsychometricStatsTab'),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    ),
+    ssr: false
+  }
+)
 
 // Cache inteligente para análisis de IA
 const aiAnalysisCache = new Map()
