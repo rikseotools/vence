@@ -135,60 +135,164 @@ export default function FraudesPage() {
 
       setSameIpGroups(suspiciousIpGroups)
 
-      // 2. Buscar sesiones con mismos dispositivos (user_agent) en cuentas diferentes
+      // 2. Buscar sesiones sospechosas: MISMA IP + MISMO DISPOSITIVO + DIFERENTES USUARIOS
       const { data: sessions, error: sessError } = await supabase
         .from('user_sessions')
-        .select('id, user_id, user_agent, ip_address, city, region, country_code, session_start')
+        .select('id, user_id, user_agent, ip_address, city, region, country_code, session_start, screen_resolution, color_depth, pixel_ratio')
         .not('user_agent', 'is', null)
         .order('session_start', { ascending: false })
         .limit(5000)
 
       if (sessError) throw sessError
 
-      // Agrupar por user_agent y filtrar los que tienen múltiples usuarios
-      const deviceGroupMap = {}
+      // Función para extraer OS del user_agent
+      const getOS = (ua) => {
+        if (!ua) return 'Other'
+        if (ua.includes('Windows')) return 'Windows'
+        if (ua.includes('Mac OS')) return 'Mac'
+        if (ua.includes('iPhone')) return 'iPhone'
+        if (ua.includes('iPad')) return 'iPad'
+        if (ua.includes('Android')) return 'Android'
+        if (ua.includes('Linux')) return 'Linux'
+        return 'Other'
+      }
+
+      // Función para crear fingerprint MUY específico: resolución + colorDepth + pixelRatio + user_agent
+      // Esto es extremadamente identificativo del dispositivo físico
+      const getDeviceFingerprint = (session) => {
+        const { user_agent, screen_resolution, color_depth, pixel_ratio } = session
+        if (!screen_resolution || !user_agent) return null // Sin datos suficientes
+
+        // Redondear pixel_ratio a 2 decimales para consistencia
+        const pr = pixel_ratio ? Math.round(pixel_ratio * 100) / 100 : 'x'
+        const cd = color_depth || 'x'
+
+        // Fingerprint completo: resolución + colorDepth + pixelRatio + user_agent
+        return `${screen_resolution}|${cd}|${pr}|${user_agent}`
+      }
+
+      // Versión corta del fingerprint para mostrar en UI
+      const getShortFingerprint = (session) => {
+        const { user_agent, screen_resolution, color_depth, pixel_ratio } = session
+        if (!user_agent || !screen_resolution) return 'desconocido'
+
+        // Extraer info clave: navegador/versión + OS
+        let browser = 'Other'
+        let version = ''
+        const chromeMatch = user_agent.match(/Chrome\/([\d.]+)/)
+        const firefoxMatch = user_agent.match(/Firefox\/([\d.]+)/)
+        const safariMatch = user_agent.match(/Version\/([\d.]+).*Safari/)
+        const edgeMatch = user_agent.match(/Edg\/([\d.]+)/)
+
+        if (edgeMatch) { browser = 'Edge'; version = edgeMatch[1] }
+        else if (chromeMatch) { browser = 'Chrome'; version = chromeMatch[1] }
+        else if (firefoxMatch) { browser = 'Firefox'; version = firefoxMatch[1] }
+        else if (safariMatch) { browser = 'Safari'; version = safariMatch[1] }
+
+        const os = getOS(user_agent)
+        const pr = pixel_ratio ? `@${Math.round(pixel_ratio * 100) / 100}x` : ''
+        const cd = color_depth ? `${color_depth}bit` : ''
+
+        return `${screen_resolution} ${cd} ${pr} ${browser}/${version.split('.')[0]} ${os}`.replace(/\s+/g, ' ').trim()
+      }
+
+      // Función simple para categoría genérica (para tab "mismo dispositivo")
+      const getDeviceCategory = (ua) => {
+        if (!ua) return 'unknown'
+        let browser = 'Other'
+        if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome'
+        else if (ua.includes('Firefox')) browser = 'Firefox'
+        else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari'
+        else if (ua.includes('Edg')) browser = 'Edge'
+        return `${browser}/${getOS(ua)}`
+      }
+
+      // Agrupar por IP + categoría de dispositivo (combinación más específica)
+      const combinedGroupMap = {}
       sessions?.forEach(session => {
-        // Simplificar user_agent para agrupar mejor
-        const ua = session.user_agent?.substring(0, 100) || 'unknown'
-        if (!deviceGroupMap[ua]) {
-          deviceGroupMap[ua] = new Map()
+        const deviceCategory = getDeviceCategory(session.user_agent)
+        const key = `${session.ip_address}|${deviceCategory}`
+
+        if (!combinedGroupMap[key]) {
+          combinedGroupMap[key] = {
+            ip: session.ip_address,
+            deviceCategory,
+            users: new Map(),
+            sessions: []
+          }
         }
-        if (!deviceGroupMap[ua].has(session.user_id)) {
-          deviceGroupMap[ua].set(session.user_id, {
+
+        const group = combinedGroupMap[key]
+        group.sessions.push(session)
+
+        if (!group.users.has(session.user_id)) {
+          group.users.set(session.user_id, {
             user_id: session.user_id,
-            sessions: [],
-            cities: new Set(),
-            ips: new Set()
+            firstSession: session.session_start,
+            lastSession: session.session_start,
+            sessionCount: 0
           })
         }
-        const userData = deviceGroupMap[ua].get(session.user_id)
-        userData.sessions.push(session)
-        if (session.city) userData.cities.add(session.city)
-        if (session.ip_address) userData.ips.add(session.ip_address)
+
+        const userData = group.users.get(session.user_id)
+        userData.sessionCount++
+        if (session.session_start > userData.lastSession) userData.lastSession = session.session_start
+        if (session.session_start < userData.firstSession) userData.firstSession = session.session_start
       })
 
-      // Filtrar dispositivos usados por múltiples usuarios
+      // Filtrar grupos con múltiples usuarios Y calcular puntuación de sospecha
       const suspiciousDeviceGroups = []
-      for (const [ua, usersMap] of Object.entries(deviceGroupMap)) {
-        if (usersMap.size > 1) {
-          const userIds = Array.from(usersMap.keys())
+      for (const [key, group] of Object.entries(combinedGroupMap)) {
+        if (group.users.size > 1) {
+          const userIds = Array.from(group.users.keys())
 
           // Obtener perfiles de estos usuarios
           const { data: profiles } = await supabase
             .from('user_profiles')
-            .select('id, email, full_name, plan_type')
+            .select('id, email, full_name, plan_type, created_at')
             .in('id', userIds)
 
+          if (!profiles || profiles.length < 2) continue
+
+          // Calcular si hay sesiones cercanas en tiempo (dentro de 48h)
+          const userSessions = Array.from(group.users.values())
+          let hasCloseTimeSessions = false
+          for (let i = 0; i < userSessions.length; i++) {
+            for (let j = i + 1; j < userSessions.length; j++) {
+              const time1 = new Date(userSessions[i].lastSession).getTime()
+              const time2 = new Date(userSessions[j].lastSession).getTime()
+              const diffHours = Math.abs(time1 - time2) / (1000 * 60 * 60)
+              if (diffHours < 48) hasCloseTimeSessions = true
+            }
+          }
+
+          const hasPremium = profiles.some(u => ['premium', 'semestral', 'anual'].includes(u.plan_type))
+
+          // Calcular puntuación de sospecha (0-100)
+          let suspicionScore = 0
+          suspicionScore += 30 // Base: misma IP + mismo tipo dispositivo
+          if (hasPremium) suspicionScore += 30 // Premium compartido = muy sospechoso
+          if (hasCloseTimeSessions) suspicionScore += 25 // Sesiones cercanas en tiempo
+          if (group.users.size > 2) suspicionScore += 15 // Más de 2 usuarios = más sospechoso
+
           suspiciousDeviceGroups.push({
-            userAgent: ua,
-            users: profiles || [],
-            userCount: usersMap.size,
-            hasPremium: profiles?.some(u => u.plan_type === 'premium' || u.plan_type === 'semestral' || u.plan_type === 'anual')
+            ip: group.ip,
+            deviceCategory: group.deviceCategory,
+            users: profiles,
+            userCount: group.users.size,
+            hasPremium,
+            hasCloseTimeSessions,
+            suspicionScore,
+            sessionDetails: Array.from(group.users.entries()).map(([id, data]) => ({
+              user_id: id,
+              ...data
+            }))
           })
         }
       }
 
-      setSameDeviceGroups(suspiciousDeviceGroups.sort((a, b) => b.userCount - a.userCount))
+      // Ordenar por puntuación de sospecha (más alto primero)
+      setSameDeviceGroups(suspiciousDeviceGroups.sort((a, b) => b.suspicionScore - a.suspicionScore))
 
       // 3. Buscar cuentas premium usadas desde múltiples IPs/ciudades simultáneamente
       const { data: premiumUsers } = await supabase
@@ -226,55 +330,243 @@ export default function FraudesPage() {
 
       setSuspiciousSessions(suspiciousPremiumSessions)
 
-      // 4. Detectar multi-cuentas probables (mismo nombre + dispositivo + IP)
+      // 4. Detectar multi-cuentas: DOS MÉTODOS
+      // A) Misma IP de registro
+      // B) Mismo dispositivo pero IPs diferentes (VPN)
       const multiAccounts = []
+      const processedUserPairs = new Set() // Evitar duplicados
 
-      // Combinar datos para encontrar patrones
+      // 4A. Método 1: Misma IP de registro
       for (const ipGroup of suspiciousIpGroups) {
-        for (const deviceGroup of suspiciousDeviceGroups) {
-          // Buscar usuarios que aparecen en ambos grupos
-          const commonUsers = ipGroup.users.filter(u1 =>
-            deviceGroup.users.some(u2 => u1.id === u2.id)
+        if (ipGroup.users.length < 2) continue
+
+        const users = ipGroup.users
+        const reasons = [`Misma IP de registro (${ipGroup.ip})`]
+        let suspicionScore = 30 // Base: misma IP de registro
+
+        // Verificar si tienen mismo nombre
+        const hasSameName = users.some((u, i, arr) =>
+          arr.some((u2, j) => i !== j &&
+            u.full_name?.toLowerCase().trim() === u2.full_name?.toLowerCase().trim() &&
+            u.full_name?.trim().length > 0
           )
+        )
+        if (hasSameName) {
+          reasons.push('Mismo nombre')
+          suspicionScore += 25
+        }
 
-          if (commonUsers.length > 1 || (ipGroup.users.length > 1 && deviceGroup.users.some(u => ipGroup.users.some(iu => iu.id === u.id)))) {
-            // Encontrar todos los usuarios relacionados
-            const allRelatedUserIds = new Set([
-              ...ipGroup.users.map(u => u.id),
-              ...deviceGroup.users.map(u => u.id)
-            ])
+        // Verificar si alguno tiene premium (posible cuenta compartida)
+        const hasPremium = users.some(u => ['premium', 'semestral', 'anual'].includes(u.plan_type))
+        if (hasPremium) {
+          reasons.push('Incluye cuenta premium')
+          suspicionScore += 20
+        }
 
-            const { data: relatedProfiles } = await supabase
-              .from('user_profiles')
-              .select('id, email, full_name, plan_type, registration_ip, created_at, ciudad, nickname')
-              .in('id', Array.from(allRelatedUserIds))
-
-            if (relatedProfiles && relatedProfiles.length > 1) {
-              // Verificar si ya existe este grupo
-              const existingGroup = multiAccounts.find(g =>
-                g.users.some(u => relatedProfiles.some(rp => rp.id === u.id))
-              )
-
-              if (!existingGroup) {
-                multiAccounts.push({
-                  ip: ipGroup.ip,
-                  device: deviceGroup.userAgent?.substring(0, 50) + '...',
-                  users: relatedProfiles,
-                  hasPremium: relatedProfiles.some(u => u.plan_type === 'premium' || u.plan_type === 'semestral' || u.plan_type === 'anual'),
-                  confidence: 'alta',
-                  reasons: [
-                    `Misma IP de registro (${ipGroup.ip})`,
-                    `Mismo dispositivo`,
-                    relatedProfiles.some((u, i, arr) => arr.some((u2, j) => i !== j && u.full_name?.toLowerCase() === u2.full_name?.toLowerCase())) ? 'Mismo nombre' : null
-                  ].filter(Boolean)
-                })
-              }
-            }
+        // Verificar si se registraron en fechas cercanas (mismo día o consecutivos)
+        const sortedByDate = [...users].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        let hasCloseRegistration = false
+        for (let i = 1; i < sortedByDate.length; i++) {
+          const diff = Math.abs(new Date(sortedByDate[i].created_at) - new Date(sortedByDate[i-1].created_at))
+          const diffDays = diff / (1000 * 60 * 60 * 24)
+          if (diffDays < 7) {
+            hasCloseRegistration = true
+            break
           }
+        }
+        if (hasCloseRegistration) {
+          reasons.push('Registros cercanos en tiempo')
+          suspicionScore += 15
+        }
+
+        // Verificar si también aparecen en grupos de sesiones sospechosas
+        const usersInDeviceGroups = users.filter(u =>
+          suspiciousDeviceGroups.some(dg => dg.users.some(du => du.id === u.id))
+        )
+        if (usersInDeviceGroups.length >= 2) {
+          reasons.push('También comparten sesiones IP+dispositivo')
+          suspicionScore += 25
+        }
+
+        // Calcular confianza
+        let confidence = 'baja'
+        if (suspicionScore >= 70) confidence = 'muy alta'
+        else if (suspicionScore >= 50) confidence = 'alta'
+        else if (suspicionScore >= 35) confidence = 'media'
+
+        // Misma IP de registro = multicuenta (sin filtros adicionales)
+        multiAccounts.push({
+          ip: ipGroup.ip,
+          users,
+          hasPremium,
+          hasSameName,
+          hasCloseRegistration,
+          confidence,
+          suspicionScore,
+          reasons,
+          detectionMethod: 'same_ip'
+        })
+
+        // Marcar pares como procesados
+        users.forEach(u1 => users.forEach(u2 => {
+          if (u1.id !== u2.id) {
+            processedUserPairs.add([u1.id, u2.id].sort().join('|'))
+          }
+        }))
+      }
+
+      // 4B. Método 2: Mismo dispositivo pero IPs diferentes (detecta VPN)
+      // Usar fingerprint específico: resolución de pantalla + OS (mucho más identificativo)
+      // Solo considerar sesiones CON screen_resolution para evitar falsos positivos
+
+      const userFirstSessionsWithRes = {}
+      for (const session of (sessions || [])) {
+        // Solo sesiones con resolución de pantalla (más específico)
+        if (!session.screen_resolution) continue
+
+        if (!userFirstSessionsWithRes[session.user_id] ||
+            new Date(session.session_start) < new Date(userFirstSessionsWithRes[session.user_id].session_start)) {
+          userFirstSessionsWithRes[session.user_id] = session
         }
       }
 
-      setMultiAccountUsers(multiAccounts)
+      // Agrupar por fingerprint específico (resolución + colorDepth + pixelRatio + user_agent)
+      const fingerprintGroups = {}
+      for (const [userId, session] of Object.entries(userFirstSessionsWithRes)) {
+        const fingerprint = getDeviceFingerprint(session)
+        if (!fingerprint) continue // Skip si no hay fingerprint válido
+
+        if (!fingerprintGroups[fingerprint]) {
+          fingerprintGroups[fingerprint] = []
+        }
+        fingerprintGroups[fingerprint].push({
+          userId,
+          ip: session.ip_address,
+          session, // Guardar sesión completa para obtener fingerprint legible
+          sessionStart: session.session_start
+        })
+      }
+
+      // Buscar grupos con mismo fingerprint pero IPs diferentes (VPN)
+      for (const [fingerprint, deviceUsers] of Object.entries(fingerprintGroups)) {
+        if (deviceUsers.length < 2) continue
+
+        // Verificar que tengan IPs DIFERENTES (caso VPN)
+        const uniqueIps = [...new Set(deviceUsers.map(u => u.ip).filter(Boolean))]
+        if (uniqueIps.length < 2) continue // Si misma IP, ya detectado arriba
+
+        // Obtener perfiles
+        const userIds = deviceUsers.map(u => u.userId)
+        const { data: profiles } = await supabase
+          .from('user_profiles')
+          .select('id, email, full_name, registration_ip, created_at, plan_type')
+          .in('id', userIds)
+
+        if (!profiles || profiles.length < 2) continue
+
+        // CRÍTICO: Verificar si tienen sesiones el MISMO DÍA (indica abuso de límite)
+        // Sin esto, podría ser coincidencia (ordenadores de biblioteca, familia, etc.)
+        const { data: userSessionDates } = await supabase
+          .from('user_sessions')
+          .select('user_id, session_start')
+          .in('user_id', userIds)
+          .order('session_start', { ascending: false })
+          .limit(500)
+
+        // Agrupar sesiones por día para cada usuario
+        const sessionDaysByUser = {}
+        userSessionDates?.forEach(s => {
+          const day = new Date(s.session_start).toISOString().split('T')[0]
+          if (!sessionDaysByUser[s.user_id]) sessionDaysByUser[s.user_id] = new Set()
+          sessionDaysByUser[s.user_id].add(day)
+        })
+
+        // Buscar días en que coinciden 2+ usuarios
+        const allDays = new Set()
+        Object.values(sessionDaysByUser).forEach(days => days.forEach(d => allDays.add(d)))
+
+        const overlappingDays = []
+        allDays.forEach(day => {
+          const usersOnDay = Object.entries(sessionDaysByUser)
+            .filter(([_, days]) => days.has(day))
+            .map(([userId]) => userId)
+          if (usersOnDay.length >= 2) {
+            overlappingDays.push(day)
+          }
+        })
+
+        // Si no tienen días con sesiones superpuestas, no es sospechoso
+        if (overlappingDays.length === 0) continue
+
+        // Verificar si este grupo ya fue procesado
+        const pairKey = profiles.map(p => p.id).sort().join('|')
+        if (processedUserPairs.has(pairKey)) continue
+
+        // Obtener versión legible del fingerprint para mostrar
+        const firstUser = deviceUsers[0]
+        const shortFp = getShortFingerprint(firstUser.session)
+
+        const reasons = [`Mismo dispositivo exacto (${shortFp}) con ${uniqueIps.length} IPs diferentes`]
+        let suspicionScore = 50 // Base alta: mismo dispositivo + diferentes IPs + SESIONES MISMO DÍA
+
+        // Añadir info de días superpuestos
+        reasons.push(`${overlappingDays.length} días con sesiones de múltiples cuentas`)
+
+        const hasSameName = profiles.some((u, i, arr) =>
+          arr.some((u2, j) => i !== j &&
+            u.full_name?.toLowerCase().trim() === u2.full_name?.toLowerCase().trim() &&
+            u.full_name?.trim().length > 0
+          )
+        )
+        if (hasSameName) {
+          reasons.push('Mismo nombre')
+          suspicionScore += 25
+        }
+
+        const hasPremium = profiles.some(u => ['premium', 'semestral', 'anual'].includes(u.plan_type))
+        if (hasPremium) {
+          reasons.push('Incluye cuenta premium')
+          suspicionScore += 20
+        }
+
+        // Verificar registros cercanos
+        const sortedByDate = [...profiles].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        let hasCloseRegistration = false
+        for (let i = 1; i < sortedByDate.length; i++) {
+          const diff = Math.abs(new Date(sortedByDate[i].created_at) - new Date(sortedByDate[i-1].created_at))
+          const diffDays = diff / (1000 * 60 * 60 * 24)
+          if (diffDays < 7) {
+            hasCloseRegistration = true
+            break
+          }
+        }
+        if (hasCloseRegistration) {
+          reasons.push('Registros cercanos en tiempo')
+          suspicionScore += 15
+        }
+
+        let confidence = 'baja'
+        if (suspicionScore >= 70) confidence = 'muy alta'
+        else if (suspicionScore >= 50) confidence = 'alta'
+        else if (suspicionScore >= 35) confidence = 'media'
+
+        multiAccounts.push({
+          ip: `VPN (${uniqueIps.length} IPs)`,
+          deviceFingerprint: shortFp,
+          users: profiles,
+          hasPremium,
+          hasSameName,
+          hasCloseRegistration,
+          confidence,
+          suspicionScore,
+          reasons,
+          detectionMethod: 'same_device_vpn',
+          overlappingDays: overlappingDays.slice(0, 10).sort().reverse() // Últimos 10 días
+        })
+      }
+
+      // Ordenar por puntuación de sospecha
+      setMultiAccountUsers(multiAccounts.sort((a, b) => b.suspicionScore - a.suspicionScore))
 
     } catch (err) {
       console.error('Error cargando datos de fraude:', err)
@@ -652,6 +944,17 @@ export default function FraudesPage() {
         {/* Tab Multi-cuentas */}
         {activeTab === 'multicuentas' && (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Explicación */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Detección de multi-cuentas:</strong> Detecta usuarios que crean varias cuentas para saltarse el límite FREE.
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                • <strong>Misma IP:</strong> Varias cuentas registradas desde la misma IP<br/>
+                • <strong>VPN:</strong> Mismo dispositivo/navegador pero IPs diferentes (usa VPN para ocultar)
+              </p>
+            </div>
+
             {(showOnlyPremium ? multiAccountUsers.filter(g => g.hasPremium) : multiAccountUsers).length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 No se detectaron multi-cuentas{showOnlyPremium ? ' con premium' : ''}
@@ -661,26 +964,71 @@ export default function FraudesPage() {
                 <div key={idx} className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">👥</span>
+                      <span className="text-xl">{group.detectionMethod === 'same_device_vpn' ? '🔀' : '👥'}</span>
                       <span className="font-medium">{group.users.length} cuentas relacionadas</span>
+                      {group.detectionMethod === 'same_device_vpn' && (
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
+                          VPN
+                        </span>
+                      )}
                       {group.hasPremium && (
                         <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
-                          INCLUYE PREMIUM
+                          🔴 PREMIUM
                         </span>
                       )}
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      group.confidence === 'alta' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      Confianza: {group.confidence}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {group.suspicionScore && (
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${
+                          group.suspicionScore >= 70 ? 'bg-red-100 text-red-800' :
+                          group.suspicionScore >= 50 ? 'bg-orange-100 text-orange-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {group.suspicionScore}%
+                        </span>
+                      )}
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        group.confidence === 'muy alta' ? 'bg-red-100 text-red-800' :
+                        group.confidence === 'alta' ? 'bg-orange-100 text-orange-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {group.confidence}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="text-xs text-gray-500 mb-3 space-y-1">
+                  <div className="text-xs text-gray-500 mb-3 space-y-1 bg-gray-50 dark:bg-gray-800 p-2 rounded">
                     {group.reasons.map((reason, i) => (
-                      <div key={i}>• {reason}</div>
+                      <div key={i}>✓ {reason}</div>
                     ))}
                   </div>
+
+                  {/* Mostrar detalles del fingerprint para detección VPN */}
+                  {group.detectionMethod === 'same_device_vpn' && group.deviceFingerprint && (
+                    <div className="text-xs mb-3 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded">
+                      <div className="font-semibold text-purple-800 dark:text-purple-200 mb-1">🖥️ Dispositivo idéntico detectado:</div>
+                      <div className="text-purple-700 dark:text-purple-300 font-mono">{group.deviceFingerprint}</div>
+                      <div className="text-purple-600 dark:text-purple-400 mt-1 text-[10px]">
+                        Coincide: Resolución + Profundidad color + Escala pantalla + Navegador/versión + OS
+                      </div>
+                      {group.overlappingDays && group.overlappingDays.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-purple-200 dark:border-purple-700">
+                          <div className="font-semibold text-purple-800 dark:text-purple-200">📅 Días con sesiones de múltiples cuentas:</div>
+                          <div className="text-purple-700 dark:text-purple-300 mt-1">
+                            {group.overlappingDays.map(d => new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })).join(', ')}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Mostrar IP para detección por misma IP */}
+                  {group.detectionMethod === 'same_ip' && group.ip && (
+                    <div className="text-xs mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded">
+                      <div className="font-semibold text-blue-800 dark:text-blue-200 mb-1">🌐 IP de registro:</div>
+                      <div className="text-blue-700 dark:text-blue-300 font-mono">{group.ip}</div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     {group.users.map(user => (
@@ -705,6 +1053,13 @@ export default function FraudesPage() {
         {/* Tab Misma IP */}
         {activeTab === 'misma-ip' && (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Explicación */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Usuarios FREE con múltiples cuentas</strong> para saltarse el límite de 25 preguntas/día.
+              </p>
+            </div>
+
             {(showOnlyPremium ? sameIpGroups.filter(g => g.hasPremium) : sameIpGroups).length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 No se encontraron grupos con misma IP{showOnlyPremium ? ' con premium' : ''}
@@ -745,42 +1100,81 @@ export default function FraudesPage() {
           </div>
         )}
 
-        {/* Tab Mismo Dispositivo */}
+        {/* Tab Mismo Dispositivo + IP (Combinado) */}
         {activeTab === 'mismo-dispositivo' && (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Explicación del sistema */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Detección combinada:</strong> Muestra usuarios que comparten <strong>misma IP + mismo tipo de dispositivo</strong>.
+                Puntuación basada en: IP+dispositivo (30pts), premium compartido (+30pts), sesiones cercanas en tiempo (+25pts), +2 usuarios (+15pts).
+              </p>
+            </div>
+
             {(showOnlyPremium ? sameDeviceGroups.filter(g => g.hasPremium) : sameDeviceGroups).length === 0 ? (
               <div className="p-8 text-center text-gray-500">
-                No se encontraron grupos con mismo dispositivo{showOnlyPremium ? ' con premium' : ''}
+                No se encontraron grupos sospechosos{showOnlyPremium ? ' con premium' : ''}
               </div>
             ) : (
               (showOnlyPremium ? sameDeviceGroups.filter(g => g.hasPremium) : sameDeviceGroups).slice(0, 20).map((group, idx) => (
                 <div key={idx} className="p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">📱</span>
+                    <div className="flex items-center gap-3">
+                      {/* Puntuación de sospecha */}
+                      <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                        group.suspicionScore >= 70 ? 'bg-red-100 text-red-800' :
+                        group.suspicionScore >= 50 ? 'bg-orange-100 text-orange-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {group.suspicionScore}% sospecha
+                      </div>
                       <span className="text-gray-500">({group.userCount} usuarios)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
                       {group.hasPremium && (
                         <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
-                          INCLUYE PREMIUM
+                          🔴 PREMIUM
+                        </span>
+                      )}
+                      {group.hasCloseTimeSessions && (
+                        <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs rounded-full font-medium">
+                          ⏱️ TIEMPO CERCANO
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div className="text-xs text-gray-500 mb-3 font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded truncate">
-                    {group.userAgent}
+                  {/* Información de IP y dispositivo */}
+                  <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
+                    <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded">
+                      <span className="text-gray-500">IP:</span>{' '}
+                      <span className="font-mono font-medium">{group.ip}</span>
+                    </div>
+                    <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded">
+                      <span className="text-gray-500">Dispositivo:</span>{' '}
+                      <span className="font-medium">{group.deviceCategory}</span>
+                    </div>
                   </div>
 
+                  {/* Lista de usuarios */}
                   <div className="space-y-2">
-                    {group.users.map(user => (
-                      <div key={user.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                        <div>
-                          <div className="font-medium text-sm">{user.full_name || 'Sin nombre'}</div>
-                          <div className="text-xs text-gray-500">{user.email}</div>
+                    {group.users.map(user => {
+                      const sessionInfo = group.sessionDetails?.find(s => s.user_id === user.id)
+                      return (
+                        <div key={user.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                          <div>
+                            <div className="font-medium text-sm">{user.full_name || 'Sin nombre'}</div>
+                            <div className="text-xs text-gray-500">{user.email}</div>
+                            {sessionInfo && (
+                              <div className="text-xs text-gray-400 mt-1">
+                                {sessionInfo.sessionCount} sesiones • Última: {new Date(sessionInfo.lastSession).toLocaleDateString('es-ES')}
+                              </div>
+                            )}
+                          </div>
+                          {getPlanBadge(user.plan_type)}
                         </div>
-                        {getPlanBadge(user.plan_type)}
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               ))
