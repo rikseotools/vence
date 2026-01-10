@@ -18,6 +18,7 @@ import ExamReadiness from '@/components/Statistics/ExamReadiness'
 import ExamPredictionMarch2025 from '@/components/Statistics/ExamPredictionMarch2025'
 import PersonalDifficultyInsights from '@/components/Statistics/PersonalDifficultyInsights'
 import DetailedCharts from '@/components/Statistics/DetailedCharts'
+import PsychometricStatsTab from '@/components/Statistics/PsychometricStatsTab'
 
 // Cache inteligente para análisis de IA
 const aiAnalysisCache = new Map()
@@ -1928,41 +1929,28 @@ export default function EstadisticasRevolucionarias() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50">
       <div className="container mx-auto px-4 py-8">
         
-        {/* Header Revolucionario */}
+        {/* Header */}
         <div className="mb-8">
           <div className="mb-6">
             <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 mb-2">
-              Análisis de mi progreso con IA
+              Estadísticas
             </h1>
             <p className="text-gray-600 text-lg">
-              Análisis de estadísticas y métricas avanzadas para que pongas foco en lo que realmente importante.
+              Métricas y análisis de tu progreso para que pongas foco en lo realmente importante.
             </p>
           </div>
-          
+
           {/* Usuario Info */}
           <div className="bg-gradient-to-r from-purple-100 to-indigo-100 border-2 border-purple-300 rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                  {user?.user_metadata?.full_name ? user.user_metadata.full_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
-
-                </div>
-                <div>
-                  <div className="font-bold text-purple-800 text-lg">
-                    {user?.user_metadata?.full_name || 'Usuario'}
-
-                  </div>
-                  <div className="text-purple-600">{user?.email}</div>
-
-                  <div className="text-sm text-green-600 font-medium">
-                    🧠 Sistema IA Activo • 📊 Métricas detalladas
-                  </div>
-                </div>
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                {user?.user_metadata?.full_name ? user.user_metadata.full_name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase()}
               </div>
-              <div className="text-right">
-                <div className="text-sm text-purple-600">
-                  Análisis completo con IA
+              <div>
+                <div className="font-bold text-purple-800 text-lg">
+                  {user?.user_metadata?.full_name || 'Usuario'}
                 </div>
+                <div className="text-purple-600">{user?.email}</div>
               </div>
             </div>
           </div>
@@ -1972,30 +1960,9 @@ export default function EstadisticasRevolucionarias() {
       {/* NAVEGACIÓN STICKY CON TABS COMPACTOS */}
       <div className="sticky top-0 z-50 bg-gradient-to-br from-purple-50 to-indigo-50 border-b border-purple-200 shadow-sm py-2 md:py-4">
         <div className="container mx-auto px-4">
-          {/* Header compacto */}
-          <div className="text-center mb-2 md:mb-4">
-            <h2 className="text-sm md:text-lg font-bold text-gray-800 mb-0.5 md:mb-1">
-              📊 Categorías de Análisis
-            </h2>
-            <p className="text-gray-600 text-xs hidden md:block">
-              Navega entre las diferentes métricas mientras haces scroll
-            </p>
-            {/* Enlace a estadísticas psicotécnicas */}
-            <div className="mt-2">
-              <Link 
-                href="/mis-estadisticas/psicotecnicos"
-                className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:from-orange-600 hover:to-red-600 transition-all duration-200 shadow-md text-sm"
-              >
-                <span>🧠</span>
-                <span>Ver Estadísticas Psicotécnicas</span>
-                <span>→</span>
-              </Link>
-            </div>
-          </div>
-
           {/* Tabs horizontales compactos y sticky */}
           <div className="bg-white rounded-lg shadow-md p-2">
-            <div className="flex justify-center space-x-2 md:grid md:grid-cols-4 md:gap-3 max-w-4xl mx-auto">
+            <div className="flex justify-center space-x-2 md:grid md:grid-cols-5 md:gap-3 max-w-5xl mx-auto">
               {[
                 {
                   id: 'overview',
@@ -2075,8 +2042,30 @@ export default function EstadisticasRevolucionarias() {
                   </div>
                 </button>
               ))}
-            </div>
 
+              {/* Tab Psicotécnicos */}
+              <button
+                onClick={() => handleTabChange('psicotecnicos')}
+                className={`flex-1 md:flex-auto p-2 md:p-3 rounded-lg transition-all duration-200 relative ${
+                  activeTab === 'psicotecnicos'
+                    ? 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md'
+                    : 'bg-gray-50 hover:bg-green-100 text-gray-700 hover:text-green-700'
+                }`}
+              >
+                {activeTab === 'psicotecnicos' && (
+                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 md:w-3 md:h-3 bg-yellow-400 rounded-full md:flex md:items-center md:justify-center">
+                    <span className="hidden md:inline text-xs">✓</span>
+                  </div>
+                )}
+                <div className="text-center">
+                  <div className={`text-lg md:text-xl mb-1 ${activeTab === 'psicotecnicos' ? 'text-white' : 'text-green-500'}`}>🧩</div>
+                  <div className="font-bold text-xs md:text-sm leading-tight">Psicotécnicos</div>
+                  <div className={`text-xs leading-tight ${activeTab === 'psicotecnicos' ? 'text-white opacity-75' : 'text-gray-500'}`}>
+                    Tests
+                  </div>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2121,6 +2110,12 @@ export default function EstadisticasRevolucionarias() {
           {activeTab === 'predictions' && (
             <div className="space-y-6">
               <ExamPredictionMarch2025 examPrediction={stats.examPredictionMarch2025} />
+            </div>
+          )}
+
+          {activeTab === 'psicotecnicos' && (
+            <div className="space-y-6">
+              <PsychometricStatsTab />
             </div>
           )}
         </div>
