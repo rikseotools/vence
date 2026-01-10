@@ -306,7 +306,7 @@ export default function FraudesPage() {
       for (const user of (premiumUsers || [])) {
         const { data: userSessions } = await supabase
           .from('user_sessions')
-          .select('ip_address, city, region, country_code, session_start')
+          .select('ip_address, city, region, country_code, session_start, user_agent, screen_resolution')
           .eq('user_id', user.id)
           .not('ip_address', 'is', null)
           .order('session_start', { ascending: false })
@@ -316,12 +316,24 @@ export default function FraudesPage() {
           const uniqueIps = [...new Set(userSessions.map(s => s.ip_address).filter(Boolean))]
           const uniqueCities = [...new Set(userSessions.map(s => s.city).filter(Boolean))]
 
+          // Extraer dispositivos únicos (resolución + OS)
+          const deviceSet = new Set()
+          userSessions.forEach(s => {
+            if (s.screen_resolution || s.user_agent) {
+              const os = getOS(s.user_agent)
+              const resolution = s.screen_resolution || '?'
+              deviceSet.add(`${resolution} / ${os}`)
+            }
+          })
+          const uniqueDevices = [...deviceSet]
+
           // Si tiene más de 3 IPs diferentes o más de 2 ciudades diferentes, es sospechoso
           if (uniqueIps.length > 3 || uniqueCities.length > 2) {
             suspiciousPremiumSessions.push({
               user,
               uniqueIps,
               uniqueCities,
+              uniqueDevices,
               sessionCount: userSessions.length,
               recentSessions: userSessions.slice(0, 5)
             })
@@ -1365,6 +1377,13 @@ export default function FraudesPage() {
         {/* Tab Premium Sospechoso */}
         {activeTab === 'premium-sospechoso' && (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Explicación */}
+            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800">
+              <p className="text-sm text-purple-800 dark:text-purple-200">
+                <strong>Cuentas premium con múltiples ubicaciones:</strong> Si hay múltiples dispositivos diferentes, es probable que compartan la cuenta.
+              </p>
+            </div>
+
             {suspiciousSessions.length === 0 ? (
               <div className="p-8 text-center text-gray-500">
                 No se detectaron cuentas premium con uso sospechoso
@@ -1377,10 +1396,18 @@ export default function FraudesPage() {
                       <div className="font-medium">{item.user.full_name || 'Sin nombre'}</div>
                       <div className="text-sm text-gray-500">{item.user.email}</div>
                     </div>
-                    {getPlanBadge(item.user.plan_type)}
+                    <div className="flex items-center gap-2">
+                      {/* Indicador de sospecha alta si hay múltiples dispositivos */}
+                      {item.uniqueDevices && item.uniqueDevices.length > 1 && (
+                        <span className="px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full font-medium">
+                          🚨 {item.uniqueDevices.length} dispositivos
+                        </span>
+                      )}
+                      {getPlanBadge(item.user.plan_type)}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="font-medium text-gray-700 dark:text-gray-300">IPs únicas ({item.uniqueIps.length})</p>
                       <div className="text-xs text-gray-500 space-y-1 mt-1">
@@ -1396,6 +1423,25 @@ export default function FraudesPage() {
                       <p className="font-medium text-gray-700 dark:text-gray-300">Ciudades ({item.uniqueCities.length})</p>
                       <div className="text-xs text-gray-500 mt-1">
                         {item.uniqueCities.join(', ')}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-700 dark:text-gray-300">
+                        Dispositivos ({item.uniqueDevices?.length || 0})
+                        {item.uniqueDevices && item.uniqueDevices.length > 1 && (
+                          <span className="ml-2 text-red-600">⚠️ Sospechoso</span>
+                        )}
+                      </p>
+                      <div className="text-xs mt-1 space-y-1">
+                        {item.uniqueDevices?.map((device, i) => (
+                          <div key={i} className={`px-2 py-1 rounded ${
+                            item.uniqueDevices.length > 1
+                              ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                          }`}>
+                            📱 {device}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
