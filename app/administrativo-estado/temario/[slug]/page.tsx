@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps) {
     return { title: 'Tema no encontrado' }
   }
 
-  const content = await getTopicContent('administrativo_estado', topicNumber)
+  const content = await getTopicContent('administrativo-estado', topicNumber)
 
   if (!content) {
     return { title: 'Tema no encontrado' }
@@ -58,7 +58,7 @@ export default async function TemarioTemaPage({ params }: PageProps) {
     notFound()
   }
 
-  const content = await getTopicContent('administrativo_estado', topicNumber)
+  const content = await getTopicContent('administrativo-estado', topicNumber)
 
   if (!content) {
     notFound()
