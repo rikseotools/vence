@@ -6,6 +6,7 @@ import { QuestionProvider } from '../contexts/QuestionContext'
 import AIChatWidget from '../components/AIChatWidget'
 import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
 import SentryInit from '../components/SentryInit'
+import FraudTracker from '../components/FraudTracker'
 
 export default function SpanishLayout({ children }) {
   return (
@@ -24,6 +25,7 @@ export default function SpanishLayout({ children }) {
             </div>
             <AIChatWidget />
             <GoogleOneTapWrapper />
+            <FraudTracker />
           </QuestionProvider>
         </AuthProvider>
         <GoogleAnalytics />

@@ -11,17 +11,21 @@ import { GoogleAdsEvents } from '../utils/googleAds'
 const AuthContext = createContext({})
 
 // 🎯 TRACKING DE IP Y LOCALIDAD - Fire and forget, no bloquea UI
+// También envía device_id si existe (para usuarios bajo vigilancia de fraude)
 const trackSessionIP = (userId, sessionId = null) => {
   if (typeof window === 'undefined') return
+
+  // Obtener device_id si existe (solo para usuarios vigilados)
+  const deviceId = localStorage.getItem('vence_device_id') || null
 
   // Fire and forget - no await, no bloquea nada
   fetch('/api/auth/track-session-ip', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, sessionId })
+    body: JSON.stringify({ userId, sessionId, deviceId })
   }).then(res => {
     if (res.ok) {
-      console.log('📍 IP y localidad tracked en background')
+      console.log('📍 IP y localidad tracked en background', deviceId ? '(con device_id)' : '')
     }
   }).catch(err => {
     // Silencioso - no es crítico

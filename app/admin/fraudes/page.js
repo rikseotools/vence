@@ -13,6 +13,7 @@ export default function FraudesPage() {
   const [sameDeviceGroups, setSameDeviceGroups] = useState([])
   const [suspiciousSessions, setSuspiciousSessions] = useState([])
   const [multiAccountUsers, setMultiAccountUsers] = useState([])
+  const [confirmedFrauds, setConfirmedFrauds] = useState([]) // Fraudes confirmados por device_id
 
   // Alertas del sistema
   const [alerts, setAlerts] = useState([])
@@ -566,13 +567,125 @@ export default function FraudesPage() {
       }
 
       // Ordenar por puntuación de sospecha
-      setMultiAccountUsers(multiAccounts.sort((a, b) => b.suspicionScore - a.suspicionScore))
+      const sortedMultiAccounts = multiAccounts.sort((a, b) => b.suspicionScore - a.suspicionScore)
+      setMultiAccountUsers(sortedMultiAccounts)
+
+      // 5. Auto-guardar usuarios sospechosos en fraud_watch_list
+      await autoSaveToWatchList(sortedMultiAccounts, supabase)
+
+      // 6. Verificar fraudes confirmados por device_id
+      await checkDeviceIdFraud(supabase)
 
     } catch (err) {
       console.error('Error cargando datos de fraude:', err)
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Auto-guardar usuarios sospechosos en fraud_watch_list
+  async function autoSaveToWatchList(multiAccounts, supabase) {
+    try {
+      for (const group of multiAccounts) {
+        // Solo guardar grupos con puntuación alta
+        if (group.suspicionScore < 50) continue
+
+        for (const user of group.users) {
+          // Verificar si ya está en la lista
+          const { data: existing } = await supabase
+            .from('fraud_watch_list')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (existing) continue // Ya está en la lista
+
+          // Añadir a la lista de vigilancia
+          const { error } = await supabase
+            .from('fraud_watch_list')
+            .insert({
+              user_id: user.id,
+              reason: group.detectionMethod || 'same_ip',
+              detection_details: {
+                ip: group.ip,
+                fingerprint: group.deviceFingerprint,
+                suspicionScore: group.suspicionScore,
+                reasons: group.reasons,
+                relatedEmails: group.users.map(u => u.email)
+              },
+              suspicion_score: group.suspicionScore,
+              related_users: group.users.filter(u => u.id !== user.id).map(u => u.id)
+            })
+
+          if (error && error.code !== '23505') { // Ignorar duplicados
+            console.warn('Error añadiendo a watch list:', error.message)
+          }
+        }
+      }
+      console.log('✅ Usuarios sospechosos guardados en fraud_watch_list')
+    } catch (err) {
+      console.warn('Error en autoSaveToWatchList:', err.message)
+    }
+  }
+
+  // Verificar fraudes confirmados por device_id compartido
+  async function checkDeviceIdFraud(supabase) {
+    try {
+      // Buscar device_ids que aparecen en múltiples usuarios
+      const { data: sessions } = await supabase
+        .from('user_sessions')
+        .select('user_id, device_id')
+        .not('device_id', 'is', null)
+
+      if (!sessions || sessions.length === 0) return
+
+      // Agrupar por device_id
+      const deviceGroups = {}
+      sessions.forEach(s => {
+        if (!deviceGroups[s.device_id]) {
+          deviceGroups[s.device_id] = new Set()
+        }
+        deviceGroups[s.device_id].add(s.user_id)
+      })
+
+      // Buscar device_ids con múltiples usuarios = fraude confirmado
+      const confirmedFrauds = []
+      for (const [deviceId, userIds] of Object.entries(deviceGroups)) {
+        if (userIds.size > 1) {
+          // Obtener perfiles de estos usuarios
+          const { data: profiles } = await supabase
+            .from('user_profiles')
+            .select('id, email, full_name, plan_type, created_at')
+            .in('id', Array.from(userIds))
+
+          confirmedFrauds.push({
+            deviceId,
+            users: profiles || [],
+            userCount: userIds.size
+          })
+
+          // Marcar como fraude confirmado en fraud_watch_list
+          for (const userId of userIds) {
+            await supabase
+              .from('fraud_watch_list')
+              .update({
+                confirmed_fraud: true,
+                confirmed_at: new Date().toISOString(),
+                confirmed_device_id: deviceId
+              })
+              .eq('user_id', userId)
+          }
+        }
+      }
+
+      if (confirmedFrauds.length > 0) {
+        console.log('🚨 Fraudes confirmados por device_id:', confirmedFrauds.length)
+        setConfirmedFrauds(confirmedFrauds)
+      }
+
+    } catch (err) {
+      console.warn('Error en checkDeviceIdFraud:', err.message)
     }
   }
 
@@ -701,6 +814,7 @@ export default function FraudesPage() {
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="flex space-x-4 overflow-x-auto">
           {[
+            { id: 'confirmados', label: 'Confirmados', icon: '✅', count: confirmedFrauds.length, highlight: true },
             { id: 'alertas', label: 'Alertas Sistema', icon: '🚨', count: alertStats?.new || 0 },
             { id: 'resumen', label: 'Resumen', icon: '📊' },
             { id: 'multicuentas', label: 'Multi-cuentas', icon: '👥', count: stats.multiAccounts },
@@ -743,6 +857,72 @@ export default function FraudesPage() {
 
       {/* Contenido según tab */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border">
+
+        {/* Tab Fraudes Confirmados por device_id */}
+        {activeTab === 'confirmados' && (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Explicación */}
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800">
+              <p className="text-sm text-green-800 dark:text-green-200">
+                <strong>Fraudes 100% confirmados:</strong> Múltiples cuentas detectadas usando el mismo dispositivo (device_id).
+              </p>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                El device_id es un identificador único por navegador/dispositivo. Si aparece en varias cuentas, es la misma persona.
+              </p>
+            </div>
+
+            {confirmedFrauds.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <div className="text-4xl mb-3">🔍</div>
+                <p>No hay fraudes confirmados por device_id todavía</p>
+                <p className="text-xs mt-2">Los usuarios sospechosos están siendo vigilados. Cuando usen múltiples cuentas desde el mismo dispositivo, aparecerán aquí.</p>
+              </div>
+            ) : (
+              confirmedFrauds.map((fraud, idx) => (
+                <div key={idx} className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🚨</span>
+                      <span className="font-bold text-red-600">{fraud.userCount} cuentas = misma persona</span>
+                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full font-medium">
+                        CONFIRMADO
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-xs mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                    <div className="font-semibold text-red-800 dark:text-red-200 mb-1">🔒 Device ID compartido:</div>
+                    <div className="text-red-700 dark:text-red-300 font-mono text-[10px] break-all">{fraud.deviceId}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {fraud.users.map(user => (
+                      <div key={user.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                        <div>
+                          <div className="font-medium text-sm">{user.full_name || 'Sin nombre'}</div>
+                          <div className="text-xs text-gray-500">{user.email}</div>
+                          <div className="text-xs text-gray-400">
+                            Registro: {formatDate(user.created_at)}
+                          </div>
+                        </div>
+                        {getPlanBadge(user.plan_type)}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 flex gap-2">
+                    <button className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700">
+                      Bloquear cuentas
+                    </button>
+                    <button className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300">
+                      Enviar advertencia
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Tab Alertas del Sistema */}
         {activeTab === 'alertas' && (

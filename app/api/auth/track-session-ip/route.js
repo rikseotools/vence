@@ -51,7 +51,7 @@ async function getGeoLocation(ip) {
 
 export async function POST(request) {
   try {
-    const { userId, sessionId } = await request.json()
+    const { userId, sessionId, deviceId } = await request.json()
 
     if (!userId) {
       return NextResponse.json(
@@ -65,7 +65,7 @@ export async function POST(request) {
     const realIp = request.headers.get('x-real-ip')
     const ip = forwardedFor?.split(',')[0]?.trim() || realIp || 'unknown'
 
-    console.log('📍 [SessionIP] Tracking IP de sesión:', { userId: userId.substring(0, 8) + '...', ip })
+    console.log('📍 [SessionIP] Tracking IP de sesión:', { userId: userId.substring(0, 8) + '...', ip, hasDeviceId: !!deviceId })
 
     // Obtener geolocalización (async, con timeout)
     const geo = await getGeoLocation(ip)
@@ -75,6 +75,12 @@ export async function POST(request) {
     // Preparar datos de actualización
     const updateData = {
       ip_address: ip
+    }
+
+    // Añadir device_id si está presente (usuario bajo vigilancia)
+    if (deviceId) {
+      updateData.device_id = deviceId
+      console.log('🔒 [SessionIP] Device ID tracking:', deviceId.substring(0, 8) + '...')
     }
 
     // Añadir geolocalización si está disponible
