@@ -17,13 +17,13 @@ export default function TestsAdministrativoEstado() {
   const [expandedBlocks, setExpandedBlocks] = useState(() => {
     // Intentar recuperar estado guardado del localStorage
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('administrativo-estado-expanded-blocks')
-      if (saved) {
-        try {
+      try {
+        const saved = localStorage.getItem('administrativo-estado-expanded-blocks')
+        if (saved) {
           return JSON.parse(saved)
-        } catch (e) {
-          // Si hay error, usar estado por defecto
         }
+      } catch (e) {
+        // localStorage bloqueado o error de parseo - usar estado por defecto
       }
     }
     return {
@@ -107,7 +107,11 @@ export default function TestsAdministrativoEstado() {
         [blockId]: !prev[blockId]
       }
       // Guardar en localStorage para recordar el estado
-      localStorage.setItem('administrativo-estado-expanded-blocks', JSON.stringify(newState))
+      try {
+        localStorage.setItem('administrativo-estado-expanded-blocks', JSON.stringify(newState))
+      } catch (e) {
+        // localStorage bloqueado - continuar sin persistir
+      }
       return newState
     })
   }

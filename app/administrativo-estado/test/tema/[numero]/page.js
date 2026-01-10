@@ -34,15 +34,23 @@ export default function TemaAdministrativoPage({ params }) {
 
   // Cargar preferencia de modo desde localStorage
   useEffect(() => {
-    const savedMode = localStorage.getItem('preferredTestMode')
-    if (savedMode === 'practica' || savedMode === 'examen') {
-      setTestMode(savedMode)
+    try {
+      const savedMode = localStorage.getItem('preferredTestMode')
+      if (savedMode === 'practica' || savedMode === 'examen') {
+        setTestMode(savedMode)
+      }
+    } catch (e) {
+      // localStorage bloqueado
     }
   }, [])
 
   const handleTestModeChange = (newMode) => {
     setTestMode(newMode)
-    localStorage.setItem('preferredTestMode', newMode)
+    try {
+      localStorage.setItem('preferredTestMode', newMode)
+    } catch (e) {
+      // localStorage bloqueado
+    }
   }
 
   // Cerrar dropdown al hacer click fuera

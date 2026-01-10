@@ -213,16 +213,24 @@ export default function TestAleatorioAdministrativoPage() {
 
   // Cargar preferencia de modo desde localStorage
   useEffect(() => {
-    const savedMode = localStorage.getItem('preferredTestMode')
-    if (savedMode === 'practica' || savedMode === 'examen') {
-      setTestMode(savedMode)
+    try {
+      const savedMode = localStorage.getItem('preferredTestMode')
+      if (savedMode === 'practica' || savedMode === 'examen') {
+        setTestMode(savedMode)
+      }
+    } catch (e) {
+      // localStorage bloqueado
     }
   }, [])
 
   // Función helper para cambiar modo y guardar preferencia
   const handleTestModeChange = (newMode) => {
     setTestMode(newMode)
-    localStorage.setItem('preferredTestMode', newMode)
+    try {
+      localStorage.setItem('preferredTestMode', newMode)
+    } catch (e) {
+      // localStorage bloqueado
+    }
 
     // Si se cambia a modo examen, resetear la dificultad a 'mixed' (aleatorio)
     if (newMode === 'examen' && difficulty !== 'mixed') {
