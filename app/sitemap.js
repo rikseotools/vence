@@ -35,15 +35,80 @@ export default async function sitemap() {
       priority: 0.7,
     },
     
-    // Administrativo del Estado - SOLO páginas principales
+    // Administrativo del Estado - páginas principales
     {
       url: `${SITE_URL}/administrativo-estado`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
     },
-    
-    
+    {
+      url: `${SITE_URL}/administrativo-estado/test`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/administrativo-estado/temario`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+
+    // ✅ Temas individuales - Auxiliar Administrativo del Estado
+    // Bloque I: Organización Pública (temas 1-16)
+    ...Array.from({ length: 16 }, (_, i) => ({
+      url: `${SITE_URL}/auxiliar-administrativo-estado/temario/tema-${i + 1}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })),
+    // Bloque II: Actividad Administrativa (temas 101-104, excluidos 105-112 informática)
+    ...Array.from({ length: 4 }, (_, i) => ({
+      url: `${SITE_URL}/auxiliar-administrativo-estado/temario/tema-${101 + i}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })),
+
+    // ✅ Temas individuales - Administrativo del Estado
+    // Bloque I: Organización del Estado (temas 1-11)
+    ...Array.from({ length: 11 }, (_, i) => ({
+      url: `${SITE_URL}/administrativo-estado/temario/tema-${i + 1}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })),
+    // Bloque II: Organización de Oficinas Públicas (temas 201-204)
+    ...Array.from({ length: 4 }, (_, i) => ({
+      url: `${SITE_URL}/administrativo-estado/temario/tema-${201 + i}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })),
+    // Bloque III: Derecho Administrativo General (temas 301-307)
+    ...Array.from({ length: 7 }, (_, i) => ({
+      url: `${SITE_URL}/administrativo-estado/temario/tema-${301 + i}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })),
+    // Bloque IV: Gestión de Personal (temas 401-409)
+    ...Array.from({ length: 9 }, (_, i) => ({
+      url: `${SITE_URL}/administrativo-estado/temario/tema-${401 + i}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })),
+    // Bloque V: Gestión Financiera (temas 501-506)
+    ...Array.from({ length: 6 }, (_, i) => ({
+      url: `${SITE_URL}/administrativo-estado/temario/tema-${501 + i}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })),
+    // Bloque VI: Informática excluido (601-608 no disponibles)
+
     // ✅ PÁGINAS PRINCIPALES DE CONTENIDO - NO TESTS
     {
       url: `${SITE_URL}/leyes`,
