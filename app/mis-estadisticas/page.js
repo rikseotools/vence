@@ -1469,29 +1469,25 @@ export default function EstadisticasRevolucionarias() {
                 percentage: masteredPercentage,
                 remaining: totalThemes - masteredThemes,
                 // Predicción de cuándo dominará todo el temario
-                // Solo mostrar si tiene al menos 3 temas dominados (datos suficientes)
+                // 🔧 CORREGIDO: Usar daysSinceJoin (igual que UserProfileModal)
+                // antes usaba recentTests que solo tiene 10 tests, dando fechas incorrectas
                 projectedMasteryDate: (() => {
-                  if (masteredThemes < 3) return null // No hay suficientes datos
+                  if (masteredThemes < 1) return null // Necesita al menos 1 tema dominado
                   if (masteredThemes >= totalThemes) return 'completado'
 
-                  // Calcular cuántos días le tomó dominar los temas actuales
-                  // Usar el total de días desde el primer test
-                  const firstTestDate = apiStats.recentTests.length > 0
-                    ? new Date(apiStats.recentTests[apiStats.recentTests.length - 1].completedAt)
-                    : null
+                  // Usar días desde registro (igual que UserProfileModal)
+                  const diasEnVence = oposicion?.daysSinceJoin || 30
 
-                  if (!firstTestDate) return null
-
-                  const daysSinceStart = Math.max(1, Math.ceil((new Date() - firstTestDate) / (1000 * 60 * 60 * 24)))
-                  const daysPerTheme = daysSinceStart / masteredThemes
+                  // Calcular ritmo: temas dominados por semana
+                  const temasPoSemana = (masteredThemes / diasEnVence) * 7
                   const themesRemaining = totalThemes - masteredThemes
-                  const daysNeeded = Math.ceil(themesRemaining * daysPerTheme)
+                  const semanasNecesarias = Math.ceil(themesRemaining / temasPoSemana)
 
-                  // Solo mostrar si es razonable (< 2 años = 730 días)
-                  if (daysNeeded > 730) return null
+                  // Solo mostrar si es razonable (< 2 años = 104 semanas)
+                  if (semanasNecesarias > 104) return null
 
                   const projectedDate = new Date()
-                  projectedDate.setDate(projectedDate.getDate() + daysNeeded)
+                  projectedDate.setDate(projectedDate.getDate() + semanasNecesarias * 7)
 
                   return projectedDate.toLocaleDateString('es-ES', {
                     day: 'numeric',
