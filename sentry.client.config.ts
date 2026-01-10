@@ -4,30 +4,36 @@
 
 import * as Sentry from "@sentry/nextjs";
 
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Debug: log initialization (remove after confirming it works)
+if (typeof window !== 'undefined') {
+  console.log('[Sentry Client] Initializing...', {
+    hasDsn: !!dsn,
+    env: process.env.NODE_ENV,
+    isProduction,
+  });
+}
+
 Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  dsn,
 
   // Define how likely traces are sampled. Adjust this value in production.
-  // Set to 1.0 to capture 100% of transactions for performance monitoring.
   tracesSampleRate: 0.1,
 
-  // Setting this option to true will print useful information to the console while you're setting up Sentry.
-  debug: false,
+  // Enable debug temporarily to see what's happening
+  debug: !isProduction,
 
-  // Only send errors in production
-  enabled: process.env.NODE_ENV === 'production',
+  // Enable in all environments for now to test, then restrict to production
+  enabled: true,
 
-  // You can remove this option if you're not planning to use the Sentry Session Replay feature:
+  // Session Replay configuration
   replaysOnErrorSampleRate: 1.0,
+  replaysSessionSampleRate: isProduction ? 0.1 : 0,
 
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
-
-  // You can remove this option if you're not planning to use the Sentry Session Replay feature:
   integrations: [
     Sentry.replayIntegration({
-      // Additional Replay configuration goes in here, for example:
       maskAllText: true,
       blockAllMedia: true,
     }),
@@ -47,12 +53,6 @@ Sentry.init({
     'The operation was aborted',
   ],
 
-  // Add context to errors
-  beforeSend(event, hint) {
-    // Don't send errors in development
-    if (process.env.NODE_ENV !== 'production') {
-      return null;
-    }
-    return event;
-  },
+  // Environment tag
+  environment: isProduction ? 'production' : 'development',
 });

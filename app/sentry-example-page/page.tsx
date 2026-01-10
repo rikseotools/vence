@@ -8,8 +8,10 @@ export default function SentryExamplePage() {
       // Esto lanzará un error que Sentry capturará
       throw new Error("Sentry Test Error - Cliente vence.es");
     } catch (error) {
+      console.log('[Sentry Test] Capturing exception:', error);
       Sentry.captureException(error);
-      alert("Error enviado a Sentry. Revisa el dashboard.");
+      console.log('[Sentry Test] Exception captured, check Sentry dashboard');
+      alert("Error enviado a Sentry. Revisa la consola y el dashboard.");
     }
   };
 
