@@ -275,12 +275,12 @@ async function handleCheckoutSessionCompleted(session, supabase) {
         if (session.subscription) {
           try {
             const subscription = await stripe.subscriptions.retrieve(session.subscription)
+            // NOTA: Valores permitidos: 'trial', 'premium_semester', 'premium_annual'
             let planType = 'premium_semester'
             if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'year') {
               planType = 'premium_annual'
-            } else if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'month') {
-              planType = 'premium_monthly'
             }
+            // Mensual también usa premium_semester (constraint de BD no tiene monthly)
 
             await supabase
               .from('user_subscriptions')
@@ -290,8 +290,6 @@ async function handleCheckoutSessionCompleted(session, supabase) {
                 stripe_subscription_id: subscription.id,
                 status: subscription.status,
                 plan_type: planType,
-                starts_at: new Date(subscription.current_period_start * 1000).toISOString(),
-                ends_at: new Date(subscription.current_period_end * 1000).toISOString(),
                 current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
                 current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
               }, { onConflict: 'user_id', ignoreDuplicates: false })
@@ -300,6 +298,21 @@ async function handleCheckoutSessionCompleted(session, supabase) {
           } catch (subErr) {
             console.error('⚠️ Error creando subscription por email:', subErr.message)
           }
+        }
+
+        // 📧 Enviar email de notificación al admin (CASO 2)
+        try {
+          await sendAdminPurchaseEmail({
+            userEmail: customer.email,
+            userName: 'Usuario encontrado por email',
+            amount: session.amount_total / 100,
+            currency: session.currency?.toUpperCase() || 'EUR',
+            stripeCustomerId: session.customer,
+            userId: existingUser.id
+          })
+          console.log('📧 Email de nueva compra enviado al admin (CASO 2)')
+        } catch (emailErr) {
+          console.error('Error enviando email admin (CASO 2):', emailErr)
         }
       } else {
         console.log('⚠️ No se encontró usuario con email:', customer.email)
