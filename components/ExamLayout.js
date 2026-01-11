@@ -54,13 +54,19 @@ async function saveAnswerToAPI(testId, question, questionIndex, selectedOption) 
       })
     })
 
-    if (!response.ok) {
-      console.warn('⚠️ Error guardando respuesta en API:', response.status)
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      console.error('❌ Error guardando respuesta en API:', {
+        status: response.status,
+        error: result.error,
+        questionOrder: questionIndex + 1,
+        testId
+      })
       return false
     }
 
-    const result = await response.json()
-    return result.success
+    return true
   } catch (error) {
     console.error('❌ Error guardando respuesta en API:', error)
     return false
@@ -365,15 +371,18 @@ export default function ExamLayout({
         currentTestSessionRef.current = testSessionData
 
         // 🆕 Guardar TODAS las preguntas del examen para poder reanudar después
-        if (effectiveQuestions?.length > 0) {
-          console.log('💾 Guardando todas las preguntas del examen...')
+        // ⚠️ FIX: Usar 'questions' prop directamente en lugar de 'effectiveQuestions' state
+        // porque effectiveQuestions puede estar vacío si limitLoading es true todavía
+        // (el state inicial es [] y el useEffect que lo actualiza depende de limitLoading)
+        if (questions?.length > 0) {
+          console.log('💾 Guardando todas las preguntas del examen...', questions.length, 'preguntas')
           try {
             const initResponse = await fetch('/api/exam/init', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 testId: testSessionData.id,
-                questions: effectiveQuestions,
+                questions: questions, // Usar prop directamente
                 userId: user?.id
               })
             })
@@ -381,11 +390,13 @@ export default function ExamLayout({
             if (initResult.success) {
               console.log(`✅ ${initResult.savedCount} preguntas guardadas para reanudar`)
             } else {
-              console.warn('⚠️ Error guardando preguntas:', initResult.error)
+              console.error('❌ Error guardando preguntas:', initResult.error)
             }
           } catch (initError) {
-            console.warn('⚠️ Error en init de preguntas:', initError)
+            console.error('❌ Error en init de preguntas:', initError)
           }
+        } else {
+          console.error('❌ CRITICAL: No hay preguntas para guardar en init')
         }
       }
 
