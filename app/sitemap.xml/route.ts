@@ -15,14 +15,13 @@ export const revalidate = 86400; // Regenerar cada 24 horas
 export async function GET() {
   const today = new Date().toISOString();
 
+  // NOTA: sitemap-convocatorias.xml desactivado temporalmente
+  // Las páginas de convocatorias individuales tienen contenido muy simple (thin content)
+  // Se reactivará cuando se enriquezca con más datos extraídos del BOE
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <sitemap>
     <loc>${SITE_URL}/sitemap-static.xml</loc>
-    <lastmod>${today}</lastmod>
-  </sitemap>
-  <sitemap>
-    <loc>${SITE_URL}/sitemap-convocatorias.xml</loc>
     <lastmod>${today}</lastmod>
   </sitemap>
   <sitemap>
