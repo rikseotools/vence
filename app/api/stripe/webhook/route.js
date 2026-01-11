@@ -223,6 +223,25 @@ async function handleCheckoutSessionCompleted(session, supabase) {
       } catch (emailErr) {
         console.error('Error enviando email admin:', emailErr)
       }
+
+      // 💰 Registrar pago para liquidación Manuel/Armando
+      try {
+        await recordPaymentSettlement({
+          paymentIntentId: session.payment_intent,
+          chargeId: null, // Se obtiene del payment_intent
+          invoiceId: session.invoice,
+          customerId: session.customer,
+          userId,
+          userEmail: data?.[0]?.email || session.customer_email,
+          amountGross: session.amount_total, // En céntimos
+          currency: session.currency,
+          paymentDate: new Date(session.created * 1000).toISOString(),
+          supabase
+        })
+        console.log('💰 Pago registrado en payment_settlements')
+      } catch (settlementErr) {
+        console.error('Error registrando settlement:', settlementErr)
+      }
     }
 
     // DESPUÉS: Verificar que se guardó
@@ -313,6 +332,25 @@ async function handleCheckoutSessionCompleted(session, supabase) {
           console.log('📧 Email de nueva compra enviado al admin (CASO 2)')
         } catch (emailErr) {
           console.error('Error enviando email admin (CASO 2):', emailErr)
+        }
+
+        // 💰 Registrar pago para liquidación (CASO 2)
+        try {
+          await recordPaymentSettlement({
+            paymentIntentId: session.payment_intent,
+            chargeId: null,
+            invoiceId: session.invoice,
+            customerId: session.customer,
+            userId: existingUser.id,
+            userEmail: customer.email,
+            amountGross: session.amount_total,
+            currency: session.currency,
+            paymentDate: new Date(session.created * 1000).toISOString(),
+            supabase
+          })
+          console.log('💰 Settlement registrado (CASO 2)')
+        } catch (settlementErr) {
+          console.error('Error registrando settlement (CASO 2):', settlementErr)
         }
       } else {
         console.log('⚠️ No se encontró usuario con email:', customer.email)
@@ -499,21 +537,25 @@ async function handleSubscriptionDeleted(subscription, supabase) {
 }
 
 async function handlePaymentSucceeded(invoice, supabase) {
+  console.log('💳 handlePaymentSucceeded:', invoice.id, 'billing_reason:', invoice.billing_reason)
+
   if (invoice.subscription) {
     try {
       const subscription = await stripe.subscriptions.retrieve(invoice.subscription)
-      
+
       // Buscar usuario por metadata O por customer_id
       let userId = subscription.metadata?.supabase_user_id
-      
+      let userEmail = null
+
       if (!userId) {
         const { data: user } = await supabase
           .from('user_profiles')
-          .select('id')
+          .select('id, email')
           .eq('stripe_customer_id', subscription.customer)
           .single()
-        
+
         userId = user?.id
+        userEmail = user?.email
       }
 
       if (userId) {
@@ -523,6 +565,26 @@ async function handlePaymentSucceeded(invoice, supabase) {
           .eq('id', userId)
 
         console.log(`✅ Payment succeeded for user ${userId}`)
+
+        // 💰 Registrar pago para liquidación (tanto primer pago como renovaciones)
+        // billing_reason: 'subscription_create' (primer pago) o 'subscription_cycle' (renovación)
+        try {
+          await recordPaymentSettlement({
+            paymentIntentId: invoice.payment_intent,
+            chargeId: invoice.charge,
+            invoiceId: invoice.id,
+            customerId: invoice.customer,
+            userId,
+            userEmail: userEmail || invoice.customer_email,
+            amountGross: invoice.amount_paid, // En céntimos
+            currency: invoice.currency,
+            paymentDate: new Date(invoice.created * 1000).toISOString(),
+            supabase
+          })
+          console.log('💰 Settlement registrado desde invoice.payment_succeeded')
+        } catch (settlementErr) {
+          console.error('Error registrando settlement en payment_succeeded:', settlementErr)
+        }
       }
     } catch (error) {
       console.error('Error handling payment success:', error)
@@ -684,6 +746,85 @@ async function sendAdminPaymentIssueEmail(data) {
     subject: `⚠️ ${statusLabel} - ${data.userEmail}`,
     html: html
   })
+}
+
+// 💰 Función para registrar pago en payment_settlements (liquidación Manuel/Armando)
+async function recordPaymentSettlement({ paymentIntentId, chargeId, invoiceId, customerId, userId, userEmail, amountGross, currency, paymentDate, supabase }) {
+  try {
+    // Obtener el balance_transaction para conocer el fee de Stripe
+    let stripeFee = 0
+    let actualChargeId = chargeId
+
+    // Si no tenemos chargeId pero tenemos paymentIntentId, obtener el charge
+    if (!actualChargeId && paymentIntentId) {
+      try {
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+        if (paymentIntent.latest_charge) {
+          actualChargeId = paymentIntent.latest_charge
+        }
+      } catch (piErr) {
+        console.log('⚠️ No se pudo obtener payment_intent:', piErr.message)
+      }
+    }
+
+    if (actualChargeId) {
+      try {
+        const charge = await stripe.charges.retrieve(actualChargeId)
+        if (charge.balance_transaction) {
+          const balanceTransaction = await stripe.balanceTransactions.retrieve(charge.balance_transaction)
+          stripeFee = balanceTransaction.fee // Fee en céntimos
+        }
+      } catch (chargeErr) {
+        console.log('⚠️ No se pudo obtener fee de Stripe:', chargeErr.message)
+      }
+    }
+
+    // Calcular montos
+    const amountNet = amountGross - stripeFee
+    const manuelAmount = Math.round(amountNet * 0.9)  // 90% para Manuel
+    const armandoAmount = amountNet - manuelAmount    // 10% para Armando (resto para evitar redondeo)
+
+    console.log('💰 Settlement:', {
+      gross: amountGross,
+      stripeFee,
+      net: amountNet,
+      manuel: manuelAmount,
+      armando: armandoAmount
+    })
+
+    // Insertar en payment_settlements
+    const { error } = await supabase
+      .from('payment_settlements')
+      .insert({
+        stripe_payment_intent_id: paymentIntentId,
+        stripe_charge_id: chargeId,
+        stripe_invoice_id: invoiceId,
+        stripe_customer_id: customerId,
+        user_id: userId,
+        user_email: userEmail,
+        amount_gross: amountGross,
+        stripe_fee: stripeFee,
+        amount_net: amountNet,
+        currency: currency || 'eur',
+        manuel_amount: manuelAmount,
+        armando_amount: armandoAmount,
+        payment_date: paymentDate || new Date().toISOString()
+      })
+
+    if (error) {
+      // Si es duplicado por payment_intent, ignorar silenciosamente
+      if (error.code === '23505') {
+        console.log('💰 Settlement ya registrado (duplicado), ignorando')
+        return
+      }
+      throw error
+    }
+
+    console.log('💰 Settlement registrado correctamente')
+  } catch (error) {
+    console.error('❌ Error registrando settlement:', error)
+    throw error
+  }
 }
 
 // Función para enviar email de cancelación al admin
