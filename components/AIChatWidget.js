@@ -32,25 +32,21 @@ export default function AIChatWidget() {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortControllerRef = useRef(null)
-  const lastScrollRef = useRef(0)
   const contentBufferRef = useRef('')
   const lastUpdateRef = useRef(0)
 
-  // Scroll al último mensaje (solo si hay mensajes, throttled durante streaming)
+  // Track previous streaming state to detect when streaming ends
+  const wasStreamingRef = useRef(false)
+
+  // Scroll al último mensaje - NO durante streaming (dificulta la lectura)
   useEffect(() => {
-    // Solo scrollear si hay mensajes (evita scroll al abrir chat vacío)
     if (messagesEndRef.current && messages.length > 0) {
-      const now = Date.now()
-      // Durante streaming, solo scroll cada 300ms para no marear
-      if (isStreaming) {
-        if (now - lastScrollRef.current > 300) {
-          lastScrollRef.current = now
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-        }
-      } else {
-        // Cuando termina, scroll final
+      // Solo scroll cuando streaming termina (de true a false)
+      // El scroll al enviar mensaje lo hace handleSend directamente
+      if (wasStreamingRef.current && !isStreaming) {
         messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
       }
+      wasStreamingRef.current = isStreaming
     }
   }, [messages, isStreaming])
 
@@ -223,6 +219,13 @@ export default function AIChatWidget() {
     setMessages(newMessages)
     setIsLoading(true)
     setIsStreaming(true)
+
+    // Scroll inmediato al enviar para ver el mensaje del usuario y el indicador de carga
+    setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+      }
+    }, 50)
 
     // Resetear refs para nueva conversación
     contentBufferRef.current = ''
