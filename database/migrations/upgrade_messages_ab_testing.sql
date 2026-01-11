@@ -53,7 +53,10 @@ CREATE INDEX IF NOT EXISTS idx_upgrade_impressions_message ON upgrade_message_im
 CREATE INDEX IF NOT EXISTS idx_upgrade_impressions_date ON upgrade_message_impressions(shown_at);
 
 -- 3. RPC: Obtener mensaje aleatorio ponderado
-CREATE OR REPLACE FUNCTION get_random_upgrade_message()
+-- FIX 2026-01-12: Añadido p_user_id param y eliminada ambiguedad de columna "id"
+CREATE OR REPLACE FUNCTION get_random_upgrade_message(
+  p_user_id UUID DEFAULT NULL
+)
 RETURNS TABLE (
   id UUID,
   message_key TEXT,
@@ -73,7 +76,6 @@ DECLARE
   v_cumulative INTEGER := 0;
   v_selected_id UUID;
 BEGIN
-  -- Calcular peso total
   SELECT COALESCE(SUM(weight), 0) INTO v_total_weight
   FROM upgrade_messages
   WHERE is_active = true;
@@ -82,52 +84,28 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Generar numero aleatorio
   v_random_weight := floor(random() * v_total_weight)::INTEGER;
 
-  -- Seleccionar mensaje basado en peso
   FOR v_selected_id IN
-    SELECT um.id
-    FROM upgrade_messages um
-    WHERE um.is_active = true
-    ORDER BY um.id
+    SELECT um.id FROM upgrade_messages um WHERE um.is_active = true ORDER BY um.id
   LOOP
     SELECT v_cumulative + um.weight INTO v_cumulative
-    FROM upgrade_messages um
-    WHERE um.id = v_selected_id;
+    FROM upgrade_messages um WHERE um.id = v_selected_id;
 
     IF v_cumulative > v_random_weight THEN
       RETURN QUERY
-      SELECT
-        um.id,
-        um.message_key,
-        um.title,
-        um.subtitle,
-        um.body_message,
-        um.highlight,
-        um.icon,
-        um.gradient
-      FROM upgrade_messages um
-      WHERE um.id = v_selected_id;
+      SELECT um.id, um.message_key, um.title, um.subtitle,
+             um.body_message, um.highlight, um.icon, um.gradient
+      FROM upgrade_messages um WHERE um.id = v_selected_id;
       RETURN;
     END IF;
   END LOOP;
 
-  -- Fallback: primer mensaje activo
   RETURN QUERY
-  SELECT
-    um.id,
-    um.message_key,
-    um.title,
-    um.subtitle,
-    um.body_message,
-    um.highlight,
-    um.icon,
-    um.gradient
-  FROM upgrade_messages um
-  WHERE um.is_active = true
-  ORDER BY um.created_at
-  LIMIT 1;
+  SELECT um.id, um.message_key, um.title, um.subtitle,
+         um.body_message, um.highlight, um.icon, um.gradient
+  FROM upgrade_messages um WHERE um.is_active = true
+  ORDER BY um.created_at LIMIT 1;
 END;
 $$;
 
