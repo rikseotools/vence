@@ -22,6 +22,7 @@ export default function TemaAdministrativoPage({ params }) {
   // Estados para estadísticas (del API)
   const [difficultyStats, setDifficultyStats] = useState({})
   const [userStats, setUserStats] = useState(null)
+  const [userStatsLoading, setUserStatsLoading] = useState(false) // Lazy loading del progreso
   const [officialQuestionsCount, setOfficialQuestionsCount] = useState(0)
   const [articlesCountByLaw, setArticlesCountByLaw] = useState([])
 
@@ -175,82 +176,91 @@ export default function TemaAdministrativoPage({ params }) {
     resolveParams()
   }, [params])
 
-  // CARGAR DATOS: Una sola llamada API consolidada
+  // CARGAR DATOS: Dos fases para carga rápida
+  // Fase 1: Datos del tema (sin userId) - rápido, cacheado
+  // Fase 2: Progreso del usuario (con userId) - lazy loading
   useEffect(() => {
     if (!temaNumber || temaNotFound) return
 
     async function fetchAllData() {
       try {
-        // Obtener usuario actual
-        const { data: { user } } = await supabase.auth.getUser()
-        setCurrentUser(user)
+        // FASE 1: Cargar datos básicos del tema SIN userId (muy rápido, cacheado)
+        const basicData = await loadTopicData(temaNumber, null)
 
-        // UNA SOLA LLAMADA API para todos los datos
-        const data = await loadTopicData(temaNumber, user?.id)
-
-        if (!data?.success) {
+        if (!basicData?.success) {
           setTemaNotFound(true)
           setLoading(false)
           return
         }
 
-        // Actualizar todos los estados desde la respuesta del API
+        // Actualizar datos del tema inmediatamente
         setTopicData({
-          id: data.topic.id,
-          topic_number: data.topic.topicNumber,
-          title: data.topic.title,
-          description: data.topic.description,
-          difficulty: data.topic.difficulty,
-          estimated_hours: data.topic.estimatedHours
+          id: basicData.topic.id,
+          topic_number: basicData.topic.topicNumber,
+          title: basicData.topic.title,
+          description: basicData.topic.description,
+          difficulty: basicData.topic.difficulty,
+          estimated_hours: basicData.topic.estimatedHours
         })
 
-        setDifficultyStats(data.difficultyStats || {})
-        setOfficialQuestionsCount(data.officialQuestionsCount || 0)
+        setDifficultyStats(basicData.difficultyStats || {})
+        setOfficialQuestionsCount(basicData.officialQuestionsCount || 0)
 
         // Transformar articlesByLaw al formato esperado
-        setArticlesCountByLaw(data.articlesByLaw?.map(a => ({
+        setArticlesCountByLaw(basicData.articlesByLaw?.map(a => ({
           law_short_name: a.lawShortName,
           law_name: a.lawName,
           articles_with_questions: a.articlesWithQuestions
         })) || [])
 
-        // Si hay datos de progreso del usuario
-        if (data.userProgress) {
-          setUserStats({
-            totalAnswers: data.userProgress.totalAnswers,
-            overallAccuracy: data.userProgress.overallAccuracy,
-            performanceByDifficulty: data.userProgress.performanceByDifficulty,
-            isRealData: true,
-            uniqueQuestionsAnswered: data.userProgress.uniqueQuestionsAnswered,
-            totalQuestionsAvailable: data.userProgress.totalQuestionsAvailable,
-            neverSeen: data.userProgress.neverSeen
-          })
+        // Página lista para mostrar
+        setLoading(false)
 
-          // Configurar userRecentStats
-          if (data.userProgress.recentStats) {
-            setUserRecentStats({
-              last7Days: data.userProgress.recentStats.last7Days,
-              last15Days: data.userProgress.recentStats.last15Days,
-              last30Days: data.userProgress.recentStats.last30Days,
-              recentlyAnswered: data.userProgress.recentStats.last15Days,
-              getExcludedCount: (days) => {
-                if (days <= 7) return data.userProgress.recentStats.last7Days
-                if (days <= 15) return data.userProgress.recentStats.last15Days
-                return data.userProgress.recentStats.last30Days
-              }
+        // FASE 2: Cargar progreso del usuario en background (lazy loading)
+        const { data: { user } } = await supabase.auth.getUser()
+        setCurrentUser(user)
+
+        if (user) {
+          setUserStatsLoading(true)
+
+          const userData = await loadTopicData(temaNumber, user.id)
+
+          if (userData?.success && userData.userProgress) {
+            setUserStats({
+              totalAnswers: userData.userProgress.totalAnswers,
+              overallAccuracy: userData.userProgress.overallAccuracy,
+              performanceByDifficulty: userData.userProgress.performanceByDifficulty,
+              isRealData: true,
+              uniqueQuestionsAnswered: userData.userProgress.uniqueQuestionsAnswered,
+              totalQuestionsAvailable: userData.userProgress.totalQuestionsAvailable,
+              neverSeen: userData.userProgress.neverSeen
             })
-          }
 
-          // Cargar userAnswers para métricas detalladas
-          if (user) {
+            // Configurar userRecentStats
+            if (userData.userProgress.recentStats) {
+              setUserRecentStats({
+                last7Days: userData.userProgress.recentStats.last7Days,
+                last15Days: userData.userProgress.recentStats.last15Days,
+                last30Days: userData.userProgress.recentStats.last30Days,
+                recentlyAnswered: userData.userProgress.recentStats.last15Days,
+                getExcludedCount: (days) => {
+                  if (days <= 7) return userData.userProgress.recentStats.last7Days
+                  if (days <= 15) return userData.userProgress.recentStats.last15Days
+                  return userData.userProgress.recentStats.last30Days
+                }
+              })
+            }
+
+            // Cargar userAnswers para métricas detalladas
             await loadUserAnswersForMetrics(user.id, temaNumber)
           }
+
+          setUserStatsLoading(false)
         }
 
       } catch (error) {
         console.error('Error cargando datos del tema:', error)
         setTemaNotFound(true)
-      } finally {
         setLoading(false)
       }
     }
@@ -457,8 +467,19 @@ export default function TemaAdministrativoPage({ params }) {
               </p>
             )}
 
-            {/* Mostrar progreso del usuario */}
-            {currentUser && userStats && userStats.totalQuestionsAvailable > 0 && (
+            {/* Mostrar progreso del usuario - Cargando */}
+            {userStatsLoading && (
+              <div className="mt-3 flex items-center justify-center gap-2 text-gray-500 text-sm">
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Cargando tu progreso...</span>
+              </div>
+            )}
+
+            {/* Mostrar progreso del usuario - Datos */}
+            {!userStatsLoading && currentUser && userStats && userStats.totalQuestionsAvailable > 0 && (
               <div className="mt-3 space-y-1">
                 <p className="text-green-600 font-medium text-sm">
                   {userStats.uniqueQuestionsAnswered} vistas
@@ -572,8 +593,26 @@ export default function TemaAdministrativoPage({ params }) {
           </div>
         )}
 
-        {/* Tu Progreso */}
-        {currentUser && userStats && userStats.totalAnswers > 0 && (
+        {/* Tu Progreso - Lazy Loading */}
+        {userStatsLoading && (
+          <section className="mb-8">
+            <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
+              Tu Progreso en el Tema {getDisplayNumber(temaNumber)}
+            </h2>
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex items-center justify-center gap-3 py-8 text-gray-500">
+                <svg className="animate-spin h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Cargando estadísticas personales...</span>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Tu Progreso - Datos cargados */}
+        {!userStatsLoading && currentUser && userStats && userStats.totalAnswers > 0 && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
               Tu Progreso en el Tema {getDisplayNumber(temaNumber)}
