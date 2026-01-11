@@ -20,6 +20,7 @@ export default function FooterES() {
     ],
     oposiciones: [
       { nombre: 'Convocatorias BOE', href: '/oposiciones', disponible: true },
+      { nombre: 'Oposiciones que preparamos', href: '/nuestras-oposiciones', disponible: true },
       { nombre: 'Auxiliar Administrativo Estado (C2)', href: '/auxiliar-administrativo-estado', disponible: true },
       { nombre: 'Administrativo Estado (C1)', href: '/administrativo-estado', disponible: true },
       { nombre: 'Test de Leyes', href: '/leyes', disponible: true },
@@ -27,7 +28,7 @@ export default function FooterES() {
       { nombre: 'Policía Nacional', href: '/policia-nacional', disponible: false }
     ],
     recursos: [
-      { nombre: 'Temarios Gratis', href: '/auxiliar-administrativo-estado/temario', disponible: true },
+      { nombre: 'Temarios Gratis', href: '/temarios', disponible: true },
       { nombre: 'Tests Online', href: '/auxiliar-administrativo-estado/test', disponible: true },
       { nombre: 'Psicotécnicos', href: '/psicotecnicos', disponible: true },
       { nombre: 'Guías de Estudio', href: '/guias', disponible: false },

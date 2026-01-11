@@ -40,12 +40,20 @@ export async function GET() {
   // ============================================
   const staticPages = [
     { loc: '/', priority: 1.0, changefreq: 'weekly' },
+    // Oposiciones
+    { loc: '/oposiciones', priority: 0.9, changefreq: 'daily' },
+    { loc: '/nuestras-oposiciones', priority: 0.9, changefreq: 'weekly' },
+    // Temarios
+    { loc: '/temarios', priority: 0.9, changefreq: 'weekly' },
+    // Auxiliar Administrativo del Estado
     { loc: '/auxiliar-administrativo-estado', priority: 0.9, changefreq: 'weekly' },
     { loc: '/auxiliar-administrativo-estado/test', priority: 0.8, changefreq: 'weekly' },
     { loc: '/auxiliar-administrativo-estado/temario', priority: 0.7, changefreq: 'monthly' },
+    // Administrativo del Estado
     { loc: '/administrativo-estado', priority: 0.9, changefreq: 'weekly' },
     { loc: '/administrativo-estado/test', priority: 0.8, changefreq: 'weekly' },
     { loc: '/administrativo-estado/temario', priority: 0.7, changefreq: 'monthly' },
+    // Leyes
     { loc: '/leyes', priority: 0.9, changefreq: 'daily' },
     { loc: '/leyes-de-oposiciones', priority: 0.8, changefreq: 'weekly' },
     { loc: '/teoria', priority: 0.6, changefreq: 'monthly' },
