@@ -699,6 +699,11 @@ export default function ConversionesPage() {
               </div>
             ))}
           </div>
+
+          {/* Nota explicativa */}
+          <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3">
+            <span className="font-medium">Nota:</span> La primera venta (23/12/2025) tenia 63 dias porque el usuario usaba la app antes de implementar pagos, distorsionando la media (18d vs 10d reales). Se deja la BD sin modificar ya que se corregira automaticamente con mas ventas.
+          </div>
         </div>
       )}
 
