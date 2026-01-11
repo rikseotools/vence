@@ -35,20 +35,9 @@ export default function AIChatWidget() {
   const contentBufferRef = useRef('')
   const lastUpdateRef = useRef(0)
 
-  // Track previous streaming state to detect when streaming ends
-  const wasStreamingRef = useRef(false)
-
-  // Scroll al último mensaje - NO durante streaming (dificulta la lectura)
-  useEffect(() => {
-    if (messagesEndRef.current && messages.length > 0) {
-      // Solo scroll cuando streaming termina (de true a false)
-      // El scroll al enviar mensaje lo hace handleSend directamente
-      if (wasStreamingRef.current && !isStreaming) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
-      }
-      wasStreamingRef.current = isStreaming
-    }
-  }, [messages, isStreaming])
+  // NO auto-scroll durante ni después del streaming
+  // El usuario lee desde arriba a su ritmo, sin interrupciones
+  // Solo se hace scroll al enviar mensaje (en sendMessage)
 
   // Focus en input al abrir
   useEffect(() => {
