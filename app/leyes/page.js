@@ -11,7 +11,7 @@ export const revalidate = 2592000 // 30 días
 
 // ✅ MANTENER TODO TU METADATA ACTUAL
 export const metadata = {
-  title: 'Test de Leyes España Online Gratis 2025 | Vence',
+  title: 'Test de Leyes España Online Gratis 2026 | Vence',
   description: 'Tests gratuitos de las leyes más importantes de España: Constitución Española, Ley 39/2015, Código Civil, Código Penal y más. +3000 preguntas actualizadas en Vence.',
   keywords: [
     'test de leyes', 'test de leyes españa', 'test constitución española',

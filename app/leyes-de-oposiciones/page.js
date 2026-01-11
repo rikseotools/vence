@@ -3,11 +3,11 @@ import Link from 'next/link'
 
 // Metadatos para SEO
 export const metadata = {
-  title: 'Leyes para Oposiciones 2025 - Guía Completa de Normativas | Vence',
+  title: 'Leyes para Oposiciones 2026 - Guía Completa de Normativas | Vence',
   description: 'Descubre qué leyes estudiar para tu oposición. Constitución, LOPD, Ley 39/2015, TREBEP y más normativas para Auxiliar Administrativo, Policía, Bomberos y otras oposiciones.',
   keywords: 'leyes oposiciones, normativas oposiciones, constitución española, ley 39/2015, lopd, trebep, auxiliar administrativo, policía, bomberos, código penal, procedimiento administrativo',
   openGraph: {
-    title: 'Leyes para Oposiciones 2025 - Guía Completa | Vence',
+    title: 'Leyes para Oposiciones 2026 - Guía Completa | Vence',
     description: 'Guía completa de las leyes más importantes para oposiciones. Constitución, LOPD, procedimiento administrativo y más normativas actualizadas.',
     url: 'https://vence.es/leyes-de-oposiciones',
     siteName: 'Vence',
@@ -21,7 +21,7 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Leyes para Oposiciones 2025 - Guía Completa | Vence',
+    title: 'Leyes para Oposiciones 2026 - Guía Completa | Vence',
     description: 'Descubre qué leyes estudiar para tu oposición. Constitución, LOPD, Ley 39/2015, TREBEP y más normativas actualizadas.',
     images: ['https://vence.es/og-leyes-oposiciones.jpg'],
   },

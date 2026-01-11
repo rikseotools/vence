@@ -1,7 +1,7 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Tests Auxiliar Administrativo Estado 2025 | Todos los Temas | Vence',
+  title: 'Tests Auxiliar Administrativo Estado 2026 | Todos los Temas | Vence',
   description: 'Tests de Auxiliar Administrativo del Estado con todos los 16 temas oficiales. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. ¡Gratis!',
   keywords: [
     'test auxiliar administrativo estado',
@@ -9,7 +9,7 @@ export const metadata = {
     'tests temas auxiliar administrativo',
     'test tema 1 auxiliar administrativo',
     'test constitución española',
-    'test auxiliar administrativo 2025',
+    'test auxiliar administrativo 2026',
     'tests oposiciones auxiliar administrativo',
     'preguntas auxiliar administrativo estado',
     'examen auxiliar administrativo',

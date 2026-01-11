@@ -1,13 +1,13 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Tests Administrativo del Estado 2025 | 45 Temas Oficiales | Vence',
+  title: 'Tests Administrativo del Estado 2026 | 45 Temas Oficiales | Vence',
   description: 'Tests de Administrativo del Estado con los 45 temas oficiales del BOE. Preguntas personalizables, estadísticas por tema y seguimiento de progreso. Grupo C1.',
   keywords: [
     'test administrativo del estado',
     'tests administrativo estado',
     'tests temas administrativo estado',
-    'test administrativo del estado 2025',
+    'test administrativo del estado 2026',
     'tests oposiciones administrativo',
     'preguntas administrativo del estado',
     'examen administrativo del estado',

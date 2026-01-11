@@ -301,7 +301,7 @@ function PremiumEducationalContent() {
                     <h4 className="font-bold text-lg mb-3">📈 Predicción de Éxito</h4>
                     <div className="text-center">
                       <div className="text-4xl font-bold text-green-600 mb-2">84%</div>
-                      <p className="text-sm text-gray-600 mb-3">Probabilidad de aprobar en Marzo 2025</p>
+                      <p className="text-sm text-gray-600 mb-3">Probabilidad de aprobar en Mayo 2026</p>
                       <div className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full inline-block">
                         ↗ +12% esta semana
                       </div>
@@ -337,7 +337,7 @@ function PremiumEducationalContent() {
                   },
                   {
                     name: "Ana López",
-                    role: "Estudiando para Auxiliar Administrativo 2025",
+                    role: "Estudiando para Auxiliar Administrativo 2026",
                     avatar: "AL", 
                     rating: 5,
                     quote: "Llevo 3 meses usando la plataforma y mi evolución es impresionante. El dashboard me muestra exactamente en qué punto estoy cada día. Mi predicción de éxito ha subido del 45% al 89%.",
@@ -446,7 +446,7 @@ function PremiumEducationalContent() {
                     Acceso Completo Premium
                   </h3>
                   <p className="text-gray-600 text-sm">
-                    Todo lo que necesitas para aprobar en 2025
+                    Todo lo que necesitas para aprobar en 2026
                   </p>
                 </div>
 
@@ -552,7 +552,7 @@ function PremiumEducationalContent() {
             </div>
             <div className="p-4">
               <div className="text-2xl font-bold text-purple-600 mb-2">Actualizado</div>
-              <p className="text-sm text-gray-600">Normativa vigente 2025</p>
+              <p className="text-sm text-gray-600">Normativa vigente 2026</p>
             </div>
             <div className="p-4">
               <div className="text-2xl font-bold text-orange-600 mb-2">Completo</div>

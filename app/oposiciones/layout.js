@@ -1,10 +1,10 @@
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Oposiciones Disponibles 2025 | Preparación Online | Vence',
+  title: 'Oposiciones Disponibles 2026 | Preparación Online | Vence',
   description: 'Elige tu oposición y prepárate con nuestro sistema completo. Auxiliar Administrativo del Estado, temarios actualizados, tests ilimitados y seguimiento personalizado.',
   keywords: [
-    'oposiciones 2025',
+    'oposiciones 2026',
     'preparar oposiciones online',
     'auxiliar administrativo estado',
     'oposiciones administración pública',
@@ -18,7 +18,7 @@ export const metadata = {
   publisher: 'Vence',
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Oposiciones Disponibles 2025 | Preparación Completa',
+    title: 'Oposiciones Disponibles 2026 | Preparación Completa',
     description: 'Sistema completo de preparación para oposiciones. Temarios actualizados, tests personalizados y seguimiento detallado.',
     url: `${SITE_URL}/oposiciones`,
     siteName: 'Vence',
@@ -35,7 +35,7 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Oposiciones Disponibles 2025 | Vence',
+    title: 'Oposiciones Disponibles 2026 | Vence',
     description: 'Sistema completo de preparación para oposiciones con temarios y tests actualizados.',
     images: ['/twitter-image-es.jpg'],
   },
