@@ -118,7 +118,7 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
         score: finalScore,
         total_questions: savedCount, // 🔴 FIX: Usar el número real de preguntas guardadas, no las esperadas
         completed_at: new Date().toISOString(),
-        is_completed: savedCount >= expectedCount, // 🔴 FIX: Solo marcar como completado si se guardaron todas
+        is_completed: true, // 🔴 FIX: Si se llama a finalizar, el test está completado
         total_time_seconds: totalTime,
         average_time_per_question: avgTimePerQuestion,
         detailed_analytics: JSON.stringify({
