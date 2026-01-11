@@ -224,7 +224,7 @@ export default function HeaderES() {
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
         { href: '/test-oposiciones', label: 'Test Oposiciones', icon: '📋' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
-        { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
+        { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
       ]
     }
 
@@ -238,7 +238,7 @@ export default function HeaderES() {
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
         { href: '/test-oposiciones', label: 'Test Oposiciones', icon: '📋' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
-        { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
+        { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
       ]
     } catch (error) {
       console.warn('Error generando enlaces:', error)
@@ -248,7 +248,7 @@ export default function HeaderES() {
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
         { href: '/test-oposiciones', label: 'Test Oposiciones', icon: '📋' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
-        { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
+        { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
       ]
     }
   }
@@ -261,7 +261,7 @@ export default function HeaderES() {
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
       { href: '/test-oposiciones', label: 'Test Oposiciones', icon: '📋' },
       { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' },
-      { href: '/oposiciones', label: 'Oposiciones', icon: '🔄' }
+      { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
     ]
   }
 

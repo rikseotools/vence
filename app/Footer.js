@@ -19,6 +19,7 @@ export default function FooterES() {
       { nombre: 'Ley 7/1985', href: '/leyes/ley-7-1985', disponible: true }
     ],
     oposiciones: [
+      { nombre: 'Convocatorias BOE', href: '/oposiciones', disponible: true },
       { nombre: 'Auxiliar Administrativo Estado (C2)', href: '/auxiliar-administrativo-estado', disponible: true },
       { nombre: 'Administrativo Estado (C1)', href: '/administrativo-estado', disponible: true },
       { nombre: 'Test de Leyes', href: '/leyes', disponible: true },
