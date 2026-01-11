@@ -258,6 +258,7 @@ export async function generateMetadata({
   const plazasText = conv.num_plazas ? `${conv.num_plazas} plazas. ` : '';
   const descripcion = `${tipoLabel} - ${conv.departamento_nombre || 'BOE'}. ${plazasText}Publicado ${new Date(conv.boe_fecha).toLocaleDateString('es-ES')}.`;
 
+  // NOINDEX temporalmente - thin content hasta que se enriquezca con más datos
   return {
     title: `${titulo.slice(0, 55)}${titulo.length > 55 ? '...' : ''} | Oposiciones`,
     description: descripcion.slice(0, 160),
@@ -267,10 +268,7 @@ export async function generateMetadata({
       type: 'article',
       publishedTime: conv.boe_fecha
     },
-    alternates: {
-      canonical: `${baseUrl}/convocatorias/${conv.slug || conv.id}`
-    },
-    robots: { index: true, follow: true }
+    robots: { index: false, follow: false }
   };
 }
 

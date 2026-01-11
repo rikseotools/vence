@@ -2,7 +2,8 @@
  * Componente de lista de convocatorias
  */
 
-import Link from 'next/link';
+// Link removido temporalmente - las páginas individuales tienen thin content
+// import Link from 'next/link';
 
 interface Convocatoria {
   id: string;
@@ -112,11 +113,9 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
             </div>
 
             {/* Título */}
-            <Link href={`/convocatorias/${conv.id}`}>
-              <h3 className="text-base font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 line-clamp-2">
-                {conv.titulo_limpio || conv.titulo}
-              </h3>
-            </Link>
+            <h3 className="text-base font-medium text-gray-900 dark:text-white line-clamp-2">
+              {conv.titulo_limpio || conv.titulo}
+            </h3>
 
             {/* Meta */}
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
@@ -147,12 +146,6 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
 
             {/* Actions */}
             <div className="mt-3 flex gap-3">
-              <Link
-                href={`/convocatorias/${conv.id}`}
-                className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Ver detalles
-              </Link>
               {conv.boe_url_pdf && (
                 <a
                   href={conv.boe_url_pdf}
