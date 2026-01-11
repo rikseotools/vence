@@ -1,10 +1,93 @@
 // app/leyes/page.js - PÁGINA COMPLETA DE LEYES
 import { Suspense } from 'react'
 import Link from 'next/link'
+import Script from 'next/script'
 import LeyesServerComponent from '@/components/LeyesServerComponent'
-import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper' 
+import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
+
+// JSON-LD Schemas para SEO
+const jsonLdWebPage = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'Test de Leyes España Online Gratis 2026',
+  description: 'Tests gratuitos de las leyes más importantes de España: Constitución Española, Ley 39/2015, Código Civil, Código Penal y más. +3000 preguntas actualizadas.',
+  url: `${SITE_URL}/leyes`,
+  inLanguage: 'es',
+  isPartOf: {
+    '@type': 'WebSite',
+    name: 'Vence',
+    url: SITE_URL
+  },
+  about: {
+    '@type': 'Thing',
+    name: 'Legislación española'
+  },
+  provider: {
+    '@type': 'Organization',
+    name: 'Vence',
+    url: SITE_URL
+  }
+}
+
+const jsonLdBreadcrumb = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    {
+      '@type': 'ListItem',
+      position: 1,
+      name: 'Inicio',
+      item: SITE_URL
+    },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'Test de Leyes',
+      item: `${SITE_URL}/leyes`
+    }
+  ]
+}
+
+const jsonLdFAQ = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: '¿Cuáles son las leyes más importantes para estudiar?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Las leyes más consultadas son: Constitución Española, Ley 39/2015 (LPAC), Ley 40/2015 (LRJSP), Código Civil, Código Penal y Ley 19/2013 de Transparencia.'
+      }
+    },
+    {
+      '@type': 'Question',
+      name: '¿Los test de leyes están actualizados?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Sí, todos nuestros test de leyes en Vence se actualizan constantemente con las últimas modificaciones legislativas y jurisprudencia relevante.'
+      }
+    },
+    {
+      '@type': 'Question',
+      name: '¿Son útiles para oposiciones?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Absolutamente. Nuestros test de leyes están diseñados específicamente para la preparación de oposiciones del sector público español.'
+      }
+    },
+    {
+      '@type': 'Question',
+      name: '¿Hay límite de uso en los test de leyes?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No, el acceso a todos los test de leyes en Vence es completamente gratuito y sin límites. Puedes practicar tantas veces como necesites.'
+      }
+    }
+  ]
+}
 
 // 🚀 ISR: CACHE DE 30 DÍAS - Un usuario regenera para todos
 export const revalidate = 2592000 // 30 días
@@ -152,6 +235,22 @@ export default function TestLeyesEspana() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      {/* JSON-LD Structured Data */}
+      <Script
+        id="json-ld-webpage"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebPage) }}
+      />
+      <Script
+        id="json-ld-breadcrumb"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdBreadcrumb) }}
+      />
+      <Script
+        id="json-ld-faq"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdFAQ) }}
+      />
       <ClientBreadcrumbsWrapper />
       <div className="container mx-auto px-4 py-12">
         
