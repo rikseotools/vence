@@ -13,6 +13,7 @@ export default function RankingModal({ isOpen, onClose }) {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [currentUserRank, setCurrentUserRank] = useState(null)
   const [timeFilter, setTimeFilter] = useState('week') // 'yesterday', 'today', 'week', 'month'
+  const [streakTimeFilter, setStreakTimeFilter] = useState('week') // 'week', 'all'
   const [activeTab, setActiveTab] = useState('ranking') // 'ranking', 'rachas'
 
   useEffect(() => {
@@ -23,7 +24,7 @@ export default function RankingModal({ isOpen, onClose }) {
         loadStreakRanking()
       }
     }
-  }, [isOpen, user, supabase, timeFilter, activeTab])
+  }, [isOpen, user, supabase, timeFilter, streakTimeFilter, activeTab])
 
   // Prevenir scroll del body cuando el modal está abierto
   useEffect(() => {
@@ -333,16 +334,78 @@ export default function RankingModal({ isOpen, onClose }) {
 
   const loadStreakRanking = async () => {
     setLoading(true)
+    setStreakRanking([]) // Limpiar estado anterior
     try {
-      // ⚡ SÚPER OPTIMIZADO: Obtener todas las rachas directamente desde user_streaks
-      console.log('🔥 RankingModal: Cargando ranking de rachas...')
+      console.log('🔥 RankingModal: Cargando ranking de rachas...', { filter: streakTimeFilter })
 
-      const { data: streakData, error } = await supabase
-        .from('user_streaks')
-        .select('user_id, current_streak')
-        .gte('current_streak', 2) // Solo usuarios con racha >= 2 días
-        .order('current_streak', { ascending: false })
-        .limit(20) // Top 20 rachas
+      let streakData = []
+      let error = null
+
+      if (streakTimeFilter === 'week') {
+        // 🗓️ ESTA SEMANA: Días de actividad esta semana (lunes a domingo)
+        const now = new Date()
+        const dayOfWeek = now.getUTCDay() // 0 = domingo
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+        const thisMonday = new Date(now)
+        thisMonday.setUTCDate(now.getUTCDate() - daysFromMonday)
+        thisMonday.setUTCHours(0, 0, 0, 0)
+        const maxDaysThisWeek = daysFromMonday + 1 // Máximo posible esta semana
+
+        console.log('🗓️ Esta semana desde:', thisMonday.toISOString().split('T')[0], '| Max días:', maxDaysThisWeek)
+
+        const { data, error: queryError } = await supabase
+          .from('user_streaks')
+          .select('user_id, current_streak')
+          .gte('last_activity_date', thisMonday.toISOString().split('T')[0])
+          .gte('current_streak', 2)
+          .order('current_streak', { ascending: false })
+
+        streakData = (data || []).map(d => ({
+          user_id: d.user_id,
+          streak: Math.min(d.current_streak, maxDaysThisWeek)
+        }))
+        error = queryError
+      } else if (streakTimeFilter === 'month') {
+        // 📅 ESTE MES: Días de actividad este mes
+        const now = new Date()
+        const firstDayOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+        const dayOfMonth = now.getUTCDate() // Día del mes actual
+        const maxDaysThisMonth = dayOfMonth // Máximo posible este mes
+
+        console.log('📅 Este mes desde:', firstDayOfMonth.toISOString().split('T')[0], '| Max días:', maxDaysThisMonth)
+
+        const { data, error: queryError } = await supabase
+          .from('user_streaks')
+          .select('user_id, current_streak')
+          .gte('last_activity_date', firstDayOfMonth.toISOString().split('T')[0])
+          .gte('current_streak', 2)
+          .order('current_streak', { ascending: false })
+
+        streakData = (data || []).map(d => ({
+          user_id: d.user_id,
+          streak: Math.min(d.current_streak, maxDaysThisMonth)
+        }))
+        error = queryError
+      } else {
+        // 📊 ACUMULADO: Usar rachas totales desde user_streaks
+        // Solo mostrar usuarios con actividad en últimos 2 días (racha activa real)
+        const twoDaysAgo = new Date()
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+        const twoDaysAgoStr = twoDaysAgo.toISOString().split('T')[0]
+
+        const { data, error: queryError } = await supabase
+          .from('user_streaks')
+          .select('user_id, current_streak')
+          .gte('current_streak', 2)
+          .gte('last_activity_date', twoDaysAgoStr)
+          .order('current_streak', { ascending: false })
+
+        streakData = (data || []).map(d => ({
+          user_id: d.user_id,
+          streak: d.current_streak
+        }))
+        error = queryError
+      }
 
       console.log('🔥 RankingModal: Rachas obtenidas:', streakData?.length || 0, streakData)
 
@@ -352,10 +415,10 @@ export default function RankingModal({ isOpen, onClose }) {
       }
 
 
-      // Transformar datos al formato esperado
+      // Transformar datos al formato esperado (ya viene con user_id y streak)
       const filteredStreaks = streakData?.map(item => ({
         userId: item.user_id,
-        streak: item.current_streak
+        streak: item.streak
       })) || []
 
       // Obtener nombres de usuarios
@@ -817,11 +880,56 @@ export default function RankingModal({ isOpen, onClose }) {
               ) : (
                 /* Tab Rachas */
                 <div className="space-y-3">
+                  {/* Filtros de tiempo para rachas */}
+                  <div className="flex justify-center space-x-2 mb-4">
+                    <button
+                      onClick={() => setStreakTimeFilter('week')}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        streakTimeFilter === 'week'
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Esta semana
+                    </button>
+                    <button
+                      onClick={() => setStreakTimeFilter('month')}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        streakTimeFilter === 'month'
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {new Date().toLocaleString('es-ES', { month: 'long' }).charAt(0).toUpperCase() + new Date().toLocaleString('es-ES', { month: 'long' }).slice(1)}
+                    </button>
+                    <button
+                      onClick={() => setStreakTimeFilter('all')}
+                      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                        streakTimeFilter === 'all'
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Acumulado
+                    </button>
+                  </div>
+
                   <h3 className="font-bold text-gray-800 mb-2 text-center">
-                    🔥 Top Rachas (últimos 30 días)
+                    🔥 {streakTimeFilter === 'week'
+                      ? 'Rachas de la Semana'
+                      : streakTimeFilter === 'month'
+                        ? `Rachas de ${new Date().toLocaleString('es-ES', { month: 'long' }).charAt(0).toUpperCase() + new Date().toLocaleString('es-ES', { month: 'long' }).slice(1)}`
+                        : 'Top Rachas (Acumulado)'}
                   </h3>
                   <p className="text-xs text-gray-400 text-center mb-4">
-                    * Permitido 1 día de gracia sin actividad para conservar la racha
+                    {streakTimeFilter === 'week'
+                      ? '* Días de estudio esta semana (lunes a domingo)'
+                      : streakTimeFilter === 'month'
+                        ? '* Días de estudio este mes'
+                        : '* Días consecutivos de estudio'
+                    }
+                    <br />
+                    * Sin días de gracia: si un día no estudias, perderás la racha
                   </p>
                   
                   {streakRanking.length === 0 ? (
@@ -857,16 +965,22 @@ export default function RankingModal({ isOpen, onClose }) {
                               {user.isCurrentUser && <span className="ml-1 text-orange-600 text-sm">(Tú)</span>}
                             </p>
                             <p className="text-xs text-gray-500">
-                              Días consecutivos estudiando
+                              {streakTimeFilter === 'week'
+                                ? 'Días activos esta semana'
+                                : streakTimeFilter === 'month'
+                                  ? 'Días activos este mes'
+                                  : 'Días consecutivos estudiando'}
                             </p>
                           </div>
                         </div>
-                        
+
                         <div className="text-right">
                           <div className="font-bold text-orange-600 text-xl">
-                            🔥 {user.streak > 30 ? '30+' : user.streak}
+                            🔥 {user.streak}
                           </div>
-                          <div className="text-xs text-gray-400">días seguidos</div>
+                          <div className="text-xs text-gray-400">
+                            {streakTimeFilter === 'all' ? 'días seguidos' : 'días'}
+                          </div>
                         </div>
                       </div>
                     ))
