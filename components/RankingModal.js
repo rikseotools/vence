@@ -13,7 +13,8 @@ export default function RankingModal({ isOpen, onClose }) {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [currentUserRank, setCurrentUserRank] = useState(null)
   const [timeFilter, setTimeFilter] = useState('week') // 'yesterday', 'today', 'week', 'month'
-  const [streakTimeFilter, setStreakTimeFilter] = useState('week') // 'week', 'all'
+  const [streakTimeFilter, setStreakTimeFilter] = useState('week') // 'week', 'month', 'all'
+  const [streakCategory, setStreakCategory] = useState('all') // 'all', 'novatos', 'veteranos'
   const [activeTab, setActiveTab] = useState('ranking') // 'ranking', 'rachas'
 
   useEffect(() => {
@@ -24,7 +25,32 @@ export default function RankingModal({ isOpen, onClose }) {
         loadStreakRanking()
       }
     }
-  }, [isOpen, user, supabase, timeFilter, streakTimeFilter, activeTab])
+  }, [isOpen, user, supabase, timeFilter, streakTimeFilter, streakCategory, activeTab])
+
+  // Auto-seleccionar categoría del usuario al abrir tab de rachas
+  useEffect(() => {
+    const detectUserCategory = async () => {
+      if (!isOpen || !user || !supabase || activeTab !== 'rachas') return
+
+      // Obtener fecha de registro del usuario actual
+      const { data: profile } = await supabase
+        .from('public_user_profiles')
+        .select('created_at')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile?.created_at) {
+        const registrationDate = new Date(profile.created_at)
+        const daysSinceRegistration = Math.floor((new Date() - registrationDate) / (1000 * 60 * 60 * 24))
+        const userCategory = daysSinceRegistration < 30 ? 'principiantes' : 'veteranos'
+
+        console.log('🎯 Usuario detectado como:', userCategory, '| Días en Vence:', daysSinceRegistration)
+        setStreakCategory(userCategory)
+      }
+    }
+
+    detectUserCategory()
+  }, [isOpen, activeTab, user, supabase])
 
   // Prevenir scroll del body cuando el modal está abierto
   useEffect(() => {
@@ -440,7 +466,7 @@ export default function RankingModal({ isOpen, onClose }) {
 
       const { data: customProfiles, error: customProfileError } = await supabase
         .from('public_user_profiles')
-        .select('id, display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url')
+        .select('id, display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url, created_at')
         .in('id', userIds)
 
       if (customProfileError) {
@@ -448,6 +474,15 @@ export default function RankingModal({ isOpen, onClose }) {
       }
 
       console.log('🏙️ Streak - Public profiles with cities:', customProfiles?.length || 0)
+
+      // Función para verificar si es principiante (< 30 días en Vence)
+      const isNovato = (userId) => {
+        const profile = customProfiles?.find(p => p.id === userId)
+        if (!profile?.created_at) return false
+        const registrationDate = new Date(profile.created_at)
+        const daysSinceRegistration = Math.floor((new Date() - registrationDate) / (1000 * 60 * 60 * 24))
+        return daysSinceRegistration < 30
+      }
 
       // Función para obtener ciudad del usuario desde public_user_profiles
       const getUserCity = (userId) => {
@@ -548,19 +583,28 @@ export default function RankingModal({ isOpen, onClose }) {
         return 'Anónimo'
       }
 
+      // Filtrar por categoría (principiantes/veteranos)
+      let filteredByCategory = filteredStreaks
+      if (streakCategory === 'principiantes') {
+        filteredByCategory = filteredStreaks.filter(u => isNovato(u.userId))
+      } else if (streakCategory === 'veteranos') {
+        filteredByCategory = filteredStreaks.filter(u => !isNovato(u.userId))
+      }
+
       // Combinar datos con nombres
-      const finalStreakRanking = filteredStreaks.map((streakUser, index) => {
+      const finalStreakRanking = filteredByCategory.map((streakUser, index) => {
         return {
           ...streakUser,
           rank: index + 1,
           name: getDisplayName(streakUser.userId),
           ciudad: getUserCity(streakUser.userId),
           avatar: getUserAvatar(streakUser.userId),
-          isCurrentUser: streakUser.userId === user?.id
+          isCurrentUser: streakUser.userId === user?.id,
+          isNovato: isNovato(streakUser.userId)
         }
       })
 
-      console.log('🔥 RankingModal: Ranking final de rachas:', finalStreakRanking.length, finalStreakRanking)
+      console.log('🔥 RankingModal: Ranking final de rachas:', finalStreakRanking.length, '| Categoría:', streakCategory)
 
       setStreakRanking(finalStreakRanking)
       
@@ -881,7 +925,7 @@ export default function RankingModal({ isOpen, onClose }) {
                 /* Tab Rachas */
                 <div className="space-y-3">
                   {/* Filtros de tiempo para rachas */}
-                  <div className="flex justify-center space-x-2 mb-4">
+                  <div className="flex justify-center space-x-2 mb-2">
                     <button
                       onClick={() => setStreakTimeFilter('week')}
                       className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
@@ -914,28 +958,75 @@ export default function RankingModal({ isOpen, onClose }) {
                     </button>
                   </div>
 
-                  <h3 className="font-bold text-gray-800 mb-2 text-center">
+                  {/* Filtros de categoría (Principiantes/Veteranos) */}
+                  <div className="flex justify-center space-x-2 mb-4">
+                    <button
+                      onClick={() => setStreakCategory('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        streakCategory === 'all'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setStreakCategory('principiantes')}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        streakCategory === 'principiantes'
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      🌱 Principiantes
+                    </button>
+                    <button
+                      onClick={() => setStreakCategory('veteranos')}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        streakCategory === 'veteranos'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      ⭐ Veteranos
+                    </button>
+                  </div>
+
+                  <h3 className="font-bold text-gray-800 dark:text-white mb-2 text-center">
                     🔥 {streakTimeFilter === 'week'
                       ? 'Rachas de la Semana'
                       : streakTimeFilter === 'month'
                         ? `Rachas de ${new Date().toLocaleString('es-ES', { month: 'long' }).charAt(0).toUpperCase() + new Date().toLocaleString('es-ES', { month: 'long' }).slice(1)}`
                         : 'Top Rachas (Acumulado)'}
+                    {streakCategory !== 'all' && (
+                      <span className={`ml-2 text-sm ${streakCategory === 'principiantes' ? 'text-green-600' : 'text-amber-600'}`}>
+                        ({streakCategory === 'principiantes' ? '🌱 Principiantes' : '⭐ Veteranos'})
+                      </span>
+                    )}
                   </h3>
                   <p className="text-xs text-gray-400 text-center mb-4">
+                    {streakCategory === 'principiantes' && '🌱 Usuarios con menos de 30 días en Vence • '}
+                    {streakCategory === 'veteranos' && '⭐ Usuarios con más de 30 días en Vence • '}
                     {streakTimeFilter === 'week'
-                      ? '* Días de estudio esta semana (lunes a domingo)'
+                      ? 'Días de estudio esta semana'
                       : streakTimeFilter === 'month'
-                        ? '* Días de estudio este mes'
-                        : '* Días consecutivos de estudio'
+                        ? 'Días de estudio este mes'
+                        : 'Días consecutivos de estudio'
                     }
                     <br />
-                    * Sin días de gracia: si un día no estudias, perderás la racha
+                    Sin días de gracia: si un día no estudias, perderás la racha
                   </p>
-                  
+
                   {streakRanking.length === 0 ? (
                     <div className="text-center py-8">
-                      <div className="text-4xl mb-3">🔥</div>
-                      <p className="text-gray-600">¡Nadie tiene racha activa!</p>
+                      <div className="text-4xl mb-3">{streakCategory === 'principiantes' ? '🌱' : streakCategory === 'veteranos' ? '⭐' : '🔥'}</div>
+                      <p className="text-gray-600">
+                        {streakCategory === 'principiantes'
+                          ? '¡No hay principiantes con racha activa!'
+                          : streakCategory === 'veteranos'
+                            ? '¡No hay veteranos con racha activa!'
+                            : '¡Nadie tiene racha activa!'}
+                      </p>
                       <p className="text-sm text-gray-500">Estudia varios días seguidos para aparecer aquí</p>
                     </div>
                   ) : (
