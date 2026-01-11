@@ -3,11 +3,12 @@ export default {
   testEnvironment: 'jsdom', // Cambiado para soportar React Testing Library
   testMatch: ['**/__tests__/**/*.test.js'],
   transform: {
-    '^.+\\.(js|jsx)$': ['babel-jest', { 
+    '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', {
       presets: [
         ['@babel/preset-env', { targets: { node: 'current' } }],
-        ['@babel/preset-react', { runtime: 'automatic' }]
-      ] 
+        ['@babel/preset-react', { runtime: 'automatic' }],
+        '@babel/preset-typescript'
+      ]
     }]
   },
   moduleNameMapper: {
