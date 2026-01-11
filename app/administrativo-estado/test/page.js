@@ -1,74 +1,131 @@
-// app/administrativo-estado/test/page.js - Hub de tests Administrativo del Estado (C1)
+// app/administrativo-estado/test/page.js - Hub de tests Administrativo del Estado (C1) - Optimizado con API Layer
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
+// Definición de los 6 bloques con 45 temas según BOE 22/12/2025
+const BASE_PATH = '/administrativo-estado/test/tema'
+
+const BLOQUE1_THEMES = [
+  { id: 1, title: 'La Constitución Española de 1978', href: `${BASE_PATH}/1` },
+  { id: 2, title: 'La Jefatura del Estado. La Corona', href: `${BASE_PATH}/2` },
+  { id: 3, title: 'Las Cortes Generales', href: `${BASE_PATH}/3` },
+  { id: 4, title: 'El Poder Judicial', href: `${BASE_PATH}/4` },
+  { id: 5, title: 'El Gobierno y la Administración', href: `${BASE_PATH}/5` },
+  { id: 6, title: 'El Gobierno Abierto. Agenda 2030', href: `${BASE_PATH}/6` },
+  { id: 7, title: 'La Ley 19/2013 de Transparencia', href: `${BASE_PATH}/7` },
+  { id: 8, title: 'La Administración General del Estado', href: `${BASE_PATH}/8` },
+  { id: 9, title: 'La Organización Territorial del Estado', href: `${BASE_PATH}/9` },
+  { id: 10, title: 'La Administración Local', href: `${BASE_PATH}/10` },
+  { id: 11, title: 'La Organización de la Unión Europea', href: `${BASE_PATH}/11` }
+]
+
+const BLOQUE2_THEMES = [
+  { id: 201, title: 'Atención al Público', href: `${BASE_PATH}/201`, displayNumber: 1 },
+  { id: 202, title: 'Documento, Registro y Archivo', href: `${BASE_PATH}/202`, displayNumber: 2 },
+  { id: 203, title: 'Administración Electrónica', href: `${BASE_PATH}/203`, displayNumber: 3 },
+  { id: 204, title: 'Protección de Datos Personales', href: `${BASE_PATH}/204`, displayNumber: 4 }
+]
+
+const BLOQUE3_THEMES = [
+  { id: 301, title: 'Las Fuentes del Derecho Administrativo', href: `${BASE_PATH}/301`, displayNumber: 1 },
+  { id: 302, title: 'El Acto Administrativo', href: `${BASE_PATH}/302`, displayNumber: 2 },
+  { id: 303, title: 'Las Leyes del Procedimiento Administrativo', href: `${BASE_PATH}/303`, displayNumber: 3 },
+  { id: 304, title: 'Los Contratos del Sector Público', href: `${BASE_PATH}/304`, displayNumber: 4 },
+  { id: 305, title: 'Procedimientos y Formas de la Actividad Administrativa', href: `${BASE_PATH}/305`, displayNumber: 5 },
+  { id: 306, title: 'La Responsabilidad Patrimonial', href: `${BASE_PATH}/306`, displayNumber: 6 },
+  { id: 307, title: 'Políticas de Igualdad', href: `${BASE_PATH}/307`, displayNumber: 7 }
+]
+
+const BLOQUE4_THEMES = [
+  { id: 401, title: 'El Personal al Servicio de las Administraciones Públicas', href: `${BASE_PATH}/401`, displayNumber: 1 },
+  { id: 402, title: 'Selección de Personal', href: `${BASE_PATH}/402`, displayNumber: 2 },
+  { id: 403, title: 'El Personal Funcionario', href: `${BASE_PATH}/403`, displayNumber: 3 },
+  { id: 404, title: 'Adquisición y Pérdida de la Condición de Funcionario', href: `${BASE_PATH}/404`, displayNumber: 4 },
+  { id: 405, title: 'Provisión de Puestos de Trabajo', href: `${BASE_PATH}/405`, displayNumber: 5 },
+  { id: 406, title: 'Las Incompatibilidades y Régimen Disciplinario', href: `${BASE_PATH}/406`, displayNumber: 6 },
+  { id: 407, title: 'El Régimen de la Seguridad Social de los Funcionarios', href: `${BASE_PATH}/407`, displayNumber: 7 },
+  { id: 408, title: 'El Personal Laboral', href: `${BASE_PATH}/408`, displayNumber: 8 },
+  { id: 409, title: 'El Régimen de la Seguridad Social del Personal Laboral', href: `${BASE_PATH}/409`, displayNumber: 9 }
+]
+
+const BLOQUE5_THEMES = [
+  { id: 501, title: 'El Presupuesto', href: `${BASE_PATH}/501`, displayNumber: 1 },
+  { id: 502, title: 'El Presupuesto del Estado en España', href: `${BASE_PATH}/502`, displayNumber: 2 },
+  { id: 503, title: 'El Procedimiento de Ejecución del Presupuesto de Gasto', href: `${BASE_PATH}/503`, displayNumber: 3 },
+  { id: 504, title: 'Las Retribuciones e Indemnizaciones', href: `${BASE_PATH}/504`, displayNumber: 4 },
+  { id: 505, title: 'Gastos para la Compra de Bienes y Servicios', href: `${BASE_PATH}/505`, displayNumber: 5 },
+  { id: 506, title: 'Gestión Económica y Financiera', href: `${BASE_PATH}/506`, displayNumber: 6 }
+]
+
+const BLOQUE6_THEMES = [
+  { id: 601, title: 'Informática Básica', href: `${BASE_PATH}/601`, displayNumber: 1 },
+  { id: 602, title: 'Sistema Operativo Windows', href: `${BASE_PATH}/602`, displayNumber: 2 },
+  { id: 603, title: 'El Explorador de Windows', href: `${BASE_PATH}/603`, displayNumber: 3 },
+  { id: 604, title: 'Procesadores de Texto: Word 365', href: `${BASE_PATH}/604`, displayNumber: 4 },
+  { id: 605, title: 'Hojas de Cálculo: Excel 365', href: `${BASE_PATH}/605`, displayNumber: 5 },
+  { id: 606, title: 'Bases de Datos: Access 365', href: `${BASE_PATH}/606`, displayNumber: 6 },
+  { id: 607, title: 'Correo Electrónico: Outlook 365', href: `${BASE_PATH}/607`, displayNumber: 7 },
+  { id: 608, title: 'La Red Internet', href: `${BASE_PATH}/608`, displayNumber: 8 }
+]
+
+// Helpers de colores
+const getAccuracyColor = (accuracy) => {
+  if (accuracy >= 90) return 'green'
+  if (accuracy >= 75) return 'emerald'
+  if (accuracy >= 60) return 'yellow'
+  if (accuracy >= 40) return 'orange'
+  return 'red'
+}
+
+const COLOR_CLASSES = {
+  green: 'bg-green-600 hover:bg-green-700 focus:ring-green-300',
+  emerald: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-300',
+  yellow: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-300',
+  orange: 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-300',
+  red: 'bg-red-600 hover:bg-red-700 focus:ring-red-300',
+  gray: 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-300'
+}
+
+const BLOCK_GRADIENT = 'from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:ring-blue-300'
+
 export default function TestsAdministrativoEstado() {
-  const { user, loading, supabase } = useAuth()
-  const router = useRouter()
+  const { user, loading } = useAuth()
   const [userStats, setUserStats] = useState({})
   const [statsLoading, setStatsLoading] = useState(false)
   const [sortBy, setSortBy] = useState('tema')
   const [showStatsInfo, setShowStatsInfo] = useState(false)
   const [expandedBlocks, setExpandedBlocks] = useState(() => {
-    // Intentar recuperar estado guardado del localStorage
     if (typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('administrativo-estado-expanded-blocks')
-        if (saved) {
-          return JSON.parse(saved)
-        }
+        if (saved) return JSON.parse(saved)
       } catch (e) {
-        // localStorage bloqueado o error de parseo - usar estado por defecto
+        // localStorage bloqueado
       }
     }
-    return {
-      bloque1: true,  // Expandido por defecto para que usuarios vean los temas
-      bloque2: false,
-      bloque3: false,
-      bloque4: false,
-      bloque5: false,
-      bloque6: false
-    }
+    return { bloque1: true, bloque2: false, bloque3: false, bloque4: false, bloque5: false, bloque6: false }
   })
 
-  // TODO: Cargar estadísticas del usuario cuando haya preguntas de administrativo-estado
-  // Por ahora desactivado para no mezclar stats de otras oposiciones
-  // useEffect(() => {
-  //   if (user && !loading) {
-  //     loadUserThemeStats(user.id)
-  //   }
-  // }, [user, loading])
-
-  const loadUserThemeStats = async (userId) => {
+  // Cargar estadísticas usando la nueva API con Drizzle + Zod
+  const loadUserThemeStats = useCallback(async (userId) => {
     setStatsLoading(true)
     try {
-      const { getSupabaseClient } = await import('../../../lib/supabase')
-      const supabase = getSupabaseClient()
+      const response = await fetch(`/api/user/theme-stats?userId=${userId}`)
+      const data = await response.json()
 
-      // TODO: Crear función RPC específica para administrativo-estado
-      // Por ahora usar estructura vacía
-      const { data: themeStatsData, error } = await supabase
-        .rpc('get_user_theme_stats', { p_user_id: userId })
-
-      if (!error && themeStatsData) {
+      if (data.success && data.stats) {
         const themeStats = {}
-        themeStatsData.forEach(row => {
-          const theme = row.tema_number
-          if (!theme) return
-          themeStats[theme] = {
-            total: parseInt(row.total),
-            correct: parseInt(row.correct),
-            accuracy: parseInt(row.accuracy),
-            lastStudy: new Date(row.last_study),
-            lastStudyFormatted: new Date(row.last_study).toLocaleDateString('es-ES', {
-              day: 'numeric',
-              month: 'short'
-            })
+        Object.entries(data.stats).forEach(([temaNumber, stat]) => {
+          themeStats[temaNumber] = {
+            total: stat.total,
+            correct: stat.correct,
+            accuracy: stat.accuracy,
+            lastStudy: stat.lastStudy ? new Date(stat.lastStudy) : null,
+            lastStudyFormatted: stat.lastStudyFormatted
           }
         })
         setUserStats(themeStats)
@@ -78,117 +135,29 @@ export default function TestsAdministrativoEstado() {
     } finally {
       setStatsLoading(false)
     }
-  }
+  }, [])
 
-  const getAccuracyColor = (accuracy) => {
-    if (accuracy >= 90) return 'green'
-    if (accuracy >= 75) return 'emerald'
-    if (accuracy >= 60) return 'yellow'
-    if (accuracy >= 40) return 'orange'
-    return 'red'
-  }
-
-  const getColorClasses = (color) => {
-    const colorClasses = {
-      green: 'bg-green-600 hover:bg-green-700 focus:ring-green-300',
-      emerald: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-300',
-      yellow: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-300',
-      orange: 'bg-orange-600 hover:bg-orange-700 focus:ring-orange-300',
-      red: 'bg-red-600 hover:bg-red-700 focus:ring-red-300',
-      gray: 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-300'
+  // Un solo useEffect - se ejecuta cuando el usuario está disponible
+  useEffect(() => {
+    if (user?.id && !loading) {
+      loadUserThemeStats(user.id)
     }
-    return colorClasses[color] || colorClasses.gray
-  }
+  }, [user?.id, loading, loadUserThemeStats])
 
   const toggleBlock = (blockId) => {
     setExpandedBlocks(prev => {
-      const newState = {
-        ...prev,
-        [blockId]: !prev[blockId]
-      }
-      // Guardar en localStorage para recordar el estado
+      const newState = { ...prev, [blockId]: !prev[blockId] }
       try {
         localStorage.setItem('administrativo-estado-expanded-blocks', JSON.stringify(newState))
       } catch (e) {
-        // localStorage bloqueado - continuar sin persistir
+        // localStorage bloqueado
       }
       return newState
     })
   }
 
-  // Definición de los 6 bloques con 45 temas según BOE 22/12/2025
-  const getThemesByBlock = () => {
-    const basePath = '/administrativo-estado/test/tema'
-
-    // Bloque I: Organización del Estado y de la Administración pública (11 temas)
-    const bloque1Themes = [
-      { id: 1, title: 'La Constitución Española de 1978', href: `${basePath}/1` },
-      { id: 2, title: 'La Jefatura del Estado. La Corona', href: `${basePath}/2` },
-      { id: 3, title: 'Las Cortes Generales', href: `${basePath}/3` },
-      { id: 4, title: 'El Poder Judicial', href: `${basePath}/4` },
-      { id: 5, title: 'El Gobierno y la Administración', href: `${basePath}/5` },
-      { id: 6, title: 'El Gobierno Abierto. Agenda 2030', href: `${basePath}/6` },
-      { id: 7, title: 'La Ley 19/2013 de Transparencia', href: `${basePath}/7` },
-      { id: 8, title: 'La Administración General del Estado', href: `${basePath}/8` },
-      { id: 9, title: 'La Organización Territorial del Estado', href: `${basePath}/9` },
-      { id: 10, title: 'La Administración Local', href: `${basePath}/10` },
-      { id: 11, title: 'La Organización de la Unión Europea', href: `${basePath}/11` }
-    ]
-
-    // Bloque II: Organización de oficinas públicas (4 temas) - Numeración 201-204
-    const bloque2Themes = [
-      { id: 201, title: 'Atención al Público', href: `${basePath}/201`, displayNumber: 1 },
-      { id: 202, title: 'Documento, Registro y Archivo', href: `${basePath}/202`, displayNumber: 2 },
-      { id: 203, title: 'Administración Electrónica', href: `${basePath}/203`, displayNumber: 3 },
-      { id: 204, title: 'Protección de Datos Personales', href: `${basePath}/204`, displayNumber: 4 }
-    ]
-
-    // Bloque III: Derecho administrativo general (7 temas) - Numeración 301-307
-    const bloque3Themes = [
-      { id: 301, title: 'Las Fuentes del Derecho Administrativo', href: `${basePath}/301`, displayNumber: 1 },
-      { id: 302, title: 'El Acto Administrativo', href: `${basePath}/302`, displayNumber: 2 },
-      { id: 303, title: 'Las Leyes del Procedimiento Administrativo', href: `${basePath}/303`, displayNumber: 3 },
-      { id: 304, title: 'Los Contratos del Sector Público', href: `${basePath}/304`, displayNumber: 4 },
-      { id: 305, title: 'Procedimientos y Formas de la Actividad Administrativa', href: `${basePath}/305`, displayNumber: 5 },
-      { id: 306, title: 'La Responsabilidad Patrimonial', href: `${basePath}/306`, displayNumber: 6 },
-      { id: 307, title: 'Políticas de Igualdad', href: `${basePath}/307`, displayNumber: 7 }
-    ]
-
-    // Bloque IV: Gestión de personal (9 temas) - Numeración 401-409
-    const bloque4Themes = [
-      { id: 401, title: 'El Personal al Servicio de las Administraciones Públicas', href: `${basePath}/401`, displayNumber: 1 },
-      { id: 402, title: 'Selección de Personal', href: `${basePath}/402`, displayNumber: 2 },
-      { id: 403, title: 'El Personal Funcionario', href: `${basePath}/403`, displayNumber: 3 },
-      { id: 404, title: 'Adquisición y Pérdida de la Condición de Funcionario', href: `${basePath}/404`, displayNumber: 4 },
-      { id: 405, title: 'Provisión de Puestos de Trabajo', href: `${basePath}/405`, displayNumber: 5 },
-      { id: 406, title: 'Las Incompatibilidades y Régimen Disciplinario', href: `${basePath}/406`, displayNumber: 6 },
-      { id: 407, title: 'El Régimen de la Seguridad Social de los Funcionarios', href: `${basePath}/407`, displayNumber: 7 },
-      { id: 408, title: 'El Personal Laboral', href: `${basePath}/408`, displayNumber: 8 },
-      { id: 409, title: 'El Régimen de la Seguridad Social del Personal Laboral', href: `${basePath}/409`, displayNumber: 9 }
-    ]
-
-    // Bloque V: Gestión financiera (6 temas) - Numeración 501-506
-    const bloque5Themes = [
-      { id: 501, title: 'El Presupuesto', href: `${basePath}/501`, displayNumber: 1 },
-      { id: 502, title: 'El Presupuesto del Estado en España', href: `${basePath}/502`, displayNumber: 2 },
-      { id: 503, title: 'El Procedimiento de Ejecución del Presupuesto de Gasto', href: `${basePath}/503`, displayNumber: 3 },
-      { id: 504, title: 'Las Retribuciones e Indemnizaciones', href: `${basePath}/504`, displayNumber: 4 },
-      { id: 505, title: 'Gastos para la Compra de Bienes y Servicios', href: `${basePath}/505`, displayNumber: 5 },
-      { id: 506, title: 'Gestión Económica y Financiera', href: `${basePath}/506`, displayNumber: 6 }
-    ]
-
-    // Bloque VI: Informática básica y ofimática (8 temas) - Numeración 601-608
-    const bloque6Themes = [
-      { id: 601, title: 'Informática Básica', href: `${basePath}/601`, displayNumber: 1 },
-      { id: 602, title: 'Sistema Operativo Windows', href: `${basePath}/602`, displayNumber: 2 },
-      { id: 603, title: 'El Explorador de Windows', href: `${basePath}/603`, displayNumber: 3 },
-      { id: 604, title: 'Procesadores de Texto: Word 365', href: `${basePath}/604`, displayNumber: 4 },
-      { id: 605, title: 'Hojas de Cálculo: Excel 365', href: `${basePath}/605`, displayNumber: 5 },
-      { id: 606, title: 'Bases de Datos: Access 365', href: `${basePath}/606`, displayNumber: 6 },
-      { id: 607, title: 'Correo Electrónico: Outlook 365', href: `${basePath}/607`, displayNumber: 7 },
-      { id: 608, title: 'La Red Internet', href: `${basePath}/608`, displayNumber: 8 }
-    ]
-
+  // Procesar temas con estadísticas
+  const getThemesByBlock = useCallback(() => {
     const processThemes = (themes) => {
       return themes.map(theme => {
         const stats = userStats[theme.id]
@@ -199,88 +168,14 @@ export default function TestsAdministrativoEstado() {
     }
 
     return {
-      bloque1: processThemes(bloque1Themes),
-      bloque2: processThemes(bloque2Themes),
-      bloque3: processThemes(bloque3Themes),
-      bloque4: processThemes(bloque4Themes),
-      bloque5: processThemes(bloque5Themes),
-      bloque6: processThemes(bloque6Themes)
+      bloque1: processThemes(BLOQUE1_THEMES),
+      bloque2: processThemes(BLOQUE2_THEMES),
+      bloque3: processThemes(BLOQUE3_THEMES),
+      bloque4: processThemes(BLOQUE4_THEMES),
+      bloque5: processThemes(BLOQUE5_THEMES),
+      bloque6: processThemes(BLOQUE6_THEMES)
     }
-  }
-
-  // Componente reutilizable para renderizar un bloque
-  const renderBlock = (blockId, icon, title, themes, temasCount, color = 'blue') => {
-    const gradientColors = {
-      blue: 'from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:ring-blue-300',
-      green: 'from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:ring-green-300',
-      purple: 'from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 focus:ring-purple-300',
-      orange: 'from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 focus:ring-orange-300',
-      red: 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 focus:ring-red-300',
-      indigo: 'from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 focus:ring-indigo-300'
-    }
-
-    return (
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <button
-          onClick={() => toggleBlock(blockId)}
-          className={`w-full bg-gradient-to-r ${gradientColors[color]} text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 focus:outline-none focus:ring-4`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <span className="mr-3 text-xl">{icon}</span>
-              <span>{title}</span>
-              <span className="ml-3 bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                {temasCount} temas
-              </span>
-            </div>
-            <span className={`text-2xl transition-transform duration-300 ${expandedBlocks[blockId] ? 'rotate-180' : ''}`}>
-              ▼
-            </span>
-          </div>
-        </button>
-
-        {expandedBlocks[blockId] && (
-          <div className="p-4 space-y-3 bg-gray-50">
-            {themes.map((theme) => {
-              const hasStats = !!userStats[theme.id]
-              return (
-                <Link
-                  key={theme.id}
-                  href={theme.href}
-                  className={`block py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 group ${
-                    hasStats
-                      ? `${getColorClasses(theme.color)} text-white`
-                      : 'bg-white border border-gray-200 text-gray-800 hover:bg-gray-50 focus:ring-gray-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span>Tema {theme.displayNumber || theme.id}: {theme.title}</span>
-                    <div className="flex items-center space-x-3">
-                      {hasStats && (
-                        <>
-                          <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
-                            {userStats[theme.id].accuracy}% ({userStats[theme.id].correct}/{userStats[theme.id].total})
-                          </span>
-                          <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
-                            {userStats[theme.id].lastStudyFormatted}
-                          </span>
-                        </>
-                      )}
-                      {!hasStats && (
-                        <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
-                          Empezar
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
+  }, [userStats])
 
   if (loading) {
     return (
@@ -380,31 +275,89 @@ export default function TestsAdministrativoEstado() {
                     <span className="mr-3 text-2xl group-hover:animate-bounce">🎲</span>
                     <span>Test Aleatorio: Mezcla preguntas de varios temas</span>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                      Personalizable
-                    </span>
-                  </div>
+                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                    Personalizable
+                  </span>
                 </div>
               </Link>
 
-              {/* Bloque I: Organización del Estado */}
-              {renderBlock('bloque1', '🏛️', 'Bloque I: Organización del Estado', blocks.bloque1, 11, 'blue')}
+              {/* Bloque I */}
+              <BlockSection
+                blockId="bloque1"
+                icon="🏛️"
+                title="Bloque I: Organización del Estado"
+                themes={blocks.bloque1}
+                temasCount={11}
+                expanded={expandedBlocks.bloque1}
+                onToggle={toggleBlock}
+                userStats={userStats}
+                onInfoClick={() => setShowStatsInfo(true)}
+              />
 
-              {/* Bloque II: Organización de Oficinas Públicas */}
-              {renderBlock('bloque2', '📋', 'Bloque II: Organización de Oficinas Públicas', blocks.bloque2, 4, 'blue')}
+              {/* Bloque II */}
+              <BlockSection
+                blockId="bloque2"
+                icon="📋"
+                title="Bloque II: Organización de Oficinas Públicas"
+                themes={blocks.bloque2}
+                temasCount={4}
+                expanded={expandedBlocks.bloque2}
+                onToggle={toggleBlock}
+                userStats={userStats}
+                onInfoClick={() => setShowStatsInfo(true)}
+              />
 
-              {/* Bloque III: Derecho Administrativo General */}
-              {renderBlock('bloque3', '⚖️', 'Bloque III: Derecho Administrativo General', blocks.bloque3, 7, 'blue')}
+              {/* Bloque III */}
+              <BlockSection
+                blockId="bloque3"
+                icon="⚖️"
+                title="Bloque III: Derecho Administrativo General"
+                themes={blocks.bloque3}
+                temasCount={7}
+                expanded={expandedBlocks.bloque3}
+                onToggle={toggleBlock}
+                userStats={userStats}
+                onInfoClick={() => setShowStatsInfo(true)}
+              />
 
-              {/* Bloque IV: Gestión de Personal */}
-              {renderBlock('bloque4', '👥', 'Bloque IV: Gestión de Personal', blocks.bloque4, 9, 'blue')}
+              {/* Bloque IV */}
+              <BlockSection
+                blockId="bloque4"
+                icon="👥"
+                title="Bloque IV: Gestión de Personal"
+                themes={blocks.bloque4}
+                temasCount={9}
+                expanded={expandedBlocks.bloque4}
+                onToggle={toggleBlock}
+                userStats={userStats}
+                onInfoClick={() => setShowStatsInfo(true)}
+              />
 
-              {/* Bloque V: Gestión Financiera */}
-              {renderBlock('bloque5', '💰', 'Bloque V: Gestión Financiera', blocks.bloque5, 6, 'blue')}
+              {/* Bloque V */}
+              <BlockSection
+                blockId="bloque5"
+                icon="💰"
+                title="Bloque V: Gestión Financiera"
+                themes={blocks.bloque5}
+                temasCount={6}
+                expanded={expandedBlocks.bloque5}
+                onToggle={toggleBlock}
+                userStats={userStats}
+                onInfoClick={() => setShowStatsInfo(true)}
+              />
 
-              {/* Bloque VI: Informática Básica y Ofimática */}
-              {renderBlock('bloque6', '💻', 'Bloque VI: Informática Básica y Ofimática', blocks.bloque6, 8, 'blue')}
+              {/* Bloque VI */}
+              <BlockSection
+                blockId="bloque6"
+                icon="💻"
+                title="Bloque VI: Informática Básica y Ofimática"
+                themes={blocks.bloque6}
+                temasCount={8}
+                expanded={expandedBlocks.bloque6}
+                onToggle={toggleBlock}
+                userStats={userStats}
+                onInfoClick={() => setShowStatsInfo(true)}
+              />
             </div>
 
             {/* Modal de información */}
@@ -434,5 +387,92 @@ export default function TestsAdministrativoEstado() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Componente para sección de bloque
+function BlockSection({ blockId, icon, title, themes, temasCount, expanded, onToggle, userStats, onInfoClick }) {
+  return (
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      <button
+        onClick={() => onToggle(blockId)}
+        className={`w-full bg-gradient-to-r ${BLOCK_GRADIENT} text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 focus:outline-none focus:ring-4`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="mr-3 text-xl">{icon}</span>
+            <span>{title}</span>
+            <span className="ml-3 bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+              {temasCount} temas
+            </span>
+          </div>
+          <span className={`text-2xl transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="p-4 space-y-3 bg-gray-50">
+          {themes.map((theme) => (
+            <ThemeLink
+              key={theme.id}
+              theme={theme}
+              stats={userStats[theme.id]}
+              onInfoClick={onInfoClick}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Componente para enlace de tema
+function ThemeLink({ theme, stats, onInfoClick }) {
+  const hasStats = !!stats
+
+  return (
+    <Link
+      href={theme.href}
+      className={`block py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 group ${
+        hasStats
+          ? `${COLOR_CLASSES[theme.color] || COLOR_CLASSES.gray} text-white`
+          : 'bg-white border border-gray-200 text-gray-800 hover:bg-gray-50 focus:ring-gray-200'
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span>Tema {theme.displayNumber || theme.id}: {theme.title}</span>
+        <div className="flex items-center space-x-3">
+          {hasStats ? (
+            <>
+              <div className="flex items-center space-x-1">
+                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                  {stats.accuracy}% ({stats.correct}/{stats.total})
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onInfoClick()
+                  }}
+                  className="text-white/70 hover:text-white transition-colors p-1"
+                  title="¿Qué significa este porcentaje?"
+                >
+                  ℹ️
+                </button>
+              </div>
+              <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
+                {stats.lastStudyFormatted}
+              </span>
+            </>
+          ) : (
+            <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
+              Empezar
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
   )
 }
