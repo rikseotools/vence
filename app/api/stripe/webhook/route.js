@@ -389,6 +389,7 @@ async function handleSubscriptionCreated(subscription, supabase) {
 
 async function handleSubscriptionUpdated(subscription, supabase) {
   try {
+    // Actualizar user_subscriptions
     await supabase
       .from('user_subscriptions')
       .update({
@@ -399,7 +400,41 @@ async function handleSubscriptionUpdated(subscription, supabase) {
       })
       .eq('stripe_subscription_id', subscription.id)
 
-    console.log(`✅ Subscription ${subscription.id} updated`)
+    console.log(`✅ Subscription ${subscription.id} updated to status: ${subscription.status}`)
+
+    // 🔥 FIX: Si el status cambia a past_due o unpaid, notificar al admin
+    if (['past_due', 'unpaid'].includes(subscription.status)) {
+      console.log(`⚠️ Subscription ${subscription.id} tiene problemas de pago: ${subscription.status}`)
+
+      // Buscar usuario para notificar
+      const { data: subData } = await supabase
+        .from('user_subscriptions')
+        .select('user_id')
+        .eq('stripe_subscription_id', subscription.id)
+        .single()
+
+      if (subData?.user_id) {
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('email, full_name')
+          .eq('id', subData.user_id)
+          .single()
+
+        if (userProfile) {
+          try {
+            await sendAdminPaymentIssueEmail({
+              userEmail: userProfile.email,
+              userName: userProfile.full_name,
+              status: subscription.status,
+              subscriptionId: subscription.id
+            })
+            console.log('📧 Email de problema de pago enviado al admin')
+          } catch (emailErr) {
+            console.error('Error enviando email de problema de pago:', emailErr)
+          }
+        }
+      }
+    }
   } catch (error) {
     console.error('Error updating subscription:', error)
   }
@@ -407,6 +442,14 @@ async function handleSubscriptionUpdated(subscription, supabase) {
 
 async function handleSubscriptionDeleted(subscription, supabase) {
   try {
+    // 1. Obtener el user_id antes de actualizar
+    const { data: subData } = await supabase
+      .from('user_subscriptions')
+      .select('user_id')
+      .eq('stripe_subscription_id', subscription.id)
+      .single()
+
+    // 2. Actualizar user_subscriptions
     await supabase
       .from('user_subscriptions')
       .update({
@@ -414,7 +457,42 @@ async function handleSubscriptionDeleted(subscription, supabase) {
       })
       .eq('stripe_subscription_id', subscription.id)
 
-    console.log(`✅ Subscription ${subscription.id} canceled`)
+    console.log(`✅ Subscription ${subscription.id} canceled in user_subscriptions`)
+
+    // 3. 🔥 FIX: También degradar el usuario a FREE en user_profiles
+    if (subData?.user_id) {
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({ plan_type: 'free' })
+        .eq('id', subData.user_id)
+
+      if (profileError) {
+        console.error('❌ Error degradando usuario a free:', profileError)
+      } else {
+        console.log(`✅ User ${subData.user_id} degradado a plan FREE`)
+      }
+
+      // Notificar al admin sobre la cancelación
+      try {
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('email, full_name')
+          .eq('id', subData.user_id)
+          .single()
+
+        if (userProfile) {
+          await sendAdminCancellationEmail({
+            userEmail: userProfile.email,
+            userName: userProfile.full_name,
+            subscriptionId: subscription.id,
+            reason: subscription.cancellation_details?.reason || 'No especificado'
+          })
+          console.log('📧 Email de cancelación enviado al admin')
+        }
+      } catch (emailErr) {
+        console.error('Error enviando email de cancelación:', emailErr)
+      }
+    }
   } catch (error) {
     console.error('Error canceling subscription:', error)
   }
@@ -454,6 +532,48 @@ async function handlePaymentSucceeded(invoice, supabase) {
 
 async function handlePaymentFailed(invoice, supabase) {
   console.log(`⚠️ Payment failed for invoice ${invoice.id}`)
+
+  // 🔥 FIX: Buscar usuario y notificar al admin
+  if (invoice.subscription) {
+    try {
+      const subscription = await stripe.subscriptions.retrieve(invoice.subscription)
+
+      let userId = subscription.metadata?.supabase_user_id
+
+      if (!userId) {
+        const { data: user } = await supabase
+          .from('user_profiles')
+          .select('id')
+          .eq('stripe_customer_id', subscription.customer)
+          .single()
+
+        userId = user?.id
+      }
+
+      if (userId) {
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('email, full_name')
+          .eq('id', userId)
+          .single()
+
+        if (userProfile) {
+          await sendAdminPaymentIssueEmail({
+            userEmail: userProfile.email,
+            userName: userProfile.full_name || 'Sin nombre',
+            status: 'payment_failed',
+            subscriptionId: subscription.id,
+            invoiceId: invoice.id,
+            amount: invoice.amount_due / 100,
+            currency: invoice.currency?.toUpperCase() || 'EUR'
+          })
+          console.log('📧 Email de pago fallido enviado al admin')
+        }
+      }
+    } catch (error) {
+      console.error('Error handling payment failed:', error)
+    }
+  }
 }
 
 // Función para enviar email de nueva compra al admin
@@ -506,6 +626,107 @@ async function sendAdminPurchaseEmail(data) {
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
     subject: `💰 ¡Nueva Compra Premium! - ${data.userEmail} - ${data.amount}${currencySymbol}`,
+    html: html
+  })
+}
+
+// Función para enviar email de problema de pago al admin
+async function sendAdminPaymentIssueEmail(data) {
+  const statusLabels = {
+    'past_due': '⏰ Pago Atrasado',
+    'unpaid': '❌ No Pagado',
+    'payment_failed': '💳 Pago Fallido'
+  }
+
+  const statusLabel = statusLabels[data.status] || data.status
+  const currencySymbol = data.currency === 'EUR' ? '€' : (data.currency || '')
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Problema de Pago</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+
+          <div style="text-align: center; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: #b91c1c; margin: 0;">⚠️ PROBLEMA DE PAGO</h1>
+            <p style="color: #dc2626; margin: 10px 0 0 0; font-size: 18px;">${statusLabel}</p>
+          </div>
+
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #f59e0b;">
+            <h3 style="color: #92400e; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
+            <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
+            <p style="margin: 8px 0;"><strong>Nombre:</strong> ${data.userName || 'Sin nombre'}</p>
+            <p style="margin: 8px 0;"><strong>Subscription ID:</strong> ${data.subscriptionId}</p>
+            ${data.invoiceId ? `<p style="margin: 8px 0;"><strong>Invoice ID:</strong> ${data.invoiceId}</p>` : ''}
+            ${data.amount ? `<p style="margin: 8px 0;"><strong>Monto:</strong> ${data.amount}${currencySymbol}</p>` : ''}
+            <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
+          </div>
+
+          <div style="text-align: center; margin-top: 20px;">
+            <a href="https://dashboard.stripe.com/subscriptions/${data.subscriptionId}"
+               style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+              📊 Ver en Stripe
+            </a>
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `
+
+  await resend.emails.send({
+    from: process.env.FROM_EMAIL || 'info@vence.es',
+    to: ADMIN_EMAIL,
+    subject: `⚠️ ${statusLabel} - ${data.userEmail}`,
+    html: html
+  })
+}
+
+// Función para enviar email de cancelación al admin
+async function sendAdminCancellationEmail(data) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Suscripción Cancelada</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+
+          <div style="text-align: center; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: #4b5563; margin: 0;">👋 Suscripción Cancelada</h1>
+            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 18px;">Un usuario ha cancelado su suscripción</p>
+          </div>
+
+          <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
+            <h3 style="color: #374151; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
+            <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
+            <p style="margin: 8px 0;"><strong>Nombre:</strong> ${data.userName || 'Sin nombre'}</p>
+            <p style="margin: 8px 0;"><strong>Subscription ID:</strong> ${data.subscriptionId}</p>
+            <p style="margin: 8px 0;"><strong>Motivo:</strong> ${data.reason}</p>
+            <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
+          </div>
+
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <p style="margin: 0; color: #92400e;">
+              💡 <strong>Nota:</strong> El usuario ha sido degradado automáticamente a plan FREE.
+            </p>
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `
+
+  await resend.emails.send({
+    from: process.env.FROM_EMAIL || 'info@vence.es',
+    to: ADMIN_EMAIL,
+    subject: `👋 Cancelación - ${data.userEmail}`,
     html: html
   })
 }
