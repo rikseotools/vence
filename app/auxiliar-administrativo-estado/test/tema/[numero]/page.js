@@ -1,6 +1,6 @@
-// app/auxiliar-administrativo-estado/test/tema/[numero]/page.js - PÁGINA DINÁMICA MEJORADA
+// app/auxiliar-administrativo-estado/test/tema/[numero]/page.js - REFACTORIZADO CON API LAYER
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
@@ -9,7 +9,7 @@ import ArticleModal from '@/components/ArticleModal'
 const supabase = getSupabaseClient()
 
 export default function TemaPage({ params }) {
-  // ✅ ESTADOS PRINCIPALES
+  // Estados principales
   const [resolvedParams, setResolvedParams] = useState(null)
   const [temaNumber, setTemaNumber] = useState(null)
   const [topicData, setTopicData] = useState(null)
@@ -18,26 +18,26 @@ export default function TemaPage({ params }) {
   const [temaNotFound, setTemaNotFound] = useState(false)
   const [showOposicionDropdown, setShowOposicionDropdown] = useState(false)
   const dropdownRef = useRef(null)
-  
-  // ✅ ESTADOS PARA ESTADÍSTICAS
+
+  // Estados para estadísticas (del API)
   const [difficultyStats, setDifficultyStats] = useState({})
   const [userStats, setUserStats] = useState(null)
   const [officialQuestionsCount, setOfficialQuestionsCount] = useState(0)
   const [articlesCountByLaw, setArticlesCountByLaw] = useState([])
-  
-  // ✅ ESTADOS PARA CONFIGURADOR AVANZADO
+
+  // Estados para configurador avanzado
   const [testLoading, setTestLoading] = useState(false)
   const [userRecentStats, setUserRecentStats] = useState(null)
   const [userAnswers, setUserAnswers] = useState([])
 
-  // ✅ ESTADOS PARA MODAL DE ARTÍCULO
+  // Estados para modal de artículo
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
 
-  // 🆕 ESTADO PARA MODO PRÁCTICA/EXAMEN
-  const [testMode, setTestMode] = useState('practica') // 'practica' o 'examen'
+  // Estado para modo práctica/examen
+  const [testMode, setTestMode] = useState('practica')
 
-  // 💾 Cargar preferencia de modo desde localStorage
+  // Cargar preferencia de modo desde localStorage
   useEffect(() => {
     const savedMode = localStorage.getItem('preferredTestMode')
     if (savedMode === 'practica' || savedMode === 'examen') {
@@ -45,84 +45,94 @@ export default function TemaPage({ params }) {
     }
   }, [])
 
-  // 💾 Función helper para cambiar modo y guardar preferencia
+  // Función helper para cambiar modo y guardar preferencia
   const handleTestModeChange = (newMode) => {
     setTestMode(newMode)
     localStorage.setItem('preferredTestMode', newMode)
   }
 
-  // 🔄 REFRESH STATS WHEN PAGE BECOMES VISIBLE (user returns from completed test)
-  useEffect(() => {
-    if (!currentUser || !temaNumber) return
-
-    const handleVisibilityChange = async () => {
-      console.log('🔍 [EVENT] visibilitychange disparado:', {
-        hidden: document.hidden,
-        currentUser: !!currentUser,
-        loading,
-        temaNumber
+  // FUNCIÓN CONSOLIDADA: Cargar todos los datos del tema desde API
+  const loadTopicData = useCallback(async (tema, userId) => {
+    try {
+      const queryParams = new URLSearchParams({
+        oposicion: 'auxiliar-administrativo-estado',
+        ...(userId && { userId })
       })
-      
-      if (!document.hidden && currentUser && !loading) {
-        console.log('🔄 Página tema visible de nuevo - Refrescando estadísticas completas...')
-        // ✅ CORREGIDO: Recargar estadísticas de dificultad ANTES que las del usuario
-        await loadDifficultyStats(temaNumber)
-        await getUserPersonalStats(currentUser.id, temaNumber)
-        console.log('✅ Estadísticas actualizadas tras visibilitychange')
+
+      const response = await fetch(`/api/topics/${tema}?${queryParams}`)
+      const data = await response.json()
+
+      if (!data.success) {
+        console.error('Error cargando datos del tema:', data.error)
+        return null
       }
+
+      return data
+    } catch (error) {
+      console.error('Error en loadTopicData:', error)
+      return null
     }
+  }, [])
 
-    const handleWindowFocus = async () => {
-      console.log('🔍 [EVENT] focus disparado:', {
-        currentUser: !!currentUser,
-        loading,
-        temaNumber
-      })
-      
-      if (currentUser && !loading) {
-        console.log('🔄 Ventana tema enfocada - Refrescando estadísticas completas...')
-        // ✅ CORREGIDO: Recargar estadísticas de dificultad ANTES que las del usuario
-        await loadDifficultyStats(temaNumber)
-        await getUserPersonalStats(currentUser.id, temaNumber)
-        console.log('✅ Estadísticas actualizadas tras focus')
-      }
-    }
-
-    // ✅ AGREGAR TAMBIÉN LISTENER DE NAVEGACIÓN
-    const handlePageShow = async () => {
-      console.log('🔍 [EVENT] pageshow disparado')
-      if (currentUser && !loading) {
-        console.log('🔄 Página tema mostrada - Refrescando estadísticas...')
-        await loadDifficultyStats(temaNumber)
-        await getUserPersonalStats(currentUser.id, temaNumber)
-        console.log('✅ Estadísticas actualizadas tras pageshow')
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleWindowFocus)
-    window.addEventListener('pageshow', handlePageShow)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleWindowFocus)
-      window.removeEventListener('pageshow', handlePageShow)
-    }
-  }, [currentUser, temaNumber, loading])
-
-  // 🔄 ADICIONAL: Refresco cuando cambie la URL del navegador (usuario navega con botones)
+  // REFRESH: Cuando la página vuelve a ser visible
   useEffect(() => {
     if (!currentUser || !temaNumber || loading) return
-    
-    console.log('🔄 [URL] URL o dependencias cambiaron, refrescando estadísticas...')
-    
-    const refreshStats = async () => {
-      await loadDifficultyStats(temaNumber)
-      await getUserPersonalStats(currentUser.id, temaNumber)
+
+    const handleVisibilityOrFocus = async () => {
+      if (document.hidden) return
+
+      console.log('🔄 Refrescando datos del tema...')
+      const data = await loadTopicData(temaNumber, currentUser.id)
+
+      if (data?.success) {
+        setDifficultyStats(data.difficultyStats || {})
+        setOfficialQuestionsCount(data.officialQuestionsCount || 0)
+        setArticlesCountByLaw(data.articlesByLaw?.map(a => ({
+          law_short_name: a.lawShortName,
+          law_name: a.lawName,
+          articles_with_questions: a.articlesWithQuestions
+        })) || [])
+
+        if (data.userProgress) {
+          setUserStats({
+            totalAnswers: data.userProgress.totalAnswers,
+            overallAccuracy: data.userProgress.overallAccuracy,
+            performanceByDifficulty: data.userProgress.performanceByDifficulty,
+            isRealData: true,
+            dataSource: 'api_layer',
+            uniqueQuestionsAnswered: data.userProgress.uniqueQuestionsAnswered,
+            totalQuestionsAvailable: data.userProgress.totalQuestionsAvailable,
+            neverSeen: data.userProgress.neverSeen
+          })
+
+          // Cargar userRecentStats desde userProgress
+          if (data.userProgress.recentStats) {
+            setUserRecentStats({
+              last7Days: data.userProgress.recentStats.last7Days,
+              last15Days: data.userProgress.recentStats.last15Days,
+              last30Days: data.userProgress.recentStats.last30Days,
+              recentlyAnswered: data.userProgress.recentStats.last15Days,
+              getExcludedCount: (days) => {
+                if (days <= 7) return data.userProgress.recentStats.last7Days
+                if (days <= 15) return data.userProgress.recentStats.last15Days
+                return data.userProgress.recentStats.last30Days
+              }
+            })
+          }
+        }
+      }
     }
-    
-    refreshStats()
-  }, [currentUser?.id, temaNumber]) // Solo cuando cambie el usuario o tema
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus)
+    window.addEventListener('focus', handleVisibilityOrFocus)
+    window.addEventListener('pageshow', handleVisibilityOrFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus)
+      window.removeEventListener('focus', handleVisibilityOrFocus)
+      window.removeEventListener('pageshow', handleVisibilityOrFocus)
+    }
+  }, [currentUser, temaNumber, loading, loadTopicData])
 
   // Efecto para cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -138,509 +148,116 @@ export default function TemaPage({ params }) {
     }
   }, [])
 
-  // ✅ RESOLVER PARAMS ASYNC
+  // Resolver params async
   useEffect(() => {
     async function resolveParams() {
       const resolved = await params
       const tema = parseInt(resolved.numero)
-      
+
       setResolvedParams(resolved)
       setTemaNumber(tema)
-      
-      // Validar número de tema (1-16 Bloque I, 104+ Bloque II)
+
+      // Validar número de tema (1-16 Bloque I, 101-112 Bloque II)
       if (isNaN(tema) || tema < 1 || (tema > 16 && tema < 101) || tema > 200) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('❌ Número de tema inválido:', tema)
-        }
         setTemaNotFound(true)
         setLoading(false)
         return
       }
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🎯 Tema dinámico cargado:', tema)
-      }
     }
-    
+
     resolveParams()
   }, [params])
 
-  // ✅ CARGAR DATOS DEL TEMA Y USUARIO
+  // CARGAR DATOS: Una sola llamada API consolidada
   useEffect(() => {
     if (!temaNumber || temaNotFound) return
-    
-    async function checkUserAndStats() {
-      try {
-        // Obtener datos del tema
-        const topicDataResult = await getTopicData(temaNumber)
-        if (!topicDataResult) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('❌ Tema no encontrado en BD:', temaNumber)
-          }
-          setTemaNotFound(true)
-          setLoading(false)
-          return
-        }
-        setTopicData(topicDataResult)
 
+    async function fetchAllData() {
+      try {
         // Obtener usuario actual
         const { data: { user } } = await supabase.auth.getUser()
         setCurrentUser(user)
 
-        // ✅ CONSULTA MULTI-LEY para estadísticas
-        await loadDifficultyStats(temaNumber)
+        // UNA SOLA LLAMADA API para todos los datos
+        const data = await loadTopicData(temaNumber, user?.id)
 
-        // ✅ CONTAR preguntas oficiales usando topic_scope
-        await loadOfficialQuestionsCount(temaNumber)
+        if (!data?.success) {
+          setTemaNotFound(true)
+          setLoading(false)
+          return
+        }
 
-        // ✅ CARGAR conteo de artículos por ley (MEJORADO)
-        await loadArticlesCountByLaw(temaNumber)
+        // Actualizar todos los estados desde la respuesta del API
+        setTopicData({
+          id: data.topic.id,
+          topic_number: data.topic.topicNumber,
+          title: data.topic.title,
+          description: data.topic.description,
+          difficulty: data.topic.difficulty,
+          estimated_hours: data.topic.estimatedHours
+        })
 
-        if (user) {
-          await getUserPersonalStats(user.id, temaNumber)
-          await loadUserRecentStats(user.id, temaNumber)
+        setDifficultyStats(data.difficultyStats || {})
+        setOfficialQuestionsCount(data.officialQuestionsCount || 0)
+
+        // Transformar articlesByLaw al formato esperado por el componente
+        setArticlesCountByLaw(data.articlesByLaw?.map(a => ({
+          law_short_name: a.lawShortName,
+          law_name: a.lawName,
+          articles_with_questions: a.articlesWithQuestions
+        })) || [])
+
+        // Si hay datos de progreso del usuario
+        if (data.userProgress) {
+          setUserStats({
+            totalAnswers: data.userProgress.totalAnswers,
+            overallAccuracy: data.userProgress.overallAccuracy,
+            performanceByDifficulty: data.userProgress.performanceByDifficulty,
+            isRealData: true,
+            dataSource: 'api_layer',
+            periodAnalyzed: 'historial completo',
+            lastUpdated: data.generatedAt,
+            uniqueQuestionsAnswered: data.userProgress.uniqueQuestionsAnswered,
+            totalQuestionsAvailable: data.userProgress.totalQuestionsAvailable,
+            neverSeen: data.userProgress.neverSeen
+          })
+
+          // Configurar userRecentStats
+          if (data.userProgress.recentStats) {
+            setUserRecentStats({
+              last7Days: data.userProgress.recentStats.last7Days,
+              last15Days: data.userProgress.recentStats.last15Days,
+              last30Days: data.userProgress.recentStats.last30Days,
+              recentlyAnswered: data.userProgress.recentStats.last15Days,
+              getExcludedCount: (days) => {
+                if (days <= 7) return data.userProgress.recentStats.last7Days
+                if (days <= 15) return data.userProgress.recentStats.last15Days
+                return data.userProgress.recentStats.last30Days
+              }
+            })
+          }
+
+          // Cargar userAnswers para métricas detalladas (solo si hay usuario)
+          if (user) {
+            await loadUserAnswersForMetrics(user.id, temaNumber)
+          }
         }
 
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('Error obteniendo datos tema dinámico:', error)
-        }
+        console.error('Error cargando datos del tema:', error)
         setTemaNotFound(true)
       } finally {
         setLoading(false)
       }
     }
-    
-    checkUserAndStats()
-  }, [temaNumber, temaNotFound])
 
-  // ✅ FUNCIÓN: Obtener datos del tema desde BD
-  async function getTopicData(temaNumber) {
+    fetchAllData()
+  }, [temaNumber, temaNotFound, loadTopicData])
+
+  // Cargar respuestas del usuario para métricas detalladas (racha, velocidad, etc.)
+  async function loadUserAnswersForMetrics(userId, tema) {
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Buscando tema dinámico:', temaNumber)
-      }
-      
-      const { data: topicData, error } = await supabase
-        .from('topics')
-        .select(`
-          id,
-          topic_number,
-          title,
-          description,
-          difficulty,
-          estimated_hours
-        `)
-        .eq('position_type', 'auxiliar_administrativo')
-        .eq('topic_number', temaNumber)
-        .eq('is_active', true)
-        .single()
-
-      if (error || !topicData) {
-        console.error('❌ Error obteniendo datos del tema dinámico:', error)
-        return null
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('✅ Tema dinámico encontrado:', topicData.title)
-      }
-      return topicData
-    } catch (error) {
-      console.error('❌ Error en getTopicData dinámico:', error)
-      return null
-    }
-  }
-
-  // ✅ FUNCIÓN DIRECTA: Obtener estadísticas sin depender del estado
-  async function loadDifficultyStatsDirectly(temaNumber) {
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🎯 Obteniendo estadísticas DIRECTAS MULTI-LEY para tema ${temaNumber}...`)
-      }
-      
-      // 1️⃣ OBTENER MAPEO DEL TEMA DESDE TOPIC_SCOPE
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', temaNumber)
-        .eq('topics.position_type', 'auxiliar_administrativo')
-      
-      if (mappingError) {
-        console.warn(`Error obteniendo mapeo tema ${temaNumber}:`, mappingError)
-        return {}
-      }
-      
-      if (!mappings?.length) {
-        console.warn(`No se encontró mapeo para tema ${temaNumber}`)
-        return {}
-      }
-      
-      // 2️⃣ PARA CADA LEY MAPEADA, HACER CONSULTA SEPARADA
-      let allQuestions = []
-      
-      for (const mapping of mappings) {
-        if (!mapping.laws || !mapping.laws.short_name) {
-          console.warn(`⚠️ Mapeo sin ley válida para tema ${temaNumber}:`, mapping)
-          continue
-        }
-
-        // ✅ CONSULTA SEPARADA POR LEY (patrón multi-ley)
-        const { data: questions, error } = await supabase
-          .from('questions')
-          .select(`
-            difficulty,
-            articles!inner(
-              laws!inner(short_name)
-            )
-          `)
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-        
-        if (!error && questions) {
-          allQuestions = [...allQuestions, ...questions]
-        }
-      }
-      
-      // 3️⃣ PROCESAR TODAS LAS PREGUNTAS JUNTAS
-      const stats = allQuestions.reduce((acc, question) => {
-        const difficulty = question.difficulty || 'auto'
-        acc[difficulty] = (acc[difficulty] || 0) + 1
-        return acc
-      }, {})
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`📊 Estadísticas directas tema ${temaNumber}:`, stats)
-        console.log(`📊 Total preguntas directas:`, Object.values(stats).reduce((sum, count) => sum + count, 0))
-      }
-      
-      return stats
-
-    } catch (error) {
-      console.error(`❌ Error cargando estadísticas directas tema ${temaNumber}:`, error)
-      return {}
-    }
-  }
-
-  // ✅ FUNCIÓN MULTI-LEY: Cargar estadísticas por dificultad
-  async function loadDifficultyStats(temaNumber) {
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🎯 Cargando estadísticas MULTI-LEY para tema ${temaNumber}...`)
-      }
-      
-      // 1️⃣ OBTENER MAPEO DEL TEMA DESDE TOPIC_SCOPE
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', temaNumber)
-        .eq('topics.position_type', 'auxiliar_administrativo')
-      
-      if (mappingError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(`Error obteniendo mapeo tema ${temaNumber}:`, mappingError)
-        }
-        setDifficultyStats({})
-        return
-      }
-      
-      if (!mappings?.length) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(`No se encontró mapeo para tema ${temaNumber}`)
-        }
-        setDifficultyStats({})
-        return
-      }
-      
-      // 2️⃣ PARA CADA LEY MAPEADA, HACER CONSULTA SEPARADA
-      let allQuestions = []
-      
-      for (const mapping of mappings) {
-        if (!mapping.laws || !mapping.laws.short_name) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(`⚠️ Mapeo sin ley válida para tema ${temaNumber}:`, mapping)
-          }
-          continue
-        }
-
-        // ✅ CONSULTA SEPARADA POR LEY (patrón multi-ley)
-        const { data: questions, error } = await supabase
-          .from('questions')
-          .select(`
-            global_difficulty,
-            difficulty,
-            articles!inner(
-              laws!inner(short_name)
-            )
-          `)
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-
-        if (!error && questions) {
-          allQuestions = [...allQuestions, ...questions]
-        }
-      }
-
-      // 3️⃣ PROCESAR TODAS LAS PREGUNTAS JUNTAS
-      // Usar global_difficulty (calculada) si existe, sino difficulty (estática)
-      const diffCount = allQuestions.reduce((acc, q) => {
-        let difficultyLevel
-
-        if (q.global_difficulty !== null && q.global_difficulty !== undefined) {
-          // Convertir dificultad numérica (0-100) a categoría
-          if (q.global_difficulty < 25) {
-            difficultyLevel = 'easy'
-          } else if (q.global_difficulty < 50) {
-            difficultyLevel = 'medium'
-          } else if (q.global_difficulty < 75) {
-            difficultyLevel = 'hard'
-          } else {
-            difficultyLevel = 'extreme'
-          }
-        } else {
-          // Fallback a dificultad estática
-          difficultyLevel = q.difficulty
-        }
-
-        acc[difficultyLevel] = (acc[difficultyLevel] || 0) + 1
-        return acc
-      }, {})
-      
-      setDifficultyStats(diffCount)
-      const totalFromDiffCount = Object.values(diffCount).reduce((sum, count) => sum + count, 0)
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`📊 Estadísticas tema ${temaNumber} finales:`, diffCount)
-        console.log(`📊 Total preguntas desde difficultyStats: ${totalFromDiffCount}`)
-      }
-      
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`Error cargando estadísticas tema ${temaNumber}:`, error)
-      }
-      setDifficultyStats({})
-    }
-  }
-
-  // ✅ FUNCIÓN MULTI-LEY: Contar preguntas oficiales usando topic_scope
-  async function loadOfficialQuestionsCount(temaNumber) {
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🏛️ Cargando conteo MULTI-LEY de preguntas oficiales tema ${temaNumber}...`)
-      }
-      
-      // 1️⃣ OBTENER MAPEO DEL TEMA DESDE TOPIC_SCOPE
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', temaNumber)
-        .eq('topics.position_type', 'auxiliar_administrativo')
-      
-      if (mappingError || !mappings?.length) {
-        setOfficialQuestionsCount(0)
-        return
-      }
-      
-      // 2️⃣ PARA CADA LEY, CONTAR OFICIALES POR SEPARADO
-      let totalOfficials = 0
-      
-      for (const mapping of mappings) {
-        if (!mapping.laws || !mapping.laws.short_name) continue
-
-        // ✅ CONSULTA SEPARADA PARA CONTAR (patrón multi-ley)
-        const { count, error } = await supabase
-          .from('questions')
-          .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })  
-          .eq('is_active', true)
-          .eq('is_official_exam', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-        
-        if (!error && count) {
-          totalOfficials += count
-        }
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Total preguntas oficiales tema ${temaNumber}:`, totalOfficials)
-      }
-      setOfficialQuestionsCount(totalOfficials)
-
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error(`❌ Error cargando conteo oficial tema ${temaNumber}:`, error)
-      }
-      setOfficialQuestionsCount(0)
-    }
-  }
-
-  // ✅ FUNCIÓN NUEVA MEJORADA: Cargar conteo de artículos por ley
-  async function loadArticlesCountByLaw(temaNumber) {
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`📚 Cargando conteo de artículos por ley para tema ${temaNumber}...`)
-      }
-      
-      // 1️⃣ OBTENER MAPEO DEL TEMA DESDE TOPIC_SCOPE
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', temaNumber)
-        .eq('topics.position_type', 'auxiliar_administrativo')
-      
-      if (mappingError || !mappings?.length) {
-        setArticlesCountByLaw([])
-        return
-      }
-
-      // 2️⃣ PROCESAR CONTEO POR LEY Y OBTENER ARTÍCULOS CON PREGUNTAS
-      const lawArticlesCounts = []
-      
-      for (const mapping of mappings) {
-        if (!mapping.laws || !mapping.laws.short_name) continue
-
-        // Consultar cuántos artículos tienen preguntas para esta ley
-        const { data: articlesData, error } = await supabase
-          .from('questions')
-          .select(`
-            articles!inner(
-              article_number,
-              laws!inner(short_name)
-            )
-          `)
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-        
-        if (!error && articlesData) {
-          // Contar artículos únicos con preguntas
-          const uniqueArticlesWithQuestions = new Set(
-            articlesData.map(q => q.articles.article_number)
-          ).size
-
-          if (uniqueArticlesWithQuestions > 0) {
-            lawArticlesCounts.push({
-              law_short_name: mapping.laws.short_name,
-              law_name: mapping.laws.name,
-              articles_with_questions: uniqueArticlesWithQuestions
-            })
-          }
-        }
-      }
-      
-      // 3️⃣ ORDENAR DE MAYOR A MENOR NÚMERO DE ARTÍCULOS
-      const sortedCounts = lawArticlesCounts.sort((a, b) => 
-        b.articles_with_questions - a.articles_with_questions
-      )
-      
-      setArticlesCountByLaw(sortedCounts)
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Conteo artículos tema ${temaNumber}:`, sortedCounts)
-      }
-
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error(`❌ Error cargando conteo artículos tema ${temaNumber}:`, error)
-      }
-      setArticlesCountByLaw([])
-    }
-  }
-
-  // ✅ FUNCIÓN: Cargar estadísticas de preguntas recientes del usuario
-  async function loadUserRecentStats(userId, temaNumber) {
-    if (!userId) return null
-
-    try {
-      console.log(`🔍 Obteniendo preguntas recientes para tema ${temaNumber} (último 30 días)`)
-      
-      // ✅ USAR DIRECTAMENTE CONSULTA QUE YA FUNCIONA
-      const { data: allUserAnswers, error } = await supabase
-        .from('test_questions')
-        .select('question_id, created_at, tests!inner(user_id)')
-        .eq('tests.user_id', userId)
-        .eq('tema_number', temaNumber)
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: false })
-        
-      if (error) throw error
-      
-      const finalRecentAnswers = allUserAnswers || []
-
-      console.log(`✅ Preguntas recientes cargadas para tema ${temaNumber}:`, {
-        totalAnswers: finalRecentAnswers?.length || 0,
-        timeRange: '30 días',
-        firstFew: finalRecentAnswers?.slice(0, 3)?.map(a => ({
-          questionId: a.question_id,
-          date: new Date(a.created_at).toLocaleDateString('es-ES')
-        }))
-      })
-
-      // Función para calcular exclusiones por días
-      const getExcludedCount = (days) => {
-        const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-        const uniqueQuestions = new Set()
-        
-        finalRecentAnswers?.forEach(answer => {
-          const answerDate = new Date(answer.created_at)
-          if (answerDate >= cutoffDate && answer.question_id) {
-            uniqueQuestions.add(answer.question_id)
-          }
-        })
-        
-        console.log(`🔍 Exclusiones tema ${temaNumber} (${days} días):`, {
-          totalAnswersInRange: finalRecentAnswers?.length || 0,
-          cutoffDate: cutoffDate.toLocaleDateString('es-ES'),
-          uniqueQuestionsExcluded: uniqueQuestions.size,
-          sampleExcluded: Array.from(uniqueQuestions).slice(0, 5)
-        })
-        
-        return uniqueQuestions.size
-      }
-
-      const stats = {
-        getExcludedCount,
-        recentlyAnswered: getExcludedCount(15),
-        last7Days: getExcludedCount(7),
-        last15Days: getExcludedCount(15),
-        last30Days: getExcludedCount(30)
-      }
-
-      setUserRecentStats(stats)
-
-    } catch (error) {
-      setUserRecentStats({ 
-        getExcludedCount: () => 0,
-        recentlyAnswered: 0 
-      })
-    }
-  }
-
-  // ✅ FUNCIÓN: Obtener estadísticas reales del usuario
-  async function getUserPersonalStats(userId, temaNumber) {
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`📊 Cargando estadísticas reales para usuario tema ${temaNumber}:`, userId)
-      }
-      
-      // ✅ FILTRAR SOLO RESPUESTAS A PREGUNTAS ACTIVAS para datos exactos
-      const { data: userAnswers, error } = await supabase
+      const { data: answers, error } = await supabase
         .from('test_questions')
         .select(`
           question_id,
@@ -653,144 +270,50 @@ export default function TemaPage({ params }) {
           questions!inner(is_active)
         `)
         .eq('tests.user_id', userId)
-        .eq('tema_number', temaNumber)
+        .eq('tema_number', tema)
         .eq('questions.is_active', true)
 
-      setUserAnswers(userAnswers || [])
-      
-      // ✅ SOLUCIÓN DEFINITIVA: Obtener estadísticas directamente y pasarlas
-      console.log('🔄 Obteniendo estadísticas frescas directamente...')
-      const currentStats = await loadDifficultyStatsDirectly(temaNumber)
-      
-      console.log('🧮 [PROCESANDO] estadísticas obtenidas directamente:', currentStats)
-      console.log('🔍 [VERIFICACIÓN] ¿estadísticas tienen datos?', Object.keys(currentStats).length > 0)
-      
-      // ✅ PROCESAR ESTADÍSTICAS INCLUSO SI NO HAY RESPUESTAS DEL USUARIO
-      processUserStats(userAnswers || [], currentStats)
-
-    } catch (error) {
-      setUserStats(null)
-      setUserAnswers([])
-    }
-  }
-
-  // ✅ FUNCIÓN: Procesar estadísticas reales
-  function processUserStats(userAnswers, currentDifficultyStats) {
-    // Agrupar por dificultad (datos reales) 
-    const performanceByDifficulty = userAnswers.reduce((acc, answer) => {
-      const difficulty = answer.difficulty || 'auto'
-      if (!acc[difficulty]) {
-        acc[difficulty] = { total: 0, correct: 0 }
+      if (!error) {
+        setUserAnswers(answers || [])
       }
-      acc[difficulty].total++
-      if (answer.is_correct) acc[difficulty].correct++
-      return acc
-    }, {})
-
-    // Calcular precisión real
-    Object.keys(performanceByDifficulty).forEach(difficulty => {
-      const stats = performanceByDifficulty[difficulty]
-      stats.accuracy = stats.total > 0 ? (stats.correct / stats.total) * 100 : 0
-    })
-
-    // Estadísticas reales finales
-    const totalCorrect = userAnswers.filter(a => a.is_correct).length
-    const overallAccuracy = userAnswers.length > 0 ? (totalCorrect / userAnswers.length) * 100 : 0
-
-    // Calcular preguntas únicas respondidas vs nunca vistas
-    const uniqueQuestionIds = userAnswers.map(a => a.question_id)
-    const uniqueQuestionsAnswered = new Set(uniqueQuestionIds).size
-    
-    // ✅ CORREGIDO: Usar estadísticas actuales si están disponibles, sino usar globales
-    // Eliminado el fallback problemático de 128
-    const fromCurrentStats = Object.values(currentDifficultyStats || {}).reduce((sum, count) => sum + count, 0)
-    const fromGlobalStats = Object.values(difficultyStats).reduce((sum, count) => sum + count, 0)
-    const totalQuestionsAvailable = fromCurrentStats > 0 ? fromCurrentStats : fromGlobalStats
-    
-    console.log('🧮 [CALCULO] Estadísticas corregidas para cálculo:', {
-      fromCurrentStats,
-      fromGlobalStats, 
-      totalQuestionsAvailable,
-      currentDifficultyStats,
-      difficultyStats,
-      uniqueQuestionsAnswered
-    })
-    const neverSeen = Math.max(0, totalQuestionsAvailable - uniqueQuestionsAnswered)
-    
-    console.log('🔍 [DEBUG] Progreso usuario DETALLADO:', {
-      uniqueQuestionsAnswered,
-      totalQuestionsAvailable, 
-      neverSeen,
-      currentDifficultyStats,
-      globalDifficultyStats: difficultyStats,
-      userAnswersLength: userAnswers.length,
-      totalRespuestas: userAnswers.length,
-      preguntasUnicasIds: uniqueQuestionIds.slice(0, 10), // Primeras 10 para debug
-      todasLasPreguntas: uniqueQuestionIds.length,
-      setSize: new Set(uniqueQuestionIds).size
-    })
-
-    const userStatsData = {
-      totalAnswers: userAnswers.length,           
-      overallAccuracy: overallAccuracy,           
-      performanceByDifficulty,                    
-      isRealData: true,                          
-      dataSource: 'supabase_real',               
-      periodAnalyzed: 'historial completo',
-      lastUpdated: new Date().toISOString(),
-      // ✅ NUEVOS CAMPOS PARA MOSTRAR PROGRESO
-      uniqueQuestionsAnswered,
-      totalQuestionsAvailable,
-      neverSeen
+    } catch (error) {
+      console.error('Error cargando respuestas del usuario:', error)
     }
-
-    console.log('💾 [GUARDANDO] userStatsData que se guarda en estado:', {
-      uniqueQuestionsAnswered,
-      totalQuestionsAvailable,
-      neverSeen,
-      userStatsData
-    })
-    
-    setUserStats(userStatsData)
   }
 
-  // ✅ FUNCIÓN: Abrir modal de artículo
+  // Función: Abrir modal de artículo
   function openArticleModal(articleNumber, lawName) {
-    // Convertir nombre de ley a slug (espacios a guiones, barras a guiones)
     const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
     setSelectedArticle({ number: articleNumber, lawSlug })
     setModalOpen(true)
   }
 
-  // ✅ FUNCIÓN: Cerrar modal de artículo
+  // Función: Cerrar modal de artículo
   function closeArticleModal() {
     setModalOpen(false)
     setSelectedArticle({ number: null, lawSlug: null })
   }
 
-  // ✅ FUNCIÓN: Manejar configuración del test personalizado
+  // Función: Manejar configuración del test personalizado
   async function handleStartCustomTest(config) {
     setTestLoading(true)
 
     try {
-      // Construir la URL con los parámetros de configuración
       const params = new URLSearchParams({
         n: config.numQuestions.toString(),
         exclude_recent: config.excludeRecent.toString(),
         recent_days: config.recentDays.toString(),
         difficulty_mode: config.difficultyMode,
-        // customDifficulty eliminado
         ...(config.onlyOfficialQuestions && { only_official: 'true' }),
         ...(config.focusEssentialArticles && { focus_essential: 'true' }),
         ...(config.focusWeakAreas && { focus_weak: 'true' }),
-        ...(config.adaptiveMode && { adaptive: 'true' }), // ✨ Agregar modo adaptativo
-        ...(config.onlyFailedQuestions && { only_failed: 'true' }), // 🆕 Solo preguntas falladas
-        ...(config.failedQuestionIds && { failed_question_ids: JSON.stringify(config.failedQuestionIds) }), // 🆕 IDs ordenados
-        ...(config.failedQuestionsOrder && { failed_questions_order: config.failedQuestionsOrder }), // 🆕 Tipo de orden
+        ...(config.adaptiveMode && { adaptive: 'true' }),
+        ...(config.onlyFailedQuestions && { only_failed: 'true' }),
+        ...(config.failedQuestionIds && { failed_question_ids: JSON.stringify(config.failedQuestionIds) }),
+        ...(config.failedQuestionsOrder && { failed_questions_order: config.failedQuestionsOrder }),
         ...(config.timeLimit && { time_limit: config.timeLimit.toString() })
       })
 
-      // 🆕 AGREGAR FILTROS DE LEYES Y ARTÍCULOS
       if (config.selectedLaws && config.selectedLaws.length > 0) {
         params.set('selected_laws', JSON.stringify(config.selectedLaws))
       }
@@ -799,59 +322,52 @@ export default function TemaPage({ params }) {
         params.set('selected_articles_by_law', JSON.stringify(config.selectedArticlesByLaw))
       }
 
-      // 🆕 REDIRIGIR SEGÚN EL MODO SELECCIONADO
       const testPath = testMode === 'examen' ? 'test-examen' : 'test-personalizado'
       const testUrl = `/auxiliar-administrativo-estado/test/tema/${temaNumber}/${testPath}?${params.toString()}`
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`🎯 Iniciando test en modo ${testMode}:`, testUrl)
-      }
 
       window.location.href = testUrl
 
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error(`❌ Error iniciando test tema ${temaNumber}:`, error)
-      }
+      console.error('Error iniciando test:', error)
       setTestLoading(false)
     }
   }
 
-  // ✅ CALCULAR TOTALES
+  // Calcular totales
   const totalQuestions = Object.values(difficultyStats).reduce((sum, count) => sum + count, 0)
 
-  // ✅ LOADING STATE
+  // LOADING STATE
   if (loading && !temaNotFound) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
-          <p className="text-gray-600 text-sm">Cargando tema dinámico...</p>
+          <p className="text-gray-600 text-sm">Cargando tema...</p>
         </div>
       </div>
     )
   }
 
-  // ✅ TEMA NO ENCONTRADO
+  // TEMA NO ENCONTRADO
   if (temaNotFound) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">
-          <div className="text-6xl mb-4">❌</div>
+          <div className="text-6xl mb-4">404</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">
             Tema No Encontrado
           </h1>
           <p className="text-gray-600 mb-6">
-            {temaNumber ? 
+            {temaNumber ?
               `El Tema ${temaNumber} no existe o no está disponible para Auxiliar Administrativo del Estado.` :
               'Número de tema inválido.'
             }
           </p>
-          <Link 
+          <Link
             href="/auxiliar-administrativo-estado/test"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            ← Volver a todos los temas
+            Volver a todos los temas
           </Link>
         </div>
       </div>
@@ -861,8 +377,8 @@ export default function TemaPage({ params }) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-3 py-6">
-        
-        {/* ✅ HEADER DINÁMICO CON DROPDOWN */}
+
+        {/* HEADER CON DROPDOWN */}
         <div className="text-center mb-8">
           <div className="relative inline-block" ref={dropdownRef}>
             <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium mb-3">
@@ -902,9 +418,9 @@ export default function TemaPage({ params }) {
                       </div>
                     </div>
                   </Link>
-                  
+
                   <div className="border-t border-gray-100 my-1"></div>
-                  
+
                   <Link
                     href="/administrativo-estado"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-800 transition-colors"
@@ -922,45 +438,45 @@ export default function TemaPage({ params }) {
               </div>
             )}
           </div>
-          
+
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-            {topicData.title?.startsWith('Tema ') ? 
-              topicData.title : 
-              `Tema ${temaNumber >= 101 ? temaNumber - 100 : temaNumber}: ${topicData.title}`
+            {topicData?.title?.startsWith('Tema ') ?
+              topicData.title :
+              `Tema ${temaNumber >= 101 ? temaNumber - 100 : temaNumber}: ${topicData?.title}`
             }
           </h1>
-          
+
           <p className="text-gray-600 text-sm md:text-base mb-4">
-            {topicData.description}
+            {topicData?.description}
           </p>
-          
+
           <div className="space-y-2">
             <p className="text-gray-600 text-sm md:text-base">
               {totalQuestions > 0 ? `${totalQuestions} preguntas disponibles para este tema` : 'Cargando preguntas...'}
             </p>
-            
+
             {officialQuestionsCount > 0 && (
               <p className="text-purple-600 font-medium text-sm md:text-base">
                 🏛️ {officialQuestionsCount} preguntas de exámenes oficiales disponibles
               </p>
             )}
-            
-            {/* ✅ MOSTRAR PROGRESO DEL USUARIO */}
+
+            {/* MOSTRAR PROGRESO DEL USUARIO */}
             {currentUser && userStats && userStats.totalQuestionsAvailable > 0 && (
               <div className="mt-3 space-y-1">
                 <p className="text-green-600 font-medium text-sm">
-                  ✅ {userStats.uniqueQuestionsAnswered} vistas
+                  {userStats.uniqueQuestionsAnswered} vistas
                 </p>
                 <p className="text-blue-600 font-medium text-sm">
-                  👁️ {userStats.neverSeen} nunca vistas
+                  {userStats.neverSeen} nunca vistas
                 </p>
               </div>
             )}
 
-            {/* ✅ MOSTRAR ARTÍCULOS CON PREGUNTAS - FORMATO MEJORADO */}
+            {/* MOSTRAR ARTÍCULOS CON PREGUNTAS */}
             {articlesCountByLaw.length > 0 && (
               <div className="mt-4">
-                <p className="text-gray-700 font-medium text-sm mb-2">📖 Artículos con preguntas disponibles:</p>
+                <p className="text-gray-700 font-medium text-sm mb-2">Artículos con preguntas disponibles:</p>
                 <div className="text-center space-y-1">
                   {articlesCountByLaw.map((lawData, index) => (
                     <div key={index} className="text-sm text-gray-600">
@@ -973,14 +489,13 @@ export default function TemaPage({ params }) {
           </div>
         </div>
 
-        {/* 🆕 TOGGLE MODO PRÁCTICA/EXAMEN */}
+        {/* TOGGLE MODO PRÁCTICA/EXAMEN */}
         <section className="mb-6">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">
               Selecciona el modo de estudio
             </h2>
 
-            {/* Toggle buttons */}
             <div className="flex gap-3 mb-4">
               <button
                 onClick={() => handleTestModeChange('practica')}
@@ -1013,7 +528,6 @@ export default function TemaPage({ params }) {
               </button>
             </div>
 
-            {/* Descripción del modo seleccionado */}
             <div className={`p-4 rounded-lg ${testMode === 'practica' ? 'bg-blue-50 border border-blue-200' : 'bg-purple-50 border border-purple-200'}`}>
               <div className="text-sm">
                 {testMode === 'practica' ? (
@@ -1032,7 +546,7 @@ export default function TemaPage({ params }) {
           </div>
         </section>
 
-        {/* ✅ 1️⃣ CONFIGURADOR AVANZADO DINÁMICO */}
+        {/* CONFIGURADOR AVANZADO */}
         <section className="mb-8">
           <TestConfigurator
             tema={temaNumber}
@@ -1047,15 +561,14 @@ export default function TemaPage({ params }) {
           />
         </section>
 
-        {/* ✅ 2️⃣ TU PROGRESO - DINÁMICO */}
+        {/* TU PROGRESO */}
         {currentUser && userStats && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              📊 Tu Progreso en el {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}
+              Tu Progreso en el {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}
             </h2>
-            
+
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              {/* Si no hay datos del tema, mostrar mensaje motivacional */}
               {userStats.totalAnswers === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-6xl mb-4">🎯</div>
@@ -1067,117 +580,117 @@ export default function TemaPage({ params }) {
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-gray-800 text-lg">👤 Rendimiento Personal</h3>
+                    <h3 className="font-bold text-gray-800 text-lg">Rendimiento Personal</h3>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-blue-600">{userStats.overallAccuracy.toFixed(1)}%</div>
                       <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}</div>
                       {userStats.isRealData && (
-                        <div className="text-xs text-green-600 font-medium">✅ Datos reales</div>
+                        <div className="text-xs text-green-600 font-medium">Datos reales</div>
                       )}
                     </div>
                   </div>
-              
-              {/* ✅ MÉTRICAS ÚTILES DINÁMICAS */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                
-                {/* Métrica 1: Tendencia Reciente */}
-                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="font-bold text-blue-800 mb-2 text-sm">📈 Últimos 7 días</div>
-                  <div className="text-xl font-bold text-blue-600 mb-1">
-                    {(() => {
-                      const recent7Days = userAnswers?.filter(a => 
-                        new Date(a.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-                      ) || []
-                      const recentAccuracy = recent7Days.length > 0 
-                        ? (recent7Days.filter(a => a.is_correct).length / recent7Days.length * 100).toFixed(0)
-                        : 'N/A'
-                      return `${recentAccuracy}%`
-                    })()}
-                  </div>
-                  <div className="text-xs text-blue-600">
-                    {(() => {
-                      const recent7Days = userAnswers?.filter(a => 
-                        new Date(a.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-                      ) || []
-                      return `${recent7Days.length} respuestas`
-                    })()}
-                  </div>
-                </div>
 
-                {/* Métrica 2: Velocidad Promedio */}
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                  <div className="font-bold text-green-800 mb-2 text-sm">⚡ Velocidad</div>
-                  <div className="text-xl font-bold text-green-600 mb-1">
-                    {(() => {
-                      const avgTime = userAnswers?.reduce((sum, a) => sum + (a.time_spent_seconds || 0), 0) / (userAnswers?.length || 1)
-                      return avgTime > 0 ? `${Math.round(avgTime)}s` : 'N/A'
-                    })()}
-                  </div>
-                  <div className="text-xs text-green-600">por pregunta</div>
-                </div>
+                  {/* MÉTRICAS ÚTILES */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
 
-                {/* Métrica 3: Racha Actual */}
-                <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-                  <div className="font-bold text-purple-800 mb-2 text-sm">🔥 Racha</div>
-                  <div className="text-xl font-bold text-purple-600 mb-1">
-                    {(() => {
-                      const dates = [...new Set(userAnswers?.map(a => 
-                        new Date(a.created_at).toDateString()
-                      ) || [])].sort((a, b) => new Date(b) - new Date(a))
-                      
-                      let streak = 0
-                      let currentDate = new Date()
-                      
-                      for (let date of dates) {
-                        const diffDays = Math.floor((currentDate - new Date(date)) / (1000 * 60 * 60 * 24))
-                        if (diffDays === streak) {
-                          streak++
-                          currentDate = new Date(date)
-                        } else {
-                          break
-                        }
-                      }
-                      
-                      return streak
-                    })()}
-                  </div>
-                  <div className="text-xs text-purple-600">días seguidos</div>
-                </div>
+                    {/* Métrica 1: Tendencia Reciente */}
+                    <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="font-bold text-blue-800 mb-2 text-sm">Últimos 7 días</div>
+                      <div className="text-xl font-bold text-blue-600 mb-1">
+                        {(() => {
+                          const recent7Days = userAnswers?.filter(a =>
+                            new Date(a.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                          ) || []
+                          const recentAccuracy = recent7Days.length > 0
+                            ? (recent7Days.filter(a => a.is_correct).length / recent7Days.length * 100).toFixed(0)
+                            : 'N/A'
+                          return `${recentAccuracy}%`
+                        })()}
+                      </div>
+                      <div className="text-xs text-blue-600">
+                        {(() => {
+                          const recent7Days = userAnswers?.filter(a =>
+                            new Date(a.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                          ) || []
+                          return `${recent7Days.length} respuestas`
+                        })()}
+                      </div>
+                    </div>
 
-                {/* Métrica 4: Artículos Únicos */}
-                <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="font-bold text-orange-800 mb-2 text-sm">📚 Cobertura</div>
-                  <div className="text-xl font-bold text-orange-600 mb-1">
-                    {(() => {
-                      const uniqueArticles = new Set(userAnswers?.map(a => a.article_number).filter(Boolean) || [])
-                      return uniqueArticles.size
-                    })()}
-                  </div>
-                  <div className="text-xs text-orange-600">artículos distintos</div>
-                </div>
-              </div>
+                    {/* Métrica 2: Velocidad Promedio */}
+                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                      <div className="font-bold text-green-800 mb-2 text-sm">Velocidad</div>
+                      <div className="text-xl font-bold text-green-600 mb-1">
+                        {(() => {
+                          const avgTime = userAnswers?.reduce((sum, a) => sum + (a.time_spent_seconds || 0), 0) / (userAnswers?.length || 1)
+                          return avgTime > 0 ? `${Math.round(avgTime)}s` : 'N/A'
+                        })()}
+                      </div>
+                      <div className="text-xs text-green-600">por pregunta</div>
+                    </div>
 
-              {/* ✅ ANÁLISIS INTELIGENTE DINÁMICO */}
-              <div className="border-t border-gray-200 pt-6">
-                <h4 className="font-bold text-gray-800 mb-4 flex items-center">
-                  <span className="mr-2">🎯</span>
-                  Análisis Inteligente de Estudio - Tema {temaNumber}
-                </h4>
-                
-                <ArticulosEstudioPrioritario 
-                  userId={currentUser.id}
-                  tema={temaNumber}
-                  totalRespuestas={userStats.totalAnswers}
-                  openArticleModal={openArticleModal}
-                />
-              </div>
+                    {/* Métrica 3: Racha Actual */}
+                    <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="font-bold text-purple-800 mb-2 text-sm">Racha</div>
+                      <div className="text-xl font-bold text-purple-600 mb-1">
+                        {(() => {
+                          const dates = [...new Set(userAnswers?.map(a =>
+                            new Date(a.created_at).toDateString()
+                          ) || [])].sort((a, b) => new Date(b) - new Date(a))
+
+                          let streak = 0
+                          let currentDate = new Date()
+
+                          for (let date of dates) {
+                            const diffDays = Math.floor((currentDate - new Date(date)) / (1000 * 60 * 60 * 24))
+                            if (diffDays === streak) {
+                              streak++
+                              currentDate = new Date(date)
+                            } else {
+                              break
+                            }
+                          }
+
+                          return streak
+                        })()}
+                      </div>
+                      <div className="text-xs text-purple-600">días seguidos</div>
+                    </div>
+
+                    {/* Métrica 4: Artículos Únicos */}
+                    <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="font-bold text-orange-800 mb-2 text-sm">Cobertura</div>
+                      <div className="text-xl font-bold text-orange-600 mb-1">
+                        {(() => {
+                          const uniqueArticles = new Set(userAnswers?.map(a => a.article_number).filter(Boolean) || [])
+                          return uniqueArticles.size
+                        })()}
+                      </div>
+                      <div className="text-xs text-orange-600">artículos distintos</div>
+                    </div>
+                  </div>
+
+                  {/* ANÁLISIS INTELIGENTE */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <h4 className="font-bold text-gray-800 mb-4 flex items-center">
+                      <span className="mr-2">🎯</span>
+                      Análisis Inteligente de Estudio - Tema {temaNumber}
+                    </h4>
+
+                    <ArticulosEstudioPrioritario
+                      userId={currentUser.id}
+                      tema={temaNumber}
+                      totalRespuestas={userStats.totalAnswers}
+                      openArticleModal={openArticleModal}
+                    />
+                  </div>
                 </>
               )}
             </div>
           </section>
         )}
 
-        {/* ✅ MENSAJE CUANDO NO HAY ESTADÍSTICAS */}
+        {/* MENSAJE CUANDO NO HAY ESTADÍSTICAS */}
         {currentUser && !userStats && (
           <section className="mb-8">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
@@ -1190,30 +703,30 @@ export default function TemaPage({ params }) {
           </section>
         )}
 
-        {/* ✅ PREGUNTAS POR DIFICULTAD - FORMATO LISTADO */}
+        {/* PREGUNTAS POR DIFICULTAD */}
         {Object.keys(difficultyStats).length > 0 && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              📊 Preguntas por Dificultad
+              Preguntas por Dificultad
             </h2>
-            
+
             <div className="space-y-2">
               {Object.entries(difficultyStats)
-                .sort(([,a], [,b]) => b - a) // Ordenar de mayor a menor
+                .sort(([,a], [,b]) => b - a)
                 .map(([difficulty, count]) => (
                 <div key={difficulty} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center">
                     <span className="w-3 h-3 rounded-full mr-3" style={{
                       backgroundColor: {
                         'easy': '#10b981',
-                        'medium': '#f59e0b', 
+                        'medium': '#f59e0b',
                         'hard': '#ef4444',
                         'extreme': '#8b5cf6',
                         'auto': '#6b7280'
                       }[difficulty] || '#6b7280'
                     }}></span>
                     <span className="font-medium text-gray-700 capitalize">
-                      {difficulty === 'auto' ? 'Automática' : 
+                      {difficulty === 'auto' ? 'Automática' :
                        difficulty === 'easy' ? 'Fácil' :
                        difficulty === 'medium' ? 'Media' :
                        difficulty === 'hard' ? 'Difícil' :
@@ -1229,7 +742,7 @@ export default function TemaPage({ params }) {
                 </div>
               ))}
             </div>
-            
+
             <div className="mt-4 pt-3 border-t border-gray-200">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-800">Total:</span>
@@ -1239,19 +752,19 @@ export default function TemaPage({ params }) {
           </div>
         )}
 
-        {/* ✅ NAVEGACIÓN DE VUELTA */}
+        {/* NAVEGACIÓN DE VUELTA */}
         <div className="mt-8 text-center">
-          <Link 
+          <Link
             href="/auxiliar-administrativo-estado/test"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            ← Volver a todos los temas
+            Volver a todos los temas
           </Link>
         </div>
 
       </div>
-      
-      {/* ✅ MODAL DE ARTÍCULO */}
+
+      {/* MODAL DE ARTÍCULO */}
       <ArticleModal
         isOpen={modalOpen}
         onClose={closeArticleModal}
@@ -1262,7 +775,7 @@ export default function TemaPage({ params }) {
   )
 }
 
-// ✅ COMPONENTE: Artículos de Estudio Prioritario DINÁMICO
+// COMPONENTE: Artículos de Estudio Prioritario
 function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticleModal }) {
   const [articulosFallados, setArticulosFallados] = useState([])
   const [loading, setLoading] = useState(true)
@@ -1274,8 +787,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
 
       try {
         setLoading(true)
-        
-        // Consultar artículos con peor rendimiento del usuario en tema dinámico
+
         const { data: articleStats, error } = await supabase
           .from('test_questions')
           .select(`
@@ -1293,11 +805,10 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
 
         if (!error && articleStats && articleStats.length > 0) {
           const totalRespuestasReales = articleStats.length
-          
-          // Procesar estadísticas por artículo
+
           const articulosAgrupados = articleStats.reduce((acc, respuesta) => {
             const key = respuesta.article_number || 'sin-articulo'
-            
+
             if (!acc[key]) {
               acc[key] = {
                 article_number: respuesta.article_number,
@@ -1312,7 +823,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
                 ultima_correcta: null
               }
             }
-            
+
             acc[key].total_respuestas++
             if (respuesta.is_correct) {
               acc[key].correctas++
@@ -1322,23 +833,22 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
               acc[key].incorrectas++
               acc[key].fallos_consecutivos++
             }
-            
+
             acc[key].tiempo_promedio += respuesta.time_spent_seconds || 0
             if (respuesta.confidence_level === 'unsure' || respuesta.confidence_level === 'guessing') {
               acc[key].confianza_baja++
             }
-            
+
             return acc
           }, {})
 
-          // Calcular métricas de cada artículo
           const articulosProblematicos = Object.values(articulosAgrupados)
             .map(articulo => {
               const precision = (articulo.correctas / articulo.total_respuestas) * 100
               const tiempo_promedio = articulo.tiempo_promedio / articulo.total_respuestas
               const porcentaje_confianza_baja = (articulo.confianza_baja / articulo.total_respuestas) * 100
               const tasa_fallos = (articulo.incorrectas / articulo.total_respuestas) * 100
-              
+
               return {
                 ...articulo,
                 precision: precision.toFixed(1),
@@ -1349,12 +859,11 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
               }
             })
             .filter(articulo => {
-              // ✅ FILTROS FLEXIBLES SEGÚN CANTIDAD DE DATOS
               if (totalRespuestasReales < 10) {
                 return articulo.incorrectas >= 1
               } else {
                 return (
-                  articulo.total_respuestas >= 2 && 
+                  articulo.total_respuestas >= 2 &&
                   (
                     articulo.precision < 75 ||
                     articulo.porcentaje_confianza_baja > 25 ||
@@ -1373,9 +882,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         }
 
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn(`Error cargando artículos fallados tema ${tema}:`, error)
-        }
+        console.error('Error cargando artículos fallados:', error)
         generarRecomendacionesInteligentes([], 0, tema)
       } finally {
         setLoading(false)
@@ -1385,16 +892,14 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
     cargarArticulosFallados()
   }, [userId, tema, totalRespuestas])
 
-  // 🧠 FUNCIÓN: Generar recomendaciones inteligentes dinámicas
   function generarRecomendacionesInteligentes(articulosFallados, totalRespuestasReales, temaNumero) {
     const recomendacionesGeneradas = []
 
-    // 🎯 CASO 1: SIN DATOS (0 respuestas)
     if (totalRespuestasReales === 0) {
       recomendacionesGeneradas.push({
         tipo: 'sin_datos',
         prioridad: 'info',
-        titulo: `🚀 ¡EMPIEZA TU ESTUDIO DEL TEMA ${temaNumero}!`,
+        titulo: `EMPIEZA TU ESTUDIO DEL TEMA ${temaNumero}`,
         descripcion: `No tienes respuestas registradas en el Tema ${temaNumero} aún.`,
         articulos: [],
         accion: 'Completa tu primer test para comenzar el análisis personalizado',
@@ -1405,12 +910,11 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
       return
     }
 
-    // 🎯 CASO 2: DATOS INSUFICIENTES (1-9 respuestas)
     if (totalRespuestasReales < 10) {
       recomendacionesGeneradas.push({
         tipo: 'datos_insuficientes',
         prioridad: 'info',
-        titulo: '📊 DATOS INSUFICIENTES PARA ANÁLISIS COMPLETO',
+        titulo: 'DATOS INSUFICIENTES PARA ANÁLISIS COMPLETO',
         descripcion: `Solo tienes ${totalRespuestasReales} respuesta${totalRespuestasReales > 1 ? 's' : ''} en el Tema ${temaNumero}. Necesitas al menos 10-15 para un análisis confiable.`,
         articulos: [],
         accion: 'Completa más tests para obtener recomendaciones personalizadas detalladas',
@@ -1422,7 +926,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         recomendacionesGeneradas.push({
           tipo: 'observacion_preliminar',
           prioridad: 'info',
-          titulo: '👀 PRIMERAS OBSERVACIONES',
+          titulo: 'PRIMERAS OBSERVACIONES',
           descripcion: `Hemos detectado ${articulosFallados.length} artículo${articulosFallados.length > 1 ? 's' : ''} con fallos iniciales en el Tema ${temaNumero}.`,
           articulos: articulosFallados.slice(0, 3),
           accion: 'Estos artículos podrían necesitar atención, pero necesitamos más datos para confirmarlo',
@@ -1434,12 +938,11 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
       return
     }
 
-    // 🎯 CASO 3: DATOS LIMITADOS PERO SUFICIENTES (10-24 respuestas)
     if (totalRespuestasReales < 25) {
       recomendacionesGeneradas.push({
         tipo: 'analisis_limitado',
         prioridad: 'info',
-        titulo: '⚠️ ANÁLISIS PRELIMINAR',
+        titulo: 'ANÁLISIS PRELIMINAR',
         descripcion: `Con ${totalRespuestasReales} respuestas en el Tema ${temaNumero} podemos dar recomendaciones básicas. Para análisis completo necesitas 25+ respuestas.`,
         articulos: articulosFallados.slice(0, 3),
         accion: 'Continúa practicando para obtener análisis más detallado y confiable',
@@ -1452,7 +955,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         recomendacionesGeneradas.push({
           tipo: 'fallos_detectados',
           prioridad: 'media',
-          titulo: '🔍 ÁREAS DE MEJORA DETECTADAS',
+          titulo: 'ÁREAS DE MEJORA DETECTADAS',
           descripcion: `${articulosMasFallados.length} artículo${articulosMasFallados.length > 1 ? 's' : ''} del Tema ${temaNumero} que ya muestra${articulosMasFallados.length > 1 ? 'n' : ''} dificultades`,
           articulos: articulosMasFallados,
           accion: 'Revisar estos conceptos específicos del temario',
@@ -1462,7 +965,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         recomendacionesGeneradas.push({
           tipo: 'buen_inicio',
           prioridad: 'positiva',
-          titulo: `✅ BUEN INICIO EN EL TEMA ${temaNumero}`,
+          titulo: `BUEN INICIO EN EL TEMA ${temaNumero}`,
           descripcion: 'No se detectan problemas graves en tus primeras respuestas.',
           articulos: [],
           accion: 'Sigue practicando para consolidar tu conocimiento',
@@ -1474,12 +977,11 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
       return
     }
 
-    // 🎯 CASO 4: DATOS SUFICIENTES PARA ANÁLISIS COMPLETO (25+ respuestas)
     if (articulosFallados.length > 0) {
       recomendacionesGeneradas.push({
         tipo: 'fallos_importantes',
         prioridad: 'alta',
-        titulo: `🔍 REVISAR CONCEPTOS DEL TEMA ${temaNumero}`,
+        titulo: `REVISAR CONCEPTOS DEL TEMA ${temaNumero}`,
         descripcion: `${articulosFallados.length} artículo${articulosFallados.length > 1 ? 's' : ''} que necesita${articulosFallados.length > 1 ? 'n' : ''} más práctica`,
         articulos: articulosFallados.slice(0, 6),
         accion: `Repasar los conceptos fundamentales del Tema ${temaNumero}`,
@@ -1489,7 +991,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
       recomendacionesGeneradas.push({
         tipo: 'excelente_dominio',
         prioridad: 'positiva',
-        titulo: `🎉 EXCELENTE DOMINIO DEL TEMA ${temaNumero}`,
+        titulo: `EXCELENTE DOMINIO DEL TEMA ${temaNumero}`,
         descripcion: `Con ${totalRespuestasReales} respuestas analizadas, no se detectan áreas problemáticas.`,
         articulos: [],
         accion: 'Mantén este excelente nivel y considera avanzar a otros temas',
@@ -1512,8 +1014,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
 
   return (
     <div className="space-y-6">
-      
-      {/* 🧠 RECOMENDACIONES INTELIGENTES */}
+
       {recomendaciones.length > 0 && (
         <div>
           <div className="space-y-3">
@@ -1524,13 +1025,12 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         </div>
       )}
 
-      {/* 📊 DETALLE DE ARTÍCULOS FALLADOS */}
       {articulosFallados.length > 0 && totalRespuestas >= 10 && (
         <div>
-          <h5 className="font-bold text-gray-800 mb-3">📊 Artículos que Necesitan Atención</h5>
+          <h5 className="font-bold text-gray-800 mb-3">Artículos que Necesitan Atención</h5>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {articulosFallados.slice(0, 6).map((articulo, index) => (
-              <div 
+              <div
                 key={index}
                 className="p-3 rounded-lg border bg-yellow-50 border-yellow-200"
               >
@@ -1551,40 +1051,38 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
                       {articulo.correctas}/{articulo.total_respuestas}
                     </div>
                     <div className="text-xs text-red-600 font-medium">
-                      ❌ {articulo.incorrectas} fallos
+                      {articulo.incorrectas} fallos
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="text-xs text-gray-600 space-y-1">
-                  <div>⏱️ Tiempo: {articulo.tiempo_promedio}s promedio</div>
-                  <div>🤔 Dudas: {articulo.porcentaje_confianza_baja}%</div>
+                  <div>Tiempo: {articulo.tiempo_promedio}s promedio</div>
+                  <div>Dudas: {articulo.porcentaje_confianza_baja}%</div>
                   {articulo.fallos_consecutivos > 0 && (
                     <div className="text-red-600 font-medium">
-                      🔄 {articulo.fallos_consecutivos} fallos consecutivos
+                      {articulo.fallos_consecutivos} fallos consecutivos
                     </div>
                   )}
                   {articulo.ultima_correcta && (
                     <div className="text-green-600">
-                      ✅ Última correcta: {new Date(articulo.ultima_correcta).toLocaleDateString()}
+                      Última correcta: {new Date(articulo.ultima_correcta).toLocaleDateString()}
                     </div>
                   )}
                 </div>
-                
-                {/* Botones de acción */}
+
                 <div className="mt-3 flex gap-2 flex-wrap">
-                  {/* Botón Ver Artículo - Abre modal */}
                   <button
                     onClick={() => openArticleModal(articulo.article_number, articulo.law_name)}
                     className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-md font-medium transition-colors flex items-center"
                   >
-                    📖 Ver artículo {articulo.article_number} de {articulo.law_name}
+                    Ver artículo {articulo.article_number} de {articulo.law_name}
                   </button>
                 </div>
               </div>
             ))}
           </div>
-          
+
           {articulosFallados.length > 6 && (
             <div className="text-center mt-3">
               <span className="text-sm text-gray-500">
@@ -1598,7 +1096,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
   )
 }
 
-// 🎨 COMPONENTE: Card de Recomendación
+// COMPONENTE: Card de Recomendación
 function RecomendacionCard({ recomendacion, openArticleModal }) {
   const estilosColor = {
     blue: {
@@ -1642,7 +1140,7 @@ function RecomendacionCard({ recomendacion, openArticleModal }) {
           <div className="text-4xl mb-2">{recomendacion.iconoGrande}</div>
         </div>
       )}
-      
+
       <div className="flex items-start justify-between mb-2">
         <h6 className={`font-bold ${colores.titulo} ${recomendacion.iconoGrande ? 'text-center w-full text-lg' : ''}`}>
           {recomendacion.titulo}
@@ -1653,15 +1151,15 @@ function RecomendacionCard({ recomendacion, openArticleModal }) {
           </span>
         )}
       </div>
-      
+
       <p className={`text-sm mb-3 ${colores.texto} ${recomendacion.iconoGrande ? 'text-center' : ''}`}>
         {recomendacion.descripcion}
       </p>
-      
+
       <div className={`text-sm font-medium ${colores.titulo} ${recomendacion.iconoGrande ? 'text-center' : ''}`}>
-        👉 {recomendacion.accion}
+        {recomendacion.accion}
       </div>
-      
+
       {recomendacion.articulos.length > 0 && (
         <div className="mt-3">
           <div className="text-xs font-medium mb-2 text-gray-700">
@@ -1669,13 +1167,13 @@ function RecomendacionCard({ recomendacion, openArticleModal }) {
           </div>
           <div className="flex flex-wrap gap-2">
             {recomendacion.articulos.slice(0, 6).map((articulo, idx) => (
-              <span 
+              <span
                 key={idx}
                 className="px-2 py-1 rounded text-xs font-medium bg-white bg-opacity-50"
               >
                 Art. {articulo.article_number}
                 {articulo.precision && ` (${articulo.precision}%)`}
-                {articulo.incorrectas && ` ❌${articulo.incorrectas}`}
+                {articulo.incorrectas && ` ${articulo.incorrectas} fallos`}
               </span>
             ))}
             {recomendacion.articulos.length > 6 && (
@@ -1689,4 +1187,3 @@ function RecomendacionCard({ recomendacion, openArticleModal }) {
     </div>
   )
 }
-

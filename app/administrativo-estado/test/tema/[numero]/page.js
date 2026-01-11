@@ -1,6 +1,6 @@
-// app/administrativo-estado/test/tema/[numero]/page.js - PÁGINA DINÁMICA PARA ADMINISTRATIVO C1
+// app/administrativo-estado/test/tema/[numero]/page.js - REFACTORIZADO CON API LAYER
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
@@ -18,7 +18,7 @@ export default function TemaAdministrativoPage({ params }) {
   const [showOposicionDropdown, setShowOposicionDropdown] = useState(false)
   const dropdownRef = useRef(null)
 
-  // Estados para estadísticas
+  // Estados para estadísticas (del API)
   const [difficultyStats, setDifficultyStats] = useState({})
   const [userStats, setUserStats] = useState(null)
   const [officialQuestionsCount, setOfficialQuestionsCount] = useState(0)
@@ -52,6 +52,87 @@ export default function TemaAdministrativoPage({ params }) {
       // localStorage bloqueado
     }
   }
+
+  // FUNCIÓN CONSOLIDADA: Cargar todos los datos del tema desde API
+  const loadTopicData = useCallback(async (tema, userId) => {
+    try {
+      const queryParams = new URLSearchParams({
+        oposicion: 'administrativo-estado',
+        ...(userId && { userId })
+      })
+
+      const response = await fetch(`/api/topics/${tema}?${queryParams}`)
+      const data = await response.json()
+
+      if (!data.success) {
+        console.error('Error cargando datos del tema:', data.error)
+        return null
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error en loadTopicData:', error)
+      return null
+    }
+  }, [])
+
+  // REFRESH: Cuando la página vuelve a ser visible
+  useEffect(() => {
+    if (!currentUser || !temaNumber || loading) return
+
+    const handleVisibilityOrFocus = async () => {
+      if (document.hidden) return
+
+      console.log('🔄 Refrescando datos del tema...')
+      const data = await loadTopicData(temaNumber, currentUser.id)
+
+      if (data?.success) {
+        setDifficultyStats(data.difficultyStats || {})
+        setOfficialQuestionsCount(data.officialQuestionsCount || 0)
+        setArticlesCountByLaw(data.articlesByLaw?.map(a => ({
+          law_short_name: a.lawShortName,
+          law_name: a.lawName,
+          articles_with_questions: a.articlesWithQuestions
+        })) || [])
+
+        if (data.userProgress) {
+          setUserStats({
+            totalAnswers: data.userProgress.totalAnswers,
+            overallAccuracy: data.userProgress.overallAccuracy,
+            performanceByDifficulty: data.userProgress.performanceByDifficulty,
+            isRealData: true,
+            uniqueQuestionsAnswered: data.userProgress.uniqueQuestionsAnswered,
+            totalQuestionsAvailable: data.userProgress.totalQuestionsAvailable,
+            neverSeen: data.userProgress.neverSeen
+          })
+
+          if (data.userProgress.recentStats) {
+            setUserRecentStats({
+              last7Days: data.userProgress.recentStats.last7Days,
+              last15Days: data.userProgress.recentStats.last15Days,
+              last30Days: data.userProgress.recentStats.last30Days,
+              recentlyAnswered: data.userProgress.recentStats.last15Days,
+              getExcludedCount: (days) => {
+                if (days <= 7) return data.userProgress.recentStats.last7Days
+                if (days <= 15) return data.userProgress.recentStats.last15Days
+                return data.userProgress.recentStats.last30Days
+              }
+            })
+          }
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus)
+    window.addEventListener('focus', handleVisibilityOrFocus)
+    window.addEventListener('pageshow', handleVisibilityOrFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus)
+      window.removeEventListener('focus', handleVisibilityOrFocus)
+      window.removeEventListener('pageshow', handleVisibilityOrFocus)
+    }
+  }, [currentUser, temaNumber, loading, loadTopicData])
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -93,274 +174,93 @@ export default function TemaAdministrativoPage({ params }) {
     resolveParams()
   }, [params])
 
-  // Cargar datos del tema y usuario
+  // CARGAR DATOS: Una sola llamada API consolidada
   useEffect(() => {
     if (!temaNumber || temaNotFound) return
 
-    async function checkUserAndStats() {
+    async function fetchAllData() {
       try {
-        // Obtener datos del tema
-        const topicDataResult = await getTopicData(temaNumber)
-        if (!topicDataResult) {
-          setTemaNotFound(true)
-          setLoading(false)
-          return
-        }
-        setTopicData(topicDataResult)
-
         // Obtener usuario actual
         const { data: { user } } = await supabase.auth.getUser()
         setCurrentUser(user)
 
-        // Cargar estadísticas
-        await loadDifficultyStats(temaNumber)
-        await loadOfficialQuestionsCount(temaNumber)
-        await loadArticlesCountByLaw(temaNumber)
+        // UNA SOLA LLAMADA API para todos los datos
+        const data = await loadTopicData(temaNumber, user?.id)
 
-        if (user) {
-          await getUserPersonalStats(user.id, temaNumber)
-          await loadUserRecentStats(user.id, temaNumber)
+        if (!data?.success) {
+          setTemaNotFound(true)
+          setLoading(false)
+          return
+        }
+
+        // Actualizar todos los estados desde la respuesta del API
+        setTopicData({
+          id: data.topic.id,
+          topic_number: data.topic.topicNumber,
+          title: data.topic.title,
+          description: data.topic.description,
+          difficulty: data.topic.difficulty,
+          estimated_hours: data.topic.estimatedHours
+        })
+
+        setDifficultyStats(data.difficultyStats || {})
+        setOfficialQuestionsCount(data.officialQuestionsCount || 0)
+
+        // Transformar articlesByLaw al formato esperado
+        setArticlesCountByLaw(data.articlesByLaw?.map(a => ({
+          law_short_name: a.lawShortName,
+          law_name: a.lawName,
+          articles_with_questions: a.articlesWithQuestions
+        })) || [])
+
+        // Si hay datos de progreso del usuario
+        if (data.userProgress) {
+          setUserStats({
+            totalAnswers: data.userProgress.totalAnswers,
+            overallAccuracy: data.userProgress.overallAccuracy,
+            performanceByDifficulty: data.userProgress.performanceByDifficulty,
+            isRealData: true,
+            uniqueQuestionsAnswered: data.userProgress.uniqueQuestionsAnswered,
+            totalQuestionsAvailable: data.userProgress.totalQuestionsAvailable,
+            neverSeen: data.userProgress.neverSeen
+          })
+
+          // Configurar userRecentStats
+          if (data.userProgress.recentStats) {
+            setUserRecentStats({
+              last7Days: data.userProgress.recentStats.last7Days,
+              last15Days: data.userProgress.recentStats.last15Days,
+              last30Days: data.userProgress.recentStats.last30Days,
+              recentlyAnswered: data.userProgress.recentStats.last15Days,
+              getExcludedCount: (days) => {
+                if (days <= 7) return data.userProgress.recentStats.last7Days
+                if (days <= 15) return data.userProgress.recentStats.last15Days
+                return data.userProgress.recentStats.last30Days
+              }
+            })
+          }
+
+          // Cargar userAnswers para métricas detalladas
+          if (user) {
+            await loadUserAnswersForMetrics(user.id, temaNumber)
+          }
         }
 
       } catch (error) {
-        console.warn('Error obteniendo datos tema:', error)
+        console.error('Error cargando datos del tema:', error)
         setTemaNotFound(true)
       } finally {
         setLoading(false)
       }
     }
 
-    checkUserAndStats()
-  }, [temaNumber, temaNotFound])
+    fetchAllData()
+  }, [temaNumber, temaNotFound, loadTopicData])
 
-  // Obtener datos del tema desde BD
-  async function getTopicData(temaNumber) {
+  // Cargar respuestas del usuario para métricas detalladas
+  async function loadUserAnswersForMetrics(userId, tema) {
     try {
-      const { data: topicData, error } = await supabase
-        .from('topics')
-        .select('id, topic_number, title, description, difficulty, estimated_hours')
-        .eq('position_type', 'administrativo')
-        .eq('topic_number', temaNumber)
-        .eq('is_active', true)
-        .single()
-
-      if (error || !topicData) {
-        console.error('Error obteniendo datos del tema:', error)
-        return null
-      }
-      return topicData
-    } catch (error) {
-      console.error('Error en getTopicData:', error)
-      return null
-    }
-  }
-
-  // Cargar estadísticas por dificultad (MULTI-LEY)
-  async function loadDifficultyStats(temaNumber) {
-    try {
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', temaNumber)
-        .eq('topics.position_type', 'administrativo')
-
-      if (mappingError || !mappings?.length) {
-        setDifficultyStats({})
-        return
-      }
-
-      let allQuestions = []
-
-      for (const mapping of mappings) {
-        if (!mapping.laws || !mapping.laws.short_name) continue
-
-        const { data: questions, error } = await supabase
-          .from('questions')
-          .select(`
-            global_difficulty,
-            difficulty,
-            articles!inner(laws!inner(short_name))
-          `)
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-
-        if (!error && questions) {
-          allQuestions = [...allQuestions, ...questions]
-        }
-      }
-
-      const diffCount = allQuestions.reduce((acc, q) => {
-        let difficultyLevel
-        if (q.global_difficulty !== null && q.global_difficulty !== undefined) {
-          if (q.global_difficulty < 25) difficultyLevel = 'easy'
-          else if (q.global_difficulty < 50) difficultyLevel = 'medium'
-          else if (q.global_difficulty < 75) difficultyLevel = 'hard'
-          else difficultyLevel = 'extreme'
-        } else {
-          difficultyLevel = q.difficulty || 'auto'
-        }
-        acc[difficultyLevel] = (acc[difficultyLevel] || 0) + 1
-        return acc
-      }, {})
-
-      setDifficultyStats(diffCount)
-    } catch (error) {
-      console.warn('Error cargando estadísticas:', error)
-      setDifficultyStats({})
-    }
-  }
-
-  // Contar preguntas oficiales
-  async function loadOfficialQuestionsCount(temaNumber) {
-    try {
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', temaNumber)
-        .eq('topics.position_type', 'administrativo')
-
-      if (mappingError || !mappings?.length) {
-        setOfficialQuestionsCount(0)
-        return
-      }
-
-      let totalOfficials = 0
-
-      for (const mapping of mappings) {
-        if (!mapping.laws || !mapping.laws.short_name) continue
-
-        const { count, error } = await supabase
-          .from('questions')
-          .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-          .eq('is_active', true)
-          .eq('is_official_exam', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-
-        if (!error && count) totalOfficials += count
-      }
-
-      setOfficialQuestionsCount(totalOfficials)
-    } catch (error) {
-      console.error('Error cargando conteo oficial:', error)
-      setOfficialQuestionsCount(0)
-    }
-  }
-
-  // Cargar conteo de artículos por ley
-  async function loadArticlesCountByLaw(temaNumber) {
-    try {
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, name, id),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', temaNumber)
-        .eq('topics.position_type', 'administrativo')
-
-      if (mappingError || !mappings?.length) {
-        setArticlesCountByLaw([])
-        return
-      }
-
-      const lawArticlesCounts = []
-
-      for (const mapping of mappings) {
-        if (!mapping.laws || !mapping.laws.short_name) continue
-
-        const { data: articlesData, error } = await supabase
-          .from('questions')
-          .select(`articles!inner(article_number, laws!inner(short_name))`)
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-
-        if (!error && articlesData) {
-          const uniqueArticlesWithQuestions = new Set(
-            articlesData.map(q => q.articles.article_number)
-          ).size
-
-          if (uniqueArticlesWithQuestions > 0) {
-            lawArticlesCounts.push({
-              law_short_name: mapping.laws.short_name,
-              law_name: mapping.laws.name,
-              articles_with_questions: uniqueArticlesWithQuestions
-            })
-          }
-        }
-      }
-
-      const sortedCounts = lawArticlesCounts.sort((a, b) =>
-        b.articles_with_questions - a.articles_with_questions
-      )
-
-      setArticlesCountByLaw(sortedCounts)
-    } catch (error) {
-      console.error('Error cargando conteo artículos:', error)
-      setArticlesCountByLaw([])
-    }
-  }
-
-  // Cargar estadísticas de preguntas recientes del usuario
-  async function loadUserRecentStats(userId, temaNumber) {
-    if (!userId) return null
-
-    try {
-      const { data: allUserAnswers, error } = await supabase
-        .from('test_questions')
-        .select('question_id, created_at, tests!inner(user_id)')
-        .eq('tests.user_id', userId)
-        .eq('tema_number', temaNumber)
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      const finalRecentAnswers = allUserAnswers || []
-
-      const getExcludedCount = (days) => {
-        const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-        const uniqueQuestions = new Set()
-
-        finalRecentAnswers?.forEach(answer => {
-          const answerDate = new Date(answer.created_at)
-          if (answerDate >= cutoffDate && answer.question_id) {
-            uniqueQuestions.add(answer.question_id)
-          }
-        })
-
-        return uniqueQuestions.size
-      }
-
-      const stats = {
-        getExcludedCount,
-        recentlyAnswered: getExcludedCount(15),
-        last7Days: getExcludedCount(7),
-        last15Days: getExcludedCount(15),
-        last30Days: getExcludedCount(30)
-      }
-
-      setUserRecentStats(stats)
-    } catch (error) {
-      setUserRecentStats({ getExcludedCount: () => 0, recentlyAnswered: 0 })
-    }
-  }
-
-  // Obtener estadísticas del usuario
-  async function getUserPersonalStats(userId, temaNumber) {
-    try {
-      const { data: userAnswersData, error } = await supabase
+      const { data: answers, error } = await supabase
         .from('test_questions')
         .select(`
           question_id,
@@ -373,47 +273,15 @@ export default function TemaAdministrativoPage({ params }) {
           questions!inner(is_active)
         `)
         .eq('tests.user_id', userId)
-        .eq('tema_number', temaNumber)
+        .eq('tema_number', tema)
         .eq('questions.is_active', true)
 
-      setUserAnswers(userAnswersData || [])
-      processUserStats(userAnswersData || [])
+      if (!error) {
+        setUserAnswers(answers || [])
+      }
     } catch (error) {
-      setUserStats(null)
-      setUserAnswers([])
+      console.error('Error cargando respuestas del usuario:', error)
     }
-  }
-
-  // Procesar estadísticas del usuario
-  function processUserStats(userAnswersData) {
-    const performanceByDifficulty = userAnswersData.reduce((acc, answer) => {
-      const difficulty = answer.difficulty || 'auto'
-      if (!acc[difficulty]) acc[difficulty] = { total: 0, correct: 0 }
-      acc[difficulty].total++
-      if (answer.is_correct) acc[difficulty].correct++
-      return acc
-    }, {})
-
-    Object.keys(performanceByDifficulty).forEach(difficulty => {
-      const stats = performanceByDifficulty[difficulty]
-      stats.accuracy = stats.total > 0 ? (stats.correct / stats.total) * 100 : 0
-    })
-
-    const totalCorrect = userAnswersData.filter(a => a.is_correct).length
-    const overallAccuracy = userAnswersData.length > 0 ? (totalCorrect / userAnswersData.length) * 100 : 0
-    const uniqueQuestionsAnswered = new Set(userAnswersData.map(a => a.question_id)).size
-    const totalQuestionsAvailable = Object.values(difficultyStats).reduce((sum, count) => sum + count, 0)
-    const neverSeen = Math.max(0, totalQuestionsAvailable - uniqueQuestionsAnswered)
-
-    setUserStats({
-      totalAnswers: userAnswersData.length,
-      overallAccuracy,
-      performanceByDifficulty,
-      isRealData: true,
-      uniqueQuestionsAnswered,
-      totalQuestionsAvailable,
-      neverSeen
-    })
   }
 
   // Manejar inicio de test personalizado
@@ -456,6 +324,23 @@ export default function TemaAdministrativoPage({ params }) {
   // Calcular totales
   const totalQuestions = Object.values(difficultyStats).reduce((sum, count) => sum + count, 0)
 
+  // Obtener bloque según tema
+  const getBloque = (num) => {
+    if (num >= 1 && num <= 11) return 'Bloque I'
+    if (num >= 201 && num <= 204) return 'Bloque II'
+    if (num >= 301 && num <= 307) return 'Bloque III'
+    if (num >= 401 && num <= 409) return 'Bloque IV'
+    if (num >= 501 && num <= 506) return 'Bloque V'
+    if (num >= 601 && num <= 608) return 'Bloque VI'
+    return ''
+  }
+
+  // Obtener número de display
+  const getDisplayNumber = (num) => {
+    if (num >= 1 && num <= 11) return num
+    return num % 100
+  }
+
   // Loading state
   if (loading && !temaNotFound) {
     return (
@@ -473,7 +358,7 @@ export default function TemaAdministrativoPage({ params }) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">
-          <div className="text-6xl mb-4">❌</div>
+          <div className="text-6xl mb-4">404</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-3">Tema No Encontrado</h1>
           <p className="text-gray-600 mb-6">
             El Tema {temaNumber || ''} no existe o no está disponible para Administrativo del Estado.
@@ -482,28 +367,11 @@ export default function TemaAdministrativoPage({ params }) {
             href="/administrativo-estado/test"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            ← Volver a todos los temas
+            Volver a todos los temas
           </Link>
         </div>
       </div>
     )
-  }
-
-  // Obtener bloque según tema (nueva numeración: 1-11, 201-204, 301-307, 401-409, 501-506, 601-608)
-  const getBloque = (num) => {
-    if (num >= 1 && num <= 11) return 'Bloque I'
-    if (num >= 201 && num <= 204) return 'Bloque II'
-    if (num >= 301 && num <= 307) return 'Bloque III'
-    if (num >= 401 && num <= 409) return 'Bloque IV'
-    if (num >= 501 && num <= 506) return 'Bloque V'
-    if (num >= 601 && num <= 608) return 'Bloque VI'
-    return ''
-  }
-
-  // Obtener número de display (número dentro del bloque)
-  const getDisplayNumber = (num) => {
-    if (num >= 1 && num <= 11) return num  // Bloque I: 1-11
-    return num % 100  // Bloques II-VI: 201→1, 302→2, etc.
   }
 
   return (
@@ -591,10 +459,10 @@ export default function TemaAdministrativoPage({ params }) {
             {currentUser && userStats && userStats.totalQuestionsAvailable > 0 && (
               <div className="mt-3 space-y-1">
                 <p className="text-green-600 font-medium text-sm">
-                  ✅ {userStats.uniqueQuestionsAnswered} vistas
+                  {userStats.uniqueQuestionsAnswered} vistas
                 </p>
                 <p className="text-blue-600 font-medium text-sm">
-                  👁️ {userStats.neverSeen} nunca vistas
+                  {userStats.neverSeen} nunca vistas
                 </p>
               </div>
             )}
@@ -602,7 +470,7 @@ export default function TemaAdministrativoPage({ params }) {
             {/* Mostrar artículos con preguntas */}
             {articlesCountByLaw.length > 0 && (
               <div className="mt-4">
-                <p className="text-gray-700 font-medium text-sm mb-2">📖 Artículos con preguntas disponibles:</p>
+                <p className="text-gray-700 font-medium text-sm mb-2">Artículos con preguntas disponibles:</p>
                 <div className="text-center space-y-1">
                   {articlesCountByLaw.map((lawData, index) => (
                     <div key={index} className="text-sm text-gray-600">
@@ -706,12 +574,12 @@ export default function TemaAdministrativoPage({ params }) {
         {currentUser && userStats && userStats.totalAnswers > 0 && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              📊 Tu Progreso en el Tema {getDisplayNumber(temaNumber)}
+              Tu Progreso en el Tema {getDisplayNumber(temaNumber)}
             </h2>
 
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 text-lg">👤 Rendimiento Personal</h3>
+                <h3 className="font-bold text-gray-800 text-lg">Rendimiento Personal</h3>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-blue-600">{userStats.overallAccuracy.toFixed(1)}%</div>
                   <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas</div>
@@ -720,7 +588,7 @@ export default function TemaAdministrativoPage({ params }) {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="font-bold text-blue-800 mb-2 text-sm">📈 Últimos 7 días</div>
+                  <div className="font-bold text-blue-800 mb-2 text-sm">Últimos 7 días</div>
                   <div className="text-xl font-bold text-blue-600 mb-1">
                     {(() => {
                       const recent7Days = userAnswers?.filter(a =>
@@ -734,7 +602,7 @@ export default function TemaAdministrativoPage({ params }) {
                 </div>
 
                 <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                  <div className="font-bold text-green-800 mb-2 text-sm">⚡ Velocidad</div>
+                  <div className="font-bold text-green-800 mb-2 text-sm">Velocidad</div>
                   <div className="text-xl font-bold text-green-600 mb-1">
                     {(() => {
                       const avgTime = userAnswers?.reduce((sum, a) => sum + (a.time_spent_seconds || 0), 0) / (userAnswers?.length || 1)
@@ -745,7 +613,7 @@ export default function TemaAdministrativoPage({ params }) {
                 </div>
 
                 <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-                  <div className="font-bold text-purple-800 mb-2 text-sm">✅ Vistas</div>
+                  <div className="font-bold text-purple-800 mb-2 text-sm">Vistas</div>
                   <div className="text-xl font-bold text-purple-600 mb-1">
                     {userStats.uniqueQuestionsAnswered}
                   </div>
@@ -753,7 +621,7 @@ export default function TemaAdministrativoPage({ params }) {
                 </div>
 
                 <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <div className="font-bold text-orange-800 mb-2 text-sm">👁️ Sin ver</div>
+                  <div className="font-bold text-orange-800 mb-2 text-sm">Sin ver</div>
                   <div className="text-xl font-bold text-orange-600 mb-1">
                     {userStats.neverSeen}
                   </div>
@@ -768,7 +636,7 @@ export default function TemaAdministrativoPage({ params }) {
         {Object.keys(difficultyStats).length > 0 && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              📊 Preguntas por Dificultad
+              Preguntas por Dificultad
             </h2>
 
             <div className="space-y-2">
@@ -819,7 +687,7 @@ export default function TemaAdministrativoPage({ params }) {
             href="/administrativo-estado/test"
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            ← Volver a todos los temas
+            Volver a todos los temas
           </Link>
         </div>
 
