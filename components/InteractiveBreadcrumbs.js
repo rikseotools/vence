@@ -418,24 +418,84 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
           {/* Detectar y mostrar sección específica si existe */}
           {(() => {
-            // Mostrar tema específico, test específico, etc.
-            const temaMatch = pathname.match(/tema-(\d+)/)
+            // Mostrar tema específico con bloque
+            const temaMatch = pathname.match(/tema[/-](\d+)/)
             const categoriaMatch = pathname.match(/psicotecnicos\/(.+)/)
-            
+
             if (temaMatch) {
-              const temaNum = temaMatch[1]
+              const temaNum = parseInt(temaMatch[1])
+
+              // Determinar el bloque según el número de tema y oposición
+              let bloque = ''
+              let bloqueId = ''
+              let displayNum = temaNum
+              let basePath = ''
+
+              if (isAdministrativo) {
+                basePath = '/administrativo-estado/test'
+                // Administrativo del Estado
+                if (temaNum >= 1 && temaNum <= 11) {
+                  bloque = 'Bloque I'
+                  bloqueId = 'bloque-i'
+                } else if (temaNum >= 201 && temaNum <= 204) {
+                  bloque = 'Bloque II'
+                  bloqueId = 'bloque-ii'
+                  displayNum = temaNum - 200
+                } else if (temaNum >= 301 && temaNum <= 307) {
+                  bloque = 'Bloque III'
+                  bloqueId = 'bloque-iii'
+                  displayNum = temaNum - 300
+                } else if (temaNum >= 401 && temaNum <= 409) {
+                  bloque = 'Bloque IV'
+                  bloqueId = 'bloque-iv'
+                  displayNum = temaNum - 400
+                } else if (temaNum >= 501 && temaNum <= 506) {
+                  bloque = 'Bloque V'
+                  bloqueId = 'bloque-v'
+                  displayNum = temaNum - 500
+                } else if (temaNum >= 601 && temaNum <= 608) {
+                  bloque = 'Bloque VI'
+                  bloqueId = 'bloque-vi'
+                  displayNum = temaNum - 600
+                }
+              } else if (isAuxiliarAdmin) {
+                basePath = '/auxiliar-administrativo-estado/test'
+                // Auxiliar Administrativo
+                if (temaNum >= 1 && temaNum <= 16) {
+                  bloque = 'Bloque I'
+                  bloqueId = 'bloque-i'
+                } else if (temaNum >= 101 && temaNum <= 112) {
+                  bloque = 'Bloque II'
+                  bloqueId = 'bloque-ii'
+                  displayNum = temaNum - 100
+                }
+              }
+
               return (
                 <>
+                  {bloque && (
+                    <>
+                      <span className="text-gray-400 mx-2">/</span>
+                      <li>
+                        <Link
+                          href={`${basePath}#${bloqueId}`}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          📦 {bloque}
+                        </Link>
+                      </li>
+                    </>
+                  )}
                   <span className="text-gray-400 mx-2">/</span>
                   <li>
                     <span className="text-gray-700 font-semibold">
-                      📋 Tema {temaNum}
+                      📋 Tema {displayNum}
                     </span>
                   </li>
                 </>
               )
             }
-            
+
             if (categoriaMatch) {
               const categoria = categoriaMatch[1]
               const categoriaLabels = {
@@ -443,7 +503,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                 'razonamiento-numerico': '🔢 Razonamiento Numérico',
                 'razonamiento-verbal': '📝 Razonamiento Verbal'
               }
-              
+
               return (
                 <>
                   <span className="text-gray-400 mx-2">/</span>
@@ -455,7 +515,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                 </>
               )
             }
-            
+
             return null
           })()}
         </ol>

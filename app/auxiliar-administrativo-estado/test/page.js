@@ -240,7 +240,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
               </Link>
 
               {/* BLOQUE I */}
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div id="bloque-i" className="bg-white rounded-lg shadow-lg overflow-hidden scroll-mt-20">
                 <button
                   onClick={() => toggleBlock('bloque1')}
                   className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300"
@@ -274,7 +274,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
               </div>
 
               {/* BLOQUE II */}
-              <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div id="bloque-ii" className="bg-white rounded-lg shadow-lg overflow-hidden scroll-mt-20">
                 <button
                   onClick={() => toggleBlock('bloque2')}
                   className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-300"

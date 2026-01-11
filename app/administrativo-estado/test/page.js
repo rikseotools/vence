@@ -392,8 +392,19 @@ export default function TestsAdministrativoEstado() {
 
 // Componente para sección de bloque
 function BlockSection({ blockId, icon, title, themes, temasCount, expanded, onToggle, userStats, onInfoClick }) {
+  // Mapear blockId a anchor ID para navegación desde breadcrumbs
+  const anchorMap = {
+    bloque1: 'bloque-i',
+    bloque2: 'bloque-ii',
+    bloque3: 'bloque-iii',
+    bloque4: 'bloque-iv',
+    bloque5: 'bloque-v',
+    bloque6: 'bloque-vi'
+  }
+  const anchorId = anchorMap[blockId] || blockId
+
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div id={anchorId} className="bg-white rounded-lg shadow-lg overflow-hidden scroll-mt-20">
       <button
         onClick={() => onToggle(blockId)}
         className={`w-full bg-gradient-to-r ${BLOCK_GRADIENT} text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 focus:outline-none focus:ring-4`}
