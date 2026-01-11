@@ -129,76 +129,38 @@ export default function TestAleatorioAdministrativoPage() {
   // Lista plana de todos los temas para compatibilidad con funciones existentes
   const themes = themeBlocks.flatMap(block => block.themes)
 
-  const loadThemeQuestionCounts = async () => {
+  // Cargar datos iniciales desde la API consolidada
+  const loadInitialData = async (userId) => {
     setLoadingThemeCounts(true)
+    setStatsLoading(true)
     try {
-      const { getSupabaseClient } = await import('../../../../lib/supabase')
-      const supabase = getSupabaseClient()
-      const counts = {}
-      
-      // Procesar todos los temas EN PARALELO para mayor velocidad
-      const themePromises = themes.map(async (theme) => {
-        if (theme.id === 1) {
-        }
-        try {
-          // Obtener mapeo del tema desde topic_scope
-          const { data: mappings, error: mappingError } = await supabase
-            .from('topic_scope')
-            .select(`
-              article_numbers,
-              laws!inner(short_name, id, name),
-              topics!inner(topic_number, position_type)
-            `)
-            .eq('topics.topic_number', theme.id)
-            .eq('topics.position_type', 'administrativo')
-
-          if (mappingError || !mappings?.length) {
-            // Actualizar inmediatamente este tema específico
-            setThemeTotalQuestions(prev => ({ ...prev, [theme.id]: 0 }))
-            return { themeId: theme.id, count: 0 }
-          }
-
-          // Método original de topic_scope
-          const mappingPromises = mappings.map(async (mapping) => {
-            const { count, error: countError } = await supabase
-              .from('questions')
-              .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-              .eq('is_active', true)
-              .eq('articles.laws.short_name', mapping.laws.short_name)
-              .in('articles.article_number', mapping.article_numbers)
-
-            return !countError && count > 0 ? count : 0
-          })
-
-          const mappingCounts = await Promise.all(mappingPromises)
-          const totalCount = mappingCounts.reduce((sum, count) => sum + count, 0)
-          
-          // Debug específico para tema 1
-          if (theme.id === 1) {
-          }
-          
-          // Actualizar inmediatamente este tema específico conforme va llegando
-          setThemeTotalQuestions(prev => ({ ...prev, [theme.id]: totalCount }))
-          if (theme.id === 1 || theme.id === 3) {
-          }
-          
-          return { themeId: theme.id, count: totalCount }
-
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error(`Error contando tema ${theme.id}:`, error)
-          }
-          // No usar fallback hardcoded, usar 0 para forzar recálculo
-          setThemeTotalQuestions(prev => ({ ...prev, [theme.id]: 0 }))
-          return { themeId: theme.id, count: 0 }
-        }
+      const params = new URLSearchParams({
+        oposicion: 'administrativo-estado',
       })
+      if (userId) {
+        params.append('userId', userId)
+      }
 
-      // Esperar a que todos los temas terminen para finalizar el estado de carga
-      await Promise.all(themePromises)
+      const response = await fetch(`/api/random-test-data?${params.toString()}`)
+      const result = await response.json()
+
+      if (!result.success) {
+        console.error('Error cargando datos:', result.error)
+        return
+      }
+
+      // Actualizar conteos de preguntas por tema
+      if (result.themeQuestionCounts) {
+        setThemeTotalQuestions(result.themeQuestionCounts)
+      }
+
+      // Actualizar estadísticas del usuario
+      if (result.userStats) {
+        setUserStats(result.userStats)
+      }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Error cargando conteos de temas:', error)
+        console.error('Error cargando datos iniciales:', error)
       }
       // Fallback a valores hardcodeados si falla
       const fallbackCounts = {}
@@ -208,6 +170,7 @@ export default function TestAleatorioAdministrativoPage() {
       setThemeTotalQuestions(fallbackCounts)
     } finally {
       setLoadingThemeCounts(false)
+      setStatsLoading(false)
     }
   }
 
@@ -251,161 +214,39 @@ export default function TestAleatorioAdministrativoPage() {
     }
   }, [selectedThemes, difficulty, onlyOfficialQuestions, focusEssentialArticles, user])
 
-  const loadUserStats = async (userId) => {
-    setStatsLoading(true)
-    try {
-      const { getSupabaseClient } = await import('../../../../lib/supabase')
-      const supabase = getSupabaseClient()
-
-      // MÉTODO OPTIMIZADO: Dos queries para evitar timeout en el join
-      // 1. Obtener test IDs del usuario (últimos 6 meses)
-      const sixMonthsAgo = new Date()
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
-
-      const { data: userTests, error: testsError } = await supabase
-        .from('tests')
-        .select('id')
-        .eq('user_id', userId)
-        .gte('created_at', sixMonthsAgo.toISOString())
-        .limit(1000)
-
-      if (testsError || !userTests || userTests.length === 0) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('❌ Error obteniendo tests del usuario:', testsError)
-        }
-        setUserStats({})
-        return
-      }
-
-      const testIds = userTests.map(t => t.id)
-
-      // 2. Obtener respuestas de esos tests (más eficiente con índice en test_id)
-      const { data: responses, error: allError } = await supabase
-        .from('test_questions')
-        .select('tema_number, is_correct, created_at, question_id, test_id')
-        .in('test_id', testIds)
-        .order('created_at', { ascending: false })
-
-      if (allError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('❌ Error obteniendo respuestas:', allError)
-        }
-        return
-      }
-      
-      const themeStats = {}
-      
-      responses.forEach(response => {
-        const theme = response.tema_number
-        if (!theme) return
-
-        if (!themeStats[theme]) {
-          themeStats[theme] = { 
-            total: 0, 
-            correct: 0, 
-            lastStudy: null 
-          }
-        }
-        
-        themeStats[theme].total++
-        if (response.is_correct) {
-          themeStats[theme].correct++
-        }
-        
-        const studyDate = new Date(response.created_at)
-        if (!themeStats[theme].lastStudy || studyDate > themeStats[theme].lastStudy) {
-          themeStats[theme].lastStudy = studyDate
-        }
-      })
-
-      Object.keys(themeStats).forEach(theme => {
-        const stats = themeStats[theme]
-        stats.accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0
-      })
-      
-      setUserStats(themeStats)
-      
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Error loading user stats:', error)
-      }
-    } finally {
-      setStatsLoading(false)
-    }
-  }
-
-  // ✅ FUNCIÓN para cargar estadísticas detalladas de UN tema específico
+  // ✅ FUNCIÓN para cargar estadísticas detalladas de UN tema específico (usa API)
   const loadDetailedStatsForTheme = async (themeId, userId) => {
     // Marcar este tema como "cargando"
     setLoadingDetailedStatsPerTheme(prev => ({ ...prev, [themeId]: true }))
-    
+
     try {
-      const { getSupabaseClient } = await import('../../../../lib/supabase')
-      const supabase = getSupabaseClient()
+      const params = new URLSearchParams({
+        oposicion: 'administrativo-estado',
+        themeId: themeId.toString(),
+        userId: userId,
+      })
 
-      // 1. Obtener mapeo del tema desde topic_scope
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id, name),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', themeId)
-        .eq('topics.position_type', 'administrativo')
+      const response = await fetch(`/api/random-test-data/theme-details?${params.toString()}`)
+      const result = await response.json()
 
-      if (mappingError || !mappings?.length) {
+      if (!result.success) {
+        console.error(`Error cargando stats tema ${themeId}:`, result.error)
         setDetailedStats(prev => ({ ...prev, [themeId]: { total: 0, answered: 0, neverSeen: 0 } }))
         return
       }
 
-      // 2. Contar preguntas totales disponibles
-      const allQuestionIds = new Set()
-      
-      for (const mapping of mappings) {
-        const { data: questionIds, error: qError } = await supabase
-          .from('questions')
-          .select('id, articles!inner(laws!inner(short_name))')
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-          .eq('is_active', true)
-
-        if (qError || !questionIds?.length) continue
-        
-        questionIds.forEach(q => allQuestionIds.add(q.id))
-      }
-      
-      const totalQuestions = allQuestionIds.size
-      
-      // 3. Obtener preguntas respondidas por el usuario (usando Set para evitar duplicados)
-      const { data: responses, error: rError } = await supabase
-        .from('test_questions')
-        .select('question_id, tests!inner(user_id)')
-        .eq('tests.user_id', userId)
-        .in('question_id', Array.from(allQuestionIds))
-
-      const answeredQuestionIds = new Set()
-      if (responses) {
-        responses.forEach(response => {
-          answeredQuestionIds.add(response.question_id)
-        })
-      }
-      
-      const answeredCount = answeredQuestionIds.size
-      const neverSeenCount = totalQuestions - answeredCount
-      
       // Actualizar solo este tema específico
-      setDetailedStats(prev => ({
-        ...prev,
-        [themeId]: {
-          total: totalQuestions,
-          answered: answeredCount,
-          neverSeen: neverSeenCount
-        }
-      }))
-      
-      console.log(`📊 Stats detalladas T${themeId}: ${totalQuestions} total, ${answeredCount} vistas, ${neverSeenCount} nunca vistas`)
-      
+      if (result.stats) {
+        setDetailedStats(prev => ({
+          ...prev,
+          [themeId]: {
+            total: result.stats.total,
+            answered: result.stats.answered,
+            neverSeen: result.stats.neverSeen
+          }
+        }))
+      }
+
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error(`Error calculando detailed stats tema ${themeId}:`, error)
@@ -736,8 +577,7 @@ export default function TestAleatorioAdministrativoPage() {
     const handleVisibilityChange = () => {
       // Solo recargar si hay temas seleccionados (el usuario está trabajando activamente)
       if (!document.hidden && user && !loading && !statsLoading && selectedThemes.length > 0) {
-        loadUserStats(user.id)
-        // No cargar loadThemeQuestionCounts - se hace on-demand
+        loadInitialData(user.id)
       }
     }
 
@@ -748,8 +588,7 @@ export default function TestAleatorioAdministrativoPage() {
     const handleWindowFocus = () => {
       // Solo recargar si hay temas seleccionados
       if (user && !loading && !statsLoading && selectedThemes.length > 0) {
-        loadUserStats(user.id)
-        // No cargar loadThemeQuestionCounts - se hace on-demand
+        loadInitialData(user.id)
       }
     }
 

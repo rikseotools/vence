@@ -19,7 +19,7 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
 // Mapa de posición
 const POSITION_TYPE_MAP: Record<OposicionKey, string> = {
   'auxiliar-administrativo-estado': 'auxiliar_administrativo',
-  'administrativo-estado': 'administrativo_estado',
+  'administrativo-estado': 'administrativo',
 }
 
 /**

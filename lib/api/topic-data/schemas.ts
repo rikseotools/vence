@@ -147,7 +147,7 @@ export function safeParseGetTopicDataResponse(data: unknown) {
 // Mapa de posición a position_type en BD
 export const OPOSICION_TO_POSITION_TYPE = {
   'auxiliar-administrativo-estado': 'auxiliar_administrativo',
-  'administrativo-estado': 'administrativo_estado',
+  'administrativo-estado': 'administrativo',
 } as const
 
 export type OposicionKey = keyof typeof OPOSICION_TO_POSITION_TYPE

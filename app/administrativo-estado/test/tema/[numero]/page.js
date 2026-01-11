@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
+import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 const supabase = getSupabaseClient()
 
@@ -376,6 +377,7 @@ export default function TemaAdministrativoPage({ params }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <InteractiveBreadcrumbs />
       <div className="max-w-4xl mx-auto px-3 py-6">
 
         {/* Header */}

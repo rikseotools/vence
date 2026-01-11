@@ -533,7 +533,7 @@ describe('Topic Data - Helpers', () => {
     })
 
     test('debe mapear administrativo correctamente', () => {
-      expect(OPOSICION_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo_estado')
+      expect(OPOSICION_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo')
     })
   })
 
