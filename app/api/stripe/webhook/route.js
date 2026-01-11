@@ -140,6 +140,47 @@ async function handleCheckoutSessionCompleted(session, supabase) {
     } else {
       console.log(`✅ User ${userId} ahora es PREMIUM`, data)
 
+      // 🔥 FIX BUG: Crear registro en user_subscriptions AQUÍ como backup
+      // El evento customer.subscription.created puede llegar antes y fallar
+      // porque stripe_customer_id aún no estaba guardado
+      if (session.subscription) {
+        try {
+          const subscription = await stripe.subscriptions.retrieve(session.subscription)
+
+          // Determinar plan_type basado en el intervalo
+          // NOTA: Valores permitidos: 'trial', 'premium_semester', 'premium_annual'
+          let planType = 'premium_semester'
+          if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'year') {
+            planType = 'premium_annual'
+          }
+          // Mensual también usa premium_semester (constraint de BD no tiene monthly)
+
+          // Usar upsert para evitar duplicados si customer.subscription.created ya lo creó
+          const { error: subError } = await supabase
+            .from('user_subscriptions')
+            .upsert({
+              user_id: userId,
+              stripe_customer_id: session.customer,
+              stripe_subscription_id: subscription.id,
+              status: subscription.status,
+              plan_type: planType,
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+            }, {
+              onConflict: 'user_id',
+              ignoreDuplicates: false
+            })
+
+          if (subError) {
+            console.error('⚠️ Error creando subscription record (puede ser duplicado):', subError.message)
+          } else {
+            console.log('✅ Subscription record creado/actualizado en user_subscriptions')
+          }
+        } catch (subErr) {
+          console.error('⚠️ Error procesando subscription en checkout:', subErr.message)
+        }
+      }
+
       // Trackear conversion de pago completado
       try {
         await supabase.rpc('track_conversion_event', {
@@ -229,6 +270,37 @@ async function handleCheckoutSessionCompleted(session, supabase) {
           .eq('id', existingUser.id)
 
         console.log(`✅ User ${existingUser.id} ahora es PREMIUM (encontrado por email)`)
+
+        // 🔥 FIX BUG: También crear subscription record aquí
+        if (session.subscription) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription)
+            let planType = 'premium_semester'
+            if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'year') {
+              planType = 'premium_annual'
+            } else if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'month') {
+              planType = 'premium_monthly'
+            }
+
+            await supabase
+              .from('user_subscriptions')
+              .upsert({
+                user_id: existingUser.id,
+                stripe_customer_id: session.customer,
+                stripe_subscription_id: subscription.id,
+                status: subscription.status,
+                plan_type: planType,
+                starts_at: new Date(subscription.current_period_start * 1000).toISOString(),
+                ends_at: new Date(subscription.current_period_end * 1000).toISOString(),
+                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+              }, { onConflict: 'user_id', ignoreDuplicates: false })
+
+            console.log('✅ Subscription record creado para usuario encontrado por email')
+          } catch (subErr) {
+            console.error('⚠️ Error creando subscription por email:', subErr.message)
+          }
+        }
       } else {
         console.log('⚠️ No se encontró usuario con email:', customer.email)
       }
@@ -240,6 +312,8 @@ async function handleCheckoutSessionCompleted(session, supabase) {
 
 // Resto de funciones igual...
 async function handleSubscriptionCreated(subscription, supabase) {
+  console.log('📋 handleSubscriptionCreated:', subscription.id)
+
   // Obtener userId desde metadata O desde customer
   let userId = subscription.metadata?.supabase_user_id
 
@@ -250,31 +324,51 @@ async function handleSubscriptionCreated(subscription, supabase) {
       .select('id')
       .eq('stripe_customer_id', subscription.customer)
       .single()
-    
+
     userId = user?.id
+    console.log('📋 userId encontrado por stripe_customer_id:', userId)
   }
 
   if (!userId) {
-    console.error('No user ID found for subscription:', subscription.id)
+    // 🔥 FIX: Si no encontramos el usuario, puede ser que checkout.session.completed
+    // aún no haya guardado el stripe_customer_id. No es error crítico porque
+    // handleCheckoutSessionCompleted también crea el registro.
+    console.log('⚠️ No user ID found for subscription:', subscription.id, '- checkout.session.completed lo manejará')
     return
   }
 
+  // Determinar plan_type basado en el intervalo
+  // NOTA: Valores permitidos: 'trial', 'premium_semester', 'premium_annual'
+  let planType = 'premium_semester'
+  if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'year') {
+    planType = 'premium_annual'
+  }
+  // Mensual también usa premium_semester (constraint de BD no tiene monthly)
+
   try {
-    await supabase
+    // 🔥 FIX: Usar upsert en lugar de insert para evitar duplicados
+    const { error } = await supabase
       .from('user_subscriptions')
-      .insert({
+      .upsert({
         user_id: userId,
         stripe_customer_id: subscription.customer,
         stripe_subscription_id: subscription.id,
         status: subscription.status,
-        plan_type: 'premium_semester',
+        plan_type: planType,
         trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
         current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
         current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+      }, {
+        onConflict: 'user_id',
+        ignoreDuplicates: false
       })
 
-    console.log(`✅ Subscription created for user ${userId}`)
+    if (error) {
+      console.error('⚠️ Error en upsert subscription:', error.message)
+    } else {
+      console.log(`✅ Subscription created/updated for user ${userId}`)
+    }
   } catch (error) {
     console.error('Error creating subscription record:', error)
   }
