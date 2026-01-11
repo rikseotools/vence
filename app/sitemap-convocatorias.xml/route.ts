@@ -15,7 +15,7 @@ export async function GET() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://vence.es';
+  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
 
   // Obtener todas las convocatorias activas
   const { data: convocatorias } = await supabase
