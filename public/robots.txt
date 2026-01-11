@@ -3,6 +3,7 @@ Allow: /
 
 # Sitemaps
 Sitemap: https://www.vence.es/sitemap.xml
+Sitemap: https://www.vence.es/sitemap-convocatorias.xml
 
 # 🚨 BLOQUEAR SOLO PÁGINAS PRIVADAS Y NO INDEXABLES
 # Admin y auth

@@ -92,7 +92,7 @@ export default function RankingModal({ isOpen, onClose }) {
       const { data: rankingData, error } = await supabase.rpc('get_ranking_for_period', {
         p_start_date: startDate,
         p_end_date: endDate,
-        p_min_questions: 5,
+        p_min_questions: 1,
         p_limit: 100
       })
 
@@ -316,7 +316,7 @@ export default function RankingModal({ isOpen, onClose }) {
             isCurrentUser: true
           })
         } else {
-          // Usuario no califica para el ranking (< 5 preguntas)
+          // Usuario no califica para el ranking (< 1 pregunta)
           setCurrentUserRank(null)
         }
       } else {
@@ -774,7 +774,7 @@ export default function RankingModal({ isOpen, onClose }) {
                       <div className="text-center py-8">
                         <div className="text-4xl mb-3">🏆</div>
                         <p className="text-gray-600">¡Sé el primero en el ranking!</p>
-                        <p className="text-sm text-gray-500">Responde al menos 5 preguntas para aparecer</p>
+                        <p className="text-sm text-gray-500">Responde al menos 1 pregunta para aparecer</p>
                       </div>
                     ) : (
                       console.log(`🎨 RENDERIZANDO ${activeTab} - ${timeFilter}: ${ranking.length} usuarios`) ||
@@ -879,7 +879,7 @@ export default function RankingModal({ isOpen, onClose }) {
           {/* Footer */}
           <div className="mt-6 pt-4 border-t text-center">
             <p className="text-xs text-gray-500">
-              Mínimo 5 preguntas para aparecer en el ranking
+              Mínimo 1 pregunta para aparecer en el ranking
             </p>
           </div>
         </div>

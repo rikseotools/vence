@@ -371,6 +371,64 @@ describe('Random Test Data - Response Schemas', () => {
       })
       expect(result.success).toBe(true)
     })
+
+    it('debe validar respuesta con breakdown por ley', () => {
+      const result = checkAvailableQuestionsResponseSchema.safeParse({
+        success: true,
+        availableQuestions: 350,
+        breakdown: {
+          'law-uuid-1': 200,
+          'law-uuid-2': 150,
+        },
+      })
+      expect(result.success).toBe(true)
+      expect(result.data.breakdown['law-uuid-1']).toBe(200)
+    })
+
+    it('debe validar respuesta con flag cached', () => {
+      const result = checkAvailableQuestionsResponseSchema.safeParse({
+        success: true,
+        availableQuestions: 100,
+        cached: true,
+      })
+      expect(result.success).toBe(true)
+      expect(result.data.cached).toBe(true)
+    })
+
+    it('debe validar respuesta completa con todos los campos', () => {
+      const result = checkAvailableQuestionsResponseSchema.safeParse({
+        success: true,
+        availableQuestions: 500,
+        breakdown: {
+          'ce-uuid': 308,
+          'ley39-uuid': 192,
+        },
+        cached: false,
+      })
+      expect(result.success).toBe(true)
+      expect(result.data.availableQuestions).toBe(500)
+      expect(result.data.breakdown).toBeDefined()
+      expect(result.data.cached).toBe(false)
+    })
+
+    it('debe rechazar availableQuestions negativo', () => {
+      const result = checkAvailableQuestionsResponseSchema.safeParse({
+        success: true,
+        availableQuestions: -10,
+      })
+      expect(result.success).toBe(false)
+    })
+
+    it('debe rechazar breakdown con valores negativos', () => {
+      const result = checkAvailableQuestionsResponseSchema.safeParse({
+        success: true,
+        availableQuestions: 100,
+        breakdown: {
+          'law-uuid': -50,
+        },
+      })
+      expect(result.success).toBe(false)
+    })
   })
 
   describe('getDetailedThemeStatsResponseSchema', () => {

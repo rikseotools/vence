@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation'
 import QuestionEvolution from './QuestionEvolution'
 import QuestionDispute from './QuestionDispute'
 import ShareQuestion from './ShareQuestion'
+import InteractiveBreadcrumbs from './InteractiveBreadcrumbs'
 
 
 // Imports modularizados
@@ -1525,7 +1526,12 @@ export default function TestLayout({
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
         <main className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
-            
+
+            {/* Migas de pan para navegación */}
+            <div className="mb-4">
+              <InteractiveBreadcrumbs />
+            </div>
+
             {/* Banner de éxito con dark mode */}
             {showSuccessMessage && (
               <div className="bg-gradient-to-r from-green-500 to-emerald-500 dark:from-green-600 dark:to-emerald-600 text-white p-4 rounded-lg mb-6 flex items-center justify-between">

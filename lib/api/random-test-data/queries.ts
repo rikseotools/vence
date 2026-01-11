@@ -9,6 +9,7 @@ import type {
   DetailedThemeStats,
   OposicionKey,
   GetDetailedThemeStatsResponse,
+  CheckAvailableQuestionsResponse,
 } from './schemas'
 import {
   OPOSICION_TO_POSITION_TYPE,
@@ -356,4 +357,167 @@ export function invalidateRandomTestDataCache(oposicion: OposicionKey): void {
  */
 export function clearAllRandomTestDataCache(): void {
   dataCache.clear()
+}
+
+// Cache para check-availability (30 segundos - cambia más frecuentemente)
+const availabilityCache = new Map<string, { data: CheckAvailableQuestionsResponse; timestamp: number }>()
+const AVAILABILITY_CACHE_TTL = 30 * 1000 // 30 segundos
+
+/**
+ * Verifica cuántas preguntas están disponibles con los filtros dados
+ * Consolida múltiples queries en una sola operación eficiente
+ */
+export async function checkAvailableQuestions(
+  oposicion: OposicionKey,
+  selectedThemes: number[],
+  difficulty: 'mixed' | 'easy' | 'medium' | 'hard' = 'mixed',
+  onlyOfficialQuestions: boolean = false,
+  focusEssentialArticles: boolean = false
+): Promise<CheckAvailableQuestionsResponse> {
+  try {
+    // Generar cache key basado en los parámetros
+    const cacheKey = `${oposicion}-${selectedThemes.sort().join(',')}-${difficulty}-${onlyOfficialQuestions}-${focusEssentialArticles}`
+
+    // Verificar cache
+    const cached = availabilityCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < AVAILABILITY_CACHE_TTL) {
+      return { ...cached.data, cached: true }
+    }
+
+    const db = getDb()
+    const positionType = OPOSICION_TO_POSITION_TYPE[oposicion]
+
+    // Convertir themeIds internos a topic_numbers de BD
+    const topicNumbers = selectedThemes.map(themeId =>
+      getTopicNumberFromThemeId(themeId, oposicion)
+    )
+
+    // 1. Obtener todos los mapeos de topic_scope para los temas seleccionados
+    const allMappings = await db
+      .select({
+        topicNumber: topics.topicNumber,
+        articleNumbers: topicScope.articleNumbers,
+        lawId: topicScope.lawId,
+      })
+      .from(topicScope)
+      .innerJoin(topics, eq(topicScope.topicId, topics.id))
+      .where(and(
+        eq(topics.positionType, positionType),
+        inArray(topics.topicNumber, topicNumbers)
+      ))
+
+    if (!allMappings.length) {
+      const response: CheckAvailableQuestionsResponse = {
+        success: true,
+        availableQuestions: 0,
+        breakdown: {},
+      }
+      availabilityCache.set(cacheKey, { data: response, timestamp: Date.now() })
+      return response
+    }
+
+    // 2. Agrupar mappings por topic_number
+    const mappingsByTopic = new Map<number, Array<{ articleNumbers: string[] | null; lawId: string | null }>>()
+    for (const mapping of allMappings) {
+      if (!mapping.topicNumber) continue
+      if (!mappingsByTopic.has(mapping.topicNumber)) {
+        mappingsByTopic.set(mapping.topicNumber, [])
+      }
+      mappingsByTopic.get(mapping.topicNumber)!.push({
+        articleNumbers: mapping.articleNumbers,
+        lawId: mapping.lawId,
+      })
+    }
+
+    // 3. Construir condiciones para contar preguntas
+    // Recolectar todos los pares (lawId, articleNumbers) válidos
+    const lawArticlePairs: Array<{ lawId: string; articleNumbers: string[] }> = []
+
+    for (const [, topicMappings] of mappingsByTopic) {
+      for (const mapping of topicMappings) {
+        if (mapping.lawId && mapping.articleNumbers?.length) {
+          lawArticlePairs.push({
+            lawId: mapping.lawId,
+            articleNumbers: mapping.articleNumbers,
+          })
+        }
+      }
+    }
+
+    if (lawArticlePairs.length === 0) {
+      const response: CheckAvailableQuestionsResponse = {
+        success: true,
+        availableQuestions: 0,
+        breakdown: {},
+      }
+      availabilityCache.set(cacheKey, { data: response, timestamp: Date.now() })
+      return response
+    }
+
+    // 4. Contar preguntas para cada par (lawId, articleNumbers) con los filtros aplicados
+    let totalQuestions = 0
+    const breakdown: Record<string, number> = {}
+
+    for (const pair of lawArticlePairs) {
+      // Construir condiciones base
+      const conditions = [
+        eq(questions.isActive, true),
+        eq(articles.lawId, pair.lawId),
+        inArray(articles.articleNumber, pair.articleNumbers),
+      ]
+
+      // Filtro de dificultad
+      if (difficulty !== 'mixed') {
+        conditions.push(eq(questions.difficulty, difficulty))
+      }
+
+      // Filtro de preguntas oficiales
+      if (onlyOfficialQuestions) {
+        conditions.push(eq(questions.isOfficialExam, true))
+      }
+
+      // Filtro de artículos esenciales (solo preguntas de exámenes oficiales)
+      if (focusEssentialArticles) {
+        conditions.push(eq(questions.isOfficialExam, true))
+      }
+
+      const countResult = await db
+        .select({ count: sql<number>`count(DISTINCT ${questions.id})` })
+        .from(questions)
+        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .where(and(...conditions))
+
+      const count = Number(countResult[0]?.count || 0)
+      totalQuestions += count
+
+      // Añadir al breakdown por lawId (para debugging)
+      if (count > 0) {
+        breakdown[pair.lawId] = (breakdown[pair.lawId] || 0) + count
+      }
+    }
+
+    const response: CheckAvailableQuestionsResponse = {
+      success: true,
+      availableQuestions: totalQuestions,
+      breakdown,
+    }
+
+    // Guardar en cache
+    availabilityCache.set(cacheKey, { data: response, timestamp: Date.now() })
+
+    return response
+  } catch (error) {
+    console.error('Error verificando preguntas disponibles:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+/**
+ * Invalida el cache de disponibilidad
+ */
+export function invalidateAvailabilityCache(): void {
+  availabilityCache.clear()
 }

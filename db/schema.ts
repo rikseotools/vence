@@ -2720,3 +2720,83 @@ export const fraudAlerts = pgTable("fraud_alerts", {
 		name: "fraud_alerts_reviewed_by_fkey"
 	}).onDelete("set null"),
 ]);
+
+// ============================================
+// CONVOCATORIAS BOE
+// Sistema de detección y almacenamiento de convocatorias del BOE
+// ============================================
+
+export const convocatoriasBoe = pgTable("convocatorias_boe", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+
+	// Identificación BOE
+	boeId: text("boe_id").unique().notNull(),
+	boeFecha: date("boe_fecha").notNull(),
+	boeUrlPdf: text("boe_url_pdf"),
+	boeUrlHtml: text("boe_url_html"),
+	boeUrlXml: text("boe_url_xml"),
+
+	// Datos extraídos del sumario
+	titulo: text().notNull(),
+	tituloLimpio: text("titulo_limpio"),
+	departamentoCodigo: text("departamento_codigo"),
+	departamentoNombre: text("departamento_nombre"),
+	epigrafe: text(),
+
+	// Clasificación
+	tipo: text(), // 'convocatoria'|'admitidos'|'tribunal'|'resultado'|'correccion'|'otro'
+	categoria: text(), // 'A1'|'A2'|'B'|'C1'|'C2'
+	cuerpo: text(),
+	acceso: text(), // 'libre'|'promocion_interna'|'mixto'|'discapacidad'
+
+	// Plazas
+	numPlazas: integer("num_plazas"),
+	numPlazasLibre: integer("num_plazas_libre"),
+	numPlazasPi: integer("num_plazas_pi"),
+	numPlazasDiscapacidad: integer("num_plazas_discapacidad"),
+
+	// Fechas importantes
+	fechaDisposicion: date("fecha_disposicion"),
+	fechaLimiteInscripcion: date("fecha_limite_inscripcion"),
+	fechaExamen: date("fecha_examen"),
+
+	// Relaciones
+	oposicionRelacionada: text("oposicion_relacionada"),
+	convocatoriaOrigenId: uuid("convocatoria_origen_id"),
+
+	// Contenido (desde XML)
+	resumen: text(),
+	contenidoTexto: text("contenido_texto"),
+	rango: text(),
+	paginaInicial: integer("pagina_inicial"),
+	paginaFinal: integer("pagina_final"),
+
+	// Datos extraídos del texto
+	plazoInscripcionDias: integer("plazo_inscripcion_dias"),
+	titulacionRequerida: text("titulacion_requerida"),
+	tieneTemario: boolean("tiene_temario").default(false),
+	urlBases: text("url_bases"),
+
+	// Metadatos
+	relevanciaScore: integer("relevancia_score").default(0),
+	destacada: boolean().default(false),
+	isActive: boolean("is_active").default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_convocatorias_boe_fecha").using("btree", table.boeFecha.desc().nullsFirst()),
+	index("idx_convocatorias_boe_tipo").using("btree", table.tipo.asc().nullsLast()),
+	index("idx_convocatorias_boe_categoria").using("btree", table.categoria.asc().nullsLast()),
+	index("idx_convocatorias_boe_departamento").using("btree", table.departamentoCodigo.asc().nullsLast()),
+	index("idx_convocatorias_boe_oposicion").using("btree", table.oposicionRelacionada.asc().nullsLast()),
+	index("idx_convocatorias_boe_relevancia").using("btree", table.relevanciaScore.desc().nullsFirst()),
+	foreignKey({
+		columns: [table.convocatoriaOrigenId],
+		foreignColumns: [table.id],
+		name: "convocatorias_boe_origen_fkey"
+	}).onDelete("set null"),
+	pgPolicy("Public can read active convocatorias", { as: "permissive", for: "select", to: ["public"], using: sql`(is_active = true)` }),
+	check("convocatorias_boe_tipo_check", sql`tipo IS NULL OR tipo = ANY (ARRAY['convocatoria'::text, 'admitidos'::text, 'tribunal'::text, 'resultado'::text, 'correccion'::text, 'otro'::text])`),
+	check("convocatorias_boe_categoria_check", sql`categoria IS NULL OR categoria = ANY (ARRAY['A1'::text, 'A2'::text, 'B'::text, 'C1'::text, 'C2'::text])`),
+	check("convocatorias_boe_acceso_check", sql`acceso IS NULL OR acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'mixto'::text, 'discapacidad'::text])`),
+]);

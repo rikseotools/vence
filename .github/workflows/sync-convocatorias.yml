@@ -1,0 +1,73 @@
+name: Sync Convocatorias BOE
+
+on:
+  schedule:
+    # Ejecutar Lunes a Viernes a las 8:30 AM UTC (9:30 AM España invierno, 10:30 AM verano)
+    # El BOE se publica a primera hora de la mañana
+    - cron: '30 8 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      fecha:
+        description: 'Fecha específica (YYYYMMDD) - dejar vacío para hoy'
+        required: false
+        type: string
+
+jobs:
+  sync-convocatorias:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sync convocatorias from BOE
+        id: sync
+        run: |
+          FECHA="${{ github.event.inputs.fecha }}"
+          URL="https://www.vence.es/api/cron/sync-convocatorias"
+
+          if [ -n "$FECHA" ]; then
+            URL="${URL}?fecha=${FECHA}"
+          fi
+
+          echo "📥 Llamando a: $URL"
+
+          RESPONSE=$(curl -s -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            "$URL")
+
+          echo "Response: $RESPONSE"
+
+          # Extraer estadísticas
+          SUCCESS=$(echo $RESPONSE | jq -r '.success // false')
+          FECHA_SYNC=$(echo $RESPONSE | jq -r '.fecha // "?"')
+          TOTAL=$(echo $RESPONSE | jq -r '.stats.total // 0')
+          NUEVAS=$(echo $RESPONSE | jq -r '.stats.nuevas // 0')
+          EXISTENTES=$(echo $RESPONSE | jq -r '.stats.existentes // 0')
+          ERRORES=$(echo $RESPONSE | jq -r '.stats.errores // 0')
+          RELEVANTES=$(echo $RESPONSE | jq -r '.nuevasRelevantes // 0')
+          DURATION=$(echo $RESPONSE | jq -r '.duration // "?"')
+
+          echo "success=$SUCCESS" >> $GITHUB_OUTPUT
+          echo "fecha=$FECHA_SYNC" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "nuevas=$NUEVAS" >> $GITHUB_OUTPUT
+          echo "existentes=$EXISTENTES" >> $GITHUB_OUTPUT
+          echo "errores=$ERRORES" >> $GITHUB_OUTPUT
+          echo "relevantes=$RELEVANTES" >> $GITHUB_OUTPUT
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
+
+      - name: Log results
+        run: |
+          echo "📋 Sync Convocatorias BOE - $(date)"
+          echo "   Fecha BOE: ${{ steps.sync.outputs.fecha }}"
+          echo "   Total en sección 2B: ${{ steps.sync.outputs.total }}"
+          echo "   Nuevas: ${{ steps.sync.outputs.nuevas }}"
+          echo "   Ya existentes: ${{ steps.sync.outputs.existentes }}"
+          echo "   Errores: ${{ steps.sync.outputs.errores }}"
+          echo "   Relevantes para oposiciones: ${{ steps.sync.outputs.relevantes }}"
+          echo "   Duración: ${{ steps.sync.outputs.duration }}"
+
+      - name: Check for errors
+        if: steps.sync.outputs.success != 'true'
+        run: |
+          echo "❌ Error en la sincronización"
+          exit 1

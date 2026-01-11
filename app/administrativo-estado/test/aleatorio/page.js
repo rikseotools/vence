@@ -392,120 +392,39 @@ export default function TestAleatorioAdministrativoPage() {
   }
 
   // Función para verificar preguntas disponibles con los criterios actuales
+  // ✅ REFACTORIZADO: Usa API Layer con Drizzle (1 sola llamada vs N×M llamadas)
   const checkAvailableQuestions = async () => {
-
     if (selectedThemes.length === 0) {
       setAvailableQuestions(0)
       return
     }
 
     setCheckingAvailability(true)
-    setCheckingProgress({ current: 0, total: selectedThemes.length, themeName: '' })
 
     try {
-      const { getSupabaseClient } = await import('../../../../lib/supabase')
-      const supabase = getSupabaseClient()
+      const response = await fetch('/api/random-test-data/check-availability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          oposicion: 'administrativo-estado',
+          selectedThemes,
+          difficulty,
+          onlyOfficialQuestions,
+          focusEssentialArticles,
+        }),
+      })
 
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setAvailableQuestions(selectedThemes.length * 50)
+      const result = await response.json()
+
+      if (!result.success) {
+        console.error('Error verificando disponibilidad:', result.error)
+        // Fallback estimado
+        const fallback = selectedThemes.length * (onlyOfficialQuestions ? 10 : focusEssentialArticles ? 8 : 50)
+        setAvailableQuestions(fallback)
         return
       }
 
-      let totalQuestions = 0
-      let currentThemeIndex = 0
-
-      for (const tema of selectedThemes) {
-        // Actualizar progreso con el nombre del tema actual
-        const currentTheme = themes.find(t => t.id === tema)
-        setCheckingProgress({
-          current: currentThemeIndex + 1,
-          total: selectedThemes.length,
-          themeName: currentTheme?.name || `Tema ${tema}`
-        })
-        try {
-          const { data: mappings, error: mappingError } = await supabase
-            .from('topic_scope')
-            .select(`
-              article_numbers,
-              laws!inner(short_name, id, name),
-              topics!inner(topic_number, position_type)
-            `)
-            .eq('topics.topic_number', tema)
-            .eq('topics.position_type', 'administrativo')
-
-          if (mappingError || !mappings?.length) continue
-
-          for (const mapping of mappings) {
-            const lawShortName = mapping.laws.short_name
-            const articleNumbers = mapping.article_numbers
-
-            let filteredArticleNumbers = articleNumbers
-            if (focusEssentialArticles) {
-              // ✅ Solo filtrar si hay artículos imprescindibles, no bloquear todo
-              
-              const { count: essentialArticles, error: essentialError } = await supabase
-                .from('questions')
-                .select('id, articles!inner(article_number, laws!inner(short_name))', { count: 'exact', head: true })
-                .eq('is_active', true)
-                .eq('is_official_exam', true)
-                .eq('articles.laws.short_name', lawShortName)
-                .in('articles.article_number', articleNumbers)
-
-              if (essentialError) {
-                continue  // Solo saltar esta ley específica
-              }
-              
-              if (!essentialArticles || essentialArticles === 0) {
-                continue  // Solo saltar esta ley específica
-              }
-              
-            }
-
-            let query = supabase
-              .from('questions')
-              .select('id, articles!inner(laws!inner(short_name))', { count: 'exact', head: true })
-              .eq('is_active', true)
-              .eq('articles.laws.short_name', lawShortName)
-              .in('articles.article_number', filteredArticleNumbers)
-
-            if (difficulty !== 'mixed') {
-              const difficultyMap = {
-                'easy': 'easy',
-                'medium': 'medium', 
-                'hard': 'hard'
-              }
-              const targetDifficulty = difficultyMap[difficulty]
-              if (targetDifficulty) {
-                query = query.eq('difficulty', targetDifficulty)
-              }
-            }
-
-            if (onlyOfficialQuestions) {
-              query = query.eq('is_official_exam', true)
-            }
-
-            if (focusEssentialArticles) {
-              query = query.eq('is_official_exam', true)
-            }
-
-            const { count, error: countError } = await query
-
-            if (countError) continue
-
-            if (count > 0) {
-              totalQuestions += count
-            }
-          }
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error(`Error procesando tema ${tema}:`, error)
-          }
-        }
-        currentThemeIndex++ // Incrementar índice para el siguiente tema
-      }
-
-      setAvailableQuestions(totalQuestions)
+      setAvailableQuestions(result.availableQuestions || 0)
 
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {

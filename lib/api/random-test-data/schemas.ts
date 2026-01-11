@@ -113,7 +113,10 @@ export type GetRandomTestDataResponse = z.infer<typeof getRandomTestDataResponse
 export const checkAvailableQuestionsResponseSchema = z.object({
   success: z.boolean(),
   availableQuestions: z.number().int().nonnegative().optional(),
+  // Desglose por tema (opcional, para debugging)
+  breakdown: z.record(z.string(), z.number().int().nonnegative()).optional(),
   error: z.string().optional(),
+  cached: z.boolean().optional(),
 })
 
 export type CheckAvailableQuestionsResponse = z.infer<typeof checkAvailableQuestionsResponseSchema>
