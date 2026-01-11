@@ -159,6 +159,86 @@ export function detectarCategoria(titulo: string, epigrafe: string = ''): Catego
   return null;
 }
 
+/**
+ * Detecta la categoría desde el contenido_texto
+ * Busca patrones más específicos que en el título
+ */
+export function detectarCategoriaDeContenido(contenido: string): Categoria | null {
+  if (!contenido) return null;
+
+  const t = contenido.toLowerCase();
+
+  // Patrones más específicos del contenido
+
+  // C2 - Auxiliar (clase auxiliar, subgrupo C2)
+  if (
+    t.includes('subgrupo c2') ||
+    t.includes('grupo c2') ||
+    t.includes('clase auxiliar') ||
+    (t.includes('subescala auxiliar') && !t.includes('técnic'))
+  ) {
+    return 'C2';
+  }
+
+  // C1 - Administrativo (clase administrativa, subgrupo C1)
+  if (
+    t.includes('subgrupo c1') ||
+    t.includes('grupo c1') ||
+    t.includes('clase administrativa') ||
+    (t.includes('subescala administrativa') && !t.includes('auxiliar'))
+  ) {
+    return 'C1';
+  }
+
+  // A2 - Técnico medio (clase media, subgrupo A2)
+  if (
+    t.includes('subgrupo a2') ||
+    t.includes('grupo a2') ||
+    t.includes('clase media') ||
+    t.includes('técnico medio') ||
+    t.includes('tecnico medio')
+  ) {
+    return 'A2';
+  }
+
+  // A1 - Técnico superior (clase superior, subgrupo A1)
+  if (
+    t.includes('subgrupo a1') ||
+    t.includes('grupo a1') ||
+    t.includes('clase superior') ||
+    t.includes('técnico superior') ||
+    t.includes('tecnico superior')
+  ) {
+    return 'A1';
+  }
+
+  // B - Técnico (sin especificar)
+  if (
+    t.includes('grupo b)') ||
+    t.includes('subgrupo b)') ||
+    t.includes('grupo b ') ||
+    (t.includes('técnico') && !t.includes('superior') && !t.includes('medio') && !t.includes('auxiliar'))
+  ) {
+    return 'B';
+  }
+
+  // Patrones por titulación requerida
+  if (t.includes('graduado escolar') || t.includes('eso') || t.includes('educación secundaria obligatoria')) {
+    return 'C2';
+  }
+  if (t.includes('bachiller') || t.includes('técnico superior')) {
+    return 'C1';
+  }
+  if (t.includes('diplomatura') || t.includes('grado universitario')) {
+    return 'A2';
+  }
+  if (t.includes('licenciatura') || t.includes('título de grado') || t.includes('ingeniería superior')) {
+    return 'A1';
+  }
+
+  return null;
+}
+
 // ============================================
 // DETECCIÓN DE OPOSICIÓN
 // ============================================
@@ -205,6 +285,43 @@ export function detectarOposicion(titulo: string, departamento: string = ''): st
 // EXTRACCIÓN DE PLAZAS
 // ============================================
 
+// Mapa de números en texto español
+const NUMEROS_TEXTO: Record<string, number> = {
+  'una': 1, 'uno': 1, 'un': 1,
+  'dos': 2, 'tres': 3, 'cuatro': 4, 'cinco': 5,
+  'seis': 6, 'siete': 7, 'ocho': 8, 'nueve': 9, 'diez': 10,
+  'once': 11, 'doce': 12, 'trece': 13, 'catorce': 14, 'quince': 15,
+  'dieciséis': 16, 'dieciseis': 16, 'diecisiete': 17, 'dieciocho': 18, 'diecinueve': 19,
+  'veinte': 20, 'veintiuna': 21, 'veintiuno': 21, 'veintidós': 22, 'veintidos': 22,
+  'veintitrés': 23, 'veintitres': 23, 'veinticuatro': 24, 'veinticinco': 25,
+  'treinta': 30, 'cuarenta': 40, 'cincuenta': 50, 'sesenta': 60,
+  'setenta': 70, 'ochenta': 80, 'noventa': 90, 'cien': 100
+};
+
+/**
+ * Convierte texto numérico español a número
+ */
+function textoANumero(texto: string): number | null {
+  const t = texto.toLowerCase().trim();
+
+  // Primero intentar como número directo
+  const numDirecto = parseInt(t.replace(/\./g, ''));
+  if (!isNaN(numDirecto)) return numDirecto;
+
+  // Buscar en el mapa
+  if (NUMEROS_TEXTO[t]) return NUMEROS_TEXTO[t];
+
+  // Patrones compuestos: "treinta y cinco"
+  const compuesto = t.match(/^(\w+)\s+y\s+(\w+)$/);
+  if (compuesto) {
+    const decenas = NUMEROS_TEXTO[compuesto[1]];
+    const unidades = NUMEROS_TEXTO[compuesto[2]];
+    if (decenas && unidades) return decenas + unidades;
+  }
+
+  return null;
+}
+
 /**
  * Extrae el número de plazas del título
  */
@@ -249,6 +366,118 @@ export function extraerPlazas(titulo: string): PlazasExtraidas {
     libre,
     pi,
     discapacidad
+  };
+}
+
+/**
+ * Extrae el número de plazas del contenido_texto (más completo que del título)
+ * Busca patrones como "Dos plazas de...", "5 plazas de...", "la plaza de..."
+ */
+export function extraerPlazasDeContenido(contenido: string): PlazasExtraidas {
+  if (!contenido) {
+    return { total: null, libre: null, pi: null, discapacidad: null };
+  }
+
+  const t = contenido.toLowerCase();
+  let totalPlazas = 0;
+  let plazasLibre = 0;
+  let plazasPI = 0;
+  let plazasDiscapacidad = 0;
+
+  // Patrón 1: "X plazas de..." con número
+  const patronNumerico = /(\d+)\s+plazas?\s+(?:de|del|para|vacantes?|convocadas?)/gi;
+  let match;
+  while ((match = patronNumerico.exec(t)) !== null) {
+    const num = parseInt(match[1]);
+    totalPlazas += num;
+
+    // Verificar contexto para tipo de acceso
+    const contexto = t.substring(match.index, match.index + 200);
+    if (contexto.includes('turno libre') || contexto.includes('acceso libre')) {
+      plazasLibre += num;
+    }
+    if (contexto.includes('promoción interna') || contexto.includes('promocion interna')) {
+      plazasPI += num;
+    }
+    if (contexto.includes('discapacidad') || contexto.includes('diversidad funcional')) {
+      plazasDiscapacidad += num;
+    }
+  }
+
+  // Patrón 2: "Una/Dos/Tres... plazas de..." con texto
+  const patronTexto = /(una|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciséis|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuna|veintiuno|veintidós|veintidos|veintitrés|veintitres|veinticuatro|veinticinco|treinta|cuarenta|cincuenta)\s+plazas?\s+(?:de|del|para|vacantes?)/gi;
+
+  while ((match = patronTexto.exec(t)) !== null) {
+    const num = textoANumero(match[1]);
+    if (num) {
+      totalPlazas += num;
+
+      // Verificar contexto
+      const contexto = t.substring(match.index, match.index + 200);
+      if (contexto.includes('turno libre') || contexto.includes('acceso libre')) {
+        plazasLibre += num;
+      }
+      if (contexto.includes('promoción interna') || contexto.includes('promocion interna')) {
+        plazasPI += num;
+      }
+    }
+  }
+
+  // Patrón 3: Total general "X plazas" al principio
+  const patronTotal = /(?:^|\n)\s*(\d+)\s+plazas?\s*(?:\.|,|\n)/i;
+  const matchTotal = t.match(patronTotal);
+  if (matchTotal && totalPlazas === 0) {
+    totalPlazas = parseInt(matchTotal[1]);
+  }
+
+  // Patrón 4: "la plaza de..." / "la plaza vacante" (singular = 1 plaza)
+  // Solo si no hemos encontrado plazas aún
+  if (totalPlazas === 0) {
+    const patronSingular = /(?:la|esta|dicha|siguiente|presente)\s+plaza\s+(?:de|del|vacante|convocada|objeto)/gi;
+    const matchesSingular = t.match(patronSingular);
+    if (matchesSingular && matchesSingular.length > 0) {
+      // Contar menciones únicas (evitar duplicados del mismo texto)
+      totalPlazas = 1; // Singular = 1 plaza
+    }
+  }
+
+  // Patrón 5: "provisión de la/una plaza" (singular = 1 plaza)
+  if (totalPlazas === 0) {
+    const patronProvision = /provisi[oó]n\s+(?:de\s+)?(?:la|una)\s+plaza/gi;
+    if (patronProvision.test(t)) {
+      totalPlazas = 1;
+    }
+  }
+
+  // Patrón 6: "proveer la/una plaza" (singular = 1 plaza)
+  if (totalPlazas === 0) {
+    const patronProveer = /proveer\s+(?:la|una)\s+plaza/gi;
+    if (patronProveer.test(t)) {
+      totalPlazas = 1;
+    }
+  }
+
+  // Patrón 7: "cubrir la/una plaza" (singular = 1 plaza)
+  if (totalPlazas === 0) {
+    const patronCubrir = /cubrir\s+(?:la|una)\s+plaza/gi;
+    if (patronCubrir.test(t)) {
+      totalPlazas = 1;
+    }
+  }
+
+  // Patrón 8: "convocatoria de una plaza" (singular = 1 plaza)
+  if (totalPlazas === 0) {
+    const patronConvUna = /convocatoria\s+(?:de\s+)?una\s+plaza/gi;
+    if (patronConvUna.test(t)) {
+      totalPlazas = 1;
+    }
+  }
+
+  return {
+    total: totalPlazas > 0 ? totalPlazas : null,
+    libre: plazasLibre > 0 ? plazasLibre : null,
+    pi: plazasPI > 0 ? plazasPI : null,
+    discapacidad: plazasDiscapacidad > 0 ? plazasDiscapacidad : null
   };
 }
 
@@ -314,24 +543,54 @@ export function extraerDatosDelTexto(texto: string): DatosExtraidos {
  * Extrae el plazo de inscripción en días
  */
 function extraerPlazo(texto: string): number | null {
-  // Patrón: "plazo de X días hábiles/naturales"
-  const match = texto.match(/plazo\s+de\s+(\w+)\s+d[ií]as\s+(?:h[aá]biles|naturales)?/i);
-  if (match) {
-    const num = spanishTextToNumber(match[1]);
-    if (num) return parseInt(num);
+  // Patrón 1: "plazo de X días hábiles/naturales"
+  const match1 = texto.match(/plazo\s+(?:de\s+)?(\w+)\s+d[ií]as\s*(?:h[aá]biles|naturales)?/i);
+  if (match1) {
+    const num = spanishTextToNumber(match1[1]) || parseInt(match1[1]);
+    if (num && !isNaN(num)) return num;
   }
 
-  // Patrón: "X días hábiles"
-  const match2 = texto.match(/(\d+)\s+d[ií]as\s+h[aá]biles/i);
+  // Patrón 2: "X días hábiles" (número)
+  const match2 = texto.match(/(\d+)\s+d[ií]as\s*(?:h[aá]biles|naturales)/i);
   if (match2) {
     return parseInt(match2[1]);
   }
 
-  // Patrón: "veinte días"
-  const match3 = texto.match(/(veinte|quince|treinta|diez)\s+d[ií]as/i);
+  // Patrón 3: "veinte/quince/treinta días" (texto común)
+  const match3 = texto.match(/(veinte|veintiuno|veintidós|veintitrés|veinticuatro|veinticinco|quince|treinta|diez|cinco)\s+d[ií]as/i);
   if (match3) {
     const num = spanishTextToNumber(match3[1]);
     if (num) return parseInt(num);
+  }
+
+  // Patrón 4: "el plazo será de X días"
+  const match4 = texto.match(/plazo\s+ser[aá]\s+(?:de\s+)?(\w+)\s+d[ií]as/i);
+  if (match4) {
+    const num = spanishTextToNumber(match4[1]) || parseInt(match4[1]);
+    if (num && !isNaN(num)) return num;
+  }
+
+  // Patrón 5: "presentación de solicitudes... X días"
+  const match5 = texto.match(/presentaci[oó]n\s+de\s+(?:solicitudes?|instancias?).{0,50}(\d+)\s+d[ií]as/i);
+  if (match5) {
+    return parseInt(match5[1]);
+  }
+
+  // Patrón 6: "un mes" = 30 días (aproximado)
+  if (texto.match(/plazo\s+(?:de\s+)?un\s+mes/i)) {
+    return 30;
+  }
+
+  // Patrón 7: "X días naturales/hábiles a partir de"
+  const match7 = texto.match(/(\d+)\s+d[ií]as\s*(?:h[aá]biles|naturales)?\s*(?:a\s+partir|desde|contados?)/i);
+  if (match7) {
+    return parseInt(match7[1]);
+  }
+
+  // Patrón 8: "plazo... finalizará... X días"
+  const match8 = texto.match(/plazo.{0,30}finalizar[aá].{0,30}(\d+)\s+d[ií]as/i);
+  if (match8) {
+    return parseInt(match8[1]);
   }
 
   return null;
@@ -398,6 +657,210 @@ function extraerUrlBases(texto: string): string | null {
   }
 
   return null;
+}
+
+// ============================================
+// DETECCIÓN DE ACCESO DESDE CONTENIDO
+// ============================================
+
+/**
+ * Detecta el tipo de acceso desde el contenido_texto
+ */
+export function detectarAccesoDeContenido(contenido: string): TipoAcceso | null {
+  if (!contenido) return null;
+
+  const t = contenido.toLowerCase();
+
+  // Contar menciones de cada tipo
+  const mencionesLibre = (t.match(/turno libre|acceso libre/g) || []).length;
+  const mencionesPI = (t.match(/promoci[oó]n interna/g) || []).length;
+  const mencionesDisc = (t.match(/discapacidad|diversidad funcional/g) || []).length;
+
+  // Determinar tipo
+  if (mencionesLibre > 0 && mencionesPI > 0) {
+    return 'mixto';
+  }
+  if (mencionesPI > 0 && mencionesLibre === 0) {
+    return 'promocion_interna';
+  }
+  if (mencionesLibre > 0) {
+    return 'libre';
+  }
+  if (mencionesDisc > 0) {
+    return 'discapacidad';
+  }
+
+  return null;
+}
+
+// ============================================
+// GENERACIÓN DE RESUMEN
+// ============================================
+
+/**
+ * Genera un resumen estructurado de la convocatoria
+ */
+export function generarResumen(datos: {
+  tipo: TipoConvocatoria | null;
+  categoria: Categoria | null;
+  numPlazas: number | null;
+  numPlazasLibre: number | null;
+  numPlazasPI: number | null;
+  acceso: TipoAcceso | null;
+  departamento: string | null;
+  comunidadAutonoma: string | null;
+  municipio: string | null;
+  plazoInscripcion: number | null;
+  titulacion: string | null;
+}): string {
+  const partes: string[] = [];
+
+  // Tipo y plazas
+  if (datos.tipo === 'convocatoria') {
+    if (datos.numPlazas) {
+      partes.push(`Convocatoria de ${datos.numPlazas} plazas`);
+    } else {
+      partes.push('Convocatoria de oposiciones');
+    }
+  } else if (datos.tipo === 'admitidos') {
+    partes.push('Lista de admitidos y excluidos');
+  } else if (datos.tipo === 'tribunal') {
+    partes.push('Composición del tribunal calificador');
+  } else if (datos.tipo === 'resultado') {
+    partes.push('Resultados del proceso selectivo');
+  }
+
+  // Categoría
+  if (datos.categoria) {
+    const categoriaDesc: Record<string, string> = {
+      'A1': 'Grupo A1 (Técnico Superior)',
+      'A2': 'Grupo A2 (Técnico Medio)',
+      'B': 'Grupo B',
+      'C1': 'Grupo C1 (Administrativo)',
+      'C2': 'Grupo C2 (Auxiliar)'
+    };
+    partes.push(categoriaDesc[datos.categoria] || `Grupo ${datos.categoria}`);
+  }
+
+  // Acceso
+  if (datos.acceso) {
+    if (datos.acceso === 'mixto') {
+      const textoAcceso = [];
+      if (datos.numPlazasLibre) textoAcceso.push(`${datos.numPlazasLibre} libre`);
+      if (datos.numPlazasPI) textoAcceso.push(`${datos.numPlazasPI} promoción interna`);
+      if (textoAcceso.length > 0) {
+        partes.push(`Acceso: ${textoAcceso.join(', ')}`);
+      } else {
+        partes.push('Acceso libre y promoción interna');
+      }
+    } else if (datos.acceso === 'libre') {
+      partes.push('Turno libre');
+    } else if (datos.acceso === 'promocion_interna') {
+      partes.push('Promoción interna');
+    } else if (datos.acceso === 'discapacidad') {
+      partes.push('Reserva discapacidad');
+    }
+  }
+
+  // Ubicación
+  if (datos.municipio) {
+    partes.push(datos.municipio);
+  } else if (datos.comunidadAutonoma) {
+    partes.push(datos.comunidadAutonoma);
+  } else if (datos.departamento) {
+    // Limpiar nombre de departamento
+    const deptoLimpio = datos.departamento
+      .replace('MINISTERIO DE ', '')
+      .replace('MINISTERIO PARA ', '')
+      .replace('ADMINISTRACIÓN LOCAL', 'Administración Local');
+    partes.push(deptoLimpio);
+  }
+
+  // Plazo
+  if (datos.plazoInscripcion) {
+    partes.push(`Plazo: ${datos.plazoInscripcion} días hábiles`);
+  }
+
+  // Titulación
+  if (datos.titulacion) {
+    partes.push(`Requisito: ${datos.titulacion}`);
+  }
+
+  return partes.join('. ') + '.';
+}
+
+// ============================================
+// EXTRACCIÓN COMPLETA DESDE CONTENIDO
+// ============================================
+
+export interface DatosCompletosExtraidos {
+  plazas: PlazasExtraidas;
+  categoria: Categoria | null;
+  acceso: TipoAcceso | null;
+  plazoInscripcionDias: number | null;
+  titulacionRequerida: string | null;
+  tieneTemario: boolean;
+  fechaExamen: string | null;
+  resumen: string | null;
+}
+
+/**
+ * Extrae todos los datos posibles del contenido_texto
+ * Esta función combina todas las extracciones en una sola llamada
+ */
+export function extraerDatosCompletos(
+  contenido: string,
+  titulo: string,
+  departamento: string,
+  datosGeo: DatosGeograficos
+): DatosCompletosExtraidos {
+  // Extraer plazas (primero del contenido, fallback al título)
+  let plazas = extraerPlazasDeContenido(contenido);
+  if (!plazas.total) {
+    plazas = extraerPlazas(titulo);
+  }
+
+  // Extraer categoría (primero del contenido, fallback al título)
+  let categoria = detectarCategoriaDeContenido(contenido);
+  if (!categoria) {
+    categoria = detectarCategoria(titulo, '');
+  }
+
+  // Extraer acceso (primero del contenido, fallback al título)
+  let acceso = detectarAccesoDeContenido(contenido);
+  if (!acceso) {
+    acceso = detectarAcceso(titulo);
+  }
+
+  // Extraer datos del texto
+  const datosTexto = extraerDatosDelTexto(contenido);
+
+  // Generar resumen
+  const tipo = detectarTipo(titulo);
+  const resumen = generarResumen({
+    tipo,
+    categoria,
+    numPlazas: plazas.total,
+    numPlazasLibre: plazas.libre,
+    numPlazasPI: plazas.pi,
+    acceso,
+    departamento,
+    comunidadAutonoma: datosGeo.comunidadAutonoma,
+    municipio: datosGeo.municipio,
+    plazoInscripcion: datosTexto.plazoInscripcionDias,
+    titulacion: datosTexto.titulacionRequerida
+  });
+
+  return {
+    plazas,
+    categoria,
+    acceso,
+    plazoInscripcionDias: datosTexto.plazoInscripcionDias,
+    titulacionRequerida: datosTexto.titulacionRequerida,
+    tieneTemario: datosTexto.tieneTemario,
+    fechaExamen: datosTexto.fechaExamenMencionada,
+    resumen
+  };
 }
 
 // ============================================

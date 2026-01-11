@@ -19,13 +19,17 @@ import {
 import {
   detectarTipo,
   detectarCategoria,
+  detectarCategoriaDeContenido,
   detectarOposicion,
   extraerPlazas,
+  extraerPlazasDeContenido,
   detectarAcceso,
+  detectarAccesoDeContenido,
   extraerDatosDelTexto,
   calcularRelevancia,
   limpiarTitulo,
-  extraerDatosGeograficos
+  extraerDatosGeograficos,
+  generarResumen
 } from '@/lib/boe/convocatoriasParser';
 
 // Crear cliente Supabase con service role key (bypass RLS)
@@ -176,6 +180,39 @@ export async function GET(request: Request) {
             nuevaConv.tiene_temario = datosTexto.tieneTemario;
             nuevaConv.fecha_examen = datosTexto.fechaExamenMencionada;
             nuevaConv.url_bases = datosTexto.urlBases;
+
+            // Extraer datos mejorados del contenido_texto
+            if (xmlData.contenidoTexto) {
+              // Plazas (prioridad contenido > título)
+              const plazasContenido = extraerPlazasDeContenido(xmlData.contenidoTexto);
+              if (plazasContenido.total) nuevaConv.num_plazas = plazasContenido.total;
+              if (plazasContenido.libre) nuevaConv.num_plazas_libre = plazasContenido.libre;
+              if (plazasContenido.pi) nuevaConv.num_plazas_pi = plazasContenido.pi;
+              if (plazasContenido.discapacidad) nuevaConv.num_plazas_discapacidad = plazasContenido.discapacidad;
+
+              // Categoría (prioridad contenido > título)
+              const categoriaContenido = detectarCategoriaDeContenido(xmlData.contenidoTexto);
+              if (categoriaContenido) nuevaConv.categoria = categoriaContenido;
+
+              // Acceso (prioridad contenido > título)
+              const accesoContenido = detectarAccesoDeContenido(xmlData.contenidoTexto);
+              if (accesoContenido) nuevaConv.acceso = accesoContenido;
+
+              // Generar resumen estructurado
+              nuevaConv.resumen = generarResumen({
+                tipo: nuevaConv.tipo,
+                categoria: nuevaConv.categoria,
+                numPlazas: nuevaConv.num_plazas,
+                numPlazasLibre: nuevaConv.num_plazas_libre,
+                numPlazasPI: nuevaConv.num_plazas_pi,
+                acceso: nuevaConv.acceso,
+                departamento: nuevaConv.departamento_nombre,
+                comunidadAutonoma: nuevaConv.comunidad_autonoma,
+                municipio: nuevaConv.municipio,
+                plazoInscripcion: nuevaConv.plazo_inscripcion_dias,
+                titulacion: nuevaConv.titulacion_requerida,
+              });
+            }
 
             // Pequeña pausa para no saturar el servidor del BOE
             await sleep(100);
