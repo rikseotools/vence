@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import supabase from '@/lib/supabase'
 
-// Contraseña para acceso de Armando (cambiar en producción)
-const ARMANDO_PASSWORD = 'armando2024vence'
+// Contraseña para acceso de Armando
+const ARMANDO_PASSWORD = 'V3nc3!Arm@nd0$2026#Liq'
 
 export default function ArmandoPage() {
   const [authenticated, setAuthenticated] = useState(false)

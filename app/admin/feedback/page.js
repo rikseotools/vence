@@ -633,11 +633,13 @@ export default function AdminFeedbackPage() {
         userData.pendingConversations++
       }
 
-      // Actualizar última actividad
+      // Actualizar última actividad (considerar también la conversación)
       const feedbackDate = new Date(feedback.updated_at || feedback.created_at)
+      const conversationDate = conversation?.updated_at ? new Date(conversation.updated_at) : null
+      const mostRecentDate = conversationDate && conversationDate > feedbackDate ? conversationDate : feedbackDate
       const lastDate = new Date(userData.lastActivity)
-      if (feedbackDate > lastDate) {
-        userData.lastActivity = feedback.updated_at || feedback.created_at
+      if (mostRecentDate > lastDate) {
+        userData.lastActivity = mostRecentDate.toISOString()
       }
     })
 
@@ -1626,7 +1628,16 @@ export default function AdminFeedbackPage() {
               {/* Panel izquierdo: Lista de conversaciones */}
               <div className="w-80 border-r dark:border-gray-700 overflow-y-auto bg-gray-50 dark:bg-gray-900">
                 {selectedUser.feedbacks
-                  .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+                  .sort((a, b) => {
+                    // Primero ordenar por pendientes (arriba)
+                    const convA = conversations[a.id]
+                    const convB = conversations[b.id]
+                    const isPendingA = convA?.status === 'waiting_admin' || (a.status === 'pending' && !convA)
+                    const isPendingB = convB?.status === 'waiting_admin' || (b.status === 'pending' && !convB)
+                    if (isPendingA !== isPendingB) return isPendingA ? -1 : 1
+                    // Luego por fecha más reciente
+                    return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+                  })
                   .map((feedback) => {
                     const conversation = conversations[feedback.id]
                     // Pendiente para admin: waiting_admin O (pending SIN conversación)
