@@ -1385,6 +1385,91 @@ export default function ConversionesPage() {
                 </div>
               </div>
 
+              {/* MRR y Proyecciones de Facturación */}
+              {predictionData.mrr && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <span>💰</span>
+                    MRR y Proyecciones de Facturación
+                  </h3>
+
+                  {/* MRR Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                      <div className="text-3xl font-bold text-emerald-600">{predictionData.mrr.current.toFixed(2)}€</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">MRR (mensual)</div>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="text-3xl font-bold text-blue-600">{predictionData.mrr.arr.toFixed(0)}€</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">ARR (anual)</div>
+                    </div>
+                    <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <div className="text-3xl font-bold text-purple-600">{predictionData.mrr.activeSubscriptions}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Suscripciones activas</div>
+                    </div>
+                    <div className="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <div className="text-3xl font-bold text-gray-600 dark:text-gray-300">{predictionData.mrr.cancelingSubscriptions}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Cancelando</div>
+                    </div>
+                  </div>
+
+                  {/* Proyección MRR */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg text-white">
+                      <div className="text-sm opacity-90 mb-1">MRR en 6 meses</div>
+                      <div className="text-3xl font-bold">{predictionData.mrr.in6Months?.toFixed(0) || 0}€/mes</div>
+                      <div className="text-xs opacity-75 mt-1">
+                        {predictionData.mrr.current}€ actual + {((predictionData.mrr.in6Months || 0) - predictionData.mrr.current).toFixed(0)}€ nuevas subs
+                      </div>
+                      <div className="text-xs opacity-60 mt-1">
+                        ARR: {predictionData.mrr.arrIn6Months?.toFixed(0) || 0}€/año
+                      </div>
+                    </div>
+                    <div className="p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white">
+                      <div className="text-sm opacity-90 mb-1">MRR en 12 meses</div>
+                      <div className="text-3xl font-bold">{predictionData.mrr.in12Months?.toFixed(0) || 0}€/mes</div>
+                      <div className="text-xs opacity-75 mt-1">
+                        {predictionData.mrr.current}€ actual + {((predictionData.mrr.in12Months || 0) - predictionData.mrr.current).toFixed(0)}€ nuevas subs
+                      </div>
+                      <div className="text-xs opacity-60 mt-1">
+                        ARR: {predictionData.mrr.arrIn12Months?.toFixed(0) || 0}€/año
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calendario de renovaciones */}
+                  {predictionData.renewals && (
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Renovaciones por mes</h4>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                      {predictionData.renewals.byMonth.slice(0, 6).map((month, i) => (
+                        <div
+                          key={i}
+                          className={`text-center p-3 rounded-lg border ${
+                            month.renewals > 0
+                              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                              : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                          }`}
+                        >
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{month.month}</div>
+                          <div className={`text-lg font-bold ${month.renewals > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                            {month.revenue}€
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {month.renewals} {month.renewals === 1 ? 'renovación' : 'renovaciones'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  )}
+
+                  <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-2">
+                    <strong>Nota:</strong> MRR proyectado asume 0% churn. Cada nueva suscripción añade ~{predictionData.mrr.mrrPerNewSub?.toFixed(2) || 0}€/mes al MRR. Fórmula: {predictionData.mrr.newSubsPerMonth?.toFixed(1) || 0} nuevas subs/mes × {predictionData.mrr.mrrPerNewSub?.toFixed(2) || 0}€ = +{((predictionData.mrr.newSubsPerMonth || 0) * (predictionData.mrr.mrrPerNewSub || 0)).toFixed(0)}€ MRR/mes.
+                  </div>
+                </div>
+              )}
+
               {/* Historial de pagos */}
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">

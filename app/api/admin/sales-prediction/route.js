@@ -153,6 +153,111 @@ export async function GET() {
       ? (now - lastPaymentDate) / (1000 * 60 * 60 * 24)
       : null
 
+    // 8. MRR y previsión de renovaciones
+    const { data: subscriptions, error: subsError } = await supabase
+      .from('user_subscriptions')
+      .select('*')
+      .eq('status', 'active')
+
+    if (subsError) throw subsError
+
+    // Precios por plan
+    const PRICES = {
+      premium_semester: 59,   // 6 meses
+      premium_annual: 99,     // 12 meses (si existe)
+      premium_monthly: 20     // mensual
+    }
+
+    // Calcular MRR (ingresos recurrentes mensualizados)
+    let mrr = 0
+    const activeSubscriptions = subscriptions || []
+
+    activeSubscriptions.forEach(sub => {
+      if (sub.plan_type === 'premium_semester') {
+        mrr += PRICES.premium_semester / 6  // 9.83€/mes
+      } else if (sub.plan_type === 'premium_annual') {
+        mrr += PRICES.premium_annual / 12   // 8.25€/mes
+      } else if (sub.plan_type === 'premium_monthly') {
+        mrr += PRICES.premium_monthly       // 20€/mes
+      } else {
+        // Fallback: detectar por duración del periodo
+        const start = new Date(sub.current_period_start)
+        const end = new Date(sub.current_period_end)
+        const days = (end - start) / (1000 * 60 * 60 * 24)
+        if (days <= 35) {
+          mrr += PRICES.premium_monthly     // ~1 mes = mensual
+        } else if (days <= 200) {
+          mrr += PRICES.premium_semester / 6 // ~6 meses = semestral
+        } else {
+          mrr += PRICES.premium_annual / 12  // ~12 meses = anual
+        }
+      }
+    })
+
+    // Proyección de renovaciones por mes (próximos 12 meses)
+    const renewalProjection = []
+    for (let i = 0; i < 12; i++) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() + i, 1)
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + i + 1, 0)
+
+      let renewalsInMonth = 0
+      let revenueInMonth = 0
+      const renewingUsers = []
+
+      activeSubscriptions.forEach(sub => {
+        if (!sub.cancel_at_period_end) {
+          const renewDate = new Date(sub.current_period_end)
+          if (renewDate >= monthStart && renewDate <= monthEnd) {
+            renewalsInMonth++
+            const price = PRICES[sub.plan_type] || PRICES.premium_semester
+            revenueInMonth += price
+            renewingUsers.push({
+              userId: sub.user_id,
+              renewDate: sub.current_period_end,
+              amount: price
+            })
+          }
+        }
+      })
+
+      renewalProjection.push({
+        month: monthStart.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
+        monthIndex: i,
+        renewals: renewalsInMonth,
+        revenue: revenueInMonth,
+        users: renewingUsers
+      })
+    }
+
+    // Nuevas ventas proyectadas (basado en tasa de conversión actual)
+    const expectedSalesPerDay = dailyRegistrationRate * conversionRate
+    const expectedSalesPerMonth = expectedSalesPerDay * 30
+
+    // MRR por nueva suscripción (promedio ponderado)
+    // Semestral: 59€/6 = 9.83€/mes, Mensual: 20€/mes
+    const mrrPerNewSub = avgTicket > 30 ? avgTicket / 6 : avgTicket // Si ticket > 30, es semestral
+
+    // Proyección de MRR (asumiendo 0% churn por ahora)
+    const newSubsIn6Months = expectedSalesPerMonth * 6
+    const newSubsIn12Months = expectedSalesPerMonth * 12
+
+    const mrr6Months = mrr + (newSubsIn6Months * mrrPerNewSub)
+    const mrr12Months = mrr + (newSubsIn12Months * mrrPerNewSub)
+
+    // ARR proyectado
+    const arr = mrr * 12
+    const arr6Months = mrr6Months * 12
+    const arr12Months = mrr12Months * 12
+
+    // Facturación total (para referencia)
+    const billing6Months = renewalProjection.slice(0, 6).reduce((acc, m) => acc + m.revenue, 0) +
+                           (expectedSalesPerMonth * avgTicket * 6)
+    const billing12Months = renewalProjection.reduce((acc, m) => acc + m.revenue, 0) +
+                            (expectedSalesPerMonth * avgTicket * 12)
+
+    // Churn info
+    const cancelingSubscriptions = (subscriptions || []).filter(s => s.cancel_at_period_end)
+
     return NextResponse.json({
       // Tasa de conversion real (todos los datos)
       conversion: {
@@ -223,6 +328,38 @@ export async function GET() {
           : payments.length < 20
           ? `Con ${payments.length} ventas, las predicciones son aproximadas. Mejoraran con mas datos.`
           : `Con ${payments.length} ventas, las predicciones son estadisticamente fiables.`
+      },
+
+      // MRR y proyecciones
+      mrr: {
+        current: Math.round(mrr * 100) / 100,  // MRR actual
+        in6Months: Math.round(mrr6Months * 100) / 100,  // MRR proyectado 6 meses
+        in12Months: Math.round(mrr12Months * 100) / 100, // MRR proyectado 12 meses
+        arr: Math.round(arr * 100) / 100,       // ARR actual
+        arrIn6Months: Math.round(arr6Months * 100) / 100,
+        arrIn12Months: Math.round(arr12Months * 100) / 100,
+        activeSubscriptions: activeSubscriptions.length,
+        cancelingSubscriptions: cancelingSubscriptions.length,
+        mrrPerNewSub: Math.round(mrrPerNewSub * 100) / 100, // MRR que añade cada nueva suscripción
+        newSubsPerMonth: Math.round(expectedSalesPerMonth * 100) / 100,
+        byPlan: {
+          semester: activeSubscriptions.filter(s => s.plan_type === 'premium_semester').length,
+          annual: activeSubscriptions.filter(s => s.plan_type === 'premium_annual').length,
+          monthly: activeSubscriptions.filter(s => !['premium_semester', 'premium_annual'].includes(s.plan_type)).length
+        }
+      },
+
+      // Calendario de renovaciones
+      renewals: {
+        next6Months: renewalProjection.slice(0, 6).reduce((acc, m) => acc + m.revenue, 0),
+        next12Months: renewalProjection.reduce((acc, m) => acc + m.revenue, 0),
+        byMonth: renewalProjection
+      },
+
+      // Facturación total (para referencia)
+      billing: {
+        next6Months: Math.round(billing6Months * 100) / 100,
+        next12Months: Math.round(billing12Months * 100) / 100
       }
     })
 

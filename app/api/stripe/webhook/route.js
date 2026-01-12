@@ -140,6 +140,9 @@ async function handleCheckoutSessionCompleted(session, supabase) {
     } else {
       console.log(`✅ User ${userId} ahora es PREMIUM`, data)
 
+      // Determinar plan_type basado en el intervalo de la suscripción
+      let planType = 'subscription' // fallback
+
       // 🔥 FIX BUG: Crear registro en user_subscriptions AQUÍ como backup
       // El evento customer.subscription.created puede llegar antes y fallar
       // porque stripe_customer_id aún no estaba guardado
@@ -148,12 +151,13 @@ async function handleCheckoutSessionCompleted(session, supabase) {
           const subscription = await stripe.subscriptions.retrieve(session.subscription)
 
           // Determinar plan_type basado en el intervalo
-          // NOTA: Valores permitidos: 'trial', 'premium_semester', 'premium_annual'
-          let planType = 'premium_semester'
-          if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'year') {
+          const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
+          planType = 'premium_semester'
+          if (interval === 'year') {
             planType = 'premium_annual'
+          } else if (interval === 'month') {
+            planType = 'premium_monthly'
           }
-          // Mensual también usa premium_semester (constraint de BD no tiene monthly)
 
           // Usar upsert para evitar duplicados si customer.subscription.created ya lo creó
           const { error: subError } = await supabase
@@ -189,7 +193,7 @@ async function handleCheckoutSessionCompleted(session, supabase) {
           p_event_data: {
             amount: session.amount_total / 100,
             currency: session.currency,
-            plan: session.mode,
+            plan: planType,
             timestamp: new Date().toISOString()
           }
         })
@@ -294,12 +298,13 @@ async function handleCheckoutSessionCompleted(session, supabase) {
         if (session.subscription) {
           try {
             const subscription = await stripe.subscriptions.retrieve(session.subscription)
-            // NOTA: Valores permitidos: 'trial', 'premium_semester', 'premium_annual'
+            const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
             let planType = 'premium_semester'
-            if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'year') {
+            if (interval === 'year') {
               planType = 'premium_annual'
+            } else if (interval === 'month') {
+              planType = 'premium_monthly'
             }
-            // Mensual también usa premium_semester (constraint de BD no tiene monthly)
 
             await supabase
               .from('user_subscriptions')
@@ -389,12 +394,13 @@ async function handleSubscriptionCreated(subscription, supabase) {
   }
 
   // Determinar plan_type basado en el intervalo
-  // NOTA: Valores permitidos: 'trial', 'premium_semester', 'premium_annual'
+  const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
   let planType = 'premium_semester'
-  if (subscription.items?.data?.[0]?.price?.recurring?.interval === 'year') {
+  if (interval === 'year') {
     planType = 'premium_annual'
+  } else if (interval === 'month') {
+    planType = 'premium_monthly'
   }
-  // Mensual también usa premium_semester (constraint de BD no tiene monthly)
 
   try {
     // 🔥 FIX: Usar upsert en lugar de insert para evitar duplicados
