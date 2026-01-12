@@ -1384,3 +1384,53 @@ export function inscripcionAbierta(
 
   return hoy <= limite;
 }
+
+// ============================================
+// EXTRACCIÓN DE REFERENCIA A CONVOCATORIA
+// ============================================
+
+const MESES_MAP: Record<string, number> = {
+  'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
+  'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
+  'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+};
+
+/**
+ * Extrae la fecha de la convocatoria original a la que hace referencia una publicación
+ * Útil para agrupar resultados/admitidos con su convocatoria original
+ *
+ * @param titulo Título de la publicación
+ * @param contenido Contenido completo (opcional)
+ * @returns Fecha en formato YYYY-MM-DD o null si no se encuentra
+ */
+export function extraerFechaConvocatoriaOrigen(titulo: string, contenido?: string): string | null {
+  const texto = `${titulo} ${contenido || ''}`;
+
+  // Patrones para encontrar referencias a la convocatoria original
+  const patrones = [
+    // "convocadas por Resolución de 23 de diciembre de 2024"
+    /convocad[ao]s?\s+(?:por\s+)?(?:la\s+)?(?:Resolución|Orden|Real Decreto)\s+de\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i,
+    // "proceso selectivo convocado por Resolución de..."
+    /proceso\s+selectivo\s+convocado\s+(?:por\s+)?(?:la\s+)?(?:Resolución|Orden)\s+de\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i,
+    // "pruebas selectivas convocadas por..."
+    /pruebas\s+selectivas\s+convocadas?\s+(?:por\s+)?(?:la\s+)?(?:Resolución|Orden)\s+de\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i,
+    // "Resolución de X de mes de año, por la que se convoca"
+    /(?:Resolución|Orden)\s+de\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4}),?\s+por\s+la\s+que\s+se\s+convoca/i,
+  ];
+
+  for (const patron of patrones) {
+    const match = texto.match(patron);
+    if (match) {
+      const dia = match[1].padStart(2, '0');
+      const mesNombre = match[2].toLowerCase();
+      const ano = match[3];
+      const mes = MESES_MAP[mesNombre];
+
+      if (mes) {
+        return `${ano}-${String(mes).padStart(2, '0')}-${dia}`;
+      }
+    }
+  }
+
+  return null;
+}

@@ -2,11 +2,11 @@
 
 /**
  * Timeline de publicaciones de una oposición
- * Agrupa por año/convocatoria y muestra cajones expandibles
+ * Agrupa por PROCESO SELECTIVO (convocatoria), no por año de publicación
  */
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface Publicacion {
   id: string;
@@ -30,6 +30,14 @@ interface Props {
   oposicionSlug: string;
 }
 
+interface ProcesoSelectivo {
+  id: string; // Fecha de la convocatoria como identificador
+  convocatoria: Publicacion | null;
+  relacionadas: Publicacion[];
+  fechaConvocatoria: string;
+  plazas: number | null;
+}
+
 const TIPO_INFO: Record<string, { icon: string; label: string; color: string }> = {
   convocatoria: { icon: '📢', label: 'Convocatoria', color: 'green' },
   admitidos: { icon: '📋', label: 'Admitidos', color: 'blue' },
@@ -39,48 +47,136 @@ const TIPO_INFO: Record<string, { icon: string; label: string; color: string }> 
   otro: { icon: '📄', label: 'Otro', color: 'gray' },
 };
 
-// Agrupar publicaciones por año
-function agruparPorAno(publicaciones: Publicacion[]) {
-  const grupos: Record<string, {
-    ano: string;
-    convocatoria: Publicacion | null;
-    relacionadas: Publicacion[];
-  }> = {};
+const MESES_MAP: Record<string, number> = {
+  'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
+  'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
+  'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+};
 
-  // Primero identificar convocatorias
-  publicaciones.forEach(pub => {
-    const ano = pub.boe_fecha.substring(0, 4);
+/**
+ * Extrae la fecha de la convocatoria original referenciada en el título
+ */
+function extraerFechaConvocatoriaOrigen(titulo: string): string | null {
+  const patrones = [
+    /convocad[ao]s?\s+(?:por\s+)?(?:la\s+)?(?:Resolución|Orden|Real Decreto)\s+de\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i,
+    /proceso\s+selectivo\s+convocado\s+(?:por\s+)?(?:la\s+)?(?:Resolución|Orden)\s+de\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i,
+    /pruebas\s+selectivas\s+convocadas?\s+(?:por\s+)?(?:la\s+)?(?:Resolución|Orden)\s+de\s+(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/i,
+  ];
 
-    if (!grupos[ano]) {
-      grupos[ano] = { ano, convocatoria: null, relacionadas: [] };
-    }
+  for (const patron of patrones) {
+    const match = titulo.match(patron);
+    if (match) {
+      const dia = match[1].padStart(2, '0');
+      const mesNombre = match[2].toLowerCase();
+      const ano = match[3];
+      const mes = MESES_MAP[mesNombre];
 
-    if (pub.tipo === 'convocatoria') {
-      // Si ya hay una convocatoria, quedarse con la más reciente
-      if (!grupos[ano].convocatoria || pub.boe_fecha > grupos[ano].convocatoria!.boe_fecha) {
-        if (grupos[ano].convocatoria) {
-          grupos[ano].relacionadas.push(grupos[ano].convocatoria!);
-        }
-        grupos[ano].convocatoria = pub;
-      } else {
-        grupos[ano].relacionadas.push(pub);
+      if (mes) {
+        return `${ano}-${String(mes).padStart(2, '0')}-${dia}`;
       }
-    } else {
-      grupos[ano].relacionadas.push(pub);
     }
-  });
+  }
+
+  return null;
+}
+
+/**
+ * Agrupa publicaciones por proceso selectivo (convocatoria)
+ */
+function agruparPorProcesoSelectivo(publicaciones: Publicacion[]): ProcesoSelectivo[] {
+  const procesos: Map<string, ProcesoSelectivo> = new Map();
+
+  // Paso 1: Identificar todas las convocatorias (definen procesos)
+  publicaciones
+    .filter(p => p.tipo === 'convocatoria')
+    .forEach(conv => {
+      procesos.set(conv.boe_fecha, {
+        id: conv.boe_fecha,
+        convocatoria: conv,
+        relacionadas: [],
+        fechaConvocatoria: conv.boe_fecha,
+        plazas: conv.num_plazas,
+      });
+    });
+
+  // Paso 2: Asignar otras publicaciones a su convocatoria de origen
+  publicaciones
+    .filter(p => p.tipo !== 'convocatoria')
+    .forEach(pub => {
+      const fechaRef = extraerFechaConvocatoriaOrigen(pub.titulo);
+
+      if (fechaRef) {
+        // Buscar proceso con esa fecha exacta o cercana
+        let procesoEncontrado: ProcesoSelectivo | undefined;
+
+        // Primero buscar fecha exacta
+        if (procesos.has(fechaRef)) {
+          procesoEncontrado = procesos.get(fechaRef);
+        } else {
+          // Si no hay proceso con esa fecha exacta, crear uno
+          procesoEncontrado = {
+            id: fechaRef,
+            convocatoria: null,
+            relacionadas: [],
+            fechaConvocatoria: fechaRef,
+            plazas: null,
+          };
+          procesos.set(fechaRef, procesoEncontrado);
+        }
+
+        if (procesoEncontrado) {
+          procesoEncontrado.relacionadas.push(pub);
+        }
+      } else {
+        // Sin referencia detectada: agrupar por año como fallback
+        const ano = pub.boe_fecha.substring(0, 4);
+        const fallbackId = `${ano}-fallback`;
+
+        if (!procesos.has(fallbackId)) {
+          procesos.set(fallbackId, {
+            id: fallbackId,
+            convocatoria: null,
+            relacionadas: [],
+            fechaConvocatoria: `${ano}-01-01`,
+            plazas: null,
+          });
+        }
+        procesos.get(fallbackId)!.relacionadas.push(pub);
+      }
+    });
 
   // Ordenar relacionadas por fecha descendente
-  Object.values(grupos).forEach(grupo => {
-    grupo.relacionadas.sort((a, b) => b.boe_fecha.localeCompare(a.boe_fecha));
+  procesos.forEach(proceso => {
+    proceso.relacionadas.sort((a, b) => b.boe_fecha.localeCompare(a.boe_fecha));
   });
 
-  // Convertir a array y ordenar por año descendente
-  return Object.values(grupos).sort((a, b) => parseInt(b.ano) - parseInt(a.ano));
+  // Convertir a array y ordenar por fecha de convocatoria descendente
+  return Array.from(procesos.values())
+    .filter(p => p.convocatoria || p.relacionadas.length > 0)
+    .sort((a, b) => b.fechaConvocatoria.localeCompare(a.fechaConvocatoria));
+}
+
+/**
+ * Formatea la fecha de convocatoria para mostrar
+ */
+function formatearFechaConvocatoria(fecha: string): string {
+  if (fecha.endsWith('-fallback')) {
+    return `Otras publicaciones ${fecha.split('-')[0]}`;
+  }
+  try {
+    const d = new Date(fecha);
+    return d.toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  } catch {
+    return fecha;
+  }
 }
 
 export default function OposicionTimeline({ publicaciones, oposicionSlug }: Props) {
-  const grupos = agruparPorAno(publicaciones);
+  const procesos = useMemo(() => agruparPorProcesoSelectivo(publicaciones), [publicaciones]);
   const hoy = new Date().toISOString().split('T')[0];
 
   // Encontrar convocatoria activa (con inscripción abierta)
@@ -89,14 +185,14 @@ export default function OposicionTimeline({ publicaciones, oposicionSlug }: Prop
   );
 
   // Estado para cajones abiertos (el primero abierto por defecto)
-  const [abiertos, setAbiertos] = useState<Set<string>>(new Set([grupos[0]?.ano]));
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set([procesos[0]?.id]));
 
-  const toggleAno = (ano: string) => {
+  const toggleProceso = (id: string) => {
     const nuevos = new Set(abiertos);
-    if (nuevos.has(ano)) {
-      nuevos.delete(ano);
+    if (nuevos.has(id)) {
+      nuevos.delete(id);
     } else {
-      nuevos.add(ano);
+      nuevos.add(id);
     }
     setAbiertos(nuevos);
   };
@@ -114,41 +210,51 @@ export default function OposicionTimeline({ publicaciones, oposicionSlug }: Prop
         </div>
       )}
 
-      {/* Timeline por años */}
+      {/* Timeline por proceso selectivo */}
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-        Historial de publicaciones
+        Historial de procesos selectivos
       </h2>
 
-      {grupos.length === 0 ? (
+      {procesos.length === 0 ? (
         <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <p className="text-gray-500 dark:text-gray-400">No hay publicaciones para esta oposición.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {grupos.map(({ ano, convocatoria, relacionadas }) => {
-            const isAbierto = abiertos.has(ano);
-            const totalPubs = (convocatoria ? 1 : 0) + relacionadas.length;
+          {procesos.map((proceso) => {
+            const isAbierto = abiertos.has(proceso.id);
+            const totalPubs = (proceso.convocatoria ? 1 : 0) + proceso.relacionadas.length;
+            const esFallback = proceso.id.endsWith('-fallback');
 
             return (
               <div
-                key={ano}
+                key={proceso.id}
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
               >
                 {/* Header del cajón */}
                 <button
-                  onClick={() => toggleAno(ano)}
+                  onClick={() => toggleProceso(proceso.id)}
                   className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-left"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{ano}</span>
-                    {convocatoria && (
+                    <div>
+                      <span className="text-lg font-bold text-gray-900 dark:text-white">
+                        {esFallback ? proceso.id.split('-')[0] : `Convocatoria ${formatearFechaConvocatoria(proceso.fechaConvocatoria)}`}
+                      </span>
+                      {esFallback && (
+                        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                          (sin convocatoria identificada)
+                        </span>
+                      )}
+                    </div>
+                    {proceso.convocatoria && (
                       <div className="flex items-center gap-2">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                          Convocatoria
+                          ✓ Convocatoria
                         </span>
-                        {convocatoria.num_plazas && (
+                        {proceso.plazas && (
                           <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {convocatoria.num_plazas} plazas
+                            {proceso.plazas} plazas
                           </span>
                         )}
                       </div>
@@ -173,18 +279,18 @@ export default function OposicionTimeline({ publicaciones, oposicionSlug }: Prop
                 {isAbierto && (
                   <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-3">
                     {/* Convocatoria principal */}
-                    {convocatoria && (
-                      <PublicacionCard publicacion={convocatoria} destacada />
+                    {proceso.convocatoria && (
+                      <PublicacionCard publicacion={proceso.convocatoria} destacada />
                     )}
 
                     {/* Otras publicaciones */}
-                    {relacionadas.map(pub => (
+                    {proceso.relacionadas.map(pub => (
                       <PublicacionCard key={pub.id} publicacion={pub} />
                     ))}
 
-                    {!convocatoria && relacionadas.length === 0 && (
+                    {!proceso.convocatoria && proceso.relacionadas.length === 0 && (
                       <p className="text-gray-500 dark:text-gray-400 text-sm py-4 text-center">
-                        Sin publicaciones este año
+                        Sin publicaciones
                       </p>
                     )}
                   </div>
@@ -215,7 +321,6 @@ export default function OposicionTimeline({ publicaciones, oposicionSlug }: Prop
 }
 
 function ConvocatoriaActiva({ convocatoria }: { convocatoria: Publicacion }) {
-  const hoy = new Date().toISOString().split('T')[0];
   const diasRestantes = convocatoria.fecha_limite_inscripcion
     ? Math.ceil((new Date(convocatoria.fecha_limite_inscripcion).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null;
