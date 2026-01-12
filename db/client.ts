@@ -27,6 +27,7 @@ function createDbClient() {
     max: 1,
     idle_timeout: 20,
     connect_timeout: 10,
+    prepare: false, // 🔧 Requerido para Supabase Transaction Pooler (puerto 6543)
   })
 
   return drizzle(conn, { schema })
