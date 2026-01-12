@@ -2,10 +2,7 @@
 'use client'
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { getSupabaseClient } from '../../../../../../lib/supabase'
 import ExamLayout from '../../../../../../components/ExamLayout'
-
-const supabase = getSupabaseClient()
 
 function TestExamenContent({ params }) {
   const searchParams = useSearchParams()
@@ -79,6 +76,7 @@ function TestExamenContent({ params }) {
     }
   }
 
+  // 🚀 USAR NUEVA API (Drizzle + Zod) - Elimina lógica duplicada
   async function loadExamQuestions() {
     try {
       setLoading(true)
@@ -90,7 +88,7 @@ function TestExamenContent({ params }) {
       const difficultyMode = searchParams.get('difficulty_mode') || 'random'
       const selectedLawsParam = searchParams.get('selected_laws')
       const selectedArticlesByLawParam = searchParams.get('selected_articles_by_law')
-      const selectedSectionFiltersParam = searchParams.get('selected_section_filters') // 📚 FILTRO DE TÍTULOS
+      const selectedSectionFiltersParam = searchParams.get('selected_section_filters')
 
       let selectedLaws = []
       let selectedArticlesByLaw = {}
@@ -100,138 +98,70 @@ function TestExamenContent({ params }) {
         selectedLaws = selectedLawsParam ? JSON.parse(selectedLawsParam) : []
         selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
         selectedSectionFilters = selectedSectionFiltersParam ? JSON.parse(selectedSectionFiltersParam) : []
-      } catch (error) {
-        console.error('❌ Error parsing URL params:', error)
+      } catch (parseError) {
+        console.error('❌ Error parsing URL params:', parseError)
       }
 
-      console.log('🎯 Cargando preguntas para examen:', {
+      console.log('🚀 Cargando preguntas via API:', {
         tema: temaNumber,
         numQuestions,
         onlyOfficialQuestions,
-        difficultyMode,
         selectedLaws: selectedLaws.length,
-        selectedArticles: Object.keys(selectedArticlesByLaw).length
+        selectedSectionFilters: selectedSectionFilters.length
       })
 
-      // 1️⃣ Obtener mapeo del tema desde topic_scope
-      const { data: mappings, error: mappingError } = await supabase
-        .from('topic_scope')
-        .select(`
-          article_numbers,
-          laws!inner(short_name, id, name),
-          topics!inner(topic_number, position_type)
-        `)
-        .eq('topics.topic_number', temaNumber)
-        .eq('topics.position_type', 'auxiliar_administrativo')
+      // 🚀 LLAMAR A LA NUEVA API
+      const response = await fetch('/api/questions/filtered', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicNumber: temaNumber,
+          positionType: 'auxiliar_administrativo',
+          numQuestions,
+          selectedLaws,
+          selectedArticlesByLaw,
+          selectedSectionFilters,
+          onlyOfficialQuestions,
+          difficultyMode
+        })
+      })
 
-      if (mappingError || !mappings?.length) {
-        throw new Error(`No se encontró mapeo para tema ${temaNumber}`)
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Error obteniendo preguntas')
       }
 
-      console.log('📊 Mapeo obtenido:', mappings.length, 'leyes')
+      console.log(`✅ API devolvió ${data.questions?.length || 0} preguntas (${data.totalAvailable} disponibles)`)
 
-      // 2️⃣ Filtrar por leyes seleccionadas si hay filtros
-      let filteredMappings = mappings
-      if (selectedLaws.length > 0) {
-        filteredMappings = mappings.filter(m => selectedLaws.includes(m.laws.short_name))
-      }
-
-      // 3️⃣ Aplicar filtro de artículos por ley si hay
-      if (Object.keys(selectedArticlesByLaw).length > 0) {
-        filteredMappings = filteredMappings.map(mapping => {
-          const lawShortName = mapping.laws.short_name
-          const selectedArticles = selectedArticlesByLaw[lawShortName]
-
-          if (selectedArticles && selectedArticles.length > 0) {
-            const selectedArticlesAsStrings = selectedArticles.map(num => String(num))
-            const filteredArticleNumbers = mapping.article_numbers.filter(articleNum =>
-              selectedArticlesAsStrings.includes(String(articleNum))
-            )
-
-            return {
-              ...mapping,
-              article_numbers: filteredArticleNumbers
-            }
+      // Transformar al formato que ExamLayout espera (Supabase format)
+      const transformedQuestions = (data.questions || []).map(q => ({
+        id: q.id,
+        question_text: q.question,
+        option_a: q.options[0],
+        option_b: q.options[1],
+        option_c: q.options[2],
+        option_d: q.options[3],
+        explanation: q.explanation,
+        difficulty: q.metadata?.difficulty,
+        is_official_exam: q.metadata?.is_official_exam,
+        primary_article_id: q.primary_article_id,
+        exam_source: q.metadata?.exam_source,
+        exam_date: q.metadata?.exam_date,
+        exam_entity: q.metadata?.exam_entity,
+        articles: {
+          id: q.article?.id,
+          article_number: q.article?.number,
+          title: q.article?.title,
+          content: q.article?.full_text,
+          laws: {
+            short_name: q.article?.law_short_name,
+            name: q.article?.law_name
           }
-
-          return mapping
-        }).filter(m => m.article_numbers.length > 0)
-      }
-
-      // 📚 APLICAR FILTRO DE SECCIONES/TÍTULOS
-      if (selectedSectionFilters && selectedSectionFilters.length > 0) {
-        const ranges = selectedSectionFilters
-          .filter(s => s.articleRange)
-          .map(s => ({ start: s.articleRange.start, end: s.articleRange.end, title: s.title }))
-
-        if (ranges.length > 0) {
-          console.log('📚 Aplicando filtro de secciones:', ranges.map(r => `${r.title} (${r.start}-${r.end})`).join(', '))
-
-          filteredMappings = filteredMappings.map(mapping => {
-            const filteredArticleNumbers = mapping.article_numbers.filter(articleNum => {
-              const num = parseInt(articleNum)
-              return ranges.some(range => num >= range.start && num <= range.end)
-            })
-
-            return {
-              ...mapping,
-              article_numbers: filteredArticleNumbers
-            }
-          }).filter(m => m.article_numbers.length > 0)
         }
-      }
+      }))
 
-      console.log('🔧 Mappings filtrados:', filteredMappings.length)
-
-      // 4️⃣ Para cada ley, obtener preguntas
-      let allQuestions = []
-
-      for (const mapping of filteredMappings) {
-        let query = supabase
-          .from('questions')
-          .select(`
-            id, question_text, option_a, option_b, option_c, option_d,
-            correct_option, explanation, difficulty, is_official_exam,
-            primary_article_id, exam_source, exam_date, exam_entity,
-            articles!inner(
-              id, article_number, title, content,
-              laws!inner(short_name, name)
-            )
-          `)
-          .eq('is_active', true)
-          .eq('articles.laws.short_name', mapping.laws.short_name)
-          .in('articles.article_number', mapping.article_numbers)
-
-        // Filtrar solo oficiales si se solicita
-        if (onlyOfficialQuestions) {
-          query = query.eq('is_official_exam', true)
-        }
-
-        const { data: lawQuestions, error: questionsError } = await query
-
-        if (!questionsError && lawQuestions) {
-          allQuestions = [...allQuestions, ...lawQuestions]
-        }
-      }
-
-      console.log('📚 Total preguntas obtenidas:', allQuestions.length)
-
-      if (allQuestions.length === 0) {
-        throw new Error('No se encontraron preguntas para esta configuración')
-      }
-
-      // 5️⃣ Mezclar y limitar según configuración
-      let finalQuestions = [...allQuestions]
-
-      // Shuffle
-      finalQuestions = finalQuestions.sort(() => Math.random() - 0.5)
-
-      // Limitar cantidad
-      finalQuestions = finalQuestions.slice(0, numQuestions)
-
-      console.log('✅ Preguntas finales para examen:', finalQuestions.length)
-
-      setQuestions(finalQuestions)
+      setQuestions(transformedQuestions)
       setLoading(false)
 
     } catch (error) {

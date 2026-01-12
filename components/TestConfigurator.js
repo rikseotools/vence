@@ -508,6 +508,26 @@ const TestConfigurator = ({
     }
   }, [lawsData]);
 
+  // 🆕 Cargar secciones automáticamente cuando hay solo una ley seleccionada
+  useEffect(() => {
+    if (selectedLaws.size === 1) {
+      const selectedLawName = Array.from(selectedLaws)[0];
+      // Solo cargar si no están ya en cache
+      if (!availableSectionsByLaw.has(selectedLawName)) {
+        console.log('📚 Cargando secciones automáticamente para ley seleccionada:', selectedLawName);
+        const lawSlug = getCanonicalSlug(selectedLawName);
+        loadSectionsForLaw(lawSlug).then(sections => {
+          setAvailableSectionsByLaw(prev => {
+            const newMap = new Map(prev);
+            newMap.set(selectedLawName, sections);
+            return newMap;
+          });
+          console.log('✅ Secciones cargadas para', selectedLawName, ':', sections.length, 'secciones disponibles');
+        });
+      }
+    }
+  }, [selectedLaws]);
+
   // 🆕 Funciones para manejar filtro de leyes
   const toggleLawSelection = (lawShortName) => {
     const newSelectedLaws = new Set(selectedLaws);
@@ -517,15 +537,19 @@ const TestConfigurator = ({
       newSelectedLaws.add(lawShortName);
     }
     setSelectedLaws(newSelectedLaws);
+    // Limpiar filtro de títulos cuando cambia la selección de leyes
+    setSelectedSectionFilters([]);
   };
 
   const selectAllLaws = () => {
     const allLaws = new Set(lawsData.map(law => law.law_short_name));
     setSelectedLaws(allLaws);
+    setSelectedSectionFilters([]); // Limpiar títulos al seleccionar todas las leyes
   };
 
   const deselectAllLaws = () => {
     setSelectedLaws(new Set());
+    setSelectedSectionFilters([]); // Limpiar títulos al deseleccionar leyes
   };
 
   // 🆕 Función para cargar artículos disponibles por ley
@@ -895,7 +919,7 @@ const TestConfigurator = ({
 
   const toggleArticleSelection = (lawShortName, articleNumber) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
-    setSelectedSectionFilter(null);
+    setSelectedSectionFilters([]);
 
     // 🔄 Cargar artículos automáticamente si no están disponibles
     if (!availableArticlesByLaw.has(lawShortName)) {
@@ -926,7 +950,7 @@ const TestConfigurator = ({
 
   const selectAllArticlesForLaw = (lawShortName) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
-    setSelectedSectionFilter(null);
+    setSelectedSectionFilters([]);
 
     // 🔄 Cargar artículos automáticamente si no están disponibles
     if (!availableArticlesByLaw.has(lawShortName)) {
@@ -958,7 +982,7 @@ const TestConfigurator = ({
 
   const deselectAllArticlesForLaw = (lawShortName) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
-    setSelectedSectionFilter(null);
+    setSelectedSectionFilters([]);
 
     setSelectedArticlesByLaw(prev => {
       const newMap = new Map(prev);
@@ -1012,6 +1036,13 @@ const TestConfigurator = ({
     }
 
     console.log('🎛️ Configuración final del test:', config)
+
+    // 📚 DEBUG: Log específico para filtro de secciones
+    console.log('📚 DEBUG TestConfigurator - selectedSectionFilters:', {
+      stateValue: selectedSectionFilters,
+      length: selectedSectionFilters?.length,
+      configValue: config.selectedSectionFilters
+    })
 
     // Validaciones adicionales
     if (focusEssentialArticles) {
@@ -1171,56 +1202,7 @@ const TestConfigurator = ({
 
         </div>
 
-        {/* 🆕 3a. Filtro por Títulos (solo para leyes individuales con secciones disponibles) */}
-        {lawsData && lawsData.length === 1 && (() => {
-          const law = lawsData[0];
-          const sectionsForLaw = availableSectionsByLaw.get(law.law_short_name) || [];
-          return sectionsForLaw.length > 0;
-        })() && (
-          <div className="mb-6">
-            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-purple-900">
-                  📚 Filtrar por Títulos
-                </h3>
-                <button
-                  onClick={() => setIsSectionModalOpen(true)}
-                  className="text-purple-600 hover:text-purple-800 text-sm font-medium bg-white px-3 py-1 rounded border hover:bg-purple-50 transition-colors"
-                >
-                  Seleccionar Títulos
-                </button>
-              </div>
-              
-              {selectedSectionFilters.length > 0 && (
-                <div className="mt-3 p-2 bg-white border border-purple-200 rounded text-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-purple-800 font-medium">
-                      {selectedSectionFilters.length} título{selectedSectionFilters.length > 1 ? 's' : ''} seleccionado{selectedSectionFilters.length > 1 ? 's' : ''}
-                    </span>
-                    <button
-                      onClick={() => setSelectedSectionFilters([])}
-                      className="text-purple-600 hover:text-purple-800 text-xs"
-                    >
-                      Limpiar
-                    </button>
-                  </div>
-                  <div className="space-y-1">
-                    {selectedSectionFilters.map((section, index) => (
-                      <div key={section.id || index} className="text-purple-600 text-xs flex items-center justify-between">
-                        <span>{section.title}</span>
-                        <span className="text-purple-500">
-                          (Art. {section.articleRange?.start}-{section.articleRange?.end})
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* 🆕 3b. Filtro de Leyes y Artículos */}
+        {/* 🆕 3. Filtro de Leyes y Artículos */}
         {lawsData && lawsData.length >= 1 && (
           <div className="mb-6">
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -1261,38 +1243,78 @@ const TestConfigurator = ({
                   )}
                   
                   <div className="grid grid-cols-1 gap-2">
-                    {lawsData.map((law) => (
-                      <div
-                        key={law.law_short_name}
-                        className="p-2 bg-white rounded border hover:bg-blue-50"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedLaws.has(law.law_short_name)}
-                            onChange={() => toggleLawSelection(law.law_short_name)}
-                            className="text-blue-600 focus:ring-blue-500"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-sm text-gray-900">
-                              {law.law_short_name}
+                    {lawsData.map((law) => {
+                      const isSelected = selectedLaws.has(law.law_short_name);
+                      const sectionsForLaw = availableSectionsByLaw.get(law.law_short_name) || [];
+                      const hasSections = sectionsForLaw.length > 0;
+                      const isOnlySelected = isSelected && selectedLaws.size === 1;
+
+                      return (
+                        <div
+                          key={law.law_short_name}
+                          className={`p-2 bg-white rounded border ${isSelected ? 'border-blue-300 bg-blue-50/50' : 'hover:bg-blue-50'}`}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleLawSelection(law.law_short_name)}
+                              className="text-blue-600 focus:ring-blue-500"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium text-sm text-gray-900">
+                                {law.law_short_name}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {law.articles_with_questions} artículo{law.articles_with_questions > 1 ? 's' : ''} disponible{law.articles_with_questions > 1 ? 's' : ''}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-600">
-                              {law.articles_with_questions} artículo{law.articles_with_questions > 1 ? 's' : ''} disponible{law.articles_with_questions > 1 ? 's' : ''}
-                            </div>
+                            {isSelected && (
+                              <div className="flex items-center gap-1">
+                                {/* Botón Títulos - solo si es la única ley seleccionada y tiene secciones */}
+                                {isOnlySelected && hasSections && (
+                                  <button
+                                    onClick={() => setIsSectionModalOpen(true)}
+                                    className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 flex items-center space-x-1"
+                                  >
+                                    <span>📚</span>
+                                    <span>Títulos</span>
+                                  </button>
+                                )}
+                                {/* Botón Artículos */}
+                                <button
+                                  onClick={() => openArticleModal(law.law_short_name)}
+                                  className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 flex items-center space-x-1"
+                                >
+                                  <span>🔧</span>
+                                  <span>Artículos</span>
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          {selectedLaws.has(law.law_short_name) && (
-                            <button
-                              onClick={() => openArticleModal(law.law_short_name)}
-                              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 flex items-center space-x-1"
-                            >
-                              <span>🔧</span>
-                              <span>Filtrar artículos</span>
-                            </button>
+
+                          {/* Mostrar títulos seleccionados debajo de la ley */}
+                          {isOnlySelected && selectedSectionFilters.length > 0 && (
+                            <div className="mt-2 ml-6 p-2 bg-purple-50 border border-purple-200 rounded text-xs">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-purple-800 font-medium">
+                                  {selectedSectionFilters.length} título{selectedSectionFilters.length > 1 ? 's' : ''}:
+                                </span>
+                                <button
+                                  onClick={() => setSelectedSectionFilters([])}
+                                  className="text-purple-600 hover:text-purple-800"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="text-purple-600">
+                                {selectedSectionFilters.map(s => s.title).join(', ')}
+                              </div>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   
                   <div className="text-xs text-blue-700 mt-2">
@@ -2538,9 +2560,14 @@ const TestConfigurator = ({
       <SectionFilterModal
         isOpen={isSectionModalOpen}
         onClose={() => setIsSectionModalOpen(false)}
-        lawSlug={preselectedLaw || (lawsData.length === 1 ? lawsData[0].law_short_name : null)}
+        lawSlug={preselectedLaw || (selectedLaws.size === 1 ? Array.from(selectedLaws)[0] : (lawsData.length === 1 ? lawsData[0].law_short_name : null))}
         selectedSections={selectedSectionFilters}
         onSectionSelect={(sections) => {
+          console.log('📚 TestConfigurator - Recibiendo selección del modal:', {
+            sections,
+            count: sections.length,
+            titles: sections.map(s => s.title)
+          })
           setSelectedSectionFilters(sections);
           // Limpiar filtro de artículos cuando se selecciona filtro de títulos
           if (sections.length > 0) {

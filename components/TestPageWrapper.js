@@ -4,17 +4,18 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
-import { 
+import {
   fetchRandomQuestions,
-  fetchQuickQuestions, 
+  fetchQuickQuestions,
   fetchOfficialQuestions,
   fetchPersonalizedQuestions,
-  fetchQuestionsByTopicScope,  // 🎯 NUEVO: Para temas multi-ley
-  fetchArticulosDirigido,      // 🆕 NUEVO: Para artículos dirigidos
-  fetchMantenerRacha,          // 🆕 NUEVO: Para mantener rachas
-  fetchExplorarContenido,      // 🆕 NUEVO: Para explorar contenido
-  fetchAleatorioMultiTema,     // 🎲 NUEVO: Para tests aleatorios con múltiples temas
-  fetchContentScopeQuestions   // 📋 NUEVO: Para content_scope
+  fetchQuestionsByTopicScope,  // 🎯 Para temas multi-ley (legacy)
+  fetchQuestionsViaAPI,        // 🚀 NUEVO: API centralizada Drizzle + Zod
+  fetchArticulosDirigido,      // 🆕 Para artículos dirigidos
+  fetchMantenerRacha,          // 🆕 Para mantener rachas
+  fetchExplorarContenido,      // 🆕 Para explorar contenido
+  fetchAleatorioMultiTema,     // 🎲 Para tests aleatorios con múltiples temas
+  fetchContentScopeQuestions   // 📋 Para content_scope
 } from '../lib/testFetchers'
 
 export default function TestPageWrapper({
@@ -71,25 +72,30 @@ export default function TestPageWrapper({
 
  // 🎯 Función para detectar fetcher correcto según el tema
   const getFetcherForTema = (tema, testType, hasLawFilters = false) => {
-    // 🎲 NUEVO: Para tests aleatorios multi-tema
+    // 🎲 Para tests aleatorios multi-tema
     if (testType === 'aleatorio' && themes && themes.length > 0) {
       console.log(`🎲 Test aleatorio multi-tema: ${themes.length} temas`)
       return fetchAleatorioMultiTema
     }
-    
-    // ✅ NUEVO: Usar siempre fetchQuestionsByTopicScope para temas
-    // La función automáticamente detectará si es multi-ley desde topic_scope
+
+    // 🚀 NUEVO: Usar API centralizada para tests personalizados con tema
+    // La API maneja filtros de leyes, artículos y secciones via Drizzle + Zod
+    if (tema && tema > 0 && testType === 'personalizado') {
+      console.log(`🚀 Tema ${tema} usando API centralizada (Drizzle + Zod)`)
+      return fetchQuestionsViaAPI
+    }
+
+    // Para otros tests con tema, usar fetcher legacy (funciona bien)
     if (tema && tema > 0) {
-      // console.log(`🎯 Tema ${tema} usando fetcher dinámico (topic_scope)`)
       return fetchQuestionsByTopicScope
     }
-    
-    // 🆕 NUEVO: Para tests sin tema pero con filtros de leyes específicas
+
+    // 🆕 Para tests sin tema pero con filtros de leyes específicas
     if (!tema && hasLawFilters && testType === 'personalizado') {
-      console.log(`🎯 Test personalizado sin tema pero con filtros de leyes - usando fetchQuestionsByTopicScope`)
-      return fetchQuestionsByTopicScope
+      console.log(`🎯 Test personalizado sin tema pero con filtros de leyes`)
+      return fetchQuestionsViaAPI
     }
-    
+
     // Para tests sin tema específico, usar fetchers específicos por tipo
     const generalFetchers = {
       aleatorio: fetchRandomQuestions,
@@ -97,7 +103,7 @@ export default function TestPageWrapper({
       rapido: fetchQuickQuestions,
       oficial: fetchOfficialQuestions
     }
-    
+
     console.log(`⚡ Test general sin tema específico`)
     return generalFetchers[testType] || fetchRandomQuestions
   }
@@ -304,11 +310,13 @@ export default function TestPageWrapper({
         if (testType === 'personalizado') {
           const selectedLawsParam = finalSearchParams?.get?.('selected_laws')
           const selectedArticlesByLawParam = finalSearchParams?.get?.('selected_articles_by_law')
-          
+          const selectedSectionFiltersParam = finalSearchParams?.get?.('selected_section_filters') // 📚 FILTRO DE TÍTULOS
+
           // 🔧 PRIORIZAR CONFIG DESDE PROPS (defaultConfig) SOBRE URL
           let selectedLaws = testConfig?.selectedLaws || []
           let selectedArticlesByLaw = testConfig?.selectedArticlesByLaw || {}
-          
+          let selectedSectionFilters = testConfig?.selectedSectionFilters || [] // 📚 FILTRO DE TÍTULOS
+
           // Solo usar parámetros de URL si no hay config desde props
           if (selectedLaws.length === 0 && selectedLawsParam) {
             try {
@@ -318,12 +326,23 @@ export default function TestPageWrapper({
               console.error('❌ Error parsing filtros URL en TestPageWrapper:', error)
             }
           }
-          
+
+          // 📚 Parsear filtro de secciones desde URL si no está en config
+          if (selectedSectionFilters.length === 0 && selectedSectionFiltersParam) {
+            try {
+              selectedSectionFilters = JSON.parse(selectedSectionFiltersParam)
+              console.log('📚 Filtro de secciones parseado desde URL:', selectedSectionFilters.map(s => s.title))
+            } catch (error) {
+              console.error('❌ Error parsing selectedSectionFilters URL:', error)
+            }
+          }
+
           // Agregar filtros al config que se pasa al fetcher
           finalTestConfig = {
             ...testConfig,
             selectedLaws,
             selectedArticlesByLaw,
+            selectedSectionFilters, // 📚 FILTRO DE TÍTULOS
             positionType: positionType || 'auxiliar_administrativo'
           }
           
