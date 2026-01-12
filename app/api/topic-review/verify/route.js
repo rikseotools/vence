@@ -479,7 +479,7 @@ export async function POST(request) {
     const errors = []
     let totalTokens = { input: 0, output: 0, total: 0 }
 
-    // Contadores por estado (leyes normales + leyes virtuales/técnicas)
+    // Contadores por estado (leyes normales + leyes virtuales/técnicas + estructural)
     const statusCounts = {
       // Estados para leyes normales
       perfect: 0,
@@ -494,11 +494,88 @@ export async function POST(request) {
       tech_perfect: 0,
       tech_bad_explanation: 0,
       tech_bad_answer: 0,
-      tech_bad_answer_and_explanation: 0
+      tech_bad_answer_and_explanation: 0,
+      // Estados estructurales (sin necesidad de IA)
+      invalid_structure: 0
     }
 
     for (const question of questions) {
       try {
+        // === VALIDACIÓN ESTRUCTURAL (sin IA) ===
+        // Verificar que todas las opciones tienen contenido
+        const emptyOptions = []
+        if (!question.option_a?.trim()) emptyOptions.push('A')
+        if (!question.option_b?.trim()) emptyOptions.push('B')
+        if (!question.option_c?.trim()) emptyOptions.push('C')
+        if (!question.option_d?.trim()) emptyOptions.push('D')
+
+        if (emptyOptions.length > 0) {
+          // Marcar como estructura inválida y saltar verificación IA
+          await supabase
+            .from('questions')
+            .update({
+              verified_at: new Date().toISOString(),
+              verification_status: 'problem',
+              topic_review_status: 'invalid_structure'
+            })
+            .eq('id', question.id)
+
+          statusCounts.invalid_structure++
+          results.push({
+            questionId: question.id,
+            questionText: question.question_text?.substring(0, 80) + '...',
+            topicReviewStatus: 'invalid_structure',
+            structuralIssue: `Opciones vacías: ${emptyOptions.join(', ')}`,
+            emptyOptions
+          })
+          continue
+        }
+
+        // Verificar que el texto de la pregunta existe
+        if (!question.question_text?.trim()) {
+          await supabase
+            .from('questions')
+            .update({
+              verified_at: new Date().toISOString(),
+              verification_status: 'problem',
+              topic_review_status: 'invalid_structure'
+            })
+            .eq('id', question.id)
+
+          statusCounts.invalid_structure++
+          results.push({
+            questionId: question.id,
+            questionText: '(sin texto)',
+            topicReviewStatus: 'invalid_structure',
+            structuralIssue: 'Texto de pregunta vacío'
+          })
+          continue
+        }
+
+        // Verificar que correct_option es válido (0-3)
+        if (question.correct_option === null || question.correct_option === undefined ||
+            question.correct_option < 0 || question.correct_option > 3) {
+          await supabase
+            .from('questions')
+            .update({
+              verified_at: new Date().toISOString(),
+              verification_status: 'problem',
+              topic_review_status: 'invalid_structure'
+            })
+            .eq('id', question.id)
+
+          statusCounts.invalid_structure++
+          results.push({
+            questionId: question.id,
+            questionText: question.question_text?.substring(0, 80) + '...',
+            topicReviewStatus: 'invalid_structure',
+            structuralIssue: `correct_option inválido: ${question.correct_option}`
+          })
+          continue
+        }
+
+        // === FIN VALIDACIÓN ESTRUCTURAL ===
+
         const article = question.articles
         if (!article) {
           errors.push({
