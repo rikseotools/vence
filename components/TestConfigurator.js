@@ -1,6 +1,6 @@
 // components/TestConfigurator.js - CON FILTRO DE PREGUNTAS OFICIALES POR TEMA CORREGIDO
 'use client'
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { getSupabaseClient } from '../lib/supabase';
 import SectionFilterModal from './SectionFilterModal';
 import { fetchLawSections } from '../lib/teoriaFetchers';
@@ -18,7 +18,8 @@ const TestConfigurator = ({
   hideOfficialQuestions = false,
   hideEssentialArticles = false,
   officialQuestionsCount = 0,
-  testMode = 'practica' // 🆕 'practica' o 'examen'
+  testMode = 'practica', // 🆕 'practica' o 'examen'
+  positionType = 'auxiliar_administrativo' // 🔧 FIX: Permitir especificar el position_type
 }) => {
   const supabase = getSupabaseClient();
 
@@ -88,7 +89,7 @@ const TestConfigurator = ({
           topics!inner(topic_number, position_type)
         `)
         .eq('topics.topic_number', tema)
-        .eq('topics.position_type', 'auxiliar_administrativo');
+        .eq('topics.position_type', positionType);
 
       if (mappingError) {
         console.error('❌ Error obteniendo mapeo del tema:', mappingError);
@@ -233,8 +234,11 @@ const TestConfigurator = ({
         if (!availableArticlesByLaw.has(preselectedLaw)) {
           console.log('🔄 Cargando artículos automáticamente para ley preseleccionada:', preselectedLaw);
           loadArticlesForLaw(preselectedLaw).then(articles => {
-            setAvailableArticlesByLaw(prev => new Map(prev.set(preselectedLaw, articles)));
-            
+            setAvailableArticlesByLaw(prev => {
+              const newMap = new Map(prev);
+              newMap.set(preselectedLaw, articles);
+              return newMap;
+            });
             // NO inicializar artículos como seleccionados por defecto - solo cargar los disponibles
             console.log('✅ Artículos cargados para', preselectedLaw, ':', articles.length, 'artículos disponibles');
           });
@@ -451,9 +455,14 @@ const TestConfigurator = ({
     }
   }, [onlyOfficialQuestions, officialQuestionsCount, selectedQuestions]);
 
-  // 🆕 Inicializar leyes seleccionadas cuando cambian lawsData
+  // 🆕 Inicializar leyes seleccionadas SOLO la primera vez que lawsData tiene datos
+  // 🔧 FIX: Usar ref para evitar resetear la selección del usuario cada vez que lawsData cambie
+  const lawsInitializedRef = useRef(false);
+
   useEffect(() => {
-    if (lawsData && lawsData.length > 0) {
+    // Solo inicializar si lawsData tiene datos Y no se ha inicializado antes
+    if (lawsData && lawsData.length > 0 && !lawsInitializedRef.current) {
+      lawsInitializedRef.current = true;
       const initialSelectedLaws = new Set(lawsData.map(law => law.law_short_name));
       setSelectedLaws(initialSelectedLaws);
       
@@ -466,17 +475,25 @@ const TestConfigurator = ({
         if (!availableArticlesByLaw.has(lawShortName)) {
           console.log('🔄 Cargando artículos automáticamente para LawTestConfigurator:', lawShortName);
           loadArticlesForLaw(lawShortName).then(articles => {
-            setAvailableArticlesByLaw(prev => new Map(prev.set(lawShortName, articles)));
+            setAvailableArticlesByLaw(prev => {
+              const newMap = new Map(prev);
+              newMap.set(lawShortName, articles);
+              return newMap;
+            });
             console.log('✅ Artículos cargados para LawTestConfigurator', lawShortName, ':', articles.length, 'artículos disponibles');
           });
         }
-        
+
         // Cargar secciones si no están en cache (para determinar si mostrar el botón)
         if (!availableSectionsByLaw.has(lawShortName)) {
           console.log('📚 Cargando secciones automáticamente para LawTestConfigurator:', lawShortName);
           const lawSlug = getCanonicalSlug(lawShortName);
           loadSectionsForLaw(lawSlug).then(sections => {
-            setAvailableSectionsByLaw(prev => new Map(prev.set(lawShortName, sections)));
+            setAvailableSectionsByLaw(prev => {
+              const newMap = new Map(prev);
+              newMap.set(lawShortName, sections);
+              return newMap;
+            });
             console.log('✅ Secciones cargadas para LawTestConfigurator', lawShortName, ':', sections.length, 'secciones disponibles');
           });
         }
@@ -573,7 +590,7 @@ const TestConfigurator = ({
           topics!inner(topic_number, position_type)
         `)
         .eq('topics.topic_number', tema)
-        .eq('topics.position_type', 'auxiliar_administrativo')
+        .eq('topics.position_type', positionType)
         .eq('laws.short_name', lawShortName);
 
       if (mappingError || !mappings || mappings.length === 0) {
@@ -831,15 +848,23 @@ const TestConfigurator = ({
   const openArticleModal = async (lawShortName) => {
     setCurrentLawForArticles(lawShortName);
     setShowArticleModal(true);
-    
+
     // Cargar artículos si no están en cache
     if (!availableArticlesByLaw.has(lawShortName)) {
       const articles = await loadArticlesForLaw(lawShortName);
-      setAvailableArticlesByLaw(prev => new Map(prev.set(lawShortName, articles)));
-      
+      setAvailableArticlesByLaw(prev => {
+        const newMap = new Map(prev);
+        newMap.set(lawShortName, articles);
+        return newMap;
+      });
+
       // Inicializar todos los artículos como seleccionados
       const articleNumbers = new Set(articles.map(art => art.article_number));
-      setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, articleNumbers)));
+      setSelectedArticlesByLaw(prev => {
+        const newMap = new Map(prev);
+        newMap.set(lawShortName, articleNumbers);
+        return newMap;
+      });
     } else {
       // Si los artículos ya están cargados, verificar si hay alguno seleccionado
       const currentSelection = selectedArticlesByLaw.get(lawShortName);
@@ -847,8 +872,11 @@ const TestConfigurator = ({
         // Si no hay artículos seleccionados, seleccionar todos por defecto (mejor UX)
         const articles = availableArticlesByLaw.get(lawShortName);
         const articleNumbers = new Set(articles.map(art => art.article_number));
-        setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, articleNumbers)));
-        console.log(`📄 Modal abierto sin selecciones previas - seleccionando todos los ${articleNumbers.size} artículos por defecto`);
+        setSelectedArticlesByLaw(prev => {
+          const newMap = new Map(prev);
+          newMap.set(lawShortName, articleNumbers);
+          return newMap;
+        });
       }
     }
   };
@@ -861,58 +889,75 @@ const TestConfigurator = ({
   const toggleArticleSelection = (lawShortName, articleNumber) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
     setSelectedSectionFilter(null);
-    
+
     // 🔄 Cargar artículos automáticamente si no están disponibles
     if (!availableArticlesByLaw.has(lawShortName)) {
-      console.log('🔄 Cargando artículos automáticamente para ley:', lawShortName);
       loadArticlesForLaw(lawShortName).then(articles => {
-        setAvailableArticlesByLaw(prev => new Map(prev.set(lawShortName, articles)));
-        console.log('✅ Artículos cargados para', lawShortName, ':', articles.length, 'artículos disponibles');
+        setAvailableArticlesByLaw(prev => {
+          const newMap = new Map(prev);
+          newMap.set(lawShortName, articles);
+          return newMap;
+        });
       });
     }
-    
+
     setSelectedArticlesByLaw(prev => {
       const newMap = new Map(prev);
       const currentArticles = newMap.get(lawShortName) || new Set();
       const newArticles = new Set(currentArticles);
-      
+
       if (newArticles.has(articleNumber)) {
         newArticles.delete(articleNumber);
       } else {
         newArticles.add(articleNumber);
       }
-      
-      return newMap.set(lawShortName, newArticles);
+
+      newMap.set(lawShortName, newArticles);
+      return newMap;
     });
   };
 
   const selectAllArticlesForLaw = (lawShortName) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
     setSelectedSectionFilter(null);
-    
+
     // 🔄 Cargar artículos automáticamente si no están disponibles
     if (!availableArticlesByLaw.has(lawShortName)) {
-      console.log('🔄 Cargando artículos automáticamente para ley:', lawShortName);
       loadArticlesForLaw(lawShortName).then(articles => {
-        setAvailableArticlesByLaw(prev => new Map(prev.set(lawShortName, articles)));
-        console.log('✅ Artículos cargados para', lawShortName, ':', articles.length, 'artículos disponibles');
+        setAvailableArticlesByLaw(prev => {
+          const newMap = new Map(prev);
+          newMap.set(lawShortName, articles);
+          return newMap;
+        });
         // Seleccionar todos después de cargar
         const allArticles = new Set(articles.map(art => art.article_number));
-        setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, allArticles)));
+        setSelectedArticlesByLaw(prev => {
+          const newMap = new Map(prev);
+          newMap.set(lawShortName, allArticles);
+          return newMap;
+        });
       });
       return;
     }
-    
+
     const articles = availableArticlesByLaw.get(lawShortName) || [];
     const allArticles = new Set(articles.map(art => art.article_number));
-    setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, allArticles)));
+    setSelectedArticlesByLaw(prev => {
+      const newMap = new Map(prev);
+      newMap.set(lawShortName, allArticles);
+      return newMap;
+    });
   };
 
   const deselectAllArticlesForLaw = (lawShortName) => {
     // Limpiar filtro de títulos cuando se selecciona filtro de artículos
     setSelectedSectionFilter(null);
-    
-    setSelectedArticlesByLaw(prev => new Map(prev.set(lawShortName, new Set())));
+
+    setSelectedArticlesByLaw(prev => {
+      const newMap = new Map(prev);
+      newMap.set(lawShortName, new Set());
+      return newMap;
+    });
   };
 
   const handleStartTest = () => {
@@ -926,11 +971,6 @@ const TestConfigurator = ({
     if (lawsData.length > 0 && selectedLaws.size === 0) {
       alert('⚠️ Debes seleccionar al menos una ley para hacer el test')
       return
-    }
-
-    // Validación de artículos imprescindibles si está activado
-    if (focusEssentialArticles) {
-      console.log('⭐ Enfoque en artículos imprescindibles activado')
     }
 
     // Construir configuración completa
@@ -952,7 +992,7 @@ const TestConfigurator = ({
       // 🆕 FILTRO DE ARTÍCULOS POR LEY
       selectedArticlesByLaw: Object.fromEntries(
         Array.from(selectedArticlesByLaw.entries()).map(([lawId, articlesSet]) => [
-          lawId, 
+          lawId,
           Array.from(articlesSet)
         ])
       ), // Convertir Map<string, Set> a Object<string, Array>
