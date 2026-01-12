@@ -472,7 +472,7 @@ export default function AdminFeedbackPage() {
       
       const { data: profiles, error } = await supabaseServiceRole
         .from('user_profiles')
-        .select('id, full_name, email')
+        .select('id, full_name, email, plan_type, registration_date, created_at, target_oposicion, is_active_student, ciudad')
         .in('id', userIds)
 
       if (error) {
@@ -483,19 +483,83 @@ export default function AdminFeedbackPage() {
       console.log(`✅ Perfiles cargados: ${profiles?.length || 0}/${userIds.length}`)
       console.log('📝 IDs de perfiles obtenidos:', profiles?.map(p => p.id) || [])
 
+      // Cargar última sesión de cada usuario para obtener info de dispositivo
+      const { data: sessions, error: sessionsError } = await supabaseServiceRole
+        .from('user_sessions')
+        .select('user_id, browser_name, operating_system, device_model, user_agent, session_start')
+        .in('user_id', userIds)
+        .order('session_start', { ascending: false })
+
+      // Función para parsear user_agent y extraer info útil
+      const parseUserAgent = (ua) => {
+        if (!ua) return { browser: null, os: null }
+
+        let browser = null
+        let os = null
+
+        // Detectar navegador
+        if (ua.includes('Edg/')) browser = 'Edge'
+        else if (ua.includes('Chrome/')) browser = 'Chrome'
+        else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari'
+        else if (ua.includes('Firefox/')) browser = 'Firefox'
+        else if (ua.includes('Opera/') || ua.includes('OPR/')) browser = 'Opera'
+
+        // Detectar SO/dispositivo
+        if (ua.includes('iPhone')) os = 'iPhone'
+        else if (ua.includes('iPad')) os = 'iPad'
+        else if (ua.includes('Android')) os = 'Android'
+        else if (ua.includes('Windows')) os = 'Windows'
+        else if (ua.includes('Mac OS')) os = 'Mac'
+        else if (ua.includes('Linux')) os = 'Linux'
+
+        return { browser, os }
+      }
+
+      // Crear mapa de última sesión por usuario
+      const sessionsMap = new Map()
+      if (!sessionsError && sessions) {
+        sessions.forEach(session => {
+          // Solo guardar la primera (más reciente) por usuario
+          if (!sessionsMap.has(session.user_id)) {
+            // Parsear user_agent si los campos están vacíos
+            const parsed = parseUserAgent(session.user_agent)
+            sessionsMap.set(session.user_id, {
+              ...session,
+              browser_name: session.browser_name || parsed.browser,
+              operating_system: session.operating_system || parsed.os
+            })
+          }
+        })
+        console.log(`📱 Sesiones de dispositivo cargadas: ${sessionsMap.size}`)
+      }
+
       // Crear un mapa de profiles por user_id y actualizar cache
       const profilesMap = new Map()
       if (profiles) {
         profiles.forEach(profile => {
-          profilesMap.set(profile.id, profile)
+          // Agregar info de dispositivo al perfil
+          const lastSession = sessionsMap.get(profile.id)
+          const profileWithDevice = {
+            ...profile,
+            browserName: lastSession?.browser_name,
+            operatingSystem: lastSession?.operating_system,
+            deviceModel: lastSession?.device_model
+          }
+          profilesMap.set(profile.id, profileWithDevice)
           console.log(`📝 Perfil cargado: ${profile.full_name || profile.email || profile.id}`)
         })
-        
+
         // Actualizar cache global
         setUserProfilesCache(prevCache => {
           const newCache = new Map(prevCache)
           profiles.forEach(profile => {
-            newCache.set(profile.id, profile)
+            const lastSession = sessionsMap.get(profile.id)
+            newCache.set(profile.id, {
+              ...profile,
+              browserName: lastSession?.browser_name,
+              operatingSystem: lastSession?.operating_system,
+              deviceModel: lastSession?.device_model
+            })
           })
           return newCache
         })
@@ -531,10 +595,21 @@ export default function AdminFeedbackPage() {
       const userKey = feedback.user_id || feedback.email || 'anonymous'
 
       if (!usersMap.has(userKey)) {
+        const profile = feedback.user_profiles
         usersMap.set(userKey, {
           id: feedback.user_id,
-          email: feedback.email,
-          name: feedback.user_profiles?.full_name || null,
+          email: feedback.email || profile?.email,
+          name: profile?.full_name || null,
+          // Datos adicionales del perfil
+          planType: profile?.plan_type || 'free',
+          registrationDate: profile?.registration_date || profile?.created_at,
+          targetOposicion: profile?.target_oposicion,
+          isActiveStudent: profile?.is_active_student,
+          ciudad: profile?.ciudad,
+          // Info de dispositivo
+          browserName: profile?.browserName,
+          operatingSystem: profile?.operatingSystem,
+          deviceModel: profile?.deviceModel,
           feedbacks: [],
           totalConversations: 0,
           pendingConversations: 0,
@@ -1469,43 +1544,85 @@ export default function AdminFeedbackPage() {
         ) : (
           // === CONVERSACIONES DEL USUARIO SELECCIONADO (Layout 2 columnas) ===
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}>
-            {/* Header con botón volver */}
-            <div className="flex items-center gap-3 p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-              <button
-                onClick={() => {
-                  setSelectedUser(null)
-                  setSelectedFeedback(null)
-                }}
-                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                  <span className="text-lg">
+            {/* Header con información del usuario */}
+            <div className="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+              <div className="flex items-start gap-3">
+                <button
+                  onClick={() => {
+                    setSelectedUser(null)
+                    setSelectedFeedback(null)
+                  }}
+                  className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors mt-1"
+                >
+                  <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xl">
                     {selectedUser.name ? selectedUser.name.charAt(0).toUpperCase() : '👤'}
                   </span>
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                    {selectedUser.name || selectedUser.email || 'Usuario anónimo'}
-                  </h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {selectedUser.totalConversations} conversación{selectedUser.totalConversations > 1 ? 'es' : ''}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                      {selectedUser.name || 'Usuario'}
+                    </h2>
+                    {/* Badge Premium/Free */}
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      selectedUser.planType === 'premium' || selectedUser.planType === 'pro'
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                    }`}>
+                      {selectedUser.planType === 'premium' || selectedUser.planType === 'pro' ? '⭐ Premium' : 'Free'}
+                    </span>
                     {selectedUser.pendingConversations > 0 && (
-                      <span className="text-red-500 ml-2">
-                        ({selectedUser.pendingConversations} pendiente{selectedUser.pendingConversations > 1 ? 's' : ''})
+                      <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded">
+                        {selectedUser.pendingConversations} pendiente{selectedUser.pendingConversations > 1 ? 's' : ''}
                       </span>
                     )}
+                  </div>
+                  {/* Email */}
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    📧 {selectedUser.email || 'Sin email'}
                   </p>
+                  {/* Info adicional */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-gray-500 dark:text-gray-500">
+                    {selectedUser.targetOposicion && (
+                      <span>📚 {selectedUser.targetOposicion}</span>
+                    )}
+                    {selectedUser.registrationDate && (
+                      <span>
+                        📅 Registro: {new Date(selectedUser.registrationDate).toLocaleDateString('es-ES', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          timeZone: 'Europe/Madrid'
+                        })}
+                      </span>
+                    )}
+                    {selectedUser.ciudad && (
+                      <span>📍 {selectedUser.ciudad}</span>
+                    )}
+                    {(selectedUser.browserName || selectedUser.operatingSystem || selectedUser.deviceModel) && (
+                      <span>
+                        💻 {[
+                          selectedUser.operatingSystem,
+                          selectedUser.browserName,
+                          // Solo mostrar deviceModel si no tenemos OS específico
+                          !selectedUser.operatingSystem && selectedUser.deviceModel &&
+                            selectedUser.deviceModel.charAt(0).toUpperCase() + selectedUser.deviceModel.slice(1)
+                        ].filter(Boolean).join(' / ')}
+                      </span>
+                    )}
+                    <span>💬 {selectedUser.totalConversations} conv.</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Layout de 2 columnas */}
-            <div className="flex h-full" style={{ height: 'calc(100% - 76px)' }}>
+            <div className="flex h-full" style={{ height: 'calc(100% - 110px)' }}>
               {/* Panel izquierdo: Lista de conversaciones */}
               <div className="w-80 border-r dark:border-gray-700 overflow-y-auto bg-gray-50 dark:bg-gray-900">
                 {selectedUser.feedbacks
