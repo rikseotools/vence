@@ -546,9 +546,15 @@ export default function AdminFeedbackPage() {
       userData.feedbacks.push(feedback)
       userData.totalConversations++
 
-      // Contar pendientes
+      // Contar pendientes para el admin:
+      // - Conversación en waiting_admin (usuario esperando respuesta)
+      // - Feedback pending SIN conversación (ticket nuevo sin responder)
       const conversation = conversationsMap[feedback.id]
-      if (feedback.status === 'pending' || conversation?.status === 'waiting_admin') {
+      const isPendingForAdmin =
+        conversation?.status === 'waiting_admin' ||
+        (feedback.status === 'pending' && !conversation)
+
+      if (isPendingForAdmin) {
         userData.pendingConversations++
       }
 
@@ -1506,7 +1512,9 @@ export default function AdminFeedbackPage() {
                   .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
                   .map((feedback) => {
                     const conversation = conversations[feedback.id]
-                    const isPending = feedback.status === 'pending' || conversation?.status === 'waiting_admin'
+                    // Pendiente para admin: waiting_admin O (pending SIN conversación)
+                    const isPending = conversation?.status === 'waiting_admin' ||
+                      (feedback.status === 'pending' && !conversation)
                     const hasNewMessage = conversation && newUserMessages.has(conversation.id)
                     const isSelected = selectedFeedback?.id === feedback.id
 
