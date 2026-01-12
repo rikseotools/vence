@@ -3,6 +3,8 @@
  * Muestra los procesos selectivos de forma clara para el usuario
  */
 
+import Link from 'next/link';
+
 interface Convocatoria {
   id: string;
   boe_id: string;
@@ -168,9 +170,20 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
                 </div>
 
                 {/* Título */}
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug">
-                  {conv.titulo_limpio || conv.titulo}
-                </h3>
+                {conv.oposicion_relacionada ? (
+                  <Link
+                    href={`/oposiciones/${conv.oposicion_relacionada}`}
+                    className="block group"
+                  >
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {conv.titulo_limpio || conv.titulo}
+                    </h3>
+                  </Link>
+                ) : (
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug">
+                    {conv.titulo_limpio || conv.titulo}
+                  </h3>
+                )}
 
                 {/* Resumen si existe */}
                 {conv.resumen && (
@@ -249,6 +262,17 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
                 {/* Actions */}
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
                   <div className="flex gap-4">
+                    {conv.oposicion_relacionada && (
+                      <Link
+                        href={`/oposiciones/${conv.oposicion_relacionada}`}
+                        className="text-sm font-medium text-green-600 dark:text-green-400 hover:underline flex items-center"
+                      >
+                        <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        Ver oposición
+                      </Link>
+                    )}
                     {conv.boe_url_pdf && (
                       <a
                         href={conv.boe_url_pdf}
@@ -259,7 +283,7 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
                         <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Descargar PDF
+                        PDF
                       </a>
                     )}
                     {conv.boe_url_html && (
@@ -272,7 +296,7 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
                         <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
-                        Ver en BOE
+                        BOE
                       </a>
                     )}
                   </div>

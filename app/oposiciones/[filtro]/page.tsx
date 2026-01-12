@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import ConvocatoriasLista from '../../convocatorias/components/ConvocatoriasLista';
+import OposicionTimeline from '../components/OposicionTimeline';
 import {
   detectFilterType,
   getAllFilterSlugs,
@@ -238,7 +239,14 @@ export default async function OposicionesPage({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {convocatorias.length > 0 ? (
           <Suspense fallback={<LoadingSkeleton />}>
-            <ConvocatoriasLista convocatorias={convocatorias} />
+            {filter.type === 'oposicion' ? (
+              <OposicionTimeline
+                publicaciones={convocatorias}
+                oposicionSlug={filtro}
+              />
+            ) : (
+              <ConvocatoriasLista convocatorias={convocatorias} />
+            )}
           </Suspense>
         ) : (
           <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border">
@@ -282,6 +290,30 @@ export default async function OposicionesPage({
               Actualmente hay <strong>{stats.total} publicaciones</strong> con
               un total de <strong>{stats.plazas.toLocaleString('es-ES')} plazas</strong>.
             </p>
+          </div>
+        )}
+
+        {filter.type === 'oposicion' && (
+          <div className="mt-12 prose dark:prose-invert max-w-none">
+            <h2>Oposiciones de {filter.label} {year}</h2>
+            <p>
+              Toda la información sobre las oposiciones de <strong>{filter.label}</strong>:
+              convocatorias, listas de admitidos, tribunales y resultados.
+              Actualizado diariamente desde el BOE.
+            </p>
+            <p>
+              En esta página encontrarás el historial completo de convocatorias
+              organizadas por año, incluyendo <strong>{stats.convocatorias} convocatorias</strong>
+              {stats.plazas > 0 && <> con un total de <strong>{stats.plazas.toLocaleString('es-ES')} plazas</strong></>}.
+            </p>
+            <h3>¿Qué incluye esta oposición?</h3>
+            <ul>
+              <li>Convocatorias oficiales publicadas en el BOE</li>
+              <li>Listas de admitidos y excluidos</li>
+              <li>Composición de tribunales</li>
+              <li>Resultados y aprobados</li>
+              <li>Correcciones de errores</li>
+            </ul>
           </div>
         )}
       </div>

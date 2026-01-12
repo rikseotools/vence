@@ -103,12 +103,21 @@ export const CATEGORIA_MAP: Record<string, { label: string; description: string 
   'grupo-a': { label: 'A1,A2', description: 'Grupos A1 y A2 de la Administración' },
 };
 
-// Oposiciones específicas
+// Oposiciones específicas - CADA ESPECIALIDAD ES UNA OPOSICIÓN DIFERENTE
 export const OPOSICION_MAP: Record<string, { label: string; slug: string }> = {
+  // Auxiliar Administrativo
   'auxiliar-administrativo': { label: 'Auxiliar Administrativo del Estado', slug: 'auxiliar-administrativo-estado' },
   'auxiliar-administrativo-estado': { label: 'Auxiliar Administrativo del Estado', slug: 'auxiliar-administrativo-estado' },
+
+  // Administrativo del Estado - por especialidad
   'administrativo': { label: 'Administrativo del Estado', slug: 'administrativo-estado' },
   'administrativo-estado': { label: 'Administrativo del Estado', slug: 'administrativo-estado' },
+  'administrativo-estadistica': { label: 'Administrativo Estadística (INE)', slug: 'administrativo-estadistica' },
+  'administrativo-trafico': { label: 'Administrativo Tráfico (DGT)', slug: 'administrativo-trafico' },
+  'administrativo-seguridad-social': { label: 'Administrativo Seguridad Social', slug: 'administrativo-seguridad-social' },
+  'administrativo-hacienda': { label: 'Administrativo Hacienda (AEAT)', slug: 'administrativo-hacienda' },
+
+  // Justicia
   'gestion-procesal': { label: 'Gestión Procesal', slug: 'gestion-procesal' },
   'tramitacion-procesal': { label: 'Tramitación Procesal', slug: 'tramitacion-procesal' },
   'auxilio-judicial': { label: 'Auxilio Judicial', slug: 'auxilio-judicial' },

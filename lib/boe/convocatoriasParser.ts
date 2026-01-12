@@ -254,6 +254,7 @@ export function detectarCategoriaDeContenido(contenido: string): Categoria | nul
 
 /**
  * Detecta si la convocatoria corresponde a una oposición que cubrimos
+ * IMPORTANTE: Cada especialidad es una oposición diferente
  */
 export function detectarOposicion(titulo: string, departamento: string = ''): string | null {
   const texto = `${titulo} ${departamento}`.toLowerCase();
@@ -269,12 +270,32 @@ export function detectarOposicion(titulo: string, departamento: string = ''): st
     return 'auxiliar-administrativo-estado';
   }
 
-  // Administrativo del Estado
+  // Administrativo del Estado - CADA ESPECIALIDAD ES UNA OPOSICIÓN DIFERENTE
   if (
     texto.includes('cuerpo general administrativo') ||
     (texto.includes('administrativo') && texto.includes('estado') &&
      !texto.includes('auxiliar') && !texto.includes('superior'))
   ) {
+    // Especialidad Estadística
+    if (texto.includes('estadística') || texto.includes('estadistica') ||
+        texto.includes('instituto nacional de estadística') || texto.includes('instituto nacional de estadistica')) {
+      return 'administrativo-estadistica';
+    }
+    // Especialidad Tráfico
+    if (texto.includes('tráfico') || texto.includes('trafico') ||
+        texto.includes('dirección general de tráfico') || texto.includes('direccion general de trafico')) {
+      return 'administrativo-trafico';
+    }
+    // Especialidad Seguridad Social
+    if (texto.includes('seguridad social') || texto.includes('tesorería general') || texto.includes('tesoreria general')) {
+      return 'administrativo-seguridad-social';
+    }
+    // Especialidad Hacienda / AEAT
+    if (texto.includes('agencia tributaria') || texto.includes('aeat') ||
+        texto.includes('agencia estatal de administración tributaria')) {
+      return 'administrativo-hacienda';
+    }
+    // Sin especialidad específica detectada = genérico
     return 'administrativo-estado';
   }
 
@@ -285,6 +306,21 @@ export function detectarOposicion(titulo: string, departamento: string = ''): st
     texto.includes('cuerpo de gestión procesal')
   ) {
     return 'gestion-procesal';
+  }
+
+  // Tramitación Procesal
+  if (
+    texto.includes('tramitación procesal') ||
+    texto.includes('tramitacion procesal')
+  ) {
+    return 'tramitacion-procesal';
+  }
+
+  // Auxilio Judicial
+  if (
+    texto.includes('auxilio judicial')
+  ) {
+    return 'auxilio-judicial';
   }
 
   return null;
