@@ -7,11 +7,15 @@ export default function ConversionesPage() {
   const { supabase } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('funnel') // 'funnel' | 'ab-testing'
+  const [activeTab, setActiveTab] = useState('funnel') // 'funnel' | 'ab-testing' | 'predictions'
+
+  // Estados para predicciones
+  const [predictionData, setPredictionData] = useState(null)
+  const [loadingPredictions, setLoadingPredictions] = useState(false)
 
   // Estados para datos del funnel
   const [funnelStats, setFunnelStats] = useState([])
-  const [registrationStats, setRegistrationStats] = useState({ total: 0, bySource: {} })
+  const [registrationStats, setRegistrationStats] = useState({ total: 0, totalAllTime: 0, bySource: {} })
   const [timeAnalysis, setTimeAnalysis] = useState([])
   const [recentEvents, setRecentEvents] = useState([])
   const [dailyStats, setDailyStats] = useState([])
@@ -40,6 +44,27 @@ export default function ConversionesPage() {
       loadABTestingData()
     }
   }, [supabase, activeTab])
+
+  // Cargar predicciones cuando cambia el tab
+  useEffect(() => {
+    if (activeTab === 'predictions') {
+      loadPredictions()
+    }
+  }, [activeTab])
+
+  const loadPredictions = async () => {
+    setLoadingPredictions(true)
+    try {
+      const response = await fetch('/api/admin/sales-prediction')
+      if (!response.ok) throw new Error('Error loading predictions')
+      const data = await response.json()
+      setPredictionData(data)
+    } catch (err) {
+      console.error('Error loading predictions:', err)
+    } finally {
+      setLoadingPredictions(false)
+    }
+  }
 
   const loadAllData = async () => {
     setLoading(true)
@@ -207,7 +232,8 @@ export default function ConversionesPage() {
 
   // Calcular totales del funnel
   const getTotals = () => {
-    const fromEvents = funnelStats.reduce((acc, row) => ({
+    // Totales históricos (todo el tiempo) de la vista
+    const fromFunnelView = funnelStats.reduce((acc, row) => ({
       hit_limit: (acc.hit_limit || 0) + (row.hit_limit || 0),
       saw_modal: (acc.saw_modal || 0) + (row.saw_modal || 0),
       clicked_upgrade: (acc.clicked_upgrade || 0) + (row.clicked_upgrade || 0),
@@ -216,11 +242,16 @@ export default function ConversionesPage() {
       paid: (acc.paid || 0) + (row.paid || 0)
     }), {})
 
-    // Registros y primer test vienen de user_profiles
+    // Pagos del período seleccionado (de recentEvents, que ya está filtrado por fecha)
+    const paidInPeriod = recentEvents.filter(e => e.event_type === 'payment_completed').length
+
+    // Registros y primer test vienen de user_profiles (ya filtrados por período)
     return {
       registrations: registrationStats.total,
       completed_first_test: registrationStats.firstTestCompleted || 0,
-      ...fromEvents
+      ...fromFunnelView,
+      // Sobrescribir paid con el del período para cálculo correcto de tasa
+      paidInPeriod
     }
   }
 
@@ -337,6 +368,16 @@ export default function ConversionesPage() {
           }`}
         >
           A/B Testing Mensajes
+        </button>
+        <button
+          onClick={() => setActiveTab('predictions')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === 'predictions'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+          }`}
+        >
+          Predicciones
         </button>
       </div>
 
@@ -607,17 +648,40 @@ export default function ConversionesPage() {
               <div className="text-sm text-gray-600 dark:text-gray-400">Visitaron Premium</div>
             </div>
             <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-              <div className="text-3xl font-bold text-emerald-600">{totals.paid || 0}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Pagos Completados</div>
+              <div className="text-3xl font-bold text-emerald-600">{totals.paidInPeriod || 0}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Pagos en Periodo</div>
+              {totals.paid > 0 && totals.paid !== totals.paidInPeriod && (
+                <div className="text-xs text-gray-500 mt-1">({totals.paid} total historico)</div>
+              )}
             </div>
           </div>
 
-          {totals.registrations > 0 && totals.paid > 0 && (
-            <div className="mt-4 text-center p-4 bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg text-white">
-              <div className="text-4xl font-bold">
-                {((totals.paid / totals.registrations) * 100).toFixed(2)}%
+          {totals.registrations > 0 && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Tasa del período */}
+              <div className="text-center p-4 bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg text-white">
+                <div className="text-3xl font-bold">
+                  {totals.paidInPeriod > 0
+                    ? ((totals.paidInPeriod / totals.registrations) * 100).toFixed(2)
+                    : '0.00'}%
+                </div>
+                <div className="text-sm opacity-90">Conversion ultimos {dateRange} dias</div>
+                <div className="text-xs opacity-75 mt-1">
+                  {totals.paidInPeriod} pagos / {totals.registrations} registros
+                </div>
               </div>
-              <div className="text-sm opacity-90">Tasa de Conversion Total (Registro → Pago)</div>
+              {/* Tasa histórica */}
+              <div className="text-center p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white">
+                <div className="text-3xl font-bold">
+                  {totals.paid > 0 && registrationStats.totalAllTime > 0
+                    ? ((totals.paid / registrationStats.totalAllTime) * 100).toFixed(2)
+                    : '0.00'}%
+                </div>
+                <div className="text-sm opacity-90">Conversion historica total</div>
+                <div className="text-xs opacity-75 mt-1">
+                  {totals.paid} pagos / {registrationStats.totalAllTime || 0} usuarios
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -1049,6 +1113,323 @@ export default function ConversionesPage() {
             </ul>
           </div>
         </>
+      )}
+
+      {/* ===== TAB: PREDICCIONES ===== */}
+      {activeTab === 'predictions' && (
+        <div className="space-y-6">
+          {loadingPredictions ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : predictionData ? (
+            <>
+              {/* Calidad de la prediccion */}
+              <div className={`rounded-xl p-4 border ${
+                predictionData.quality.reliability === 'alta'
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                  : predictionData.quality.reliability === 'media'
+                  ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                  : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">
+                    {predictionData.quality.reliability === 'alta' ? '🎯' : predictionData.quality.reliability === 'media' ? '📊' : '⚠️'}
+                  </span>
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-white">
+                      Fiabilidad: {predictionData.quality.reliability.toUpperCase()}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {predictionData.quality.message}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estimacion de proxima venta - DESTACADO */}
+              {predictionData.prediction.dailyRegistrationRate > 0 && predictionData.conversion.rate > 0 && (() => {
+                const expectedSalesPerDay = predictionData.prediction.dailyRegistrationRate * predictionData.conversion.rate
+                const expectedDaysBetweenSales = 1 / expectedSalesPerDay
+                const daysUntilNext = Math.max(0, Math.ceil(expectedDaysBetweenSales - predictionData.current.daysSinceLastPayment))
+                const expectedDate = new Date(Date.now() + daysUntilNext * 24 * 60 * 60 * 1000)
+                const avgTicket = predictionData.revenue?.avgTicket || 0
+                const salesPerWeek = expectedSalesPerDay * 7
+                const salesPerMonth = expectedSalesPerDay * 30
+                const revenuePerWeek = salesPerWeek * avgTicket
+                const revenuePerMonth = salesPerMonth * avgTicket
+
+                return (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                      <span>🔮</span>
+                      Proyecciones de Ventas
+                    </h3>
+
+                    {/* Proxima venta */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="text-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+                        <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{daysUntilNext}d</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Proxima venta</div>
+                      </div>
+                      <div className="text-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+                        <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                          {expectedDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Fecha estimada</div>
+                      </div>
+                      <div className="text-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
+                        <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{expectedDaysBetweenSales.toFixed(1)}d</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Frecuencia</div>
+                      </div>
+                      <div className="text-center bg-green-100 dark:bg-green-900/30 rounded-lg p-3">
+                        <div className="text-3xl font-bold text-green-600 dark:text-green-400">{avgTicket.toFixed(0)}€</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Ticket medio</div>
+                      </div>
+                    </div>
+
+                    {/* Proyecciones */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{salesPerWeek.toFixed(1)}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Ventas/semana</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{revenuePerWeek.toFixed(0)}€</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Ingresos/semana</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{salesPerMonth.toFixed(0)}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Ventas/mes</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{revenuePerMonth.toFixed(0)}€</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Ingresos/mes</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center border-t border-gray-200 dark:border-gray-700 pt-3">
+                      {predictionData.prediction.dailyRegistrationRate} registros/dia × {(predictionData.conversion.rate * 100).toFixed(2)}% = {expectedSalesPerDay.toFixed(2)} ventas/dia | Ticket medio: {avgTicket.toFixed(2)}€
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Metricas principales */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Tasa de conversion real */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Tasa de Conversion Real
+                  </h3>
+                  <div className="text-4xl font-bold text-emerald-600">
+                    {(predictionData.conversion.rate * 100).toFixed(2)}%
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    {predictionData.conversion.totalConverted} de {predictionData.conversion.totalUsers} usuarios
+                  </div>
+                  <div className="mt-2 text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 rounded p-2">
+                    <div className="font-medium mb-1">Intervalo de confianza 95%:</div>
+                    <div>La tasa real esta entre <strong>{(predictionData.conversion.confidenceInterval.lower * 100).toFixed(1)}%</strong> y <strong>{(predictionData.conversion.confidenceInterval.upper * 100).toFixed(1)}%</strong></div>
+                    <div className="mt-1 opacity-75">Con mas ventas, este rango se estrecha y la prediccion mejora</div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Tiempo medio: {predictionData.conversion.avgDaysToConvert} dias hasta pagar
+                  </div>
+                </div>
+
+                {/* Probabilidad de proxima venta */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Probabilidad Proxima Venta
+                  </h3>
+                  <div className="text-4xl font-bold text-blue-600">
+                    {(predictionData.prediction.probability * 100).toFixed(0)}%
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    Pool: {predictionData.current.pool.total} usuarios sin pagar
+                  </div>
+                  <div className="mt-2 text-xs text-gray-400">
+                    IC: {(predictionData.prediction.probabilityCI.lower * 100).toFixed(0)}% - {(predictionData.prediction.probabilityCI.upper * 100).toFixed(0)}%
+                  </div>
+                  {/* Barra de progreso */}
+                  <div className="mt-3">
+                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500"
+                        style={{ width: `${Math.min(predictionData.prediction.probability * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dias desde ultimo pago */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Dias Desde Ultimo Pago
+                  </h3>
+                  <div className="text-4xl font-bold text-purple-600">
+                    {predictionData.current.daysSinceLastPayment || 0}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    Promedio historico: {predictionData.trend.avgDaysBetweenPayments || '?'} dias
+                  </div>
+                  {predictionData.trend.avgDaysBetweenPayments && (
+                    <div className="mt-3">
+                      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ${
+                            predictionData.current.daysSinceLastPayment > predictionData.trend.avgDaysBetweenPayments
+                              ? 'bg-orange-500'
+                              : 'bg-green-500'
+                          }`}
+                          style={{
+                            width: `${Math.min((predictionData.current.daysSinceLastPayment / predictionData.trend.avgDaysBetweenPayments) * 100, 100)}%`
+                          }}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {predictionData.current.daysSinceLastPayment > predictionData.trend.avgDaysBetweenPayments
+                          ? 'Por encima del promedio'
+                          : 'Dentro del promedio'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Estimaciones */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <span>📈</span>
+                  Estimaciones de Proxima Venta
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Registros necesarios */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Usuarios Necesarios Para:</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>50% probabilidad</span>
+                          <span className="font-medium">{predictionData.prediction.registrationsFor50} usuarios</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-yellow-500"
+                            style={{ width: `${Math.min((predictionData.current.pool.total / predictionData.prediction.registrationsFor50) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>75% probabilidad</span>
+                          <span className="font-medium">{predictionData.prediction.registrationsFor75} usuarios</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-orange-500"
+                            style={{ width: `${Math.min((predictionData.current.pool.total / predictionData.prediction.registrationsFor75) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>90% probabilidad</span>
+                          <span className="font-medium">{predictionData.prediction.registrationsFor90} usuarios</span>
+                        </div>
+                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-red-500"
+                            style={{ width: `${Math.min((predictionData.current.pool.total / predictionData.prediction.registrationsFor90) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-sm text-gray-500">
+                      Pool actual: {predictionData.current.pool.total} usuarios sin pagar
+                    </div>
+                  </div>
+
+                  {/* Usuarios en proceso */}
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-3">Pool de Usuarios (sin pagar):</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <div>
+                          <div className="font-medium text-green-700 dark:text-green-300">Nuevos (0-7 dias)</div>
+                          <div className="text-xs text-green-600 dark:text-green-400">Recien llegados</div>
+                        </div>
+                        <div className="text-2xl font-bold text-green-600">{predictionData.current.pool.new}</div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                        <div>
+                          <div className="font-medium text-yellow-700 dark:text-yellow-300">Activos (7-30 dias)</div>
+                          <div className="text-xs text-yellow-600 dark:text-yellow-400">Probando la app</div>
+                        </div>
+                        <div className="text-2xl font-bold text-yellow-600">{predictionData.current.pool.active}</div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                        <div>
+                          <div className="font-medium text-gray-700 dark:text-gray-300">Dormidos (30+ dias)</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">Baja probabilidad</div>
+                        </div>
+                        <div className="text-2xl font-bold text-gray-600">{predictionData.current.pool.dormant}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-sm text-gray-500">
+                      Velocidad: {predictionData.prediction.dailyRegistrationRate} registros/dia
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Historial de pagos */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <span>💳</span>
+                  Historial de Pagos ({predictionData.current.totalPayments} total)
+                </h3>
+                <div className="space-y-2">
+                  {predictionData.trend.paymentHistory.map((payment, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                      <div className="text-sm">
+                        <span className="font-medium text-gray-900 dark:text-white">Pago #{predictionData.current.totalPayments - i}</span>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(payment.date).toLocaleDateString('es-ES', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Explicacion */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                <h3 className="font-bold text-blue-900 dark:text-blue-200 mb-2">Como funcionan las predicciones</h3>
+                <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                  <li><strong>Tasa de conversion:</strong> Calculada con TODOS los usuarios y TODAS las ventas (datos reales)</li>
+                  <li><strong>Intervalo de confianza (IC):</strong> Rango donde esta el valor real con 95% de certeza. Se estrecha automaticamente con mas ventas.</li>
+                  <li><strong>Probabilidad:</strong> Calculada con distribucion binomial sobre el pool de usuarios que aun no han pagado</li>
+                  <li><strong>Pool:</strong> Nuevos (0-7d), Activos (7-30d probando), Dormidos (30+d baja probabilidad)</li>
+                  <li><strong>Tiempo medio:</strong> Dias promedio desde registro hasta pago (puede ser 0 = mismo dia)</li>
+                  <li><strong>Fiabilidad:</strong> Con menos de 10 ventas es baja, 10-20 media, mas de 20 alta</li>
+                </ul>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              No se pudieron cargar las predicciones
+            </div>
+          )}
+        </div>
       )}
 
     </div>

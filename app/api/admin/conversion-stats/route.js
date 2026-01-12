@@ -29,6 +29,13 @@ export async function GET(request) {
 
     if (regError) throw regError
 
+    // 1b. Total de usuarios (historico)
+    const { count: totalUsersAllTime, error: totalError } = await supabase
+      .from('user_profiles')
+      .select('*', { count: 'exact', head: true })
+
+    if (totalError) throw totalError
+
     // 2. Primer test completado del periodo
     const { data: firstTests, error: testError } = await supabase
       .from('user_profiles')
@@ -77,6 +84,7 @@ export async function GET(request) {
     return NextResponse.json({
       registrations: {
         total: registrations?.length || 0,
+        totalAllTime: totalUsersAllTime || 0,
         bySource,
         firstTestCompleted: firstTests?.length || 0
       },
