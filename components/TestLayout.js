@@ -383,6 +383,13 @@ export default function TestLayout({
   useEffect(() => {
     const currentQ = effectiveQuestions?.[currentQuestion]
     if (currentQ) {
+      // Guardar ID de pregunta actual en localStorage para detección en FeedbackModal
+      try {
+        localStorage.setItem('currentQuestionId', currentQ.id)
+      } catch (e) {
+        // Ignorar errores de localStorage
+      }
+
       // Los fetchers pueden devolver diferentes formatos:
       // - question_text o question (transformado)
       // - option_a/b/c/d o options[] array
