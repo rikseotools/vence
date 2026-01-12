@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import supabase from '@/lib/supabase'
 
-// Contraseña para acceso de Armando
+// Contraseñas de acceso
 const ARMANDO_PASSWORD = 'V3nc3!Arm@nd0$2026#Liq'
+const MANUEL_PASSWORD = 'V3nc3!M@nu3l$2026#Admin'
 
 export default function ArmandoPage() {
   const [authenticated, setAuthenticated] = useState(false)
+  const [userRole, setUserRole] = useState(null) // 'armando' o 'manuel'
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [stripeTransactions, setStripeTransactions] = useState([])
@@ -19,8 +21,9 @@ export default function ArmandoPage() {
 
   // Verificar si ya está autenticado (sessionStorage)
   useEffect(() => {
-    const isAuth = sessionStorage.getItem('armando_auth') === 'true'
-    if (isAuth) {
+    const savedRole = sessionStorage.getItem('panel_role')
+    if (savedRole === 'armando' || savedRole === 'manuel') {
+      setUserRole(savedRole)
       setAuthenticated(true)
     } else {
       setLoading(false)
@@ -38,7 +41,13 @@ export default function ArmandoPage() {
   const handleLogin = (e) => {
     e.preventDefault()
     if (password === ARMANDO_PASSWORD) {
-      sessionStorage.setItem('armando_auth', 'true')
+      sessionStorage.setItem('panel_role', 'armando')
+      setUserRole('armando')
+      setAuthenticated(true)
+      setError('')
+    } else if (password === MANUEL_PASSWORD) {
+      sessionStorage.setItem('panel_role', 'manuel')
+      setUserRole('manuel')
       setAuthenticated(true)
       setError('')
     } else {
@@ -47,7 +56,8 @@ export default function ArmandoPage() {
   }
 
   const handleLogout = () => {
-    sessionStorage.removeItem('armando_auth')
+    sessionStorage.removeItem('panel_role')
+    setUserRole(null)
     setAuthenticated(false)
   }
 
@@ -202,7 +212,7 @@ export default function ArmandoPage() {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-          <h1 className="text-2xl font-bold text-center mb-6">Panel de Armando</h1>
+          <h1 className="text-2xl font-bold text-center mb-6">Panel de Liquidaciones</h1>
           <form onSubmit={handleLogin}>
             <div className="mb-4">
               <label className="block text-gray-700 mb-2">Contraseña</label>
@@ -292,7 +302,12 @@ export default function ArmandoPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Panel de Armando</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Panel de Liquidaciones</h1>
+            <p className="text-sm text-gray-500">
+              Conectado como: <span className="font-medium text-gray-700">{userRole === 'armando' ? 'Armando' : 'Manuel'}</span>
+            </p>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={loadData}
@@ -407,8 +422,8 @@ export default function ArmandoPage() {
                             <span className="w-24 text-right font-bold text-sm bg-gray-100 px-2 py-1 rounded">
                               {formatCurrency(t.balanceAfter)}
                             </span>
-                            {/* Estado del payout */}
-                            {isPayout && !payoutStatus.sent && !expandedPayouts[t.source] && (
+                            {/* Estado del payout - según rol */}
+                            {isPayout && !payoutStatus.sent && !expandedPayouts[t.source] && userRole === 'armando' && (
                               <button
                                 onClick={() => setExpandedPayouts(prev => ({ ...prev, [t.source]: true }))}
                                 className="ml-3 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
@@ -416,13 +431,23 @@ export default function ArmandoPage() {
                                 Dividir
                               </button>
                             )}
-                            {isPayout && payoutStatus.sent && !payoutStatus.confirmed && (
+                            {isPayout && !payoutStatus.sent && userRole === 'manuel' && (
+                              <span className="ml-3 px-3 py-1 bg-gray-100 text-gray-600 text-xs rounded font-medium">
+                                Pendiente dividir
+                              </span>
+                            )}
+                            {isPayout && payoutStatus.sent && !payoutStatus.confirmed && userRole === 'manuel' && (
                               <button
                                 onClick={() => markAsConfirmed(t.source)}
                                 className="ml-3 px-3 py-1 bg-yellow-500 text-yellow-900 text-xs rounded hover:bg-yellow-600 transition font-medium"
                               >
                                 Confirmar recibido
                               </button>
+                            )}
+                            {isPayout && payoutStatus.sent && !payoutStatus.confirmed && userRole === 'armando' && (
+                              <span className="ml-3 px-3 py-1 bg-yellow-100 text-yellow-800 text-xs rounded font-medium">
+                                Esperando confirmación
+                              </span>
                             )}
                             {isPayout && payoutStatus.confirmed && (
                               <span className="ml-3 px-3 py-1 bg-green-100 text-green-800 text-xs rounded font-medium">
@@ -432,8 +457,8 @@ export default function ArmandoPage() {
                             {!isPayout && <span className="w-20"></span>}
                           </div>
 
-                          {/* Fila expandida con reparto 90/10 */}
-                          {isPayout && !payoutStatus.sent && expandedPayouts[t.source] && (
+                          {/* Fila expandida con reparto 90/10 - solo Armando */}
+                          {isPayout && !payoutStatus.sent && expandedPayouts[t.source] && userRole === 'armando' && (
                             <div className="bg-blue-50 border-t border-blue-200 p-4">
                               <div className="flex items-center justify-between mb-3">
                                 <span className="text-blue-800 font-medium">Reparto de {formatCurrency(netAmount)}</span>

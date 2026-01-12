@@ -3,15 +3,14 @@
 import { useState, useEffect } from 'react'
 import supabase from '@/lib/supabase'
 
-// Contraseña para acceso de Manuel
-const MANUEL_PASSWORD = 'manuel2024vence'
+// Contraseña para acceso de Manuel (actualizada)
+const MANUEL_PASSWORD = 'V3nc3!M@nu3l$2026#Admin'
 
 export default function ManuelPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [settlements, setSettlements] = useState([])
-  const [summary, setSummary] = useState(null)
+  const [payouts, setPayouts] = useState([])
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState('awaiting') // 'awaiting', 'all', 'confirmed'
 
@@ -47,26 +46,28 @@ export default function ManuelPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const { data: summaryData } = await supabase
-        .from('settlement_summary')
-        .select('*')
-        .single()
-      setSummary(summaryData)
-
       let query = supabase
-        .from('payment_settlements')
+        .from('payout_transfers')
         .select('*')
-        .order('payment_date', { ascending: false })
+        .order('payout_date', { ascending: false })
 
       if (filter === 'awaiting') {
-        // Pagos que Armando marcó como pagados pero Manuel no ha confirmado
-        query = query.eq('armando_marked_paid', true).eq('manuel_confirmed_received', false)
+        // Payouts que Armando marcó como enviados pero Manuel no ha confirmado
+        query = query.eq('sent_to_manuel', true).eq('manuel_confirmed', false)
       } else if (filter === 'confirmed') {
-        query = query.eq('manuel_confirmed_received', true)
+        query = query.eq('manuel_confirmed', true)
+      } else if (filter === 'all') {
+        // Solo mostrar los que Armando ha marcado como enviados (no los pendientes)
+        query = query.eq('sent_to_manuel', true)
       }
 
-      const { data: settlementsData } = await query
-      setSettlements(settlementsData || [])
+      const { data: payoutsData, error: queryError } = await query
+
+      if (queryError) {
+        console.error('Error loading payouts:', queryError)
+      }
+
+      setPayouts(payoutsData || [])
     } catch (err) {
       console.error('Error loading data:', err)
     }
@@ -75,10 +76,10 @@ export default function ManuelPage() {
 
   const confirmReceived = async (id) => {
     const { error } = await supabase
-      .from('payment_settlements')
+      .from('payout_transfers')
       .update({
-        manuel_confirmed_received: true,
-        manuel_confirmed_at: new Date().toISOString()
+        manuel_confirmed: true,
+        manuel_confirmed_date: new Date().toISOString()
       })
       .eq('id', id)
 
@@ -88,17 +89,17 @@ export default function ManuelPage() {
   }
 
   const confirmAllAwaiting = async () => {
-    const awaitingIds = settlements
-      .filter(s => s.armando_marked_paid && !s.manuel_confirmed_received)
-      .map(s => s.id)
+    const awaitingIds = payouts
+      .filter(p => p.sent_to_manuel && !p.manuel_confirmed)
+      .map(p => p.id)
 
     if (awaitingIds.length === 0) return
 
     const { error } = await supabase
-      .from('payment_settlements')
+      .from('payout_transfers')
       .update({
-        manuel_confirmed_received: true,
-        manuel_confirmed_at: new Date().toISOString()
+        manuel_confirmed: true,
+        manuel_confirmed_date: new Date().toISOString()
       })
       .in('id', awaitingIds)
 
@@ -112,6 +113,16 @@ export default function ManuelPage() {
   }
 
   const formatDate = (dateStr) => {
+    if (!dateStr) return '-'
+    return new Date(dateStr).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return '-'
     return new Date(dateStr).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
@@ -126,6 +137,9 @@ export default function ManuelPage() {
       <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
           <h1 className="text-2xl font-bold text-center mb-6">Panel de Manuel</h1>
+          <p className="text-gray-500 text-center mb-6 text-sm">
+            Confirma los pagos que Armando te ha enviado
+          </p>
           <form onSubmit={handleLogin}>
             <div className="mb-4">
               <label className="block text-gray-700 mb-2">Contraseña</label>
@@ -152,16 +166,19 @@ export default function ManuelPage() {
     )
   }
 
-  const awaitingCount = settlements.filter(s => s.armando_marked_paid && !s.manuel_confirmed_received).length
-  const awaitingTotal = settlements
-    .filter(s => s.armando_marked_paid && !s.manuel_confirmed_received)
-    .reduce((sum, s) => sum + s.manuel_amount, 0)
+  // Calcular estadísticas
+  const awaitingPayouts = payouts.filter(p => p.sent_to_manuel && !p.manuel_confirmed)
+  const awaitingCount = awaitingPayouts.length
+  const awaitingTotal = awaitingPayouts.reduce((sum, p) => sum + p.manuel_amount, 0)
+
+  const confirmedPayouts = payouts.filter(p => p.manuel_confirmed)
+  const confirmedTotal = confirmedPayouts.reduce((sum, p) => sum + p.manuel_amount, 0)
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Panel de Liquidaciones - Manuel</h1>
+          <h1 className="text-2xl font-bold">Panel de Manuel</h1>
           <button
             onClick={handleLogout}
             className="text-gray-600 hover:text-gray-800"
@@ -170,27 +187,26 @@ export default function ManuelPage() {
           </button>
         </div>
 
-        {summary && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow p-4">
-              <p className="text-gray-500 text-sm">Total Pagos</p>
-              <p className="text-2xl font-bold">{summary.total_payments}</p>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg shadow p-4">
-              <p className="text-green-700 text-sm">Tu parte total (90%)</p>
-              <p className="text-2xl font-bold text-green-700">{formatCurrency(summary.total_manuel)}</p>
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg shadow p-4">
-              <p className="text-yellow-700 text-sm">Pendiente recibir</p>
-              <p className="text-2xl font-bold text-yellow-700">{formatCurrency(summary.pending_manuel)}</p>
-            </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg shadow p-4">
-              <p className="text-blue-700 text-sm">Por confirmar</p>
-              <p className="text-2xl font-bold text-blue-700">{awaitingCount} pagos</p>
-            </div>
+        {/* Resumen */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg shadow p-4">
+            <p className="text-yellow-700 text-sm">Por confirmar</p>
+            <p className="text-2xl font-bold text-yellow-700">{formatCurrency(awaitingTotal)}</p>
+            <p className="text-yellow-600 text-xs mt-1">{awaitingCount} pago(s)</p>
           </div>
-        )}
+          <div className="bg-green-50 border border-green-200 rounded-lg shadow p-4">
+            <p className="text-green-700 text-sm">Total confirmado</p>
+            <p className="text-2xl font-bold text-green-700">{formatCurrency(confirmedTotal)}</p>
+            <p className="text-green-600 text-xs mt-1">{confirmedPayouts.length} pago(s)</p>
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg shadow p-4">
+            <p className="text-blue-700 text-sm">Tu porcentaje</p>
+            <p className="text-2xl font-bold text-blue-700">90%</p>
+            <p className="text-blue-600 text-xs mt-1">de cada payout de Stripe</p>
+          </div>
+        </div>
 
+        {/* Filtros */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
           <div className="flex flex-wrap gap-2">
             <button
@@ -211,7 +227,7 @@ export default function ManuelPage() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Todos
+              Todos los envíos
             </button>
             <button
               onClick={() => setFilter('confirmed')}
@@ -240,10 +256,11 @@ export default function ManuelPage() {
           </div>
         </div>
 
+        {/* Tabla de payouts */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-gray-500">Cargando...</div>
-          ) : settlements.length === 0 ? (
+          ) : payouts.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               {filter === 'awaiting'
                 ? 'No hay pagos pendientes de confirmar'
@@ -254,52 +271,45 @@ export default function ManuelPage() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Pago</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Usuario</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Bruto</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Fee Stripe</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Neto</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Payout</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Payout Stripe</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Tu parte (90%)</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Enviado</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {settlements.map((s) => (
-                    <tr key={s.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm">{formatDate(s.payment_date)}</td>
-                      <td className="px-4 py-3 text-sm">{s.user_email || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-right">{formatCurrency(s.amount_gross)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-red-600">-{formatCurrency(s.stripe_fee)}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium">{formatCurrency(s.amount_net)}</td>
-                      <td className="px-4 py-3 text-sm text-right text-green-600 font-bold">{formatCurrency(s.manuel_amount)}</td>
+                  {payouts.map((p) => (
+                    <tr key={p.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm">{formatDate(p.payout_date)}</td>
+                      <td className="px-4 py-3 text-sm text-right">{formatCurrency(p.payout_amount)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-green-600 font-bold">{formatCurrency(p.manuel_amount)}</td>
+                      <td className="px-4 py-3 text-sm text-center text-gray-500">
+                        {formatDate(p.sent_date)}
+                      </td>
                       <td className="px-4 py-3 text-center">
-                        {s.manuel_confirmed_received ? (
+                        {p.manuel_confirmed ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Confirmado
-                          </span>
-                        ) : s.armando_marked_paid ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Armando pagó
+                            ✓ Confirmado
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                             Pendiente
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {s.armando_marked_paid && !s.manuel_confirmed_received && (
+                        {!p.manuel_confirmed ? (
                           <button
-                            onClick={() => confirmReceived(s.id)}
+                            onClick={() => confirmReceived(p.id)}
                             className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition"
                           >
                             Confirmar recibido
                           </button>
-                        )}
-                        {s.manuel_confirmed_received && (
-                          <span className="text-green-600 text-sm">
-                            {formatDate(s.manuel_confirmed_at)}
+                        ) : (
+                          <span className="text-green-600 text-xs">
+                            {formatDateTime(p.manuel_confirmed_date)}
                           </span>
                         )}
                       </td>
@@ -311,14 +321,31 @@ export default function ManuelPage() {
           )}
         </div>
 
+        {/* Explicación del flujo */}
         <div className="mt-6 bg-white rounded-lg shadow p-4">
-          <h3 className="font-medium mb-2">Flujo de liquidación:</h3>
+          <h3 className="font-medium mb-2">¿Cómo funciona?</h3>
           <ol className="list-decimal list-inside text-sm text-gray-600 space-y-1">
-            <li><span className="text-gray-600 font-medium">Pendiente</span> - Pago recibido en Stripe, Armando aún no ha pagado</li>
-            <li><span className="text-yellow-600 font-medium">Armando pagó</span> - Armando te ha transferido, confirma que lo recibiste</li>
-            <li><span className="text-green-600 font-medium">Confirmado</span> - Has confirmado que recibiste el pago</li>
+            <li>Armando recibe un payout de Stripe en su cuenta bancaria</li>
+            <li>Armando te transfiere el 90% de ese payout</li>
+            <li>Armando marca el pago como "Enviado" en su panel</li>
+            <li>Tú confirmas aquí que lo has recibido</li>
           </ol>
         </div>
+
+        {/* Notas si las hay */}
+        {payouts.some(p => p.notes) && (
+          <div className="mt-6 bg-white rounded-lg shadow p-4">
+            <h3 className="font-medium mb-2">Notas de pagos</h3>
+            <div className="space-y-2">
+              {payouts.filter(p => p.notes).map(p => (
+                <div key={p.id} className="text-sm border-l-2 border-blue-500 pl-3">
+                  <span className="text-gray-500">{formatDate(p.payout_date)}:</span>{' '}
+                  <span className="text-gray-700">{p.notes}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
