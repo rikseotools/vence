@@ -12,6 +12,7 @@ interface Publicacion {
   id: string;
   boe_id: string;
   boe_fecha: string;
+  fecha_disposicion: string | null;
   titulo: string;
   titulo_limpio: string | null;
   tipo: string | null;
@@ -82,19 +83,28 @@ function extraerFechaConvocatoriaOrigen(titulo: string): string | null {
 
 /**
  * Agrupa publicaciones por proceso selectivo (convocatoria)
+ *
+ * IMPORTANTE: Las convocatorias se identifican por su fecha_disposicion (fecha de la resolución),
+ * que es lo que otras publicaciones (admitidos, resultado) referencian en sus títulos.
+ * Por ejemplo: "Convocatoria de 23 de diciembre de 2024" → fecha_disposicion = 2024-12-23
  */
 function agruparPorProcesoSelectivo(publicaciones: Publicacion[]): ProcesoSelectivo[] {
   const procesos: Map<string, ProcesoSelectivo> = new Map();
 
   // Paso 1: Identificar todas las convocatorias (definen procesos)
+  // Usamos fecha_disposicion como clave (es la fecha que referencian otras publicaciones)
   publicaciones
     .filter(p => p.tipo === 'convocatoria')
     .forEach(conv => {
-      procesos.set(conv.boe_fecha, {
-        id: conv.boe_fecha,
+      // Preferir fecha_disposicion (la fecha de la resolución que se referencia)
+      // Fallback a boe_fecha si no hay fecha_disposicion
+      const fechaClave = conv.fecha_disposicion || conv.boe_fecha;
+
+      procesos.set(fechaClave, {
+        id: fechaClave,
         convocatoria: conv,
         relacionadas: [],
-        fechaConvocatoria: conv.boe_fecha,
+        fechaConvocatoria: fechaClave,
         plazas: conv.num_plazas,
       });
     });
@@ -106,14 +116,14 @@ function agruparPorProcesoSelectivo(publicaciones: Publicacion[]): ProcesoSelect
       const fechaRef = extraerFechaConvocatoriaOrigen(pub.titulo);
 
       if (fechaRef) {
-        // Buscar proceso con esa fecha exacta o cercana
+        // Buscar proceso con esa fecha exacta
         let procesoEncontrado: ProcesoSelectivo | undefined;
 
-        // Primero buscar fecha exacta
         if (procesos.has(fechaRef)) {
           procesoEncontrado = procesos.get(fechaRef);
         } else {
-          // Si no hay proceso con esa fecha exacta, crear uno
+          // Si no hay proceso con esa fecha exacta, crear uno huérfano
+          // (falta la convocatoria original en la BD)
           procesoEncontrado = {
             id: fechaRef,
             convocatoria: null,
