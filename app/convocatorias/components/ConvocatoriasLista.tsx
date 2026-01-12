@@ -25,6 +25,8 @@ interface Convocatoria {
   municipio: string | null;
   resumen: string | null;
   acceso: string | null;
+  plazo_inscripcion_dias: number | null;
+  fecha_limite_inscripcion: string | null;
 }
 
 interface Props {
@@ -87,6 +89,17 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
           conv.comunidad_autonoma
         ].filter(Boolean).join(', ') || (conv.ambito === 'estatal' ? 'Nacional' : null);
 
+        // Calcular estado de inscripción
+        const hoy = new Date().toISOString().split('T')[0];
+        const inscripcionAbierta = conv.fecha_limite_inscripcion
+          ? conv.fecha_limite_inscripcion >= hoy
+          : null;
+
+        // Días restantes
+        const diasRestantes = conv.fecha_limite_inscripcion
+          ? Math.ceil((new Date(conv.fecha_limite_inscripcion).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+
         return (
           <article
             key={conv.id}
@@ -123,6 +136,22 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
                         Tu oposición
                       </span>
                     )}
+                    {/* Estado inscripción */}
+                    {inscripcionAbierta !== null && (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        inscripcionAbierta
+                          ? diasRestantes !== null && diasRestantes <= 5
+                            ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                            : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                          : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                      }`}>
+                        {inscripcionAbierta
+                          ? diasRestantes !== null && diasRestantes <= 5
+                            ? `⏰ ${diasRestantes}d`
+                            : '✓ Abierta'
+                          : '✗ Cerrada'}
+                      </span>
+                    )}
                   </div>
 
                   {/* Plazas destacadas */}
@@ -152,7 +181,7 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
 
                 {/* Meta info */}
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-gray-500 dark:text-gray-400">
-                  {/* Fecha */}
+                  {/* Fecha BOE */}
                   <span className="flex items-center">
                     <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -163,6 +192,23 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
                       year: 'numeric'
                     })}
                   </span>
+
+                  {/* Fecha límite inscripción */}
+                  {conv.fecha_limite_inscripcion && (
+                    <span className={`flex items-center ${
+                      inscripcionAbierta
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-500 dark:text-red-400'
+                    }`}>
+                      <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Límite: {new Date(conv.fecha_limite_inscripcion).toLocaleDateString('es-ES', {
+                        day: 'numeric',
+                        month: 'short'
+                      })}
+                    </span>
+                  )}
 
                   {/* Ubicación */}
                   {ubicacion && (

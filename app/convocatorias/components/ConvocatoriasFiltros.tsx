@@ -76,6 +76,7 @@ interface Props {
     ambito?: string;
     ccaa?: string;
     q?: string;
+    inscripcion?: string;
   };
 }
 
@@ -116,7 +117,7 @@ export default function ConvocatoriasFiltros({ currentFilters }: Props) {
 
   const hasFilters = currentFilters.categoria || currentFilters.tipo ||
                      currentFilters.oposicion || currentFilters.ambito ||
-                     currentFilters.ccaa || currentFilters.q;
+                     currentFilters.ccaa || currentFilters.q || currentFilters.inscripcion;
 
   const hasAdvancedFilters = currentFilters.tipo || currentFilters.oposicion;
 
@@ -157,6 +158,37 @@ export default function ConvocatoriasFiltros({ currentFilters }: Props) {
           </button>
         </div>
       </form>
+
+      {/* Toggle Inscripción Abierta */}
+      <div className="mb-5">
+        <Link
+          href={buildUrl('inscripcion', currentFilters.inscripcion === 'abierta' ? null : 'abierta')}
+          className={`flex items-center justify-between w-full px-4 py-3 rounded-lg border transition-colors ${
+            currentFilters.inscripcion === 'abierta'
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300'
+              : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="font-medium">Inscripción abierta</span>
+          </span>
+          <span className={`w-10 h-6 rounded-full relative transition-colors ${
+            currentFilters.inscripcion === 'abierta'
+              ? 'bg-green-500'
+              : 'bg-gray-300 dark:bg-gray-600'
+          }`}>
+            <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+              currentFilters.inscripcion === 'abierta' ? 'left-5' : 'left-1'
+            }`} />
+          </span>
+        </Link>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Solo oposiciones con plazo de inscripción activo
+        </p>
+      </div>
 
       {/* Grupo/Titulación */}
       <div className="mb-5">

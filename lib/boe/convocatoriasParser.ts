@@ -1228,3 +1228,123 @@ export function extraerDatosGeograficos(titulo: string, departamento: string): D
     municipio
   };
 }
+
+// ============================================
+// CÁLCULO DE FECHAS LÍMITE
+// ============================================
+
+/**
+ * Festivos nacionales de España (fechas fijas)
+ * El plazo del BOE empieza a contar desde el día siguiente a la publicación
+ */
+const FESTIVOS_NACIONALES = [
+  '01-01', // Año Nuevo
+  '01-06', // Epifanía
+  '05-01', // Día del Trabajador
+  '08-15', // Asunción
+  '10-12', // Fiesta Nacional
+  '11-01', // Todos los Santos
+  '12-06', // Constitución
+  '12-08', // Inmaculada
+  '12-25', // Navidad
+];
+
+/**
+ * Verifica si una fecha es día hábil (no fin de semana ni festivo nacional)
+ */
+export function esDiaHabil(fecha: Date): boolean {
+  const diaSemana = fecha.getDay();
+  // 0 = domingo, 6 = sábado
+  if (diaSemana === 0 || diaSemana === 6) {
+    return false;
+  }
+
+  // Verificar festivos nacionales
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  const fechaStr = `${mes}-${dia}`;
+
+  return !FESTIVOS_NACIONALES.includes(fechaStr);
+}
+
+/**
+ * Añade días hábiles a una fecha
+ * @param fechaInicio Fecha de inicio (fecha de publicación BOE)
+ * @param diasHabiles Número de días hábiles a añadir
+ * @returns Fecha límite
+ */
+export function addDiasHabiles(fechaInicio: Date, diasHabiles: number): Date {
+  const resultado = new Date(fechaInicio);
+  let diasContados = 0;
+
+  // El plazo empieza a contar desde el día siguiente
+  resultado.setDate(resultado.getDate() + 1);
+
+  while (diasContados < diasHabiles) {
+    if (esDiaHabil(resultado)) {
+      diasContados++;
+    }
+    if (diasContados < diasHabiles) {
+      resultado.setDate(resultado.getDate() + 1);
+    }
+  }
+
+  return resultado;
+}
+
+/**
+ * Calcula la fecha límite de inscripción
+ * @param boeFecha Fecha de publicación en BOE (YYYY-MM-DD)
+ * @param plazoDiasHabiles Plazo en días hábiles
+ * @returns Fecha límite en formato YYYY-MM-DD o null si no se puede calcular
+ */
+export function calcularFechaLimiteInscripcion(
+  boeFecha: string,
+  plazoDiasHabiles: number | null
+): string | null {
+  if (!plazoDiasHabiles || plazoDiasHabiles <= 0) {
+    return null;
+  }
+
+  try {
+    const fechaInicio = new Date(boeFecha);
+    if (isNaN(fechaInicio.getTime())) {
+      return null;
+    }
+
+    const fechaLimite = addDiasHabiles(fechaInicio, plazoDiasHabiles);
+
+    // Formatear como YYYY-MM-DD
+    const year = fechaLimite.getFullYear();
+    const month = String(fechaLimite.getMonth() + 1).padStart(2, '0');
+    const day = String(fechaLimite.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verifica si la inscripción sigue abierta
+ * @param boeFecha Fecha de publicación
+ * @param plazoDiasHabiles Plazo en días hábiles
+ * @returns true si la inscripción sigue abierta, false si ha cerrado, null si no se puede determinar
+ */
+export function inscripcionAbierta(
+  boeFecha: string,
+  plazoDiasHabiles: number | null
+): boolean | null {
+  const fechaLimite = calcularFechaLimiteInscripcion(boeFecha, plazoDiasHabiles);
+  if (!fechaLimite) {
+    return null; // No se puede determinar
+  }
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const limite = new Date(fechaLimite);
+  limite.setHours(23, 59, 59, 999);
+
+  return hoy <= limite;
+}

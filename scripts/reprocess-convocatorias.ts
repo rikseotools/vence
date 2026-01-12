@@ -22,6 +22,7 @@ import {
   calcularRelevancia,
   limpiarTitulo,
   generarResumen,
+  calcularFechaLimiteInscripcion,
   type TipoConvocatoria,
   type Categoria,
   type TipoAcceso,
@@ -43,6 +44,7 @@ interface Convocatoria {
   titulo_limpio: string | null;
   departamento_nombre: string | null;
   contenido_texto: string | null;
+  boe_fecha: string;
   tipo: string | null;
   categoria: string | null;
   acceso: string | null;
@@ -53,6 +55,7 @@ interface Convocatoria {
   oposicion_relacionada: string | null;
   resumen: string | null;
   plazo_inscripcion_dias: number | null;
+  fecha_limite_inscripcion: string | null;
   titulacion_requerida: string | null;
   tiene_temario: boolean | null;
   relevancia_score: number | null;
@@ -74,6 +77,7 @@ interface UpdateData {
   resumen?: string;
   titulo_limpio?: string;
   plazo_inscripcion_dias?: number;
+  fecha_limite_inscripcion?: string;
   titulacion_requerida?: string;
   tiene_temario?: boolean;
   relevancia_score?: number;
@@ -173,6 +177,16 @@ function procesarConvocatoria(conv: Convocatoria): UpdateData | null {
   if (datosTexto.plazoInscripcionDias && datosTexto.plazoInscripcionDias !== conv.plazo_inscripcion_dias) {
     updates.plazo_inscripcion_dias = datosTexto.plazoInscripcionDias;
   }
+
+  // Calcular fecha límite de inscripción (días hábiles)
+  const plazoFinal = updates.plazo_inscripcion_dias || conv.plazo_inscripcion_dias;
+  if (plazoFinal && conv.boe_fecha) {
+    const fechaLimite = calcularFechaLimiteInscripcion(conv.boe_fecha, plazoFinal);
+    if (fechaLimite && fechaLimite !== conv.fecha_limite_inscripcion) {
+      updates.fecha_limite_inscripcion = fechaLimite;
+    }
+  }
+
   if (datosTexto.titulacionRequerida && datosTexto.titulacionRequerida !== conv.titulacion_requerida) {
     updates.titulacion_requerida = datosTexto.titulacionRequerida;
   }
@@ -272,7 +286,7 @@ async function main() {
 
     const { data: convocatorias, error } = await supabase
       .from('convocatorias_boe')
-      .select('id, titulo, titulo_limpio, departamento_nombre, contenido_texto, tipo, categoria, acceso, num_plazas, num_plazas_libre, num_plazas_pi, num_plazas_discapacidad, oposicion_relacionada, resumen, plazo_inscripcion_dias, titulacion_requerida, tiene_temario, relevancia_score, ambito, comunidad_autonoma, provincia, municipio')
+      .select('id, titulo, titulo_limpio, departamento_nombre, contenido_texto, boe_fecha, tipo, categoria, acceso, num_plazas, num_plazas_libre, num_plazas_pi, num_plazas_discapacidad, oposicion_relacionada, resumen, plazo_inscripcion_dias, fecha_limite_inscripcion, titulacion_requerida, tiene_temario, relevancia_score, ambito, comunidad_autonoma, provincia, municipio')
       .eq('is_active', true)
       .order('boe_fecha', { ascending: false })
       .range(offset, offset + batchLimit - 1);

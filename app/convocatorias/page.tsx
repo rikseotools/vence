@@ -46,6 +46,7 @@ interface SearchParams {
   q?: string;
   page?: string;
   todas?: string; // Si es 'true', muestra todas las publicaciones
+  inscripcion?: string; // 'abierta' para solo mostrar con plazo abierto
 }
 
 async function getConvocatorias(searchParams: SearchParams) {
@@ -102,6 +103,12 @@ async function getConvocatorias(searchParams: SearchParams) {
   // Búsqueda de texto
   if (searchParams.q) {
     query = query.or(`titulo.ilike.%${searchParams.q}%,resumen.ilike.%${searchParams.q}%,departamento_nombre.ilike.%${searchParams.q}%`);
+  }
+
+  // Filtro de inscripción abierta
+  if (searchParams.inscripcion === 'abierta') {
+    const hoy = new Date().toISOString().split('T')[0];
+    query = query.gte('fecha_limite_inscripcion', hoy);
   }
 
   // Paginación
