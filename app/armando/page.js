@@ -13,20 +13,24 @@ export default function ArmandoPage() {
   const [stripeTransactions, setStripeTransactions] = useState([])
   const [stripeBalance, setStripeBalance] = useState(null)
   const [payoutTransfers, setPayoutTransfers] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('envios') // 'envios', 'stripe'
+  const [loading, setLoading] = useState(true)
+  const [expandedPayouts, setExpandedPayouts] = useState({})
+  const [apiError, setApiError] = useState(null)
 
   // Verificar si ya está autenticado (sessionStorage)
   useEffect(() => {
     const isAuth = sessionStorage.getItem('armando_auth') === 'true'
     if (isAuth) {
       setAuthenticated(true)
+    } else {
+      setLoading(false)
     }
   }, [])
 
   // Cargar datos cuando está autenticado
   useEffect(() => {
     if (authenticated) {
+      console.log('🔐 [Armando] Autenticado, cargando datos...')
       loadData()
     }
   }, [authenticated])
@@ -48,25 +52,54 @@ export default function ArmandoPage() {
   }
 
   const loadData = async () => {
+    console.log('🔄 [Armando] Iniciando carga de datos...')
     setLoading(true)
+    setApiError(null)
     try {
-      // Cargar transacciones desde Stripe API
-      const response = await fetch('/api/admin/stripe-fees-summary')
+      // Cargar transacciones desde Stripe API con timeout
+      console.log('📡 [Armando] Llamando a /api/admin/stripe-fees-summary...')
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        console.log('⏰ [Armando] Timeout alcanzado, abortando...')
+        controller.abort()
+      }, 15000)
+
+      const response = await fetch('/api/admin/stripe-fees-summary', {
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+      console.log('✅ [Armando] Respuesta recibida, status:', response.status)
+
       const data = await response.json()
+      console.log('📊 [Armando] Stripe API response:', data)
+
       if (data.success) {
         setStripeTransactions(data.transactions || [])
         setStripeBalance(data.currentBalance || null)
+      } else {
+        setApiError(data.error || 'Error al cargar datos de Stripe')
       }
 
       // Cargar registro de envíos a Manuel
-      const { data: transfers } = await supabase
+      const { data: transfers, error: dbError } = await supabase
         .from('payout_transfers')
         .select('*')
         .order('payout_date', { ascending: false })
+
+      if (dbError) {
+        console.error('Error loading transfers:', dbError)
+      }
       setPayoutTransfers(transfers || [])
+      console.log('✅ [Armando] Datos cargados correctamente')
     } catch (err) {
-      console.error('Error loading data:', err)
+      console.error('❌ [Armando] Error loading data:', err)
+      if (err.name === 'AbortError') {
+        setApiError('Timeout: La API de Stripe tardó demasiado en responder')
+      } else {
+        setApiError('Error de conexión: ' + err.message)
+      }
     }
+    console.log('🏁 [Armando] Carga finalizada')
     setLoading(false)
   }
 
@@ -90,22 +123,40 @@ export default function ArmandoPage() {
       }, { onConflict: 'stripe_payout_id' })
 
     if (!error) {
+      setExpandedPayouts(prev => ({ ...prev, [payoutId]: false }))
       loadData()
+    }
+  }
+
+  // Manuel confirma que recibió el pago
+  const markAsConfirmed = async (payoutId) => {
+    const { error } = await supabase
+      .from('payout_transfers')
+      .update({
+        manuel_confirmed: true,
+        manuel_confirmed_date: new Date().toISOString()
+      })
+      .eq('stripe_payout_id', payoutId)
+
+    if (!error) {
+      loadData()
+    }
+  }
+
+  // Obtener estado de un payout
+  const getPayoutStatus = (payoutId) => {
+    const transfer = payoutTransfers.find(t => t.stripe_payout_id === payoutId)
+    if (!transfer) return { sent: false, confirmed: false }
+    return {
+      sent: transfer.sent_to_manuel,
+      confirmed: transfer.manuel_confirmed,
+      sentDate: transfer.sent_date,
+      confirmedDate: transfer.manuel_confirmed_date
     }
   }
 
   const formatCurrency = (cents) => {
     return (cents / 100).toFixed(2) + ' €'
-  }
-
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
   }
 
   const formatDayHeader = (dateStr) => {
@@ -117,8 +168,13 @@ export default function ArmandoPage() {
     return new Date(dateStr).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
   }
 
-  // Obtener payouts exitosos de las transacciones
-  const getSuccessfulPayouts = () => {
+  // Verificar si un payout ya fue marcado como enviado
+  const isPayoutSent = (payoutId) => {
+    return payoutTransfers.some(t => t.stripe_payout_id === payoutId && t.sent_to_manuel)
+  }
+
+  // Calcular totales pendientes de enviar a Manuel
+  const getPendingTotals = () => {
     const failedPayoutIds = stripeTransactions
       .filter(t => t.type === 'payout_failure')
       .map(t => {
@@ -127,33 +183,18 @@ export default function ArmandoPage() {
       })
       .filter(Boolean)
 
-    return stripeTransactions.filter(t => {
-      if (t.type !== 'payout') return false
-      if (failedPayoutIds.includes(t.source)) return false
-      return true
-    })
-  }
-
-  // Verificar si un payout ya fue marcado como enviado
-  const isPayoutSent = (payoutId) => {
-    return payoutTransfers.some(t => t.stripe_payout_id === payoutId && t.sent_to_manuel)
-  }
-
-  // Calcular totales pendientes
-  const getPendingTotals = () => {
-    const payouts = getSuccessfulPayouts()
-    let totalPending = 0
     let totalManuel = 0
 
-    payouts.forEach(p => {
-      if (!isPayoutSent(p.source)) {
-        const netAmount = Math.abs(p.amount) - p.fee
-        totalPending += netAmount
-        totalManuel += Math.round(netAmount * 0.9)
-      }
+    stripeTransactions.forEach(t => {
+      if (t.type !== 'payout') return
+      if (failedPayoutIds.includes(t.source)) return
+      if (isPayoutSent(t.source)) return
+
+      const netAmount = Math.abs(t.amount) - t.fee
+      totalManuel += Math.round(netAmount * 0.9)
     })
 
-    return { totalPending, totalManuel }
+    return { totalManuel }
   }
 
   // Pantalla de login
@@ -188,8 +229,62 @@ export default function ArmandoPage() {
     )
   }
 
-  const payouts = getSuccessfulPayouts()
-  const pendingTotals = getPendingTotals()
+
+  // Procesar transacciones
+  const failedPayoutIds = stripeTransactions
+    .filter(t => t.type === 'payout_failure')
+    .map(t => {
+      const match = t.description?.match(/po_[A-Za-z0-9]+/)
+      return match ? match[0] : t.source
+    })
+    .filter(Boolean)
+
+  const relevantTypes = ['charge', 'payout', 'stripe_fee', 'refund']
+  const filtered = stripeTransactions.filter(t => {
+    if (!relevantTypes.includes(t.type)) return false
+    if (t.type === 'payout' && failedPayoutIds.includes(t.source)) return false
+    return true
+  })
+
+  // Calcular saldo real (empezando desde el saldo actual de Stripe)
+  // El saldo actual = disponible + pendiente
+  const currentTotalBalance = (stripeBalance?.available || 0) + (stripeBalance?.pending || 0)
+
+  // Calcular hacia atrás: el saldo después de la transacción más reciente = saldo actual
+  let runningBalance = currentTotalBalance
+  const withBalance = filtered.map(t => {
+    const balanceAfter = runningBalance
+    runningBalance = runningBalance - t.net  // Saldo antes de esta transacción
+    return { ...t, balanceAfter }
+  })
+
+  // Agrupar por día
+  const groupedByDay = withBalance.reduce((groups, t) => {
+    const day = t.date.split('T')[0]
+    if (!groups[day]) groups[day] = []
+    groups[day].push(t)
+    return groups
+  }, {})
+
+  const getTypeStyle = (type) => {
+    switch(type) {
+      case 'charge': return 'bg-green-100 text-green-800'
+      case 'payout': return 'bg-blue-100 text-blue-800'
+      case 'stripe_fee': return 'bg-red-100 text-red-800'
+      case 'refund': return 'bg-orange-100 text-orange-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getTypeName = (type) => {
+    switch(type) {
+      case 'charge': return 'Pago'
+      case 'payout': return 'Transfer.'
+      case 'stripe_fee': return 'Comisión'
+      case 'refund': return 'Reembolso'
+      default: return type
+    }
+  }
 
   // Panel principal
   return (
@@ -198,306 +293,214 @@ export default function ArmandoPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Panel de Armando</h1>
-          <button
-            onClick={handleLogout}
-            className="text-gray-600 hover:text-gray-800"
-          >
-            Cerrar sesión
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={loadData}
+              className="px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 border"
+            >
+              🔄 Actualizar
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-gray-600 hover:text-gray-800 px-4 py-2"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
 
         {/* Saldo de Stripe */}
         {stripeBalance && (
-          <div className="bg-gray-800 text-white rounded-lg p-6 mb-6">
+          <div className="bg-white border-2 border-blue-200 rounded-lg p-6 mb-6 shadow">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <p className="text-gray-400 text-sm">Saldo disponible en Stripe</p>
-                <p className="text-4xl font-bold">{formatCurrency(stripeBalance.available)}</p>
+                <p className="text-gray-500 text-sm">Saldo total en Stripe</p>
+                <p className="text-4xl font-bold text-blue-600">{formatCurrency(stripeBalance.available + stripeBalance.pending)}</p>
               </div>
-              {stripeBalance.pending > 0 && (
-                <div className="text-right">
-                  <p className="text-gray-400 text-sm">Pendiente de disponibilidad</p>
-                  <p className="text-2xl font-medium">{formatCurrency(stripeBalance.pending)}</p>
-                </div>
-              )}
-              {pendingTotals.totalManuel > 0 && (
-                <div className="bg-yellow-500 text-yellow-900 rounded-lg p-4">
-                  <p className="text-sm font-medium">Pendiente enviar a Manuel</p>
-                  <p className="text-2xl font-bold">{formatCurrency(pendingTotals.totalManuel)}</p>
-                </div>
-              )}
+              <div className="text-right text-sm space-y-1">
+                <p>
+                  <span className="text-gray-500">Entrante</span>
+                  <span className="text-gray-800 font-medium ml-2">{formatCurrency(stripeBalance.pending)}</span>
+                </p>
+                <p>
+                  <span className="text-purple-600">Disponible</span>
+                  <span className="text-gray-800 font-medium ml-2">{formatCurrency(stripeBalance.available)}</span>
+                </p>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Pestañas */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab('envios')}
-              className={`px-6 py-2 rounded-lg font-medium transition ${
-                activeTab === 'envios'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              💸 Envíos a Manuel
-            </button>
-            <button
-              onClick={() => setActiveTab('stripe')}
-              className={`px-6 py-2 rounded-lg font-medium transition ${
-                activeTab === 'stripe'
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              💳 Transacciones Stripe
-            </button>
-            <button
-              onClick={loadData}
-              className="ml-auto px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
-            >
-              🔄 Actualizar
-            </button>
+        {/* Transacciones */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="p-4 border-b bg-gray-50">
+            <h2 className="font-bold text-lg">Transacciones de Stripe</h2>
+            <p className="text-sm text-gray-600">
+              Historial completo. En las transferencias a banco, marca cuando envíes el 90% a Manuel.
+            </p>
+          </div>
+
+          {/* Cabecera de columnas */}
+          <div className="flex items-center px-4 py-2 bg-gray-100 border-b text-xs font-medium text-gray-500 uppercase">
+            <span className="w-14">Hora</span>
+            <span className="w-20 text-center">Tipo</span>
+            <span className="flex-1 px-2">Descripción</span>
+            <span className="w-24 text-right">Importe</span>
+            <span className="w-20 text-right">Fee</span>
+            <span className="w-24 text-right">Neto</span>
+            <span className="w-24 text-right">Saldo</span>
+            <span className="w-24 text-center">Acción</span>
+          </div>
+
+          {loading ? (
+            <div className="p-8 text-center text-gray-500">
+              <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-2"></div>
+              <p>Cargando transacciones de Stripe...</p>
+            </div>
+          ) : apiError ? (
+            <div className="p-8 text-center">
+              <p className="text-red-500 mb-4">❌ {apiError}</p>
+              <button
+                onClick={loadData}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : Object.keys(groupedByDay).length === 0 ? (
+            <div className="p-8 text-center text-gray-500">No hay transacciones</div>
+          ) : (
+            <div className="p-4 space-y-4">
+              {Object.entries(groupedByDay).map(([day, transactions]) => (
+                <div key={day} className="border-2 border-gray-300 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
+                    <span className="font-bold text-gray-700 capitalize">{formatDayHeader(day)}</span>
+                  </div>
+                  <div className="divide-y divide-gray-200">
+                    {transactions.map((t, index) => {
+                      const isPayout = t.type === 'payout'
+                      const payoutStatus = isPayout ? getPayoutStatus(t.source) : { sent: false, confirmed: false }
+                      const netAmount = isPayout ? Math.abs(t.amount) - t.fee : 0
+                      const manuelAmount = isPayout ? Math.round(netAmount * 0.9) : 0
+                      const armandoAmount = isPayout ? netAmount - manuelAmount : 0
+
+                      return (
+                        <div key={t.id || index} className={`${t.type === 'stripe_fee' ? 'bg-red-50' : ''} ${isPayout && payoutStatus.confirmed ? 'bg-green-50' : isPayout && payoutStatus.sent ? 'bg-yellow-50' : ''}`}>
+                          {/* Fila principal */}
+                          <div className="flex items-center px-4 py-2 hover:bg-gray-50">
+                            <span className="text-gray-500 w-14 text-sm">{formatTime(t.date)}</span>
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getTypeStyle(t.type)} w-20 justify-center`}>
+                              {getTypeName(t.type)}
+                            </span>
+                            <span className="flex-1 px-2 text-gray-600 text-sm truncate" title={t.description}>
+                              {t.description || '-'}
+                            </span>
+                            <span className={`w-24 text-right text-sm ${t.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {t.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(t.amount))}
+                            </span>
+                            <span className="w-20 text-right text-orange-600 text-sm">
+                              {t.fee > 0 ? `-${formatCurrency(t.fee)}` : '-'}
+                            </span>
+                            <span className={`w-24 text-right font-bold text-sm ${t.net < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {t.net < 0 ? '-' : '+'}{formatCurrency(Math.abs(t.net))}
+                            </span>
+                            <span className="w-24 text-right font-bold text-sm bg-gray-100 px-2 py-1 rounded">
+                              {formatCurrency(t.balanceAfter)}
+                            </span>
+                            {/* Estado del payout */}
+                            {isPayout && !payoutStatus.sent && !expandedPayouts[t.source] && (
+                              <button
+                                onClick={() => setExpandedPayouts(prev => ({ ...prev, [t.source]: true }))}
+                                className="ml-3 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition font-medium"
+                              >
+                                Dividir
+                              </button>
+                            )}
+                            {isPayout && payoutStatus.sent && !payoutStatus.confirmed && (
+                              <button
+                                onClick={() => markAsConfirmed(t.source)}
+                                className="ml-3 px-3 py-1 bg-yellow-500 text-yellow-900 text-xs rounded hover:bg-yellow-600 transition font-medium"
+                              >
+                                Confirmar recibido
+                              </button>
+                            )}
+                            {isPayout && payoutStatus.confirmed && (
+                              <span className="ml-3 px-3 py-1 bg-green-100 text-green-800 text-xs rounded font-medium">
+                                ✓ Confirmado
+                              </span>
+                            )}
+                            {!isPayout && <span className="w-20"></span>}
+                          </div>
+
+                          {/* Fila expandida con reparto 90/10 */}
+                          {isPayout && !payoutStatus.sent && expandedPayouts[t.source] && (
+                            <div className="bg-blue-50 border-t border-blue-200 p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-blue-800 font-medium">Reparto de {formatCurrency(netAmount)}</span>
+                                <button
+                                  onClick={() => setExpandedPayouts(prev => ({ ...prev, [t.source]: false }))}
+                                  className="text-gray-500 hover:text-gray-700 text-sm"
+                                >
+                                  ✕ Cerrar
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="bg-green-100 rounded-lg p-4 text-center">
+                                  <p className="text-green-800 text-sm font-medium">Manuel (90%)</p>
+                                  <p className="text-green-900 text-2xl font-bold">{formatCurrency(manuelAmount)}</p>
+                                </div>
+                                <div className="bg-blue-100 rounded-lg p-4 text-center">
+                                  <p className="text-blue-800 text-sm font-medium">Armando (10%)</p>
+                                  <p className="text-blue-900 text-2xl font-bold">{formatCurrency(armandoAmount)}</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => markAsSent(t.source, t.amount, t.fee, t.date)}
+                                className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                              >
+                                ✓ Armando envió a Manuel ({formatCurrency(manuelAmount)})
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Detalle de división realizada */}
+                          {isPayout && payoutStatus.sent && (
+                            <div className="flex items-center justify-between px-4 py-2 bg-green-50 border-t border-green-200 text-sm">
+                              <span className="text-green-800">
+                                → Manuel: <strong>{formatCurrency(manuelAmount)}</strong> · Armando: <strong>{formatCurrency(armandoAmount)}</strong>
+                              </span>
+                              <span className="text-green-600 text-xs">
+                                {payoutStatus.confirmed ? '✓ Confirmado' : 'Pendiente confirmar'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Leyenda */}
+          <div className="p-4 bg-gray-50 border-t">
+            <div className="flex flex-wrap gap-4 text-xs">
+              <span className="inline-flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-green-100"></span>
+                Pago = cobro de cliente
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-blue-100"></span>
+                Transfer. = payout a tu banco
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-red-100"></span>
+                Comisión = fee de Stripe
+              </span>
+            </div>
           </div>
         </div>
-
-        {/* Tab: Envíos a Manuel */}
-        {activeTab === 'envios' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b bg-gray-50">
-              <h2 className="font-bold text-lg">Payouts recibidos → Envíos a Manuel</h2>
-              <p className="text-sm text-gray-600">
-                Por cada transferencia que recibes de Stripe, debes enviar el 90% a Manuel.
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="p-8 text-center text-gray-500">Cargando...</div>
-            ) : payouts.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">No hay payouts registrados</div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Payout</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Recibido</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Fee Stripe</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase bg-blue-50">Neto</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase bg-green-50">Manuel (90%)</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase bg-blue-50">Tu parte (10%)</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {payouts.map((p) => {
-                    const netAmount = Math.abs(p.amount) - p.fee
-                    const manuelAmount = Math.round(netAmount * 0.9)
-                    const armandoAmount = netAmount - manuelAmount
-                    const isSent = isPayoutSent(p.source)
-
-                    return (
-                      <tr key={p.id} className={`hover:bg-gray-50 ${isSent ? 'bg-green-50' : ''}`}>
-                        <td className="px-4 py-3">{formatDate(p.date)}</td>
-                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(Math.abs(p.amount))}</td>
-                        <td className="px-4 py-3 text-right text-red-600">
-                          {p.fee > 0 ? `-${formatCurrency(p.fee)}` : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold bg-blue-50">{formatCurrency(netAmount)}</td>
-                        <td className="px-4 py-3 text-right font-bold text-green-700 bg-green-50">
-                          {formatCurrency(manuelAmount)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium text-blue-700 bg-blue-50">
-                          {formatCurrency(armandoAmount)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {isSent ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              ✓ Enviado
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => markAsSent(p.source, p.amount, p.fee, p.date)}
-                              className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition font-medium"
-                            >
-                              Marcar enviado
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-                <tfoot className="bg-gray-100 font-medium">
-                  <tr>
-                    <td className="px-4 py-3 text-right">TOTALES:</td>
-                    <td className="px-4 py-3 text-right">
-                      {formatCurrency(payouts.reduce((sum, p) => sum + Math.abs(p.amount), 0))}
-                    </td>
-                    <td className="px-4 py-3 text-right text-red-600">
-                      -{formatCurrency(payouts.reduce((sum, p) => sum + p.fee, 0))}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold bg-blue-50">
-                      {formatCurrency(payouts.reduce((sum, p) => sum + (Math.abs(p.amount) - p.fee), 0))}
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-green-700 bg-green-50">
-                      {formatCurrency(payouts.reduce((sum, p) => {
-                        const net = Math.abs(p.amount) - p.fee
-                        return sum + Math.round(net * 0.9)
-                      }, 0))}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium text-blue-700 bg-blue-50">
-                      {formatCurrency(payouts.reduce((sum, p) => {
-                        const net = Math.abs(p.amount) - p.fee
-                        return sum + (net - Math.round(net * 0.9))
-                      }, 0))}
-                    </td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-
-            {/* Leyenda */}
-            <div className="p-4 bg-gray-50 border-t">
-              <h4 className="font-medium text-sm mb-2">Cómo funciona:</h4>
-              <ol className="text-sm text-gray-600 list-decimal list-inside space-y-1">
-                <li>Stripe transfiere dinero a tu banco (Payout)</li>
-                <li>El payout aparece aquí con el importe neto (después de fee)</li>
-                <li>Calculas el 90% para Manuel y se lo envías</li>
-                <li>Marcas como &quot;Enviado&quot; para llevar el registro</li>
-              </ol>
-            </div>
-          </div>
-        )}
-
-        {/* Tab: Transacciones Stripe */}
-        {activeTab === 'stripe' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="p-4 border-b bg-gray-50">
-              <p className="text-sm text-gray-600">
-                Historial de transacciones de Stripe (pagos, transferencias, comisiones).
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="p-8 text-center text-gray-500">Cargando...</div>
-            ) : stripeTransactions.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">No hay transacciones</div>
-            ) : (
-              <div className="p-4 space-y-4">
-                {(() => {
-                  // Filtrar transacciones relevantes
-                  const failedPayoutIds = stripeTransactions
-                    .filter(t => t.type === 'payout_failure')
-                    .map(t => {
-                      const match = t.description?.match(/po_[A-Za-z0-9]+/)
-                      return match ? match[0] : t.source
-                    })
-                    .filter(Boolean)
-
-                  const relevantTypes = ['charge', 'payout', 'stripe_fee', 'refund']
-                  const filtered = stripeTransactions.filter(t => {
-                    if (!relevantTypes.includes(t.type)) return false
-                    if (t.type === 'payout' && failedPayoutIds.includes(t.source)) return false
-                    return true
-                  })
-
-                  // Calcular saldo acumulado
-                  const reversed = [...filtered].reverse()
-                  let runningBalance = 0
-                  const withBalanceReversed = reversed.map(t => {
-                    runningBalance += t.net
-                    return { ...t, balanceAfter: runningBalance }
-                  })
-                  const withBalance = withBalanceReversed.reverse()
-
-                  // Agrupar por día
-                  const groupedByDay = withBalance.reduce((groups, t) => {
-                    const day = t.date.split('T')[0]
-                    if (!groups[day]) groups[day] = []
-                    groups[day].push(t)
-                    return groups
-                  }, {})
-
-                  const getTypeStyle = (type) => {
-                    switch(type) {
-                      case 'charge': return 'bg-green-100 text-green-800'
-                      case 'payout': return 'bg-blue-100 text-blue-800'
-                      case 'stripe_fee': return 'bg-red-100 text-red-800'
-                      case 'refund': return 'bg-orange-100 text-orange-800'
-                      default: return 'bg-gray-100 text-gray-800'
-                    }
-                  }
-                  const getTypeName = (type) => {
-                    switch(type) {
-                      case 'charge': return 'Pago'
-                      case 'payout': return 'Transfer.'
-                      case 'stripe_fee': return 'Comisión'
-                      case 'refund': return 'Reembolso'
-                      default: return type
-                    }
-                  }
-
-                  return Object.entries(groupedByDay).map(([day, transactions]) => (
-                    <div key={day} className="border-2 border-gray-300 rounded-lg overflow-hidden">
-                      <div className="bg-gray-50 px-4 py-2 border-b border-gray-300">
-                        <span className="font-bold text-gray-700 capitalize">{formatDayHeader(day)}</span>
-                      </div>
-                      <table className="w-full text-sm">
-                        <tbody>
-                          {transactions.map((t, index) => (
-                            <tr key={t.id || index} className={`hover:bg-gray-50 ${index < transactions.length - 1 ? 'border-b border-gray-200' : ''} ${t.type === 'stripe_fee' ? 'bg-red-50' : ''}`}>
-                              <td className="px-4 py-2 text-gray-500 w-14">{formatTime(t.date)}</td>
-                              <td className="px-2 py-2 w-24">
-                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getTypeStyle(t.type)}`}>
-                                  {getTypeName(t.type)}
-                                </span>
-                              </td>
-                              <td className="px-2 py-2 text-gray-600 truncate max-w-[180px]" title={t.description}>
-                                {t.description || '-'}
-                              </td>
-                              <td className={`px-2 py-2 text-right w-24 ${t.amount < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                {t.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(t.amount))}
-                              </td>
-                              <td className="px-2 py-2 text-right text-orange-600 w-20">
-                                {t.fee > 0 ? `-${formatCurrency(t.fee)}` : '0.00 €'}
-                              </td>
-                              <td className={`px-2 py-2 text-right font-bold w-24 ${t.net < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                {t.net < 0 ? '-' : '+'}{formatCurrency(Math.abs(t.net))}
-                              </td>
-                              <td className="px-4 py-2 text-right font-bold w-24 bg-gray-50 text-gray-800">
-                                {formatCurrency(t.balanceAfter)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))
-                })()}
-              </div>
-            )}
-
-            {/* Leyenda */}
-            <div className="p-4 bg-gray-50 border-t">
-              <div className="flex flex-wrap gap-4 text-xs">
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-green-100"></span>
-                  Pago = cobro de cliente
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-blue-100"></span>
-                  Transfer. = payout a banco
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-red-100"></span>
-                  Comisión = fee de Stripe
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
