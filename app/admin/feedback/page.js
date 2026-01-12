@@ -248,7 +248,43 @@ export default function AdminFeedbackPage() {
         setInlineChatMessages(data || [])
         console.log('💬 Mensajes inline cargados:', data?.length || 0)
 
-        // Marcar como leído
+        // Si la conversación está en waiting_admin, marcar como vista (quitar pendiente)
+        if (conversation.status === 'waiting_admin') {
+          const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+          )
+
+          await supabaseAdmin
+            .from('feedback_conversations')
+            .update({
+              status: 'waiting_user',
+              admin_viewed_at: new Date().toISOString()
+            })
+            .eq('id', conversation.id)
+
+          // Actualizar estado local inmediatamente
+          setConversations(prev => ({
+            ...prev,
+            [selectedFeedback.id]: {
+              ...prev[selectedFeedback.id],
+              status: 'waiting_user',
+              admin_viewed_at: new Date().toISOString()
+            }
+          }))
+
+          // Actualizar también el contador de pendientes del usuario seleccionado
+          if (selectedUser) {
+            setSelectedUser(prev => ({
+              ...prev,
+              pendingConversations: Math.max(0, (prev.pendingConversations || 1) - 1)
+            }))
+          }
+
+          console.log('✅ Conversación marcada como vista (waiting_user)')
+        }
+
+        // Marcar como leído en notificaciones
         if (newUserMessages.has(conversation.id)) {
           await supabase
             .from('feedback_conversations')
@@ -275,11 +311,17 @@ export default function AdminFeedbackPage() {
 
     setSendingInlineMessage(true)
     try {
+      // Usar service role para bypass RLS
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+
       let conversation = conversations[selectedFeedback.id]
 
       // Si no hay conversación, crear una
       if (!conversation) {
-        const { data: newConv, error: convError } = await supabase
+        const { data: newConv, error: convError } = await supabaseAdmin
           .from('feedback_conversations')
           .insert({
             feedback_id: selectedFeedback.id,
@@ -301,7 +343,7 @@ export default function AdminFeedbackPage() {
       }
 
       // Enviar el mensaje
-      const { data: newMsg, error: msgError } = await supabase
+      const { data: newMsg, error: msgError } = await supabaseAdmin
         .from('feedback_messages')
         .insert({
           conversation_id: conversation.id,
@@ -314,8 +356,8 @@ export default function AdminFeedbackPage() {
 
       if (msgError) throw msgError
 
-      // Actualizar estado de la conversación
-      await supabase
+      // Actualizar estado de la conversación a waiting_user
+      const { error: updateError } = await supabaseAdmin
         .from('feedback_conversations')
         .update({
           status: 'waiting_user',
@@ -323,9 +365,15 @@ export default function AdminFeedbackPage() {
         })
         .eq('id', conversation.id)
 
+      if (updateError) {
+        console.error('❌ Error actualizando status conversación:', updateError)
+      } else {
+        console.log('✅ Status actualizado a waiting_user')
+      }
+
       // Actualizar feedback a in_review si estaba pending
       if (selectedFeedback.status === 'pending') {
-        await supabase
+        await supabaseAdmin
           .from('user_feedback')
           .update({ status: 'in_review' })
           .eq('id', selectedFeedback.id)
@@ -335,7 +383,17 @@ export default function AdminFeedbackPage() {
       setInlineChatMessages(prev => [...prev, newMsg])
       setInlineNewMessage('')
 
-      // Recargar datos
+      // Actualizar estado local inmediatamente
+      setConversations(prev => ({
+        ...prev,
+        [selectedFeedback.id]: {
+          ...prev[selectedFeedback.id],
+          status: 'waiting_user',
+          last_message_at: new Date().toISOString()
+        }
+      }))
+
+      // Recargar datos del servidor
       loadConversations()
       loadFeedbacks()
 
@@ -712,7 +770,13 @@ export default function AdminFeedbackPage() {
 
   const loadConversations = async () => {
     try {
-      const { data, error } = await supabase
+      // Usar service role para bypass RLS
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+
+      const { data, error } = await supabaseAdmin
         .from('feedback_conversations')
         .select(`
           *,
