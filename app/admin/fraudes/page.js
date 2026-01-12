@@ -183,12 +183,24 @@ export default function FraudesPage() {
       // Filtrar solo grupos con más de 1 usuario
       const suspiciousIpGroups = Object.entries(ipGroupMap)
         .filter(([_, users]) => users.length > 1)
-        .map(([ip, users]) => ({
-          ip,
-          users,
-          hasPremium: users.some(u => u.plan_type === 'premium' || u.plan_type === 'semestral' || u.plan_type === 'anual'),
-          count: users.length
-        }))
+        .map(([ip, users]) => {
+          const hasPremium = users.some(u => u.plan_type === 'premium' || u.plan_type === 'semestral' || u.plan_type === 'anual')
+          // Calcular puntuación de sospecha para misma IP
+          let suspicionScore = 40 // Base: misma IP de registro
+          if (hasPremium) suspicionScore += 30
+          if (users.length > 2) suspicionScore += 15
+          if (users.length > 4) suspicionScore += 15
+
+          return {
+            ip,
+            users,
+            hasPremium,
+            count: users.length,
+            suspicionScore,
+            detectionMethod: 'same_registration_ip',
+            reasons: [`Misma IP de registro (${ip})`, hasPremium ? 'Incluye cuenta premium' : null, users.length > 2 ? `${users.length} cuentas` : null].filter(Boolean)
+          }
+        })
         .sort((a, b) => b.count - a.count)
 
       setSameIpGroups(suspiciousIpGroups)
@@ -641,6 +653,7 @@ export default function FraudesPage() {
 
       // 5. Auto-guardar usuarios sospechosos en fraud_watch_list
       await autoSaveToWatchList(sortedMultiAccounts, supabase)
+      await autoSaveToWatchList(suspiciousIpGroups, supabase) // También los de misma IP
 
       // 6. Verificar fraudes confirmados por device_id
       await checkDeviceIdFraud(supabase)
@@ -1328,6 +1341,13 @@ export default function FraudesPage() {
                 • <strong>Misma IP:</strong> Varias cuentas registradas desde la misma IP<br/>
                 • <strong>VPN:</strong> Mismo dispositivo/navegador pero IPs diferentes (usa VPN para ocultar)
               </p>
+              <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/30 rounded border border-green-300 dark:border-green-700">
+                <p className="text-xs text-green-800 dark:text-green-200">
+                  <strong>🔍 Vigilancia automática:</strong> Los usuarios con puntuación &ge;50% se añaden automáticamente a vigilancia.
+                  Se les genera un <code className="bg-green-200 dark:bg-green-800 px-1 rounded">device_id</code> único en su navegador.
+                  Si dos usuarios comparten el mismo device_id, el fraude se <strong>confirma</strong> y aparecerá en el tab <strong>"Confirmados"</strong>.
+                </p>
+              </div>
             </div>
 
             {(showOnlyPremium ? multiAccountUsers.filter(g => g.hasPremium) : multiAccountUsers).length === 0 ? (
@@ -1433,6 +1453,12 @@ export default function FraudesPage() {
               <p className="text-sm text-blue-800 dark:text-blue-200">
                 <strong>Usuarios FREE con múltiples cuentas</strong> para saltarse el límite de 25 preguntas/día.
               </p>
+              <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/30 rounded border border-green-300 dark:border-green-700">
+                <p className="text-xs text-green-800 dark:text-green-200">
+                  <strong>🔍 Vigilancia automática:</strong> Los usuarios sospechosos se añaden a vigilancia.
+                  Si dos usuarios usan el mismo navegador, el fraude se <strong>confirma</strong> y aparecerá en el tab <strong>"Confirmados"</strong>.
+                </p>
+              </div>
             </div>
 
             {(showOnlyPremium ? sameIpGroups.filter(g => g.hasPremium) : sameIpGroups).length === 0 ? (
