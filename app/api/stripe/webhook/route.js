@@ -72,8 +72,73 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Webhook error:', error)
+
+    // 🚨 Enviar email de alerta al admin cuando el webhook falla
+    try {
+      await sendWebhookErrorEmail(error)
+    } catch (emailErr) {
+      console.error('Error enviando email de alerta:', emailErr)
+    }
+
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 })
   }
+}
+
+// 🚨 Función para enviar email cuando el webhook falla
+async function sendWebhookErrorEmail(error) {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Error en Webhook Stripe</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+
+          <div style="text-align: center; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0; border-bottom: 4px solid #dc2626;">
+            <h1 style="color: #b91c1c; margin: 0;">🚨 ERROR EN WEBHOOK STRIPE</h1>
+            <p style="color: #dc2626; margin: 10px 0 0 0; font-size: 18px;">Un pago puede no haberse procesado</p>
+          </div>
+
+          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #f59e0b;">
+            <h3 style="color: #92400e; margin: 0 0 10px 0;">⚠️ Acción requerida:</h3>
+            <p style="margin: 0; color: #78350f;">
+              Revisa Stripe Dashboard > Webhooks para ver qué evento falló y
+              activa manualmente el usuario si es necesario.
+            </p>
+          </div>
+
+          <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="color: #374151; margin: 0 0 15px 0;">🔍 Detalles del error:</h3>
+            <p style="margin: 8px 0;"><strong>Mensaje:</strong> ${error.message || 'Sin mensaje'}</p>
+            <p style="margin: 8px 0;"><strong>Tipo:</strong> ${error.name || 'Error'}</p>
+            <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
+            <pre style="background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">${error.stack || 'Sin stack trace'}</pre>
+          </div>
+
+          <div style="text-align: center; margin-top: 20px;">
+            <a href="https://dashboard.stripe.com/webhooks"
+               style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-right: 10px;">
+              📊 Ver Webhooks en Stripe
+            </a>
+            <a href="https://www.vence.es/admin"
+               style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+              🏠 Panel Admin
+            </a>
+          </div>
+
+        </div>
+      </body>
+    </html>
+  `
+
+  await resend.emails.send({
+    from: process.env.FROM_EMAIL || 'info@vence.es',
+    to: ADMIN_EMAIL,
+    subject: `🚨 ERROR WEBHOOK STRIPE - ${new Date().toLocaleString('es-ES')}`,
+    html: html
+  })
 }
 
 // ✅ ACTUALIZADO: Manejar checkout completado (pago directo sin trial)
