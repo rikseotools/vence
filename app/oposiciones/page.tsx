@@ -104,29 +104,38 @@ async function getEstadisticas() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { data: porTipo } = await supabase
-    .from('convocatorias_boe')
-    .select('tipo')
-    .eq('is_active', true);
-
-  const { data: ultima } = await supabase
-    .from('convocatorias_boe')
-    .select('boe_fecha')
-    .eq('is_active', true)
-    .order('boe_fecha', { ascending: false })
-    .limit(1)
-    .single();
-
-  const tiposCount = (porTipo || []).reduce((acc: Record<string, number>, item) => {
-    const tipo = item.tipo || 'otro';
-    acc[tipo] = (acc[tipo] || 0) + 1;
-    return acc;
-  }, {});
+  // Queries de conteo en paralelo (head: true = solo cuenta, no carga datos)
+  const [totalResult, convocatoriasResult, admitidosResult, ultimaResult] = await Promise.all([
+    supabase
+      .from('convocatorias_boe')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true),
+    supabase
+      .from('convocatorias_boe')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('tipo', 'convocatoria'),
+    supabase
+      .from('convocatorias_boe')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('tipo', 'admitidos'),
+    supabase
+      .from('convocatorias_boe')
+      .select('boe_fecha')
+      .eq('is_active', true)
+      .order('boe_fecha', { ascending: false })
+      .limit(1)
+      .single()
+  ]);
 
   return {
-    total: porTipo?.length || 0,
-    porTipo: tiposCount,
-    ultimaFecha: ultima?.boe_fecha || null
+    total: totalResult.count || 0,
+    porTipo: {
+      'convocatoria': convocatoriasResult.count || 0,
+      'admitidos': admitidosResult.count || 0
+    },
+    ultimaFecha: ultimaResult.data?.boe_fecha || null
   };
 }
 
