@@ -1,6 +1,7 @@
 // components/FeedbackModal.js - Modal profesional para solicitudes de soporte
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 
 const FEEDBACK_TYPES = [
@@ -20,6 +21,7 @@ const EMOJIS = [
 
 export default function FeedbackModal({ isOpen, onClose, questionId = null, autoSelectQuestionDispute = false, currentTheme = null, onOpenQuestionDispute = null, onFeedbackSent = null }) {
   const { user, supabase } = useAuth()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     type: '',
     message: '',
@@ -39,12 +41,48 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
+  // Estados para conversaciones existentes
+  const [existingConversations, setExistingConversations] = useState([])
+  const [loadingConversations, setLoadingConversations] = useState(false)
+  const [activeTab, setActiveTab] = useState('new') // 'new' o 'existing'
+
   // Pre-rellenar email si usuario está logueado
   useEffect(() => {
     if (user?.email) {
       setFormData(prev => ({ ...prev, email: user.email }))
     }
   }, [user])
+
+  // Cargar conversaciones existentes cuando se abre el modal
+  useEffect(() => {
+    const loadExistingConversations = async () => {
+      if (!isOpen || !user || !supabase) return
+
+      setLoadingConversations(true)
+      try {
+        const { data, error } = await supabase
+          .from('feedback_conversations')
+          .select(`
+            *,
+            feedback:user_feedback(id, message, type, created_at, status)
+          `)
+          .eq('user_id', user.id)
+          .order('last_message_at', { ascending: false })
+          .limit(10)
+
+        if (error) throw error
+
+        setExistingConversations(data || [])
+        console.log('📂 [FEEDBACK] Conversaciones cargadas:', data?.length || 0)
+      } catch (err) {
+        console.error('❌ [FEEDBACK] Error cargando conversaciones:', err)
+      } finally {
+        setLoadingConversations(false)
+      }
+    }
+
+    loadExistingConversations()
+  }, [isOpen, user, supabase])
 
   // Detectar contexto automáticamente al abrir modal
   useEffect(() => {
@@ -115,8 +153,15 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
       setUploadedImages([])
       setShowEmojiPicker(false)
       setError('')
+      setActiveTab('new') // Siempre empezar en "Nueva solicitud"
     }
   }, [isOpen, success, user, autoSelectQuestionDispute])
+
+  // Función para navegar a una conversación existente
+  const handleOpenExistingConversation = (conversation) => {
+    onClose() // Cerrar el modal
+    router.push(`/soporte?conversation_id=${conversation.id}`)
+  }
 
   // Función para insertar emoji en el mensaje
   const insertEmoji = (emoji) => {
@@ -464,7 +509,89 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
               </button>
             </div>
 
-            {/* Formulario */}
+            {/* Tabs - Solo si hay conversaciones existentes */}
+            {existingConversations.length > 0 && (
+              <div className="flex border-b dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('new')}
+                  className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
+                    activeTab === 'new'
+                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  ✨ Nueva solicitud
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('existing')}
+                  className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
+                    activeTab === 'existing'
+                      ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  💬 Mis conversaciones ({existingConversations.length})
+                </button>
+              </div>
+            )}
+
+            {/* Lista de conversaciones existentes */}
+            {activeTab === 'existing' && existingConversations.length > 0 && (
+              <div className="p-3 sm:p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+                {loadingConversations ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Cargando...</p>
+                  </div>
+                ) : (
+                  existingConversations.map((conv) => {
+                    const feedback = conv.feedback
+                    const statusColors = {
+                      'waiting_admin': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+                      'waiting_user': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+                      'closed': 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    }
+                    const statusLabels = {
+                      'waiting_admin': '⏳ Esperando respuesta',
+                      'waiting_user': '💬 Nueva respuesta',
+                      'closed': '✅ Cerrada'
+                    }
+                    return (
+                      <button
+                        key={conv.id}
+                        type="button"
+                        onClick={() => handleOpenExistingConversation(conv)}
+                        className="w-full text-left p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2 group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                              {feedback?.message?.substring(0, 100)}{feedback?.message?.length > 100 ? '...' : ''}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {new Date(conv.last_message_at || conv.created_at).toLocaleDateString('es-ES', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${statusColors[conv.status] || statusColors['closed']}`}>
+                            {statusLabels[conv.status] || conv.status}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            )}
+
+            {/* Formulario - Solo mostrar si activeTab es 'new' o no hay conversaciones */}
+            {(activeTab === 'new' || existingConversations.length === 0) && (
             <form onSubmit={handleSubmit} className="p-3 sm:p-4 space-y-3 sm:space-y-4">
               
               {/* Selección inicial de tipo - Solo si no hay tipo seleccionado */}
@@ -681,6 +808,7 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
                 </button>
               </div>
             </form>
+            )}
           </>
         )}
       </div>

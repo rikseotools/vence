@@ -57,6 +57,9 @@ export default function AdminFeedbackPage() {
   const messagesEndRef = useRef(null)
   const chatTextareaRef = useRef(null)
 
+  // Estado para otras conversaciones del mismo usuario
+  const [userOtherConversations, setUserOtherConversations] = useState([])
+
   // Efecto para cerrar modal de imagen con ESC
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -77,12 +80,47 @@ export default function AdminFeedbackPage() {
     }
   }, [expandedImage])
 
+  // Función para cargar otras conversaciones del mismo usuario
+  const loadUserOtherConversations = async (userId, currentConversationId) => {
+    if (!userId) {
+      console.log('⚠️ No hay user_id, no se pueden cargar otras conversaciones')
+      setUserOtherConversations([])
+      return
+    }
+
+    try {
+      console.log('🔍 Cargando otras conversaciones del usuario:', userId)
+
+      const { data, error } = await supabase
+        .from('feedback_conversations')
+        .select(`
+          *,
+          feedback:user_feedback(id, message, type, created_at, status)
+        `)
+        .eq('user_id', userId)
+        .neq('id', currentConversationId) // Excluir la conversación actual
+        .order('last_message_at', { ascending: false })
+        .limit(10)
+
+      if (error) throw error
+
+      console.log(`📂 Otras conversaciones del usuario: ${data?.length || 0}`)
+      setUserOtherConversations(data || [])
+    } catch (error) {
+      console.error('❌ Error cargando otras conversaciones del usuario:', error)
+      setUserOtherConversations([])
+    }
+  }
+
   // Función auxiliar para abrir chat y marcar como visto
   const openChatConversation = async (conversation) => {
     console.log('💬 Abriendo chat para conversación:', conversation.id)
-    
+
     setSelectedConversation(conversation)
     setChatMessages([]) // Empezar con mensajes vacíos
+
+    // Cargar otras conversaciones del mismo usuario
+    loadUserOtherConversations(conversation.user_id, conversation.id)
     
     // Limpiar notificación si existía
     setNewUserMessages(prev => {
@@ -1508,8 +1546,81 @@ export default function AdminFeedbackPage() {
         {/* Modal de Chat */}
         {selectedConversation && (
           <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:w-96 sm:max-w-md h-[70vh] sm:h-[75vh] flex flex-col">
-              
+            <div className={`bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full h-[70vh] sm:h-[80vh] flex ${userOtherConversations.length > 0 ? 'sm:max-w-4xl' : 'sm:w-96 sm:max-w-md'}`}>
+
+              {/* Panel izquierdo: Lista de conversaciones del usuario */}
+              {userOtherConversations.length > 0 && (
+                <div className="hidden sm:flex flex-col w-64 border-r dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  {/* Header del panel */}
+                  <div className="p-3 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      📂 Conversaciones del usuario
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      {userOtherConversations.length + 1} en total
+                    </p>
+                  </div>
+
+                  {/* Lista de conversaciones */}
+                  <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                    {/* Conversación actual (marcada) */}
+                    <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 border-2 border-blue-500 rounded-lg">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">📍 Actual</span>
+                        <span className="text-xs text-blue-600 dark:text-blue-400">
+                          {new Date(selectedConversation.last_message_at || selectedConversation.created_at).toLocaleDateString('es-ES', {
+                            day: 'numeric',
+                            month: 'short'
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-800 dark:text-blue-200 line-clamp-2">
+                        {feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message?.substring(0, 60)}...
+                      </p>
+                    </div>
+
+                    {/* Otras conversaciones */}
+                    {userOtherConversations.map((conv) => {
+                      const statusColors = {
+                        'waiting_admin': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
+                        'waiting_user': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+                        'closed': 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                      }
+                      const statusLabels = {
+                        'waiting_admin': '⏳',
+                        'waiting_user': '💬',
+                        'closed': '✅'
+                      }
+                      return (
+                        <button
+                          key={conv.id}
+                          onClick={() => openChatConversation(conv)}
+                          className="w-full text-left p-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+                        >
+                          <div className="flex items-center justify-between gap-1.5 mb-1">
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[conv.status] || statusColors['closed']}`}>
+                              {statusLabels[conv.status] || '•'}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {new Date(conv.last_message_at || conv.created_at).toLocaleDateString('es-ES', {
+                                day: 'numeric',
+                                month: 'short'
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2 group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                            {conv.feedback?.message?.substring(0, 60)}{conv.feedback?.message?.length > 60 ? '...' : ''}
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Panel derecho: Chat actual */}
+              <div className="flex flex-col flex-1">
+
               {/* Header */}
               <div className="flex items-center justify-between p-2 sm:p-4 border-b dark:border-gray-700 flex-shrink-0">
                 <div className="min-w-0 flex-1">
@@ -1525,8 +1636,8 @@ export default function AdminFeedbackPage() {
                     })()}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5 truncate">
-                    Estado: {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando tu respuesta' : 
-                             selectedConversation.status === 'waiting_user' ? '💬 Esperando usuario' : 
+                    Estado: {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando tu respuesta' :
+                             selectedConversation.status === 'waiting_user' ? '💬 Esperando usuario' :
                              selectedConversation.status}
                   </p>
                 </div>
@@ -1756,6 +1867,7 @@ export default function AdminFeedbackPage() {
                     <span className="sm:hidden">✅ Cerrar</span>
                   </button>
                 </div>
+              </div>
               </div>
             </div>
           </div>
