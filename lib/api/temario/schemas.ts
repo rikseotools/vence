@@ -146,6 +146,3 @@ export const OPOSICIONES = {
 } as const
 
 export type OposicionSlug = keyof typeof OPOSICIONES
-
-export const UNLOCK_THRESHOLD = 70
-export const UNLOCK_MIN_QUESTIONS = 10

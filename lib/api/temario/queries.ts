@@ -1,19 +1,15 @@
 // lib/api/temario/queries.ts - Queries Drizzle para Temario Dinámico
+// NOTA: Simplificado - ya no hay sistema de bloqueo, todos los temas son accesibles
 import { getDb } from '@/db/client'
 import { topics, topicScope, articles, laws, questions } from '@/db/schema'
-import { eq, and, inArray, asc, sql, count } from 'drizzle-orm'
+import { eq, and, inArray, sql, count } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import type {
   TopicContent,
-  TopicSummary,
   LawWithArticles,
-  UserProgress,
-  UnlockRequirements,
 } from './schemas'
 import {
   OPOSICIONES,
-  UNLOCK_THRESHOLD,
-  UNLOCK_MIN_QUESTIONS,
   type OposicionSlug,
 } from './schemas'
 
@@ -21,7 +17,7 @@ import {
 // OBTENER CONTENIDO COMPLETO DE UN TEMA
 // ============================================
 
-// Tipo interno para contenido cacheado (sin datos de usuario)
+// Tipo interno para contenido cacheado
 type TopicContentBase = {
   topicNumber: number
   title: string
@@ -32,7 +28,7 @@ type TopicContentBase = {
   totalArticles: number
 }
 
-// Función interna que obtiene solo el contenido (sin progreso de usuario)
+// Función interna que obtiene el contenido del tema
 // Esta es la parte pesada con muchas queries que se cachea
 async function getTopicContentBaseInternal(
   oposicionSlug: OposicionSlug,
@@ -191,233 +187,30 @@ async function getTopicContentBaseInternal(
 }
 
 // 🚀 VERSIÓN CACHEADA del contenido base (1 hora de cache)
-// Esto elimina las 30+ queries en cada visita
 const getTopicContentBaseCached = unstable_cache(
   getTopicContentBaseInternal,
   ['topic-content-base'],
   { revalidate: 3600 } // 1 hora
 )
 
-// Función pública que combina contenido cacheado + progreso de usuario fresco
+// Función pública para obtener contenido del tema
 export async function getTopicContent(
   oposicionSlug: OposicionSlug,
-  topicNumber: number,
-  userId?: string
+  topicNumber: number
 ): Promise<TopicContent | null> {
-  // 1. Obtener contenido cacheado (rápido después de la primera vez)
   const baseContent = await getTopicContentBaseCached(oposicionSlug, topicNumber)
 
   if (!baseContent) {
     return null
   }
 
-  const oposicion = OPOSICIONES[oposicionSlug]
-
-  // 2. Obtener progreso del usuario (sin cache, siempre fresco)
-  let isUnlocked = topicNumber === 1
-  let unlockRequirements: UnlockRequirements | null = null
-  let userProgress: UserProgress | null = null
-
-  if (userId && oposicion) {
-    const progressData = await getUserTopicProgress(userId, oposicion.positionType, topicNumber)
-    userProgress = progressData.currentProgress
-    isUnlocked = progressData.isUnlocked
-    unlockRequirements = progressData.unlockRequirements
-  }
-
-  // 3. Combinar y retornar
+  // Todos los temas están desbloqueados (ya no hay sistema de bloqueo)
   return {
     ...baseContent,
-    isUnlocked,
-    unlockRequirements,
-    userProgress,
+    isUnlocked: true,
+    unlockRequirements: null,
+    userProgress: null,
     lastUpdated: null,
     generatedAt: new Date().toISOString(),
   }
-}
-
-// ============================================
-// OBTENER PROGRESO Y ESTADO DE DESBLOQUEO
-// ============================================
-
-async function getUserTopicProgress(
-  userId: string,
-  positionType: string,
-  topicNumber: number
-): Promise<{
-  currentProgress: UserProgress | null
-  isUnlocked: boolean
-  unlockRequirements: UnlockRequirements | null
-}> {
-  const db = getDb()
-
-  // Obtener progreso del usuario desde el cache
-  const cacheResult = await db.execute(
-    sql`SELECT topic_number, total_questions, correct_answers, accuracy, last_practiced
-        FROM user_theme_performance_cache
-        WHERE user_id = ${userId}::uuid
-        ORDER BY topic_number`
-  )
-
-  const progressByTopic: Record<number, { questions: number; accuracy: number; lastPracticed: string | null }> = {}
-
-  if (cacheResult && Array.isArray(cacheResult)) {
-    for (const row of cacheResult as any[]) {
-      progressByTopic[row.topic_number] = {
-        questions: Number(row.total_questions) || 0,
-        accuracy: Number(row.accuracy) || 0,
-        lastPracticed: row.last_practiced,
-      }
-    }
-  }
-
-  // Progreso del tema actual
-  const current = progressByTopic[topicNumber]
-  const currentProgress: UserProgress | null = current
-    ? {
-        questionsAnswered: current.questions,
-        correctAnswers: Math.round((current.accuracy / 100) * current.questions),
-        accuracy: current.accuracy,
-        masteryLevel:
-          current.accuracy >= 90 ? 'expert' : current.accuracy >= 70 ? 'good' : 'beginner',
-        lastPracticed: current.lastPracticed,
-      }
-    : null
-
-  // Lógica de desbloqueo
-  let isUnlocked = topicNumber === 1
-  let unlockRequirements: UnlockRequirements | null = null
-
-  if (topicNumber > 1) {
-    const previousTopic = topicNumber - 1
-    const previous = progressByTopic[previousTopic]
-
-    const previousAccuracy = previous?.accuracy || 0
-    const previousQuestions = previous?.questions || 0
-
-    // Desbloqueo normal: tema anterior con 70%+ y 10+ preguntas
-    isUnlocked = previousAccuracy >= UNLOCK_THRESHOLD && previousQuestions >= UNLOCK_MIN_QUESTIONS
-
-    // Desbloqueo alternativo: progreso propio suficiente
-    if (!isUnlocked && current) {
-      isUnlocked = current.questions >= 20 && current.accuracy >= 75
-    }
-
-    unlockRequirements = {
-      requiredAccuracy: UNLOCK_THRESHOLD,
-      requiredQuestions: UNLOCK_MIN_QUESTIONS,
-      currentAccuracy: current?.accuracy || 0,
-      currentQuestions: current?.questions || 0,
-      previousTopicNumber: previousTopic,
-      previousTopicAccuracy: previousAccuracy,
-    }
-  }
-
-  return { currentProgress, isUnlocked, unlockRequirements }
-}
-
-// ============================================
-// OBTENER LISTA DE TEMAS
-// ============================================
-
-export async function getTopicList(
-  oposicionSlug: OposicionSlug,
-  userId?: string
-): Promise<TopicSummary[]> {
-  const db = getDb()
-  const oposicion = OPOSICIONES[oposicionSlug]
-
-  if (!oposicion) {
-    return []
-  }
-
-  // 1. Obtener todos los topics de esta oposición
-  const topicsResult = await db
-    .select({
-      id: topics.id,
-      topicNumber: topics.topicNumber,
-      title: topics.title,
-      description: topics.description,
-    })
-    .from(topics)
-    .where(eq(topics.positionType, oposicion.positionType))
-    .orderBy(asc(topics.topicNumber))
-
-  // 2. Obtener conteo de artículos por topic desde topic_scope
-  const scopeCounts: Record<string, { articles: number; laws: number }> = {}
-
-  for (const topic of topicsResult) {
-    const scopeResult = await db
-      .select({
-        articleNumbers: topicScope.articleNumbers,
-        lawId: topicScope.lawId,
-      })
-      .from(topicScope)
-      .where(eq(topicScope.topicId, topic.id))
-
-    let articlesCount = 0
-    const lawIds = new Set<string>()
-
-    for (const scope of scopeResult) {
-      if (scope.articleNumbers) {
-        articlesCount += scope.articleNumbers.length
-      }
-      if (scope.lawId) {
-        lawIds.add(scope.lawId)
-      }
-    }
-
-    scopeCounts[topic.id] = { articles: articlesCount, laws: lawIds.size }
-  }
-
-  // 3. Obtener progreso del usuario si está autenticado
-  let userProgressByTopic: Record<number, number> = {}
-
-  if (userId) {
-    const cacheResult = await db.execute(
-      sql`SELECT topic_number, accuracy
-          FROM user_theme_performance_cache
-          WHERE user_id = ${userId}::uuid`
-    )
-
-    if (cacheResult && Array.isArray(cacheResult)) {
-      for (const row of cacheResult as any[]) {
-        userProgressByTopic[row.topic_number] = Number(row.accuracy) || 0
-      }
-    }
-  }
-
-  // 4. Construir lista con estado de desbloqueo
-  const result: TopicSummary[] = []
-  let previousUnlocked = true // Tema 1 siempre está desbloqueado para el anterior
-
-  for (const topic of topicsResult) {
-    const counts = scopeCounts[topic.id] || { articles: 0, laws: 0 }
-    const progress = userProgressByTopic[topic.topicNumber]
-
-    // Lógica de desbloqueo simplificada para lista
-    let isUnlocked = topic.topicNumber === 1
-
-    if (topic.topicNumber > 1 && userId) {
-      const prevProgress = userProgressByTopic[topic.topicNumber - 1]
-      isUnlocked = (prevProgress || 0) >= UNLOCK_THRESHOLD
-    } else if (!userId) {
-      // Usuario no autenticado: solo tema 1
-      isUnlocked = topic.topicNumber === 1
-    }
-
-    result.push({
-      topicNumber: topic.topicNumber,
-      title: topic.title,
-      description: topic.description,
-      isUnlocked,
-      userProgress: progress ?? null,
-      articlesCount: counts.articles,
-      lawsCount: counts.laws,
-    })
-
-    previousUnlocked = isUnlocked
-  }
-
-  return result
 }

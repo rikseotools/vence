@@ -48,6 +48,17 @@ const nextConfig = {
         destination: '/test/aleatorio-examen',
         permanent: false, // 302 temporal para poder cambiar si hay problemas
       },
+      // 🔄 Redirecciones de temario viejo gamificado a temario nuevo gratis
+      {
+        source: '/temario/auxiliar-administrativo-estado/tema/:numero',
+        destination: '/auxiliar-administrativo-estado/temario/tema-:numero',
+        permanent: true,
+      },
+      {
+        source: '/temario/administrativo-estado/tema/:numero',
+        destination: '/administrativo-estado/temario/tema-:numero',
+        permanent: true,
+      },
     ];
 
     // Redirigir sin www a con www (solo en producción)

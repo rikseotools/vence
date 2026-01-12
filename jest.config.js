@@ -27,13 +27,7 @@ export default {
     '!components/ChatInterface.js'
   ],
   coverageThreshold: {
-    // Umbrales específicos para funciones críticas
-    './hooks/useTopicUnlock.js': {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 75
-    }
+    // Sin umbrales específicos - sistema de bloqueo eliminado
   },
   // Ignorar archivos que no necesitan testing
   testPathIgnorePatterns: [

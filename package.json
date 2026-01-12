@@ -12,7 +12,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --coverage --watchAll=false --passWithNoTests",
-    "test:critical": "jest --testPathPattern='useTopicUnlock|TopicUnlockProgress' --coverage",
+    "test:critical": "jest --testPathPattern='criticalValidations' --coverage",
     "test:precommit": "jest --testPathPattern='precommit/criticalValidations' --passWithNoTests",
     "test:hooks": "jest --testPathPattern='__tests__/hooks' --coverage",
     "test:components": "jest --testPathPattern='__tests__/components' --coverage",
