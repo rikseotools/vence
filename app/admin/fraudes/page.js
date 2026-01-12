@@ -2,6 +2,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { CONTROLLED_EMAILS } from '@/hooks/useSessionControl'
 
 export default function FraudesPage() {
   const { supabase, user } = useAuth()
@@ -15,19 +16,23 @@ export default function FraudesPage() {
   const [multiAccountUsers, setMultiAccountUsers] = useState([])
   const [confirmedFrauds, setConfirmedFrauds] = useState([]) // Fraudes confirmados por device_id
 
+  // Control de sesiones
+  const [sessionControlData, setSessionControlData] = useState([])
+
   // Alertas del sistema
   const [alerts, setAlerts] = useState([])
   const [alertStats, setAlertStats] = useState(null)
   const [alertFilter, setAlertFilter] = useState('new')
 
   // Filtros
-  const [activeTab, setActiveTab] = useState('alertas')
+  const [activeTab, setActiveTab] = useState('control-sesiones')
   const [showOnlyPremium, setShowOnlyPremium] = useState(false)
 
   useEffect(() => {
     if (supabase) {
       loadFraudData()
       loadAlerts()
+      loadSessionControlData()
     }
   }, [supabase])
 
@@ -36,6 +41,58 @@ export default function FraudesPage() {
       loadAlerts()
     }
   }, [alertFilter])
+
+  // Cargar datos de usuarios bajo control de sesiones
+  async function loadSessionControlData() {
+    try {
+      // Buscar usuarios controlados por email
+      const { data: controlledUsers, error: usersError } = await supabase
+        .from('user_profiles')
+        .select('id, email, full_name, plan_type, created_at')
+        .in('email', CONTROLLED_EMAILS)
+
+      if (usersError) {
+        console.warn('Error cargando usuarios controlados:', usersError)
+        return
+      }
+
+      // Para cada usuario, obtener sus eventos de bloqueo
+      const usersWithEvents = await Promise.all(
+        (controlledUsers || []).map(async (user) => {
+          // Obtener eventos de bloqueo
+          const { data: blockEvents, error: eventsError } = await supabase
+            .from('session_block_events')
+            .select('id, sessions_count, blocked_at')
+            .eq('user_id', user.id)
+            .order('blocked_at', { ascending: false })
+            .limit(20)
+
+          // Obtener sesiones activas actuales
+          const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+          const { data: activeSessions } = await supabase
+            .from('user_sessions')
+            .select('id, session_start, city, screen_resolution, ip_address')
+            .eq('user_id', user.id)
+            .is('session_end', null)
+            .gte('session_start', twentyFourHoursAgo)
+            .order('session_start', { ascending: false })
+
+          return {
+            ...user,
+            blockEvents: blockEvents || [],
+            blockCount: blockEvents?.length || 0,
+            lastBlock: blockEvents?.[0]?.blocked_at || null,
+            activeSessions: activeSessions || [],
+            activeSessionsCount: activeSessions?.length || 0
+          }
+        })
+      )
+
+      setSessionControlData(usersWithEvents)
+    } catch (err) {
+      console.warn('Error en loadSessionControlData:', err)
+    }
+  }
 
   async function loadAlerts() {
     try {
@@ -826,7 +883,8 @@ export default function FraudesPage() {
       <div className="border-b border-gray-200 dark:border-gray-700">
         <nav className="flex space-x-4 overflow-x-auto">
           {[
-            { id: 'confirmados', label: 'Confirmados', icon: '✅', count: confirmedFrauds.length, highlight: true },
+            { id: 'control-sesiones', label: 'Control Sesiones', icon: '🔒', count: sessionControlData.length, highlight: true },
+            { id: 'confirmados', label: 'Confirmados', icon: '✅', count: confirmedFrauds.length },
             { id: 'alertas', label: 'Alertas Sistema', icon: '🚨', count: alertStats?.new || 0 },
             { id: 'resumen', label: 'Resumen', icon: '📊' },
             { id: 'multicuentas', label: 'Multi-cuentas', icon: '👥', count: stats.multiAccounts },
@@ -869,6 +927,131 @@ export default function FraudesPage() {
 
       {/* Contenido según tab */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow border">
+
+        {/* Tab Control de Sesiones Simultáneas */}
+        {activeTab === 'control-sesiones' && (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {/* Explicación */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Usuarios bajo control de sesiones:</strong> Estos usuarios ven un modal bloqueante cuando intentan usar la cuenta desde varios dispositivos.
+              </p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                Emails controlados: {CONTROLLED_EMAILS.join(', ')}
+              </p>
+            </div>
+
+            {sessionControlData.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <div className="text-4xl mb-3">🔒</div>
+                <p>No hay usuarios bajo control de sesiones</p>
+                <p className="text-xs mt-2">Añade emails a CONTROLLED_EMAILS en hooks/useSessionControl.ts</p>
+              </div>
+            ) : (
+              sessionControlData.map((user, idx) => (
+                <div key={idx} className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                        <span className="text-xl">🔒</span>
+                      </div>
+                      <div>
+                        <div className="font-medium">{user.full_name || 'Sin nombre'}</div>
+                        <div className="text-sm text-gray-500">{user.email}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {user.activeSessionsCount > 1 && (
+                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium animate-pulse">
+                          🔴 {user.activeSessionsCount} sesiones activas
+                        </span>
+                      )}
+                      {user.activeSessionsCount === 1 && (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                          ✅ 1 sesión
+                        </span>
+                      )}
+                      {user.activeSessionsCount === 0 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                          Offline
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Estadísticas */}
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-orange-600">{user.blockCount}</div>
+                      <div className="text-xs text-orange-700 dark:text-orange-400">Veces bloqueado</div>
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-blue-600">{user.activeSessionsCount}</div>
+                      <div className="text-xs text-blue-700 dark:text-blue-400">Sesiones activas</div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-center">
+                      <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {user.lastBlock
+                          ? formatDate(user.lastBlock)
+                          : 'Nunca'
+                        }
+                      </div>
+                      <div className="text-xs text-gray-500">Último bloqueo</div>
+                    </div>
+                  </div>
+
+                  {/* Sesiones activas */}
+                  {user.activeSessions.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Sesiones activas ahora:
+                      </p>
+                      <div className="space-y-1">
+                        {user.activeSessions.map((session, sIdx) => (
+                          <div key={sIdx} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded text-xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                              <span>{session.screen_resolution || '?'}</span>
+                              <span className="text-gray-400">•</span>
+                              <span>{session.city || 'Desconocida'}</span>
+                            </div>
+                            <span className="text-gray-400">{formatDate(session.session_start)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Historial de bloqueos */}
+                  {user.blockEvents.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Historial de bloqueos:
+                      </p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {user.blockEvents.map((event, eIdx) => (
+                          <div key={eIdx} className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-900/20 rounded text-xs">
+                            <div className="flex items-center gap-2">
+                              <span>🚫</span>
+                              <span>Bloqueado con {event.sessions_count} sesiones</span>
+                            </div>
+                            <span className="text-gray-500">{formatDate(event.blocked_at)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {user.blockEvents.length === 0 && (
+                    <div className="text-center text-gray-400 text-sm py-2">
+                      Sin eventos de bloqueo registrados
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Tab Fraudes Confirmados por device_id */}
         {activeTab === 'confirmados' && (

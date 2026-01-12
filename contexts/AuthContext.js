@@ -7,6 +7,8 @@ import notificationTracker from '../lib/services/notificationTracker'
 import emailTracker from '../lib/services/emailTracker'
 import { shouldForceCheckout, forceCampaignCheckout } from '../lib/campaignTracker'
 import { GoogleAdsEvents } from '../utils/googleAds'
+import { useSessionControl } from '../hooks/useSessionControl'
+import SessionWarningModal from '../components/SessionWarningModal'
 
 const AuthContext = createContext({})
 
@@ -611,6 +613,18 @@ export function AuthProvider({ children, initialUser = null }) {
     }
   }
 
+  // 🔒 CONTROL DE SESIONES SIMULTÁNEAS (solo para usuarios específicos)
+  const { showWarning: showSessionWarning } = useSessionControl(user, supabase)
+
+  // Estado para logout desde el modal de sesiones
+  const [isLoggingOutFromWarning, setIsLoggingOutFromWarning] = useState(false)
+
+  // Función para hacer logout desde el modal de warning
+  const handleLogoutFromWarning = async () => {
+    setIsLoggingOutFromWarning(true)
+    await signOut()
+  }
+
   // 🎯 VALOR DEL CONTEXTO EXPANDIDO
   const value = {
     user,
@@ -632,6 +646,12 @@ export function AuthProvider({ children, initialUser = null }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
+      {/* 🔒 Modal BLOQUEANTE por sesiones simultáneas */}
+      <SessionWarningModal
+        isOpen={showSessionWarning}
+        onLogout={handleLogoutFromWarning}
+        isLoggingOut={isLoggingOutFromWarning}
+      />
     </AuthContext.Provider>
   )
 }
