@@ -54,9 +54,9 @@ const TestConfigurator = ({
   const [availableArticlesByLaw, setAvailableArticlesByLaw] = useState(new Map());
   const [loadingArticles, setLoadingArticles] = useState(false);
 
-  // 🆕 Estados para filtro de títulos/secciones
+  // 🆕 Estados para filtro de títulos/secciones (MULTI-SELECT)
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
-  const [selectedSectionFilter, setSelectedSectionFilter] = useState(null);
+  const [selectedSectionFilters, setSelectedSectionFilters] = useState([]); // 🔄 Array para selección múltiple
   const [availableSectionsByLaw, setAvailableSectionsByLaw] = useState(new Map());
 
 
@@ -349,11 +349,18 @@ const TestConfigurator = ({
     if (preselectedLaw && selectedLaws.size === 1 && lawsData.length === 1) {
       const law = lawsData[0];
       
-      // 📚 Si hay filtro de sección activo, estimar preguntas de ese rango
-      if (selectedSectionFilter && selectedSectionFilter.articleRange) {
-        const articleRange = selectedSectionFilter.articleRange.end - selectedSectionFilter.articleRange.start + 1;
-        const estimatedQuestions = Math.round((law.questions_count || 0) * (articleRange / 169)); // 169 = total artículos CE
-        console.log(`📚 Filtro de sección activo (${selectedSectionFilter.title}): estimando ${estimatedQuestions} preguntas de ${articleRange} artículos`);
+      // 📚 Si hay filtro de secciones activo, estimar preguntas del rango combinado
+      if (selectedSectionFilters && selectedSectionFilters.length > 0) {
+        // Calcular el total de artículos en todas las secciones seleccionadas
+        let totalArticlesInSections = 0;
+        selectedSectionFilters.forEach(section => {
+          if (section.articleRange) {
+            totalArticlesInSections += section.articleRange.end - section.articleRange.start + 1;
+          }
+        });
+        const estimatedQuestions = Math.round((law.questions_count || 0) * (totalArticlesInSections / 169)); // 169 = total artículos CE
+        const sectionNames = selectedSectionFilters.map(s => s.title).join(', ');
+        console.log(`📚 Filtro de secciones activo (${sectionNames}): estimando ${estimatedQuestions} preguntas de ${totalArticlesInSections} artículos`);
         return Math.max(1, estimatedQuestions); // Mínimo 1 pregunta
       }
       
@@ -428,7 +435,7 @@ const TestConfigurator = ({
     
     console.log('✅ Total preguntas calculadas:', totalQuestions);
     return totalQuestions;
-  }, [baseQuestionCount, lawsData, selectedLaws, availableArticlesByLaw, selectedArticlesByLaw, selectedSectionFilter]);
+  }, [baseQuestionCount, lawsData, selectedLaws, availableArticlesByLaw, selectedArticlesByLaw, selectedSectionFilters]);
 
   const maxQuestions = useMemo(() => {
     const result = Math.min(selectedQuestions, availableQuestions);
@@ -817,8 +824,8 @@ const TestConfigurator = ({
           Array.from(articlesSet)
         ])
       ),
-      // 🆕 FILTRO DE SECCIONES/TÍTULOS
-      selectedSectionFilter: selectedSectionFilter,
+      // 🆕 FILTRO DE SECCIONES/TÍTULOS (MULTI-SELECT)
+      selectedSectionFilters: selectedSectionFilters,
       timeLimit: null,
       configSource: 'failed_questions_test',
       configTimestamp: new Date().toISOString()
@@ -996,8 +1003,8 @@ const TestConfigurator = ({
           Array.from(articlesSet)
         ])
       ), // Convertir Map<string, Set> a Object<string, Array>
-      // 🆕 FILTRO DE SECCIONES/TÍTULOS
-      selectedSectionFilter: selectedSectionFilter,
+      // 🆕 FILTRO DE SECCIONES/TÍTULOS (MULTI-SELECT)
+      selectedSectionFilters: selectedSectionFilters,
       // 🆕 INCLUIR METADATOS ADICIONALES
       timeLimit: null, // Por si se añade límite de tiempo en el futuro
       configSource: 'test_configurator',
@@ -1184,21 +1191,28 @@ const TestConfigurator = ({
                 </button>
               </div>
               
-              {selectedSectionFilter && (
+              {selectedSectionFilters.length > 0 && (
                 <div className="mt-3 p-2 bg-white border border-purple-200 rounded text-sm">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-purple-800 font-medium">
-                      {selectedSectionFilter.title}
+                      {selectedSectionFilters.length} título{selectedSectionFilters.length > 1 ? 's' : ''} seleccionado{selectedSectionFilters.length > 1 ? 's' : ''}
                     </span>
                     <button
-                      onClick={() => setSelectedSectionFilter(null)}
+                      onClick={() => setSelectedSectionFilters([])}
                       className="text-purple-600 hover:text-purple-800 text-xs"
                     >
                       Limpiar
                     </button>
                   </div>
-                  <div className="text-purple-600 text-xs mt-1">
-                    Artículos {selectedSectionFilter.articleRange?.start} - {selectedSectionFilter.articleRange?.end}
+                  <div className="space-y-1">
+                    {selectedSectionFilters.map((section, index) => (
+                      <div key={section.id || index} className="text-purple-600 text-xs flex items-center justify-between">
+                        <span>{section.title}</span>
+                        <span className="text-purple-500">
+                          (Art. {section.articleRange?.start}-{section.articleRange?.end})
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -2520,16 +2534,18 @@ const TestConfigurator = ({
         </div>
       )}
 
-      {/* Modal de Filtro por Títulos/Secciones */}
+      {/* Modal de Filtro por Títulos/Secciones (MULTI-SELECT) */}
       <SectionFilterModal
         isOpen={isSectionModalOpen}
         onClose={() => setIsSectionModalOpen(false)}
         lawSlug={preselectedLaw || (lawsData.length === 1 ? lawsData[0].law_short_name : null)}
-        onSectionSelect={(section) => {
-          setSelectedSectionFilter(section);
-          setIsSectionModalOpen(false);
+        selectedSections={selectedSectionFilters}
+        onSectionSelect={(sections) => {
+          setSelectedSectionFilters(sections);
           // Limpiar filtro de artículos cuando se selecciona filtro de títulos
-          setSelectedArticlesByLaw(new Map());
+          if (sections.length > 0) {
+            setSelectedArticlesByLaw(new Map());
+          }
         }}
       />
     </div>
