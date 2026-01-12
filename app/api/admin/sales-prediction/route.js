@@ -161,10 +161,9 @@ export async function GET() {
 
     if (subsError) throw subsError
 
-    // Precios por plan
+    // Precios por plan (solo mensual y semestral)
     const PRICES = {
       premium_semester: 59,   // 6 meses
-      premium_annual: 99,     // 12 meses (si existe)
       premium_monthly: 20     // mensual
     }
 
@@ -173,23 +172,17 @@ export async function GET() {
     const activeSubscriptions = subscriptions || []
 
     activeSubscriptions.forEach(sub => {
-      if (sub.plan_type === 'premium_semester') {
-        mrr += PRICES.premium_semester / 6  // 9.83€/mes
-      } else if (sub.plan_type === 'premium_annual') {
-        mrr += PRICES.premium_annual / 12   // 8.25€/mes
-      } else if (sub.plan_type === 'premium_monthly') {
+      if (sub.plan_type === 'premium_monthly') {
         mrr += PRICES.premium_monthly       // 20€/mes
       } else {
-        // Fallback: detectar por duración del periodo
+        // Semestral o fallback por duración del periodo
         const start = new Date(sub.current_period_start)
         const end = new Date(sub.current_period_end)
         const days = (end - start) / (1000 * 60 * 60 * 24)
         if (days <= 35) {
           mrr += PRICES.premium_monthly     // ~1 mes = mensual
-        } else if (days <= 200) {
-          mrr += PRICES.premium_semester / 6 // ~6 meses = semestral
         } else {
-          mrr += PRICES.premium_annual / 12  // ~12 meses = anual
+          mrr += PRICES.premium_semester / 6 // 6 meses = semestral (9.83€/mes)
         }
       }
     })
@@ -344,8 +337,7 @@ export async function GET() {
         newSubsPerMonth: Math.round(expectedSalesPerMonth * 100) / 100,
         byPlan: {
           semester: activeSubscriptions.filter(s => s.plan_type === 'premium_semester').length,
-          annual: activeSubscriptions.filter(s => s.plan_type === 'premium_annual').length,
-          monthly: activeSubscriptions.filter(s => !['premium_semester', 'premium_annual'].includes(s.plan_type)).length
+          monthly: activeSubscriptions.filter(s => s.plan_type === 'premium_monthly').length
         }
       },
 

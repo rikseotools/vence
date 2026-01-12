@@ -150,14 +150,9 @@ async function handleCheckoutSessionCompleted(session, supabase) {
         try {
           const subscription = await stripe.subscriptions.retrieve(session.subscription)
 
-          // Determinar plan_type basado en el intervalo
+          // Determinar plan_type basado en el intervalo (solo mensual o semestral)
           const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
-          planType = 'premium_semester'
-          if (interval === 'year') {
-            planType = 'premium_annual'
-          } else if (interval === 'month') {
-            planType = 'premium_monthly'
-          }
+          planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
 
           // Usar upsert para evitar duplicados si customer.subscription.created ya lo creó
           const { error: subError } = await supabase
@@ -298,13 +293,9 @@ async function handleCheckoutSessionCompleted(session, supabase) {
         if (session.subscription) {
           try {
             const subscription = await stripe.subscriptions.retrieve(session.subscription)
+            // Determinar plan_type (solo mensual o semestral)
             const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
-            let planType = 'premium_semester'
-            if (interval === 'year') {
-              planType = 'premium_annual'
-            } else if (interval === 'month') {
-              planType = 'premium_monthly'
-            }
+            const planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
 
             await supabase
               .from('user_subscriptions')
@@ -393,14 +384,9 @@ async function handleSubscriptionCreated(subscription, supabase) {
     return
   }
 
-  // Determinar plan_type basado en el intervalo
+  // Determinar plan_type (solo mensual o semestral)
   const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
-  let planType = 'premium_semester'
-  if (interval === 'year') {
-    planType = 'premium_annual'
-  } else if (interval === 'month') {
-    planType = 'premium_monthly'
-  }
+  const planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
 
   try {
     // 🔥 FIX: Usar upsert en lugar de insert para evitar duplicados
