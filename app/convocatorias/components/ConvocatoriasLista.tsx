@@ -1,9 +1,7 @@
 /**
- * Componente de lista de convocatorias
+ * Componente de lista de convocatorias/oposiciones
+ * Muestra los procesos selectivos de forma clara para el usuario
  */
-
-// Link removido temporalmente - las páginas individuales tienen thin content
-// import Link from 'next/link';
 
 interface Convocatoria {
   id: string;
@@ -16,6 +14,8 @@ interface Convocatoria {
   tipo: string | null;
   categoria: string | null;
   num_plazas: number | null;
+  num_plazas_libre: number | null;
+  num_plazas_pi: number | null;
   oposicion_relacionada: string | null;
   boe_url_pdf: string | null;
   boe_url_html: string | null;
@@ -23,12 +23,15 @@ interface Convocatoria {
   comunidad_autonoma: string | null;
   provincia: string | null;
   municipio: string | null;
+  resumen: string | null;
+  acceso: string | null;
 }
 
 interface Props {
   convocatorias: Convocatoria[];
 }
 
+// Tipo solo se muestra si NO estamos en vista de convocatorias (modo todas)
 const TIPO_BADGES: Record<string, { bg: string; text: string; label: string }> = {
   convocatoria: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', label: 'Convocatoria' },
   admitidos: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', label: 'Admitidos' },
@@ -38,12 +41,19 @@ const TIPO_BADGES: Record<string, { bg: string; text: string; label: string }> =
   otro: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300', label: 'Otro' },
 };
 
-const CATEGORIA_BADGES: Record<string, string> = {
-  'C2': 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
-  'C1': 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
-  'A2': 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300',
-  'A1': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-  'B': 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-300',
+const CATEGORIA_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  'C2': { bg: 'bg-teal-600', text: 'text-white', label: 'C2 · ESO' },
+  'C1': { bg: 'bg-indigo-600', text: 'text-white', label: 'C1 · Bachiller' },
+  'A2': { bg: 'bg-pink-600', text: 'text-white', label: 'A2 · Grado' },
+  'A1': { bg: 'bg-red-600', text: 'text-white', label: 'A1 · Grado' },
+  'B': { bg: 'bg-cyan-600', text: 'text-white', label: 'B · FP Superior' },
+};
+
+const ACCESO_LABELS: Record<string, string> = {
+  'libre': 'Libre',
+  'promocion_interna': 'Promoción interna',
+  'mixto': 'Libre + PI',
+  'discapacidad': 'Discapacidad',
 };
 
 export default function ConvocatoriasLista({ convocatorias }: Props) {
@@ -54,10 +64,10 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">
-          No hay convocatorias
+          No hay oposiciones
         </h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          No se encontraron convocatorias con los filtros seleccionados
+          No se encontraron oposiciones con los filtros seleccionados
         </p>
       </div>
     );
@@ -67,108 +77,164 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
     <div className="space-y-4">
       {convocatorias.map((conv) => {
         const tipoBadge = TIPO_BADGES[conv.tipo || 'otro'] || TIPO_BADGES.otro;
-        const categoriaBadge = conv.categoria ? CATEGORIA_BADGES[conv.categoria] : null;
+        const categoriaInfo = conv.categoria ? CATEGORIA_COLORS[conv.categoria] : null;
+        const esConvocatoria = conv.tipo === 'convocatoria';
+
+        // Construir ubicación
+        const ubicacion = [
+          conv.municipio,
+          conv.provincia,
+          conv.comunidad_autonoma
+        ].filter(Boolean).join(', ') || (conv.ambito === 'estatal' ? 'Nacional' : null);
 
         return (
           <article
             key={conv.id}
-            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow"
+            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
           >
-            {/* Badges */}
-            <div className="flex flex-wrap gap-2 mb-2">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tipoBadge.bg} ${tipoBadge.text}`}>
-                {tipoBadge.label}
-              </span>
-              {categoriaBadge && (
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${categoriaBadge}`}>
-                  {conv.categoria}
-                </span>
+            <div className="flex">
+              {/* Barra lateral de categoría */}
+              {categoriaInfo && (
+                <div className={`w-1.5 ${categoriaInfo.bg} flex-shrink-0`} />
               )}
-              {conv.num_plazas && conv.num_plazas > 0 && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-                  {conv.num_plazas} plazas
-                </span>
-              )}
-              {conv.oposicion_relacionada && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                  Tu oposición
-                </span>
-              )}
-              {conv.ambito && (
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  conv.ambito === 'estatal'
-                    ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                    : conv.ambito === 'local'
-                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
-                    : 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                }`}>
-                  {conv.ambito === 'estatal' ? 'Estatal' : conv.ambito === 'local' ? 'Local' : 'Autonómico'}
-                </span>
-              )}
-              {conv.comunidad_autonoma && (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                  {conv.comunidad_autonoma}
-                </span>
-              )}
-            </div>
 
-            {/* Título */}
-            <h3 className="text-base font-medium text-gray-900 dark:text-white line-clamp-2">
-              {conv.titulo_limpio || conv.titulo}
-            </h3>
+              <div className="flex-1 p-4">
+                {/* Header: Badges + Plazas */}
+                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap gap-2">
+                    {/* Solo mostrar badge de tipo si NO es convocatoria */}
+                    {!esConvocatoria && (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tipoBadge.bg} ${tipoBadge.text}`}>
+                        {tipoBadge.label}
+                      </span>
+                    )}
+                    {categoriaInfo && (
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold ${categoriaInfo.bg} ${categoriaInfo.text}`}>
+                        {categoriaInfo.label}
+                      </span>
+                    )}
+                    {conv.acceso && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                        {ACCESO_LABELS[conv.acceso] || conv.acceso}
+                      </span>
+                    )}
+                    {conv.oposicion_relacionada && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                        Tu oposición
+                      </span>
+                    )}
+                  </div>
 
-            {/* Meta */}
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
-              <span className="flex items-center">
-                <svg className="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {new Date(conv.boe_fecha).toLocaleDateString('es-ES', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric'
-                })}
-              </span>
-              {conv.departamento_nombre && (
-                <span className="flex items-center">
-                  <svg className="mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  <span className="truncate max-w-[200px]">
-                    {conv.departamento_nombre.replace('MINISTERIO DE ', '').replace('MINISTERIO PARA ', '')}
+                  {/* Plazas destacadas */}
+                  {conv.num_plazas && conv.num_plazas > 0 && (
+                    <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-lg">
+                      <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {conv.num_plazas}
+                      </span>
+                      <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                        {conv.num_plazas === 1 ? 'plaza' : 'plazas'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Título */}
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug">
+                  {conv.titulo_limpio || conv.titulo}
+                </h3>
+
+                {/* Resumen si existe */}
+                {conv.resumen && (
+                  <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                    {conv.resumen}
+                  </p>
+                )}
+
+                {/* Meta info */}
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-gray-500 dark:text-gray-400">
+                  {/* Fecha */}
+                  <span className="flex items-center">
+                    <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {new Date(conv.boe_fecha).toLocaleDateString('es-ES', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
                   </span>
-                </span>
-              )}
-              <span className="text-gray-400 dark:text-gray-500">
-                {conv.boe_id}
-              </span>
-            </div>
 
-            {/* Actions */}
-            <div className="mt-3 flex gap-3">
-              {conv.boe_url_pdf && (
-                <a
-                  href={conv.boe_url_pdf}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:underline flex items-center"
-                >
-                  <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  PDF
-                </a>
-              )}
-              {conv.boe_url_html && (
-                <a
-                  href={conv.boe_url_html}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:underline"
-                >
-                  Ver en BOE
-                </a>
-              )}
+                  {/* Ubicación */}
+                  {ubicacion && (
+                    <span className="flex items-center">
+                      <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="truncate max-w-[180px]">{ubicacion}</span>
+                    </span>
+                  )}
+
+                  {/* Departamento */}
+                  {conv.departamento_nombre && (
+                    <span className="flex items-center">
+                      <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      <span className="truncate max-w-[200px]">
+                        {conv.departamento_nombre.replace('MINISTERIO DE ', '').replace('MINISTERIO PARA ', '')}
+                      </span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Detalles de plazas si hay desglose */}
+                {(conv.num_plazas_libre || conv.num_plazas_pi) && (
+                  <div className="mt-2 flex gap-3 text-xs text-gray-500 dark:text-gray-400">
+                    {conv.num_plazas_libre && (
+                      <span>Libre: {conv.num_plazas_libre}</span>
+                    )}
+                    {conv.num_plazas_pi && (
+                      <span>PI: {conv.num_plazas_pi}</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                  <div className="flex gap-4">
+                    {conv.boe_url_pdf && (
+                      <a
+                        href={conv.boe_url_pdf}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                      >
+                        <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Descargar PDF
+                      </a>
+                    )}
+                    {conv.boe_url_html && (
+                      <a
+                        href={conv.boe_url_html}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:underline flex items-center"
+                      >
+                        <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Ver en BOE
+                      </a>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {conv.boe_id}
+                  </span>
+                </div>
+              </div>
             </div>
           </article>
         );

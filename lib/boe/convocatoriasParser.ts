@@ -39,33 +39,46 @@ export interface PlazasExtraidas {
 export function detectarTipo(titulo: string): TipoConvocatoria {
   const t = titulo.toLowerCase();
 
-  // Convocatoria de proceso selectivo
+  // 1. Corrección de errores (más específico, comprobar primero)
   if (
-    (t.includes('convoca') || t.includes('convocan')) &&
-    (t.includes('proceso selectivo') ||
-     t.includes('oposici') ||
-     t.includes('concurso-oposici') ||
-     t.includes('concurso oposici') ||
-     t.includes('pruebas selectivas') ||
-     t.includes('plazas'))
+    t.includes('corrección de errores') ||
+    t.includes('correccion de errores')
   ) {
-    return 'convocatoria';
+    return 'correccion';
   }
 
-  // Lista de admitidos/excluidos
+  // 2. Resultados / Aprobados (antes de admitidos porque "superado" es más específico)
   if (
-    t.includes('relación definitiva') ||
-    t.includes('relacion definitiva') ||
-    t.includes('lista definitiva') ||
+    t.includes('aprobados') ||
+    t.includes('personas aprobadas') ||
+    t.includes('han superado') ||
+    t.includes('hayan superado') ||
+    t.includes('que superaron') ||
+    t.includes('relación de personas que han superado') ||
+    t.includes('relacion de personas que han superado') ||
+    (t.includes('publica') && t.includes('relación') && t.includes('aprobad'))
+  ) {
+    return 'resultado';
+  }
+
+  // 3. Lista de admitidos/excluidos
+  if (
     t.includes('admitidos y excluidos') ||
-    t.includes('relación provisional') ||
-    t.includes('relacion provisional') ||
+    t.includes('admitidas y excluidas') ||
+    t.includes('lista definitiva') ||
+    t.includes('lista provisional') ||
+    t.includes('relación definitiva de personas') ||
+    t.includes('relacion definitiva de personas') ||
+    t.includes('relación provisional de personas') ||
+    t.includes('relacion provisional de personas') ||
+    (t.includes('relación definitiva') && !t.includes('superado')) ||
+    (t.includes('relacion definitiva') && !t.includes('superado')) ||
     (t.includes('admitidos') && t.includes('excluidos'))
   ) {
     return 'admitidos';
   }
 
-  // Tribunal calificador
+  // 4. Tribunal calificador
   if (
     t.includes('tribunal calificador') ||
     t.includes('composición del tribunal') ||
@@ -76,23 +89,19 @@ export function detectarTipo(titulo: string): TipoConvocatoria {
     return 'tribunal';
   }
 
-  // Resultados / Aprobados
+  // 5. Convocatoria de proceso selectivo (solo si usa "se convoca" activo, no "convocado")
+  // Importante: "convocado" (pasado) indica referencia a un proceso ya convocado, no nueva convocatoria
   if (
-    t.includes('aprobados') ||
-    t.includes('relación de personas que han superado') ||
-    t.includes('relacion de personas que han superado') ||
-    t.includes('han superado el proceso') ||
-    t.includes('resultado') && t.includes('proceso selectivo')
+    (t.includes('se convoca') || t.includes('se convocan') ||
+     t.includes('por la que se convoca') || t.includes('por la que se convocan')) &&
+    (t.includes('proceso selectivo') ||
+     t.includes('oposici') ||
+     t.includes('concurso-oposici') ||
+     t.includes('concurso oposici') ||
+     t.includes('pruebas selectivas') ||
+     t.includes('plazas'))
   ) {
-    return 'resultado';
-  }
-
-  // Corrección de errores
-  if (
-    t.includes('corrección de errores') ||
-    t.includes('correccion de errores')
-  ) {
-    return 'correccion';
+    return 'convocatoria';
   }
 
   return 'otro';
@@ -546,7 +555,8 @@ function extraerPlazo(texto: string): number | null {
   // Patrón 1: "plazo de X días hábiles/naturales"
   const match1 = texto.match(/plazo\s+(?:de\s+)?(\w+)\s+d[ií]as\s*(?:h[aá]biles|naturales)?/i);
   if (match1) {
-    const num = spanishTextToNumber(match1[1]) || parseInt(match1[1]);
+    const numText = spanishTextToNumber(match1[1]);
+    const num = numText ? parseInt(String(numText)) : parseInt(match1[1]);
     if (num && !isNaN(num)) return num;
   }
 
@@ -560,13 +570,14 @@ function extraerPlazo(texto: string): number | null {
   const match3 = texto.match(/(veinte|veintiuno|veintidós|veintitrés|veinticuatro|veinticinco|quince|treinta|diez|cinco)\s+d[ií]as/i);
   if (match3) {
     const num = spanishTextToNumber(match3[1]);
-    if (num) return parseInt(num);
+    if (num) return parseInt(String(num));
   }
 
   // Patrón 4: "el plazo será de X días"
   const match4 = texto.match(/plazo\s+ser[aá]\s+(?:de\s+)?(\w+)\s+d[ií]as/i);
   if (match4) {
-    const num = spanishTextToNumber(match4[1]) || parseInt(match4[1]);
+    const numText = spanishTextToNumber(match4[1]);
+    const num = numText ? parseInt(String(numText)) : parseInt(match4[1]);
     if (num && !isNaN(num)) return num;
   }
 
@@ -938,22 +949,27 @@ export function calcularRelevancia(datos: {
 /**
  * Limpia el título eliminando el prefijo típico
  * "Resolución de X de enero de 2026, de la Subsecretaría, por la que se..."
- * → "por la que se..."
+ * → "Se convoca el proceso selectivo..."
  */
 export function limpiarTitulo(titulo: string): string {
-  // Eliminar prefijo de resolución
-  let limpio = titulo
-    .replace(/^Resoluci[oó]n\s+de\s+\d+\s+de\s+\w+\s+de\s+\d{4},?\s*/i, '')
-    .replace(/^de\s+la\s+[\w\s]+,?\s*/i, '')
-    .replace(/^por\s+la\s+que\s+se\s+/i, '')
-    .trim();
-
-  // Capitalizar primera letra
-  if (limpio.length > 0) {
+  // Buscar "por la que se" y tomar desde ahí
+  const porLaQueMatch = titulo.match(/por\s+la\s+que\s+se\s+(.+)/i);
+  if (porLaQueMatch) {
+    let limpio = 'Se ' + porLaQueMatch[1].trim();
+    // Capitalizar primera letra
     limpio = limpio.charAt(0).toUpperCase() + limpio.slice(1);
+    return limpio;
   }
 
-  return limpio || titulo;
+  // Si no hay "por la que se", intentar otros patrones
+  // "que tiene por objeto..." → "Tiene por objeto..."
+  const quetieneMatch = titulo.match(/que\s+tiene\s+por\s+objeto\s+(.+)/i);
+  if (quetieneMatch) {
+    return 'Tiene por objeto ' + quetieneMatch[1].trim();
+  }
+
+  // Si no se puede limpiar, devolver original
+  return titulo;
 }
 
 // ============================================

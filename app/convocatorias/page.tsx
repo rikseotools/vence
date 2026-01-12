@@ -11,19 +11,20 @@ import ConvocatoriasFiltros from './components/ConvocatoriasFiltros';
 import ConvocatoriasLista from './components/ConvocatoriasLista';
 
 export const metadata: Metadata = {
-  title: 'Convocatorias de Oposiciones 2026 | BOE Actualizado | Vence',
-  description: 'Todas las convocatorias de oposiciones del BOE actualizadas diariamente. Auxiliar Administrativo, Administrativo del Estado, Gestión Procesal y más. Plazas, fechas y requisitos.',
+  title: 'Oposiciones Convocadas 2026 | Plazas y Requisitos | Vence',
+  description: 'Todas las oposiciones convocadas en España. Consulta plazas, requisitos, fechas y bases. Auxiliar Administrativo, Administrativo del Estado, Gestión Procesal y más.',
   keywords: [
-    'convocatorias oposiciones 2026',
-    'BOE oposiciones',
+    'oposiciones convocadas 2026',
     'plazas oposiciones',
+    'convocatorias BOE',
     'auxiliar administrativo convocatoria',
     'administrativo estado convocatoria',
-    'oposiciones administración general estado'
+    'oposiciones administración general estado',
+    'oposiciones abiertas'
   ],
   openGraph: {
-    title: 'Convocatorias de Oposiciones 2026 | Vence',
-    description: 'Todas las convocatorias del BOE actualizadas diariamente',
+    title: 'Oposiciones Convocadas 2026 | Vence',
+    description: 'Todas las oposiciones convocadas en España con plazas, requisitos y fechas',
     url: '/convocatorias',
     type: 'website'
   },
@@ -42,7 +43,9 @@ interface SearchParams {
   departamento?: string;
   ambito?: string;
   ccaa?: string;
+  q?: string;
   page?: string;
+  todas?: string; // Si es 'true', muestra todas las publicaciones
 }
 
 async function getConvocatorias(searchParams: SearchParams) {
@@ -55,6 +58,10 @@ async function getConvocatorias(searchParams: SearchParams) {
   const limit = 20;
   const offset = (page - 1) * limit;
 
+  // Por defecto solo mostramos convocatorias (bases nuevas)
+  // A menos que el usuario pida ver todas las publicaciones
+  const mostrarTodas = searchParams.todas === 'true';
+
   let query = supabase
     .from('convocatorias_boe')
     .select('*', { count: 'exact' })
@@ -62,12 +69,22 @@ async function getConvocatorias(searchParams: SearchParams) {
     .order('boe_fecha', { ascending: false })
     .order('relevancia_score', { ascending: false });
 
+  // Filtro por defecto: solo convocatorias (bases nuevas)
+  if (!mostrarTodas) {
+    if (searchParams.tipo) {
+      query = query.eq('tipo', searchParams.tipo);
+    } else {
+      // Por defecto solo convocatorias
+      query = query.eq('tipo', 'convocatoria');
+    }
+  } else if (searchParams.tipo) {
+    // Si mostrarTodas pero hay filtro de tipo específico
+    query = query.eq('tipo', searchParams.tipo);
+  }
+
   // Aplicar filtros
   if (searchParams.categoria) {
     query = query.eq('categoria', searchParams.categoria);
-  }
-  if (searchParams.tipo) {
-    query = query.eq('tipo', searchParams.tipo);
   }
   if (searchParams.oposicion) {
     query = query.eq('oposicion_relacionada', searchParams.oposicion);
@@ -82,6 +99,10 @@ async function getConvocatorias(searchParams: SearchParams) {
   if (searchParams.ccaa) {
     query = query.eq('comunidad_autonoma', searchParams.ccaa);
   }
+  // Búsqueda de texto
+  if (searchParams.q) {
+    query = query.or(`titulo.ilike.%${searchParams.q}%,resumen.ilike.%${searchParams.q}%,departamento_nombre.ilike.%${searchParams.q}%`);
+  }
 
   // Paginación
   query = query.range(offset, offset + limit - 1);
@@ -90,12 +111,13 @@ async function getConvocatorias(searchParams: SearchParams) {
 
   if (error) {
     console.error('Error fetching convocatorias:', error);
-    return { convocatorias: [], total: 0 };
+    return { convocatorias: [], total: 0, mostrarTodas };
   }
 
   return {
     convocatorias: data || [],
-    total: count || 0
+    total: count || 0,
+    mostrarTodas
   };
 }
 
@@ -139,7 +161,7 @@ export default async function ConvocatoriasPage({
   searchParams: Promise<SearchParams>
 }) {
   const params = await searchParams;
-  const [{ convocatorias, total }, estadisticas] = await Promise.all([
+  const [{ convocatorias, total, mostrarTodas }, estadisticas] = await Promise.all([
     getConvocatorias(params),
     getEstadisticas()
   ]);
@@ -153,28 +175,23 @@ export default async function ConvocatoriasPage({
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Convocatorias de Oposiciones
+            {mostrarTodas ? 'Todas las Publicaciones BOE' : 'Oposiciones Convocadas'}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Todas las convocatorias del BOE actualizadas diariamente
+            {mostrarTodas
+              ? 'Todas las publicaciones de oposiciones del BOE'
+              : 'Procesos selectivos con convocatoria abierta'
+            } · {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
 
           {/* Estadísticas rápidas */}
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {estadisticas.total}
-              </p>
-              <p className="text-sm text-blue-600 dark:text-blue-400">
-                Total publicaciones
-              </p>
-            </div>
             <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {estadisticas.porTipo['convocatoria'] || 0}
               </p>
               <p className="text-sm text-green-600 dark:text-green-400">
-                Convocatorias
+                Oposiciones
               </p>
             </div>
             <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
@@ -183,6 +200,14 @@ export default async function ConvocatoriasPage({
               </p>
               <p className="text-sm text-purple-600 dark:text-purple-400">
                 Listas admitidos
+              </p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {estadisticas.porTipo['resultado'] || 0}
+              </p>
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                Resultados
               </p>
             </div>
             <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
@@ -209,10 +234,33 @@ export default async function ConvocatoriasPage({
 
           {/* Lista */}
           <main className="flex-1">
-            <div className="mb-4 flex justify-between items-center">
+            <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Mostrando {convocatorias.length} de {total} resultados
+                Mostrando {convocatorias.length} de {total} {mostrarTodas ? 'publicaciones' : 'oposiciones'}
               </p>
+              <Link
+                href={mostrarTodas
+                  ? `/convocatorias?${new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([k]) => k !== 'todas' && k !== 'page')))}`
+                  : `/convocatorias?${new URLSearchParams({ ...Object.fromEntries(Object.entries(params).filter(([k]) => k !== 'page')), todas: 'true' })}`
+                }
+                className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              >
+                {mostrarTodas ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Solo oposiciones
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    Ver todas las publicaciones
+                  </>
+                )}
+              </Link>
             </div>
 
             <Suspense fallback={<div className="animate-pulse space-y-4">
