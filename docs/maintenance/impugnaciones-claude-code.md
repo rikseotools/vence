@@ -154,6 +154,11 @@ supabase
 
 ## 6. Cerrar la Impugnación
 
+> **IMPORTANTE:**
+> - NUNCA cerrar la impugnación sin aprobación explícita del mensaje.
+> - SIEMPRE obtener el nombre del usuario ANTES de proponer el mensaje, para dirigirse a él por su nombre.
+> - Claude debe mostrar el mensaje propuesto y esperar confirmación antes de ejecutar cualquier cambio en `question_disputes`.
+
 Antes de cerrar, pedir el mensaje personalizado:
 
 ```
@@ -257,9 +262,11 @@ await supabase
    ↓
 6. "actualiza el registro AI"
    ↓
-7. "cierra la impugnación, dime antes qué mensaje le pondrás"
+7. Claude obtiene el NOMBRE del usuario (sección 11)
    ↓
-8. Aprobar mensaje → Claude cierra la impugnación
+8. Claude propone mensaje personalizado con nombre
+   ↓
+9. Usuario aprueba mensaje → Claude cierra la impugnación
 ```
 
 ## 10. Ejemplo Real
@@ -313,8 +320,10 @@ const nombre = user.user_metadata?.name || user.user_metadata?.full_name || 'Usu
 
 ## 12. Consejos
 
+- **CRÍTICO: Siempre pedir aprobación explícita** del mensaje antes de cerrar la impugnación. Mostrar el texto y esperar "sí" o "ok" del usuario.
+- **CRÍTICO: Siempre obtener el nombre del usuario** antes de proponer el mensaje. Usar la consulta de la sección 11 para obtenerlo.
 - **Siempre verificar** el artículo correcto en nuestra BD antes de corregir
 - **No cerrar** la impugnación hasta aprobar el mensaje
-- **Personalizar** el mensaje con el nombre del usuario
+- **Personalizar** el mensaje con el nombre del usuario (nunca "Hola," genérico)
 - **Actualizar** `ai_verification_results` para que la verificación quede correcta
 - Si la pregunta **no tiene topic_id**, considerar asignarla al tema correcto
