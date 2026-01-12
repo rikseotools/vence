@@ -38,10 +38,22 @@ const nextConfig = {
     ]
   },
 
-  // ✅ Redirigir automáticamente sin www a con www (solo en producción)
+  // ✅ Redirecciones
   async redirects() {
+    // Redirecciones mínimas necesarias (rutas que NO existen)
+    const testRedirects = [
+      // ⚠️ Esta ruta nunca existió en administrativo-estado, redirigir a la nueva
+      {
+        source: '/administrativo-estado/test/test-aleatorio-examen',
+        destination: '/test/aleatorio-examen',
+        permanent: false, // 302 temporal para poder cambiar si hay problemas
+      },
+    ];
+
+    // Redirigir sin www a con www (solo en producción)
     if (process.env.NODE_ENV === 'production') {
       return [
+        ...testRedirects,
         {
           source: '/:path*',
           has: [
@@ -55,7 +67,7 @@ const nextConfig = {
         },
       ];
     }
-    return [];
+    return testRedirects;
   },
 };
 
