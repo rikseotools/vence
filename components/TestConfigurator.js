@@ -389,32 +389,51 @@ const TestConfigurator = ({
       return law.questions_count || 0;
     }
     
-    // ✅ Si todas las leyes están seleccionadas y no hay filtros de artículos específicos, usar baseQuestionCount
+    // ✅ Si todas las leyes están seleccionadas y no hay filtros de artículos/secciones específicos, usar baseQuestionCount
     const allLawsSelected = lawsData.length > 0 && selectedLaws.size === lawsData.length;
     const hasSpecificArticleFilters = Array.from(selectedArticlesByLaw.values()).some(articles => articles.size > 0);
-    
-    if (allLawsSelected && !hasSpecificArticleFilters) {
+    const hasSectionFilters = selectedSectionFilters && selectedSectionFilters.length > 0;
+
+    if (allLawsSelected && !hasSpecificArticleFilters && !hasSectionFilters) {
       console.log('📊 Todas las leyes seleccionadas sin filtros específicos, usando baseQuestionCount:', baseQuestionCount);
       return baseQuestionCount;
     }
     
     // Para modo multi-ley o con filtros de artículos específicos
     let totalQuestions = 0;
-    
+
     for (const law of lawsData) {
       if (!selectedLaws.has(law.law_short_name)) continue;
-      
+
       const articlesForLaw = availableArticlesByLaw.get(law.law_short_name);
       const selectedArticlesForLaw = selectedArticlesByLaw.get(law.law_short_name);
-      
-      if (selectedArticlesForLaw && selectedArticlesForLaw.size > 0) {
+
+      // 📚 PRIMERO: Verificar si hay filtro de secciones activo para esta ley
+      const sectionsForThisLaw = selectedSectionFilters?.filter(s => s.lawShortName === law.law_short_name) || [];
+
+      if (sectionsForThisLaw.length > 0) {
+        // Calcular preguntas basándose en las secciones seleccionadas
+        let totalArticlesInSections = 0;
+        sectionsForThisLaw.forEach(section => {
+          if (section.articleRange) {
+            totalArticlesInSections += section.articleRange.end - section.articleRange.start + 1;
+          }
+        });
+
+        // Calcular proporción de artículos en secciones vs total de artículos de la ley
+        const totalArticlesInLaw = law.total_articles || 169; // 169 para CE por defecto
+        const estimatedQuestions = Math.round((law.questions_count || 0) * (totalArticlesInSections / totalArticlesInLaw));
+        const sectionNames = sectionsForThisLaw.map(s => s.title).join(', ');
+        console.log(`📚 Filtro de secciones para ${law.law_short_name} (${sectionNames}): estimando ${estimatedQuestions} preguntas de ${totalArticlesInSections} artículos`);
+        totalQuestions += Math.max(1, estimatedQuestions);
+      } else if (selectedArticlesForLaw && selectedArticlesForLaw.size > 0) {
         // Hay artículos específicos seleccionados
         if (articlesForLaw) {
           // Datos de artículos disponibles - contar preguntas específicas
           const questionsFromSelectedArticles = articlesForLaw
             .filter(article => selectedArticlesForLaw.has(article.article_number))
             .reduce((sum, article) => sum + (article.question_count || 0), 0);
-          
+
           totalQuestions += questionsFromSelectedArticles;
           console.log('📊 Preguntas de artículos específicos de', law.law_short_name, ':', questionsFromSelectedArticles);
         } else {
@@ -432,7 +451,7 @@ const TestConfigurator = ({
         totalQuestions += lawQuestions;
       }
     }
-    
+
     console.log('✅ Total preguntas calculadas:', totalQuestions);
     return totalQuestions;
   }, [baseQuestionCount, lawsData, selectedLaws, availableArticlesByLaw, selectedArticlesByLaw, selectedSectionFilters]);
