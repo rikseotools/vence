@@ -46,6 +46,11 @@ export default function AdminFeedbackPage() {
   const [chatMessages, setChatMessages] = useState([])
   const [newUserMessages, setNewUserMessages] = useState(new Set()) // IDs de conversaciones con mensajes nuevos
   const [activeFilter, setActiveFilter] = useState('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
+  const [selectedUser, setSelectedUser] = useState(null) // Usuario seleccionado para ver sus conversaciones
+  const [usersWithConversations, setUsersWithConversations] = useState([]) // Lista de usuarios agrupados
+  const [inlineChatMessages, setInlineChatMessages] = useState([]) // Mensajes del chat inline
+  const [inlineNewMessage, setInlineNewMessage] = useState('') // Mensaje nuevo para el chat inline
+  const [sendingInlineMessage, setSendingInlineMessage] = useState(false) // Enviando mensaje inline
   const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se inicializó
   const [expandedImage, setExpandedImage] = useState(null) // Estado para modal de imagen expandida
   const [userProfilesCache, setUserProfilesCache] = useState(new Map()) // Cache de perfiles de usuario
@@ -208,6 +213,140 @@ export default function AdminFeedbackPage() {
   useEffect(() => {
     scrollToBottom()
   }, [chatMessages])
+
+  // Agrupar usuarios cuando cambian feedbacks o conversaciones
+  useEffect(() => {
+    if (feedbacks.length > 0) {
+      const grouped = groupFeedbacksByUser(feedbacks, conversations)
+      setUsersWithConversations(grouped)
+      console.log('👥 Usuarios agrupados:', grouped.length)
+    }
+  }, [feedbacks, conversations])
+
+  // Cargar mensajes del chat inline cuando se selecciona un feedback
+  useEffect(() => {
+    const loadInlineChatMessages = async () => {
+      if (!selectedFeedback || !selectedUser) {
+        setInlineChatMessages([])
+        return
+      }
+
+      const conversation = conversations[selectedFeedback.id]
+      if (!conversation) {
+        setInlineChatMessages([])
+        return
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('feedback_messages')
+          .select('*')
+          .eq('conversation_id', conversation.id)
+          .order('created_at', { ascending: true })
+
+        if (error) throw error
+        setInlineChatMessages(data || [])
+        console.log('💬 Mensajes inline cargados:', data?.length || 0)
+
+        // Marcar como leído
+        if (newUserMessages.has(conversation.id)) {
+          await supabase
+            .from('feedback_conversations')
+            .update({ admin_viewed_at: new Date().toISOString() })
+            .eq('id', conversation.id)
+
+          setNewUserMessages(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(conversation.id)
+            return newSet
+          })
+        }
+      } catch (error) {
+        console.error('❌ Error cargando mensajes inline:', error)
+      }
+    }
+
+    loadInlineChatMessages()
+  }, [selectedFeedback, selectedUser, conversations])
+
+  // Función para enviar mensaje inline
+  const sendInlineMessage = async () => {
+    if (!inlineNewMessage.trim() || !selectedFeedback || sendingInlineMessage) return
+
+    setSendingInlineMessage(true)
+    try {
+      let conversation = conversations[selectedFeedback.id]
+
+      // Si no hay conversación, crear una
+      if (!conversation) {
+        const { data: newConv, error: convError } = await supabase
+          .from('feedback_conversations')
+          .insert({
+            feedback_id: selectedFeedback.id,
+            user_id: selectedFeedback.user_id,
+            status: 'waiting_user',
+            last_message_at: new Date().toISOString()
+          })
+          .select()
+          .single()
+
+        if (convError) throw convError
+        conversation = newConv
+
+        // Actualizar el mapa de conversaciones
+        setConversations(prev => ({
+          ...prev,
+          [selectedFeedback.id]: conversation
+        }))
+      }
+
+      // Enviar el mensaje
+      const { data: newMsg, error: msgError } = await supabase
+        .from('feedback_messages')
+        .insert({
+          conversation_id: conversation.id,
+          sender_id: user.id,
+          is_admin: true,
+          message: inlineNewMessage.trim()
+        })
+        .select()
+        .single()
+
+      if (msgError) throw msgError
+
+      // Actualizar estado de la conversación
+      await supabase
+        .from('feedback_conversations')
+        .update({
+          status: 'waiting_user',
+          last_message_at: new Date().toISOString()
+        })
+        .eq('id', conversation.id)
+
+      // Actualizar feedback a in_review si estaba pending
+      if (selectedFeedback.status === 'pending') {
+        await supabase
+          .from('user_feedback')
+          .update({ status: 'in_review' })
+          .eq('id', selectedFeedback.id)
+      }
+
+      // Añadir mensaje a la lista
+      setInlineChatMessages(prev => [...prev, newMsg])
+      setInlineNewMessage('')
+
+      // Recargar datos
+      loadConversations()
+      loadFeedbacks()
+
+      console.log('✅ Mensaje inline enviado')
+    } catch (error) {
+      console.error('❌ Error enviando mensaje inline:', error)
+      alert('Error al enviar el mensaje')
+    } finally {
+      setSendingInlineMessage(false)
+    }
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -381,6 +520,56 @@ export default function AdminFeedbackPage() {
       console.error('❌ Error en loadUserProfiles:', error)
       return feedbacks
     }
+  }
+
+  // Función para agrupar feedbacks por usuario
+  const groupFeedbacksByUser = (feedbacksList, conversationsMap) => {
+    const usersMap = new Map()
+
+    feedbacksList.forEach(feedback => {
+      // Usar email como key si no hay user_id
+      const userKey = feedback.user_id || feedback.email || 'anonymous'
+
+      if (!usersMap.has(userKey)) {
+        usersMap.set(userKey, {
+          id: feedback.user_id,
+          email: feedback.email,
+          name: feedback.user_profiles?.full_name || null,
+          feedbacks: [],
+          totalConversations: 0,
+          pendingConversations: 0,
+          lastActivity: feedback.created_at
+        })
+      }
+
+      const userData = usersMap.get(userKey)
+      userData.feedbacks.push(feedback)
+      userData.totalConversations++
+
+      // Contar pendientes
+      const conversation = conversationsMap[feedback.id]
+      if (feedback.status === 'pending' || conversation?.status === 'waiting_admin') {
+        userData.pendingConversations++
+      }
+
+      // Actualizar última actividad
+      const feedbackDate = new Date(feedback.updated_at || feedback.created_at)
+      const lastDate = new Date(userData.lastActivity)
+      if (feedbackDate > lastDate) {
+        userData.lastActivity = feedback.updated_at || feedback.created_at
+      }
+    })
+
+    // Convertir a array y ordenar por pendientes primero, luego por última actividad
+    return Array.from(usersMap.values())
+      .sort((a, b) => {
+        // Primero por pendientes (más pendientes primero)
+        if (b.pendingConversations !== a.pendingConversations) {
+          return b.pendingConversations - a.pendingConversations
+        }
+        // Luego por última actividad
+        return new Date(b.lastActivity) - new Date(a.lastActivity)
+      })
   }
 
   const loadFeedbacks = useCallback(async () => {
@@ -1196,219 +1385,304 @@ export default function AdminFeedbackPage() {
           </button>
         </div>
 
-        {/* Lista de Feedbacks */}
-        {getFilteredFeedbacks().length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-            <div className="text-6xl mb-4">📭</div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              {activeFilter === 'all' ? 'No hay tickets' : `No hay tickets ${
-                activeFilter === 'pending' ? 'pendientes' :
-                activeFilter === 'resolved' ? 'cerrados' :
-                activeFilter === 'dismissed' ? 'descartados' : ''
-              }`}
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400">
-              {activeFilter === 'all' 
-                ? 'Los tickets de soporte aparecerán aquí'
-                : 'No se encontraron tickets con este filtro'
-              }
-            </p>
-          </div>
+        {/* Vista principal: Lista de usuarios o conversaciones del usuario */}
+        {!selectedUser ? (
+          // === LISTA DE USUARIOS ===
+          <>
+            {usersWithConversations.length === 0 ? (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
+                <div className="text-6xl mb-4">📭</div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  No hay usuarios con conversaciones
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Los usuarios que envíen solicitudes de soporte aparecerán aquí
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">
+                  👥 Usuarios ({usersWithConversations.length})
+                </h2>
+                {usersWithConversations.map((userData, index) => (
+                  <button
+                    key={userData.id || userData.email || index}
+                    onClick={() => setSelectedUser(userData)}
+                    className="w-full text-left bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all p-4 sm:p-5 border-l-4 border-transparent hover:border-blue-500"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Avatar */}
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                          <span className="text-lg sm:text-xl">
+                            {userData.name ? userData.name.charAt(0).toUpperCase() : '👤'}
+                          </span>
+                        </div>
+
+                        {/* Info del usuario */}
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {userData.name || userData.email || 'Usuario anónimo'}
+                          </div>
+                          {userData.name && userData.email && (
+                            <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                              {userData.email}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                            Última actividad: {new Date(userData.lastActivity).toLocaleDateString('es-ES', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Badges de conversaciones */}
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        {userData.pendingConversations > 0 && (
+                          <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full animate-pulse">
+                            {userData.pendingConversations} pendiente{userData.pendingConversations > 1 ? 's' : ''}
+                          </span>
+                        )}
+                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2.5 py-1 rounded-full">
+                          {userData.totalConversations} conv.
+                        </span>
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="space-y-4">
-            {getFilteredFeedbacks().map((feedback) => (
-              <div 
-                key={feedback.id} 
-                className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-4 sm:p-6"
+          // === CONVERSACIONES DEL USUARIO SELECCIONADO (Layout 2 columnas) ===
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden" style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}>
+            {/* Header con botón volver */}
+            <div className="flex items-center gap-3 p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+              <button
+                onClick={() => {
+                  setSelectedUser(null)
+                  setSelectedFeedback(null)
+                }}
+                className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
-                
-                {/* Header del feedback */}
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4 mb-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${FEEDBACK_TYPES[feedback.type]?.color || 'bg-gray-100 text-gray-800'}`}>
-                      {FEEDBACK_TYPES[feedback.type]?.label || feedback.type}
-                    </span>
-                    <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${STATUS_CONFIG[feedback.status]?.color}`}>
-                      {STATUS_CONFIG[feedback.status]?.label}
-                    </span>
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(feedback.created_at).toLocaleDateString('es-ES', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      timeZone: 'Europe/Madrid'
-                    })}
-                  </div>
-                </div>
-
-                {/* Usuario */}
-                <div className="mb-3">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    👤 {
-                      (() => {
-                        // 🔧 MEJORADO: Usar cache como fallback
-                        const profileFromCache = feedback.user_id ? userProfilesCache.get(feedback.user_id) : null
-                        const profile = feedback.user_profiles || profileFromCache
-                        
-                        // Debug en tiempo real
-                        if (feedback.email === 'ismaelceuta@gmail.com') {
-                          console.log('🎯 Renderizando feedback de Ismael:', {
-                            email: feedback.email,
-                            user_id: feedback.user_id,
-                            user_profiles: feedback.user_profiles,
-                            profileFromCache,
-                            finalProfile: profile,
-                            full_name: profile?.full_name,
-                            has_full_name: !!profile?.full_name
-                          })
-                        }
-                        
-                        return profile?.full_name ? (
-                          profile.full_name
-                        ) : feedback.email ? (
-                          `${feedback.email}`
-                        ) : (
-                          'Usuario anónimo'
-                        )
-                      })()
-                    }
-                    {(() => {
-                      const profileFromCache = feedback.user_id ? userProfilesCache.get(feedback.user_id) : null
-                      const profile = feedback.user_profiles || profileFromCache
-                      
-                      if (profile?.full_name && profile?.email) {
-                        return (
-                          <span className="text-gray-500 dark:text-gray-400 font-normal">
-                            {` (${profile.email})`}
-                          </span>
-                        )
-                      } else if (profile?.full_name && feedback.email && !profile?.email) {
-                        return (
-                          <span className="text-gray-500 dark:text-gray-400 font-normal">
-                            {` (${feedback.email})`}
-                          </span>
-                        )
-                      }
-                      return null
-                    })()}
+                <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                  <span className="text-lg">
+                    {selectedUser.name ? selectedUser.name.charAt(0).toUpperCase() : '👤'}
                   </span>
-                  {feedback.wants_response && (
-                    <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
-                      📧 Quiere respuesta
-                    </span>
-                  )}
                 </div>
-
-                {/* Mensaje */}
-                <div className="mb-4">
-                  <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
-                    {feedback.message}
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                    {selectedUser.name || selectedUser.email || 'Usuario anónimo'}
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {selectedUser.totalConversations} conversación{selectedUser.totalConversations > 1 ? 'es' : ''}
+                    {selectedUser.pendingConversations > 0 && (
+                      <span className="text-red-500 ml-2">
+                        ({selectedUser.pendingConversations} pendiente{selectedUser.pendingConversations > 1 ? 's' : ''})
+                      </span>
+                    )}
                   </p>
                 </div>
+              </div>
+            </div>
 
-                {/* URL */}
-                <div className="mb-4">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    📍 <a href={feedback.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {feedback.url}
-                    </a>
-                  </span>
-                </div>
+            {/* Layout de 2 columnas */}
+            <div className="flex h-full" style={{ height: 'calc(100% - 76px)' }}>
+              {/* Panel izquierdo: Lista de conversaciones */}
+              <div className="w-80 border-r dark:border-gray-700 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+                {selectedUser.feedbacks
+                  .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
+                  .map((feedback) => {
+                    const conversation = conversations[feedback.id]
+                    const isPending = feedback.status === 'pending' || conversation?.status === 'waiting_admin'
+                    const hasNewMessage = conversation && newUserMessages.has(conversation.id)
+                    const isSelected = selectedFeedback?.id === feedback.id
 
-                {/* Respuesta admin */}
-                {feedback.admin_response && (
-                  <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-400">
-                    <div className="text-sm font-medium text-green-800 dark:text-green-300 mb-1">
-                      👨‍💼 Respuesta del administrador:
+                    return (
+                      <button
+                        key={feedback.id}
+                        onClick={() => setSelectedFeedback(feedback)}
+                        className={`w-full text-left p-3 border-b dark:border-gray-700 transition-colors ${
+                          isSelected
+                            ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-l-blue-500'
+                            : 'hover:bg-gray-100 dark:hover:bg-gray-800 border-l-4 border-l-transparent'
+                        } ${hasNewMessage ? 'bg-orange-50 dark:bg-orange-900/20' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {isPending && (
+                              <span className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0"></span>
+                            )}
+                            {hasNewMessage && (
+                              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse flex-shrink-0"></span>
+                            )}
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${FEEDBACK_TYPES[feedback.type]?.color || 'bg-gray-100 text-gray-800'}`}>
+                              {FEEDBACK_TYPES[feedback.type]?.label?.split(' ')[0] || '❓'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-400 whitespace-nowrap">
+                            {new Date(feedback.updated_at || feedback.created_at).toLocaleDateString('es-ES', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Europe/Madrid'
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+                          {feedback.message}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs ${STATUS_CONFIG[feedback.status]?.color} px-1.5 py-0.5 rounded`}>
+                            {STATUS_CONFIG[feedback.status]?.label}
+                          </span>
+                          {conversation?.status === 'waiting_admin' && (
+                            <span className="text-xs text-orange-600 dark:text-orange-400">
+                              💬 Esperando
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+              </div>
+
+              {/* Panel derecho: Chat integrado */}
+              <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-800">
+                {!selectedFeedback ? (
+                  <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">👈</div>
+                      <p>Selecciona una conversación</p>
                     </div>
-                    <p className="text-green-700 dark:text-green-400">
-                      {feedback.admin_response}
-                    </p>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {/* Header */}
+                    <div className="p-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${FEEDBACK_TYPES[selectedFeedback.type]?.color}`}>
+                            {FEEDBACK_TYPES[selectedFeedback.type]?.label}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_CONFIG[selectedFeedback.status]?.color}`}>
+                            {STATUS_CONFIG[selectedFeedback.status]?.label}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(selectedFeedback.created_at).toLocaleDateString('es-ES', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            timeZone: 'Europe/Madrid'
+                          })}
+                        </span>
+                      </div>
+                    </div>
 
-                {/* Acciones */}
-                {feedback.status === 'pending' && (
-                  <div className="flex flex-wrap gap-2 pt-4 border-t dark:border-gray-700">
-                    {/* Botón de Chat - Prioridad */}
-                    {conversations[feedback.id] ? (
-                      <button
-                        onClick={() => openChatConversation(conversations[feedback.id])}
-                        className={`px-3 sm:px-4 py-2 text-white rounded-lg transition-colors text-xs sm:text-sm font-medium ${
-                          newUserMessages.has(conversations[feedback.id].id)
-                            ? 'bg-orange-600 hover:bg-orange-700 animate-pulse'
-                            : 'bg-green-600 hover:bg-green-700'
-                        }`}
-                      >
-                        <span className="sm:hidden">💬</span>
-                        <span className="hidden sm:inline">💬 Ver Chat</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => startChatWithUser(feedback)}
-                        className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
-                      >
-                        <span className="sm:hidden">💬</span>
-                        <span className="hidden sm:inline">💬 Iniciar Chat</span>
-                      </button>
-                    )}
-                    
-                    {/* Respuesta rápida solo si no hay conversación activa */}
-                    {!conversations[feedback.id] && (
-                      // Botón de respuesta rápida para feedbacks sin conversación
-                      <>
-                        <button
-                          onClick={() => {
-                            console.log('📝 [ADMIN] Abriendo modal de respuesta para feedback:', feedback.id)
-                            setSelectedFeedback(feedback)
-                            console.log('📸 [ADMIN] Modal listo - función handleImageUpload disponible:', typeof handleImageUpload)
+                    {/* Área de mensajes */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-100 dark:bg-gray-900">
+                      {/* Solicitud original (primer mensaje) */}
+                      <div className="flex justify-start">
+                        <div className="max-w-[80%] bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                            📋 Solicitud original
+                          </div>
+                          <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                            {selectedFeedback.message}
+                          </p>
+                          <div className="text-xs text-gray-400 mt-1 text-right">
+                            {new Date(selectedFeedback.created_at).toLocaleTimeString('es-ES', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Europe/Madrid'
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Mensajes del chat */}
+                      {inlineChatMessages.map((msg) => (
+                        <div key={msg.id} className={`flex ${msg.is_admin ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[80%] rounded-lg p-3 ${
+                            msg.is_admin
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm'
+                          }`}>
+                            <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                            <div className={`text-xs mt-1 text-right ${msg.is_admin ? 'text-blue-200' : 'text-gray-400'}`}>
+                              {new Date(msg.created_at).toLocaleTimeString('es-ES', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZone: 'Europe/Madrid'
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Indicador de sin mensajes */}
+                      {inlineChatMessages.length === 0 && !conversations[selectedFeedback.id] && (
+                        <div className="text-center text-gray-400 dark:text-gray-500 py-4 text-sm">
+                          Escribe un mensaje para iniciar la conversación
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Input de mensaje */}
+                    <div className="p-3 border-t dark:border-gray-700 bg-white dark:bg-gray-800">
+                      <div className="flex gap-2">
+                        <textarea
+                          value={inlineNewMessage}
+                          onChange={(e) => setInlineNewMessage(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              sendInlineMessage()
+                            }
                           }}
-                          className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
+                          placeholder="Escribe tu respuesta... (Enter para enviar)"
+                          rows={2}
+                          className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
+                        />
+                        <button
+                          onClick={sendInlineMessage}
+                          disabled={!inlineNewMessage.trim() || sendingInlineMessage}
+                          className="px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                          <span className="sm:hidden">📝</span>
-                          <span className="hidden sm:inline">📝 Respuesta</span>
+                          {sendingInlineMessage ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                          )}
                         </button>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* Botones de Chat para feedbacks resueltos/descartados */}
-                {feedback.status !== 'pending' && (
-                  <div className="flex gap-2 pt-4 border-t dark:border-gray-700">
-                    {conversations[feedback.id] ? (
-                      <button
-                        onClick={() => openChatConversation(conversations[feedback.id])}
-                        className={`px-3 sm:px-4 py-2 text-white rounded-lg transition-colors text-xs sm:text-sm font-medium ${
-                          newUserMessages.has(conversations[feedback.id].id)
-                            ? 'bg-orange-600 hover:bg-orange-700 animate-pulse'
-                            : 'bg-green-600 hover:bg-green-700'
-                        }`}
-                      >
-                        <span className="sm:hidden">💬</span>
-                        <span className="hidden sm:inline">💬 Ver Chat</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => startChatWithUser(feedback)}
-                        className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
-                      >
-                        <span className="sm:hidden">💬</span>
-                        <span className="hidden sm:inline">💬 Iniciar Chat</span>
-                      </button>
-                    )}
-                  </div>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
-            ))}
+            </div>
           </div>
         )}
 
-        {/* Modal de respuesta */}
-        {selectedFeedback && (
+        {/* Modal de respuesta - Solo se abre cuando NO hay usuario seleccionado (modo antiguo) */}
+        {selectedFeedback && !selectedUser && (
           <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-2 sm:p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
               
