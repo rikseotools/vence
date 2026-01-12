@@ -134,31 +134,42 @@ async function getEstadisticas() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Contar por tipo
-  const { data: porTipo } = await supabase
-    .from('convocatorias_boe')
-    .select('tipo')
-    .eq('is_active', true);
+  // 🚀 Queries de conteo en paralelo (head: true = solo cuenta, no carga datos)
+  const [convocatoriasResult, admitidosResult, resultadosResult, ultimaResult] = await Promise.all([
+    supabase
+      .from('convocatorias_boe')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('tipo', 'convocatoria'),
+    supabase
+      .from('convocatorias_boe')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('tipo', 'admitidos'),
+    supabase
+      .from('convocatorias_boe')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('tipo', 'resultado'),
+    supabase
+      .from('convocatorias_boe')
+      .select('boe_fecha')
+      .eq('is_active', true)
+      .order('boe_fecha', { ascending: false })
+      .limit(1)
+      .single()
+  ]);
 
-  // Última actualización
-  const { data: ultima } = await supabase
-    .from('convocatorias_boe')
-    .select('boe_fecha')
-    .eq('is_active', true)
-    .order('boe_fecha', { ascending: false })
-    .limit(1)
-    .single();
-
-  const tiposCount = (porTipo || []).reduce((acc: Record<string, number>, item) => {
-    const tipo = item.tipo || 'otro';
-    acc[tipo] = (acc[tipo] || 0) + 1;
-    return acc;
-  }, {});
+  const total = (convocatoriasResult.count || 0) + (admitidosResult.count || 0) + (resultadosResult.count || 0);
 
   return {
-    total: porTipo?.length || 0,
-    porTipo: tiposCount,
-    ultimaFecha: ultima?.boe_fecha || null
+    total,
+    porTipo: {
+      'convocatoria': convocatoriasResult.count || 0,
+      'admitidos': admitidosResult.count || 0,
+      'resultado': resultadosResult.count || 0
+    },
+    ultimaFecha: ultimaResult.data?.boe_fecha || null
   };
 }
 
