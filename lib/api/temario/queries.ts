@@ -2,6 +2,7 @@
 import { getDb } from '@/db/client'
 import { topics, topicScope, articles, laws, questions } from '@/db/schema'
 import { eq, and, inArray, asc, sql, count } from 'drizzle-orm'
+import { unstable_cache } from 'next/cache'
 import type {
   TopicContent,
   TopicSummary,
@@ -20,11 +21,23 @@ import {
 // OBTENER CONTENIDO COMPLETO DE UN TEMA
 // ============================================
 
-export async function getTopicContent(
+// Tipo interno para contenido cacheado (sin datos de usuario)
+type TopicContentBase = {
+  topicNumber: number
+  title: string
+  description: string | null
+  oposicion: OposicionSlug
+  oposicionName: string
+  laws: LawWithArticles[]
+  totalArticles: number
+}
+
+// Función interna que obtiene solo el contenido (sin progreso de usuario)
+// Esta es la parte pesada con muchas queries que se cachea
+async function getTopicContentBaseInternal(
   oposicionSlug: OposicionSlug,
-  topicNumber: number,
-  userId?: string
-): Promise<TopicContent | null> {
+  topicNumber: number
+): Promise<TopicContentBase | null> {
   const db = getDb()
   const oposicion = OPOSICIONES[oposicionSlug]
 
@@ -166,33 +179,59 @@ export async function getTopicContent(
     }
   }
 
-  // Ordenar leyes por peso (las más importantes primero)
-  // lawsWithArticles.sort((a, b) => ...) // Si queremos ordenar por weight
-
-  // 4. Verificar si está desbloqueado y obtener progreso del usuario
-  let isUnlocked = topicNumber === 1
-  let unlockRequirements: UnlockRequirements | null = null
-  let userProgress: UserProgress | null = null
-
-  if (userId) {
-    const progressData = await getUserTopicProgress(userId, oposicion.positionType, topicNumber)
-    userProgress = progressData.currentProgress
-    isUnlocked = progressData.isUnlocked
-    unlockRequirements = progressData.unlockRequirements
-  }
-
   return {
     topicNumber: topic.topicNumber,
     title: topic.title,
     description: topic.description,
     oposicion: oposicionSlug,
     oposicionName: oposicion.name,
-    isUnlocked,
-    unlockRequirements,
     laws: lawsWithArticles,
     totalArticles,
+  }
+}
+
+// 🚀 VERSIÓN CACHEADA del contenido base (1 hora de cache)
+// Esto elimina las 30+ queries en cada visita
+const getTopicContentBaseCached = unstable_cache(
+  getTopicContentBaseInternal,
+  ['topic-content-base'],
+  { revalidate: 3600 } // 1 hora
+)
+
+// Función pública que combina contenido cacheado + progreso de usuario fresco
+export async function getTopicContent(
+  oposicionSlug: OposicionSlug,
+  topicNumber: number,
+  userId?: string
+): Promise<TopicContent | null> {
+  // 1. Obtener contenido cacheado (rápido después de la primera vez)
+  const baseContent = await getTopicContentBaseCached(oposicionSlug, topicNumber)
+
+  if (!baseContent) {
+    return null
+  }
+
+  const oposicion = OPOSICIONES[oposicionSlug]
+
+  // 2. Obtener progreso del usuario (sin cache, siempre fresco)
+  let isUnlocked = topicNumber === 1
+  let unlockRequirements: UnlockRequirements | null = null
+  let userProgress: UserProgress | null = null
+
+  if (userId && oposicion) {
+    const progressData = await getUserTopicProgress(userId, oposicion.positionType, topicNumber)
+    userProgress = progressData.currentProgress
+    isUnlocked = progressData.isUnlocked
+    unlockRequirements = progressData.unlockRequirements
+  }
+
+  // 3. Combinar y retornar
+  return {
+    ...baseContent,
+    isUnlocked,
+    unlockRequirements,
     userProgress,
-    lastUpdated: null, // TODO: calcular desde articles.updatedAt
+    lastUpdated: null,
     generatedAt: new Date().toISOString(),
   }
 }
