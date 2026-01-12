@@ -1158,11 +1158,18 @@ export default function ConversionesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     {/* Método 1: Por registros */}
                     <div className="border border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">📊</span>
-                        <span className="font-bold text-blue-700 dark:text-blue-300">
-                          {predictionData.projectionMethods.byRegistrations.name}
-                        </span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">📊</span>
+                          <span className="font-bold text-blue-700 dark:text-blue-300">
+                            {predictionData.projectionMethods.byRegistrations.name}
+                          </span>
+                        </div>
+                        {predictionData.projectionMethods.byRegistrations.weight !== undefined && (
+                          <span className="text-xs bg-blue-200 dark:bg-blue-800 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
+                            Peso: {predictionData.projectionMethods.byRegistrations.weight}%
+                          </span>
+                        )}
                       </div>
                       <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
                         {predictionData.projectionMethods.byRegistrations.salesPerMonth.toFixed(1)}
@@ -1183,11 +1190,18 @@ export default function ConversionesPage() {
 
                     {/* Método 2: Por activos */}
                     <div className="border border-purple-200 dark:border-purple-800 rounded-lg p-4 bg-purple-50 dark:bg-purple-900/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">👥</span>
-                        <span className="font-bold text-purple-700 dark:text-purple-300">
-                          {predictionData.projectionMethods.byActiveUsers.name}
-                        </span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">👥</span>
+                          <span className="font-bold text-purple-700 dark:text-purple-300">
+                            {predictionData.projectionMethods.byActiveUsers.name}
+                          </span>
+                        </div>
+                        {predictionData.projectionMethods.byActiveUsers.weight !== undefined && (
+                          <span className="text-xs bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-medium">
+                            Peso: {predictionData.projectionMethods.byActiveUsers.weight}%
+                          </span>
+                        )}
                       </div>
                       <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
                         {predictionData.projectionMethods.byActiveUsers.salesPerMonth.toFixed(1)}
@@ -1208,11 +1222,18 @@ export default function ConversionesPage() {
 
                     {/* Método 3: Por histórico */}
                     <div className="border border-amber-200 dark:border-amber-800 rounded-lg p-4 bg-amber-50 dark:bg-amber-900/20">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">📈</span>
-                        <span className="font-bold text-amber-700 dark:text-amber-300">
-                          {predictionData.projectionMethods.byHistoric.name}
-                        </span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">📈</span>
+                          <span className="font-bold text-amber-700 dark:text-amber-300">
+                            {predictionData.projectionMethods.byHistoric.name}
+                          </span>
+                        </div>
+                        {predictionData.projectionMethods.byHistoric.weight !== undefined && (
+                          <span className="text-xs bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
+                            Peso: {predictionData.projectionMethods.byHistoric.weight}%
+                          </span>
+                        )}
                       </div>
                       <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
                         {predictionData.projectionMethods.byHistoric.salesPerMonth.toFixed(1)}
@@ -1233,12 +1254,30 @@ export default function ConversionesPage() {
 
                   {/* Proyección combinada */}
                   <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-4 text-white">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
                       <div>
-                        <div className="text-sm opacity-90 mb-1">📊 Proyección Combinada (promedio de {predictionData.projectionMethods.combined.methodsUsed} métodos)</div>
+                        <div className="text-sm opacity-90 mb-1">
+                          📊 Proyección {predictionData.projectionMethods.combined.isWeighted ? 'Ponderada' : 'Combinada'} ({predictionData.projectionMethods.combined.methodsUsed} métodos)
+                          {predictionData.projectionMethods.combined.isWeighted && (
+                            <span className="ml-2 bg-white/20 px-2 py-0.5 rounded text-xs">Auto-optimizado</span>
+                          )}
+                        </div>
                         <div className="text-3xl font-bold">
                           {predictionData.projectionMethods.combined.salesPerMonth.toFixed(1)} ventas/mes
                         </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm opacity-90 mb-1">Próxima venta estimada</div>
+                        <div className="text-3xl font-bold">
+                          {predictionData.projectionMethods.combined.salesPerMonth > 0
+                            ? `~${Math.ceil(30 / predictionData.projectionMethods.combined.salesPerMonth)} días`
+                            : '-'}
+                        </div>
+                        {predictionData.current?.daysSinceLastPayment !== null && (
+                          <div className="text-xs opacity-75 mt-1">
+                            Última venta hace {predictionData.current.daysSinceLastPayment} días
+                          </div>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className="text-sm opacity-90 mb-1">Ingresos esperados</div>
@@ -1255,6 +1294,67 @@ export default function ConversionesPage() {
                       <span className="font-medium">Tipos de conversión:</span>
                       {' '}{predictionData.conversionByActivity.conversionType.sameDay} usuarios pagaron el día 0 ({predictionData.conversionByActivity.conversionType.sameDayPercent}%),
                       {' '}{predictionData.conversionByActivity.conversionType.afterTrying} probaron antes de pagar
+                    </div>
+                  )}
+
+                  {/* Precisión histórica de predicciones */}
+                  {predictionData.predictionAccuracy?.hasData && (
+                    <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        📈 Precisión Histórica de Predicciones
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {predictionData.predictionAccuracy.byMethod.map((method) => (
+                          <div
+                            key={method.method_name}
+                            className={`rounded-lg p-3 ${
+                              method.avg_absolute_error <= 20
+                                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                                : method.avg_absolute_error <= 50
+                                ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
+                                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                            }`}
+                          >
+                            <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                              {method.method_name === 'by_registrations' ? 'Por registros' :
+                               method.method_name === 'by_active_users' ? 'Por activos' :
+                               method.method_name === 'by_historic' ? 'Por histórico' : 'Combinado'}
+                            </div>
+                            <div className={`text-xl font-bold ${
+                              method.avg_absolute_error <= 20 ? 'text-green-600 dark:text-green-400' :
+                              method.avg_absolute_error <= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                              'text-red-600 dark:text-red-400'
+                            }`}>
+                              {method.avg_absolute_error !== null ? `±${method.avg_absolute_error}%` : '-'}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {method.verified_predictions} verificadas
+                            </div>
+                            {method.predictions_within_20pct !== undefined && method.verified_predictions > 0 && (
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                {Math.round((method.predictions_within_20pct / method.verified_predictions) * 100)}% dentro de ±20%
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">
+                        Las predicciones se verifican automáticamente cada {predictionData.predictionAccuracy.verificationDays || 7} días comparando con ventas reales.
+                        El método con menor error absoluto (±%) es el más preciso y recibe mayor peso en la proyección combinada.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mensaje cuando aún no hay datos de precisión */}
+                  {predictionData.predictionAccuracy && !predictionData.predictionAccuracy.hasData && (
+                    <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                        <span className="font-medium">📊 Tracking de precisión activo</span>
+                        <p className="text-xs mt-1">
+                          Las predicciones se guardan diariamente y se verifican cada {predictionData.predictionAccuracy.verificationDays || 7} días contra las ventas reales.
+                          En una semana verás qué método es más preciso y el sistema ajustará los pesos automáticamente.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1509,8 +1609,27 @@ export default function ConversionesPage() {
                   </div>
                   )}
 
-                  <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-2">
-                    <strong>Nota:</strong> MRR proyectado asume 0% churn. Cada nueva suscripción añade ~{predictionData.mrr.mrrPerNewSub?.toFixed(2) || 0}€/mes al MRR. Fórmula: {predictionData.mrr.newSubsPerMonth?.toFixed(1) || 0} nuevas subs/mes × {predictionData.mrr.mrrPerNewSub?.toFixed(2) || 0}€ = +{((predictionData.mrr.newSubsPerMonth || 0) * (predictionData.mrr.mrrPerNewSub || 0)).toFixed(0)}€ MRR/mes.
+                  <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded p-3 space-y-2">
+                    <div className="font-semibold text-gray-700 dark:text-gray-300">Cómo se calcula:</div>
+                    <div>
+                      <strong>MRR actual:</strong> {predictionData.mrr.explanation?.mrrCurrent || `${predictionData.mrr.activeSubscriptions} suscripciones activas`}
+                    </div>
+                    <div>
+                      <strong>MRR por nueva sub:</strong> {predictionData.mrr.explanation?.mrrPerNewSub || `${predictionData.mrr.mrrPerNewSub?.toFixed(2)}€`}
+                      <span className="text-gray-400 ml-1">
+                        ({predictionData.mrr.byPlan?.pctSemester || 0}% semestrales, {predictionData.mrr.byPlan?.pctMonthly || 0}% mensuales)
+                      </span>
+                    </div>
+                    <div>
+                      <strong>Nuevas subs/mes:</strong> {predictionData.mrr.newSubsPerMonth?.toFixed(1) || 0}
+                      <span className="text-gray-400 ml-1">({predictionData.mrr.explanation?.newSubsSource || 'proyección combinada'})</span>
+                    </div>
+                    <div>
+                      <strong>Proyección 6m:</strong> {predictionData.mrr.explanation?.projection6m || 'N/A'}
+                    </div>
+                    <div className="text-amber-600 dark:text-amber-400">
+                      ⚠️ {predictionData.mrr.explanation?.churnNote || 'Asume 0% churn'}
+                    </div>
                   </div>
                 </div>
               )}
