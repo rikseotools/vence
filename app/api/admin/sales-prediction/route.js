@@ -69,16 +69,81 @@ export async function GET() {
 
     const now = new Date()
 
-    // 3. Calcular tasa de conversion REAL (todos los usuarios, todas las conversiones)
+    // 3. Calcular tasa de conversion REAL (usuarios únicos que han pagado)
     const payingUserIds = new Set(payments.map(p => p.user_id))
     const totalUsers = users.length
-    const totalConverted = payments.length
+    const uniquePayingUsers = payingUserIds.size  // Usuarios únicos, no pagos totales
 
-    // Tasa de conversion real
-    const conversionRate = totalUsers > 0 ? totalConverted / totalUsers : 0
+    // Tasa de conversion real (usuarios únicos / total usuarios)
+    const conversionRate = totalUsers > 0 ? uniquePayingUsers / totalUsers : 0
 
     // Intervalo de confianza Wilson para la tasa
-    const conversionCI = wilsonScoreInterval(totalConverted, totalUsers)
+    const conversionCI = wilsonScoreInterval(uniquePayingUsers, totalUsers)
+
+    // 3b. ALTERNATIVA: Conversión basada en usuarios activos (última semana)
+    const sevenDaysAgoISO = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const thirtyDaysAgoISO = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+    // Obtener usuarios activos (han respondido preguntas en los últimos 7 días)
+    const { data: weeklyActiveData, error: weeklyError } = await supabase
+      .from('detailed_answers')
+      .select('user_id')
+      .gte('created_at', sevenDaysAgoISO)
+
+    const weeklyActiveUsers = new Set(weeklyActiveData?.map(a => a.user_id) || [])
+    const weeklyActiveCount = weeklyActiveUsers.size
+
+    // Usuarios activos en último mes
+    const { data: monthlyActiveData } = await supabase
+      .from('detailed_answers')
+      .select('user_id')
+      .gte('created_at', thirtyDaysAgoISO)
+
+    const monthlyActiveUsers = new Set(monthlyActiveData?.map(a => a.user_id) || [])
+    const monthlyActiveCount = monthlyActiveUsers.size
+
+    // Pagos en última semana y último mes
+    const weeklyPayments = payments.filter(p => new Date(p.created_at) >= new Date(sevenDaysAgoISO))
+    const monthlyPayments = payments.filter(p => new Date(p.created_at) >= new Date(thirtyDaysAgoISO))
+
+    const weeklyPayingUsers = new Set(weeklyPayments.map(p => p.user_id))
+    const monthlyPayingUsers = new Set(monthlyPayments.map(p => p.user_id))
+
+    // Conversión alternativa: pagadores de la semana / activos de la semana
+    const weeklyConversionRate = weeklyActiveCount > 0
+      ? weeklyPayingUsers.size / weeklyActiveCount
+      : 0
+
+    const monthlyConversionRate = monthlyActiveCount > 0
+      ? monthlyPayingUsers.size / monthlyActiveCount
+      : 0
+
+    // Wilson para conversión semanal
+    const weeklyConversionCI = wilsonScoreInterval(weeklyPayingUsers.size, weeklyActiveCount)
+    const monthlyConversionCI = wilsonScoreInterval(monthlyPayingUsers.size, monthlyActiveCount)
+
+    // 3c. Análisis de tipo de conversión (inmediata vs después de probar)
+    // Usuarios que pagaron el mismo día que se registraron
+    const sameDayConversions = payments.filter(p => {
+      const user = users.find(u => u.id === p.user_id)
+      if (!user) return false
+      const daysDiff = Math.round((new Date(p.created_at) - new Date(user.created_at)) / (1000 * 60 * 60 * 24))
+      return daysDiff === 0
+    })
+
+    // Usuarios que probaron la plataforma antes de pagar (>= 1 día después de registro)
+    const delayedConversions = payments.filter(p => {
+      const user = users.find(u => u.id === p.user_id)
+      if (!user) return false
+      const daysDiff = Math.round((new Date(p.created_at) - new Date(user.created_at)) / (1000 * 60 * 60 * 24))
+      return daysDiff >= 1
+    })
+
+    // De los usuarios activos esta semana, cuántos NO son premium (potenciales)
+    const weeklyActiveFree = [...weeklyActiveUsers].filter(uid => {
+      const user = users.find(u => u.id === uid)
+      return user && user.plan_type !== 'premium' && user.plan_type !== 'legacy_free'
+    })
 
     // 4. Calcular tiempo promedio hasta conversion
     let avgDaysToConvert = 0
@@ -222,9 +287,34 @@ export async function GET() {
       })
     }
 
-    // Nuevas ventas proyectadas (basado en tasa de conversión actual)
-    const expectedSalesPerDay = dailyRegistrationRate * conversionRate
-    const expectedSalesPerMonth = expectedSalesPerDay * 30
+    // ========================================
+    // 3 MÉTODOS DE PROYECCIÓN DE VENTAS
+    // ========================================
+
+    // MÉTODO 1: Por registros (largo plazo)
+    // Fórmula: Registros/día × Tasa conversión global
+    const method1_salesPerDay = dailyRegistrationRate * conversionRate
+    const method1_salesPerMonth = method1_salesPerDay * 30
+
+    // MÉTODO 2: Por usuarios activos (corto plazo)
+    // Fórmula: Usuarios FREE activos × Tasa conversión semanal
+    const method2_salesPerMonth = weeklyActiveFree.length * weeklyConversionRate * 4 // 4 semanas
+
+    // MÉTODO 3: Por histórico (tendencia real)
+    // Fórmula: 30 / Días promedio entre pagos
+    const method3_salesPerMonth = avgDaysBetweenPayments
+      ? 30 / avgDaysBetweenPayments
+      : 0
+
+    // Proyección combinada (promedio de los 3 métodos con datos válidos)
+    const validMethods = [method1_salesPerMonth, method2_salesPerMonth, method3_salesPerMonth].filter(m => m > 0 && isFinite(m))
+    const combinedSalesPerMonth = validMethods.length > 0
+      ? validMethods.reduce((a, b) => a + b, 0) / validMethods.length
+      : 0
+
+    // Usar método 1 por defecto para compatibilidad
+    const expectedSalesPerDay = method1_salesPerDay
+    const expectedSalesPerMonth = method1_salesPerMonth
 
     // MRR por nueva suscripción (promedio ponderado)
     // Semestral: 59€/6 = 9.83€/mes, Mensual: 20€/mes
@@ -252,10 +342,11 @@ export async function GET() {
     const cancelingSubscriptions = (subscriptions || []).filter(s => s.cancel_at_period_end)
 
     return NextResponse.json({
-      // Tasa de conversion real (todos los datos)
+      // Tasa de conversion global (usuarios únicos / total registros)
       conversion: {
         totalUsers,
-        totalConverted,
+        uniquePayingUsers,
+        totalPayments: payments.length,  // Para referencia: pagos totales incluyendo renovaciones
         rate: conversionRate,
         confidenceInterval: {
           lower: conversionCI.lower,
@@ -264,6 +355,39 @@ export async function GET() {
         },
         avgDaysToConvert: Math.round(avgDaysToConvert),
         conversionTimes: conversionTimes.sort((a, b) => a - b)
+      },
+
+      // Conversión alternativa basada en usuarios activos
+      conversionByActivity: {
+        // Última semana
+        weekly: {
+          activeUsers: weeklyActiveCount,
+          activeFreeUsers: weeklyActiveFree.length,  // Potenciales clientes
+          payingUsers: weeklyPayingUsers.size,
+          rate: weeklyConversionRate,
+          confidenceInterval: {
+            lower: weeklyConversionCI.lower,
+            upper: weeklyConversionCI.upper
+          }
+        },
+        // Último mes
+        monthly: {
+          activeUsers: monthlyActiveCount,
+          payingUsers: monthlyPayingUsers.size,
+          rate: monthlyConversionRate,
+          confidenceInterval: {
+            lower: monthlyConversionCI.lower,
+            upper: monthlyConversionCI.upper
+          }
+        },
+        // Análisis de tipo de conversión
+        conversionType: {
+          sameDay: sameDayConversions.length,      // Pagaron día 0 (decisión inmediata)
+          afterTrying: delayedConversions.length,  // Probaron antes de pagar
+          sameDayPercent: payments.length > 0
+            ? Math.round((sameDayConversions.length / payments.length) * 100)
+            : 0
+        }
       },
 
       // Ingresos
@@ -300,6 +424,53 @@ export async function GET() {
         registrationsFor90,
         daysUntil50Estimate: daysUntil50,
         dailyRegistrationRate: Math.round(dailyRegistrationRate * 10) / 10
+      },
+
+      // 3 Métodos de proyección de ventas
+      projectionMethods: {
+        // Método 1: Por registros (largo plazo)
+        byRegistrations: {
+          name: 'Por registros',
+          description: 'Registros/día × Tasa conversión global',
+          salesPerMonth: Math.round(method1_salesPerMonth * 100) / 100,
+          revenuePerMonth: Math.round(method1_salesPerMonth * avgTicket * 100) / 100,
+          inputs: {
+            dailyRegistrations: Math.round(dailyRegistrationRate * 10) / 10,
+            conversionRate: Math.round(conversionRate * 10000) / 100 // %
+          },
+          bestFor: 'Proyección a largo plazo'
+        },
+        // Método 2: Por usuarios activos (corto plazo)
+        byActiveUsers: {
+          name: 'Por activos',
+          description: 'Usuarios FREE activos × Tasa conversión semanal × 4',
+          salesPerMonth: Math.round(method2_salesPerMonth * 100) / 100,
+          revenuePerMonth: Math.round(method2_salesPerMonth * avgTicket * 100) / 100,
+          inputs: {
+            activeFreeUsers: weeklyActiveFree.length,
+            weeklyConversionRate: Math.round(weeklyConversionRate * 10000) / 100 // %
+          },
+          bestFor: 'Proyección a corto plazo (próximas semanas)'
+        },
+        // Método 3: Por histórico (tendencia real)
+        byHistoric: {
+          name: 'Por histórico',
+          description: '30 / Días promedio entre pagos',
+          salesPerMonth: Math.round(method3_salesPerMonth * 100) / 100,
+          revenuePerMonth: Math.round(method3_salesPerMonth * avgTicket * 100) / 100,
+          inputs: {
+            avgDaysBetweenPayments: avgDaysBetweenPayments ? Math.round(avgDaysBetweenPayments * 10) / 10 : null
+          },
+          bestFor: 'Basado en tendencia real de pagos'
+        },
+        // Promedio de los 3 métodos
+        combined: {
+          name: 'Combinado',
+          description: 'Promedio de los métodos válidos',
+          salesPerMonth: Math.round(combinedSalesPerMonth * 100) / 100,
+          revenuePerMonth: Math.round(combinedSalesPerMonth * avgTicket * 100) / 100,
+          methodsUsed: validMethods.length
+        }
       },
 
       // Tendencia

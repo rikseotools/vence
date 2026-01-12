@@ -1147,73 +1147,118 @@ export default function ConversionesPage() {
                 </div>
               </div>
 
-              {/* Estimacion de proxima venta - DESTACADO */}
-              {predictionData.prediction.dailyRegistrationRate > 0 && predictionData.conversion.rate > 0 && (() => {
-                const expectedSalesPerDay = predictionData.prediction.dailyRegistrationRate * predictionData.conversion.rate
-                const expectedDaysBetweenSales = 1 / expectedSalesPerDay
-                const daysUntilNext = Math.max(0, Math.ceil(expectedDaysBetweenSales - predictionData.current.daysSinceLastPayment))
-                const expectedDate = new Date(Date.now() + daysUntilNext * 24 * 60 * 60 * 1000)
-                const avgTicket = predictionData.revenue?.avgTicket || 0
-                const salesPerWeek = expectedSalesPerDay * 7
-                const salesPerMonth = expectedSalesPerDay * 30
-                const revenuePerWeek = salesPerWeek * avgTicket
-                const revenuePerMonth = salesPerMonth * avgTicket
+              {/* 3 MÉTODOS DE PROYECCIÓN DE VENTAS */}
+              {predictionData.projectionMethods && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                    <span>🔮</span>
+                    3 Métodos de Proyección de Ventas
+                  </h3>
 
-                return (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
-                      <span>🔮</span>
-                      Proyecciones de Ventas
-                    </h3>
-
-                    {/* Proxima venta */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="text-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                        <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{daysUntilNext}d</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Proxima venta</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    {/* Método 1: Por registros */}
+                    <div className="border border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">📊</span>
+                        <span className="font-bold text-blue-700 dark:text-blue-300">
+                          {predictionData.projectionMethods.byRegistrations.name}
+                        </span>
                       </div>
-                      <div className="text-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                        <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">
-                          {expectedDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Fecha estimada</div>
+                      <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                        {predictionData.projectionMethods.byRegistrations.salesPerMonth.toFixed(1)}
+                        <span className="text-lg font-normal text-gray-500 dark:text-gray-400"> ventas/mes</span>
                       </div>
-                      <div className="text-center bg-gray-100 dark:bg-gray-700 rounded-lg p-3">
-                        <div className="text-3xl font-bold text-indigo-600 dark:text-indigo-400">{expectedDaysBetweenSales.toFixed(1)}d</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Frecuencia</div>
+                      <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        {predictionData.projectionMethods.byRegistrations.revenuePerMonth.toFixed(0)}€/mes
                       </div>
-                      <div className="text-center bg-green-100 dark:bg-green-900/30 rounded-lg p-3">
-                        <div className="text-3xl font-bold text-green-600 dark:text-green-400">{avgTicket.toFixed(0)}€</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Ticket medio</div>
+                      <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                        <div className="font-medium">{predictionData.projectionMethods.byRegistrations.description}</div>
+                        <div>• {predictionData.projectionMethods.byRegistrations.inputs.dailyRegistrations} registros/día</div>
+                        <div>• {predictionData.projectionMethods.byRegistrations.inputs.conversionRate}% tasa conversión</div>
+                      </div>
+                      <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                        ✓ {predictionData.projectionMethods.byRegistrations.bestFor}
                       </div>
                     </div>
 
-                    {/* Proyecciones */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{salesPerWeek.toFixed(1)}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Ventas/semana</div>
+                    {/* Método 2: Por activos */}
+                    <div className="border border-purple-200 dark:border-purple-800 rounded-lg p-4 bg-purple-50 dark:bg-purple-900/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">👥</span>
+                        <span className="font-bold text-purple-700 dark:text-purple-300">
+                          {predictionData.projectionMethods.byActiveUsers.name}
+                        </span>
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{revenuePerWeek.toFixed(0)}€</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Ingresos/semana</div>
+                      <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                        {predictionData.projectionMethods.byActiveUsers.salesPerMonth.toFixed(1)}
+                        <span className="text-lg font-normal text-gray-500 dark:text-gray-400"> ventas/mes</span>
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{salesPerMonth.toFixed(0)}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Ventas/mes</div>
+                      <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        {predictionData.projectionMethods.byActiveUsers.revenuePerMonth.toFixed(0)}€/mes
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{revenuePerMonth.toFixed(0)}€</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Ingresos/mes</div>
+                      <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                        <div className="font-medium">{predictionData.projectionMethods.byActiveUsers.description}</div>
+                        <div>• {predictionData.projectionMethods.byActiveUsers.inputs.activeFreeUsers} usuarios FREE activos</div>
+                        <div>• {predictionData.projectionMethods.byActiveUsers.inputs.weeklyConversionRate}% conv. semanal</div>
+                      </div>
+                      <div className="mt-2 text-xs text-purple-600 dark:text-purple-400 font-medium">
+                        ✓ {predictionData.projectionMethods.byActiveUsers.bestFor}
                       </div>
                     </div>
 
-                    <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 text-center border-t border-gray-200 dark:border-gray-700 pt-3">
-                      {predictionData.prediction.dailyRegistrationRate} registros/dia × {(predictionData.conversion.rate * 100).toFixed(2)}% = {expectedSalesPerDay.toFixed(2)} ventas/dia | Ticket medio: {avgTicket.toFixed(2)}€
+                    {/* Método 3: Por histórico */}
+                    <div className="border border-amber-200 dark:border-amber-800 rounded-lg p-4 bg-amber-50 dark:bg-amber-900/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xl">📈</span>
+                        <span className="font-bold text-amber-700 dark:text-amber-300">
+                          {predictionData.projectionMethods.byHistoric.name}
+                        </span>
+                      </div>
+                      <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                        {predictionData.projectionMethods.byHistoric.salesPerMonth.toFixed(1)}
+                        <span className="text-lg font-normal text-gray-500 dark:text-gray-400"> ventas/mes</span>
+                      </div>
+                      <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        {predictionData.projectionMethods.byHistoric.revenuePerMonth.toFixed(0)}€/mes
+                      </div>
+                      <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                        <div className="font-medium">{predictionData.projectionMethods.byHistoric.description}</div>
+                        <div>• {predictionData.projectionMethods.byHistoric.inputs.avgDaysBetweenPayments || '?'} días entre pagos</div>
+                      </div>
+                      <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        ✓ {predictionData.projectionMethods.byHistoric.bestFor}
+                      </div>
                     </div>
                   </div>
-                )
-              })()}
+
+                  {/* Proyección combinada */}
+                  <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm opacity-90 mb-1">📊 Proyección Combinada (promedio de {predictionData.projectionMethods.combined.methodsUsed} métodos)</div>
+                        <div className="text-3xl font-bold">
+                          {predictionData.projectionMethods.combined.salesPerMonth.toFixed(1)} ventas/mes
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm opacity-90 mb-1">Ingresos esperados</div>
+                        <div className="text-3xl font-bold">
+                          {predictionData.projectionMethods.combined.revenuePerMonth.toFixed(0)}€/mes
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Info sobre tipos de conversión */}
+                  {predictionData.conversionByActivity?.conversionType && (
+                    <div className="mt-4 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-3">
+                      <span className="font-medium">Tipos de conversión:</span>
+                      {' '}{predictionData.conversionByActivity.conversionType.sameDay} usuarios pagaron el día 0 ({predictionData.conversionByActivity.conversionType.sameDayPercent}%),
+                      {' '}{predictionData.conversionByActivity.conversionType.afterTrying} probaron antes de pagar
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Metricas principales */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1226,7 +1271,7 @@ export default function ConversionesPage() {
                     {(predictionData.conversion.rate * 100).toFixed(2)}%
                   </div>
                   <div className="text-sm text-gray-500 mt-1">
-                    {predictionData.conversion.totalConverted} de {predictionData.conversion.totalUsers} usuarios
+                    {predictionData.conversion.uniquePayingUsers} de {predictionData.conversion.totalUsers} usuarios
                   </div>
                   <div className="mt-2 text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 rounded p-2">
                     <div className="font-medium mb-1">Intervalo de confianza 95%:</div>
