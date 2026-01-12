@@ -83,21 +83,23 @@ export async function GET() {
     // 3b. ALTERNATIVA: Conversión basada en usuarios activos (última semana)
     const sevenDaysAgoISO = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
     const thirtyDaysAgoISO = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
+    const sevenDaysAgoDate = sevenDaysAgoISO.slice(0, 10)  // Para daily_question_usage (tipo date)
+    const thirtyDaysAgoDate = thirtyDaysAgoISO.slice(0, 10)
 
     // Obtener usuarios activos (han respondido preguntas en los últimos 7 días)
     const { data: weeklyActiveData, error: weeklyError } = await supabase
-      .from('detailed_answers')
+      .from('daily_question_usage')
       .select('user_id')
-      .gte('created_at', sevenDaysAgoISO)
+      .gte('usage_date', sevenDaysAgoDate)
 
     const weeklyActiveUsers = new Set(weeklyActiveData?.map(a => a.user_id) || [])
     const weeklyActiveCount = weeklyActiveUsers.size
 
     // Usuarios activos en último mes
     const { data: monthlyActiveData } = await supabase
-      .from('detailed_answers')
+      .from('daily_question_usage')
       .select('user_id')
-      .gte('created_at', thirtyDaysAgoISO)
+      .gte('usage_date', thirtyDaysAgoDate)
 
     const monthlyActiveUsers = new Set(monthlyActiveData?.map(a => a.user_id) || [])
     const monthlyActiveCount = monthlyActiveUsers.size
