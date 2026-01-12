@@ -30,19 +30,28 @@ function TestPersonalizadoContent({ params }) {
   // ✅ EXTRAER CONFIGURACIÓN DE LA URL
   const selectedLawsParam = searchParams.get('selected_laws')
   const selectedArticlesByLawParam = searchParams.get('selected_articles_by_law')
-  
+  const selectedSectionFiltersParam = searchParams.get('selected_section_filters') // 📚 FILTRO DE TÍTULOS
+
   let selectedLaws = []
   let selectedArticlesByLaw = {}
-  
+  let selectedSectionFilters = [] // 📚 FILTRO DE TÍTULOS
+
   try {
     selectedLaws = selectedLawsParam ? JSON.parse(selectedLawsParam) : []
     selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
+    selectedSectionFilters = selectedSectionFiltersParam ? JSON.parse(selectedSectionFiltersParam) : []
+
+    // 📚 Debug logging para filtro de secciones
+    if (selectedSectionFilters.length > 0) {
+      console.log('📚 Filtro de secciones parseado desde URL:', selectedSectionFilters.map(s => s.title))
+    }
   } catch (error) {
     console.error('❌ Error parsing URL params:', error)
     console.error('  - selectedLawsParam:', selectedLawsParam)
     console.error('  - selectedArticlesByLawParam:', selectedArticlesByLawParam)
+    console.error('  - selectedSectionFiltersParam:', selectedSectionFiltersParam)
   }
-  
+
   const testConfig = {
     numQuestions: parseInt(searchParams.get('n')) || 10,
     excludeRecent: searchParams.get('exclude_recent') === 'true',
@@ -58,7 +67,8 @@ function TestPersonalizadoContent({ params }) {
     timeLimit: searchParams.get('time_limit') ? parseInt(searchParams.get('time_limit')) : null,
     // 🆕 FILTROS DE LEYES Y ARTÍCULOS
     selectedLaws,
-    selectedArticlesByLaw
+    selectedArticlesByLaw,
+    selectedSectionFilters // 📚 FILTRO DE TÍTULOS
   }
   
 

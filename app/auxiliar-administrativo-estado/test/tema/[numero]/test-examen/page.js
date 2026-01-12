@@ -90,13 +90,16 @@ function TestExamenContent({ params }) {
       const difficultyMode = searchParams.get('difficulty_mode') || 'random'
       const selectedLawsParam = searchParams.get('selected_laws')
       const selectedArticlesByLawParam = searchParams.get('selected_articles_by_law')
+      const selectedSectionFiltersParam = searchParams.get('selected_section_filters') // 📚 FILTRO DE TÍTULOS
 
       let selectedLaws = []
       let selectedArticlesByLaw = {}
+      let selectedSectionFilters = []
 
       try {
         selectedLaws = selectedLawsParam ? JSON.parse(selectedLawsParam) : []
         selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
+        selectedSectionFilters = selectedSectionFiltersParam ? JSON.parse(selectedSectionFiltersParam) : []
       } catch (error) {
         console.error('❌ Error parsing URL params:', error)
       }
@@ -153,6 +156,29 @@ function TestExamenContent({ params }) {
 
           return mapping
         }).filter(m => m.article_numbers.length > 0)
+      }
+
+      // 📚 APLICAR FILTRO DE SECCIONES/TÍTULOS
+      if (selectedSectionFilters && selectedSectionFilters.length > 0) {
+        const ranges = selectedSectionFilters
+          .filter(s => s.articleRange)
+          .map(s => ({ start: s.articleRange.start, end: s.articleRange.end, title: s.title }))
+
+        if (ranges.length > 0) {
+          console.log('📚 Aplicando filtro de secciones:', ranges.map(r => `${r.title} (${r.start}-${r.end})`).join(', '))
+
+          filteredMappings = filteredMappings.map(mapping => {
+            const filteredArticleNumbers = mapping.article_numbers.filter(articleNum => {
+              const num = parseInt(articleNum)
+              return ranges.some(range => num >= range.start && num <= range.end)
+            })
+
+            return {
+              ...mapping,
+              article_numbers: filteredArticleNumbers
+            }
+          }).filter(m => m.article_numbers.length > 0)
+        }
       }
 
       console.log('🔧 Mappings filtrados:', filteredMappings.length)
