@@ -48,6 +48,7 @@ function SoporteContent() {
   const [sendingMessage, setSendingMessage] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [initialConversationId, setInitialConversationId] = useState(null)
   const [disputes, setDisputes] = useState([])
   const [disputesLoading, setDisputesLoading] = useState(false)
   const [disputeFilter, setDisputeFilter] = useState('all') // all, pending, resolved, rejected
@@ -743,7 +744,10 @@ function SoporteContent() {
           </h3>
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
             <button
-              onClick={() => setShowFeedbackModal(true)}
+              onClick={() => {
+                setInitialConversationId(null) // Nueva solicitud, sin conversación pre-seleccionada
+                setShowFeedbackModal(true)
+              }}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               💬 Abrir chat soporte
@@ -795,7 +799,10 @@ function SoporteContent() {
                       Cuando envíes un mensaje al equipo aparecerá aquí
                     </p>
                     <button
-                      onClick={() => setShowFeedbackModal(true)}
+                      onClick={() => {
+                        setInitialConversationId(null)
+                        setShowFeedbackModal(true)
+                      }}
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       💬 Abrir chat soporte
@@ -856,8 +863,9 @@ function SoporteContent() {
                               </span>
                               <button
                                 onClick={() => {
-                                  setSelectedConversation(conversations[feedback.id])
-                                  loadChatMessages(conversations[feedback.id].id)
+                                  // Usar el nuevo FeedbackModal en lugar del modal viejo
+                                  setInitialConversationId(conversations[feedback.id].id)
+                                  setShowFeedbackModal(true)
                                 }}
                                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                                   conversations[feedback.id].status === 'waiting_user'
@@ -865,7 +873,7 @@ function SoporteContent() {
                                     : 'bg-blue-600 text-white hover:bg-blue-700'
                                 }`}
                               >
-                                {conversations[feedback.id].status === 'waiting_user' 
+                                {conversations[feedback.id].status === 'waiting_user'
                                   ? 'Ver Respuesta'
                                   : 'Abrir Chat'
                                 }
@@ -1423,13 +1431,15 @@ function SoporteContent() {
       )}
 
       {/* Modal de Feedback */}
-      <FeedbackModal 
+      <FeedbackModal
         isOpen={showFeedbackModal}
         onClose={() => {
           setShowFeedbackModal(false)
+          setInitialConversationId(null) // Resetear conversación pre-seleccionada
           // Recargar datos después de enviar feedback
           setTimeout(() => loadUserData(), 1000)
         }}
+        initialConversationId={initialConversationId}
       />
     </div>
   )

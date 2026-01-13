@@ -19,7 +19,7 @@ const EMOJIS = [
   '🎉', '🎊', '🔥', '💰', '📚', '✅', '❌', '⭐', '💡', '🚀'
 ]
 
-export default function FeedbackModal({ isOpen, onClose, questionId = null, autoSelectQuestionDispute = false, currentTheme = null, onOpenQuestionDispute = null, onFeedbackSent = null }) {
+export default function FeedbackModal({ isOpen, onClose, questionId = null, autoSelectQuestionDispute = false, currentTheme = null, onOpenQuestionDispute = null, onFeedbackSent = null, initialConversationId = null }) {
   const { user, supabase } = useAuth()
   const router = useRouter()
   const [formData, setFormData] = useState({
@@ -96,6 +96,43 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
 
     loadExistingConversations()
   }, [isOpen, user, supabase])
+
+  // Pre-seleccionar conversación si se pasa initialConversationId
+  useEffect(() => {
+    if (isOpen && initialConversationId && existingConversations.length > 0 && !selectedConversationId) {
+      const conversation = existingConversations.find(c => c.id === initialConversationId)
+      if (conversation) {
+        console.log('📂 [FEEDBACK] Pre-seleccionando conversación:', initialConversationId)
+        // Cargar conversación usando la lógica inline (igual que handleOpenExistingConversation)
+        setSelectedConversationId(conversation.id)
+        setSelectedConversation(conversation)
+        setActiveTab('chat')
+        setChatInput('')
+        setChatUploadedImages([])
+        setShowChatEmojiPicker(false)
+
+        // Cargar mensajes
+        const loadMessages = async () => {
+          setLoadingMessages(true)
+          try {
+            const { data: messages, error } = await supabase
+              .from('feedback_messages')
+              .select('*')
+              .eq('conversation_id', conversation.id)
+              .order('created_at', { ascending: true })
+            if (error) throw error
+            setChatMessages(messages || [])
+          } catch (err) {
+            console.error('Error cargando mensajes:', err)
+            setChatMessages([])
+          } finally {
+            setLoadingMessages(false)
+          }
+        }
+        loadMessages()
+      }
+    }
+  }, [isOpen, initialConversationId, existingConversations, selectedConversationId, supabase])
 
   // Detectar contexto automáticamente al abrir modal
   useEffect(() => {
