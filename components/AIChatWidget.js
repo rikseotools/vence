@@ -30,6 +30,7 @@ export default function AIChatWidget() {
   const [showProgressMenu, setShowProgressMenu] = useState(false) // Menú expandible de progreso
   const [showExamMenu, setShowExamMenu] = useState(false) // Menú expandible de exámenes
   const [limitReached, setLimitReached] = useState(false) // Límite diario alcanzado (usuarios free)
+  const [dynamicSuggestions, setDynamicSuggestions] = useState([]) // Sugerencias dinámicas desde BD
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortControllerRef = useRef(null)
@@ -46,6 +47,20 @@ export default function AIChatWidget() {
       inputRef.current.focus()
     }
   }, [isOpen])
+
+  // Cargar sugerencias dinámicas al abrir el chat
+  useEffect(() => {
+    if (isOpen && dynamicSuggestions.length === 0) {
+      fetch('/api/ai/chat/suggestions')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.suggestions) {
+            setDynamicSuggestions(data.suggestions)
+          }
+        })
+        .catch(err => console.error('Error loading suggestions:', err))
+    }
+  }, [isOpen, dynamicSuggestions.length])
 
   // Cancelar streaming si se cierra el chat
   useEffect(() => {
@@ -404,10 +419,20 @@ export default function AIChatWidget() {
     sendMessageRef.current = sendMessage
   }, [sendMessage])
 
-  // Helper para usar sugerencias predefinidas - envía directamente
-  const useSuggestion = useCallback((text, label) => {
-    sendMessage(text, label)
-  }, [sendMessage])
+  // Helper para usar sugerencias predefinidas - envía directamente y trackea click
+  const useSuggestion = useCallback((text, suggestionKey) => {
+    // Trackear click en background (no bloquear)
+    fetch('/api/ai/chat/suggestions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        suggestionKey,
+        userId: user?.id || null
+      })
+    }).catch(() => {}) // Ignorar errores de tracking
+
+    sendMessage(text, suggestionKey)
+  }, [sendMessage, user?.id])
 
   // Enviar feedback (pulgar arriba/abajo)
   const sendFeedback = useCallback(async (logId, feedback, msgIndex) => {
@@ -855,36 +880,20 @@ export default function AIChatWidget() {
                 ) : (
                   <>
                     <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Pregúntame sobre:</p>
-                    <button
-                      onClick={() => useSuggestion('¿Qué dice el artículo 14 de la Constitución?', 'articulo_general')}
-                      className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                    >
-                      📜 Artículos de cualquier ley
-                    </button>
-                    <button
-                      onClick={() => useSuggestion('¿Cuáles son los plazos del procedimiento administrativo en la Ley 39?', 'plazos_general')}
-                      className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                    >
-                      ⏱️ Plazos y términos
-                    </button>
-                    <button
-                      onClick={() => useSuggestion('¿Cuáles son los derechos de los empleados públicos según el TREBEP?', 'derechos_general')}
-                      className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                    >
-                      👤 Derechos y deberes
-                    </button>
-                    <button
-                      onClick={() => useSuggestion('Explícame las diferencias entre recurso de alzada y reposición', 'comparar_general')}
-                      className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                    >
-                      ⚖️ Comparar conceptos
-                    </button>
-                    <button
-                      onClick={() => useSuggestion('Dame un resumen del Título I de la Constitución', 'resumen_general')}
-                      className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                    >
-                      📋 Resúmenes de títulos/capítulos
-                    </button>
+                    {dynamicSuggestions.length > 0 ? (
+                      dynamicSuggestions.map((suggestion) => (
+                        <button
+                          key={suggestion.id}
+                          onClick={() => useSuggestion(suggestion.message, suggestion.suggestion_key)}
+                          className="block w-full text-left px-3 py-2 text-xs bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                        >
+                          {suggestion.emoji} {suggestion.label}
+                        </button>
+                      ))
+                    ) : (
+                      // Fallback mientras cargan las sugerencias
+                      <p className="text-xs text-gray-400 text-center py-2">Cargando sugerencias...</p>
+                    )}
                     {/* Nota de capacidades avanzadas */}
                     <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
                       <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
