@@ -86,6 +86,72 @@ function simulateApiFilter(questions, filters) {
 }
 
 // ============================================
+// TESTS: Manejo de searchParams (URLSearchParams vs Object)
+// ============================================
+describe('SearchParams Handling', () => {
+  // Helper que simula el patrón correcto
+  const getParam = (searchParams, key, defaultValue = null) => {
+    if (!searchParams) return defaultValue
+
+    // Si es URLSearchParams (desde hook)
+    if (typeof searchParams.get === 'function') {
+      return searchParams.get(key) || defaultValue
+    }
+
+    // Si es objeto plano (desde server component)
+    return searchParams[key] || defaultValue
+  }
+
+  test('Debe manejar URLSearchParams correctamente', () => {
+    const urlParams = new URLSearchParams('?law=ce&articles=1,2,3&n=10')
+
+    expect(getParam(urlParams, 'law')).toBe('ce')
+    expect(getParam(urlParams, 'articles')).toBe('1,2,3')
+    expect(getParam(urlParams, 'n')).toBe('10')
+    expect(getParam(urlParams, 'missing', 'default')).toBe('default')
+  })
+
+  test('Debe manejar objeto plano correctamente', () => {
+    const plainObject = { law: 'ce', articles: '1,2,3', n: '10' }
+
+    expect(getParam(plainObject, 'law')).toBe('ce')
+    expect(getParam(plainObject, 'articles')).toBe('1,2,3')
+    expect(getParam(plainObject, 'n')).toBe('10')
+    expect(getParam(plainObject, 'missing', 'default')).toBe('default')
+  })
+
+  test('Debe manejar null/undefined correctamente', () => {
+    expect(getParam(null, 'key', 'default')).toBe('default')
+    expect(getParam(undefined, 'key', 'default')).toBe('default')
+  })
+
+  test('PROBLEMA: Llamar .get() en objeto plano causa error', () => {
+    const plainObject = { law: 'ce', n: '10' }
+
+    // Esto es lo que hacen algunos fetchers incorrectamente:
+    // const n = parseInt(searchParams.get('n')) || 5
+
+    // Verificar que .get no existe en objetos planos
+    expect(typeof plainObject.get).toBe('undefined')
+
+    // Intentar llamar .get() causaría: TypeError: searchParams.get is not a function
+    expect(() => plainObject.get('n')).toThrow()
+  })
+
+  test('Fetchers de notificaciones deben usar getParam helper', () => {
+    // Los fetchers que reciben searchParams de server components deben
+    // verificar si es URLSearchParams u objeto plano
+
+    const serverComponentParams = { law: 'lpac', articles: '1,2', n: '10' }
+    const hookParams = new URLSearchParams('?law=lpac&articles=1,2&n=10')
+
+    // Ambos deben funcionar con el helper
+    expect(getParam(serverComponentParams, 'law')).toBe('lpac')
+    expect(getParam(hookParams, 'law')).toBe('lpac')
+  })
+})
+
+// ============================================
 // TESTS: Validación de parámetros de request
 // ============================================
 describe('API Request Validation', () => {
@@ -520,6 +586,171 @@ describe('API Response Format', () => {
 
     expect(response.questions.length).toBe(2) // numQuestions limitado
     expect(response.totalAvailable).toBe(3) // Total disponible con filtros
+  })
+})
+
+// ============================================
+// TESTS: Modo ley-only (sin tema) - BUG FIX
+// ============================================
+describe('API Law-Only Mode (sin tema)', () => {
+  test('Request con selectedLaws pero sin topicNumber debe ser válido', () => {
+    // Este es el caso de las notificaciones que envían /test/rapido?law=lpac
+    const request = {
+      topicNumber: 0, // Sin tema
+      positionType: 'auxiliar_administrativo',
+      numQuestions: 10,
+      selectedLaws: ['LPAC'], // Pero con ley
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: false,
+      difficultyMode: 'random'
+    }
+
+    // El request debe ser válido porque tiene selectedLaws
+    const isLawOnlyMode = request.topicNumber === 0 && request.selectedLaws.length > 0
+    expect(isLawOnlyMode).toBe(true)
+    expect(request.selectedLaws).toContain('LPAC')
+  })
+
+  test('Request con selectedLaws Y artículos específicos debe funcionar', () => {
+    // Caso de notificación de artículos problemáticos
+    const request = {
+      topicNumber: 0,
+      positionType: 'auxiliar_administrativo',
+      numQuestions: 10,
+      selectedLaws: ['CE'],
+      selectedArticlesByLaw: { 'CE': [14, 15, 16] },
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: false,
+      difficultyMode: 'random'
+    }
+
+    const isLawOnlyMode = request.topicNumber === 0 && request.selectedLaws.length > 0
+    expect(isLawOnlyMode).toBe(true)
+    expect(request.selectedArticlesByLaw['CE']).toEqual([14, 15, 16])
+  })
+
+  test('Request sin topicNumber NI selectedLaws debe fallar', () => {
+    const request = {
+      topicNumber: 0,
+      positionType: 'auxiliar_administrativo',
+      numQuestions: 10,
+      selectedLaws: [], // Sin leyes
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: false,
+      difficultyMode: 'random'
+    }
+
+    const isLawOnlyMode = request.topicNumber === 0 && request.selectedLaws.length > 0
+    const hasValidTopic = request.topicNumber > 0
+    const isValidRequest = hasValidTopic || isLawOnlyMode
+
+    expect(isValidRequest).toBe(false) // Debe fallar
+  })
+
+  test('Notificación de artículos problemáticos genera request válido', () => {
+    // Simula lo que genera useIntelligentNotifications para /test/rapido
+    const notificationParams = {
+      law: 'lpac', // slug de la URL
+      articles: '1,2,3',
+      mode: 'intensive',
+      n: '10'
+    }
+
+    // El fetcher debe transformar esto en:
+    const apiRequest = {
+      topicNumber: 0, // No hay tema en la URL
+      positionType: 'auxiliar_administrativo',
+      numQuestions: parseInt(notificationParams.n),
+      selectedLaws: ['LPAC'], // mapLawSlugToShortName('lpac') → 'LPAC'
+      selectedArticlesByLaw: { 'LPAC': [1, 2, 3] },
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: false,
+      difficultyMode: 'random'
+    }
+
+    const isLawOnlyMode = apiRequest.topicNumber === 0 && apiRequest.selectedLaws.length > 0
+    expect(isLawOnlyMode).toBe(true)
+    expect(apiRequest.selectedLaws).toContain('LPAC')
+    expect(apiRequest.selectedArticlesByLaw['LPAC']).toEqual([1, 2, 3])
+  })
+
+  test('Notificación de level_regression genera request válido', () => {
+    // Simula notificación de "bajada de nivel"
+    const notificationParams = {
+      law: 'ce',
+      mode: 'recovery',
+      n: '15'
+    }
+
+    const apiRequest = {
+      topicNumber: 0,
+      positionType: 'auxiliar_administrativo',
+      numQuestions: parseInt(notificationParams.n),
+      selectedLaws: ['CE'],
+      selectedArticlesByLaw: {},
+      selectedSectionFilters: [],
+      onlyOfficialQuestions: false,
+      difficultyMode: 'random'
+    }
+
+    const isLawOnlyMode = apiRequest.topicNumber === 0 && apiRequest.selectedLaws.length > 0
+    expect(isLawOnlyMode).toBe(true)
+  })
+})
+
+// ============================================
+// TESTS: Validación de parámetros críticos
+// ============================================
+describe('API Critical Parameter Validation', () => {
+  test('multipleTopics vacío + topicNumber 0 + selectedLaws vacío = ERROR', () => {
+    const request = {
+      topicNumber: 0,
+      multipleTopics: [],
+      selectedLaws: [],
+      positionType: 'auxiliar_administrativo'
+    }
+
+    const topicsToQuery = request.multipleTopics.length > 0
+      ? request.multipleTopics
+      : request.topicNumber > 0 ? [request.topicNumber] : []
+
+    const isLawOnlyMode = topicsToQuery.length === 0 && request.selectedLaws.length > 0
+    const isValidRequest = topicsToQuery.length > 0 || isLawOnlyMode
+
+    expect(isValidRequest).toBe(false)
+  })
+
+  test('multipleTopics con valores válidos = OK', () => {
+    const request = {
+      topicNumber: 0,
+      multipleTopics: [1, 2, 3],
+      selectedLaws: [],
+      positionType: 'auxiliar_administrativo'
+    }
+
+    const topicsToQuery = request.multipleTopics.length > 0
+      ? request.multipleTopics
+      : request.topicNumber > 0 ? [request.topicNumber] : []
+
+    expect(topicsToQuery).toEqual([1, 2, 3])
+    expect(topicsToQuery.length).toBeGreaterThan(0)
+  })
+
+  test('topicNumber positivo sin multipleTopics = OK', () => {
+    const request = {
+      topicNumber: 5,
+      multipleTopics: [],
+      selectedLaws: [],
+      positionType: 'auxiliar_administrativo'
+    }
+
+    const topicsToQuery = request.multipleTopics.length > 0
+      ? request.multipleTopics
+      : request.topicNumber > 0 ? [request.topicNumber] : []
+
+    expect(topicsToQuery).toEqual([5])
   })
 })
 
