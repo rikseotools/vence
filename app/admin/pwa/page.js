@@ -635,8 +635,8 @@ export default function PWAAdminPage() {
       </div>
 
       {/* Acciones rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link href="/admin/notificaciones/push" 
+      <div className="flex">
+        <Link href="/admin/notificaciones/push"
           className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
           <div className="flex items-center space-x-3">
             <span className="text-2xl">📊</span>
@@ -646,27 +646,6 @@ export default function PWAAdminPage() {
             </div>
           </div>
         </Link>
-
-        <Link href="/admin/usuarios" 
-          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">👥</span>
-            <div>
-              <h4 className="font-medium text-gray-900 dark:text-white">Gestión Usuarios</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Configurar suscripciones</p>
-            </div>
-          </div>
-        </Link>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center space-x-3">
-            <span className="text-2xl">⚙️</span>
-            <div>
-              <h4 className="font-medium text-gray-900 dark:text-white">Config PWA</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Manifest y Service Worker</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* 📱 PWA STATISTICS REAL - Nuevo componente agregado */}
