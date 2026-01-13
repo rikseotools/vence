@@ -63,10 +63,10 @@ export default function PWAStatsReal() {
         sessionsResult,
         activePWAResult
       ] = await Promise.all([
-        // Total instalaciones PWA
+        // Total instalaciones PWA (necesitamos user_id para deduplicar)
         supabase
           .from('pwa_events')
-          .select('id, created_at')
+          .select('id, user_id, created_at')
           .eq('event_type', 'pwa_installed'),
 
         // Prompts de instalación mostrados
@@ -93,8 +93,9 @@ export default function PWAStatsReal() {
       const hasRealData = installsResult.data && installsResult.data.length > 0
 
       if (hasRealData) {
-        // Procesar resultados reales
-        const totalInstalls = installsResult.data?.length || 0
+        // Procesar resultados reales - CONTAR USUARIOS ÚNICOS, no eventos
+        const uniqueInstallers = new Set(installsResult.data?.map(e => e.user_id) || []).size
+        const totalInstalls = uniqueInstallers // Usuarios únicos que instalaron
         const totalPrompts = promptsResult.data?.length || 0
         const conversionRate = totalPrompts > 0 ? ((totalInstalls / totalPrompts) * 100).toFixed(1) : '0'
 
@@ -238,36 +239,48 @@ export default function PWAStatsReal() {
           {/* Instalaciones Totales */}
           <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
             <div className="text-green-800 dark:text-green-200">
-              <h4 className="text-sm font-medium">Total PWA Installs</h4>
+              <h4 className="text-sm font-medium">PWA Instaladas</h4>
               <p className="text-2xl font-bold">{stats.totalInstalls}</p>
-              <p className="text-xs opacity-75">Since {stats.firstInstallDate}</p>
+              <p className="text-[10px] opacity-75 mt-1">
+                Usuarios que añadieron la app a su móvil
+              </p>
+              <p className="text-[10px] opacity-60">Desde {stats.firstInstallDate}</p>
             </div>
           </div>
 
           {/* Usuarios PWA Activos */}
           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
             <div className="text-blue-800 dark:text-blue-200">
-              <h4 className="text-sm font-medium">Active PWA Users</h4>
+              <h4 className="text-sm font-medium">Usuarios PWA Activos</h4>
               <p className="text-2xl font-bold">{stats.activePWAUsers}</p>
-              <p className="text-xs opacity-75">Last 30 days</p>
+              <p className="text-[10px] opacity-75 mt-1">
+                Usuarios que abrieron la app instalada
+              </p>
+              <p className="text-[10px] opacity-60">Últimos 30 días</p>
             </div>
           </div>
 
           {/* Tasa de Conversión */}
           <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
             <div className="text-purple-800 dark:text-purple-200">
-              <h4 className="text-sm font-medium">Install Conversion</h4>
+              <h4 className="text-sm font-medium">Conversión Instalación</h4>
               <p className="text-2xl font-bold">{stats.conversionRate}</p>
-              <p className="text-xs opacity-75">{stats.installPrompts} prompts shown</p>
+              <p className="text-[10px] opacity-75 mt-1">
+                % que instaló de los que vieron el prompt
+              </p>
+              <p className="text-[10px] opacity-60">{stats.installPrompts} prompts mostrados</p>
             </div>
           </div>
 
           {/* Sesiones Recientes */}
           <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
             <div className="text-orange-800 dark:text-orange-200">
-              <h4 className="text-sm font-medium">Recent Sessions</h4>
+              <h4 className="text-sm font-medium">Sesiones Totales</h4>
               <p className="text-2xl font-bold">{stats.recentSessions}</p>
-              <p className="text-xs opacity-75">Last 7 days</p>
+              <p className="text-[10px] opacity-75 mt-1">
+                Veces que usuarios abrieron la web/app
+              </p>
+              <p className="text-[10px] opacity-60">Últimos 7 días</p>
             </div>
           </div>
         </div>
@@ -275,29 +288,38 @@ export default function PWAStatsReal() {
         {/* Métricas de Uso */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Avg Session Duration
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Duración Media Sesión
             </h4>
             <p className="text-xl font-bold text-gray-900 dark:text-white">
               {stats.avgSessionDuration}
             </p>
-          </div>
-
-          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              PWA Sessions
-            </h4>
-            <p className="text-xl font-bold text-gray-900 dark:text-white">
-              {stats.standaloneUsage}
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+              Tiempo promedio que pasan en la app
             </p>
           </div>
 
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Web Sessions
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Sesiones desde PWA
+            </h4>
+            <p className="text-xl font-bold text-gray-900 dark:text-white">
+              {stats.standaloneUsage}
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+              Abrieron desde la app instalada (icono)
+            </p>
+          </div>
+
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Sesiones desde Web
             </h4>
             <p className="text-xl font-bold text-gray-900 dark:text-white">
               {stats.webUsage}
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+              Abrieron desde navegador normal
             </p>
           </div>
         </div>
