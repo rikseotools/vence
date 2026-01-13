@@ -145,37 +145,205 @@ async function generateEmbedding(openai, text) {
   return response.data[0].embedding
 }
 
-// Detectar menciones de leyes específicas en el mensaje del usuario
+// Cache de leyes para evitar queries repetidas (TTL: 30 días)
+let lawsCache = null
+let lawsCacheTime = 0
+const LAWS_CACHE_TTL = 30 * 24 * 60 * 60 * 1000
+
+// Cargar todas las leyes de la BD (con cache)
+async function loadAllLaws() {
+  const now = Date.now()
+  if (lawsCache && (now - lawsCacheTime) < LAWS_CACHE_TTL) {
+    return lawsCache
+  }
+
+  const { data } = await supabase
+    .from('laws')
+    .select('id, short_name, name')
+    .eq('is_active', true)
+
+  lawsCache = data || []
+  lawsCacheTime = now
+  console.log(`📚 Cache de leyes actualizado: ${lawsCache.length} leyes`)
+  return lawsCache
+}
+
+// Alias comunes para leyes (mapeo a short_name)
+// Sincronizado con lib/lawMappingUtils.ts
+const LAW_ALIASES = {
+  // Constitución
+  'constitución': 'CE', 'constitucion': 'CE', 'c.e.': 'CE',
+  // Procedimiento administrativo
+  'lpac': 'Ley 39/2015', 'procedimiento administrativo': 'Ley 39/2015',
+  // Régimen jurídico sector público
+  'lrjsp': 'Ley 40/2015', 'régimen jurídico': 'Ley 40/2015',
+  // Estatuto básico empleado público
+  'trebep': 'RDL 5/2015', 'ebep': 'RDL 5/2015', 'estatuto básico': 'RDL 5/2015',
+  // Ley General Tributaria
+  'lgt': 'LGT', 'ley general tributaria': 'LGT',
+  // Transparencia
+  'ley de transparencia': 'Ley 19/2013', 'transparencia': 'Ley 19/2013',
+  // Contratos
+  'lcsp': 'Ley 9/2017', 'ley de contratos': 'Ley 9/2017', 'contratos del sector público': 'Ley 9/2017',
+  // Subvenciones
+  'lgs': 'LGS', 'ley de subvenciones': 'Ley 38/2003',
+  // RGPD
+  'rgpd': 'Reglamento UE 2016/679', 'reglamento de protección de datos': 'Reglamento UE 2016/679',
+  // LOPDGDD
+  'lopdgdd': 'LO 3/2018', 'lopd': 'LO 3/2018', 'protección de datos': 'LO 3/2018',
+  // Código Penal
+  'código penal': 'CP', 'codigo penal': 'CP', 'cp': 'CP',
+  // Código Civil
+  'código civil': 'Código Civil', 'codigo civil': 'Código Civil',
+  // Poder Judicial
+  'lopj': 'LO 6/1985', 'ley orgánica del poder judicial': 'LO 6/1985', 'poder judicial': 'LO 6/1985',
+  // Seguridad ciudadana
+  'ley de seguridad ciudadana': 'LO 4/2015', 'ley mordaza': 'LO 4/2015', 'seguridad ciudadana': 'LO 4/2015',
+  // Derecho de petición
+  'derecho de petición': 'LO 4/2001', 'ley de petición': 'LO 4/2001',
+  // Tribunal Constitucional
+  'lotc': 'LOTC', 'tribunal constitucional': 'LOTC',
+  // Electoral
+  'loreg': 'LO 5/1985', 'ley electoral': 'LO 5/1985', 'régimen electoral': 'LO 5/1985',
+  // Fuerzas y Cuerpos Seguridad
+  'lofcs': 'LOFCS', 'fuerzas y cuerpos': 'LOFCS',
+  // Defensor del Pueblo
+  'defensor del pueblo': 'LO 3/1981',
+  // Consejo de Estado
+  'consejo de estado': 'LO 3/1980',
+  // Libertad sindical
+  'lols': 'LO 11/1985', 'libertad sindical': 'LO 11/1985',
+  // Financiación CCAA
+  'lofca': 'LO 8/1980', 'financiación autonómica': 'LO 8/1980',
+  // Extranjería
+  'loex': 'LO 4/2000', 'extranjería': 'LO 4/2000',
+  // Educación
+  'loe': 'LO 2/2006', 'lomloe': 'LOMLOE',
+  // Penitenciario
+  'logp': 'LOGP', 'ley penitenciaria': 'LOGP',
+  // Gobierno
+  'ley del gobierno': 'Ley 50/1997', 'ley 50/1997': 'Ley 50/1997',
+  // Régimen local
+  'lrbrl': 'Ley 7/1985', 'régimen local': 'Ley 7/1985', 'bases régimen local': 'Ley 7/1985',
+  // Patrimonio AAPP
+  'lpap': 'Ley 33/2003', 'patrimonio administraciones': 'Ley 33/2003',
+  // Enjuiciamiento Civil
+  'lec': 'Ley 1/2000', 'enjuiciamiento civil': 'Ley 1/2000',
+  // Enjuiciamiento Criminal
+  'lecrim': 'LECrim', 'enjuiciamiento criminal': 'LECrim',
+  // Haciendas locales
+  'trlrhl': 'RDL 2/2004', 'haciendas locales': 'RDL 2/2004',
+  // Prevención riesgos
+  'lprl': 'LPRL', 'prevención riesgos': 'LPRL', 'riesgos laborales': 'LPRL',
+  // Estatuto trabajadores
+  'estatuto trabajadores': 'RDL 2/2015', 'et': 'RDL 2/2015',
+  // Seguridad Social
+  'lgss': 'RDL 8/2015', 'seguridad social': 'RDL 8/2015',
+  // Jurisdicción contencioso-administrativa
+  'ljca': 'Ley 29/1998', 'contencioso administrativo': 'Ley 29/1998',
+  // Ministerio Fiscal
+  'eomf': 'Ley 50/1981', 'ministerio fiscal': 'Ley 50/1981',
+  // Código comercio
+  'ccom': 'CCom', 'código comercio': 'CCom', 'codigo comercio': 'CCom',
+  // Igualdad
+  'ley de igualdad': 'LO 3/2007', 'igualdad efectiva': 'LO 3/2007',
+  // Dependencia
+  'ley de dependencia': 'Ley 39/2006', 'dependencia': 'Ley 39/2006',
+  // Violencia de género
+  'ley de violencia de género': 'LO 1/2004', 'violencia de género': 'LO 1/2004',
+  // Agenda 2030
+  'agenda 2030': 'Agenda 2030', 'ods': 'Agenda 2030',
+  // Gobierno Abierto
+  'gobierno abierto': 'Gobierno Abierto',
+}
+
+// Detectar menciones de leyes en el mensaje (versión mejorada con detección dinámica)
 function detectMentionedLaws(message) {
   const msgLower = message.toLowerCase()
-  const mentionedLaws = []
+  const mentionedLaws = new Set()
 
-  // Ley 39/2015, LPAC - incluye formas coloquiales como "la 39"
-  if (/ley\s*39|39\/2015|lpac|\bla\s+39\b/.test(msgLower)) {
-    mentionedLaws.push('Ley 39/2015')
+  // 1. Buscar alias conocidos
+  for (const [alias, shortName] of Object.entries(LAW_ALIASES)) {
+    // Crear regex con word boundaries para evitar falsos positivos
+    const aliasRegex = new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
+    if (aliasRegex.test(msgLower)) {
+      mentionedLaws.add(shortName)
+    }
   }
 
-  // Ley 40/2015, LRJSP - incluye formas coloquiales como "la 40"
-  if (/ley\s*40|40\/2015|lrjsp|\bla\s+40\b/.test(msgLower)) {
-    mentionedLaws.push('Ley 40/2015')
+  // 2. Detectar patrones genéricos de leyes españolas
+  const lawPatterns = [
+    // LO X/YYYY - Ley Orgánica
+    { regex: /\b(?:ley\s+org[aá]nica|l\.?o\.?)\s*(\d+)\/(\d{4})\b/gi, prefix: 'LO' },
+    // Ley X/YYYY - Ley ordinaria
+    { regex: /\bley\s+(\d+)\/(\d{4})\b/gi, prefix: 'Ley' },
+    // RD X/YYYY - Real Decreto
+    { regex: /\b(?:real\s+decreto|r\.?d\.?)\s*(\d+)\/(\d{4})\b/gi, prefix: 'RD' },
+    // RDL X/YYYY - Real Decreto Legislativo / Real Decreto-ley
+    { regex: /\b(?:real\s+decreto[- ]?(?:legislativo|ley)|r\.?d\.?l\.?)\s*(\d+)\/(\d{4})\b/gi, prefix: 'RDL' },
+    // Orden XXX/YYYY
+    { regex: /\border\s+([A-Z]{2,5})\/(\d+)\/(\d{4})\b/gi, prefix: 'Orden', isOrder: true },
+  ]
+
+  for (const { regex, prefix, isOrder } of lawPatterns) {
+    let match
+    while ((match = regex.exec(message)) !== null) {
+      if (isOrder) {
+        // Formato: Orden HAP/1949/2014
+        mentionedLaws.add(`Orden ${match[1].toUpperCase()}/${match[2]}/${match[3]}`)
+      } else {
+        // Formato: LO 4/2001, Ley 39/2015, etc.
+        mentionedLaws.add(`${prefix} ${match[1]}/${match[2]}`)
+      }
+    }
   }
 
-  // Constitución Española
-  if (/constituci[oó]n|c\.e\.|ce\b/.test(msgLower)) {
-    mentionedLaws.push('CE')
+  // 3. Detectar referencias coloquiales "la 39", "la 40", etc. (solo para leyes comunes)
+  const coloquialMatches = msgLower.match(/\bla\s+(\d{2})\b/g)
+  if (coloquialMatches) {
+    for (const match of coloquialMatches) {
+      const num = match.match(/\d+/)[0]
+      if (num === '39') mentionedLaws.add('Ley 39/2015')
+      if (num === '40') mentionedLaws.add('Ley 40/2015')
+    }
   }
 
-  // TREBEP / EBEP
-  if (/trebep|ebep|estatuto\s*b[aá]sico/.test(msgLower)) {
-    mentionedLaws.push('TREBEP')
+  return Array.from(mentionedLaws)
+}
+
+// Validar y normalizar leyes detectadas contra la BD
+async function validateAndNormalizeLaws(detectedLaws) {
+  if (!detectedLaws || detectedLaws.length === 0) return []
+
+  const allLaws = await loadAllLaws()
+  const validatedLaws = []
+
+  for (const detected of detectedLaws) {
+    // Buscar coincidencia exacta por short_name
+    const exactMatch = allLaws.find(law =>
+      law.short_name.toLowerCase() === detected.toLowerCase()
+    )
+
+    if (exactMatch) {
+      validatedLaws.push(exactMatch.short_name)
+      continue
+    }
+
+    // Buscar coincidencia parcial en el nombre completo
+    const partialMatch = allLaws.find(law =>
+      law.name?.toLowerCase().includes(detected.toLowerCase()) ||
+      law.short_name.toLowerCase().includes(detected.toLowerCase())
+    )
+
+    if (partialMatch) {
+      validatedLaws.push(partialMatch.short_name)
+      console.log(`🔄 Ley normalizada: "${detected}" → "${partialMatch.short_name}"`)
+    } else {
+      console.log(`⚠️ Ley no encontrada en BD: "${detected}"`)
+    }
   }
 
-  // LGT
-  if (/ley\s*general\s*tributaria|l\.g\.t|lgt\b/.test(msgLower)) {
-    mentionedLaws.push('LGT')
-  }
-
-  return mentionedLaws
+  return [...new Set(validatedLaws)] // Eliminar duplicados
 }
 
 // 🆕 Detectar leyes mencionadas en el historial reciente (para mantener contexto)
@@ -1629,22 +1797,24 @@ export async function POST(request) {
       }
     }
 
+    // 🆕 Validar y normalizar leyes detectadas contra la BD
+    if (mentionedLaws.length > 0) {
+      const validatedLaws = await validateAndNormalizeLaws(mentionedLaws)
+      if (validatedLaws.length > 0) {
+        console.log(`✅ Leyes validadas: ${validatedLaws.join(', ')}`)
+        mentionedLaws = validatedLaws
+      } else {
+        console.log(`⚠️ Ninguna ley validada de: ${mentionedLaws.join(', ')}`)
+      }
+    }
+
     // 🎯 Si hay contexto de pregunta con ley, guardarla para priorizar (NO filtrar)
     let contextLawName = null
     if (questionContext?.lawName && !isPsicotecnico) {
       const contextLaw = questionContext.lawName
-      // Mapear nombres comunes a short_name de la BD
-      const lawMapping = {
-        'Constitución Española': 'CE',
-        'CE': 'CE',
-        'Ley 39/2015': 'Ley 39/2015',
-        'LPAC': 'Ley 39/2015',
-        'Ley 40/2015': 'Ley 40/2015',
-        'LRJSP': 'Ley 40/2015',
-        'TREBEP': 'TREBEP',
-        'EBEP': 'TREBEP'
-      }
-      contextLawName = lawMapping[contextLaw] || contextLaw
+      // 🆕 Usar validación dinámica para el contexto de ley
+      const validatedContext = await validateAndNormalizeLaws([contextLaw])
+      contextLawName = validatedContext.length > 0 ? validatedContext[0] : contextLaw
       console.log(`📋 Ley del contexto de pregunta: ${contextLawName} (para priorizar, no filtrar)`)
     }
 
