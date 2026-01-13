@@ -29,7 +29,7 @@ type TopicContentBase = {
 }
 
 // Función interna que obtiene el contenido del tema
-// Esta es la parte pesada con muchas queries que se cachea
+// OPTIMIZADA: Usa queries en batch en lugar de N+1
 async function getTopicContentBaseInternal(
   oposicionSlug: OposicionSlug,
   topicNumber: number
@@ -41,7 +41,7 @@ async function getTopicContentBaseInternal(
     return null
   }
 
-  // 1. Obtener el topic
+  // 1. Obtener topic + scope en una sola query con subquery
   const topicResult = await db
     .select({
       id: topics.id,
@@ -65,7 +65,7 @@ async function getTopicContentBaseInternal(
 
   const topic = topicResult[0]
 
-  // 2. Obtener topic_scope (qué leyes y artículos incluye)
+  // 2. Obtener topic_scope
   const scopeResult = await db
     .select({
       id: topicScope.id,
@@ -76,103 +76,151 @@ async function getTopicContentBaseInternal(
     .from(topicScope)
     .where(eq(topicScope.topicId, topic.id))
 
-  // 3. Para cada ley en el scope, obtener la ley y sus artículos
+  // Filtrar scopes válidos y extraer lawIds únicos
+  const validScopes = scopeResult.filter(s => s.lawId && s.articleNumbers && s.articleNumbers.length > 0)
+  if (validScopes.length === 0) {
+    return {
+      topicNumber: topic.topicNumber,
+      title: topic.title,
+      description: topic.description,
+      oposicion: oposicionSlug,
+      oposicionName: oposicion.name,
+      laws: [],
+      totalArticles: 0,
+    }
+  }
+
+  const lawIds = [...new Set(validScopes.map(s => s.lawId!))]
+
+  // 3. Obtener TODAS las leyes en una sola query
+  const lawsResult = await db
+    .select({
+      id: laws.id,
+      shortName: laws.shortName,
+      name: laws.name,
+      year: laws.year,
+      boeUrl: laws.boeUrl,
+    })
+    .from(laws)
+    .where(inArray(laws.id, lawIds))
+
+  // Crear mapa de leyes para lookup rápido
+  const lawsMap = new Map(lawsResult.map(l => [l.id, l]))
+
+  // 4. Obtener TODOS los artículos de todas las leyes en UNA sola query
+  // Construir array de todas las combinaciones law_id + article_numbers
+  const allArticleNumbers: string[] = []
+  const scopeByLaw = new Map<string, string[]>()
+
+  for (const scope of validScopes) {
+    const existing = scopeByLaw.get(scope.lawId!) || []
+    scopeByLaw.set(scope.lawId!, [...existing, ...scope.articleNumbers!])
+    allArticleNumbers.push(...scope.articleNumbers!)
+  }
+
+  // Query única para todos los artículos con JOIN implícito por lawId
+  const articlesResult = await db
+    .select({
+      id: articles.id,
+      lawId: articles.lawId,
+      articleNumber: articles.articleNumber,
+      title: articles.title,
+      content: articles.content,
+      titleNumber: articles.titleNumber,
+      chapterNumber: articles.chapterNumber,
+      section: articles.section,
+    })
+    .from(articles)
+    .where(
+      and(
+        inArray(articles.lawId, lawIds),
+        inArray(articles.articleNumber, [...new Set(allArticleNumbers)])
+      )
+    )
+
+  // Filtrar artículos que realmente pertenecen al scope de su ley
+  const filteredArticles = articlesResult.filter(a => {
+    const scopeArticles = scopeByLaw.get(a.lawId!)
+    return scopeArticles?.includes(a.articleNumber)
+  })
+
+  // 5. Obtener conteos de preguntas oficiales en UNA sola query
+  const allArticleIds = filteredArticles.map(a => a.id)
+  let officialCounts: Record<string, number> = {}
+
+  if (allArticleIds.length > 0) {
+    const countsResult = await db
+      .select({
+        articleId: questions.primaryArticleId,
+        count: count(),
+      })
+      .from(questions)
+      .where(
+        and(
+          inArray(questions.primaryArticleId, allArticleIds),
+          eq(questions.isOfficialExam, true),
+          eq(questions.isActive, true)
+        )
+      )
+      .groupBy(questions.primaryArticleId)
+
+    for (const row of countsResult) {
+      officialCounts[row.articleId!] = Number(row.count)
+    }
+  }
+
+  // 6. Agrupar artículos por ley y construir resultado
+  const articlesByLaw = new Map<string, typeof filteredArticles>()
+  for (const article of filteredArticles) {
+    const existing = articlesByLaw.get(article.lawId!) || []
+    existing.push(article)
+    articlesByLaw.set(article.lawId!, existing)
+  }
+
   const lawsWithArticles: LawWithArticles[] = []
   let totalArticles = 0
 
-  for (const scope of scopeResult) {
-    if (!scope.lawId || !scope.articleNumbers) continue
+  // Ordenar por weight del scope (si existe)
+  const sortedLawIds = validScopes
+    .sort((a, b) => (Number(a.weight) || 0) - (Number(b.weight) || 0))
+    .map(s => s.lawId!)
+    .filter((v, i, a) => a.indexOf(v) === i) // unique
 
-    // Obtener info de la ley
-    const lawResult = await db
-      .select({
-        id: laws.id,
-        shortName: laws.shortName,
-        name: laws.name,
-        year: laws.year,
-        boeUrl: laws.boeUrl,
-      })
-      .from(laws)
-      .where(eq(laws.id, scope.lawId))
-      .limit(1)
+  for (const lawId of sortedLawIds) {
+    const law = lawsMap.get(lawId)
+    if (!law) continue
 
-    if (lawResult.length === 0) continue
+    const lawArticles = articlesByLaw.get(lawId) || []
+    if (lawArticles.length === 0) continue
 
-    const law = lawResult[0]
+    // Ordenar artículos numéricamente
+    const sortedArticles = [...lawArticles].sort((a, b) => {
+      const numA = parseInt(a.articleNumber) || 9999
+      const numB = parseInt(b.articleNumber) || 9999
+      return numA - numB
+    })
 
-    // Obtener artículos de esa ley que están en el scope
-    const articlesResult = await db
-      .select({
-        id: articles.id,
-        articleNumber: articles.articleNumber,
-        title: articles.title,
-        content: articles.content,
-        titleNumber: articles.titleNumber,
-        chapterNumber: articles.chapterNumber,
-        section: articles.section,
-      })
-      .from(articles)
-      .where(
-        and(
-          eq(articles.lawId, scope.lawId),
-          inArray(articles.articleNumber, scope.articleNumbers)
-        )
-      )
-      .orderBy(sql`
-        CASE
-          WHEN ${articles.articleNumber} ~ '^[0-9]+$'
-          THEN CAST(${articles.articleNumber} AS INTEGER)
-          ELSE 9999
-        END,
-        ${articles.articleNumber}
-      `)
-
-    if (articlesResult.length > 0) {
-      // Obtener conteo de preguntas oficiales por artículo
-      const articleIds = articlesResult.map((a) => a.id)
-      const officialCountsResult = await db
-        .select({
-          articleId: questions.primaryArticleId,
-          count: count(),
-        })
-        .from(questions)
-        .where(
-          and(
-            inArray(questions.primaryArticleId, articleIds),
-            eq(questions.isOfficialExam, true),
-            eq(questions.isActive, true)
-          )
-        )
-        .groupBy(questions.primaryArticleId)
-
-      // Crear mapa de conteos
-      const officialCounts: Record<string, number> = {}
-      for (const row of officialCountsResult) {
-        officialCounts[row.articleId] = Number(row.count)
-      }
-
-      lawsWithArticles.push({
-        law: {
-          id: law.id,
-          shortName: law.shortName,
-          name: law.name,
-          year: law.year,
-          boeUrl: law.boeUrl,
-        },
-        articles: articlesResult.map((a) => ({
-          id: a.id,
-          articleNumber: a.articleNumber,
-          title: a.title,
-          content: a.content,
-          titleNumber: a.titleNumber,
-          chapterNumber: a.chapterNumber,
-          section: a.section,
-          officialQuestionCount: officialCounts[a.id] || 0,
-        })),
-        articleCount: articlesResult.length,
-      })
-      totalArticles += articlesResult.length
-    }
+    lawsWithArticles.push({
+      law: {
+        id: law.id,
+        shortName: law.shortName,
+        name: law.name,
+        year: law.year,
+        boeUrl: law.boeUrl,
+      },
+      articles: sortedArticles.map(a => ({
+        id: a.id,
+        articleNumber: a.articleNumber,
+        title: a.title,
+        content: a.content,
+        titleNumber: a.titleNumber,
+        chapterNumber: a.chapterNumber,
+        section: a.section,
+        officialQuestionCount: officialCounts[a.id] || 0,
+      })),
+      articleCount: sortedArticles.length,
+    })
+    totalArticles += sortedArticles.length
   }
 
   return {
@@ -186,11 +234,11 @@ async function getTopicContentBaseInternal(
   }
 }
 
-// 🚀 VERSIÓN CACHEADA del contenido base (1 hora de cache)
+// 🚀 VERSIÓN CACHEADA del contenido base (1 día de cache)
 const getTopicContentBaseCached = unstable_cache(
   getTopicContentBaseInternal,
   ['topic-content-base'],
-  { revalidate: 3600 } // 1 hora
+  { revalidate: 86400, tags: ['temario'] } // 1 día
 )
 
 // Función pública para obtener contenido del tema
