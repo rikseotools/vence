@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function MotivationalMessage({
@@ -15,6 +15,7 @@ export default function MotivationalMessage({
   const [reaction, setReaction] = useState(null) // 'love', 'like', 'dislike', 'funny'
   const [showShareMenu, setShowShareMenu] = useState(false)
   const [shareSuccess, setShareSuccess] = useState(false)
+  const trackedMessageId = useRef(null) // Evita duplicar tracking de 'view' en Strict Mode
 
   useEffect(() => {
     if (user) {
@@ -59,8 +60,11 @@ export default function MotivationalMessage({
           setReaction(userReaction.action_type)
         }
 
-        // Registrar que se vio el mensaje
-        await trackInteraction('view', msg.message_id, msg.message_text)
+        // Registrar que se vio el mensaje (solo si no se ha trackeado ya este mensaje)
+        if (trackedMessageId.current !== msg.message_id) {
+          trackedMessageId.current = msg.message_id
+          await trackInteraction('view', msg.message_id, msg.message_text)
+        }
 
         if (onMessageLoaded) {
           onMessageLoaded(msg)
