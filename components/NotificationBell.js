@@ -228,7 +228,7 @@ export default function NotificationBell() {
   // 🆕 MANEJAR ACCIÓN CON COMPORTAMIENTO DIFERENCIADO
   const handleActionClick = async (notification, actionType, event) => {
     event.stopPropagation()
-    console.log('🔍 handleActionClick called:', { notification, actionType, event })
+    console.log('🔍 handleActionClick called:', { notificationId: notification?.id, actionType })
     
     const notificationType = notificationTypes[notification.type]
     if (!notificationType) {
