@@ -37,7 +37,7 @@ export async function GET(request) {
 
         if (!parsed.success) {
           return NextResponse.json(
-            { success: false, error: parsed.error.errors[0]?.message || 'Datos inválidos' },
+            { success: false, error: parsed.error?.issues?.[0]?.message || 'Datos inválidos' },
             { status: 400 }
           )
         }
@@ -60,7 +60,7 @@ export async function GET(request) {
 
         if (!parsed.success) {
           return NextResponse.json(
-            { success: false, error: parsed.error.errors[0]?.message || 'Datos inválidos' },
+            { success: false, error: parsed.error?.issues?.[0]?.message || 'Datos inválidos' },
             { status: 400 }
           )
         }
@@ -83,7 +83,7 @@ export async function GET(request) {
 
         if (!parsed.success) {
           return NextResponse.json(
-            { success: false, error: parsed.error.errors[0]?.message || 'Datos inválidos' },
+            { success: false, error: parsed.error?.issues?.[0]?.message || 'Datos inválidos' },
             { status: 400 }
           )
         }

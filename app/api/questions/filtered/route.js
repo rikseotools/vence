@@ -19,14 +19,15 @@ export async function POST(request) {
     // Validar request con Zod
     const validation = safeParseGetFilteredQuestions(body)
     if (!validation.success) {
-      console.error('❌ Validación fallida:', validation.error.errors)
+      const issues = validation.error?.issues || []
+      console.error('❌ Validación fallida:', issues)
       return NextResponse.json(
         {
           success: false,
           error: 'Parámetros inválidos',
-          details: validation.error.errors.map(e => ({
-            path: e.path.join('.'),
-            message: e.message,
+          details: issues.map(e => ({
+            path: e.path?.join('.') || '',
+            message: e.message || 'Error desconocido',
           })),
         },
         { status: 400 }
