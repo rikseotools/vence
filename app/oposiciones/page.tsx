@@ -45,6 +45,7 @@ interface SearchParams {
   ccaa?: string;
   provincia?: string;
   q?: string;
+  orden?: string;
   page?: string;
 }
 
@@ -61,9 +62,19 @@ async function getConvocatorias(searchParams: SearchParams) {
   let query = supabase
     .from('convocatorias_boe')
     .select('*', { count: 'exact' })
-    .eq('is_active', true)
-    .order('boe_fecha', { ascending: false })
-    .order('relevancia_score', { ascending: false });
+    .eq('is_active', true);
+
+  // Aplicar ordenación
+  const orden = searchParams.orden || 'recientes';
+  if (orden === 'antiguos') {
+    query = query.order('boe_fecha', { ascending: true });
+  } else if (orden === 'plazas') {
+    query = query.order('num_plazas', { ascending: false, nullsFirst: false });
+  } else {
+    // Por defecto: más recientes primero
+    query = query.order('boe_fecha', { ascending: false });
+  }
+  query = query.order('relevancia_score', { ascending: false });
 
   // Aplicar filtros
   if (searchParams.categoria) {

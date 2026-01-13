@@ -17,6 +17,7 @@ interface Props {
     ambito?: string;
     ccaa?: string;
     provincia?: string;
+    orden?: string;
     q?: string;
   };
   total: number;
@@ -264,8 +265,8 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
           ))}
         </div>
 
-        {/* Segunda fila: Dropdowns de ubicación y tipo */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* Segunda fila: Dropdowns de ubicación, tipo y orden */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {/* CCAA dropdown */}
           <select
             value={currentFilters.ccaa || ''}
@@ -318,6 +319,17 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
                 {tipo.label}
               </option>
             ))}
+          </select>
+
+          {/* Ordenar dropdown */}
+          <select
+            value={currentFilters.orden || 'recientes'}
+            onChange={(e) => router.push(buildUrl('orden', e.target.value === 'recientes' ? null : e.target.value))}
+            className="w-full px-3 py-2 text-sm border-2 rounded-lg focus:ring-2 focus:ring-blue-500 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+          >
+            <option value="recientes">Más recientes</option>
+            <option value="antiguos">Más antiguos</option>
+            <option value="plazas">Más plazas</option>
           </select>
 
           {/* Limpiar filtros - solo visible en móvil como botón */}
