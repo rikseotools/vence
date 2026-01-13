@@ -2165,14 +2165,14 @@ NO inventes contenido. Solo pregunta para concretar.
 
           if (subtype === 'line_chart' || subtype === 'bar_chart' || subtype === 'mixed_chart') {
             if (cd.chart_title) contentDataText += `\nTítulo del gráfico: ${cd.chart_title}`
-            if (cd.categories && cd.age_groups) {
+            if (Array.isArray(cd.categories) && Array.isArray(cd.age_groups)) {
               contentDataText += `\nEje X (categorías): ${cd.categories.join(', ')}`
               contentDataText += '\nDatos por serie:'
               cd.age_groups.forEach(group => {
-                contentDataText += `\n  - ${group.label}: ${group.values.join(', ')}`
+                contentDataText += `\n  - ${group.label}: ${Array.isArray(group.values) ? group.values.join(', ') : group.values}`
               })
             }
-            if (cd.chart_data) {
+            if (cd.chart_data && Array.isArray(cd.chart_data)) {
               contentDataText += '\nDatos del gráfico:'
               cd.chart_data.forEach(item => {
                 contentDataText += `\n  - ${item.label || item.category}: ${item.value}`
@@ -2181,7 +2181,7 @@ NO inventes contenido. Solo pregunta para concretar.
           } else if (subtype === 'pie_chart') {
             if (cd.chart_title) contentDataText += `\nTítulo: ${cd.chart_title}`
             if (cd.total_value) contentDataText += `\nTotal: ${cd.total_value}`
-            if (cd.chart_data) {
+            if (cd.chart_data && Array.isArray(cd.chart_data)) {
               contentDataText += '\nSectores:'
               cd.chart_data.forEach(item => {
                 contentDataText += `\n  - ${item.label}: ${item.value}${item.percentage ? ` (${item.percentage}%)` : ''}`
@@ -2189,10 +2189,10 @@ NO inventes contenido. Solo pregunta para concretar.
             }
           } else if (subtype === 'data_tables') {
             if (cd.table_title) contentDataText += `\nTítulo de la tabla: ${cd.table_title}`
-            if (cd.headers) contentDataText += `\nColumnas: ${cd.headers.join(' | ')}`
-            if (cd.table_data || cd.rows) {
+            if (Array.isArray(cd.headers)) contentDataText += `\nColumnas: ${cd.headers.join(' | ')}`
+            const rows = cd.table_data || cd.rows
+            if (Array.isArray(rows)) {
               contentDataText += '\nDatos:'
-              const rows = cd.table_data || cd.rows
               rows.forEach((row, i) => {
                 if (Array.isArray(row)) {
                   contentDataText += `\n  Fila ${i + 1}: ${row.join(' | ')}`
@@ -2202,7 +2202,7 @@ NO inventes contenido. Solo pregunta para concretar.
               })
             }
           } else if (subtype === 'sequence_numeric' || subtype === 'sequence_letter') {
-            if (cd.sequence) contentDataText += `\nSerie: ${cd.sequence.join(', ')}`
+            if (Array.isArray(cd.sequence)) contentDataText += `\nSerie: ${cd.sequence.join(', ')}`
             if (cd.pattern_type) contentDataText += `\nTipo de patrón: ${cd.pattern_type}`
           }
         }
