@@ -280,15 +280,20 @@ export default function TestPageWrapper({
         }
       } else if (testType === 'aleatorio' && themes && themes.length > 0) {
         // 🎲 MANEJAR TEST ALEATORIO MULTI-TEMA
+        const multiTemaConfig = {
+          ...testConfig,
+          positionType: positionType || 'auxiliar_administrativo'
+        }
         console.log('🎲 Cargando test aleatorio multi-tema con parámetros:', {
           themes,
           searchParams: finalSearchParams,
           numQuestions: finalSearchParams?.get?.('n'),
-          difficulty: finalSearchParams?.get?.('difficulty')
+          difficulty: finalSearchParams?.get?.('difficulty'),
+          positionType: multiTemaConfig.positionType
         })
 
-        // Llamar fetchAleatorioMultiTema con temas específicos
-        questions = await fetchAleatorioMultiTema(themes, finalSearchParams, testConfig)
+        // Llamar fetchAleatorioMultiTema con temas específicos y positionType correcto
+        questions = await fetchAleatorioMultiTema(themes, finalSearchParams, multiTemaConfig)
       } else if (testType === 'content_scope') {
         // 📋 MANEJAR CONTENT_SCOPE DE FORMA ESPECIAL
         console.log('📋 Cargando test content_scope con config:', contentScopeConfig)
