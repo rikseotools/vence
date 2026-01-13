@@ -281,8 +281,11 @@ export async function GET(request) {
     }
 
     // 6. Calcular estado general
+    // isOk solo si no hay discrepancias de ningún tipo
     const isOk = comparison.summary.title_mismatch === 0 &&
-                 comparison.summary.content_mismatch === 0
+                 comparison.summary.content_mismatch === 0 &&
+                 comparison.summary.extra_in_db === 0 &&
+                 comparison.summary.missing_in_db === 0
 
     // 7. Actualizar estado de verificación en la ley
     const summaryToSave = {

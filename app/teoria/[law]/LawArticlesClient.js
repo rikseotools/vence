@@ -50,6 +50,11 @@ export default function LawArticlesClient({ params, searchParams }) {
   const [selectedSectionFilter, setSelectedSectionFilter] = useState(null)
   const [availableSections, setAvailableSections] = useState([])
   const [sectionsLoaded, setSectionsLoaded] = useState(false)
+  const [showAllArticles, setShowAllArticles] = useState(false)
+
+  // Constantes para SEO y rendimiento
+  const INITIAL_ARTICLES_COUNT = 5
+  const CONTENT_TRUNCATE_LENGTH = 150
 
   // Resolver params en el cliente
   useEffect(() => {
@@ -92,9 +97,17 @@ export default function LawArticlesClient({ params, searchParams }) {
       
       try {
         setLoading(true)
-        
+
         // Cargar artículos de la ley
         const data = await fetchLawArticles(lawSlug)
+
+        // Verificar si la ley no existe
+        if (data.notFound) {
+          setError(data.message || 'Ley no encontrada')
+          setLoading(false)
+          return
+        }
+
         setLawData(data)
         
         // Cargar secciones de la ley para determinar si mostrar filtro
@@ -574,58 +587,70 @@ export default function LawArticlesClient({ params, searchParams }) {
         </div>
       )}
 
-      {/* Lista de artículos - Diseño minimalista */}
+      {/* Lista de artículos - Diseño minimalista con lazy loading */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {filteredArticles.length > 0 ? (
           <div className="space-y-3">
-            {filteredArticles.map((article) => {
+            {/* Mostrar primeros N artículos o todos si showAllArticles */}
+            {(showAllArticles ? filteredArticles : filteredArticles.slice(0, INITIAL_ARTICLES_COUNT)).map((article, index) => {
               const isProblematic = problematicArticles.includes(article.article_number)
-              
+              const showTruncatedContent = !showAllArticles && index < INITIAL_ARTICLES_COUNT
+
               return (
-                <Link 
+                <Link
                   key={article.id}
                   href={`/teoria/${law.slug}/articulo-${article.article_number}`}
                   className="group block"
                 >
                   <div className={`border rounded-lg p-4 transition-all duration-200 ${
-                    isProblematic 
-                      ? 'border-red-300 bg-red-50/70 hover:border-red-400 hover:bg-red-50' 
+                    isProblematic
+                      ? 'border-red-300 bg-red-50/70 hover:border-red-400 hover:bg-red-50'
                       : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
                   }`}>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-3 flex-wrap gap-y-1">
                           {/* Número de artículo */}
-                          <span className={`flex-shrink-0 w-16 text-sm font-medium px-2 py-1 rounded ${
-                            isProblematic 
-                              ? 'text-red-700 bg-red-100' 
+                          <span className={`flex-shrink-0 text-sm font-medium px-2 py-1 rounded ${
+                            isProblematic
+                              ? 'text-red-700 bg-red-100'
                               : 'text-blue-600 bg-blue-100'
                           }`}>
                             Art. {article.article_number}
                           </span>
-                          
+
                           {/* Indicador de problema */}
                           {isProblematic && (
                             <span className="flex-shrink-0 text-red-600 text-sm font-medium">
                               ⚠️ Necesita atención
                             </span>
                           )}
-                          
+
                           {/* Título del artículo */}
                           <h3 className={`font-medium transition-colors ${
-                            isProblematic 
-                              ? 'text-red-900 group-hover:text-red-700' 
+                            isProblematic
+                              ? 'text-red-900 group-hover:text-red-700'
                               : 'text-gray-900 group-hover:text-blue-600'
                           }`}>
                             {article.title}
                           </h3>
                         </div>
+
+                        {/* Contenido truncado para SEO - solo en primeros artículos */}
+                        {showTruncatedContent && article.content && (
+                          <p className="mt-2 text-sm text-gray-500 line-clamp-2">
+                            {article.content.length > CONTENT_TRUNCATE_LENGTH
+                              ? article.content.substring(0, CONTENT_TRUNCATE_LENGTH) + '...'
+                              : article.content
+                            }
+                          </p>
+                        )}
                       </div>
-                      
+
                       {/* Flecha sutil */}
-                      <div className={`flex-shrink-0 transition-colors ${
-                        isProblematic 
-                          ? 'text-red-400 group-hover:text-red-600' 
+                      <div className={`flex-shrink-0 transition-colors mt-1 ${
+                        isProblematic
+                          ? 'text-red-400 group-hover:text-red-600'
                           : 'text-gray-400 group-hover:text-blue-500'
                       }`}>
                         <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -637,6 +662,19 @@ export default function LawArticlesClient({ params, searchParams }) {
                 </Link>
               )
             })}
+
+            {/* Botón "Ver todos los artículos" */}
+            {!showAllArticles && filteredArticles.length > INITIAL_ARTICLES_COUNT && (
+              <button
+                onClick={() => setShowAllArticles(true)}
+                className="w-full mt-4 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors flex items-center justify-center space-x-2"
+              >
+                <span>Ver los {filteredArticles.length - INITIAL_ARTICLES_COUNT} artículos restantes</span>
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            )}
           </div>
         ) : (
           <div className="text-center py-12">
