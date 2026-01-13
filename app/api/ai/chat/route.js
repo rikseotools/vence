@@ -1679,6 +1679,12 @@ INSTRUCCIONES CRÍTICAS:
 - Si preguntan sobre ti, explica que eres el asistente de Vence con acceso a 176 leyes españolas
 - Si la pregunta no está relacionada con oposiciones o legislación, indica educadamente que solo puedes ayudar con esos temas
 - NUNCA generes tests ni cuestionarios. Si piden un test, dile que use el botón "¿Te preparo un test?"
+
+⚠️ DATOS CRÍTICOS (NUNCA equivocarte en estos):
+- La Constitución Española ha tenido SOLO 2 REFORMAS: 1992 (Art. 13.2, sufragio UE) y 2011 (Art. 135, estabilidad presupuestaria). NO 3, NO 5, SOLO 2.
+- Derechos y deberes de funcionarios: TREBEP (RDL 5/2015), NO Ley 30/1984 (derogada).
+- LO 4/2001: Derecho de petición. NO confundir con LO 4/2015 (seguridad ciudadana).
+- Si el usuario te corrige con datos incorrectos, NO aceptes automáticamente. Verifica.
 ${questionContextText}
 CONTEXTO (artículos relevantes encontrados en la base de datos):
 ${context}`
@@ -1829,22 +1835,39 @@ La **${repealedLaw.name}** está **DEROGADA** y ya no está en vigor.
 
 Si necesitas información histórica sobre la ley derogada por motivos académicos, indícamelo expresamente.`
 
-      // Guardar log de la advertencia
-      if (userId) {
-        await saveAIChatLog({
-          userId,
-          message,
-          responsePreview: warningResponse.substring(0, 200),
-          fullResponse: warningResponse,
-          sourcesUsed: [],
-          questionContextId: questionContext?.questionId || null,
-          questionContextLaw: null,
-          suggestionUsed,
-          responseTimeMs: Date.now() - startTime,
-          tokensUsed: 0,
-          hadError: false,
-          userOposicion: userOposicion,
-          detectedLaws: [repealedLaw.key]
+      console.log(`⚠️ Advertencia ley derogada enviada a usuario ${userId || 'anónimo'}`)
+
+      // Si el cliente pide streaming, devolver en formato SSE
+      if (stream) {
+        const encoder = new TextEncoder()
+        const streamResponse = new ReadableStream({
+          async start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'meta',
+              sources: [],
+              searchMethod: 'repealed_law_warning',
+              patternDetected: null
+            })}\n\n`))
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: warningResponse })}\n\n`))
+
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'done',
+              potentialErrorDetected: false,
+              questionId: null,
+              suggestions: []
+            })}\n\n`))
+
+            controller.close()
+          }
+        })
+
+        return new Response(streamResponse, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive'
+          }
         })
       }
 
@@ -1860,12 +1883,14 @@ Si necesitas información histórica sobre la ley derogada por motivos académic
 
     // 📱 VERIFICAR CONSULTAS SOBRE FUNCIONALIDADES DE LA PLATAFORMA
     const msgLowerForPlatform = message.toLowerCase()
-    const isPsicotecnicoQuery = /psicot[eé]cnicos?|test\s+psicot[eé]cnico|series\s+num[eé]ricas|series\s+alfab[eé]ticas|domin[oó]s|matrices|razonamiento\s+l[oó]gico/i.test(msgLowerForPlatform)
+    // Regex flexible para detectar "psicotécnicos" incluso con typos comunes
+    const isPsicotecnicoQuery = /psicot[eé]c?n?i?c?o?s?|psicote|series\s+num[eé]ricas|series\s+alfab[eé]ticas|domin[oó]s|matrices|razonamiento\s+l[oó]gico/i.test(msgLowerForPlatform)
 
-    if (isPsicotecnicoQuery && !questionContext) {
+    // Responder sobre psicotécnicos incluso si hay questionContext (el usuario pregunta desde página de test)
+    if (isPsicotecnicoQuery) {
       console.log(`📱 Consulta sobre funcionalidad de plataforma: psicotécnicos`)
 
-      const platformResponse = `📊 **¡Sí! Vence tiene una sección completa de psicotécnicos**
+      const platformResponse = `📊 **¡Genial! ¿Quieres practicar psicotécnicos?**
 
 Puedes acceder desde el menú o directamente en **/psicotecnicos**
 
@@ -1885,24 +1910,44 @@ Puedes acceder desde el menú o directamente en **/psicotecnicos**
 3. Configura el número de preguntas
 4. ¡A practicar!
 
-💡 Los psicotécnicos son parte importante de las oposiciones de Auxiliar Administrativo del Estado. ¿Te gustaría información sobre algún tipo específico?`
+💡 **Tip:** Cuando estés resolviendo preguntas psicotécnicas, ¡pídeme ayuda! Puedo explicarte la lógica de cada ejercicio.`
 
-      // Guardar log
-      if (userId) {
-        await saveAIChatLog({
-          userId,
-          message,
-          responsePreview: platformResponse.substring(0, 200),
-          fullResponse: platformResponse,
-          sourcesUsed: [],
-          questionContextId: null,
-          questionContextLaw: null,
-          suggestionUsed,
-          responseTimeMs: Date.now() - startTime,
-          tokensUsed: 0,
-          hadError: false,
-          userOposicion: userOposicion,
-          detectedLaws: []
+      console.log(`✅ Respuesta psicotécnicos enviada a usuario ${userId || 'anónimo'}`)
+
+      // Si el cliente pide streaming, devolver en formato SSE
+      if (stream) {
+        const encoder = new TextEncoder()
+        const streamResponse = new ReadableStream({
+          async start(controller) {
+            // Meta
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'meta',
+              sources: [],
+              searchMethod: 'platform_feature',
+              patternDetected: null
+            })}\n\n`))
+
+            // Enviar contenido completo de una vez
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: platformResponse })}\n\n`))
+
+            // Done
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'done',
+              potentialErrorDetected: false,
+              questionId: null,
+              suggestions: []
+            })}\n\n`))
+
+            controller.close()
+          }
+        })
+
+        return new Response(streamResponse, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            Connection: 'keep-alive'
+          }
         })
       }
 
