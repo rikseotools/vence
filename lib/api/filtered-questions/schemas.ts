@@ -22,9 +22,12 @@ export type SectionFilter = z.infer<typeof sectionFilterSchema>
 // ============================================
 
 export const getFilteredQuestionsRequestSchema = z.object({
-  // Tema y tipo de oposición
-  topicNumber: z.number().int().min(1),
+  // Tema y tipo de oposición (topicNumber=0 significa sin filtro de tema)
+  topicNumber: z.number().int().min(0),
   positionType: z.enum(['administrativo_estado', 'auxiliar_administrativo', 'administrativo']),
+
+  // 🆕 Múltiples temas (para test aleatorio multi-tema)
+  multipleTopics: z.array(z.number().int().min(1)).default([]),
 
   // Cantidad de preguntas
   numQuestions: z.number().int().min(1).max(100).default(25),
@@ -44,9 +47,14 @@ export const getFilteredQuestionsRequestSchema = z.object({
   // Modo de dificultad
   difficultyMode: z.enum(['random', 'easy', 'medium', 'hard', 'adaptive']).default('random'),
 
-  // Excluir preguntas recientes del usuario
+  // 🆕 Excluir preguntas recientes del usuario
   excludeRecentDays: z.number().int().min(0).max(365).default(0),
   userId: z.string().uuid().optional(),
+
+  // 🆕 Filtros avanzados
+  focusEssentialArticles: z.boolean().default(false),  // Solo artículos con preguntas oficiales
+  prioritizeNeverSeen: z.boolean().default(false),     // Priorizar preguntas nunca vistas
+  proportionalByTopic: z.boolean().default(false),     // Distribución proporcional entre temas
 })
 
 export type GetFilteredQuestionsRequest = z.infer<typeof getFilteredQuestionsRequestSchema>

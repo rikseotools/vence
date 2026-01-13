@@ -321,6 +321,16 @@ export default function TemaAdministrativoPage({ params }) {
       if (config.selectedArticlesByLaw && Object.keys(config.selectedArticlesByLaw).length > 0) {
         params.set('selected_articles_by_law', JSON.stringify(config.selectedArticlesByLaw))
       }
+      // 📚 FILTRO DE SECCIONES/TÍTULOS
+      console.log('📚 DEBUG selectedSectionFilters en handleStartCustomTest:', {
+        exists: !!config.selectedSectionFilters,
+        length: config.selectedSectionFilters?.length,
+        value: config.selectedSectionFilters
+      })
+      if (config.selectedSectionFilters && config.selectedSectionFilters.length > 0) {
+        params.set('selected_section_filters', JSON.stringify(config.selectedSectionFilters))
+        console.log('📚 ✅ selected_section_filters añadido a URL')
+      }
 
       const testPath = testMode === 'examen' ? 'test-examen' : 'test-personalizado'
       const testUrl = `/administrativo-estado/test/tema/${temaNumber}/${testPath}?${params.toString()}`

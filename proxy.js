@@ -1,4 +1,4 @@
-// middleware.js
+// proxy.js (Next.js 16+)
 // Rate limiting para tests + headers anti-indexación
 import { NextResponse } from 'next/server'
 
@@ -49,7 +49,7 @@ function checkRateLimit(sessionKey) {
   return { allowed: true, remaining: RATE_LIMIT_CONFIG.maxRequests - record.count }
 }
 
-export function middleware(request) {
+export function proxy(request) {
   const pathname = request.nextUrl.pathname
 
   // ✅ NO interceptar rutas de autenticación ni estáticos

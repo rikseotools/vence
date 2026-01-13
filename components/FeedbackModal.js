@@ -630,7 +630,8 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
         referrer: document.referrer || null,
         wants_response: false,
         status: 'pending',
-        priority: 'medium'
+        priority: 'medium',
+        question_id: detectedContext.questionId || questionId || null // 🔍 Guardar ID de pregunta para debugging
       }
 
       // Solo agregar theme_context si hay información de tema Y la columna existe

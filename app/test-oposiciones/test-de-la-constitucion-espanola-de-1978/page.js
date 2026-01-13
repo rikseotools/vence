@@ -25,7 +25,7 @@ export async function generateMetadata() {
     
     // ✅ Canonical hacia URL corta optimizada para SEO
     alternates: {
-      canonical: '/test-oposiciones/constitucion-titulos'
+      canonical: 'https://www.vence.es/test-oposiciones/constitucion-titulos'
     },
     
     openGraph: {

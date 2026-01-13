@@ -30,13 +30,16 @@ function TestPersonalizadoContent({ params }) {
   // Extraer configuración de la URL
   const selectedLawsParam = searchParams.get('selected_laws')
   const selectedArticlesByLawParam = searchParams.get('selected_articles_by_law')
+  const selectedSectionFiltersParam = searchParams.get('selected_section_filters') // 📚 FILTRO DE TÍTULOS
 
   let selectedLaws = []
   let selectedArticlesByLaw = {}
+  let selectedSectionFilters = []
 
   try {
     selectedLaws = selectedLawsParam ? JSON.parse(selectedLawsParam) : []
     selectedArticlesByLaw = selectedArticlesByLawParam ? JSON.parse(selectedArticlesByLawParam) : {}
+    selectedSectionFilters = selectedSectionFiltersParam ? JSON.parse(selectedSectionFiltersParam) : []
   } catch (error) {
     console.error('Error parsing URL params:', error)
   }
@@ -55,6 +58,7 @@ function TestPersonalizadoContent({ params }) {
     timeLimit: searchParams.get('time_limit') ? parseInt(searchParams.get('time_limit')) : null,
     selectedLaws,
     selectedArticlesByLaw,
+    selectedSectionFilters, // 📚 FILTRO DE TÍTULOS
     positionType: 'administrativo' // Importante: indicar el tipo de oposición
   }
 

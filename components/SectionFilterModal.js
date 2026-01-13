@@ -63,6 +63,11 @@ export default function SectionFilterModal({
   }
 
   const handleApply = () => {
+    console.log('📚 SectionFilterModal - Aplicando selección:', {
+      localSelectedSections,
+      count: localSelectedSections.length,
+      titles: localSelectedSections.map(s => s.title)
+    })
     onSectionSelect(localSelectedSections)
     onClose()
   }

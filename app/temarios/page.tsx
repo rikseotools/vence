@@ -20,11 +20,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Temarios de Oposiciones Gratis | Vence',
     description: 'Temarios completos y actualizados para oposiciones',
-    url: '/temarios',
+    url: 'https://www.vence.es/temarios',
     type: 'website'
   },
   alternates: {
-    canonical: '/temarios'
+    canonical: 'https://www.vence.es/temarios'
   }
 };
 
