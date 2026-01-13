@@ -299,19 +299,7 @@ export default function PWAStatsReal() {
         </div>
 
         {/* Métricas de Uso */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Duración Media Sesión
-            </h4>
-            <p className="text-xl font-bold text-gray-900 dark:text-white">
-              {stats.avgSessionDuration}
-            </p>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-              Tiempo promedio que pasan en la app
-            </p>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
             <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Sesiones desde PWA
