@@ -99,6 +99,36 @@ export default function OposicionesPage() {
       ],
       href: '/tramitacion-procesal',
       boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27053'
+    },
+    {
+      id: 'auxilio-judicial',
+      name: 'Auxilio Judicial',
+      shortName: 'Auxilio Judicial',
+      badge: 'C2',
+      icon: '⚖️',
+      color: 'indigo',
+      description: 'Oposicion para trabajar en la Administracion de Justicia como funcionario del Cuerpo de Auxilio Judicial. Temario oficial publicado en BOE 30/12/2025.',
+      category: 'Administracion de Justicia',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 26,
+      tests: 100,
+      difficulty: 'Intermedio',
+      duration: '9-15 meses',
+      salary: '18.000 - 22.000',
+      features: [
+        'Temario oficial BOE 2025 (26 temas)',
+        'Tests por temas y bloques',
+        '3 bloques tematicos',
+        'Seguimiento de progreso',
+        'Estadisticas detalladas'
+      ],
+      requirements: [
+        'Titulo de Graduado en ESO o equivalente',
+        'Nacionalidad espanola o UE',
+        'Tener 16 anos y no exceder edad jubilacion'
+      ],
+      href: '/auxilio-judicial',
+      boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27053'
     }
   ]
 
@@ -327,9 +357,7 @@ export default function OposicionesPage() {
               Estamos trabajando para añadir más oposiciones a nuestra plataforma.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
-              <span>Gestión Procesal</span>
-              <span>•</span>
-              <span>Auxilio Judicial</span>
+              <span>Gestion Procesal</span>
             </div>
           </div>
         </div>

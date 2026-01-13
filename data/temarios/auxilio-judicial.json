@@ -1,0 +1,171 @@
+{
+  "oposicion": {
+    "nombre": "Auxilio Judicial",
+    "slug": "auxilio-judicial",
+    "short_name": "Auxilio Judicial",
+    "grupo": "C2",
+    "administracion": "Administración de Justicia",
+    "position_type": "auxilio_judicial",
+    "boe_referencia": "BOE-A-2025-27053",
+    "boe_fecha": "2025-12-30",
+    "plazas_libres": 382,
+    "plazas_discapacidad": 43,
+    "plazas_total": 425,
+    "titulo_requerido": "Graduado en ESO o equivalente"
+  },
+  "bloques": [
+    { "numero": 1, "nombre": "Bloque I: Derecho Constitucional y Organización del Estado", "temas": [1, 2, 3, 4, 5] },
+    { "numero": 2, "nombre": "Bloque II: Organización Judicial y Funcionarios", "temas": [6, 7, 8, 9, 10, 11, 12, 13, 14, 15] },
+    { "numero": 3, "nombre": "Bloque III: Procedimientos y Actos Procesales", "temas": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26] }
+  ],
+  "temas": [
+    {
+      "numero": 1,
+      "titulo": "La Constitución Española de 1978",
+      "epigrafe": "La Constitución española de 1978: Estructura y contenido. Las atribuciones de la Corona. Las Cortes Generales: Composición, atribuciones y funcionamiento. La elaboración de las leyes. El Tribunal Constitucional. Composición y funciones."
+    },
+    {
+      "numero": 2,
+      "titulo": "Igualdad y no discriminación",
+      "epigrafe": "Igualdad y no discriminación por razón de género. La Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres. La Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género. La Ley 15/2022, de 12 de julio, integral para la igualdad de trato y la no discriminación. La Ley 4/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garantía de los derechos de las personas LGTBI."
+    },
+    {
+      "numero": 3,
+      "titulo": "El Gobierno y la Administración",
+      "epigrafe": "El Gobierno: su composición. Nombramiento y cese. Las funciones del Gobierno. La Administración. Los Secretarios de Estado. Los Subsecretarios. La estructura ministerial. La organización territorial de la Administración General del Estado: Delegados y Subdelegados del Gobierno en las Comunidades Autónomas y en las provincias. El Ministerio de la Presidencia, Justicia y Relaciones con las Cortes: Estructura básica. La Secretaría de Estado de Justicia."
+    },
+    {
+      "numero": 4,
+      "titulo": "Organización territorial del Estado",
+      "epigrafe": "La organización territorial del Estado en la Constitución. Las Comunidades Autónomas: su constitución y competencias. Los Estatutos de Autonomía. La Administración Local: la provincia y el municipio."
+    },
+    {
+      "numero": 5,
+      "titulo": "La Unión Europea",
+      "epigrafe": "La Unión Europea. Competencias de la Unión Europea. Instituciones y órganos de la Unión Europea: el Parlamento Europeo, el Consejo Europeo, el Consejo de la Unión Europea, la Comisión Europea, el Tribunal de Justicia de la Unión Europea, el Tribunal de Cuentas."
+    },
+    {
+      "numero": 6,
+      "titulo": "El Poder Judicial",
+      "epigrafe": "El Poder Judicial. El Consejo General del Poder Judicial: composición y funciones. La jurisdicción: Jueces y Magistrados. La independencia judicial. Los Jueces de Paz. El Ministerio Fiscal."
+    },
+    {
+      "numero": 7,
+      "titulo": "Órganos jurisdiccionales superiores",
+      "epigrafe": "El Tribunal Supremo. La Audiencia Nacional. Los Tribunales Superiores de Justicia. Las Audiencias Provinciales. Organización y competencia."
+    },
+    {
+      "numero": 8,
+      "titulo": "Órganos jurisdiccionales de instancia",
+      "epigrafe": "Los Tribunales de Instancia. El Tribunal Central de Instancia. Secciones de lo Civil, de Instrucción, de Familia, de lo Mercantil, de Violencia sobre la Mujer, de Violencia contra la Infancia y la Adolescencia, de lo Penal, de Menores, de Vigilancia Penitenciaria, de lo Contencioso-Administrativo y de lo Social. Especialidad de los Juzgados de lo Mercantil de Alicante. Los Jueces de Paz. Especialidad de las Oficinas de Justicia en los municipios."
+    },
+    {
+      "numero": 9,
+      "titulo": "Derechos de los ciudadanos ante la Justicia",
+      "epigrafe": "La Carta de Derechos de los ciudadanos ante la Justicia. Derechos de información, de atención, de gestión, de identificación de actuaciones y funcionarios, derechos lingüísticos. Funciones de los Abogados, Procuradores de los Tribunales y Graduados Sociales. La Asistencia Jurídica Gratuita."
+    },
+    {
+      "numero": 10,
+      "titulo": "Modernización de la oficina judicial",
+      "epigrafe": "La modernización de la oficina judicial. La eficiencia del servicio público de Justicia. Las nuevas tecnologías. Presentación de escritos por vía telemática. El expediente digital. Concepto de firma digital. Uso de videoconferencia. Protección de datos y Administración de Justicia."
+    },
+    {
+      "numero": 11,
+      "titulo": "El Letrado de la Administración de Justicia",
+      "epigrafe": "El Letrado de la Administración de Justicia: funciones y competencias. El Secretario de Gobierno. Los Secretarios Coordinadores."
+    },
+    {
+      "numero": 12,
+      "titulo": "Los Cuerpos de Funcionarios",
+      "epigrafe": "Los Cuerpos de Funcionarios al servicio de la Administración de Justicia. Los Cuerpos Generales: funciones. Los Cuerpos Especiales. Los Médicos Forenses."
+    },
+    {
+      "numero": 13,
+      "titulo": "Ingreso y carrera de los funcionarios",
+      "epigrafe": "Cuerpos Generales: funciones específicas. Formas de acceso. Promoción interna. Adquisición y pérdida de la condición de funcionario. La rehabilitación. Derechos, deberes e incompatibilidades. La jornada y horarios de trabajo. Las vacaciones, permisos y licencias."
+    },
+    {
+      "numero": 14,
+      "titulo": "Situaciones administrativas y régimen disciplinario",
+      "epigrafe": "Situaciones administrativas de los funcionarios de los Cuerpos al servicio de la Administración de Justicia. La actividad profesional. Provisión de puestos de trabajo. El régimen disciplinario."
+    },
+    {
+      "numero": 15,
+      "titulo": "Libertad sindical y prevención de riesgos",
+      "epigrafe": "La libertad sindical. El Sindicato en la Constitución española. Las elecciones sindicales según el texto refundido del Estatuto Básico del Empleado Público. El derecho de huelga. La salud y la prevención de riesgos laborales."
+    },
+    {
+      "numero": 16,
+      "titulo": "Procedimientos civiles declarativos",
+      "epigrafe": "Los procedimientos declarativos de la Ley de Enjuiciamiento Civil 1/2000, de 7 de enero: el juicio ordinario, el juicio verbal. Los procedimientos especiales. Los procesos sobre capacidad, filiación, matrimonio y menores. El procedimiento monitorio. El procedimiento para el requerimiento de pago. Especial referencia a los mecanismos de solución de controversias de carácter no jurisdiccional. Los procedimientos de la Ley 15/2015, de 2 de julio, de la Jurisdicción Voluntaria."
+    },
+    {
+      "numero": 17,
+      "titulo": "Procedimientos civiles de ejecución",
+      "epigrafe": "Los procedimientos de ejecución en la Ley de Enjuiciamiento Civil. La ejecución dineraria y no dineraria. Los supuestos especiales de ejecución. Las medidas cautelares. El embargo: concepto y práctica. Los lanzamientos. Las remociones. Los depósitos judiciales."
+    },
+    {
+      "numero": 18,
+      "titulo": "Procedimientos penales",
+      "epigrafe": "Los procedimientos penales de la Ley de Enjuiciamiento Criminal: el procedimiento ordinario, el procedimiento abreviado y el procedimiento para el enjuiciamiento de delitos leves. El procedimiento ante el Tribunal del Jurado. Los Juicios Rápidos. El procedimiento restaurativo."
+    },
+    {
+      "numero": 19,
+      "titulo": "Procedimientos contencioso-administrativos",
+      "epigrafe": "Los procedimientos contencioso-administrativos: el procedimiento ordinario, el procedimiento abreviado, los procedimientos especiales."
+    },
+    {
+      "numero": 20,
+      "titulo": "El proceso laboral",
+      "epigrafe": "El proceso laboral: el procedimiento ordinario, el procedimiento de despido, el procedimiento de Seguridad Social."
+    },
+    {
+      "numero": 21,
+      "titulo": "Los actos procesales",
+      "epigrafe": "Los actos procesales del órgano judicial: requisitos. Requisitos de lugar, tiempo: los términos y plazos; su cómputo. Forma. La lengua oficial. Defectos de los actos procesales: nulidad, anulabilidad, irregularidad. Subsanación."
+    },
+    {
+      "numero": 22,
+      "titulo": "Resoluciones de órganos judiciales",
+      "epigrafe": "Las resoluciones de los órganos judiciales unipersonales y colegiados. Clases. Contenido. Características. Resoluciones del Letrado de la Administración de Justicia."
+    },
+    {
+      "numero": 23,
+      "titulo": "Comunicación con tribunales y autoridades",
+      "epigrafe": "Los actos de comunicación con otros Tribunales y Autoridades: oficios y mandamientos. El auxilio judicial: los exhortos y los mandamientos en el proceso penal. Cooperación jurídica internacional: las comisiones rogatorias."
+    },
+    {
+      "numero": 24,
+      "titulo": "Comunicación con las partes",
+      "epigrafe": "Los actos de comunicación a las partes y otros intervinientes en el proceso: notificaciones, requerimientos, citaciones y emplazamientos. Práctica de los actos de comunicación. Comunicaciones mediante nuevas tecnologías."
+    },
+    {
+      "numero": 25,
+      "titulo": "El Registro Civil",
+      "epigrafe": "El Registro Civil. Estructura. Las Oficinas del Registro Civil: Central, Generales y Consulares. Sus funciones. Hechos y actos inscribibles. La inscripción del nacimiento y la inscripción de filiación. La inscripción del matrimonio. La inscripción de la defunción. Otras inscripciones. Las certificaciones. Los expedientes del Registro Civil."
+    },
+    {
+      "numero": 26,
+      "titulo": "El archivo judicial",
+      "epigrafe": "El archivo judicial de gestión. La documentación judicial en la fase de ejecución. La legislación vigente en materia de archivos. La remisión de documentación al archivo. Las relaciones documentales. Nuevas tecnologías en la gestión de la documentación. Archivo y destrucción de expedientes y la constitución de las Juntas de Expurgo."
+    }
+  ],
+  "leyes_principales": [
+    "Constitución Española",
+    "LO 6/1985 - LOPJ (Ley Orgánica del Poder Judicial)",
+    "LO 2/1979 - LOTC (Ley Orgánica del Tribunal Constitucional)",
+    "LO 3/2007 - Ley de Igualdad",
+    "LO 1/2004 - Violencia de Género",
+    "Ley 15/2022 - Igualdad de trato y no discriminación",
+    "Ley 4/2023 - Igualdad personas trans y LGTBI",
+    "Ley 50/1997 - Ley del Gobierno",
+    "Ley 40/2015 - LRJSP (Régimen Jurídico del Sector Público)",
+    "Ley 1/2000 - LEC (Ley de Enjuiciamiento Civil)",
+    "LECrim - Ley de Enjuiciamiento Criminal",
+    "Ley 29/1998 - LJCA (Ley Jurisdicción Contencioso-Administrativa)",
+    "Ley 36/2011 - LRJS (Ley Reguladora Jurisdicción Social)",
+    "Ley 15/2015 - Jurisdicción Voluntaria",
+    "Ley 20/2011 - Ley del Registro Civil",
+    "RDL 5/2015 - TREBEP (Estatuto Básico del Empleado Público)"
+  ]
+}

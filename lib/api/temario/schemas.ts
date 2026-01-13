@@ -149,6 +149,12 @@ export const OPOSICIONES = {
     totalTopics: 37,
     positionType: 'tramitacion_procesal',
   },
+  'auxilio-judicial': {
+    id: 'auxilio_judicial',
+    name: 'Auxilio Judicial',
+    totalTopics: 26,
+    positionType: 'auxilio_judicial',
+  },
 } as const
 
 export type OposicionSlug = keyof typeof OPOSICIONES
