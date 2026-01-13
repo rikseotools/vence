@@ -27,8 +27,8 @@ async function enviarEmailMejora(usuario) {
     html: emailTemplates.mejoras_producto.html(
       usuario.name,
       0, // days inactive no aplica para este tipo de email
-      `https://vence.es/auxiliar-administrativo-estado/test/tema/1`, // URL del test
-      `https://vence.es/unsubscribe?token=${usuario.unsubscribeToken}`, // URL unsubscribe  
+      `https://www.vence.es/auxiliar-administrativo-estado/test/tema/1`, // URL del test
+      `https://www.vence.es/unsubscribe?token=${usuario.unsubscribeToken}`, // URL unsubscribe  
       mejoraDatos
     )
   }

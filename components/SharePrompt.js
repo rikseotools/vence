@@ -122,7 +122,7 @@ export default function SharePrompt({
   const handleShare = async (platform) => {
     // URL con UTM parameters para trackear en Google Analytics
     const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=exam_share&utm_content=score_${score}`
-    const url = `https://vence.es?${utmParams}`
+    const url = `https://www.vence.es?${utmParams}`
     const shareText = `He sacado un ${score}/10 en mi test de oposiciones en vence.es`
     let shareUrl = ''
 

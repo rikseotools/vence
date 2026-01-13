@@ -118,7 +118,7 @@ export async function generateMetadata({
   params: Promise<{ filtro: string }>
 }): Promise<Metadata> {
   const { filtro } = await params;
-  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://vence.es';
+  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
   const year = new Date().getFullYear();
 
   const filter = detectFilterType(filtro);

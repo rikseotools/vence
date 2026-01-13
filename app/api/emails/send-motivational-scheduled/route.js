@@ -603,7 +603,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
               
               <!-- CTA Button con tracking -->
               <div style="text-align: center; margin: 35px 0;">
-                <a href="https://vence.es/api/email-tracking/click?email_id=${temporaryEmailId}&user_id=${userId}&action=main_cta&type=motivation&redirect=${encodeURIComponent('https://www.vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational')}" 
+                <a href="https://www.vence.es/api/email-tracking/click?email_id=${temporaryEmailId}&user_id=${userId}&action=main_cta&type=motivation&redirect=${encodeURIComponent('https://www.vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational')}" 
                    style="display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: bold; font-size: 16px;">
                   🎯 Hacer Test Ahora
                 </a>
@@ -630,7 +630,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
           </div>
           
           <!-- Pixel de tracking para apertura -->
-          <img src="https://vence.es/api/email-tracking/open?email_id=${temporaryEmailId}&user_id=${userId}&type=motivation" 
+          <img src="https://www.vence.es/api/email-tracking/open?email_id=${temporaryEmailId}&user_id=${userId}&type=motivation" 
                width="1" height="1" style="display: none;" alt="">
         </body>
       </html>

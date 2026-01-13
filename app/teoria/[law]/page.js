@@ -29,7 +29,7 @@ export async function generateMetadata({ params }) {
     openGraph: {
       title,
       description,
-      url: `https://vence.es/teoria/${lawSlug}`,
+      url: `https://www.vence.es/teoria/${lawSlug}`,
       type: 'article',
       siteName: 'Vence - Preparación de Oposiciones'
     },

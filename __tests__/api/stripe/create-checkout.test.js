@@ -246,18 +246,18 @@ describe('Stripe Create Checkout Validators', () => {
   // ============================================
   describe('buildSuccessUrl', () => {
     it('incluye CHECKOUT_SESSION_ID placeholder', () => {
-      const url = buildSuccessUrl('https://vence.es')
+      const url = buildSuccessUrl('https://www.vence.es')
 
-      expect(url).toBe('https://vence.es/premium/success?session_id={CHECKOUT_SESSION_ID}')
+      expect(url).toBe('https://www.vence.es/premium/success?session_id={CHECKOUT_SESSION_ID}')
       expect(url).toContain('{CHECKOUT_SESSION_ID}')
     })
   })
 
   describe('buildCancelUrl', () => {
     it('incluye query param cancelled', () => {
-      const url = buildCancelUrl('https://vence.es')
+      const url = buildCancelUrl('https://www.vence.es')
 
-      expect(url).toBe('https://vence.es/premium?cancelled=true')
+      expect(url).toBe('https://www.vence.es/premium?cancelled=true')
     })
   })
 

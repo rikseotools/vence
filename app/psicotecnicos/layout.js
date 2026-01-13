@@ -5,7 +5,7 @@ export const metadata = {
   openGraph: {
     title: 'Examen psicotécnico - Tests Online Gratuitos',
     description: 'Realiza todos los exámenes psicotécnicos que quieras, con este test online clasificados por temas',
-    url: 'https://vence.es/psicotecnicos',
+    url: 'https://www.vence.es/psicotecnicos',
     type: 'website',
     siteName: 'Vence - Preparación de Oposiciones'
   },

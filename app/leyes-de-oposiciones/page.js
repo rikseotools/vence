@@ -9,10 +9,10 @@ export const metadata = {
   openGraph: {
     title: 'Leyes para Oposiciones 2026 - Guía Completa | Vence',
     description: 'Guía completa de las leyes más importantes para oposiciones. Constitución, LOPD, procedimiento administrativo y más normativas actualizadas.',
-    url: 'https://vence.es/leyes-de-oposiciones',
+    url: 'https://www.vence.es/leyes-de-oposiciones',
     siteName: 'Vence',
     images: [{
-      url: 'https://vence.es/og-leyes-oposiciones.jpg',
+      url: 'https://www.vence.es/og-leyes-oposiciones.jpg',
       width: 1200,
       height: 630,
     }],
@@ -23,7 +23,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'Leyes para Oposiciones 2026 - Guía Completa | Vence',
     description: 'Descubre qué leyes estudiar para tu oposición. Constitución, LOPD, Ley 39/2015, TREBEP y más normativas actualizadas.',
-    images: ['https://vence.es/og-leyes-oposiciones.jpg'],
+    images: ['https://www.vence.es/og-leyes-oposiciones.jpg'],
   },
   alternates: {
     canonical: `${process.env.SITE_URL || 'https://www.vence.es'}/leyes-de-oposiciones`

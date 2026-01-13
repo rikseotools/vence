@@ -64,7 +64,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title,
       description,
-      url: `https://vence.es/teoria/${lawSlug}/${articleParam}`,
+      url: `https://www.vence.es/teoria/${lawSlug}/${articleParam}`,
       type: 'article',
       siteName: 'Vence - Preparación de Oposiciones',
     },

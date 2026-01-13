@@ -1,8 +1,22 @@
 // app/teoria/page.js - PÁGINA PRINCIPAL DE TEORÍA CON SEO
+import { unstable_cache } from 'next/cache'
 import { fetchLawsList } from '@/lib/teoriaFetchers'
 import Link from 'next/link'
 import { BookOpenIcon, DocumentTextIcon, ScaleIcon } from '@heroicons/react/24/outline'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
+
+// Cache de 10 minutos para evitar queries repetidas
+const getCachedLaws = unstable_cache(
+  async () => {
+    console.log('🚀 Cargando leyes (sin cache)...')
+    return await fetchLawsList()
+  },
+  ['teoria-laws-list'],
+  {
+    revalidate: 600, // 10 minutos
+    tags: ['teoria'],
+  }
+)
 
 export const metadata = {
   title: 'Teoría Legal - Estudia Legislación Española',
@@ -11,7 +25,7 @@ export const metadata = {
   openGraph: {
     title: 'Teoría Legal - Estudia Legislación Española',
     description: 'Accede a todos los artículos de las principales leyes españolas. Constitución, Ley 39/2015, Ley 40/2015 y más. Teoría completa para oposiciones.',
-    url: 'https://vence.es/teoria',
+    url: 'https://www.vence.es/teoria',
     type: 'website',
     siteName: 'Vence - Preparación de Oposiciones'
   },
@@ -39,9 +53,9 @@ export const metadata = {
 export default async function TeoriaMainPage() {
   let laws = []
   let error = null
-  
+
   try {
-    laws = await fetchLawsList()
+    laws = await getCachedLaws()
   } catch (err) {
     console.error('Error cargando leyes:', err)
     error = err.message

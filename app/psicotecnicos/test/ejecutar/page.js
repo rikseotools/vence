@@ -7,7 +7,7 @@ export const metadata = {
   openGraph: {
     title: 'Test Psicotécnico en Curso - Vence',
     description: 'Realizando evaluación psicotécnica personalizada para preparación de oposiciones.',
-    url: 'https://vence.es/psicotecnicos/test/ejecutar',
+    url: 'https://www.vence.es/psicotecnicos/test/ejecutar',
     type: 'website',
     siteName: 'Vence'
   },

@@ -702,7 +702,7 @@ export default function TestLayout({
 
     const shareText = `🤔 ¿Sabrías responder esta pregunta?\n\n${questionText}\n\nA) ${options[0] || ''}\nB) ${options[1] || ''}\nC) ${options[2] || ''}\nD) ${options[3] || ''}\n\n¿Cuál es la respuesta correcta?`
 
-    const cleanUrl = questionId ? `https://vence.es/pregunta/${questionId}` : 'https://vence.es'
+    const cleanUrl = questionId ? `https://www.vence.es/pregunta/${questionId}` : 'https://www.vence.es'
     const utmUrl = `${cleanUrl}?utm_source=${platform}&utm_medium=social&utm_campaign=question_share`
 
     let shareUrl = ''

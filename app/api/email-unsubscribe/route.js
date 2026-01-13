@@ -231,8 +231,8 @@ function generateUnsubscribeToken(email) {
 // Función para generar URL de unsubscribe
 export function generateUnsubscribeUrl(email, action = 'unsubscribe') {
   const token = generateUnsubscribeToken(email)
-  const baseUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://vence.es' 
+  const baseUrl = process.env.NODE_ENV === 'production'
+    ? 'https://www.vence.es'
     : 'http://localhost:3002'
   
   return `${baseUrl}/api/email-unsubscribe?token=${token}&email=${encodeURIComponent(email)}&action=${action}`
@@ -360,7 +360,7 @@ function generateUnsubscribeHTML({ success, message, details, email }) {
           <div class="email">📧 ${email}</div>
           
           <div class="actions">
-            <a href="https://vence.es/auxiliar-administrativo-estado" class="btn btn-primary">
+            <a href="https://www.vence.es/auxiliar-administrativo-estado" class="btn btn-primary">
               🎯 Ir a Vence
             </a>
             

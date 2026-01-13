@@ -209,7 +209,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params;
-  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://vence.es';
+  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
   const year = new Date().getFullYear();
 
   // Verificar si es un filtro
@@ -463,7 +463,7 @@ const ACCESO_LABELS: Record<string, string> = {
 };
 
 function DetailPage({ conv }: { conv: Convocatoria }) {
-  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://vence.es';
+  const baseUrl = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
   const canonicalSlug = conv.slug || conv.id;
 
   const jsonLd = {

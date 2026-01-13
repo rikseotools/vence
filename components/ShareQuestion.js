@@ -75,7 +75,7 @@ D) ${options[3] || ''}
           share_type: 'question_quiz',
           platform: platform,
           share_text: formatShareText(platform),
-          share_url: `https://vence.es/pregunta/${question.id}`,
+          share_url: `https://www.vence.es/pregunta/${question.id}`,
           device_info: {
             screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
             userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null
@@ -92,14 +92,14 @@ D) ${options[3] || ''}
     const questionId = question.id
     const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=question_share`
     const url = questionId
-      ? `https://vence.es/pregunta/${questionId}?${utmParams}`
-      : `https://vence.es?${utmParams}`
+      ? `https://www.vence.es/pregunta/${questionId}?${utmParams}`
+      : `https://www.vence.es?${utmParams}`
     let shareUrl = ''
 
     // URL limpia para WhatsApp/Telegram/Copy
     const cleanUrl = questionId
-      ? `https://vence.es/pregunta/${questionId}`
-      : 'https://vence.es'
+      ? `https://www.vence.es/pregunta/${questionId}`
+      : 'https://www.vence.es'
 
     switch (platform) {
       case 'twitter':

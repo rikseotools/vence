@@ -7,7 +7,7 @@ export const metadata = {
   openGraph: {
     title: 'Secuencias Numéricas - Tests Psicotécnicos Online Gratuitos',
     description: 'Practica secuencias numéricas con nuestros tests psicotécnicos gratuitos. Series lógicas de números para oposiciones y exámenes de aptitudes.',
-    url: 'https://vence.es/psicotecnicos/secuencias-numericas',
+    url: 'https://www.vence.es/psicotecnicos/secuencias-numericas',
     type: 'website',
     siteName: 'Vence - Preparación de Oposiciones'
   },

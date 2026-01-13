@@ -99,8 +99,8 @@ export async function POST(request) {
       timestamp: Date.now()
     }).toString()
     
-    const trackingPixelUrl = `https://vence.es/api/email/track-open?${trackingParams}`
-    const trackedMainUrl = `https://vence.es/api/email/track-click?${trackingParams}&url=${encodeURIComponent('https://vence.es/auxiliar-administrativo-estado')}&redirect=${encodeURIComponent('https://vence.es/auxiliar-administrativo-estado')}`
+    const trackingPixelUrl = `https://www.vence.es/api/email/track-open?${trackingParams}`
+    const trackedMainUrl = `https://www.vence.es/api/email/track-click?${trackingParams}&url=${encodeURIComponent('https://www.vence.es/auxiliar-administrativo-estado')}&redirect=${encodeURIComponent('https://www.vence.es/auxiliar-administrativo-estado')}`
     
     const emailHtml = generateReactivationEmailHTML({
       userEmail: targetEmail,

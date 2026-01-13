@@ -62,7 +62,7 @@ export default function ShareStreak({
           share_type: 'streak',
           platform: platform,
           share_text: formatShareText(platform),
-          share_url: 'https://vence.es',
+          share_url: 'https://www.vence.es',
           device_info: {
             screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : null,
             userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
@@ -77,7 +77,7 @@ export default function ShareStreak({
 
   const handleShare = async (platform) => {
     const shareText = formatShareText(platform)
-    const url = `https://vence.es?utm_source=${platform}&utm_medium=social&utm_campaign=streak_share&utm_content=streak_${streakDays}`
+    const url = `https://www.vence.es?utm_source=${platform}&utm_medium=social&utm_campaign=streak_share&utm_content=streak_${streakDays}`
     let shareUrl = ''
 
     switch (platform) {
@@ -88,17 +88,17 @@ export default function ShareStreak({
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(shareText)}`
         break
       case 'whatsapp':
-        shareUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n\nhttps://vence.es')}`
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(shareText + '\n\nhttps://www.vence.es')}`
         break
       case 'telegram':
-        shareUrl = `https://t.me/share/url?text=${encodeURIComponent(shareText + '\n\nhttps://vence.es')}`
+        shareUrl = `https://t.me/share/url?text=${encodeURIComponent(shareText + '\n\nhttps://www.vence.es')}`
         break
       case 'linkedin':
         shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`
         break
       case 'copy':
         try {
-          await navigator.clipboard.writeText(shareText + '\n\nhttps://vence.es')
+          await navigator.clipboard.writeText(shareText + '\n\nhttps://www.vence.es')
           setShareSuccess(true)
           setTimeout(() => {
             setShareSuccess(false)

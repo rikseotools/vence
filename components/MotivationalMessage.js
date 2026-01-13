@@ -160,7 +160,7 @@ export default function MotivationalMessage({
     const porcentaje = context?.accuracy || (nota * 10)
 
     const shareText = `¡Acabo de sacar un ${nota}/10 en mi test de oposiciones en vence.es! 💪`
-    const url = 'https://vence.es'
+    const url = 'https://www.vence.es'
 
     let shareUrl = ''
 

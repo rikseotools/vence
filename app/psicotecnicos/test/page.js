@@ -7,7 +7,7 @@ export const metadata = {
   openGraph: {
     title: 'Tests Psicotécnicos Online Gratuitos - Vence',
     description: 'Entrena con tests psicotécnicos reales. Razonamiento numérico, verbal, capacidad administrativa y más. Ideal para oposiciones.',
-    url: 'https://vence.es/psicotecnicos/test',
+    url: 'https://www.vence.es/psicotecnicos/test',
     type: 'website',
     siteName: 'Vence'
   },

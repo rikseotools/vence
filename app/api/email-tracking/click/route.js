@@ -66,7 +66,7 @@ export async function GET(request) {
     }
 
     // Si no hay redirect, ir al dashboard por defecto
-    return NextResponse.redirect('https://vence.es/auxiliar-administrativo-estado/test', { 
+    return NextResponse.redirect('https://www.vence.es/auxiliar-administrativo-estado/test', { 
       status: 302 
     })
 
@@ -74,7 +74,7 @@ export async function GET(request) {
     console.error('❌ Error tracking email click:', error)
     
     // Si hay error, redirigir a destino por defecto
-    const fallbackUrl = searchParams.get('redirect') || 'https://vence.es/auxiliar-administrativo-estado/test'
+    const fallbackUrl = searchParams.get('redirect') || 'https://www.vence.es/auxiliar-administrativo-estado/test'
     return NextResponse.redirect(fallbackUrl, { status: 302 })
   }
 }

@@ -140,7 +140,7 @@ export async function POST(request) {
                 </p>
                 
                 <div class="cta">
-                    <a href="https://vence.es/auxiliar-administrativo-estado/temario" class="cta-button">
+                    <a href="https://www.vence.es/auxiliar-administrativo-estado/temario" class="cta-button">
                         📖 Ver Nuevo Tema Desbloqueado
                     </a>
                 </div>
@@ -154,8 +154,8 @@ export async function POST(request) {
             <div class="footer">
                 <p>
                     <strong>vence.es</strong> - Preparación Inteligente para Oposiciones<br>
-                    <a href="https://vence.es">Visitar sitio web</a> | 
-                    <a href="https://vence.es/auxiliar-administrativo-estado/temario">Ver todos los temas</a>
+                    <a href="https://www.vence.es">Visitar sitio web</a> |
+                    <a href="https://www.vence.es/auxiliar-administrativo-estado/temario">Ver todos los temas</a>
                 </p>
                 <p style="margin-top: 15px; font-size: 12px; color: #a0aec0;">
                     Este email se envió porque completaste un tema con éxito. Si no deseas recibir estos emails, 
@@ -179,7 +179,7 @@ Detalles de tu progreso:
 
 ¡Excelente trabajo! Has demostrado un dominio sólido del material con una precisión del ${accuracy}%.
 
-Continúa tu preparación en: https://vence.es/auxiliar-administrativo-estado/temario
+Continúa tu preparación en: https://www.vence.es/auxiliar-administrativo-estado/temario
 
 ¡Sigue así y dominarás todos los temas!
 

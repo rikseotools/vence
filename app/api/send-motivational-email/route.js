@@ -262,7 +262,7 @@ function generateMotivationalEmailHTML({ userName, messageType, title, body, pri
               Sigue preparándote para tu oposición con <strong>Vence</strong>
             </p>
             <p style="color: #9ca3af; font-size: 12px; margin: 10px 0 0 0;">
-              <a href="https://vence.es/perfil?tab=notificaciones" style="color: #6b7280; text-decoration: underline;">
+              <a href="https://www.vence.es/perfil?tab=notificaciones" style="color: #6b7280; text-decoration: underline;">
                 Gestionar preferencias
               </a>
               •
@@ -275,7 +275,7 @@ function generateMotivationalEmailHTML({ userName, messageType, title, body, pri
       </div>
 
       <!-- Analytics pixel para tracking de apertura -->
-      <img src="https://vence.es/api/email-tracking/open?email_id=${emailId}&user_id=${userId}&type=motivation" 
+      <img src="https://www.vence.es/api/email-tracking/open?email_id=${emailId}&user_id=${userId}&type=motivation" 
            width="1" height="1" style="display: none;" alt="">
     </body>
     </html>
@@ -285,7 +285,7 @@ function generateMotivationalEmailHTML({ userName, messageType, title, body, pri
 // Función para generar URLs con tracking
 function generateTrackedUrl(actionType, messageType, userId, emailId, buttonType) {
   const baseUrl = generateActionUrl(actionType, messageType, userId)
-  const trackingUrl = `https://vence.es/api/email-tracking/click?email_id=${emailId}&user_id=${userId}&action=${buttonType}_${actionType}&type=motivation&redirect=${encodeURIComponent(baseUrl)}`
+  const trackingUrl = `https://www.vence.es/api/email-tracking/click?email_id=${emailId}&user_id=${userId}&action=${buttonType}_${actionType}&type=motivation&redirect=${encodeURIComponent(baseUrl)}`
   return trackingUrl
 }
 
@@ -299,33 +299,33 @@ function generateActionUrl(actionType, messageType, userId = null) {
     case 'next_challenge':
     case 'maintain_streak':
     case 'quick_test':
-      return 'https://vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
+      return 'https://www.vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
     
     // Acciones de estadísticas y progreso
     case 'view_achievements':
     case 'view_progress':
     case 'view_streak_stats':
     case 'view_details':
-      return 'https://vence.es/mis-estadisticas?utm_source=email&utm_campaign=motivational'
+      return 'https://www.vence.es/mis-estadisticas?utm_source=email&utm_campaign=motivational'
     
     // Acciones de teoría y repaso
     case 'view_theory':
     case 'directed_review':
     case 'view_weak_areas':
-      return 'https://vence.es/auxiliar-administrativo-estado/temario?utm_source=email&utm_campaign=motivational'
+      return 'https://www.vence.es/auxiliar-administrativo-estado/temario?utm_source=email&utm_campaign=motivational'
     
     // Acciones de mejora y consolidación
     case 'consolidate_improvement':
     case 'advanced_test':
-      return 'https://vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational&mode=advanced'
+      return 'https://www.vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational&mode=advanced'
     
     // Test de acciones por defecto
     case 'test_action':
-      return 'https://vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=test'
+      return 'https://www.vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=test'
     
     // Por defecto
     default:
-      return 'https://vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
+      return 'https://www.vence.es/auxiliar-administrativo-estado/test?utm_source=email&utm_campaign=motivational'
   }
 }
 */

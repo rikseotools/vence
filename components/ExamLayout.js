@@ -445,7 +445,7 @@ export default function ExamLayout({
     const questionText = question.question_text || question.text || 'Pregunta de oposiciones'
     const shortQuestion = questionText.length > 100 ? questionText.substring(0, 100) + '...' : questionText
     const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=question_share`
-    const url = `https://vence.es?${utmParams}`
+    const url = `https://www.vence.es?${utmParams}`
     const shareText = `🤔 ¿Sabrías responder esta pregunta de oposiciones?\n\n"${shortQuestion}"`
     let shareUrl = ''
 
@@ -493,7 +493,7 @@ export default function ExamLayout({
   const handleQuickShareResult = async (platform) => {
     const nota = isSubmitted ? Math.max(0, ((correctCount - (incorrectCount / 3)) / totalQuestions) * 10).toFixed(2) : '0'
     const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=exam_share&utm_content=score_${nota}`
-    const url = `https://vence.es?${utmParams}`
+    const url = `https://www.vence.es?${utmParams}`
     const shareText = `¡Acabo de sacar un ${nota}/10 en mi test de oposiciones! 💪`
     let shareUrl = ''
 
