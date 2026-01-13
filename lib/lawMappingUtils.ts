@@ -793,20 +793,15 @@ function generateShortNameFromSlug(slug: string): string | null {
 
 /**
  * Mapea un slug de URL al short_name de la BD
+ * Devuelve null si el slug no está en el mapeo conocido (para evitar soft 404)
  */
-export function mapLawSlugToShortName(lawSlug: string): string {
+export function mapLawSlugToShortName(lawSlug: string): string | null {
   const result = SLUG_TO_SHORT_NAME[lawSlug]
 
   if (!result) {
-    console.warn(`⚠️ Slug no encontrado en mapeo: ${lawSlug}`)
-
-    const dynamicShortName = generateShortNameFromSlug(lawSlug)
-    if (dynamicShortName) {
-      console.log(`🔄 Generado dinámicamente: ${lawSlug} → ${dynamicShortName}`)
-      return dynamicShortName
-    }
-
-    return lawSlug
+    // No generar nombres dinámicos - devolver null para slugs desconocidos
+    // Esto permite que las páginas devuelvan 404 correctamente
+    return null
   }
 
   return result
@@ -841,8 +836,13 @@ export function getCanonicalSlug(shortName: string): string {
 /**
  * Obtiene información completa de una ley
  */
-export function getLawInfo(lawSlug: string): LawInfo {
+export function getLawInfo(lawSlug: string): LawInfo | null {
   const lawShortName = mapLawSlugToShortName(lawSlug)
+
+  // Si el slug no es válido, devolver null
+  if (!lawShortName) {
+    return null
+  }
 
   return LAW_INFO[lawShortName] ?? {
     name: lawShortName,
@@ -855,7 +855,7 @@ export function getLawInfo(lawSlug: string): LawInfo {
  */
 export function isValidLawSlug(lawSlug: string): boolean {
   const shortName = mapLawSlugToShortName(lawSlug)
-  return shortName !== lawSlug || getLawInfo(lawSlug).name !== lawSlug
+  return shortName !== null
 }
 
 /**

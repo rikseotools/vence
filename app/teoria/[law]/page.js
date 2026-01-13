@@ -1,5 +1,6 @@
 // app/teoria/[law]/page.js - VERSIÓN CON METADATA DINÁMICA PARA SEO
 import { getLawInfo, mapLawSlugToShortName } from '../../../lib/lawMappingUtils'
+import { notFound } from 'next/navigation'
 import LawArticlesClient from './LawArticlesClient'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 
@@ -7,15 +8,24 @@ import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 export async function generateMetadata({ params }) {
   const resolvedParams = await params
   const lawSlug = resolvedParams.law
-  
+
   // Obtener información de la ley
   const shortName = mapLawSlugToShortName(lawSlug)
-  const lawInfo = getLawInfo(shortName)
-  
+
+  // Si el slug no es válido, devolver metadata para 404
+  if (!shortName) {
+    return {
+      title: 'Ley no encontrada | Vence',
+      robots: { index: false, follow: false }
+    }
+  }
+
+  const lawInfo = getLawInfo(lawSlug)
+
   if (!lawInfo) {
     return {
-      title: 'Teoría Legal',
-      description: 'Estudio de legislación española para oposiciones'
+      title: 'Ley no encontrada | Vence',
+      robots: { index: false, follow: false }
     }
   }
   
@@ -55,7 +65,16 @@ export async function generateMetadata({ params }) {
   }
 }
 
-export default function LawArticlesPage({ params, searchParams }) {
+export default async function LawArticlesPage({ params, searchParams }) {
+  const resolvedParams = await params
+  const lawSlug = resolvedParams.law
+
+  // Validar que la ley existe
+  const shortName = mapLawSlugToShortName(lawSlug)
+  if (!shortName) {
+    notFound()
+  }
+
   return (
     <>
       <ClientBreadcrumbsWrapper />
