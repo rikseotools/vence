@@ -99,7 +99,16 @@ async function getConvocatorias(searchParams: SearchParams) {
     query = query.ilike('provincia', searchParams.provincia);
   }
   if (searchParams.q) {
-    query = query.or(`titulo.ilike.%${searchParams.q}%,resumen.ilike.%${searchParams.q}%,departamento_nombre.ilike.%${searchParams.q}%,cuerpo.ilike.%${searchParams.q}%`);
+    // Normalizar búsqueda para ignorar tildes
+    const q = searchParams.q;
+    const qNormalized = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Si son diferentes, buscar ambas versiones
+    if (q !== qNormalized) {
+      query = query.or(`titulo.ilike.%${q}%,titulo.ilike.%${qNormalized}%,resumen.ilike.%${q}%,resumen.ilike.%${qNormalized}%,departamento_nombre.ilike.%${q}%,departamento_nombre.ilike.%${qNormalized}%,cuerpo.ilike.%${q}%,cuerpo.ilike.%${qNormalized}%`);
+    } else {
+      query = query.or(`titulo.ilike.%${q}%,resumen.ilike.%${q}%,departamento_nombre.ilike.%${q}%,cuerpo.ilike.%${q}%`);
+    }
   }
 
   query = query.range(offset, offset + limit - 1);
