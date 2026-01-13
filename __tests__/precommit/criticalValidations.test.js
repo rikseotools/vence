@@ -95,7 +95,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
       const criticalFiles = [
         'app/auxiliar-administrativo-estado/test/tema/[numero]/page.js',
         'components/ArticleModal.js',
-        'lib/lawMappingUtils.js',
+        'lib/lawMappingUtils.ts',
         'lib/teoriaFetchers.js'
       ]
 
