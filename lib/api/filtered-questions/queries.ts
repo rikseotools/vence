@@ -209,43 +209,100 @@ export async function getFilteredQuestions(
       ? multipleTopics
       : topicNumber > 0 ? [topicNumber] : []
 
-    if (topicsToQuery.length === 0) {
+    // 🆕 MODO SIN TEMA: Si no hay tema pero sí hay leyes seleccionadas, filtrar directamente por ley
+    const isLawOnlyMode = topicsToQuery.length === 0 && selectedLaws && selectedLaws.length > 0
+
+    if (topicsToQuery.length === 0 && !isLawOnlyMode) {
       return {
         success: false,
-        error: 'Debe especificar al menos un tema (topicNumber o multipleTopics)',
+        error: 'Debe especificar al menos un tema (topicNumber o multipleTopics) o una ley (selectedLaws)',
       }
     }
 
-    // 2️⃣ Obtener topic_scope para todos los temas solicitados
-    const topicScopeResults = await db
-      .select({
-        articleNumbers: topicScope.articleNumbers,
-        lawId: topicScope.lawId,
-        lawShortName: laws.shortName,
-        lawName: laws.name,
-        topicNumber: topics.topicNumber,
-      })
-      .from(topicScope)
-      .innerJoin(topics, eq(topicScope.topicId, topics.id))
-      .innerJoin(laws, eq(topicScope.lawId, laws.id))
-      .where(and(
-        inArray(topics.topicNumber, topicsToQuery),
-        eq(topics.positionType, positionType)
-      ))
+    let filteredMappings: Array<{
+      articleNumbers: string[] | null
+      lawId: string | null
+      lawShortName: string | null
+      lawName: string | null
+      topicNumber: number | null
+    }> = []
 
-    if (!topicScopeResults || topicScopeResults.length === 0) {
-      return {
-        success: false,
-        error: `No se encontró mapeo para los temas especificados (${positionType})`,
+    if (isLawOnlyMode) {
+      // 🆕 MODO LEY: Obtener todos los artículos de las leyes seleccionadas
+      console.log(`🎯 Modo ley-only: Buscando preguntas de leyes ${selectedLaws.join(', ')}`)
+
+      const lawResults = await db
+        .select({
+          lawId: laws.id,
+          lawShortName: laws.shortName,
+          lawName: laws.name,
+        })
+        .from(laws)
+        .where(inArray(laws.shortName, selectedLaws))
+
+      // Construir mappings con todos los artículos de cada ley
+      for (const law of lawResults) {
+        // Obtener artículos específicos si se proporcionaron, sino usar todos
+        const specificArticles = selectedArticlesByLaw?.[law.lawShortName || ''] || []
+
+        if (specificArticles.length > 0) {
+          // Usar artículos específicos
+          filteredMappings.push({
+            articleNumbers: specificArticles.map(String),
+            lawId: law.lawId,
+            lawShortName: law.lawShortName,
+            lawName: law.lawName,
+            topicNumber: null,
+          })
+        } else {
+          // Obtener todos los artículos de la ley
+          const allArticles = await db
+            .select({ articleNumber: articles.articleNumber })
+            .from(articles)
+            .where(eq(articles.lawId, law.lawId!))
+
+          filteredMappings.push({
+            articleNumbers: allArticles.map(a => a.articleNumber),
+            lawId: law.lawId,
+            lawShortName: law.lawShortName,
+            lawName: law.lawName,
+            topicNumber: null,
+          })
+        }
       }
-    }
+    } else {
+      // 2️⃣ MODO TEMA: Obtener topic_scope para todos los temas solicitados
+      const topicScopeResults = await db
+        .select({
+          articleNumbers: topicScope.articleNumbers,
+          lawId: topicScope.lawId,
+          lawShortName: laws.shortName,
+          lawName: laws.name,
+          topicNumber: topics.topicNumber,
+        })
+        .from(topicScope)
+        .innerJoin(topics, eq(topicScope.topicId, topics.id))
+        .innerJoin(laws, eq(topicScope.lawId, laws.id))
+        .where(and(
+          inArray(topics.topicNumber, topicsToQuery),
+          eq(topics.positionType, positionType)
+        ))
 
-    // 2️⃣ Filtrar por leyes seleccionadas
-    let filteredMappings = topicScopeResults
-    if (selectedLaws && selectedLaws.length > 0) {
-      filteredMappings = filteredMappings.filter(m =>
-        m.lawShortName && selectedLaws.includes(m.lawShortName)
-      )
+      if (!topicScopeResults || topicScopeResults.length === 0) {
+        return {
+          success: false,
+          error: `No se encontró mapeo para los temas especificados (${positionType})`,
+        }
+      }
+
+      filteredMappings = topicScopeResults
+
+      // Filtrar por leyes seleccionadas si se proporcionaron
+      if (selectedLaws && selectedLaws.length > 0) {
+        filteredMappings = filteredMappings.filter(m =>
+          m.lawShortName && selectedLaws.includes(m.lawShortName)
+        )
+      }
     }
 
     // 3️⃣ Aplicar filtro de artículos por ley
