@@ -121,6 +121,7 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'lo-6-1985': 'LO 6/1985',
   'lopj': 'LO 6/1985',
   'ley-organica-poder-judicial': 'LO 6/1985',
+  'poder-judicial': 'LO 6/1985',
   'lo-2-1986': 'LOFCS',
   'lofcs': 'LOFCS',
   'lo-3-2018': 'LO 3/2018',
