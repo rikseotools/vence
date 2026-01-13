@@ -172,10 +172,55 @@ node scripts/oposiciones/crear-tramitacion-procesal.cjs
 ```
 Tema 6: El Poder Judicial
   └─ topic_scope:
-       ├─ LO 6/1985 (LOPJ) → arts. 1-50, 117-127
-       ├─ CE → arts. 117-127
+       ├─ LO 6/1985 (LOPJ) → arts. 122-148, 541-584 (CGPJ + MF)
+       ├─ CE → arts. 117-127 (Título VI)
        └─ Ley 38/1988 → toda la ley
 ```
+
+### ⚠️ 2.3 CRÍTICO: article_numbers según epígrafe (NO toda la ley)
+
+**ERROR COMÚN:** Incluir TODOS los artículos de una ley cuando el epígrafe solo menciona parte.
+
+**Ejemplo del error:**
+```
+Tema 1: La Constitución
+Epígrafe: "Corona. Cortes Generales. Tribunal Constitucional."
+
+❌ INCORRECTO: article_numbers = [1-169] (toda la CE)
+✅ CORRECTO:   article_numbers = [1-9, 56-65, 66-96, 159-165]
+                                 (Preliminar, Corona, Cortes, TC)
+```
+
+**Regla:** Leer el epígrafe LITERAL y solo incluir los artículos que corresponden a lo mencionado.
+
+**Tabla de referencia CE:**
+| Contenido del Epígrafe | Título CE | Artículos |
+|------------------------|-----------|-----------|
+| Estructura, principios | Preliminar | 1-9 |
+| Derechos fundamentales | I | 10-55 |
+| Corona | II | 56-65 |
+| Cortes Generales, elaboración leyes | III | 66-96 |
+| Gobierno y Administración | IV | 97-107 |
+| Relaciones Gobierno-Cortes | V | 108-116 |
+| Poder Judicial | VI | 117-127 |
+| Economía y Hacienda | VII | 128-136 |
+| Organización territorial, CCAA | VIII | 137-158 |
+| Tribunal Constitucional | IX | 159-165 |
+| Reforma constitucional | X | 166-169 |
+
+**Tabla de referencia LOPJ:**
+| Contenido del Epígrafe | Libro/Título LOPJ | Artículos |
+|------------------------|-------------------|-----------|
+| TS, AN, TSJ, AP | Libro I Títulos I-IV | 53-81 |
+| Tribunales Instancia, Juzgados Paz | Libro I Títulos V-VI | 82-106 |
+| CGPJ | Libro II | 122-148 |
+| Resoluciones judiciales | Libro III Título III | 244-269 |
+| Oficina judicial, LAJ | Libro V | 435-469 |
+| Cuerpos funcionarios | Libro VI | 470-540 |
+| Ministerio Fiscal | Libro VII Título I | 541-584 |
+
+**Verificación post-creación:**
+Después de crear topic_scope, revisar tema por tema que los artículos correspondan al epígrafe, no a toda la ley.
 
 ---
 
@@ -283,6 +328,80 @@ await supabase.from('topic_scope').insert({
 ```
 
 **Iterar hasta cobertura 100%**
+
+### 3.7 🏛️ Importar Preguntas Oficiales (CRÍTICO)
+
+Las preguntas de exámenes oficiales son **oro** porque indican qué artículos son importantes **para esta oposición específica**. Un artículo puede ser crítico para Tramitación pero irrelevante para Auxiliar.
+
+#### Al insertar preguntas oficiales - OBLIGATORIO:
+
+```sql
+INSERT INTO questions (
+  question_text,
+  option_a, option_b, option_c, option_d,
+  correct_option,
+  primary_article_id,
+  is_official_exam,        -- ✅ SIEMPRE true
+  exam_source,             -- ✅ SIEMPRE especificar
+  is_active
+) VALUES (
+  'Texto de la pregunta...',
+  'Opción A', 'Opción B', 'Opción C', 'Opción D',
+  0,  -- A=0, B=1, C=2, D=3
+  'uuid-del-articulo',
+  true,                                    -- ✅ CRÍTICO
+  'Examen 2024 Tramitación Procesal',      -- ✅ CRÍTICO (año + oposición)
+  true
+);
+```
+
+#### Actualizar hot_articles después de importar:
+
+La tabla `hot_articles` trackea qué artículos son importantes **por oposición**. Después de importar preguntas oficiales:
+
+```sql
+-- Recalcular hot_articles para la oposición
+INSERT INTO hot_articles (
+  article_id, law_id, target_oposicion, article_number, law_name,
+  total_official_appearances, unique_exams_count, priority_level, hotness_score
+)
+SELECT
+  a.id, a.law_id,
+  'tramitacion_procesal',  -- ← Ajustar según oposición
+  a.article_number, l.short_name,
+  COUNT(*),
+  COUNT(DISTINCT q.exam_source),
+  CASE
+    WHEN COUNT(*) >= 5 THEN 'critical'
+    WHEN COUNT(*) >= 3 THEN 'high'
+    WHEN COUNT(*) >= 2 THEN 'medium'
+    ELSE 'low'
+  END,
+  COUNT(*) * 10
+FROM questions q
+JOIN articles a ON q.primary_article_id = a.id
+JOIN laws l ON a.law_id = l.id
+WHERE q.is_official_exam = true AND q.is_active = true
+GROUP BY a.id, a.law_id, a.article_number, l.short_name
+ON CONFLICT (article_id, target_oposicion)
+DO UPDATE SET
+  total_official_appearances = EXCLUDED.total_official_appearances,
+  unique_exams_count = EXCLUDED.unique_exams_count,
+  priority_level = EXCLUDED.priority_level,
+  hotness_score = EXCLUDED.hotness_score,
+  updated_at = NOW();
+```
+
+#### Comportamiento en la app:
+
+1. **Si la pregunta ES oficial** (`is_official_exam = true`):
+   - Badge púrpura: "🏛️ PREGUNTA DE EXAMEN OFICIAL"
+   - Muestra fuente: "📋 Examen: {exam_source}"
+
+2. **Si el artículo tiene preguntas oficiales** (aunque esta no lo sea):
+   - Badge naranja: "🔥 Artículo importante - apareció en X exámenes oficiales"
+
+**¡NUNCA añadir preguntas oficiales sin marcar `is_official_exam = true`!**
 
 ---
 

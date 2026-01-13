@@ -172,6 +172,117 @@ git push origin main
 - `save_test_result` - Guardar resultados de test
 - `update_user_notification_metrics()` - Trigger automático para actualizar métricas
 
+### 🏛️ Sistema de Preguntas Oficiales y Artículos Hot (CRÍTICO)
+
+#### Concepto
+Las preguntas de exámenes oficiales anteriores son **información valiosa** porque indican qué artículos son importantes **para cada oposición específica**. Un artículo puede ser crítico para Auxiliar Administrativo pero irrelevante para Tramitación Procesal.
+
+#### Tablas Involucradas
+
+**`questions`** - Campos para preguntas oficiales:
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `is_official_exam` | boolean | `true` si es de examen oficial real |
+| `exam_source` | text | Fuente del examen (ej: "Examen 2023 Auxiliar Estado") |
+| `primary_article_id` | uuid | Artículo principal de la pregunta |
+
+**`hot_articles`** - Artículos importantes por oposición:
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `article_id` | uuid | FK al artículo |
+| `target_oposicion` | text | Oposición específica (ej: `auxiliar_administrativo_estado`) |
+| `total_official_appearances` | int | Veces que apareció en exámenes oficiales |
+| `unique_exams_count` | int | En cuántos exámenes distintos |
+| `priority_level` | text | `critical`, `high`, `medium`, `low` |
+| `hotness_score` | numeric | Puntuación calculada de importancia |
+
+#### Comportamiento en la App
+
+Cuando un usuario responde una pregunta:
+
+1. **Si la pregunta ES oficial** (`is_official_exam = true`):
+   - Muestra badge púrpura: "🏛️ PREGUNTA DE EXAMEN OFICIAL"
+   - Muestra fuente: "📋 Examen: {exam_source}"
+
+2. **Si el artículo tiene preguntas oficiales** (aunque esta no lo sea):
+   - Muestra badge naranja: "🔥 Artículo que apareció en exámenes oficiales"
+   - Indica cuántas veces apareció
+
+#### ⚠️ AL AÑADIR PREGUNTAS OFICIALES - OBLIGATORIO:
+
+```sql
+INSERT INTO questions (
+  question_text,
+  option_a, option_b, option_c, option_d,
+  correct_option,
+  primary_article_id,
+  is_official_exam,        -- ✅ SIEMPRE true para oficiales
+  exam_source,             -- ✅ SIEMPRE especificar fuente
+  is_active
+) VALUES (
+  'Texto de la pregunta...',
+  'Opción A', 'Opción B', 'Opción C', 'Opción D',
+  0,  -- A=0, B=1, C=2, D=3
+  'uuid-del-articulo',
+  true,                                    -- ✅ CRÍTICO
+  'Examen 2024 Tramitación Procesal',      -- ✅ CRÍTICO
+  true
+);
+```
+
+#### Actualizar hot_articles después de añadir oficiales:
+
+Después de insertar preguntas oficiales, hay que actualizar `hot_articles`:
+
+```sql
+-- Insertar/actualizar hot_article para el artículo
+INSERT INTO hot_articles (
+  article_id,
+  law_id,
+  target_oposicion,
+  article_number,
+  law_name,
+  total_official_appearances,
+  unique_exams_count,
+  priority_level,
+  hotness_score
+)
+SELECT
+  a.id,
+  a.law_id,
+  'tramitacion_procesal',  -- Ajustar según oposición
+  a.article_number,
+  l.short_name,
+  COUNT(*),
+  COUNT(DISTINCT q.exam_source),
+  CASE
+    WHEN COUNT(*) >= 5 THEN 'critical'
+    WHEN COUNT(*) >= 3 THEN 'high'
+    WHEN COUNT(*) >= 2 THEN 'medium'
+    ELSE 'low'
+  END,
+  COUNT(*) * 10
+FROM questions q
+JOIN articles a ON q.primary_article_id = a.id
+JOIN laws l ON a.law_id = l.id
+WHERE q.is_official_exam = true
+  AND q.is_active = true
+GROUP BY a.id, a.law_id, a.article_number, l.short_name
+ON CONFLICT (article_id, target_oposicion)
+DO UPDATE SET
+  total_official_appearances = EXCLUDED.total_official_appearances,
+  unique_exams_count = EXCLUDED.unique_exams_count,
+  priority_level = EXCLUDED.priority_level,
+  hotness_score = EXCLUDED.hotness_score,
+  updated_at = NOW();
+```
+
+#### Importante:
+- **NUNCA** añadir preguntas oficiales sin marcar `is_official_exam = true`
+- **SIEMPRE** especificar `exam_source` con año y oposición
+- **SIEMPRE** vincular a `primary_article_id` correcto
+- El sistema usa `target_oposicion` en `hot_articles` para mostrar relevancia **específica por oposición**
+
 ## Notas de Implementación
 
 ### 🔒 Seguridad Anti-Scraping (CRÍTICO)
