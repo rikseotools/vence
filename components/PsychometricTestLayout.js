@@ -569,6 +569,18 @@ export default function PsychometricTestLayout({
                   className="text-blue-700 whitespace-pre-line"
                   dangerouslySetInnerHTML={{ __html: verifiedExplanation.replace(/\n/g, '<br>') }}
                 />
+                {/* Botón para abrir IA si la respuesta fue incorrecta */}
+                {selectedAnswer !== verifiedCorrectAnswer && (
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('openAIChat', { detail: {} }))
+                    }}
+                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                  >
+                    <span>🤖</span>
+                    <span>¿Necesitas ayuda?</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
