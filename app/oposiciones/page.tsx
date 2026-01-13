@@ -7,8 +7,8 @@ import { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import ConvocatoriasFiltros from '../convocatorias/components/ConvocatoriasFiltros';
-import ConvocatoriasLista from '../convocatorias/components/ConvocatoriasLista';
+import FiltrosHorizontales from './components/FiltrosHorizontales';
+import ConvocatoriasLista from './components/ConvocatoriasLista';
 
 export const metadata: Metadata = {
   title: 'Oposiciones 2026 | Convocatorias BOE Actualizadas | Vence',
@@ -25,11 +25,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Oposiciones 2026 | Convocatorias BOE | Vence',
     description: 'Todas las convocatorias del BOE actualizadas diariamente',
-    url: '/oposiciones',
+    url: 'https://www.vence.es/oposiciones',
     type: 'website'
   },
   alternates: {
-    canonical: '/oposiciones'
+    canonical: 'https://www.vence.es/oposiciones'
   }
 };
 
@@ -43,6 +43,7 @@ interface SearchParams {
   departamento?: string;
   ambito?: string;
   ccaa?: string;
+  q?: string;
   page?: string;
 }
 
@@ -82,6 +83,9 @@ async function getConvocatorias(searchParams: SearchParams) {
   if (searchParams.ccaa) {
     query = query.eq('comunidad_autonoma', searchParams.ccaa);
   }
+  if (searchParams.q) {
+    query = query.or(`titulo.ilike.%${searchParams.q}%,descripcion.ilike.%${searchParams.q}%,departamento_nombre.ilike.%${searchParams.q}%`);
+  }
 
   query = query.range(offset, offset + limit - 1);
 
@@ -104,7 +108,6 @@ async function getEstadisticas() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  // Queries de conteo en paralelo (head: true = solo cuenta, no carga datos)
   const [totalResult, convocatoriasResult, admitidosResult, ultimaResult] = await Promise.all([
     supabase
       .from('convocatorias_boe')
@@ -155,152 +158,140 @@ export default async function OposicionesPage({
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
+      {/* Header compacto */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
                 Oposiciones 2026
               </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">
-                Todas las convocatorias del BOE actualizadas diariamente
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Convocatorias del BOE actualizadas diariamente
               </p>
             </div>
-            <Link
-              href="/nuestras-oposiciones"
-              className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors"
-            >
-              Ver oposiciones que preparamos
-            </Link>
-          </div>
-
-          {/* Estadísticas rápidas */}
-          <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {estadisticas.total.toLocaleString('es-ES')}
-              </p>
-              <p className="text-sm text-blue-600 dark:text-blue-400">
-                Total publicaciones
-              </p>
-            </div>
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {(estadisticas.porTipo['convocatoria'] || 0).toLocaleString('es-ES')}
-              </p>
-              <p className="text-sm text-green-600 dark:text-green-400">
-                Convocatorias
-              </p>
-            </div>
-            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {(estadisticas.porTipo['admitidos'] || 0).toLocaleString('es-ES')}
-              </p>
-              <p className="text-sm text-purple-600 dark:text-purple-400">
-                Listas admitidos
-              </p>
-            </div>
-            <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-4">
-              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {estadisticas.ultimaFecha ? new Date(estadisticas.ultimaFecha).toLocaleDateString('es-ES') : '-'}
-              </p>
-              <p className="text-sm text-orange-600 dark:text-orange-400">
-                Última actualización
-              </p>
+            <div className="flex items-center gap-3">
+              {/* Stats compactas */}
+              <div className="hidden sm:flex items-center gap-4 text-sm">
+                <div className="text-center">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                    {estadisticas.total.toLocaleString('es-ES')}
+                  </span>
+                  <span className="text-gray-500 dark:text-gray-400 ml-1">publicaciones</span>
+                </div>
+                <div className="text-center">
+                  <span className="font-bold text-green-600 dark:text-green-400">
+                    {(estadisticas.porTipo['convocatoria'] || 0).toLocaleString('es-ES')}
+                  </span>
+                  <span className="text-gray-500 dark:text-gray-400 ml-1">convocatorias</span>
+                </div>
+              </div>
+              <Link
+                href="/nuestras-oposiciones"
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Preparar oposición
+              </Link>
             </div>
           </div>
 
-          {/* Filtros rápidos por categoría */}
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Link
-              href="/oposiciones/c1"
-              className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
-            >
-              Grupo C1
-            </Link>
+          {/* Accesos rápidos */}
+          <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href="/oposiciones/c2"
-              className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors font-medium"
+              className="px-3 py-1.5 text-sm bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors font-medium"
             >
               Grupo C2
             </Link>
             <Link
-              href="/oposiciones/a1"
-              className="px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors font-medium"
+              href="/oposiciones/c1"
+              className="px-3 py-1.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
             >
-              Grupo A1
+              Grupo C1
             </Link>
             <Link
-              href="/oposiciones/a2"
-              className="px-4 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors font-medium"
+              href="/oposiciones/madrid"
+              className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
             >
-              Grupo A2
+              Madrid
+            </Link>
+            <Link
+              href="/oposiciones/andalucia"
+              className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              Andalucía
             </Link>
             <Link
               href="/oposiciones/hoy"
-              className="px-4 py-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors font-medium"
+              className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors font-medium"
             >
-              Publicadas hoy
+              Hoy
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Contenido */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Filtros */}
-          <aside className="lg:w-64 flex-shrink-0">
-            <Suspense fallback={<div className="animate-pulse h-96 bg-gray-200 dark:bg-gray-700 rounded-lg" />}>
-              <ConvocatoriasFiltros currentFilters={params} />
-            </Suspense>
-          </aside>
+      {/* Filtros horizontales */}
+      <Suspense fallback={<div className="h-24 bg-white dark:bg-gray-800 border-b animate-pulse" />}>
+        <FiltrosHorizontales currentFilters={params} total={total} />
+      </Suspense>
 
-          {/* Lista */}
-          <main className="flex-1">
-            <div className="mb-4 flex justify-between items-center">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Mostrando {convocatorias.length} de {total.toLocaleString('es-ES')} resultados
-              </p>
+      {/* Lista de convocatorias */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <Suspense fallback={
+          <div className="animate-pulse space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+            ))}
+          </div>
+        }>
+          <ConvocatoriasLista convocatorias={convocatorias} />
+        </Suspense>
+
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <nav className="mt-8 flex justify-center">
+            <div className="flex gap-2">
+              {page > 1 && (
+                <Link
+                  href={`/oposiciones?${new URLSearchParams({ ...params, page: String(page - 1) } as Record<string, string>)}`}
+                  className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                >
+                  Anterior
+                </Link>
+              )}
+              <span className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
+                Página {page} de {totalPages}
+              </span>
+              {page < totalPages && (
+                <Link
+                  href={`/oposiciones?${new URLSearchParams({ ...params, page: String(page + 1) } as Record<string, string>)}`}
+                  className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                >
+                  Siguiente
+                </Link>
+              )}
             </div>
+          </nav>
+        )}
 
-            <Suspense fallback={<div className="animate-pulse space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-lg" />
-              ))}
-            </div>}>
-              <ConvocatoriasLista convocatorias={convocatorias} />
-            </Suspense>
-
-            {/* Paginación */}
-            {totalPages > 1 && (
-              <nav className="mt-8 flex justify-center">
-                <div className="flex gap-2">
-                  {page > 1 && (
-                    <Link
-                      href={`/oposiciones?${new URLSearchParams({ ...params, page: String(page - 1) })}`}
-                      className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      Anterior
-                    </Link>
-                  )}
-                  <span className="px-4 py-2 text-gray-600 dark:text-gray-400">
-                    Página {page} de {totalPages}
-                  </span>
-                  {page < totalPages && (
-                    <Link
-                      href={`/oposiciones?${new URLSearchParams({ ...params, page: String(page + 1) })}`}
-                      className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                    >
-                      Siguiente
-                    </Link>
-                  )}
-                </div>
-              </nav>
-            )}
-          </main>
-        </div>
+        {/* Sin resultados */}
+        {convocatorias.length === 0 && (
+          <div className="text-center py-12">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="mt-4 text-gray-500 dark:text-gray-400">
+              No se encontraron oposiciones con estos filtros
+            </p>
+            <Link
+              href="/oposiciones"
+              className="mt-4 inline-block text-blue-600 hover:underline"
+            >
+              Ver todas las oposiciones
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import ConvocatoriasLista from '../../convocatorias/components/ConvocatoriasLista';
+import ConvocatoriasLista from '../components/ConvocatoriasLista';
 import OposicionTimeline from '../components/OposicionTimeline';
 import {
   detectFilterType,
@@ -20,7 +20,7 @@ import {
   CCAA_MAP,
   CATEGORIA_MAP,
   TEMPORAL_MAP,
-} from '../../convocatorias/lib/filters';
+} from '../lib/filters';
 
 // ============================================
 // STATIC PARAMS
@@ -193,7 +193,7 @@ export default async function OposicionesPage({
             </li>
             <li className="text-gray-400">/</li>
             <li>
-              <Link href="/convocatorias" className="text-gray-500 hover:text-gray-700 dark:text-gray-400">Oposiciones</Link>
+              <Link href="/oposiciones" className="text-gray-500 hover:text-gray-700 dark:text-gray-400">Oposiciones</Link>
             </li>
             <li className="text-gray-400">/</li>
             <li className="text-gray-900 dark:text-white font-medium">{filter.label}</li>
@@ -251,7 +251,7 @@ export default async function OposicionesPage({
         ) : (
           <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border">
             <p className="text-gray-500 dark:text-gray-400">No hay oposiciones con este filtro.</p>
-            <Link href="/convocatorias" className="mt-4 inline-block text-blue-600 hover:underline">
+            <Link href="/oposiciones" className="mt-4 inline-block text-blue-600 hover:underline">
               Ver todas las oposiciones
             </Link>
           </div>
