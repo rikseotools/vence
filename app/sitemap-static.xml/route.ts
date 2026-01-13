@@ -4,25 +4,9 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { generateLawSlug } from '@/lib/lawMappingUtils';
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
-
-// Función para obtener slug canónico de ley
-function getCanonicalSlug(shortName: string): string {
-  const slugMap: Record<string, string> = {
-    'CE': 'constitucion-espanola',
-    'LPAC': 'ley-39-2015',
-    'LRJSP': 'ley-40-2015',
-    'TREBEP': 'real-decreto-legislativo-5-2015',
-    'LPGE2023': 'ley-31-2022',
-    'LTAIBG': 'ley-19-2013',
-    'LOPD': 'ley-organica-3-2018',
-    'LGDPD': 'real-decreto-legislativo-1-2013',
-    'LGT': 'ley-58-2003',
-    'LPGE2024': 'ley-presupuestos-2024',
-  };
-  return slugMap[shortName] || shortName.toLowerCase().replace(/\s+/g, '-');
-}
 
 export const revalidate = 86400; // Regenerar cada 24 horas
 
@@ -242,7 +226,7 @@ export async function GET() {
           .eq('articles.laws.short_name', law.short_name);
 
         if ((count || 0) >= 5) {
-          const canonicalSlug = getCanonicalSlug(law.short_name);
+          const canonicalSlug = generateLawSlug(law.short_name);
           const lastmod = law.updated_at
             ? new Date(law.updated_at).toISOString().split('T')[0]
             : today;
