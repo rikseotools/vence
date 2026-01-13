@@ -1858,6 +1858,62 @@ Si necesitas información histórica sobre la ley derogada por motivos académic
       })
     }
 
+    // 📱 VERIFICAR CONSULTAS SOBRE FUNCIONALIDADES DE LA PLATAFORMA
+    const msgLowerForPlatform = message.toLowerCase()
+    const isPsicotecnicoQuery = /psicot[eé]cnicos?|test\s+psicot[eé]cnico|series\s+num[eé]ricas|series\s+alfab[eé]ticas|domin[oó]s|matrices|razonamiento\s+l[oó]gico/i.test(msgLowerForPlatform)
+
+    if (isPsicotecnicoQuery && !questionContext) {
+      console.log(`📱 Consulta sobre funcionalidad de plataforma: psicotécnicos`)
+
+      const platformResponse = `📊 **¡Sí! Vence tiene una sección completa de psicotécnicos**
+
+Puedes acceder desde el menú o directamente en **/psicotecnicos**
+
+**Tipos de ejercicios disponibles:**
+- 🔢 Series numéricas
+- 🔤 Series alfabéticas
+- 🧩 Secuencias lógicas
+- 🎯 Analogías
+- 📐 Razonamiento espacial
+- 🎲 Dominós
+- 🖼️ Figuras
+- 📊 Matrices
+
+**Cómo practicar:**
+1. Ve a la sección **Psicotécnicos** en el menú
+2. Elige el tipo de ejercicio
+3. Configura el número de preguntas
+4. ¡A practicar!
+
+💡 Los psicotécnicos son parte importante de las oposiciones de Auxiliar Administrativo del Estado. ¿Te gustaría información sobre algún tipo específico?`
+
+      // Guardar log
+      if (userId) {
+        await saveAIChatLog({
+          userId,
+          message,
+          responsePreview: platformResponse.substring(0, 200),
+          fullResponse: platformResponse,
+          sourcesUsed: [],
+          questionContextId: null,
+          questionContextLaw: null,
+          suggestionUsed,
+          responseTimeMs: Date.now() - startTime,
+          tokensUsed: 0,
+          hadError: false,
+          userOposicion: userOposicion,
+          detectedLaws: []
+        })
+      }
+
+      return Response.json({
+        success: true,
+        response: platformResponse,
+        sources: [],
+        isPlatformFeatureResponse: true
+      })
+    }
+
     // 🔄 Si no recibimos oposición del frontend pero tenemos userId, obtenerla de la BD (query tipada con Drizzle)
     let resolvedOposicion = userOposicion
     if (!userOposicion && userId) {
