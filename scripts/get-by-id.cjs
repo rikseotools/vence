@@ -6,8 +6,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+const id = process.argv[2];
+
 (async () => {
-  const { data: questions, error } = await supabase
+  if (!id) {
+    console.log("Uso: node scripts/get-by-id.cjs <question_id>");
+    return;
+  }
+
+  const { data, error } = await supabase
     .from("questions")
     .select(`
       id, question_text, correct_option, option_a, option_b, option_c, option_d, explanation,
@@ -16,18 +23,11 @@ const supabase = createClient(
         laws!articles_law_id_fkey(short_name, name)
       )
     `)
-    .eq("is_active", true)
-    .eq("topic_review_status", "wrong_article")
-    .limit(1);
+    .eq("id", id)
+    .single();
 
   if (error) {
     console.log("Error:", error.message);
-    return;
-  }
-
-  const data = questions?.[0];
-  if (!data) {
-    console.log("No hay mas preguntas wrong_article");
     return;
   }
 
