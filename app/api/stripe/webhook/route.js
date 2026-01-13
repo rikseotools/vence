@@ -505,24 +505,44 @@ async function handleSubscriptionUpdated(subscription, supabase) {
 
     console.log(`✅ Subscription ${subscription.id} updated to status: ${subscription.status}`)
 
+    // 🔥 FIX: Si el status es 'canceled', degradar a FREE
+    if (subscription.status === 'canceled') {
+      const { data: subDataArray } = await supabase
+        .from('user_subscriptions')
+        .select('user_id')
+        .eq('stripe_subscription_id', subscription.id)
+        .limit(1)
+
+      const subData = subDataArray?.[0]
+      if (subData?.user_id) {
+        await supabase
+          .from('user_profiles')
+          .update({ plan_type: 'free' })
+          .eq('id', subData.user_id)
+        console.log(`✅ User ${subData.user_id} degradado a FREE por status canceled`)
+      }
+    }
+
     // 🔥 FIX: Si el status cambia a past_due o unpaid, notificar al admin
     if (['past_due', 'unpaid'].includes(subscription.status)) {
       console.log(`⚠️ Subscription ${subscription.id} tiene problemas de pago: ${subscription.status}`)
 
-      // Buscar usuario para notificar
-      const { data: subData } = await supabase
+      // Buscar usuario para notificar (sin .single() para evitar errores)
+      const { data: paymentSubData } = await supabase
         .from('user_subscriptions')
         .select('user_id')
         .eq('stripe_subscription_id', subscription.id)
-        .single()
+        .limit(1)
 
-      if (subData?.user_id) {
-        const { data: userProfile } = await supabase
+      const paymentSub = paymentSubData?.[0]
+      if (paymentSub?.user_id) {
+        const { data: profileData } = await supabase
           .from('user_profiles')
           .select('email, full_name')
-          .eq('id', subData.user_id)
-          .single()
+          .eq('id', paymentSub.user_id)
+          .limit(1)
 
+        const userProfile = profileData?.[0]
         if (userProfile) {
           try {
             await sendAdminPaymentIssueEmail({
@@ -545,12 +565,18 @@ async function handleSubscriptionUpdated(subscription, supabase) {
 
 async function handleSubscriptionDeleted(subscription, supabase) {
   try {
-    // 1. Obtener el user_id antes de actualizar
-    const { data: subData } = await supabase
+    // 1. Obtener el user_id antes de actualizar (sin .single() para evitar errores)
+    const { data: subDataArray } = await supabase
       .from('user_subscriptions')
       .select('user_id')
       .eq('stripe_subscription_id', subscription.id)
-      .single()
+      .limit(1)
+
+    const subData = subDataArray?.[0]
+
+    if (!subData) {
+      console.warn(`⚠️ Subscription ${subscription.id} no encontrada en BD, posiblemente ya procesada`)
+    }
 
     // 2. Actualizar user_subscriptions
     await supabase
@@ -577,12 +603,13 @@ async function handleSubscriptionDeleted(subscription, supabase) {
 
       // Notificar al admin sobre la cancelación
       try {
-        const { data: userProfile } = await supabase
+        const { data: profileData } = await supabase
           .from('user_profiles')
           .select('email, full_name')
           .eq('id', subData.user_id)
-          .single()
+          .limit(1)
 
+        const userProfile = profileData?.[0]
         if (userProfile) {
           await sendAdminCancellationEmail({
             userEmail: userProfile.email,
