@@ -182,7 +182,11 @@ async function getQuestionsForTopic(
 
   // Para cada mapeo, obtener las preguntas
   for (const mapping of scopeMappings) {
-    if (!mapping.lawId || !mapping.articleNumbers?.length) continue
+    if (!mapping.lawId) continue
+
+    // Si articleNumbers es null, obtener TODAS las preguntas de la ley (leyes virtuales)
+    // Si articleNumbers tiene valores, filtrar solo esos artículos
+    const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
 
     const questionsForLaw = await db
       .select({
@@ -199,7 +203,8 @@ async function getQuestionsForTopic(
       .where(and(
         eq(questions.isActive, true),
         eq(laws.id, mapping.lawId),
-        inArray(articles.articleNumber, mapping.articleNumbers)
+        // Solo filtrar por artículos específicos si se proporcionan
+        ...(hasSpecificArticles ? [inArray(articles.articleNumber, mapping.articleNumbers!)] : [])
       ))
 
     allQuestions.push(...questionsForLaw)

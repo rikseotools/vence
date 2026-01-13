@@ -109,5 +109,5 @@ export default async function TestHubPage({ oposicion }: Props) {
   )
 }
 
-// Revalidar cada hora (datos estáticos, no cambian frecuentemente)
-export const revalidate = 3600
+// Revalidar cada mes (los temas no cambian)
+export const revalidate = 2592000 // 30 días
