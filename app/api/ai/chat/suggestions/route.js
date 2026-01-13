@@ -5,12 +5,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// GET: Obtener sugerencias activas filtradas por oposición/contexto y ordenadas por CTR
+// GET: Obtener sugerencias activas filtradas por oposición/contexto/página y ordenadas por CTR
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const oposicionId = searchParams.get('oposicionId')
     const contextType = searchParams.get('contextType') || 'general' // 'general' | 'law_context'
+    const pageContext = searchParams.get('pageContext') || 'general' // 'general' | 'test' | 'psicotecnico' | 'psicotecnico_test'
     const lawName = searchParams.get('lawName') // Para reemplazar {lawName} en plantillas
 
     // Obtener sugerencias con conteo de clicks
@@ -25,20 +26,22 @@ export async function GET(request) {
         priority,
         oposicion_id,
         context_type,
+        page_context,
         ai_chat_suggestion_clicks(count)
       `)
       .eq('is_active', true)
       .eq('context_type', contextType)
+      .eq('page_context', pageContext)
 
-    // Filtrar por oposición solo para sugerencias generales
-    if (contextType === 'general') {
+    // Filtrar por oposición solo para sugerencias generales de página general
+    if (contextType === 'general' && pageContext === 'general') {
       if (oposicionId) {
         query = query.or(`oposicion_id.eq.${oposicionId},oposicion_id.is.null`)
       } else {
         query = query.is('oposicion_id', null)
       }
     }
-    // law_context no filtra por oposición (son universales para cualquier ley)
+    // law_context y otros page_context no filtran por oposición
 
     const { data, error } = await query
 

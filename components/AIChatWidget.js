@@ -49,14 +49,28 @@ export default function AIChatWidget() {
     }
   }, [isOpen])
 
+  // Determinar el contexto de página actual
+  const getPageContext = useCallback(() => {
+    if (currentQuestionContext) {
+      // Estamos viendo una pregunta
+      return isPsicotecnico ? 'psicotecnico_test' : 'test'
+    }
+    if (isPsicotecnico) {
+      // Estamos en página de psicotécnicos pero sin pregunta específica
+      return 'psicotecnico'
+    }
+    return 'general'
+  }, [currentQuestionContext, isPsicotecnico])
+
   // Cargar sugerencias dinámicas al abrir el chat (siempre fresco para CTR actualizado)
   useEffect(() => {
     if (isOpen) {
-      const url = oposicionId
-        ? `/api/ai/chat/suggestions?oposicionId=${oposicionId}`
-        : '/api/ai/chat/suggestions'
+      const pageContext = getPageContext()
+      const params = new URLSearchParams()
+      if (oposicionId) params.set('oposicionId', oposicionId)
+      params.set('pageContext', pageContext)
 
-      fetch(url)
+      fetch(`/api/ai/chat/suggestions?${params.toString()}`)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.suggestions) {
@@ -65,13 +79,13 @@ export default function AIChatWidget() {
         })
         .catch(err => console.error('Error loading suggestions:', err))
     }
-  }, [isOpen, oposicionId])
+  }, [isOpen, oposicionId, getPageContext])
 
   // Cargar sugerencias contextuales de ley cuando hay una pregunta con ley
   useEffect(() => {
     const lawName = currentQuestionContext?.lawName
-    if (isOpen && lawName) {
-      const url = `/api/ai/chat/suggestions?contextType=law_context&lawName=${encodeURIComponent(lawName)}`
+    if (isOpen && lawName && !isPsicotecnico) {
+      const url = `/api/ai/chat/suggestions?contextType=law_context&pageContext=test&lawName=${encodeURIComponent(lawName)}`
 
       fetch(url)
         .then(res => res.json())
@@ -84,7 +98,7 @@ export default function AIChatWidget() {
     } else {
       setLawContextSuggestions([])
     }
-  }, [isOpen, currentQuestionContext?.lawName])
+  }, [isOpen, currentQuestionContext?.lawName, isPsicotecnico])
 
   // Cancelar streaming si se cierra el chat
   useEffect(() => {
