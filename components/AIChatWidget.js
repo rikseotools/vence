@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
+import ReactMarkdown from 'react-markdown'
 import { useQuestionContext } from '../contexts/QuestionContext'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -918,7 +919,18 @@ export default function AIChatWidget() {
                       </span>
                     </div>
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none
+                      prose-p:my-1 prose-p:leading-relaxed
+                      prose-strong:text-gray-900 prose-strong:dark:text-white prose-strong:font-semibold
+                      prose-ul:my-1 prose-ul:pl-4 prose-li:my-0.5
+                      prose-ol:my-1 prose-ol:pl-4
+                      prose-headings:font-semibold prose-headings:text-gray-900 prose-headings:dark:text-white
+                      prose-h1:text-base prose-h2:text-sm prose-h3:text-sm
+                      prose-code:bg-gray-100 prose-code:dark:bg-gray-700 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-xs
+                      prose-a:text-blue-600 prose-a:dark:text-blue-400 prose-a:no-underline prose-a:hover:underline
+                    ">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
                   )}
                   {msg.potentialErrorDetected && (
                     <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 rounded-lg">

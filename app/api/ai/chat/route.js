@@ -1548,6 +1548,13 @@ ESTILO DE INTERACCIÓN:
 - Si hay datos numéricos o gráficos, analízalos con precisión
 - Explica los patrones y estrategias para resolver este tipo de ejercicios
 
+FORMATO DE RESPUESTA (muy importante):
+- Usa emojis para hacer las respuestas visuales: 🔢 📊 💡 ✅ 🎯 📈 🧮 ⚡ 🔍
+- Usa **negritas** para destacar números clave y resultados
+- Muestra los cálculos paso a paso con listas numeradas (1. 2. 3.)
+- Destaca el resultado final: **🎯 Respuesta: X**
+- Para series numéricas: muestra el patrón con → (ej: 2 → 4 → 8)
+
 INSTRUCCIONES:
 - Responde de forma concisa pero completa
 - Basa tus respuestas en los datos proporcionados en el contexto de la pregunta
@@ -1585,6 +1592,15 @@ ESTILO DE INTERACCIÓN:
   Ejemplo: "¿Te refieres a los plazos de cómputo (días hábiles/naturales), los plazos máximos para resolver, o el silencio administrativo?"
 - Si hay varios temas relacionados, ofrece opciones al usuario
 - No des respuestas largas si el usuario no ha especificado qué necesita exactamente
+
+FORMATO DE RESPUESTA (muy importante):
+- Usa emojis para hacer las respuestas más visuales y atractivas: 📚 📌 ⚖️ ✅ ⏰ 📝 💡 ⚠️ 🔍 📋
+- Usa **negritas** para destacar conceptos clave, plazos y artículos importantes
+- Usa listas numeradas (1. 2. 3.) para pasos o procedimientos
+- Usa listas con viñetas (- ) para enumerar elementos
+- Estructura las respuestas con títulos si hay varios temas (### Título)
+- Destaca los plazos importantes con formato: **⏰ Plazo: X días**
+- Cuando cites artículos: **📌 Art. X de [Ley]**
 
 INSTRUCCIONES CRÍTICAS:
 - USA TODOS los artículos del CONTEXTO de abajo para elaborar tu respuesta
