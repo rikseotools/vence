@@ -48,10 +48,14 @@ export default function AIChatWidget() {
     }
   }, [isOpen])
 
-  // Cargar sugerencias dinámicas al abrir el chat
+  // Cargar sugerencias dinámicas al abrir el chat (siempre fresco para CTR actualizado)
   useEffect(() => {
-    if (isOpen && dynamicSuggestions.length === 0) {
-      fetch('/api/ai/chat/suggestions')
+    if (isOpen) {
+      const url = oposicionId
+        ? `/api/ai/chat/suggestions?oposicionId=${oposicionId}`
+        : '/api/ai/chat/suggestions'
+
+      fetch(url)
         .then(res => res.json())
         .then(data => {
           if (data.success && data.suggestions) {
@@ -60,7 +64,7 @@ export default function AIChatWidget() {
         })
         .catch(err => console.error('Error loading suggestions:', err))
     }
-  }, [isOpen, dynamicSuggestions.length])
+  }, [isOpen, oposicionId])
 
   // Cancelar streaming si se cierra el chat
   useEffect(() => {

@@ -5,22 +5,63 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// GET: Obtener sugerencias activas ordenadas por prioridad
-export async function GET() {
+// GET: Obtener sugerencias activas filtradas por oposición y ordenadas por CTR
+export async function GET(request) {
   try {
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url)
+    const oposicionId = searchParams.get('oposicionId')
+
+    // Obtener sugerencias con conteo de clicks
+    // Filtramos por oposicion_id específica O sugerencias universales (null)
+    let query = supabase
       .from('ai_chat_suggestions')
-      .select('id, label, message, suggestion_key, emoji, priority')
+      .select(`
+        id,
+        label,
+        message,
+        suggestion_key,
+        emoji,
+        priority,
+        oposicion_id,
+        ai_chat_suggestion_clicks(count)
+      `)
       .eq('is_active', true)
-      .order('priority', { ascending: false })
-      .limit(6) // Máximo 6 sugerencias visibles
+
+    // Filtrar por oposición: mostrar las de esa oposición + las universales
+    if (oposicionId) {
+      query = query.or(`oposicion_id.eq.${oposicionId},oposicion_id.is.null`)
+    } else {
+      // Si no hay oposición, solo mostrar las universales
+      query = query.is('oposicion_id', null)
+    }
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Error fetching suggestions:', error)
       return Response.json({ success: false, error: error.message }, { status: 500 })
     }
 
-    return Response.json({ success: true, suggestions: data })
+    // Procesar y ordenar por CTR (clicks) descendente, luego por prioridad
+    const suggestions = data
+      .map(s => ({
+        id: s.id,
+        label: s.label,
+        message: s.message,
+        suggestion_key: s.suggestion_key,
+        emoji: s.emoji,
+        priority: s.priority,
+        oposicion_id: s.oposicion_id,
+        clicks: s.ai_chat_suggestion_clicks?.[0]?.count || 0
+      }))
+      .sort((a, b) => {
+        // Primero por clicks (CTR), luego por prioridad
+        if (b.clicks !== a.clicks) return b.clicks - a.clicks
+        return b.priority - a.priority
+      })
+      .slice(0, 6) // Máximo 6 sugerencias
+
+    return Response.json({ success: true, suggestions })
   } catch (error) {
     console.error('Error in suggestions GET:', error)
     return Response.json({ success: false, error: 'Error interno' }, { status: 500 })
