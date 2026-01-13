@@ -57,10 +57,13 @@ export default function PWAStatsReal() {
       console.log('📱 Cargando estadísticas PWA reales...')
       
       // Consultas paralelas para estadísticas PWA reales
+      // IMPORTANTE: Usar count para evitar límite de 1000 rows de Supabase
       const [
         installsResult,
-        promptsResult, 
-        sessionsResult,
+        promptsResult,
+        sessionsCountResult,
+        standaloneSessions7dResult,
+        webSessions7dResult,
         activePWAResult
       ] = await Promise.all([
         // Total instalaciones PWA (necesitamos user_id para deduplicar)
@@ -72,16 +75,30 @@ export default function PWAStatsReal() {
         // Prompts de instalación mostrados
         supabase
           .from('pwa_events')
-          .select('id')
+          .select('*', { count: 'exact', head: true })
           .eq('event_type', 'install_prompt_shown'),
 
-        // Sesiones recientes (últimos 7 días)
+        // Sesiones totales recientes (últimos 7 días) - usar COUNT
         supabase
           .from('pwa_sessions')
-          .select('session_duration_minutes, is_standalone, user_id')
+          .select('*', { count: 'exact', head: true })
           .gte('session_start', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
 
-        // Usuarios únicos que han usado PWA (últimos 30 días)
+        // Sesiones standalone (últimos 7 días) - usar COUNT
+        supabase
+          .from('pwa_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_standalone', true)
+          .gte('session_start', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+
+        // Sesiones web (últimos 7 días) - usar COUNT
+        supabase
+          .from('pwa_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_standalone', false)
+          .gte('session_start', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+
+        // Usuarios únicos que han usado PWA standalone (últimos 30 días)
         supabase
           .from('pwa_sessions')
           .select('user_id')
@@ -96,36 +113,32 @@ export default function PWAStatsReal() {
         // Procesar resultados reales - CONTAR USUARIOS ÚNICOS, no eventos
         const uniqueInstallers = new Set(installsResult.data?.map(e => e.user_id) || []).size
         const totalInstalls = uniqueInstallers // Usuarios únicos que instalaron
-        const totalPrompts = promptsResult.data?.length || 0
+        const totalPrompts = promptsResult.count || 0
         const conversionRate = totalPrompts > 0 ? ((totalInstalls / totalPrompts) * 100).toFixed(1) : '0'
 
-        const sessions = sessionsResult.data || []
-        const recentSessions = sessions.length
-        
-        // Calcular duración promedio
-        const sessionsWithDuration = sessions.filter(s => s.session_duration_minutes && s.session_duration_minutes > 0)
-        const avgDuration = sessionsWithDuration.length > 0 
-          ? (sessionsWithDuration.reduce((sum, s) => sum + s.session_duration_minutes, 0) / sessionsWithDuration.length).toFixed(1)
-          : '0'
+        // Usar COUNT para sesiones (evita límite de 1000 rows)
+        const recentSessions = sessionsCountResult.count || 0
+        const standaloneSessions = standaloneSessions7dResult.count || 0
+        const webSessions = webSessions7dResult.count || 0
 
-        // Sesiones PWA vs Web
-        const standaloneSessions = sessions.filter(s => s.is_standalone).length
-        const webSessions = sessions.filter(s => !s.is_standalone).length
-
-        // Usuarios únicos con PWA
+        // Usuarios únicos con PWA (deduplicar por user_id)
         const uniquePWAUsers = new Set(activePWAResult.data?.map(s => s.user_id) || []).size
 
         // Fecha de primera instalación
-        const firstInstall = installsResult.data?.length > 0 
+        const firstInstall = installsResult.data?.length > 0
           ? new Date(Math.min(...installsResult.data.map(i => new Date(i.created_at))))
           : null
 
+        // Nota: avgDuration requeriría query adicional, por ahora omitimos
+        const avgDuration = '~'
+
         console.log('📊 Estadísticas PWA reales cargadas:', {
           totalInstalls,
-          totalPrompts, 
+          totalPrompts,
           conversionRate,
           recentSessions,
-          avgDuration,
+          standaloneSessions,
+          webSessions,
           uniquePWAUsers
         })
 
@@ -138,7 +151,7 @@ export default function PWAStatsReal() {
           installPrompts: totalPrompts,
           conversionRate: `${conversionRate}%`,
           recentSessions,
-          avgSessionDuration: `${avgDuration} min`,
+          avgSessionDuration: avgDuration,
           standaloneUsage: standaloneSessions,
           webUsage: webSessions,
           firstInstallDate: firstInstall ? firstInstall.toLocaleDateString('es-ES') : 'N/A'
