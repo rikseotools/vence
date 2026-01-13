@@ -1,24 +1,80 @@
-// app/api/stripe/webhook/route.js - ACTUALIZADO PARA MODO DIRECTO
-import { NextResponse } from 'next/server'
+// app/api/stripe/webhook/route.ts
+import { NextResponse, NextRequest } from 'next/server'
 import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import type Stripe from 'stripe'
+import { shouldDowngradeNow, formatPeriodEnd } from '@/lib/stripe-webhook-handlers'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StripeSubscription = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StripeInvoice = any
+type StripeCheckoutSession = Stripe.Checkout.Session
+type StripeCustomer = Stripe.Customer
+
+// Helper to retrieve subscription
+async function getSubscription(subscriptionId: string): Promise<StripeSubscription> {
+  return await stripe.subscriptions.retrieve(subscriptionId)
+}
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+
+// Types
+interface PurchaseEmailData {
+  userEmail: string
+  userName: string
+  amount: number
+  currency: string
+  stripeCustomerId: string
+  userId: string
+}
+
+interface PaymentIssueEmailData {
+  userEmail: string
+  userName: string
+  status: string
+  subscriptionId: string
+  invoiceId?: string
+  amount?: number
+  currency?: string
+}
+
+interface CancellationEmailData {
+  userEmail: string
+  userName: string
+  subscriptionId: string
+  reason: string
+  periodEnd: string | null
+  downgradedNow: boolean
+}
+
+interface SettlementData {
+  paymentIntentId: string | null
+  chargeId: string | null
+  invoiceId: string | null
+  customerId: string
+  userId: string
+  userEmail: string
+  amountGross: number
+  currency: string
+  paymentDate: string
+  supabase: SupabaseClient
+}
 
 // Crear cliente con SERVICE_ROLE_KEY para bypasear RLS
-const getServiceSupabase = () => {
+const getServiceSupabase = (): SupabaseClient => {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
     const headersList = await headers()
@@ -29,11 +85,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Webhook signature missing' }, { status: 400 })
     }
 
-    let event
+    let event: Stripe.Event
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err) {
-      console.error('Webhook signature verification failed:', err.message)
+      const error = err as Error
+      console.error('Webhook signature verification failed:', error.message)
       return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
     }
 
@@ -41,29 +98,29 @@ export async function POST(request) {
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object, supabase)
+        await handleCheckoutSessionCompleted(event.data.object as StripeCheckoutSession, supabase)
         break
-      
+
       case 'customer.subscription.created':
-        await handleSubscriptionCreated(event.data.object, supabase)
+        await handleSubscriptionCreated(event.data.object as StripeSubscription, supabase)
         break
-      
+
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object, supabase)
+        await handleSubscriptionUpdated(event.data.object as StripeSubscription, supabase)
         break
-      
+
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object, supabase)
+        await handleSubscriptionDeleted(event.data.object as StripeSubscription, supabase)
         break
-      
+
       case 'invoice.payment_succeeded':
-        await handlePaymentSucceeded(event.data.object, supabase)
+        await handlePaymentSucceeded(event.data.object as StripeInvoice, supabase)
         break
-      
+
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object, supabase)
+        await handlePaymentFailed(event.data.object as StripeInvoice, supabase)
         break
-      
+
       default:
         console.log(`Unhandled event type: ${event.type}`)
     }
@@ -71,11 +128,11 @@ export async function POST(request) {
     return NextResponse.json({ received: true })
 
   } catch (error) {
-    console.error('Webhook error:', error)
+    const err = error as Error
+    console.error('Webhook error:', err)
 
-    // 🚨 Enviar email de alerta al admin cuando el webhook falla
     try {
-      await sendWebhookErrorEmail(error)
+      await sendWebhookErrorEmail(err)
     } catch (emailErr) {
       console.error('Error enviando email de alerta:', emailErr)
     }
@@ -84,31 +141,21 @@ export async function POST(request) {
   }
 }
 
-// 🚨 Función para enviar email cuando el webhook falla
-async function sendWebhookErrorEmail(error) {
+async function sendWebhookErrorEmail(error: Error): Promise<void> {
   const html = `
     <!DOCTYPE html>
     <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Error en Webhook Stripe</title>
-      </head>
+      <head><meta charset="utf-8"><title>Error en Webhook Stripe</title></head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
         <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-
           <div style="text-align: center; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0; border-bottom: 4px solid #dc2626;">
             <h1 style="color: #b91c1c; margin: 0;">🚨 ERROR EN WEBHOOK STRIPE</h1>
             <p style="color: #dc2626; margin: 10px 0 0 0; font-size: 18px;">Un pago puede no haberse procesado</p>
           </div>
-
           <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #f59e0b;">
             <h3 style="color: #92400e; margin: 0 0 10px 0;">⚠️ Acción requerida:</h3>
-            <p style="margin: 0; color: #78350f;">
-              Revisa Stripe Dashboard > Webhooks para ver qué evento falló y
-              activa manualmente el usuario si es necesario.
-            </p>
+            <p style="margin: 0; color: #78350f;">Revisa Stripe Dashboard > Webhooks para ver qué evento falló.</p>
           </div>
-
           <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
             <h3 style="color: #374151; margin: 0 0 15px 0;">🔍 Detalles del error:</h3>
             <p style="margin: 8px 0;"><strong>Mensaje:</strong> ${error.message || 'Sin mensaje'}</p>
@@ -116,18 +163,10 @@ async function sendWebhookErrorEmail(error) {
             <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
             <pre style="background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">${error.stack || 'Sin stack trace'}</pre>
           </div>
-
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://dashboard.stripe.com/webhooks"
-               style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-right: 10px;">
-              📊 Ver Webhooks en Stripe
-            </a>
-            <a href="https://www.vence.es/admin"
-               style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-              🏠 Panel Admin
-            </a>
+            <a href="https://dashboard.stripe.com/webhooks" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-right: 10px;">📊 Ver Webhooks en Stripe</a>
+            <a href="https://www.vence.es/admin" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">🏠 Panel Admin</a>
           </div>
-
         </div>
       </body>
     </html>
@@ -137,22 +176,23 @@ async function sendWebhookErrorEmail(error) {
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
     subject: `🚨 ERROR WEBHOOK STRIPE - ${new Date().toLocaleString('es-ES')}`,
-    html: html
+    html
   })
 }
 
-// ✅ ACTUALIZADO: Manejar checkout completado (pago directo sin trial)
-async function handleCheckoutSessionCompleted(session, supabase) {
+async function handleCheckoutSessionCompleted(
+  session: StripeCheckoutSession,
+  supabase: SupabaseClient
+): Promise<void> {
   console.log('🎯 Checkout completado:', session.id)
 
-  // Obtener userId: primero intentar desde subscription metadata, luego session metadata
-  let userId = null
+  let userId: string | null = null
 
   // Si hay subscription, recuperarla para obtener metadata
   if (session.subscription) {
     try {
-      const subscription = await stripe.subscriptions.retrieve(session.subscription)
-      userId = subscription.metadata?.supabase_user_id
+      const subscription = await getSubscription(session.subscription as string)
+      userId = subscription.metadata?.supabase_user_id || null
       console.log('📋 userId desde subscription metadata:', userId)
     } catch (err) {
       console.error('Error retrieving subscription:', err)
@@ -161,7 +201,7 @@ async function handleCheckoutSessionCompleted(session, supabase) {
 
   // Fallback: buscar en session metadata
   if (!userId) {
-    userId = session.metadata?.supabase_user_id
+    userId = session.metadata?.supabase_user_id || null
     console.log('📋 userId desde session metadata:', userId)
   }
 
@@ -170,19 +210,16 @@ async function handleCheckoutSessionCompleted(session, supabase) {
     const { data: userByCustomer } = await supabase
       .from('user_profiles')
       .select('id')
-      .eq('stripe_customer_id', session.customer)
+      .eq('stripe_customer_id', session.customer as string)
       .single()
 
-    userId = userByCustomer?.id
+    userId = userByCustomer?.id || null
     console.log('📋 userId desde stripe_customer_id:', userId)
   }
 
   if (userId) {
     console.log('👤 Activando premium para usuario:', userId)
-    console.log('🔑 SERVICE_ROLE_KEY configurada:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
-    console.log('🔑 SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
 
-    // ANTES: Verificar estado actual
     const { data: beforeData } = await supabase
       .from('user_profiles')
       .select('plan_type, updated_at')
@@ -190,12 +227,11 @@ async function handleCheckoutSessionCompleted(session, supabase) {
       .single()
     console.log('📊 ANTES del update:', beforeData)
 
-    // UPDATE
     const { data, error } = await supabase
       .from('user_profiles')
       .update({
         plan_type: 'premium',
-        stripe_customer_id: session.customer
+        stripe_customer_id: session.customer as string
       })
       .eq('id', userId)
       .select()
@@ -205,110 +241,101 @@ async function handleCheckoutSessionCompleted(session, supabase) {
     } else {
       console.log(`✅ User ${userId} ahora es PREMIUM`, data)
 
-      // Determinar plan_type basado en el intervalo de la suscripción
-      let planType = 'subscription' // fallback
+      let planType = 'subscription'
 
-      // 🔥 FIX BUG: Crear registro en user_subscriptions AQUÍ como backup
-      // El evento customer.subscription.created puede llegar antes y fallar
-      // porque stripe_customer_id aún no estaba guardado
       if (session.subscription) {
         try {
-          const subscription = await stripe.subscriptions.retrieve(session.subscription)
-
-          // Determinar plan_type basado en el intervalo (solo mensual o semestral)
+          const subscription = await getSubscription(session.subscription as string)
           const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
           planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
 
-          // Usar upsert para evitar duplicados si customer.subscription.created ya lo creó
           const { error: subError } = await supabase
             .from('user_subscriptions')
             .upsert({
               user_id: userId,
-              stripe_customer_id: session.customer,
+              stripe_customer_id: session.customer as string,
               stripe_subscription_id: subscription.id,
               status: subscription.status,
               plan_type: planType,
-              current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : null,
-              current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
+              current_period_start: subscription.current_period_start
+                ? new Date(subscription.current_period_start * 1000).toISOString()
+                : null,
+              current_period_end: subscription.current_period_end
+                ? new Date(subscription.current_period_end * 1000).toISOString()
+                : null
             }, {
               onConflict: 'user_id',
               ignoreDuplicates: false
             })
 
           if (subError) {
-            console.error('⚠️ Error creando subscription record (puede ser duplicado):', subError.message)
+            console.error('⚠️ Error creando subscription record:', subError.message)
           } else {
-            console.log('✅ Subscription record creado/actualizado en user_subscriptions')
+            console.log('✅ Subscription record creado/actualizado')
           }
         } catch (subErr) {
-          console.error('⚠️ Error procesando subscription en checkout:', subErr.message)
+          const e = subErr as Error
+          console.error('⚠️ Error procesando subscription:', e.message)
         }
       }
 
-      // Trackear conversion de pago completado
+      // Trackear conversiones
       try {
         await supabase.rpc('track_conversion_event', {
           p_user_id: userId,
           p_event_type: 'payment_completed',
           p_event_data: {
-            amount: session.amount_total / 100,
+            amount: (session.amount_total || 0) / 100,
             currency: session.currency,
             plan: planType,
             timestamp: new Date().toISOString()
           }
         })
-        console.log('📊 Conversion event tracked: payment_completed')
       } catch (trackErr) {
         console.error('Error tracking conversion:', trackErr)
       }
 
-      // Marcar conversión en A/B testing de mensajes de upgrade
       try {
-        await supabase.rpc('mark_upgrade_conversion', {
-          p_user_id: userId
-        })
-        console.log('📊 A/B test conversion marked for upgrade messages')
+        await supabase.rpc('mark_upgrade_conversion', { p_user_id: userId })
       } catch (abErr) {
         console.error('Error marking A/B conversion:', abErr)
       }
 
-      // Enviar email de notificación al admin
+      // Email admin
       try {
         const userProfile = data?.[0] || {}
         await sendAdminPurchaseEmail({
-          userEmail: userProfile.email || session.customer_email,
+          userEmail: userProfile.email || session.customer_email || '',
           userName: userProfile.full_name || 'Sin nombre',
-          amount: session.amount_total / 100,
+          amount: (session.amount_total || 0) / 100,
           currency: session.currency?.toUpperCase() || 'EUR',
-          stripeCustomerId: session.customer,
-          userId: userId
+          stripeCustomerId: session.customer as string,
+          userId
         })
-        console.log('📧 Email de nueva compra enviado al admin')
+        console.log('📧 Email de nueva compra enviado')
       } catch (emailErr) {
         console.error('Error enviando email admin:', emailErr)
       }
 
-      // 💰 Registrar pago para liquidación Manuel/Armando
+      // Settlement
       try {
         await recordPaymentSettlement({
-          paymentIntentId: session.payment_intent,
-          chargeId: null, // Se obtiene del payment_intent
-          invoiceId: session.invoice,
-          customerId: session.customer,
+          paymentIntentId: session.payment_intent as string | null,
+          chargeId: null,
+          invoiceId: session.invoice as string | null,
+          customerId: session.customer as string,
           userId,
-          userEmail: data?.[0]?.email || session.customer_email,
-          amountGross: session.amount_total, // En céntimos
-          currency: session.currency,
-          paymentDate: new Date(session.created * 1000).toISOString(),
+          userEmail: data?.[0]?.email || session.customer_email || '',
+          amountGross: session.amount_total || 0,
+          currency: session.currency || 'eur',
+          paymentDate: new Date((session.created || 0) * 1000).toISOString(),
           supabase
         })
-        console.log('💰 Pago registrado en payment_settlements')
       } catch (settlementErr) {
         console.error('Error registrando settlement:', settlementErr)
       }
     }
 
-    // DESPUÉS: Verificar que se guardó
     const { data: afterData } = await supabase
       .from('user_profiles')
       .select('plan_type, updated_at')
@@ -316,25 +343,18 @@ async function handleCheckoutSessionCompleted(session, supabase) {
       .single()
     console.log('📊 DESPUÉS del update:', afterData)
 
-    // Comparar
     if (afterData?.plan_type !== 'premium') {
       console.error('🚨 ALERTA: El plan_type NO se actualizó a premium!')
-      console.error('🚨 beforeData:', beforeData)
-      console.error('🚨 afterData:', afterData)
     }
-
     return
   }
 
-  // CASO 2: Checkout directo (sin userId conocido) - buscar por email del customer
+  // CASO 2: Buscar por email
   console.log('🔍 Buscando usuario por email del customer...')
-
   try {
-    // Obtener datos del customer de Stripe
-    const customer = await stripe.customers.retrieve(session.customer)
+    const customer = await stripe.customers.retrieve(session.customer as string) as StripeCustomer
 
     if (customer.email) {
-      // Verificar si ya existe un usuario con este email
       const { data: existingUser } = await supabase
         .from('user_profiles')
         .select('id')
@@ -342,23 +362,20 @@ async function handleCheckoutSessionCompleted(session, supabase) {
         .single()
 
       if (existingUser) {
-        // Usuario existe - actualizar con datos de Stripe
         console.log('📧 Actualizando usuario existente por email:', customer.email)
         await supabase
           .from('user_profiles')
           .update({
             plan_type: 'premium',
-            stripe_customer_id: session.customer
+            stripe_customer_id: session.customer as string
           })
           .eq('id', existingUser.id)
 
         console.log(`✅ User ${existingUser.id} ahora es PREMIUM (encontrado por email)`)
 
-        // 🔥 FIX BUG: También crear subscription record aquí
         if (session.subscription) {
           try {
-            const subscription = await stripe.subscriptions.retrieve(session.subscription)
-            // Determinar plan_type (solo mensual o semestral)
+            const subscription = await getSubscription(session.subscription as string)
             const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
             const planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
 
@@ -366,50 +383,49 @@ async function handleCheckoutSessionCompleted(session, supabase) {
               .from('user_subscriptions')
               .upsert({
                 user_id: existingUser.id,
-                stripe_customer_id: session.customer,
+                stripe_customer_id: session.customer as string,
                 stripe_subscription_id: subscription.id,
                 status: subscription.status,
                 plan_type: planType,
-                current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : null,
-                current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
+                current_period_start: subscription.current_period_start
+                  ? new Date(subscription.current_period_start * 1000).toISOString()
+                  : null,
+                current_period_end: subscription.current_period_end
+                  ? new Date(subscription.current_period_end * 1000).toISOString()
+                  : null
               }, { onConflict: 'user_id', ignoreDuplicates: false })
-
-            console.log('✅ Subscription record creado para usuario encontrado por email')
           } catch (subErr) {
-            console.error('⚠️ Error creando subscription por email:', subErr.message)
+            const e = subErr as Error
+            console.error('⚠️ Error creando subscription por email:', e.message)
           }
         }
 
-        // 📧 Enviar email de notificación al admin (CASO 2)
         try {
           await sendAdminPurchaseEmail({
             userEmail: customer.email,
             userName: 'Usuario encontrado por email',
-            amount: session.amount_total / 100,
+            amount: (session.amount_total || 0) / 100,
             currency: session.currency?.toUpperCase() || 'EUR',
-            stripeCustomerId: session.customer,
+            stripeCustomerId: session.customer as string,
             userId: existingUser.id
           })
-          console.log('📧 Email de nueva compra enviado al admin (CASO 2)')
         } catch (emailErr) {
           console.error('Error enviando email admin (CASO 2):', emailErr)
         }
 
-        // 💰 Registrar pago para liquidación (CASO 2)
         try {
           await recordPaymentSettlement({
-            paymentIntentId: session.payment_intent,
+            paymentIntentId: session.payment_intent as string | null,
             chargeId: null,
-            invoiceId: session.invoice,
-            customerId: session.customer,
+            invoiceId: session.invoice as string | null,
+            customerId: session.customer as string,
             userId: existingUser.id,
             userEmail: customer.email,
-            amountGross: session.amount_total,
-            currency: session.currency,
-            paymentDate: new Date(session.created * 1000).toISOString(),
+            amountGross: session.amount_total || 0,
+            currency: session.currency || 'eur',
+            paymentDate: new Date((session.created || 0) * 1000).toISOString(),
             supabase
           })
-          console.log('💰 Settlement registrado (CASO 2)')
         } catch (settlementErr) {
           console.error('Error registrando settlement (CASO 2):', settlementErr)
         }
@@ -422,19 +438,19 @@ async function handleCheckoutSessionCompleted(session, supabase) {
   }
 }
 
-// Resto de funciones igual...
-async function handleSubscriptionCreated(subscription, supabase) {
+async function handleSubscriptionCreated(
+  subscription: StripeSubscription,
+  supabase: SupabaseClient
+): Promise<void> {
   console.log('📋 handleSubscriptionCreated:', subscription.id)
 
-  // Obtener userId desde metadata O desde customer
   let userId = subscription.metadata?.supabase_user_id
 
   if (!userId) {
-    // Buscar por customer_id si no hay userId en metadata
     const { data: user } = await supabase
       .from('user_profiles')
       .select('id')
-      .eq('stripe_customer_id', subscription.customer)
+      .eq('stripe_customer_id', subscription.customer as string)
       .single()
 
     userId = user?.id
@@ -442,31 +458,34 @@ async function handleSubscriptionCreated(subscription, supabase) {
   }
 
   if (!userId) {
-    // 🔥 FIX: Si no encontramos el usuario, puede ser que checkout.session.completed
-    // aún no haya guardado el stripe_customer_id. No es error crítico porque
-    // handleCheckoutSessionCompleted también crea el registro.
-    console.log('⚠️ No user ID found for subscription:', subscription.id, '- checkout.session.completed lo manejará')
+    console.log('⚠️ No user ID found for subscription:', subscription.id)
     return
   }
 
-  // Determinar plan_type (solo mensual o semestral)
   const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
   const planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
 
   try {
-    // 🔥 FIX: Usar upsert en lugar de insert para evitar duplicados
     const { error } = await supabase
       .from('user_subscriptions')
       .upsert({
         user_id: userId,
-        stripe_customer_id: subscription.customer,
+        stripe_customer_id: subscription.customer as string,
         stripe_subscription_id: subscription.id,
         status: subscription.status,
         plan_type: planType,
-        trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
-        trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : null,
-        current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
+        trial_start: subscription.trial_start
+          ? new Date(subscription.trial_start * 1000).toISOString()
+          : null,
+        trial_end: subscription.trial_end
+          ? new Date(subscription.trial_end * 1000).toISOString()
+          : null,
+        current_period_start: subscription.current_period_start
+          ? new Date(subscription.current_period_start * 1000).toISOString()
+          : null,
+        current_period_end: subscription.current_period_end
+          ? new Date(subscription.current_period_end * 1000).toISOString()
+          : null
       }, {
         onConflict: 'user_id',
         ignoreDuplicates: false
@@ -482,15 +501,16 @@ async function handleSubscriptionCreated(subscription, supabase) {
   }
 }
 
-async function handleSubscriptionUpdated(subscription, supabase) {
+async function handleSubscriptionUpdated(
+  subscription: StripeSubscription,
+  supabase: SupabaseClient
+): Promise<void> {
   try {
-    // Actualizar user_subscriptions
-    const updateData = {
+    const updateData: Record<string, unknown> = {
       status: subscription.status,
       cancel_at_period_end: subscription.cancel_at_period_end
     }
 
-    // Solo añadir fechas si son válidas
     if (subscription.current_period_start) {
       updateData.current_period_start = new Date(subscription.current_period_start * 1000).toISOString()
     }
@@ -505,8 +525,18 @@ async function handleSubscriptionUpdated(subscription, supabase) {
 
     console.log(`✅ Subscription ${subscription.id} updated to status: ${subscription.status}`)
 
-    // 🔥 FIX: Si el status es 'canceled', degradar a FREE
+    if (subscription.cancel_at_period_end && subscription.status === 'active') {
+      const periodEnd = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toLocaleString('es-ES')
+        : 'fecha desconocida'
+      console.log(`⏰ Subscription programada para cancelar. Premium hasta ${periodEnd}`)
+    }
+
     if (subscription.status === 'canceled') {
+      const now = Math.floor(Date.now() / 1000)
+      const periodEndTimestamp = subscription.current_period_end || 0
+      const shouldDowngrade = shouldDowngradeNow(periodEndTimestamp, now)
+
       const { data: subDataArray } = await supabase
         .from('user_subscriptions')
         .select('user_id')
@@ -515,19 +545,22 @@ async function handleSubscriptionUpdated(subscription, supabase) {
 
       const subData = subDataArray?.[0]
       if (subData?.user_id) {
-        await supabase
-          .from('user_profiles')
-          .update({ plan_type: 'free' })
-          .eq('id', subData.user_id)
-        console.log(`✅ User ${subData.user_id} degradado a FREE por status canceled`)
+        if (shouldDowngrade) {
+          await supabase
+            .from('user_profiles')
+            .update({ plan_type: 'free' })
+            .eq('id', subData.user_id)
+          console.log(`✅ User ${subData.user_id} degradado a FREE`)
+        } else {
+          const periodEnd = formatPeriodEnd(periodEndTimestamp)
+          console.warn(`⚠️ Status canceled pero período termina en ${periodEnd}`)
+        }
       }
     }
 
-    // 🔥 FIX: Si el status cambia a past_due o unpaid, notificar al admin
     if (['past_due', 'unpaid'].includes(subscription.status)) {
       console.log(`⚠️ Subscription ${subscription.id} tiene problemas de pago: ${subscription.status}`)
 
-      // Buscar usuario para notificar (sin .single() para evitar errores)
       const { data: paymentSubData } = await supabase
         .from('user_subscriptions')
         .select('user_id')
@@ -551,9 +584,9 @@ async function handleSubscriptionUpdated(subscription, supabase) {
               status: subscription.status,
               subscriptionId: subscription.id
             })
-            console.log('📧 Email de problema de pago enviado al admin')
+            console.log('📧 Email de problema de pago enviado')
           } catch (emailErr) {
-            console.error('Error enviando email de problema de pago:', emailErr)
+            console.error('Error enviando email:', emailErr)
           }
         }
       }
@@ -563,9 +596,11 @@ async function handleSubscriptionUpdated(subscription, supabase) {
   }
 }
 
-async function handleSubscriptionDeleted(subscription, supabase) {
+async function handleSubscriptionDeleted(
+  subscription: StripeSubscription,
+  supabase: SupabaseClient
+): Promise<void> {
   try {
-    // 1. Obtener el user_id antes de actualizar (sin .single() para evitar errores)
     const { data: subDataArray } = await supabase
       .from('user_subscriptions')
       .select('user_id')
@@ -575,33 +610,44 @@ async function handleSubscriptionDeleted(subscription, supabase) {
     const subData = subDataArray?.[0]
 
     if (!subData) {
-      console.warn(`⚠️ Subscription ${subscription.id} no encontrada en BD, posiblemente ya procesada`)
+      console.warn(`⚠️ Subscription ${subscription.id} no encontrada en BD`)
     }
 
-    // 2. Actualizar user_subscriptions
+    const periodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null
+
     await supabase
       .from('user_subscriptions')
       .update({
-        status: 'canceled'
+        status: 'canceled',
+        current_period_end: periodEnd
       })
       .eq('stripe_subscription_id', subscription.id)
 
     console.log(`✅ Subscription ${subscription.id} canceled in user_subscriptions`)
 
-    // 3. 🔥 FIX: También degradar el usuario a FREE en user_profiles
-    if (subData?.user_id) {
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .update({ plan_type: 'free' })
-        .eq('id', subData.user_id)
+    const now = Math.floor(Date.now() / 1000)
+    const periodEndTimestamp = subscription.current_period_end || 0
+    const shouldDowngrade = shouldDowngradeNow(periodEndTimestamp, now)
 
-      if (profileError) {
-        console.error('❌ Error degradando usuario a free:', profileError)
+    if (subData?.user_id) {
+      if (shouldDowngrade) {
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .update({ plan_type: 'free' })
+          .eq('id', subData.user_id)
+
+        if (profileError) {
+          console.error('❌ Error degradando usuario:', profileError)
+        } else {
+          console.log(`✅ User ${subData.user_id} degradado a FREE`)
+        }
       } else {
-        console.log(`✅ User ${subData.user_id} degradado a plan FREE`)
+        const endDate = formatPeriodEnd(periodEndTimestamp)
+        console.warn(`⚠️ Evento deleted pero período termina en ${endDate}`)
       }
 
-      // Notificar al admin sobre la cancelación
       try {
         const { data: profileData } = await supabase
           .from('user_profiles')
@@ -615,12 +661,14 @@ async function handleSubscriptionDeleted(subscription, supabase) {
             userEmail: userProfile.email,
             userName: userProfile.full_name,
             subscriptionId: subscription.id,
-            reason: subscription.cancellation_details?.reason || 'No especificado'
+            reason: subscription.cancellation_details?.reason || 'No especificado',
+            periodEnd,
+            downgradedNow: shouldDowngrade
           })
-          console.log('📧 Email de cancelación enviado al admin')
+          console.log('📧 Email de cancelación enviado')
         }
       } catch (emailErr) {
-        console.error('Error enviando email de cancelación:', emailErr)
+        console.error('Error enviando email:', emailErr)
       }
     }
   } catch (error) {
@@ -628,22 +676,24 @@ async function handleSubscriptionDeleted(subscription, supabase) {
   }
 }
 
-async function handlePaymentSucceeded(invoice, supabase) {
+async function handlePaymentSucceeded(
+  invoice: StripeInvoice,
+  supabase: SupabaseClient
+): Promise<void> {
   console.log('💳 handlePaymentSucceeded:', invoice.id, 'billing_reason:', invoice.billing_reason)
 
   if (invoice.subscription) {
     try {
-      const subscription = await stripe.subscriptions.retrieve(invoice.subscription)
+      const subscription = await getSubscription(invoice.subscription as string)
 
-      // Buscar usuario por metadata O por customer_id
       let userId = subscription.metadata?.supabase_user_id
-      let userEmail = null
+      let userEmail: string | null = null
 
       if (!userId) {
         const { data: user } = await supabase
           .from('user_profiles')
           .select('id, email')
-          .eq('stripe_customer_id', subscription.customer)
+          .eq('stripe_customer_id', subscription.customer as string)
           .single()
 
         userId = user?.id
@@ -658,24 +708,21 @@ async function handlePaymentSucceeded(invoice, supabase) {
 
         console.log(`✅ Payment succeeded for user ${userId}`)
 
-        // 💰 Registrar pago para liquidación (tanto primer pago como renovaciones)
-        // billing_reason: 'subscription_create' (primer pago) o 'subscription_cycle' (renovación)
         try {
           await recordPaymentSettlement({
-            paymentIntentId: invoice.payment_intent,
-            chargeId: invoice.charge,
+            paymentIntentId: invoice.payment_intent as string | null,
+            chargeId: invoice.charge as string | null,
             invoiceId: invoice.id,
-            customerId: invoice.customer,
+            customerId: invoice.customer as string,
             userId,
-            userEmail: userEmail || invoice.customer_email,
-            amountGross: invoice.amount_paid, // En céntimos
-            currency: invoice.currency,
-            paymentDate: new Date(invoice.created * 1000).toISOString(),
+            userEmail: userEmail || invoice.customer_email || '',
+            amountGross: invoice.amount_paid || 0,
+            currency: invoice.currency || 'eur',
+            paymentDate: new Date((invoice.created || 0) * 1000).toISOString(),
             supabase
           })
-          console.log('💰 Settlement registrado desde invoice.payment_succeeded')
         } catch (settlementErr) {
-          console.error('Error registrando settlement en payment_succeeded:', settlementErr)
+          console.error('Error registrando settlement:', settlementErr)
         }
       }
     } catch (error) {
@@ -684,13 +731,15 @@ async function handlePaymentSucceeded(invoice, supabase) {
   }
 }
 
-async function handlePaymentFailed(invoice, supabase) {
+async function handlePaymentFailed(
+  invoice: StripeInvoice,
+  supabase: SupabaseClient
+): Promise<void> {
   console.log(`⚠️ Payment failed for invoice ${invoice.id}`)
 
-  // 🔥 FIX: Buscar usuario y notificar al admin
   if (invoice.subscription) {
     try {
-      const subscription = await stripe.subscriptions.retrieve(invoice.subscription)
+      const subscription = await getSubscription(invoice.subscription as string)
 
       let userId = subscription.metadata?.supabase_user_id
 
@@ -698,7 +747,7 @@ async function handlePaymentFailed(invoice, supabase) {
         const { data: user } = await supabase
           .from('user_profiles')
           .select('id')
-          .eq('stripe_customer_id', subscription.customer)
+          .eq('stripe_customer_id', subscription.customer as string)
           .single()
 
         userId = user?.id
@@ -718,10 +767,10 @@ async function handlePaymentFailed(invoice, supabase) {
             status: 'payment_failed',
             subscriptionId: subscription.id,
             invoiceId: invoice.id,
-            amount: invoice.amount_due / 100,
+            amount: (invoice.amount_due || 0) / 100,
             currency: invoice.currency?.toUpperCase() || 'EUR'
           })
-          console.log('📧 Email de pago fallido enviado al admin')
+          console.log('📧 Email de pago fallido enviado')
         }
       }
     } catch (error) {
@@ -730,47 +779,31 @@ async function handlePaymentFailed(invoice, supabase) {
   }
 }
 
-// Función para enviar email de nueva compra al admin
-async function sendAdminPurchaseEmail(data) {
+async function sendAdminPurchaseEmail(data: PurchaseEmailData): Promise<void> {
   const currencySymbol = data.currency === 'EUR' ? '€' : data.currency
 
   const html = `
     <!DOCTYPE html>
     <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Nueva Compra Premium</title>
-      </head>
+      <head><meta charset="utf-8"><title>Nueva Compra Premium</title></head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
         <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-
           <div style="text-align: center; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
             <h1 style="color: #92400e; margin: 0;">💰 ¡NUEVA VENTA!</h1>
             <p style="color: #b45309; margin: 10px 0 0 0; font-size: 18px;">Un usuario ha comprado Premium</p>
           </div>
-
           <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center; border: 2px solid #10b981;">
             <div style="font-size: 48px; font-weight: bold; color: #059669;">${data.amount}${currencySymbol}</div>
           </div>
-
           <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
             <h3 style="color: #0c4a6e; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
             <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
             <p style="margin: 8px 0;"><strong>Nombre:</strong> ${data.userName}</p>
             <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
           </div>
-
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://www.vence.es/admin/conversiones"
-               style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-              📊 Ver Panel de Conversiones
-            </a>
+            <a href="https://www.vence.es/admin/conversiones" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">📊 Ver Panel de Conversiones</a>
           </div>
-
-          <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
-            <p style="margin: 0;">Vence Pro</p>
-          </div>
-
         </div>
       </body>
     </html>
@@ -780,13 +813,12 @@ async function sendAdminPurchaseEmail(data) {
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
     subject: `💰 ¡Nueva Compra Premium! - ${data.userEmail} - ${data.amount}${currencySymbol}`,
-    html: html
+    html
   })
 }
 
-// Función para enviar email de problema de pago al admin
-async function sendAdminPaymentIssueEmail(data) {
-  const statusLabels = {
+async function sendAdminPaymentIssueEmail(data: PaymentIssueEmailData): Promise<void> {
+  const statusLabels: Record<string, string> = {
     'past_due': '⏰ Pago Atrasado',
     'unpaid': '❌ No Pagado',
     'payment_failed': '💳 Pago Fallido'
@@ -798,18 +830,13 @@ async function sendAdminPaymentIssueEmail(data) {
   const html = `
     <!DOCTYPE html>
     <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Problema de Pago</title>
-      </head>
+      <head><meta charset="utf-8"><title>Problema de Pago</title></head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
         <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-
           <div style="text-align: center; background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
             <h1 style="color: #b91c1c; margin: 0;">⚠️ PROBLEMA DE PAGO</h1>
             <p style="color: #dc2626; margin: 10px 0 0 0; font-size: 18px;">${statusLabel}</p>
           </div>
-
           <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #f59e0b;">
             <h3 style="color: #92400e; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
             <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
@@ -819,14 +846,9 @@ async function sendAdminPaymentIssueEmail(data) {
             ${data.amount ? `<p style="margin: 8px 0;"><strong>Monto:</strong> ${data.amount}${currencySymbol}</p>` : ''}
             <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
           </div>
-
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://dashboard.stripe.com/subscriptions/${data.subscriptionId}"
-               style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-              📊 Ver en Stripe
-            </a>
+            <a href="https://dashboard.stripe.com/subscriptions/${data.subscriptionId}" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">📊 Ver en Stripe</a>
           </div>
-
         </div>
       </body>
     </html>
@@ -836,26 +858,24 @@ async function sendAdminPaymentIssueEmail(data) {
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
     subject: `⚠️ ${statusLabel} - ${data.userEmail}`,
-    html: html
+    html
   })
 }
 
-// 💰 Función para registrar pago en payment_settlements (liquidación Manuel/Armando)
-async function recordPaymentSettlement({ paymentIntentId, chargeId, invoiceId, customerId, userId, userEmail, amountGross, currency, paymentDate, supabase }) {
+async function recordPaymentSettlement(data: SettlementData): Promise<void> {
   try {
-    // Obtener el balance_transaction para conocer el fee de Stripe
     let stripeFee = 0
-    let actualChargeId = chargeId
+    let actualChargeId = data.chargeId
 
-    // Si no tenemos chargeId pero tenemos paymentIntentId, obtener el charge
-    if (!actualChargeId && paymentIntentId) {
+    if (!actualChargeId && data.paymentIntentId) {
       try {
-        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+        const paymentIntent = await stripe.paymentIntents.retrieve(data.paymentIntentId)
         if (paymentIntent.latest_charge) {
-          actualChargeId = paymentIntent.latest_charge
+          actualChargeId = paymentIntent.latest_charge as string
         }
       } catch (piErr) {
-        console.log('⚠️ No se pudo obtener payment_intent:', piErr.message)
+        const e = piErr as Error
+        console.log('⚠️ No se pudo obtener payment_intent:', e.message)
       }
     }
 
@@ -863,48 +883,48 @@ async function recordPaymentSettlement({ paymentIntentId, chargeId, invoiceId, c
       try {
         const charge = await stripe.charges.retrieve(actualChargeId)
         if (charge.balance_transaction) {
-          const balanceTransaction = await stripe.balanceTransactions.retrieve(charge.balance_transaction)
-          stripeFee = balanceTransaction.fee // Fee en céntimos
+          const balanceTransaction = await stripe.balanceTransactions.retrieve(
+            charge.balance_transaction as string
+          )
+          stripeFee = balanceTransaction.fee
         }
       } catch (chargeErr) {
-        console.log('⚠️ No se pudo obtener fee de Stripe:', chargeErr.message)
+        const e = chargeErr as Error
+        console.log('⚠️ No se pudo obtener fee de Stripe:', e.message)
       }
     }
 
-    // Calcular montos
-    const amountNet = amountGross - stripeFee
-    const manuelAmount = Math.round(amountNet * 0.9)  // 90% para Manuel
-    const armandoAmount = amountNet - manuelAmount    // 10% para Armando (resto para evitar redondeo)
+    const amountNet = data.amountGross - stripeFee
+    const manuelAmount = Math.round(amountNet * 0.9)
+    const armandoAmount = amountNet - manuelAmount
 
     console.log('💰 Settlement:', {
-      gross: amountGross,
+      gross: data.amountGross,
       stripeFee,
       net: amountNet,
       manuel: manuelAmount,
       armando: armandoAmount
     })
 
-    // Insertar en payment_settlements
-    const { error } = await supabase
+    const { error } = await data.supabase
       .from('payment_settlements')
       .insert({
-        stripe_payment_intent_id: paymentIntentId,
-        stripe_charge_id: chargeId,
-        stripe_invoice_id: invoiceId,
-        stripe_customer_id: customerId,
-        user_id: userId,
-        user_email: userEmail,
-        amount_gross: amountGross,
+        stripe_payment_intent_id: data.paymentIntentId,
+        stripe_charge_id: data.chargeId,
+        stripe_invoice_id: data.invoiceId,
+        stripe_customer_id: data.customerId,
+        user_id: data.userId,
+        user_email: data.userEmail,
+        amount_gross: data.amountGross,
         stripe_fee: stripeFee,
         amount_net: amountNet,
-        currency: currency || 'eur',
+        currency: data.currency || 'eur',
         manuel_amount: manuelAmount,
         armando_amount: armandoAmount,
-        payment_date: paymentDate || new Date().toISOString()
+        payment_date: data.paymentDate || new Date().toISOString()
       })
 
     if (error) {
-      // Si es duplicado por payment_intent, ignorar silenciosamente
       if (error.code === '23505') {
         console.log('💰 Settlement ya registrado (duplicado), ignorando')
         return
@@ -919,23 +939,35 @@ async function recordPaymentSettlement({ paymentIntentId, chargeId, invoiceId, c
   }
 }
 
-// Función para enviar email de cancelación al admin
-async function sendAdminCancellationEmail(data) {
+async function sendAdminCancellationEmail(data: CancellationEmailData): Promise<void> {
+  const periodEndFormatted = data.periodEnd
+    ? new Date(data.periodEnd).toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    : 'No disponible'
+
+  const statusNote = data.downgradedNow
+    ? `<div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <p style="margin: 0; color: #92400e;">⚡ <strong>Degradado inmediatamente:</strong> El período ya había terminado.</p>
+      </div>`
+    : `<div style="background: #dbeafe; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <p style="margin: 0; color: #1e40af;">⏰ <strong>Mantiene premium hasta:</strong> ${periodEndFormatted}</p>
+      </div>`
+
   const html = `
     <!DOCTYPE html>
     <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Suscripción Cancelada</title>
-      </head>
+      <head><meta charset="utf-8"><title>Suscripción Cancelada</title></head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
         <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-
           <div style="text-align: center; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
             <h1 style="color: #4b5563; margin: 0;">👋 Suscripción Cancelada</h1>
-            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 18px;">Un usuario ha cancelado su suscripción</p>
+            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 18px;">Un usuario ha cancelado</p>
           </div>
-
           <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
             <h3 style="color: #374151; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
             <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
@@ -944,13 +976,7 @@ async function sendAdminCancellationEmail(data) {
             <p style="margin: 8px 0;"><strong>Motivo:</strong> ${data.reason}</p>
             <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
           </div>
-
-          <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="margin: 0; color: #92400e;">
-              💡 <strong>Nota:</strong> El usuario ha sido degradado automáticamente a plan FREE.
-            </p>
-          </div>
-
+          ${statusNote}
         </div>
       </body>
     </html>
@@ -959,7 +985,7 @@ async function sendAdminCancellationEmail(data) {
   await resend.emails.send({
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
-    subject: `👋 Cancelación - ${data.userEmail}`,
-    html: html
+    subject: `👋 Cancelación - ${data.userEmail}${data.downgradedNow ? '' : ` (premium hasta ${periodEndFormatted})`}`,
+    html
   })
 }

@@ -21,6 +21,8 @@ import {
   buildSubscriptionRecord,
   isPremiumStatus,
   shouldDegradePlan,
+  shouldDowngradeNow,
+  formatPeriodEnd,
   buildAdminEmailData
 } from '@/lib/stripe-webhook-handlers'
 
@@ -318,6 +320,56 @@ describe('Stripe Webhook Handlers', () => {
   })
 
   // ============================================
+  // shouldDowngradeNow - NUEVO
+  // ============================================
+  describe('shouldDowngradeNow', () => {
+    const NOW = 1700000000 // Fixed timestamp for testing
+
+    it('devuelve true si periodEnd es null/undefined', () => {
+      expect(shouldDowngradeNow(null, NOW)).toBe(true)
+      expect(shouldDowngradeNow(undefined, NOW)).toBe(true)
+      expect(shouldDowngradeNow(0, NOW)).toBe(true)
+    })
+
+    it('devuelve true si el período ya terminó', () => {
+      const periodEnd = NOW - 3600 // 1 hora antes
+      expect(shouldDowngradeNow(periodEnd, NOW)).toBe(true)
+    })
+
+    it('devuelve true si el período termina exactamente ahora', () => {
+      expect(shouldDowngradeNow(NOW, NOW)).toBe(true)
+    })
+
+    it('devuelve false si el período aún no termina', () => {
+      const periodEnd = NOW + 3600 // 1 hora después
+      expect(shouldDowngradeNow(periodEnd, NOW)).toBe(false)
+    })
+
+    it('devuelve false si faltan días para que termine', () => {
+      const periodEnd = NOW + (30 * 24 * 3600) // 30 días después
+      expect(shouldDowngradeNow(periodEnd, NOW)).toBe(false)
+    })
+  })
+
+  // ============================================
+  // formatPeriodEnd - NUEVO
+  // ============================================
+  describe('formatPeriodEnd', () => {
+    it('formatea timestamp correctamente en español', () => {
+      const timestamp = 1700000000 // 14 Nov 2023 22:13:20 UTC
+      const result = formatPeriodEnd(timestamp)
+      expect(result).toContain('2023')
+      expect(result).toContain('noviembre')
+    })
+
+    it('devuelve "No disponible" para null/undefined/0', () => {
+      expect(formatPeriodEnd(null)).toBe('No disponible')
+      expect(formatPeriodEnd(undefined)).toBe('No disponible')
+      expect(formatPeriodEnd(0)).toBe('No disponible')
+    })
+  })
+
+  // ============================================
   // buildAdminEmailData
   // ============================================
   describe('buildAdminEmailData', () => {
@@ -454,21 +506,48 @@ describe('Stripe Webhook - Flujos de Pago', () => {
 
   /**
    * FLUJO 4: Cancelación de suscripción
-   * ✅ CORREGIDO: Ahora degrada plan_type en user_profiles
+   * ✅ CORREGIDO: Respeta current_period_end antes de degradar
    */
   describe('Flujo 4: Cancelación de suscripción', () => {
+    const NOW = 1700000000
+
     it('shouldDegradePlan devuelve true para status canceled', () => {
       expect(shouldDegradePlan('canceled')).toBe(true)
     })
 
-    it('✅ FIX: handleSubscriptionDeleted ahora degrada user_profiles.plan_type a free', () => {
-      // CORREGIDO: El código ahora:
-      // 1. Obtiene el user_id de la subscription
-      // 2. Actualiza user_subscriptions.status a 'canceled'
-      // 3. Actualiza user_profiles.plan_type a 'free'
-      // 4. Envía email de notificación al admin
+    it('NO degrada si el período aún no termina', () => {
+      // Usuario cancela el 1 de enero pero pagó hasta el 31 de enero
+      const periodEnd = NOW + (30 * 24 * 3600) // 30 días después
+      expect(shouldDowngradeNow(periodEnd, NOW)).toBe(false)
+    })
 
-      expect(true).toBe(true) // Verificado en código
+    it('SÍ degrada si el período ya terminó', () => {
+      // Es 1 de febrero y el período terminó el 31 de enero
+      const periodEnd = NOW - 3600 // 1 hora antes
+      expect(shouldDowngradeNow(periodEnd, NOW)).toBe(true)
+    })
+
+    it('SÍ degrada si no hay current_period_end (safety)', () => {
+      expect(shouldDowngradeNow(null, NOW)).toBe(true)
+      expect(shouldDowngradeNow(undefined, NOW)).toBe(true)
+    })
+
+    it('handleSubscriptionDeleted debe verificar period_end antes de degradar', () => {
+      // Este test documenta el flujo esperado:
+      // 1. Stripe envía 'deleted' cuando termina el período
+      // 2. Webhook verifica current_period_end <= now
+      // 3. Si período terminó -> degradar a FREE
+      // 4. Si período no terminó -> log warning (no debería pasar)
+
+      // Simular evento de Stripe con período futuro
+      const subscription = {
+        id: 'sub_123',
+        current_period_end: NOW + (7 * 24 * 3600), // 7 días en el futuro
+        status: 'canceled'
+      }
+
+      // NO debe degradar
+      expect(shouldDowngradeNow(subscription.current_period_end, NOW)).toBe(false)
     })
   })
 
