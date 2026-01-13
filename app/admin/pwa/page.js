@@ -12,7 +12,8 @@ export default function PWAAdminPage() {
   const [stats, setStats] = useState(null)
   const [sendLoading, setSendLoading] = useState(false)
   const [sendResult, setSendResult] = useState(null)
-  
+  const [bannerStats, setBannerStats] = useState(null)
+
   // Estados para el formulario de notificación
   const [notificationForm, setNotificationForm] = useState({
     title: '',
@@ -46,6 +47,7 @@ export default function PWAAdminPage() {
         
         if (isAdminResult === true) {
           loadPWAStats()
+          loadBannerStats()
         }
       } catch (error) {
         console.error('Error checking admin access:', error)
@@ -63,29 +65,37 @@ export default function PWAAdminPage() {
       console.log('📊 Cargando estadísticas PWA reales...')
       
       // 1. Datos PWA reales desde tablas tracking
-      const [pwaInstallsResult, notificationEventsResult] = await Promise.all([
+      const [pwaInstallsResult, notificationEventsResult, pushSubscriptionsResult] = await Promise.all([
         // PWA installs reales
         supabase
           .from('pwa_events')
           .select('id, user_id, event_type, created_at')
           .eq('event_type', 'pwa_installed'),
-        
+
         // Push notifications eventos (últimos 7 días)
         supabase
           .from('notification_events')
           .select('user_id, event_type, created_at')
-          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+
+        // Suscripciones push activas reales
+        supabase
+          .from('user_notification_settings')
+          .select('user_id', { count: 'exact' })
+          .eq('push_enabled', true)
+          .not('push_subscription', 'is', null)
       ])
 
       // Procesar datos reales
       const pwaInstalls = pwaInstallsResult.data || []
       const notificationEvents = notificationEventsResult.data || []
-      
-      // Si no hay datos PWA, mostrar 0 (datos reales)
-      const totalPWAInstalls = pwaInstalls.length
-      
-      // Usuarios únicos con notificaciones activas
-      const activeNotificationUsers = new Set(notificationEvents.map(e => e.user_id)).size
+      const activePushSubscriptions = pushSubscriptionsResult.data?.length || pushSubscriptionsResult.count || 0
+
+      // PWA installs únicos por usuario
+      const uniquePWAUsers = new Set(pwaInstalls.map(e => e.user_id)).size
+
+      // Suscripciones push activas (de user_notification_settings)
+      const activeNotificationUsers = activePushSubscriptions
       
       // Notificaciones enviadas (últimos 7 días)
       const notificationsSent = notificationEvents.filter(e => e.event_type === 'notification_sent').length
@@ -95,14 +105,14 @@ export default function PWAAdminPage() {
       const clickRate = notificationsSent > 0 ? ((notificationsClicked / notificationsSent) * 100).toFixed(1) : 0
       
       console.log('📊 Estadísticas PWA reales cargadas:', {
-        pwaInstalls: totalPWAInstalls,
+        pwaInstalls: uniquePWAUsers,
         activeNotificationUsers,
         notificationsSent,
         clickRate
       })
-      
+
       const processedStats = {
-        totalInstalls: totalPWAInstalls,
+        totalInstalls: uniquePWAUsers,
         activeSubscriptions: activeNotificationUsers,
         notificationsSent: notificationsSent,
         notificationsClicked: notificationsClicked,
@@ -116,6 +126,74 @@ export default function PWAAdminPage() {
 
     } catch (error) {
       console.error('Error cargando estadísticas PWA:', error)
+    }
+  }
+
+  const loadBannerStats = async () => {
+    try {
+      // Obtener eventos del banner (últimos 30 días)
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+
+      const { data: bannerEvents, error } = await supabase
+        .from('notification_events')
+        .select('user_id, event_type, metadata, created_at')
+        .in('event_type', ['banner_viewed', 'banner_dismissed', 'permission_granted'])
+        .gte('created_at', thirtyDaysAgo)
+
+      if (error) {
+        console.error('Error cargando banner stats:', error)
+        return
+      }
+
+      // Procesar estadísticas
+      const viewed = bannerEvents?.filter(e => e.event_type === 'banner_viewed') || []
+      const dismissed = bannerEvents?.filter(e => e.event_type === 'banner_dismissed') || []
+      const activated = bannerEvents?.filter(e => e.event_type === 'permission_granted') || []
+
+      // Contar por tipo de banner
+      const viewsByType = {
+        prominent: viewed.filter(e => e.metadata?.customData?.banner_type === 'prominent').length,
+        compact: viewed.filter(e => e.metadata?.customData?.banner_type === 'compact').length,
+        initial_prompt: viewed.filter(e => e.metadata?.customData?.banner_type === 'initial_prompt').length,
+      }
+
+      const dismissByType = {
+        prominent: dismissed.filter(e => e.metadata?.customData?.banner_type === 'prominent').length,
+        compact: dismissed.filter(e => e.metadata?.customData?.banner_type === 'compact').length,
+      }
+
+      // Usuarios únicos
+      const uniqueViewers = new Set(viewed.map(e => e.user_id)).size
+      const uniqueDismissers = new Set(dismissed.map(e => e.user_id)).size
+      const uniqueActivators = new Set(activated.map(e => e.user_id)).size
+
+      // Tasa de conversión
+      const conversionRate = uniqueViewers > 0
+        ? ((uniqueActivators / uniqueViewers) * 100).toFixed(1)
+        : 0
+
+      // Dismiss rate
+      const dismissRate = uniqueViewers > 0
+        ? ((uniqueDismissers / uniqueViewers) * 100).toFixed(1)
+        : 0
+
+      setBannerStats({
+        totalViews: viewed.length,
+        totalDismisses: dismissed.length,
+        totalActivations: activated.length,
+        uniqueViewers,
+        uniqueDismissers,
+        uniqueActivators,
+        viewsByType,
+        dismissByType,
+        conversionRate,
+        dismissRate
+      })
+
+      console.log('📊 Banner stats loaded:', bannerStats)
+
+    } catch (error) {
+      console.error('Error loading banner stats:', error)
     }
   }
 
@@ -307,6 +385,78 @@ export default function PWAAdminPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Estadísticas del Banner de Notificaciones */}
+      {bannerStats && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            📊 Funnel del Banner de Notificaciones (30 días)
+          </h3>
+
+          {/* Métricas principales */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600">{bannerStats.uniqueViewers}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Vieron banner</p>
+            </div>
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-amber-600">{bannerStats.uniqueDismissers}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Descartaron</p>
+            </div>
+            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-green-600">{bannerStats.uniqueActivators}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Activaron</p>
+            </div>
+            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
+              <p className="text-2xl font-bold text-purple-600">{bannerStats.conversionRate}%</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Conversión</p>
+            </div>
+          </div>
+
+          {/* Detalle por tipo de banner */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-3">👁️ Visualizaciones por tipo</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Banner prominente (arriba)</span>
+                  <span className="font-medium">{bannerStats.viewsByType.prominent}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Banner compacto (abajo)</span>
+                  <span className="font-medium">{bannerStats.viewsByType.compact}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Prompt inicial (verde)</span>
+                  <span className="font-medium">{bannerStats.viewsByType.initial_prompt}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-3">❌ Descartes por tipo</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Banner prominente</span>
+                  <span className="font-medium">{bannerStats.dismissByType.prominent}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Banner compacto</span>
+                  <span className="font-medium">{bannerStats.dismissByType.compact}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-600 dark:text-gray-400">Tasa de descarte</span>
+                  <span className="font-medium text-amber-600">{bannerStats.dismissRate}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 mt-4">
+            💡 Los datos se actualizan cuando el usuario ve o interactúa con el banner
+          </p>
         </div>
       )}
 
