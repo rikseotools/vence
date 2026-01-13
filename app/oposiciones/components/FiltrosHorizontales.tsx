@@ -16,6 +16,7 @@ interface Props {
     oposicion?: string;
     ambito?: string;
     ccaa?: string;
+    provincia?: string;
     q?: string;
   };
   total: number;
@@ -61,6 +62,58 @@ const CCAA = [
   { value: 'País Vasco', label: 'País Vasco' },
 ];
 
+const PROVINCIAS = [
+  { value: 'A coruña', label: 'A Coruña' },
+  { value: 'Albacete', label: 'Albacete' },
+  { value: 'Alicante', label: 'Alicante' },
+  { value: 'Almería', label: 'Almería' },
+  { value: 'Araba', label: 'Álava' },
+  { value: 'Asturias', label: 'Asturias' },
+  { value: 'Ávila', label: 'Ávila' },
+  { value: 'Badajoz', label: 'Badajoz' },
+  { value: 'Barcelona', label: 'Barcelona' },
+  { value: 'Bizkaia', label: 'Vizcaya' },
+  { value: 'Burgos', label: 'Burgos' },
+  { value: 'Cantabria', label: 'Cantabria' },
+  { value: 'Castellón', label: 'Castellón' },
+  { value: 'Cáceres', label: 'Cáceres' },
+  { value: 'Cádiz', label: 'Cádiz' },
+  { value: 'Ciudad real', label: 'Ciudad Real' },
+  { value: 'Córdoba', label: 'Córdoba' },
+  { value: 'Cuenca', label: 'Cuenca' },
+  { value: 'Gipuzkoa', label: 'Guipúzcoa' },
+  { value: 'Girona', label: 'Girona' },
+  { value: 'Granada', label: 'Granada' },
+  { value: 'Guadalajara', label: 'Guadalajara' },
+  { value: 'Huelva', label: 'Huelva' },
+  { value: 'Huesca', label: 'Huesca' },
+  { value: 'Illes balears', label: 'Islas Baleares' },
+  { value: 'Jaén', label: 'Jaén' },
+  { value: 'La rioja', label: 'La Rioja' },
+  { value: 'Las palmas', label: 'Las Palmas' },
+  { value: 'León', label: 'León' },
+  { value: 'Lleida', label: 'Lleida' },
+  { value: 'Lugo', label: 'Lugo' },
+  { value: 'Madrid', label: 'Madrid' },
+  { value: 'Murcia', label: 'Murcia' },
+  { value: 'Málaga', label: 'Málaga' },
+  { value: 'Ourense', label: 'Ourense' },
+  { value: 'Palencia', label: 'Palencia' },
+  { value: 'Pontevedra', label: 'Pontevedra' },
+  { value: 'Salamanca', label: 'Salamanca' },
+  { value: 'Santa cruz de tenerife', label: 'S.C. Tenerife' },
+  { value: 'Segovia', label: 'Segovia' },
+  { value: 'Sevilla', label: 'Sevilla' },
+  { value: 'Soria', label: 'Soria' },
+  { value: 'Tarragona', label: 'Tarragona' },
+  { value: 'Teruel', label: 'Teruel' },
+  { value: 'Toledo', label: 'Toledo' },
+  { value: 'Valencia', label: 'Valencia' },
+  { value: 'Valladolid', label: 'Valladolid' },
+  { value: 'Zamora', label: 'Zamora' },
+  { value: 'Zaragoza', label: 'Zaragoza' },
+];
+
 export default function FiltrosHorizontales({ currentFilters, total }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -101,6 +154,7 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
     currentFilters.tipo,
     currentFilters.ambito,
     currentFilters.ccaa,
+    currentFilters.provincia,
     currentFilters.q
   ].filter(Boolean).length;
 
@@ -119,13 +173,33 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete('page');
+                  if (searchQuery.trim()) {
+                    params.set('q', searchQuery.trim());
+                  } else {
+                    params.delete('q');
+                  }
+                  router.push(`/oposiciones?${params.toString()}`);
+                }
+              }}
               placeholder="Buscar oposiciones... (ej: enfermería, trabajador social)"
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                onClick={() => {
+                  setSearchQuery('');
+                  // Limpiar inmediatamente de la URL
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.delete('q');
+                  params.delete('page');
+                  router.push(`/oposiciones?${params.toString()}`);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -150,16 +224,16 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
           </div>
         </div>
 
-        {/* Filtros principales: Grupo */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mr-1">
+        {/* Filtros principales: Grupo y Ámbito */}
+        <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible scrollbar-hide">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide shrink-0">
             Grupo:
           </span>
           {CATEGORIAS.map((cat) => (
             <Link
               key={cat.value}
               href={buildUrl('categoria', currentFilters.categoria === cat.value ? null : cat.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
                 currentFilters.categoria === cat.value
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -169,17 +243,17 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
             </Link>
           ))}
 
-          <span className="text-gray-300 dark:text-gray-600 mx-2">|</span>
+          <span className="text-gray-300 dark:text-gray-600 mx-1 shrink-0 hidden sm:inline">|</span>
 
           {/* Ámbito */}
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mr-1">
+          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide shrink-0">
             Ámbito:
           </span>
           {AMBITOS.map((amb) => (
             <Link
               key={amb.value}
               href={buildUrl('ambito', currentFilters.ambito === amb.value ? null : amb.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
                 currentFilters.ambito === amb.value
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -190,22 +264,40 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
           ))}
         </div>
 
-        {/* Segunda fila: CCAA y Tipo */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Segunda fila: Dropdowns de ubicación y tipo */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {/* CCAA dropdown */}
           <select
             value={currentFilters.ccaa || ''}
             onChange={(e) => router.push(buildUrl('ccaa', e.target.value || null))}
-            className={`px-3 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 ${
               currentFilters.ccaa
                 ? 'border-green-500 text-green-700 dark:text-green-300'
                 : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
             }`}
           >
-            <option value="">Comunidad Autónoma</option>
+            <option value="">CC.AA.</option>
             {CCAA.map((ca) => (
               <option key={ca.value} value={ca.value}>
                 {ca.label}
+              </option>
+            ))}
+          </select>
+
+          {/* Provincia dropdown */}
+          <select
+            value={currentFilters.provincia || ''}
+            onChange={(e) => router.push(buildUrl('provincia', e.target.value || null))}
+            className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 ${
+              currentFilters.provincia
+                ? 'border-teal-500 text-teal-700 dark:text-teal-300'
+                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+            }`}
+          >
+            <option value="">Provincia</option>
+            {PROVINCIAS.map((prov) => (
+              <option key={prov.value} value={prov.value}>
+                {prov.label}
               </option>
             ))}
           </select>
@@ -214,13 +306,13 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
           <select
             value={currentFilters.tipo || ''}
             onChange={(e) => router.push(buildUrl('tipo', e.target.value || null))}
-            className={`px-3 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 ${
+            className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 ${
               currentFilters.tipo
                 ? 'border-orange-500 text-orange-700 dark:text-orange-300'
                 : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
             }`}
           >
-            <option value="">Tipo de publicación</option>
+            <option value="">Tipo</option>
             {TIPOS.map((tipo) => (
               <option key={tipo.value} value={tipo.value}>
                 {tipo.label}
@@ -228,30 +320,89 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
             ))}
           </select>
 
-          {/* Filtros activos como badges */}
-          {currentFilters.ccaa && (
+          {/* Limpiar filtros - solo visible en móvil como botón */}
+          {hasFilters && (
             <Link
-              href={buildUrl('ccaa', null)}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs"
+              href="/oposiciones"
+              className="w-full px-3 py-2 text-sm text-center border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 sm:hidden"
             >
-              {CCAA.find(c => c.value === currentFilters.ccaa)?.label}
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </Link>
-          )}
-          {currentFilters.tipo && (
-            <Link
-              href={buildUrl('tipo', null)}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full text-xs"
-            >
-              {TIPOS.find(t => t.value === currentFilters.tipo)?.label}
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              Limpiar
             </Link>
           )}
         </div>
+
+        {/* Filtros activos como badges con X */}
+        {hasFilters && (
+          <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <span className="text-xs text-gray-500 dark:text-gray-400">Filtros activos:</span>
+            {currentFilters.categoria && (
+              <Link
+                href={buildUrl('categoria', null)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+              >
+                Grupo {currentFilters.categoria}
+                <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Link>
+            )}
+            {currentFilters.ambito && (
+              <Link
+                href={buildUrl('ambito', null)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+              >
+                {AMBITOS.find(a => a.value === currentFilters.ambito)?.label}
+                <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Link>
+            )}
+            {currentFilters.ccaa && (
+              <Link
+                href={buildUrl('ccaa', null)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+              >
+                {CCAA.find(c => c.value === currentFilters.ccaa)?.label}
+                <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Link>
+            )}
+            {currentFilters.provincia && (
+              <Link
+                href={buildUrl('provincia', null)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-full text-xs font-medium hover:bg-teal-200 dark:hover:bg-teal-900/50 transition-colors"
+              >
+                {PROVINCIAS.find(p => p.value === currentFilters.provincia)?.label || currentFilters.provincia}
+                <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Link>
+            )}
+            {currentFilters.tipo && (
+              <Link
+                href={buildUrl('tipo', null)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-full text-xs font-medium hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+              >
+                {TIPOS.find(t => t.value === currentFilters.tipo)?.label}
+                <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Link>
+            )}
+            {currentFilters.q && (
+              <Link
+                href={buildUrl('q', null)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                "{currentFilters.q}"
+                <svg className="w-3.5 h-3.5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Link>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

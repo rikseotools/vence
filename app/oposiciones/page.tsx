@@ -43,6 +43,7 @@ interface SearchParams {
   departamento?: string;
   ambito?: string;
   ccaa?: string;
+  provincia?: string;
   q?: string;
   page?: string;
 }
@@ -82,6 +83,9 @@ async function getConvocatorias(searchParams: SearchParams) {
   }
   if (searchParams.ccaa) {
     query = query.eq('comunidad_autonoma', searchParams.ccaa);
+  }
+  if (searchParams.provincia) {
+    query = query.ilike('provincia', searchParams.provincia);
   }
   if (searchParams.q) {
     query = query.or(`titulo.ilike.%${searchParams.q}%,descripcion.ilike.%${searchParams.q}%,departamento_nombre.ilike.%${searchParams.q}%`);
@@ -170,7 +174,7 @@ export default async function OposicionesPage({
                 Convocatorias del BOE actualizadas diariamente
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-6 sm:gap-8">
               {/* Stats compactas */}
               <div className="hidden sm:flex items-center gap-4 text-sm">
                 <div className="text-center">
@@ -188,46 +192,13 @@ export default async function OposicionesPage({
               </div>
               <Link
                 href="/nuestras-oposiciones"
-                className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shrink-0"
               >
                 Preparar oposición
               </Link>
             </div>
           </div>
 
-          {/* Accesos rápidos */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link
-              href="/oposiciones/c2"
-              className="px-3 py-1.5 text-sm bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors font-medium"
-            >
-              Grupo C2
-            </Link>
-            <Link
-              href="/oposiciones/c1"
-              className="px-3 py-1.5 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
-            >
-              Grupo C1
-            </Link>
-            <Link
-              href="/oposiciones/madrid"
-              className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Madrid
-            </Link>
-            <Link
-              href="/oposiciones/andalucia"
-              className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-              Andalucía
-            </Link>
-            <Link
-              href="/oposiciones/hoy"
-              className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors font-medium"
-            >
-              Hoy
-            </Link>
-          </div>
         </div>
       </div>
 
