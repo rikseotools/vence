@@ -53,7 +53,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     if (pathname.includes('/temario')) return '/temario'
     if (pathname.includes('/simulacros')) return '/simulacros'
     // Si estamos en página principal de oposición (información), mantener vacío
-    if (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado') return ''
+    if (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal') return ''
     return '/test' // Por defecto ir a tests (para otras páginas como /leyes)
   }
 
@@ -63,7 +63,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const oppositionOptions = [
     { key: 'auxiliar-administrativo-estado', label: '👤 Auxiliar Administrativo Estado', path: `/auxiliar-administrativo-estado${currentSection}`, oposicionId: 'auxiliar_administrativo_estado' },
     { key: 'administrativo', label: '👨‍💼 Administrativo del Estado', path: `/administrativo-estado${currentSection}`, oposicionId: 'administrativo_estado' },
-    { key: 'leyes', label: '⚖️ Leyes', path: '/leyes', oposicionId: null },
+    { key: 'tramitacion-procesal', label: '⚖️ Tramitación Procesal', path: `/tramitacion-procesal${currentSection}`, oposicionId: 'tramitacion_procesal' },
+    { key: 'leyes', label: '📚 Leyes', path: '/leyes', oposicionId: null },
     { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos', oposicionId: null },
     { key: 'teoria', label: '📖 Teoría', path: '/teoria', oposicionId: null }
   ]
@@ -80,6 +81,12 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       return [
         { key: 'info', label: 'ℹ️ Información', path: '' },
         { key: 'test', label: '🎯 Tests', path: '/test' }
+      ]
+    } else if (isTramitacionProcesal) {
+      return [
+        { key: 'info', label: 'ℹ️ Información', path: '' },
+        { key: 'test', label: '🎯 Tests', path: '/test' },
+        { key: 'temario', label: '📚 Temario', path: '/temario' }
       ]
     } else if (isLeyes) {
       return [
@@ -107,6 +114,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   // Detectar el contexto actual
   const isAuxiliarAdmin = pathname.includes('auxiliar-administrativo-estado')
   const isAdministrativo = pathname.includes('/administrativo')
+  const isTramitacionProcesal = pathname.includes('/tramitacion-procesal')
   const isLeyes = pathname.includes('/leyes')
   const isTeoria = pathname.includes('/teoria')
   const isInTests = pathname.includes('/test')
@@ -114,7 +122,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const isInTemario = pathname.includes('/temario')
 
   // Detectar si estamos en página de información (página principal de oposición)
-  const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado')
+  const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal')
   
   // Detectar si estamos en una ley específica
   const isInSpecificLaw = pathname.startsWith('/leyes/') && pathname !== '/leyes' && !pathname.includes('/test')
@@ -171,6 +179,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const OPOSICION_NAMES = {
     'auxiliar_administrativo_estado': 'Auxiliar Administrativo',
     'administrativo_estado': 'Administrativo del Estado',
+    'tramitacion_procesal': 'Tramitación Procesal',
     'gestion_procesal': 'Gestión Procesal'
   }
 
@@ -258,12 +267,13 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       <div className="container mx-auto px-4">
         <ol className="flex items-center space-x-2 text-sm">
           {/* Breadcrumb para Oposición */}
-          {(isAuxiliarAdmin || isAdministrativo || isLeyes || isTeoria || isPsicotecnicos) && (
+          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isLeyes || isTeoria || isPsicotecnicos) && (
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Texto clickeable para ir a la página principal (solo si no estamos ya ahí) */}
                 {((isAuxiliarAdmin && pathname !== '/auxiliar-administrativo-estado') ||
                   (isAdministrativo && pathname !== '/administrativo-estado') ||
+                  (isTramitacionProcesal && pathname !== '/tramitacion-procesal') ||
                   (isLeyes && pathname !== '/leyes') ||
                   (isTeoria && pathname !== '/teoria') ||
                   (isPsicotecnicos && pathname !== '/psicotecnicos')) ? (
@@ -271,6 +281,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     href={
                       isAuxiliarAdmin ? '/auxiliar-administrativo-estado' :
                       isAdministrativo ? '/administrativo-estado' :
+                      isTramitacionProcesal ? '/tramitacion-procesal' :
                       isLeyes ? '/leyes' :
                       isTeoria ? '/teoria' :
                       isPsicotecnicos ? '/psicotecnicos' : '#'
@@ -279,7 +290,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   >
                     {isAuxiliarAdmin && '👤 Auxiliar Administrativo Estado'}
                     {isAdministrativo && '👨‍💼 Administrativo del Estado'}
-                    {isLeyes && '⚖️ Leyes'}
+                    {isTramitacionProcesal && '⚖️ Tramitación Procesal'}
+                    {isLeyes && '📚 Leyes'}
                     {isTeoria && '📖 Teoría'}
                     {isPsicotecnicos && '🧩 Psicotécnicos'}
                   </Link>
@@ -287,7 +299,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   <span className="text-gray-700 font-semibold">
                     {isAuxiliarAdmin && '👤 Auxiliar Administrativo Estado'}
                     {isAdministrativo && '👨‍💼 Administrativo del Estado'}
-                    {isLeyes && '⚖️ Leyes'}
+                    {isTramitacionProcesal && '⚖️ Tramitación Procesal'}
+                    {isLeyes && '📚 Leyes'}
                     {isTeoria && '📖 Teoría'}
                     {isPsicotecnicos && '🧩 Psicotécnicos'}
                   </span>
@@ -341,7 +354,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
           )}
 
           {/* Separador */}
-          {(isAuxiliarAdmin || isAdministrativo || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
+          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
             <span className="text-gray-400 mx-2">/</span>
           )}
 
@@ -352,7 +365,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                 {/* Si estamos en una página específica dentro de la sección, hacer clickeable para volver al índice */}
                 {(() => {
                   const basePath = isAuxiliarAdmin ? '/auxiliar-administrativo-estado' :
-                                   isAdministrativo ? '/administrativo-estado' : ''
+                                   isAdministrativo ? '/administrativo-estado' :
+                                   isTramitacionProcesal ? '/tramitacion-procesal' : ''
                   const isInSpecificPage = pathname.includes('/tema-') || pathname.includes('/test/')
 
                   if (isInSpecificPage && basePath) {
@@ -468,6 +482,19 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   bloque = 'Bloque II'
                   bloqueId = 'bloque-ii'
                   displayNum = temaNum - 100
+                }
+              } else if (isTramitacionProcesal) {
+                basePath = '/tramitacion-procesal/test'
+                // Tramitación Procesal - 37 temas en 3 bloques
+                if (temaNum >= 1 && temaNum <= 15) {
+                  bloque = 'Bloque I'
+                  bloqueId = 'bloque-i'
+                } else if (temaNum >= 16 && temaNum <= 31) {
+                  bloque = 'Bloque II'
+                  bloqueId = 'bloque-ii'
+                } else if (temaNum >= 32 && temaNum <= 37) {
+                  bloque = 'Bloque III'
+                  bloqueId = 'bloque-iii'
                 }
               }
 

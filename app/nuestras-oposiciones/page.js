@@ -69,6 +69,36 @@ export default function OposicionesPage() {
       ],
       href: '/administrativo-estado',
       boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26262'
+    },
+    {
+      id: 'tramitacion-procesal',
+      name: 'Tramitación Procesal y Administrativa',
+      shortName: 'Tramitación Procesal',
+      badge: 'C1',
+      icon: '⚖️',
+      color: 'purple',
+      description: 'Oposición para trabajar en la Administración de Justicia como funcionario del Cuerpo de Tramitación Procesal. Temario oficial publicado en BOE 30/12/2025.',
+      category: 'Administración de Justicia',
+      level: 'Grupo C, Subgrupo C1',
+      temarios: 37,
+      tests: 100,
+      difficulty: 'Alto',
+      duration: '12-18 meses',
+      salary: '22.000€ - 28.000€',
+      features: [
+        'Temario oficial BOE 2025 (37 temas)',
+        'Tests por temas y bloques',
+        '3 bloques temáticos',
+        'Seguimiento de progreso',
+        'Estadísticas detalladas'
+      ],
+      requirements: [
+        'Título de Bachiller o Técnico',
+        'Nacionalidad española o UE',
+        'Tener 18 años y no exceder edad jubilación'
+      ],
+      href: '/tramitacion-procesal',
+      boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27053'
     }
   ]
 
@@ -298,8 +328,6 @@ export default function OposicionesPage() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
               <span>Gestión Procesal</span>
-              <span>•</span>
-              <span>Tramitación Procesal</span>
               <span>•</span>
               <span>Auxilio Judicial</span>
             </div>

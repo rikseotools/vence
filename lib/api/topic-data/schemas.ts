@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 export const getTopicDataRequestSchema = z.object({
   topicNumber: z.number().int().positive('Número de tema debe ser positivo'),
-  oposicion: z.enum(['auxiliar-administrativo-estado', 'administrativo-estado']),
+  oposicion: z.enum(['auxiliar-administrativo-estado', 'administrativo-estado', 'tramitacion-procesal']),
   userId: z.string().uuid().nullable().optional(),
 })
 
@@ -148,6 +148,7 @@ export function safeParseGetTopicDataResponse(data: unknown) {
 export const OPOSICION_TO_POSITION_TYPE = {
   'auxiliar-administrativo-estado': 'auxiliar_administrativo',
   'administrativo-estado': 'administrativo',
+  'tramitacion-procesal': 'tramitacion_procesal',
 } as const
 
 export type OposicionKey = keyof typeof OPOSICION_TO_POSITION_TYPE
@@ -165,6 +166,11 @@ export const VALID_TOPIC_RANGES = {
     bloque4: { min: 401, max: 409 },
     bloque5: { min: 501, max: 506 },
     bloque6: { min: 601, max: 608 },
+  },
+  'tramitacion-procesal': {
+    bloque1: { min: 1, max: 15 },   // Organización del Estado y Administración de Justicia
+    bloque2: { min: 16, max: 31 },  // Derecho Procesal
+    bloque3: { min: 32, max: 37 },  // Informática
   },
 } as const
 

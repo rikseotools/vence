@@ -29,9 +29,9 @@ export async function GET(
     }
 
     // Validar oposición
-    if (!oposicion || !['auxiliar-administrativo-estado', 'administrativo-estado'].includes(oposicion)) {
+    if (!oposicion || !['auxiliar-administrativo-estado', 'administrativo-estado', 'tramitacion-procesal'].includes(oposicion)) {
       return NextResponse.json(
-        { success: false, error: 'Oposición no válida. Debe ser auxiliar-administrativo-estado o administrativo-estado' },
+        { success: false, error: 'Oposición no válida. Debe ser auxiliar-administrativo-estado, administrativo-estado o tramitacion-procesal' },
         { status: 400 }
       )
     }

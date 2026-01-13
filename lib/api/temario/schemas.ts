@@ -143,6 +143,12 @@ export const OPOSICIONES = {
     totalTopics: 45,
     positionType: 'administrativo',
   },
+  'tramitacion-procesal': {
+    id: 'tramitacion_procesal',
+    name: 'Tramitación Procesal y Administrativa',
+    totalTopics: 37,
+    positionType: 'tramitacion_procesal',
+  },
 } as const
 
 export type OposicionSlug = keyof typeof OPOSICIONES
