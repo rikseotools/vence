@@ -228,8 +228,8 @@ async function handleCheckoutSessionCompleted(session, supabase) {
               stripe_subscription_id: subscription.id,
               status: subscription.status,
               plan_type: planType,
-              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+              current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : null,
+              current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
             }, {
               onConflict: 'user_id',
               ignoreDuplicates: false
@@ -370,8 +370,8 @@ async function handleCheckoutSessionCompleted(session, supabase) {
                 stripe_subscription_id: subscription.id,
                 status: subscription.status,
                 plan_type: planType,
-                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+                current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : null,
+                current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
               }, { onConflict: 'user_id', ignoreDuplicates: false })
 
             console.log('✅ Subscription record creado para usuario encontrado por email')
@@ -465,8 +465,8 @@ async function handleSubscriptionCreated(subscription, supabase) {
         plan_type: planType,
         trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+        current_period_start: subscription.current_period_start ? new Date(subscription.current_period_start * 1000).toISOString() : null,
+        current_period_end: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
       }, {
         onConflict: 'user_id',
         ignoreDuplicates: false
@@ -485,14 +485,22 @@ async function handleSubscriptionCreated(subscription, supabase) {
 async function handleSubscriptionUpdated(subscription, supabase) {
   try {
     // Actualizar user_subscriptions
+    const updateData = {
+      status: subscription.status,
+      cancel_at_period_end: subscription.cancel_at_period_end
+    }
+
+    // Solo añadir fechas si son válidas
+    if (subscription.current_period_start) {
+      updateData.current_period_start = new Date(subscription.current_period_start * 1000).toISOString()
+    }
+    if (subscription.current_period_end) {
+      updateData.current_period_end = new Date(subscription.current_period_end * 1000).toISOString()
+    }
+
     await supabase
       .from('user_subscriptions')
-      .update({
-        status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        cancel_at_period_end: subscription.cancel_at_period_end
-      })
+      .update(updateData)
       .eq('stripe_subscription_id', subscription.id)
 
     console.log(`✅ Subscription ${subscription.id} updated to status: ${subscription.status}`)
