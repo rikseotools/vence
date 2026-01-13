@@ -31,6 +31,7 @@ export default function AIChatWidget() {
   const [showExamMenu, setShowExamMenu] = useState(false) // Menú expandible de exámenes
   const [limitReached, setLimitReached] = useState(false) // Límite diario alcanzado (usuarios free)
   const [dynamicSuggestions, setDynamicSuggestions] = useState([]) // Sugerencias dinámicas desde BD
+  const [lawContextSuggestions, setLawContextSuggestions] = useState([]) // Sugerencias contextuales de ley
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortControllerRef = useRef(null)
@@ -65,6 +66,25 @@ export default function AIChatWidget() {
         .catch(err => console.error('Error loading suggestions:', err))
     }
   }, [isOpen, oposicionId])
+
+  // Cargar sugerencias contextuales de ley cuando hay una pregunta con ley
+  useEffect(() => {
+    const lawName = currentQuestionContext?.lawName
+    if (isOpen && lawName) {
+      const url = `/api/ai/chat/suggestions?contextType=law_context&lawName=${encodeURIComponent(lawName)}`
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.suggestions) {
+            setLawContextSuggestions(data.suggestions)
+          }
+        })
+        .catch(err => console.error('Error loading law suggestions:', err))
+    } else {
+      setLawContextSuggestions([])
+    }
+  }, [isOpen, currentQuestionContext?.lawName])
 
   // Cancelar streaming si se cierra el chat
   useEffect(() => {
@@ -725,36 +745,26 @@ export default function AIChatWidget() {
                       >
                         💡 Explícame la respuesta correcta
                       </button>
-                      {/* Sugerencias específicas de la ley */}
-                      {currentQuestionContext.lawName && (
+                      {/* Sugerencias dinámicas de la ley */}
+                      {currentQuestionContext.lawName && lawContextSuggestions.length > 0 && (
                         <>
                           <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 mb-2">Sobre {currentQuestionContext.lawName}:</p>
-                          <button
-                            onClick={() => useSuggestion(`¿Cuáles son los plazos más importantes de la ${currentQuestionContext.lawName}?`, 'plazos_ley')}
-                            className="block w-full text-left px-3 py-2 text-xs bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition text-purple-700 dark:text-purple-300"
-                          >
-                            ⏱️ Plazos de {currentQuestionContext.lawName}
-                          </button>
-                          <button
-                            onClick={() => useSuggestion(`¿Qué tipo de preguntas suelen caer de la ${currentQuestionContext.lawName}?`, 'preguntas_tipicas')}
-                            className="block w-full text-left px-3 py-2 text-xs bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition text-purple-700 dark:text-purple-300"
-                          >
-                            🎯 Preguntas típicas de examen
-                          </button>
+                          {lawContextSuggestions.map((suggestion) => (
+                            <button
+                              key={suggestion.id}
+                              onClick={() => useSuggestion(suggestion.message, suggestion.suggestion_key)}
+                              className="block w-full text-left px-3 py-2 text-xs bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition text-purple-700 dark:text-purple-300 mb-1"
+                            >
+                              {suggestion.emoji} {suggestion.label}
+                            </button>
+                          ))}
                         </>
                       )}
 
-                      {/* 📝 Artículos de examen - Contextual o Menú expandible */}
+                      {/* 📝 Artículos de examen - Menú expandible cuando no hay ley */}
                       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        {/* Si hay ley en el contexto, mostrar botón directo */}
-                        {currentQuestionContext?.lawName ? (
-                          <button
-                            onClick={() => useSuggestion(`¿Qué artículos de la ${currentQuestionContext.lawName} han caído más en exámenes oficiales?`, 'exam_contextual')}
-                            className="w-full text-left px-3 py-2 text-xs bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/50 transition text-orange-700 dark:text-orange-300"
-                          >
-                            📝 Artículos de {currentQuestionContext.lawName} en exámenes
-                          </button>
-                        ) : (
+                        {/* Si no hay ley en el contexto, mostrar menú expandible */}
+                        {!currentQuestionContext?.lawName && (
                           /* Si no hay ley, mostrar menú expandible */
                           <>
                             <button

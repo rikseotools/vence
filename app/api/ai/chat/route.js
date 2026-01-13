@@ -1179,13 +1179,15 @@ async function getUserStats(userId, lawShortName = null, limit = 10) {
     filteredHistory.forEach(h => {
       const law = h.question?.article?.law?.short_name || h.question?.article?.law?.name || 'Ley'
       const article = h.question?.article?.article_number
-      if (!article) return
+      if (article === undefined || article === null) return
 
-      const key = `${law} Art. ${article}`
+      // Artículo 0 = preguntas de estructura (no de un artículo específico)
+      const articleLabel = article === 0 || article === '0' ? 'Estructura' : `Art. ${article}`
+      const key = `${law} ${articleLabel}`
       if (!articleStats[key]) {
         articleStats[key] = {
           law,
-          article,
+          article: articleLabel, // Usar etiqueta para mostrar
           total: 0,
           correct: 0,
           failed: 0
@@ -2281,15 +2283,29 @@ ${lawForStats ? `Filtrando por: ${lawForStats}` : 'Todas las leyes'}
 - Porcentaje de acierto general: ${userStats.overallAccuracy}%
 
 ${userStats.mostFailed.length > 0 ? `ARTÍCULOS MÁS FALLADOS (donde más necesita mejorar):
-${userStats.mostFailed.map((a, i) => `${i + 1}. ${a.law} Art. ${a.article} - ${a.failed} fallos de ${a.total} intentos (${a.accuracy}% acierto)`).join('\n')}` : 'No hay artículos con fallos registrados.'}
+${userStats.mostFailed.map((a, i) => `${i + 1}. ${a.law} ${a.article} - ${a.failed} fallos de ${a.total} intentos (${a.accuracy}% acierto)`).join('\n')}` : 'No hay artículos con fallos registrados.'}
 
 ${userStats.worstAccuracy.length > 0 ? `ARTÍCULOS CON PEOR PORCENTAJE DE ACIERTO:
-${userStats.worstAccuracy.map((a, i) => `${i + 1}. ${a.law} Art. ${a.article} - ${a.accuracy}% acierto (${a.correct}/${a.total})`).join('\n')}` : ''}
+${userStats.worstAccuracy.map((a, i) => `${i + 1}. ${a.law} ${a.article} - ${a.accuracy}% acierto (${a.correct}/${a.total})`).join('\n')}` : ''}
 
 IMPORTANTE: Estos son los datos REALES del usuario. Personaliza tu respuesta con estos datos.
 Da recomendaciones específicas basadas en sus puntos débiles.
 `
         console.log(`👤 Usuario tiene ${userStats.totalAnswers} respuestas, ${userStats.mostFailed.length} artículos fallados`)
+      } else {
+        // Usuario nuevo sin estadísticas
+        userStatsContext = `
+
+USUARIO NUEVO SIN ESTADÍSTICAS:
+Este usuario aún no ha respondido ninguna pregunta o no tiene historial registrado.
+
+IMPORTANTE: Responde de forma motivadora indicando que:
+1. Aún no tiene estadísticas porque no ha empezado a hacer tests
+2. Le animas a empezar con un test para poder hacer seguimiento de su progreso
+3. Puedes sugerirle que empiece con un test rápido de 10 preguntas
+No inventes estadísticas. Sé honesto sobre que no hay datos todavía.
+`
+        console.log('👤 Usuario nuevo sin estadísticas')
       }
     }
 

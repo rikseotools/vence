@@ -5,14 +5,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// GET: Obtener sugerencias activas filtradas por oposición y ordenadas por CTR
+// GET: Obtener sugerencias activas filtradas por oposición/contexto y ordenadas por CTR
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const oposicionId = searchParams.get('oposicionId')
+    const contextType = searchParams.get('contextType') || 'general' // 'general' | 'law_context'
+    const lawName = searchParams.get('lawName') // Para reemplazar {lawName} en plantillas
 
     // Obtener sugerencias con conteo de clicks
-    // Filtramos por oposicion_id específica O sugerencias universales (null)
     let query = supabase
       .from('ai_chat_suggestions')
       .select(`
@@ -23,17 +24,21 @@ export async function GET(request) {
         emoji,
         priority,
         oposicion_id,
+        context_type,
         ai_chat_suggestion_clicks(count)
       `)
       .eq('is_active', true)
+      .eq('context_type', contextType)
 
-    // Filtrar por oposición: mostrar las de esa oposición + las universales
-    if (oposicionId) {
-      query = query.or(`oposicion_id.eq.${oposicionId},oposicion_id.is.null`)
-    } else {
-      // Si no hay oposición, solo mostrar las universales
-      query = query.is('oposicion_id', null)
+    // Filtrar por oposición solo para sugerencias generales
+    if (contextType === 'general') {
+      if (oposicionId) {
+        query = query.or(`oposicion_id.eq.${oposicionId},oposicion_id.is.null`)
+      } else {
+        query = query.is('oposicion_id', null)
+      }
     }
+    // law_context no filtra por oposición (son universales para cualquier ley)
 
     const { data, error } = await query
 
@@ -44,16 +49,26 @@ export async function GET(request) {
 
     // Procesar y ordenar por CTR (clicks) descendente, luego por prioridad
     const suggestions = data
-      .map(s => ({
-        id: s.id,
-        label: s.label,
-        message: s.message,
-        suggestion_key: s.suggestion_key,
-        emoji: s.emoji,
-        priority: s.priority,
-        oposicion_id: s.oposicion_id,
-        clicks: s.ai_chat_suggestion_clicks?.[0]?.count || 0
-      }))
+      .map(s => {
+        // Reemplazar {lawName} en label y message si se proporciona
+        let label = s.label
+        let message = s.message
+        if (lawName) {
+          label = label.replace(/{lawName}/g, lawName)
+          message = message.replace(/{lawName}/g, lawName)
+        }
+
+        return {
+          id: s.id,
+          label,
+          message,
+          suggestion_key: s.suggestion_key,
+          emoji: s.emoji,
+          priority: s.priority,
+          oposicion_id: s.oposicion_id,
+          clicks: s.ai_chat_suggestion_clicks?.[0]?.count || 0
+        }
+      })
       .sort((a, b) => {
         // Primero por clicks (CTR), luego por prioridad
         if (b.clicks !== a.clicks) return b.clicks - a.clicks
