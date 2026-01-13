@@ -534,7 +534,7 @@ export default function TemaTramitacionPage({ params }: PageProps) {
           <section className="mb-8">
             <TestConfigurator
               tema={temaNumber || 0}
-              totalQuestions={difficultyStats}
+              totalQuestions={difficultyStats as unknown as number}
               onStartTest={handleStartCustomTest}
               userStats={userRecentStats}
               loading={testLoading}
