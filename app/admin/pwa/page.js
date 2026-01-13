@@ -136,7 +136,7 @@ export default function PWAAdminPage() {
 
       const { data: bannerEvents, error } = await supabase
         .from('notification_events')
-        .select('user_id, event_type, metadata, created_at')
+        .select('user_id, event_type, notification_data, created_at')
         .in('event_type', ['banner_viewed', 'banner_dismissed', 'permission_granted'])
         .gte('created_at', thirtyDaysAgo)
 
@@ -152,14 +152,14 @@ export default function PWAAdminPage() {
 
       // Contar por tipo de banner
       const viewsByType = {
-        prominent: viewed.filter(e => e.metadata?.customData?.banner_type === 'prominent').length,
-        compact: viewed.filter(e => e.metadata?.customData?.banner_type === 'compact').length,
-        initial_prompt: viewed.filter(e => e.metadata?.customData?.banner_type === 'initial_prompt').length,
+        prominent: viewed.filter(e => e.notification_data?.customData?.banner_type === 'prominent').length,
+        compact: viewed.filter(e => e.notification_data?.customData?.banner_type === 'compact').length,
+        initial_prompt: viewed.filter(e => e.notification_data?.customData?.banner_type === 'initial_prompt').length,
       }
 
       const dismissByType = {
-        prominent: dismissed.filter(e => e.metadata?.customData?.banner_type === 'prominent').length,
-        compact: dismissed.filter(e => e.metadata?.customData?.banner_type === 'compact').length,
+        prominent: dismissed.filter(e => e.notification_data?.customData?.banner_type === 'prominent').length,
+        compact: dismissed.filter(e => e.notification_data?.customData?.banner_type === 'compact').length,
       }
 
       // Usuarios únicos
