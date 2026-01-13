@@ -59,70 +59,30 @@ async function getConvocatorias(searchParams: SearchParams) {
   const limit = 20;
   const offset = (page - 1) * limit;
 
-  let query = supabase
-    .from('convocatorias_boe')
-    .select('*', { count: 'exact' })
-    .eq('is_active', true);
-
-  // Aplicar ordenación
-  const orden = searchParams.orden || 'recientes';
-  if (orden === 'antiguos') {
-    query = query.order('boe_fecha', { ascending: true });
-  } else if (orden === 'plazas') {
-    query = query.order('num_plazas', { ascending: false, nullsFirst: false });
-  } else {
-    // Por defecto: más recientes primero
-    query = query.order('boe_fecha', { ascending: false });
-  }
-  query = query.order('relevancia_score', { ascending: false });
-
-  // Aplicar filtros
-  if (searchParams.categoria) {
-    query = query.eq('categoria', searchParams.categoria);
-  }
-  if (searchParams.tipo) {
-    query = query.eq('tipo', searchParams.tipo);
-  }
-  if (searchParams.oposicion) {
-    query = query.eq('oposicion_relacionada', searchParams.oposicion);
-  }
-  if (searchParams.departamento) {
-    query = query.ilike('departamento_nombre', `%${searchParams.departamento}%`);
-  }
-  if (searchParams.ambito) {
-    query = query.eq('ambito', searchParams.ambito);
-  }
-  if (searchParams.ccaa) {
-    query = query.eq('comunidad_autonoma', searchParams.ccaa);
-  }
-  if (searchParams.provincia) {
-    query = query.ilike('provincia', searchParams.provincia);
-  }
-  if (searchParams.q) {
-    // Normalizar búsqueda para ignorar tildes
-    const q = searchParams.q;
-    const qNormalized = q.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-    // Si son diferentes, buscar ambas versiones
-    if (q !== qNormalized) {
-      query = query.or(`titulo.ilike.%${q}%,titulo.ilike.%${qNormalized}%,resumen.ilike.%${q}%,resumen.ilike.%${qNormalized}%,departamento_nombre.ilike.%${q}%,departamento_nombre.ilike.%${qNormalized}%,cuerpo.ilike.%${q}%,cuerpo.ilike.%${qNormalized}%`);
-    } else {
-      query = query.or(`titulo.ilike.%${q}%,resumen.ilike.%${q}%,departamento_nombre.ilike.%${q}%,cuerpo.ilike.%${q}%`);
-    }
-  }
-
-  query = query.range(offset, offset + limit - 1);
-
-  const { data, error, count } = await query;
+  // Usar función RPC que soporta búsqueda sin tildes (unaccent)
+  const { data, error } = await supabase.rpc('search_convocatorias', {
+    search_term: searchParams.q || '',
+    p_categoria: searchParams.categoria || null,
+    p_tipo: searchParams.tipo || null,
+    p_ambito: searchParams.ambito || null,
+    p_ccaa: searchParams.ccaa || null,
+    p_provincia: searchParams.provincia || null,
+    p_orden: searchParams.orden || 'recientes',
+    p_limit: limit,
+    p_offset: offset
+  });
 
   if (error) {
     console.error('Error fetching convocatorias:', error);
     return { convocatorias: [], total: 0 };
   }
 
+  // El total viene en cada fila como total_count
+  const total = data?.[0]?.total_count || 0;
+
   return {
     convocatorias: data || [],
-    total: count || 0
+    total: Number(total)
   };
 }
 
