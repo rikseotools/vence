@@ -423,7 +423,7 @@ app/<slug>/
 │       ├── page.tsx           # Detalle del tema
 │       └── TopicContentView.tsx  # Copiar de otra oposición
 └── test/
-    ├── page.tsx               # Hub de tests
+    ├── page.tsx               # Hub de tests (usa componente SSR compartido)
     ├── layout.tsx             # Metadata SEO
     ├── aleatorio/
     │   └── page.tsx           # Test aleatorio
@@ -431,6 +431,61 @@ app/<slug>/
         └── [numero]/
             └── page.tsx       # Test por tema individual
 ```
+
+#### Hub de Tests SSR (Componente Compartido)
+
+El hub de tests usa un **componente SSR compartido** para mejor SEO y mantenimiento:
+
+**Archivos del sistema:**
+- `components/test/TestHubPage.tsx` - Server Component (obtiene temas de BD)
+- `components/test/TestHubClient.tsx` - Client Component (interactividad)
+
+**Para añadir nueva oposición, solo crear `app/<slug>/test/page.tsx`:**
+
+```tsx
+// app/<slug>/test/page.tsx - Solo 18 líneas
+import TestHubPage from '@/components/test/TestHubPage'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Tests <Nombre Oposición> - Practica por Temas | Vence',
+  description: 'Prepara tu oposición con tests organizados por temas...',
+  keywords: ['test <oposicion>', 'oposiciones', ...],
+}
+
+export default function TestsPage() {
+  return <TestHubPage oposicion="<slug>" />
+}
+```
+
+**Configuración de bloques en `TestHubPage.tsx`:**
+
+Si la nueva oposición tiene una estructura de bloques diferente, añadir en `BLOQUE_CONFIG`:
+
+```typescript
+const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = {
+  // ... existentes ...
+  '<nuevo-slug>': [
+    { id: 'bloque1', name: 'Bloque I: ...', icon: '🏛️', min: 1, max: 14 },
+    { id: 'bloque2', name: 'Bloque II: ...', icon: '📋', min: 15, max: 28 },
+  ],
+}
+```
+
+Y en `OPOSICION_NAMES`:
+
+```typescript
+const OPOSICION_NAMES = {
+  // ... existentes ...
+  '<nuevo-slug>': { short: 'Nombre Corto', badge: 'C1', icon: '👤' },
+}
+```
+
+**Beneficios del enfoque SSR:**
+- SEO: Los temas aparecen en el HTML inicial (Google los indexa)
+- Performance: Cache de 1 hora (`revalidate = 3600`)
+- Mantenimiento: Un solo componente para todas las oposiciones
+- Eficiencia: Temas vienen de BD, no hardcodeados
 
 #### Componentes reutilizables (copiar y ajustar):
 
@@ -440,9 +495,9 @@ app/<slug>/
 
 #### Cambios específicos en cada página:
 
-1. **page.tsx principal:** Actualizar textos, colores (purple para justicia), estadísticas
+1. **page.tsx principal:** Actualizar textos, estadísticas
 2. **temario/page.tsx:** Actualizar `BLOQUES` con los temas correctos
-3. **test/page.tsx:** Actualizar `BLOQUE1_THEMES`, `BLOQUE2_THEMES`, etc.
+3. **test/page.tsx:** Solo importar `TestHubPage` con el slug correcto
 4. **test/tema/[numero]/page.tsx:** Cambiar validación de rangos y `oposicion` en API calls
 
 ### 5.3 Añadir a Página de Oposiciones
@@ -543,6 +598,66 @@ await supabase
 
 ---
 
+## Temas Transversales: Informática (Leyes Virtuales Compartidas)
+
+Los temas de informática (Word, Excel, Windows, etc.) son **transversales** a varias oposiciones. Para evitar duplicar contenido, se usan **leyes virtuales compartidas**.
+
+### Concepto
+
+```
+Pregunta de Word ────► Artículo virtual ────► Ley virtual "Procesadores de texto"
+                                                        │
+                              ┌──────────────────────────┼──────────────────────────┐
+                              │                          │                          │
+                              ▼                          ▼                          ▼
+                    Auxiliar (tema 108)      Administrativo (tema 604)    Tramitación (tema 35)
+```
+
+**Una sola pregunta sirve para múltiples oposiciones.**
+
+### Leyes Virtuales de Informática Disponibles
+
+| Ley Virtual | ID | Preguntas |
+|-------------|----|-----------:|
+| Informática Básica | `82fd3977-ecf7-4f36-a6df-95c41445d3c2` | 471 |
+| Windows 11 | `932efcfb-5dce-4bcc-9c6c-55eab19752b0` | 93 |
+| Explorador Windows 11 | `9c0b25a4-c819-478c-972f-ee462d724a40` | 29 |
+| Procesadores de texto (Word) | `86f671a9-4fd8-42e6-91db-694f27eb4292` | 1,091 |
+| Excel | `c7475712-5ae4-4bec-9bd5-ff646c378e33` | 506 |
+| Access | `b403019a-bdf7-4795-886e-1d26f139602d` | 383 |
+| Correo electrónico (Outlook) | `c9df042b-15df-4285-affb-6c93e2a71139` | 307 |
+| Internet | `7814de3a-7c9c-4045-88c2-d452b31f449a` | 369 |
+
+**Total: ~3,249 preguntas de informática compartidas**
+
+### Cómo Enlazar Temas de Informática
+
+Para cada tema de informática de la nueva oposición, crear `topic_scope` apuntando a la ley virtual correspondiente:
+
+```javascript
+// Ejemplo: Enlazar tema 35 (Word) de Tramitación Procesal
+await supabase.from('topic_scope').insert({
+  topic_id: '<id-del-tema-35>',
+  law_id: '86f671a9-4fd8-42e6-91db-694f27eb4292', // Procesadores de texto
+  article_numbers: null // toda la ley
+});
+```
+
+### Mapeo Típico de Temas de Informática
+
+| Contenido | Ley Virtual a usar |
+|-----------|-------------------|
+| Informática básica, hardware, software | Informática Básica |
+| Sistema operativo Windows | Windows 11 |
+| Explorador de archivos | Explorador Windows 11 |
+| Word, procesadores de texto | Procesadores de texto |
+| Excel, hojas de cálculo | Excel |
+| Access, bases de datos | Access |
+| Outlook, correo electrónico | Correo electrónico |
+| Internet, navegadores, web | Internet |
+
+---
+
 ## Errores Comunes a Evitar
 
 ### Errores de Contenido
@@ -550,7 +665,7 @@ await supabase
 2. **NO confiar ciegamente en embeddings** - Verificar con agente IA
 3. **NO activar sin validar con exámenes reales** - Cobertura debe ser 100%
 4. **NO añadir todas las leyes sugeridas** - Muchas son falsos positivos
-5. **NO olvidar los temas de informática** - No tienen topic_scope pero sí topics
+5. **NO olvidar enlazar temas de informática** - Deben tener topic_scope a leyes virtuales compartidas (ver sección "Temas Transversales")
 
 ### Errores de Frontend/APIs (Enero 2026)
 6. **NO olvidar actualizar TODOS los schemas** - Hay 4 archivos diferentes que necesitan la nueva oposición:
@@ -582,8 +697,12 @@ await supabase
 - `lib/api/temario/schemas.ts` - Constante OPOSICIONES
 - `app/api/topics/[numero]/route.ts` - Validación de oposiciones
 
+### Componentes Compartidos SSR (actualizar configuración)
+- `components/test/TestHubPage.tsx` - Server Component del hub de tests (añadir `BLOQUE_CONFIG` y `OPOSICION_NAMES`)
+- `components/test/TestHubClient.tsx` - Client Component para interactividad (no requiere cambios)
+
 ### Frontend (crear para cada nueva oposición)
 - `app/<slug>/page.tsx` - Página principal
 - `app/<slug>/temario/` - Páginas del temario
-- `app/<slug>/test/` - Páginas de tests
+- `app/<slug>/test/page.tsx` - Hub de tests (solo importa `TestHubPage`)
 - `app/nuestras-oposiciones/page.js` - Listado de oposiciones
