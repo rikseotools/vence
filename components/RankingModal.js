@@ -123,21 +123,10 @@ export default function RankingModal({ isOpen, onClose }) {
         p_limit: 100
       })
 
-      console.log(`📊 RPC get_ranking_for_period respondió:`)
-      console.log(`   - Filtro: ${timeFilter}`)
-      console.log(`   - StartDate enviado: ${startDate}`)
-      console.log(`   - EndDate enviado: ${endDate}`)
-      console.log(`   - Usuarios recibidos: ${rankingData?.length || 0}`)
-      if (rankingData && rankingData.length > 0) {
-        console.log(`   - Primer usuario:`, rankingData[0])
-      }
-
       if (error) {
-        console.error('Error loading ranking:', error)
+        console.error('Error loading ranking')
         return
       }
-
-      console.log(`📊 Ranking ${timeFilter} obtenido:`, rankingData?.length, 'usuarios')
 
       // Obtener nombres de usuarios - todos los usuarios del ranking
       const topUsers = rankingData || []
@@ -149,22 +138,13 @@ export default function RankingModal({ isOpen, onClose }) {
       }
 
       // Obtener nombres y ciudades desde admin_users_with_roles (sin RLS)
-      console.log('🔍 Loading admin profiles for userIds:', userIds.length, 'usuarios')
-      console.log('   UserIds:', userIds.slice(0, 5), '...') // Mostrar solo primeros 5
       const { data: adminProfiles, error: adminProfilesError } = await supabase
         .from('admin_users_with_roles')
         .select('user_id, full_name, email')
         .in('user_id', userIds)
 
-      console.log('📊 Admin profiles loaded:', adminProfiles?.length || 0, 'perfiles')
       if (adminProfilesError) {
-        console.log('❌ Admin profile error:', adminProfilesError)
-      } else if (!adminProfiles || adminProfiles.length === 0) {
-        console.log('⚠️ No se pudieron obtener perfiles de admin_users_with_roles')
-      }
-
-      if (adminProfilesError) {
-        console.error('Error loading admin user profiles:', adminProfilesError)
+        console.error('Error loading admin user profiles')
       }
 
       // También intentar obtener display_names, ciudades y avatares desde public_user_profiles
@@ -172,13 +152,6 @@ export default function RankingModal({ isOpen, onClose }) {
         .from('public_user_profiles')
         .select('id, display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url')
         .in('id', userIds)
-
-      if (customProfileError) {
-        console.warn('Custom profiles not accessible (RLS):', customProfileError)
-      }
-
-      console.log('🏙️ Public profiles with cities:', customProfiles?.length || 0)
-      console.log('🏙️ Public profiles data:', customProfiles)
 
       // Función para obtener ciudad del usuario desde public_user_profiles
       const getUserCity = (userId) => {
@@ -245,16 +218,6 @@ export default function RankingModal({ isOpen, onClose }) {
         // 2. Buscar en admin_users_with_roles
         const adminProfile = adminProfiles?.find(p => p.user_id === userId)
 
-        // Debug: Ver qué datos tenemos para usuarios problemáticos
-        if (customProfile?.display_name === 'Usuario' || adminProfile?.full_name === 'Usuario' || !adminProfile?.full_name) {
-          console.log(`🔍 Usuario con nombre genérico:`, {
-            userId: userId.substring(0, 8),
-            full_name: adminProfile?.full_name,
-            email: adminProfile?.email,
-            display_name: customProfile?.display_name
-          })
-        }
-
         // 3. Si es el usuario actual y no hay perfil, usar datos del contexto
         if (userId === user?.id) {
           if (user?.user_metadata?.full_name && user.user_metadata.full_name !== 'Usuario') {
@@ -305,13 +268,6 @@ export default function RankingModal({ isOpen, onClose }) {
       })
 
       setRanking(finalRanking)
-      console.log(`✅ RANKING FINAL ESTABLECIDO:`)
-      console.log(`   - Filtro: ${timeFilter}`)
-      console.log(`   - Usuarios en ranking: ${finalRanking.length}`)
-      if (finalRanking.length < 10) {
-        console.log(`   - Usuarios completos:`, finalRanking)
-      }
-
       // Obtener posición del usuario actual (incluso si no está en top 100)
       const userInRanking = finalRanking.find(u => u.userId === user?.id)
       if (userInRanking) {
@@ -326,7 +282,7 @@ export default function RankingModal({ isOpen, onClose }) {
         })
 
         if (positionError) {
-          console.error('Error getting user position:', positionError)
+          console.error('Error getting user position')
           // Limpiar estado antiguo cuando hay error
           setCurrentUserRank(null)
         } else if (userPosition && userPosition.length > 0) {
@@ -352,7 +308,7 @@ export default function RankingModal({ isOpen, onClose }) {
       }
 
     } catch (error) {
-      console.error('Error loading ranking:', error)
+      console.error('Error loading ranking')
     } finally {
       setLoading(false)
     }
@@ -433,10 +389,8 @@ export default function RankingModal({ isOpen, onClose }) {
         error = queryError
       }
 
-      console.log('🔥 RankingModal: Rachas obtenidas:', streakData?.length || 0, streakData)
-
       if (error) {
-        console.error('❌ RankingModal: Error loading streak ranking:', error)
+        console.error('Error loading streak ranking')
         return
       }
 
@@ -461,19 +415,13 @@ export default function RankingModal({ isOpen, onClose }) {
         .in('user_id', userIds)
 
       if (adminProfilesError) {
-        console.error('Error loading admin user profiles:', adminProfilesError)
+        console.error('Error loading admin user profiles')
       }
 
       const { data: customProfiles, error: customProfileError } = await supabase
         .from('public_user_profiles')
         .select('id, display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url, created_at')
         .in('id', userIds)
-
-      if (customProfileError) {
-        console.warn('Custom profiles not accessible (RLS):', customProfileError)
-      }
-
-      console.log('🏙️ Streak - Public profiles with cities:', customProfiles?.length || 0)
 
       // Función para verificar si es principiante (< 30 días en Vence)
       const isNovato = (userId) => {
@@ -609,7 +557,7 @@ export default function RankingModal({ isOpen, onClose }) {
       setStreakRanking(finalStreakRanking)
       
     } catch (error) {
-      console.error('Error loading streak ranking:', error)
+      console.error('Error loading streak ranking')
     } finally {
       setLoading(false)
     }
