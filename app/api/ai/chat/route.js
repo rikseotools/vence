@@ -179,6 +179,9 @@ const LAW_ALIASES = {
   'lrjsp': 'Ley 40/2015', 'régimen jurídico': 'Ley 40/2015',
   // Estatuto básico empleado público
   'trebep': 'RDL 5/2015', 'ebep': 'RDL 5/2015', 'estatuto básico': 'RDL 5/2015',
+  'funcionarios': 'RDL 5/2015', 'empleados públicos': 'RDL 5/2015', 'empleado público': 'RDL 5/2015',
+  'derechos funcionarios': 'RDL 5/2015', 'deberes funcionarios': 'RDL 5/2015',
+  'código de conducta': 'RDL 5/2015', 'régimen funcionarios': 'RDL 5/2015',
   // Ley General Tributaria
   'lgt': 'LGT', 'ley general tributaria': 'LGT',
   // Transparencia
@@ -255,6 +258,70 @@ const LAW_ALIASES = {
   'agenda 2030': 'Agenda 2030', 'ods': 'Agenda 2030',
   // Gobierno Abierto
   'gobierno abierto': 'Gobierno Abierto',
+}
+
+// 🚨 LEYES DEROGADAS - Advertir al usuario cuando pregunte por ellas
+const REPEALED_LAWS = {
+  'ley 30/1984': {
+    name: 'Ley 30/1984, de 2 de agosto, de medidas para la reforma de la Función Pública',
+    replacement: 'RDL 5/2015 (TREBEP)',
+    replacementName: 'Real Decreto Legislativo 5/2015, de 30 de octubre, del Estatuto Básico del Empleado Público',
+    repealedBy: 'Disposición derogatoria única del TREBEP'
+  },
+  'ley 7/2007': {
+    name: 'Ley 7/2007, de 12 de abril, del Estatuto Básico del Empleado Público (EBEP original)',
+    replacement: 'RDL 5/2015 (TREBEP)',
+    replacementName: 'Real Decreto Legislativo 5/2015, texto refundido',
+    repealedBy: 'Refundición en RDL 5/2015'
+  },
+  'ley 30/1992': {
+    name: 'Ley 30/1992, de 26 de noviembre, de Régimen Jurídico de las Administraciones Públicas y del Procedimiento Administrativo Común (LRJPAC)',
+    replacement: 'Ley 39/2015 (procedimiento) y Ley 40/2015 (régimen jurídico)',
+    replacementName: 'Ley 39/2015 del Procedimiento Administrativo Común y Ley 40/2015 del Régimen Jurídico del Sector Público',
+    repealedBy: 'Disposición derogatoria de las Leyes 39/2015 y 40/2015'
+  },
+  'ley 6/1997': {
+    name: 'Ley 6/1997, de 14 de abril, de Organización y Funcionamiento de la Administración General del Estado (LOFAGE)',
+    replacement: 'Ley 40/2015',
+    replacementName: 'Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público',
+    repealedBy: 'Disposición derogatoria de la Ley 40/2015'
+  },
+  'ley 11/2007': {
+    name: 'Ley 11/2007, de 22 de junio, de acceso electrónico de los ciudadanos a los Servicios Públicos',
+    replacement: 'Ley 39/2015',
+    replacementName: 'Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común',
+    repealedBy: 'Disposición derogatoria de la Ley 39/2015'
+  },
+  'rd 2169/1984': {
+    name: 'RD 2169/1984, sobre provisión de puestos de trabajo',
+    replacement: 'RDL 5/2015 (TREBEP)',
+    replacementName: 'Normativa vigente del TREBEP',
+    repealedBy: 'Derogaciones sucesivas'
+  },
+  'lrjpac': {
+    name: 'Ley 30/1992 (LRJPAC)',
+    replacement: 'Ley 39/2015 y Ley 40/2015',
+    replacementName: 'Leyes 39 y 40 de 2015',
+    repealedBy: 'Disposición derogatoria de las Leyes 39/2015 y 40/2015'
+  },
+  'lofage': {
+    name: 'Ley 6/1997 (LOFAGE)',
+    replacement: 'Ley 40/2015',
+    replacementName: 'Ley 40/2015, de Régimen Jurídico del Sector Público',
+    repealedBy: 'Disposición derogatoria de la Ley 40/2015'
+  }
+}
+
+// Función para detectar si el usuario pregunta por una ley derogada
+function detectRepealedLaw(message) {
+  const msgLower = message.toLowerCase()
+
+  for (const [key, info] of Object.entries(REPEALED_LAWS)) {
+    if (msgLower.includes(key)) {
+      return { key, ...info }
+    }
+  }
+  return null
 }
 
 // Detectar menciones de leyes en el mensaje (versión mejorada con detección dinámica)
@@ -1740,6 +1807,55 @@ export async function POST(request) {
         success: false,
         error: 'Se requiere un mensaje'
       }, { status: 400 })
+    }
+
+    // 🚨 VERIFICAR SI EL USUARIO PREGUNTA POR UNA LEY DEROGADA
+    const repealedLaw = detectRepealedLaw(message)
+    if (repealedLaw) {
+      console.log(`⚠️ Usuario preguntó por ley derogada: ${repealedLaw.name}`)
+
+      const warningResponse = `⚠️ **AVISO IMPORTANTE: Ley Derogada**
+
+La **${repealedLaw.name}** está **DEROGADA** y ya no está en vigor.
+
+📌 **Derogada por:** ${repealedLaw.repealedBy}
+
+✅ **Normativa vigente:** ${repealedLaw.replacement}
+*${repealedLaw.replacementName}*
+
+---
+
+💡 **Recomendación:** Para tu preparación de oposiciones, debes estudiar la normativa vigente. ¿Quieres que te explique la **${repealedLaw.replacement}** en su lugar?
+
+Si necesitas información histórica sobre la ley derogada por motivos académicos, indícamelo expresamente.`
+
+      // Guardar log de la advertencia
+      if (userId) {
+        await saveAIChatLog({
+          userId,
+          message,
+          responsePreview: warningResponse.substring(0, 200),
+          fullResponse: warningResponse,
+          sourcesUsed: [],
+          questionContextId: questionContext?.questionId || null,
+          questionContextLaw: null,
+          suggestionUsed,
+          responseTimeMs: Date.now() - startTime,
+          tokensUsed: 0,
+          hadError: false,
+          userOposicion: userOposicion,
+          detectedLaws: [repealedLaw.key]
+        })
+      }
+
+      return Response.json({
+        success: true,
+        response: warningResponse,
+        sources: [],
+        isRepealedLawWarning: true,
+        repealedLaw: repealedLaw.key,
+        replacement: repealedLaw.replacement
+      })
     }
 
     // 🔄 Si no recibimos oposición del frontend pero tenemos userId, obtenerla de la BD (query tipada con Drizzle)
