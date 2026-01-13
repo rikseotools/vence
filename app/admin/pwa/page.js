@@ -333,7 +333,7 @@ export default function PWAAdminPage() {
                   PWAs Instaladas
                 </p>
                 <p className="text-2xl font-bold text-blue-600">{stats.totalInstalls}</p>
-                <p className="text-xs text-gray-500 mt-1">Datos reales</p>
+                <p className="text-[10px] text-gray-500 mt-1">Usuarios que instalaron la app en su móvil</p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">📱</span>
@@ -348,7 +348,7 @@ export default function PWAAdminPage() {
                   Push Activos
                 </p>
                 <p className="text-2xl font-bold text-green-600">{stats.activeSubscriptions}</p>
-                <p className="text-xs text-gray-500 mt-1">Suscripciones push</p>
+                <p className="text-[10px] text-gray-500 mt-1">Usuarios que pueden recibir notificaciones</p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">🔔</span>
@@ -363,7 +363,7 @@ export default function PWAAdminPage() {
                   Enviadas (7d)
                 </p>
                 <p className="text-2xl font-bold text-purple-600">{stats.notificationsSent}</p>
-                <p className="text-xs text-gray-500 mt-1">Notificaciones push</p>
+                <p className="text-[10px] text-gray-500 mt-1">Notificaciones enviadas últimos 7 días</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">📤</span>
@@ -378,7 +378,7 @@ export default function PWAAdminPage() {
                   Click Rate
                 </p>
                 <p className="text-2xl font-bold text-orange-600">{stats.clickRate}%</p>
-                <p className="text-xs text-gray-500 mt-1">Clicks vs enviadas</p>
+                <p className="text-[10px] text-gray-500 mt-1">{stats.notificationsClicked} clicks de {stats.notificationsSent} enviadas</p>
               </div>
               <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
                 <span className="text-2xl">👆</span>
@@ -391,59 +391,91 @@ export default function PWAAdminPage() {
       {/* Estadísticas del Banner de Notificaciones */}
       {bannerStats && (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            📊 Funnel del Banner de Notificaciones (30 días)
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            📊 Funnel del Banner de Notificaciones
           </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Seguimiento de usuarios que ven el banner para activar notificaciones push (últimos 30 días)
+          </p>
 
-          {/* Métricas principales */}
+          {/* Métricas principales con explicaciones */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 text-center">
               <p className="text-2xl font-bold text-blue-600">{bannerStats.uniqueViewers}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Vieron banner</p>
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Vieron banner</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                Usuarios únicos que vieron algún banner
+              </p>
             </div>
             <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 text-center">
               <p className="text-2xl font-bold text-amber-600">{bannerStats.uniqueDismissers}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Descartaron</p>
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Descartaron</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                Pulsaron "Más tarde" o "✕"
+              </p>
             </div>
             <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 text-center">
               <p className="text-2xl font-bold text-green-600">{bannerStats.uniqueActivators}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Activaron</p>
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Activaron</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                Dieron permiso de notificaciones
+              </p>
             </div>
             <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 text-center">
               <p className="text-2xl font-bold text-purple-600">{bannerStats.conversionRate}%</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Conversión</p>
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Conversión</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                % que activó de los que vieron
+              </p>
             </div>
           </div>
 
           {/* Detalle por tipo de banner */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-              <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-3">👁️ Visualizaciones por tipo</h4>
+              <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">👁️ Visualizaciones por tipo</h4>
+              <p className="text-[10px] text-gray-500 mb-3">Cuántas veces se mostró cada banner</p>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Banner prominente (arriba)</span>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-gray-700 dark:text-gray-300">Banner prominente</span>
+                    <span className="text-[10px] text-gray-500 ml-1">(amarillo arriba, 1ª vez)</span>
+                  </div>
                   <span className="font-medium">{bannerStats.viewsByType.prominent}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Banner compacto (abajo)</span>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-gray-700 dark:text-gray-300">Banner compacto</span>
+                    <span className="text-[10px] text-gray-500 ml-1">(gris abajo, ya descartó)</span>
+                  </div>
                   <span className="font-medium">{bannerStats.viewsByType.compact}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Prompt inicial (verde)</span>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-gray-700 dark:text-gray-300">Prompt inicial</span>
+                    <span className="text-[10px] text-gray-500 ml-1">(verde, nunca configuró)</span>
+                  </div>
                   <span className="font-medium">{bannerStats.viewsByType.initial_prompt}</span>
                 </div>
               </div>
             </div>
 
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-              <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-3">❌ Descartes por tipo</h4>
+              <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-1">❌ Descartes por tipo</h4>
+              <p className="text-[10px] text-gray-500 mb-3">Usuarios que pulsaron "Más tarde" (oculta 1 mes)</p>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Banner prominente</span>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-gray-700 dark:text-gray-300">Banner prominente</span>
+                    <span className="text-[10px] text-gray-500 ml-1">(1ª vez que lo ven)</span>
+                  </div>
                   <span className="font-medium">{bannerStats.dismissByType.prominent}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Banner compacto</span>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-gray-700 dark:text-gray-300">Banner compacto</span>
+                    <span className="text-[10px] text-gray-500 ml-1">(ya descartó antes)</span>
+                  </div>
                   <span className="font-medium">{bannerStats.dismissByType.compact}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
@@ -454,9 +486,11 @@ export default function PWAAdminPage() {
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 mt-4">
-            💡 Los datos se actualizan cuando el usuario ve o interactúa con el banner
-          </p>
+          <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 mt-4 text-xs text-gray-600 dark:text-gray-400">
+            <strong>Resumen:</strong> De {bannerStats.uniqueViewers} usuarios que vieron el banner,
+            {' '}{bannerStats.uniqueActivators} activaron notificaciones ({bannerStats.conversionRate}%)
+            y {bannerStats.uniqueDismissers} lo descartaron ({bannerStats.dismissRate}%).
+          </div>
         </div>
       )}
 
