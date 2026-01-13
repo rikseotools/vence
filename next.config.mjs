@@ -7,8 +7,7 @@ const nextConfig = {
     optimizeCss: true,
     cssChunking: 'strict',
     inlineCss: true,
-    // Required for Sentry instrumentation
-    instrumentationHook: true,
+    // instrumentationHook ya no es necesario en Next.js 15+ (está habilitado por defecto)
   },
 
   // ✅ Compresión mejorada
@@ -59,6 +58,33 @@ const nextConfig = {
         destination: '/administrativo-estado/temario/tema-:numero',
         permanent: true,
       },
+      // 🔄 Redirecciones de /teoria/ con formato incorrecto (bots/crawlers)
+      // /teoria/ley-39/2015 → /teoria/ley-39-2015
+      {
+        source: '/teoria/ley-:num/:year(\\d{4})',
+        destination: '/teoria/ley-:num-:year',
+        permanent: true,
+      },
+      {
+        source: '/teoria/lo-:num/:year(\\d{4})',
+        destination: '/teoria/lo-:num-:year',
+        permanent: true,
+      },
+      {
+        source: '/teoria/rd-:num/:year(\\d{4})',
+        destination: '/teoria/rd-:num-:year',
+        permanent: true,
+      },
+      {
+        source: '/teoria/rdl-:num/:year(\\d{4})',
+        destination: '/teoria/rdl-:num-:year',
+        permanent: true,
+      },
+      {
+        source: '/teoria/reglamento-ue-:num/:year(\\d{3,4})',
+        destination: '/teoria/reglamento-ue-:num-:year',
+        permanent: true,
+      },
     ];
 
     // Redirigir sin www a con www (solo en producción)
@@ -99,28 +125,25 @@ const sentryWebpackPluginOptions = {
   // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
 
-  // Automatically annotate React components to show their full name in breadcrumbs and session replay
-  reactComponentAnnotation: {
-    enabled: true,
-  },
-
   // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
   tunnelRoute: "/monitoring",
 
   // Hides source maps from generated client bundles
   hideSourceMaps: true,
 
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
-  disableLogger: true,
-
-  // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-  // See the following for more information:
-  // https://docs.sentry.io/product/crons/
-  // https://vercel.com/docs/cron-jobs
-  automaticVercelMonitors: true,
+  // Webpack-specific options (nueva API de Sentry)
+  webpack: {
+    // Automatically annotate React components
+    reactComponentAnnotation: {
+      enabled: true,
+    },
+    // Tree-shake Sentry logger statements
+    treeshake: {
+      removeDebugLogging: true,
+    },
+    // Automatic Vercel Cron Monitors
+    automaticVercelMonitors: true,
+  },
 };
 
 // Make sure adding Sentry options is the last code to run before exporting
