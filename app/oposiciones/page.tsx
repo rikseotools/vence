@@ -88,7 +88,7 @@ async function getConvocatorias(searchParams: SearchParams) {
     query = query.ilike('provincia', searchParams.provincia);
   }
   if (searchParams.q) {
-    query = query.or(`titulo.ilike.%${searchParams.q}%,descripcion.ilike.%${searchParams.q}%,departamento_nombre.ilike.%${searchParams.q}%`);
+    query = query.or(`titulo.ilike.%${searchParams.q}%,resumen.ilike.%${searchParams.q}%,departamento_nombre.ilike.%${searchParams.q}%,cuerpo.ilike.%${searchParams.q}%`);
   }
 
   query = query.range(offset, offset + limit - 1);
