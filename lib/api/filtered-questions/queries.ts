@@ -1,7 +1,7 @@
 // lib/api/filtered-questions/queries.ts - Queries Drizzle para preguntas filtradas
 import { getDb } from '@/db/client'
-import { questions, articles, laws, topicScope, topics } from '@/db/schema'
-import { eq, and, inArray, sql } from 'drizzle-orm'
+import { questions, articles, laws, topicScope, topics, tests, testQuestions } from '@/db/schema'
+import { eq, and, inArray, sql, notInArray, desc } from 'drizzle-orm'
 import type {
   GetFilteredQuestionsRequest,
   GetFilteredQuestionsResponse,
@@ -10,6 +10,143 @@ import type {
   CountFilteredQuestionsResponse,
   SectionFilter,
 } from './schemas'
+
+// ============================================
+// HELPER: Obtener IDs de preguntas respondidas recientemente
+// ============================================
+async function getRecentlyAnsweredQuestionIds(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  daysAgo: number
+): Promise<string[]> {
+  const dateThreshold = new Date()
+  dateThreshold.setDate(dateThreshold.getDate() - daysAgo)
+
+  const recentAnswers = await db
+    .select({ questionId: testQuestions.questionId })
+    .from(testQuestions)
+    .innerJoin(tests, eq(testQuestions.testId, tests.id))
+    .where(and(
+      eq(tests.userId, userId),
+      sql`${testQuestions.createdAt} >= ${dateThreshold.toISOString()}`
+    ))
+
+  return (recentAnswers || [])
+    .map(r => r.questionId)
+    .filter((id): id is string => id !== null)
+}
+
+// ============================================
+// HELPER: Obtener IDs de preguntas nunca vistas por usuario
+// ============================================
+async function getNeverSeenQuestionIds(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  candidateQuestionIds: string[]
+): Promise<string[]> {
+  if (candidateQuestionIds.length === 0) return []
+
+  // Obtener preguntas que el usuario ya ha visto
+  const seenAnswers = await db
+    .select({ questionId: testQuestions.questionId })
+    .from(testQuestions)
+    .innerJoin(tests, eq(testQuestions.testId, tests.id))
+    .where(and(
+      eq(tests.userId, userId),
+      inArray(testQuestions.questionId, candidateQuestionIds)
+    ))
+
+  const seenIds = new Set((seenAnswers || []).map(r => r.questionId).filter(Boolean))
+
+  // Devolver solo las que no ha visto
+  return candidateQuestionIds.filter(id => !seenIds.has(id))
+}
+
+// ============================================
+// HELPER: Selección proporcional por tema
+// ============================================
+function selectProportionally<T extends { sourceTopic: number | null }>(
+  questions: T[],
+  topics: number[],
+  numQuestions: number
+): T[] {
+  if (topics.length <= 1) {
+    // Single topic, just shuffle and slice
+    return questions.sort(() => Math.random() - 0.5).slice(0, numQuestions)
+  }
+
+  // Group questions by topic
+  const byTopic = new Map<number, T[]>()
+  for (const topic of topics) {
+    byTopic.set(topic, [])
+  }
+
+  for (const q of questions) {
+    if (q.sourceTopic !== null && byTopic.has(q.sourceTopic)) {
+      byTopic.get(q.sourceTopic)!.push(q)
+    }
+  }
+
+  // Calculate base allocation per topic
+  const questionsPerTopic = Math.floor(numQuestions / topics.length)
+  const remainder = numQuestions % topics.length
+
+  const selected: T[] = []
+  const topicAllocations: { topic: number; count: number }[] = []
+
+  // Shuffle each topic's questions and calculate available counts
+  for (const topic of topics) {
+    const topicQuestions = byTopic.get(topic) || []
+    // Shuffle in place
+    for (let i = topicQuestions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[topicQuestions[i], topicQuestions[j]] = [topicQuestions[j], topicQuestions[i]]
+    }
+    topicAllocations.push({
+      topic,
+      count: Math.min(questionsPerTopic, topicQuestions.length)
+    })
+  }
+
+  // Distribute remainder to topics that have extra questions
+  let extraNeeded = remainder
+  for (const allocation of topicAllocations) {
+    if (extraNeeded <= 0) break
+    const topicQuestions = byTopic.get(allocation.topic) || []
+    if (topicQuestions.length > allocation.count) {
+      allocation.count++
+      extraNeeded--
+    }
+  }
+
+  // Select from each topic
+  for (const allocation of topicAllocations) {
+    const topicQuestions = byTopic.get(allocation.topic) || []
+    selected.push(...topicQuestions.slice(0, allocation.count))
+  }
+
+  // If we couldn't fill all slots, try to get more from topics with extras
+  const deficit = numQuestions - selected.length
+  if (deficit > 0) {
+    // Get remaining questions from any topic
+    const selectedIds = new Set(selected.map(q => (q as any).id))
+    const remaining = questions.filter(q => !selectedIds.has((q as any).id))
+    selected.push(...remaining.slice(0, deficit))
+  }
+
+  // Final shuffle to mix topics
+  for (let i = selected.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[selected[i], selected[j]] = [selected[j], selected[i]]
+  }
+
+  console.log(`📊 Selección proporcional: ${selected.length} preguntas de ${topics.length} temas`)
+  topicAllocations.forEach(a => {
+    console.log(`  - Tema ${a.topic}: ${a.count} preguntas`)
+  })
+
+  return selected
+}
 
 // ============================================
 // HELPER: Aplicar filtro de secciones a artículos
@@ -53,6 +190,7 @@ export async function getFilteredQuestions(
     const {
       topicNumber,
       positionType,
+      multipleTopics,
       numQuestions,
       selectedLaws,
       selectedArticlesByLaw,
@@ -61,28 +199,44 @@ export async function getFilteredQuestions(
       difficultyMode,
       excludeRecentDays,
       userId,
+      focusEssentialArticles,
+      prioritizeNeverSeen,
+      proportionalByTopic,
     } = params
 
-    // 1️⃣ Obtener topic_scope para este tema
+    // 1️⃣ Determinar qué temas consultar
+    const topicsToQuery = multipleTopics && multipleTopics.length > 0
+      ? multipleTopics
+      : topicNumber > 0 ? [topicNumber] : []
+
+    if (topicsToQuery.length === 0) {
+      return {
+        success: false,
+        error: 'Debe especificar al menos un tema (topicNumber o multipleTopics)',
+      }
+    }
+
+    // 2️⃣ Obtener topic_scope para todos los temas solicitados
     const topicScopeResults = await db
       .select({
         articleNumbers: topicScope.articleNumbers,
         lawId: topicScope.lawId,
         lawShortName: laws.shortName,
         lawName: laws.name,
+        topicNumber: topics.topicNumber,
       })
       .from(topicScope)
       .innerJoin(topics, eq(topicScope.topicId, topics.id))
       .innerJoin(laws, eq(topicScope.lawId, laws.id))
       .where(and(
-        eq(topics.topicNumber, topicNumber),
+        inArray(topics.topicNumber, topicsToQuery),
         eq(topics.positionType, positionType)
       ))
 
     if (!topicScopeResults || topicScopeResults.length === 0) {
       return {
         success: false,
-        error: `No se encontró mapeo para tema ${topicNumber} (${positionType})`,
+        error: `No se encontró mapeo para los temas especificados (${positionType})`,
       }
     }
 
@@ -158,6 +312,7 @@ export async function getFilteredQuestions(
       lawId: string
       lawName: string
       lawShortName: string
+      sourceTopic: number | null // Track which topic this question belongs to
     }> = []
 
     for (const mapping of filteredMappings) {
@@ -207,7 +362,16 @@ export async function getFilteredQuestions(
         ))
 
       const lawQuestions = await questionsQuery
-      allQuestions = [...allQuestions, ...lawQuestions]
+      // Add source topic to each question
+      if (!lawQuestions || !Array.isArray(lawQuestions)) {
+        console.warn('⚠️ lawQuestions vacío para ley:', mapping.lawShortName)
+        continue
+      }
+      const questionsWithTopic = lawQuestions.map(q => ({
+        ...q,
+        sourceTopic: mapping.topicNumber ?? null
+      }))
+      allQuestions = [...allQuestions, ...questionsWithTopic]
     }
 
     if (allQuestions.length === 0) {
@@ -217,18 +381,78 @@ export async function getFilteredQuestions(
       }
     }
 
-    // 6️⃣ Shuffle y limitar cantidad
-    const shuffled = allQuestions.sort(() => Math.random() - 0.5)
-    const limited = shuffled.slice(0, numQuestions)
+    // 6️⃣ Aplicar filtros avanzados de usuario
+    let filteredQuestions = [...allQuestions]
 
-    // 7️⃣ Transformar al formato esperado por el frontend
-    const transformedQuestions: FilteredQuestion[] = limited.map((q, index) => ({
+    // 6a. Excluir preguntas respondidas recientemente
+    if (excludeRecentDays && excludeRecentDays > 0 && userId) {
+      const recentIds = await getRecentlyAnsweredQuestionIds(db, userId, excludeRecentDays)
+      if (recentIds.length > 0) {
+        const recentSet = new Set(recentIds)
+        filteredQuestions = filteredQuestions.filter(q => !recentSet.has(q.id))
+        console.log(`🔄 Excluidas ${recentIds.length} preguntas recientes, quedan ${filteredQuestions.length}`)
+      }
+    }
+
+    // 6b. Filtrar solo artículos esenciales (con preguntas oficiales)
+    if (focusEssentialArticles) {
+      // Solo mantener preguntas de artículos que tienen al menos una pregunta oficial
+      const articlesWithOfficial = new Set(
+        allQuestions
+          .filter(q => q.isOfficialExam === true)
+          .map(q => q.articleNumber)
+      )
+      filteredQuestions = filteredQuestions.filter(q =>
+        articlesWithOfficial.has(q.articleNumber)
+      )
+      console.log(`📌 Filtradas a ${filteredQuestions.length} preguntas de artículos esenciales`)
+    }
+
+    // 6c. Priorizar preguntas nunca vistas
+    let sortedQuestions = filteredQuestions
+    if (prioritizeNeverSeen && userId) {
+      const allIds = filteredQuestions.map(q => q.id)
+      const neverSeenIds = await getNeverSeenQuestionIds(db, userId, allIds)
+      const neverSeenSet = new Set(neverSeenIds)
+
+      // Ordenar: primero las nunca vistas, luego las ya vistas
+      sortedQuestions = [
+        ...filteredQuestions.filter(q => neverSeenSet.has(q.id)),
+        ...filteredQuestions.filter(q => !neverSeenSet.has(q.id))
+      ]
+      console.log(`👁️ ${neverSeenIds.length} preguntas nunca vistas priorizadas`)
+    }
+
+    // 7️⃣ Selección final: proporcional, priorizada, o aleatoria
+    let finalQuestions: typeof sortedQuestions
+
+    if (proportionalByTopic && topicsToQuery.length > 1) {
+      // Distribución proporcional entre temas
+      finalQuestions = selectProportionally(sortedQuestions, topicsToQuery, numQuestions)
+    } else if (prioritizeNeverSeen && userId) {
+      // Tomar hasta numQuestions, priorizando las nunca vistas
+      finalQuestions = sortedQuestions.slice(0, numQuestions)
+    } else {
+      // Shuffle completo y limitar
+      finalQuestions = sortedQuestions.sort(() => Math.random() - 0.5).slice(0, numQuestions)
+    }
+
+    // 8️⃣ Transformar al formato esperado por el frontend
+    if (!finalQuestions || !Array.isArray(finalQuestions)) {
+      console.error('❌ finalQuestions es undefined o no es array:', typeof finalQuestions)
+      return {
+        success: false,
+        error: 'Error interno: resultado de preguntas inválido',
+      }
+    }
+
+    const transformedQuestions: FilteredQuestion[] = finalQuestions.map((q, index) => ({
       id: q.id,
       question: q.questionText,
       options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
       explanation: q.explanation,
       primary_article_id: q.primaryArticleId,
-      tema: topicNumber,
+      tema: q.sourceTopic, // Preserve the source topic for each question
       article: {
         id: q.articleId,
         number: q.articleNumber || (index + 1).toString(),
@@ -257,7 +481,7 @@ export async function getFilteredQuestions(
     return {
       success: true,
       questions: transformedQuestions,
-      totalAvailable: allQuestions.length,
+      totalAvailable: filteredQuestions.length, // Después de aplicar filtros de usuario
       filtersApplied: {
         laws: selectedLaws?.length || 0,
         articles: Object.keys(selectedArticlesByLaw || {}).length,
