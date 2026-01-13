@@ -56,6 +56,7 @@ export default function PsicotecnicosTestClient() {
   const [modalBlock, setModalBlock] = useState(null)
   const [questionCounts, setQuestionCounts] = useState({})
   const [categoryQuestionCounts, setCategoryQuestionCounts] = useState({})
+  const [countsLoaded, setCountsLoaded] = useState(false) // Para saber cuándo terminó de cargar
   const [numQuestionsPsico, setNumQuestionsPsico] = useState(25)
 
   // Lista de categorías principales
@@ -157,6 +158,7 @@ export default function PsicotecnicosTestClient() {
       }
 
       setCategoryQuestionCounts(counts)
+      setCountsLoaded(true)
 
     } catch (error) {
       console.error('❌ Error inesperado cargando categorías:', error)
@@ -396,7 +398,9 @@ export default function PsicotecnicosTestClient() {
         {/* Lista estilo checklist simple */}
         <div className="max-w-2xl mx-auto px-4 mb-8">
           <div className="space-y-3 sm:space-y-4">
-            {mainCategories.map((categoryKey) => (
+            {mainCategories
+              .filter(categoryKey => !countsLoaded || (categoryQuestionCounts[categoryKey] || 0) > 0)
+              .map((categoryKey) => (
               <div 
                 key={categoryKey}
                 className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer" 
@@ -482,16 +486,6 @@ export default function PsicotecnicosTestClient() {
                     </button>
                   )
                 })}
-              </div>
-            </div>
-            
-            {/* Información de preguntas disponibles */}
-            <div className="text-center">
-              <div className="text-sm font-medium text-gray-900 mb-1">
-                Preguntas disponibles
-              </div>
-              <div className="text-3xl font-bold text-green-600">
-                {totalSelectedQuestions}
               </div>
             </div>
             
