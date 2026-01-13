@@ -22,8 +22,8 @@ export type SectionFilter = z.infer<typeof sectionFilterSchema>
 // ============================================
 
 export const getFilteredQuestionsRequestSchema = z.object({
-  // Tema y tipo de oposición (topicNumber=0 significa sin filtro de tema)
-  topicNumber: z.number().int().min(0),
+  // Tema y tipo de oposición (topicNumber=0 o null significa sin filtro de tema)
+  topicNumber: z.number().int().min(0).nullable().transform(v => v ?? 0),
   positionType: z.enum(['administrativo_estado', 'auxiliar_administrativo', 'administrativo']),
 
   // 🆕 Múltiples temas (para test aleatorio multi-tema)
