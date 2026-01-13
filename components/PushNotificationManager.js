@@ -15,6 +15,74 @@ export default function PushNotificationManager() {
     settings: null
   })
   const [loading, setLoading] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
+  const [wasDismissedBefore, setWasDismissedBefore] = useState(false)
+  const [bannerTracked, setBannerTracked] = useState(false) // Evitar tracking duplicado
+
+  // Verificar si el banner fue descartado temporalmente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const dismissedUntil = localStorage.getItem('push_banner_dismissed_until')
+      const dismissCount = parseInt(localStorage.getItem('push_banner_dismiss_count') || '0')
+
+      // Si ya lo descartó antes, mostrar versión compacta
+      if (dismissCount > 0) {
+        setWasDismissedBefore(true)
+      }
+
+      if (dismissedUntil) {
+        const dismissedDate = new Date(dismissedUntil)
+        if (dismissedDate > new Date()) {
+          setIsDismissed(true)
+        } else {
+          localStorage.removeItem('push_banner_dismissed_until')
+        }
+      }
+    }
+  }, [])
+
+  // Función para trackear eventos del banner de notificaciones
+  const trackBannerEvent = async (eventType, bannerType, extraData = {}) => {
+    if (!user) return
+
+    try {
+      const dismissCount = parseInt(localStorage.getItem('push_banner_dismiss_count') || '0')
+
+      await notificationTracker.trackPushEvent(eventType, user, {
+        deviceType: notificationTracker.getDeviceType(),
+        customData: {
+          banner_type: bannerType, // 'prominent' | 'compact' | 'initial_prompt'
+          dismiss_count: dismissCount,
+          permission_status: notificationState.permission,
+          has_settings: !!notificationState.settings,
+          push_enabled: notificationState.settings?.push_enabled || false,
+          ...extraData
+        }
+      })
+    } catch (error) {
+      console.error('Error tracking banner event:', error)
+    }
+  }
+
+  // Función para descartar el banner por 1 mes
+  const dismissForOneMonth = async (bannerType = 'prominent') => {
+    const oneMonthFromNow = new Date()
+    oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1)
+    localStorage.setItem('push_banner_dismissed_until', oneMonthFromNow.toISOString())
+
+    // Incrementar contador de descartes
+    const currentCount = parseInt(localStorage.getItem('push_banner_dismiss_count') || '0')
+    localStorage.setItem('push_banner_dismiss_count', String(currentCount + 1))
+
+    // Trackear el descarte
+    await trackBannerEvent('banner_dismissed', bannerType, {
+      new_dismiss_count: currentCount + 1,
+      dismissed_until: oneMonthFromNow.toISOString()
+    })
+
+    setIsDismissed(true)
+    setWasDismissedBefore(true)
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined' && user && supabase) {
@@ -718,32 +786,107 @@ export default function PushNotificationManager() {
     }
   }, [user, notificationState.permission, notificationState.settings?.push_enabled])
 
+  // Determinar qué tipo de banner se mostraría
+  const shouldShowReactivationBanner =
+    (notificationState.settings && !notificationState.settings.push_enabled) ||
+    (!notificationState.settings && notificationState.permission !== 'default')
+
+  const shouldShowInitialPrompt = notificationState.showPrompt &&
+    (!notificationState.settings || !notificationState.settings.push_enabled)
+
+  // Determinar el tipo de banner que se mostrará
+  const bannerTypeToShow = shouldShowReactivationBanner
+    ? (wasDismissedBefore ? 'compact' : 'prominent')
+    : (shouldShowInitialPrompt ? 'initial_prompt' : null)
+
+  // Trackear visualización del banner (solo una vez por sesión)
+  useEffect(() => {
+    if (!user || !notificationState.supported || isDismissed || bannerTracked) return
+    if (notificationState.settings?.push_enabled) return // No trackear si ya tiene push activo
+
+    if (bannerTypeToShow) {
+      trackBannerEvent('banner_viewed', bannerTypeToShow)
+      setBannerTracked(true)
+    }
+  }, [user, notificationState.supported, notificationState.settings, isDismissed, bannerTypeToShow, bannerTracked])
+
   // No mostrar nada si no hay usuario o no es compatible
   if (!user || !notificationState.supported) return null
 
-  // Si ya tiene configuración y están activadas, no mostrar nada (solo en perfil)
+  // Si ya tiene configuración y están activadas, no mostrar nada
   if (notificationState.settings && notificationState.settings.push_enabled) {
     return null
   }
 
-  // Si están desactivadas, mostrar solo botón de reactivación compacto
-  if (notificationState.settings && !notificationState.settings.push_enabled && notificationState.permission !== 'default') {
-    return (
-      <div className="bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-800 rounded-lg p-3 mb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg">🔔</span>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              Notificaciones desactivadas
-            </span>
+  // Si el usuario descartó el banner temporalmente, no mostrar
+  if (isDismissed) {
+    return null
+  }
+
+  if (shouldShowReactivationBanner) {
+    // Si ya lo descartó antes, mostrar versión compacta abajo
+    if (wasDismissedBefore) {
+      return (
+        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-auto z-50">
+          <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-3 shadow-lg">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-lg">🔔</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Notificaciones desactivadas
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => dismissForOneMonth('compact')}
+                  className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  ✕
+                </button>
+                <button
+                  onClick={requestNotificationPermission}
+                  disabled={loading}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 font-medium"
+                >
+                  {loading ? '...' : 'Activar'}
+                </button>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={requestNotificationPermission}
-            disabled={loading}
-            className="text-sm text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 disabled:opacity-50 font-medium"
-          >
-            {loading ? '...' : 'Reactivar'}
-          </button>
+        </div>
+      )
+    }
+
+    // Primera vez: mostrar banner prominente arriba
+    return (
+      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center space-x-3">
+            <span className="text-2xl">🔔</span>
+            <div>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                Las notificaciones están desactivadas
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Actívalas para recibir recordatorios de estudio
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <button
+              onClick={() => dismissForOneMonth('prominent')}
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-2 py-1"
+            >
+              Más tarde
+            </button>
+            <button
+              onClick={requestNotificationPermission}
+              disabled={loading}
+              className="bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {loading ? '...' : 'Activar'}
+            </button>
+          </div>
         </div>
       </div>
     )
