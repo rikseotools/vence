@@ -21,6 +21,8 @@ export interface ConvocatoriaXMLData {
   paginaInicial: number | null;
   paginaFinal: number | null;
   contenidoTexto: string;
+  // Referencias a publicaciones anteriores del BOE (para vincular publicaciones relacionadas)
+  referenciasAnteriores: string[];
 }
 
 interface BOESumarioResponse {
@@ -168,12 +170,16 @@ export async function fetchConvocatoriaXML(boeId: string): Promise<ConvocatoriaX
   // Extraer todo el contenido de <texto>
   const contenidoTexto = extractXmlContent(xml, 'texto');
 
+  // Extraer referencias a publicaciones anteriores del BOE
+  const referenciasAnteriores = extractBoeReferences(xml);
+
   return {
     fechaDisposicion: fechaDisposicion ? formatBOEDate(fechaDisposicion) : null,
     rango,
     paginaInicial: paginaInicial ? parseInt(paginaInicial) : null,
     paginaFinal: paginaFinal ? parseInt(paginaFinal) : null,
     contenidoTexto,
+    referenciasAnteriores,
   };
 }
 
@@ -245,6 +251,29 @@ function cleanHtmlContent(html: string): string {
 function formatBOEDate(fecha: string): string {
   if (fecha.length !== 8) return fecha;
   return `${fecha.slice(0, 4)}-${fecha.slice(4, 6)}-${fecha.slice(6, 8)}`;
+}
+
+/**
+ * Extrae referencias a publicaciones anteriores del XML del BOE
+ * Busca en la sección <analisis><referencias><anteriores>
+ * Ejemplo: <anterior referencia="BOE-A-2023-26357" orden="4100">...</anterior>
+ */
+function extractBoeReferences(xml: string): string[] {
+  const references: string[] = [];
+
+  // Patrón para encontrar referencias anteriores
+  // Formato: <anterior referencia="BOE-A-2023-26357" ...>
+  const anteriorPattern = /<anterior[^>]*referencia="([^"]+)"[^>]*>/gi;
+  let match;
+
+  while ((match = anteriorPattern.exec(xml)) !== null) {
+    const ref = match[1];
+    if (ref && ref.startsWith('BOE-') && !references.includes(ref)) {
+      references.push(ref);
+    }
+  }
+
+  return references;
 }
 
 /**

@@ -173,6 +173,22 @@ export async function GET(request: Request) {
             nuevaConv.pagina_final = xmlData.paginaFinal;
             nuevaConv.contenido_texto = xmlData.contenidoTexto;
 
+            // Vincular automáticamente a la convocatoria origen si existe
+            if (xmlData.referenciasAnteriores.length > 0) {
+              const { data: existingRef } = await supabase
+                .from('convocatorias_boe')
+                .select('id, tipo')
+                .in('boe_id', xmlData.referenciasAnteriores)
+                .eq('is_active', true);
+
+              if (existingRef && existingRef.length > 0) {
+                // Preferir referencia tipo "convocatoria", si no la primera encontrada
+                const convocatoriaRef = existingRef.find(r => r.tipo === 'convocatoria') || existingRef[0];
+                nuevaConv.convocatoria_origen_id = convocatoriaRef.id;
+                console.log(`  🔗 ${conv.boeId} vinculado a ${xmlData.referenciasAnteriores[0]}`);
+              }
+            }
+
             // Extraer datos adicionales del texto
             const datosTexto = extraerDatosDelTexto(xmlData.contenidoTexto);
             nuevaConv.plazo_inscripcion_dias = datosTexto.plazoInscripcionDias;

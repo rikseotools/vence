@@ -38,7 +38,6 @@ export const revalidate = 3600;
 
 interface SearchParams {
   categoria?: string;
-  tipo?: string;
   oposicion?: string;
   departamento?: string;
   ambito?: string;
@@ -59,11 +58,12 @@ async function getConvocatorias(searchParams: SearchParams) {
   const limit = 20;
   const offset = (page - 1) * limit;
 
-  // Usar función RPC que soporta búsqueda sin tildes (unaccent)
-  const { data, error } = await supabase.rpc('search_convocatorias', {
+  // Usar función RPC agrupada que incluye publicaciones relacionadas
+  // p_tipo se omite porque ahora solo mostramos convocatorias
+  const { data, error } = await supabase.rpc('search_convocatorias_grouped', {
     search_term: searchParams.q || '',
     p_categoria: searchParams.categoria || null,
-    p_tipo: searchParams.tipo || null,
+    p_tipo: null, // Siempre null - la función filtra por tipo='convocatoria'
     p_ambito: searchParams.ambito || null,
     p_ccaa: searchParams.ccaa || null,
     p_provincia: searchParams.provincia || null,

@@ -12,7 +12,6 @@ import { useState, useEffect, useCallback } from 'react';
 interface Props {
   currentFilters: {
     categoria?: string;
-    tipo?: string;
     oposicion?: string;
     ambito?: string;
     ccaa?: string;
@@ -34,13 +33,6 @@ const AMBITOS = [
   { value: 'estatal', label: 'AGE' },
   { value: 'autonomico', label: 'Autonómico' },
   { value: 'local', label: 'Local' },
-];
-
-const TIPOS = [
-  { value: 'convocatoria', label: 'Convocatorias' },
-  { value: 'admitidos', label: 'Admitidos' },
-  { value: 'tribunal', label: 'Tribunales' },
-  { value: 'resultado', label: 'Resultados' },
 ];
 
 const CCAA = [
@@ -152,7 +144,6 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
 
   const activeFiltersCount = [
     currentFilters.categoria,
-    currentFilters.tipo,
     currentFilters.ambito,
     currentFilters.ccaa,
     currentFilters.provincia,
@@ -265,8 +256,8 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
           ))}
         </div>
 
-        {/* Segunda fila: Dropdowns de ubicación, tipo y orden */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        {/* Segunda fila: Dropdowns de ubicación y orden */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {/* CCAA dropdown */}
           <select
             value={currentFilters.ccaa || ''}
@@ -299,24 +290,6 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
             {PROVINCIAS.map((prov) => (
               <option key={prov.value} value={prov.value}>
                 {prov.label}
-              </option>
-            ))}
-          </select>
-
-          {/* Tipo dropdown */}
-          <select
-            value={currentFilters.tipo || ''}
-            onChange={(e) => router.push(buildUrl('tipo', e.target.value || null))}
-            className={`w-full px-3 py-2 text-sm border-2 rounded-lg focus:ring-2 focus:ring-blue-500 ${
-              currentFilters.tipo
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
-                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-            }`}
-          >
-            <option value="">Tipo</option>
-            {TIPOS.map((tipo) => (
-              <option key={tipo.value} value={tipo.value}>
-                {tipo.label}
               </option>
             ))}
           </select>
@@ -386,17 +359,6 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors border border-blue-200 dark:border-blue-700"
               >
                 {PROVINCIAS.find(p => p.value === currentFilters.provincia)?.label || currentFilters.provincia}
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </Link>
-            )}
-            {currentFilters.tipo && (
-              <Link
-                href={buildUrl('tipo', null)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors border border-blue-200 dark:border-blue-700"
-              >
-                {TIPOS.find(t => t.value === currentFilters.tipo)?.label}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>

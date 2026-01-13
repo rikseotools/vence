@@ -2,11 +2,21 @@
 
 /**
  * Componente de lista de convocatorias/oposiciones
- * Muestra los procesos selectivos de forma clara para el usuario
+ * Muestra los procesos selectivos agrupados con sus publicaciones relacionadas
  */
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+
+interface PublicacionRelacionada {
+  id: string;
+  boe_id: string;
+  boe_fecha: string;
+  boe_url_html: string | null;
+  titulo_limpio: string | null;
+  tipo: string | null;
+  resumen: string | null;
+}
 
 interface Convocatoria {
   id: string;
@@ -32,6 +42,10 @@ interface Convocatoria {
   acceso: string | null;
   plazo_inscripcion_dias: number | null;
   fecha_limite_inscripcion: string | null;
+  // Nuevos campos para agrupación
+  publicaciones_relacionadas?: PublicacionRelacionada[] | string;
+  total_relacionadas?: number;
+  es_standalone?: boolean;
 }
 
 interface Props {
@@ -63,8 +77,47 @@ const ACCESO_LABELS: Record<string, string> = {
   'discapacidad': 'Discapacidad',
 };
 
+// Componente para una publicación relacionada (dentro del cajón)
+function PublicacionRelacionadaItem({ pub, onBoeClick }: { pub: PublicacionRelacionada; onBoeClick: () => void }) {
+  const tipoBadge = TIPO_BADGES[pub.tipo || 'otro'] || TIPO_BADGES.otro;
+
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-gray-100 dark:border-gray-700 last:border-0">
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${tipoBadge.bg} ${tipoBadge.text} shrink-0`}>
+        {tipoBadge.label}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-1">
+          {pub.titulo_limpio || pub.resumen || 'Sin título'}
+        </p>
+        <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <span>
+            {new Date(pub.boe_fecha).toLocaleDateString('es-ES', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            })}
+          </span>
+          {pub.boe_url_html && (
+            <a
+              href={pub.boe_url_html}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onBoeClick}
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Ver BOE
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ConvocatoriasLista({ convocatorias }: Props) {
   const [showToast, setShowToast] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Auto-hide toast after 2 seconds
   useEffect(() => {
@@ -76,6 +129,31 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
 
   const handleBoeClick = () => {
     setShowToast(true);
+  };
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Parsear publicaciones_relacionadas si viene como string JSON
+  const parseRelacionadas = (conv: Convocatoria): PublicacionRelacionada[] => {
+    if (!conv.publicaciones_relacionadas) return [];
+    if (typeof conv.publicaciones_relacionadas === 'string') {
+      try {
+        return JSON.parse(conv.publicaciones_relacionadas);
+      } catch {
+        return [];
+      }
+    }
+    return conv.publicaciones_relacionadas;
   };
 
   if (convocatorias.length === 0) {
@@ -100,6 +178,10 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
         const tipoBadge = TIPO_BADGES[conv.tipo || 'otro'] || TIPO_BADGES.otro;
         const categoriaInfo = conv.categoria ? CATEGORIA_COLORS[conv.categoria] : null;
         const esConvocatoria = conv.tipo === 'convocatoria';
+        const esStandalone = conv.es_standalone === true;
+        const relacionadas = parseRelacionadas(conv);
+        const tieneRelacionadas = relacionadas.length > 0;
+        const isExpanded = expandedIds.has(conv.id);
 
         // Construir ubicación
         const ubicacion = [
@@ -122,7 +204,11 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
         return (
           <article
             key={conv.id}
-            className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
+            className={`bg-white dark:bg-gray-800 rounded-lg border overflow-hidden hover:shadow-md transition-shadow ${
+              tieneRelacionadas
+                ? 'border-green-200 dark:border-green-700/50'
+                : 'border-gray-200 dark:border-gray-700'
+            }`}
           >
             <div className="flex">
               {/* Barra lateral de categoría */}
@@ -130,185 +216,228 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
                 <div className={`w-1.5 ${categoriaInfo.bg} flex-shrink-0`} />
               )}
 
-              <div className="flex-1 p-4">
-                {/* Header: Badges + Plazas */}
-                <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                  <div className="flex flex-wrap gap-2">
-                    {/* Solo mostrar badge de tipo si NO es convocatoria */}
-                    {!esConvocatoria && (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tipoBadge.bg} ${tipoBadge.text}`}>
-                        {tipoBadge.label}
-                      </span>
-                    )}
-                    {categoriaInfo && (
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold ${categoriaInfo.bg} ${categoriaInfo.text}`}>
-                        {categoriaInfo.label}
-                      </span>
-                    )}
-                    {conv.acceso && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                        {ACCESO_LABELS[conv.acceso] || conv.acceso}
-                      </span>
-                    )}
-                    {conv.oposicion_relacionada && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                        Tu oposición
-                      </span>
-                    )}
-                    {/* Estado inscripción */}
-                    {inscripcionAbierta !== null && (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        inscripcionAbierta
-                          ? diasRestantes !== null && diasRestantes <= 5
-                            ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
-                            : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                          : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                      }`}>
-                        {inscripcionAbierta
-                          ? diasRestantes !== null && diasRestantes <= 5
-                            ? `⏰ ${diasRestantes}d`
-                            : '✓ Abierta'
-                          : '✗ Cerrada'}
-                      </span>
+              <div className="flex-1">
+                <div className="p-4">
+                  {/* Header: Badges + Plazas */}
+                  <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                    <div className="flex flex-wrap gap-2">
+                      {/* Badge de tipo para items standalone */}
+                      {esStandalone && (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tipoBadge.bg} ${tipoBadge.text}`}>
+                          {tipoBadge.label}
+                        </span>
+                      )}
+                      {categoriaInfo && (
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold ${categoriaInfo.bg} ${categoriaInfo.text}`}>
+                          {categoriaInfo.label}
+                        </span>
+                      )}
+                      {conv.acceso && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                          {ACCESO_LABELS[conv.acceso] || conv.acceso}
+                        </span>
+                      )}
+                      {conv.oposicion_relacionada && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                          Tu oposición
+                        </span>
+                      )}
+                      {/* Indicador de publicaciones relacionadas */}
+                      {tieneRelacionadas && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                          +{relacionadas.length} actualización{relacionadas.length > 1 ? 'es' : ''}
+                        </span>
+                      )}
+                      {/* Estado inscripción */}
+                      {inscripcionAbierta !== null && (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          inscripcionAbierta
+                            ? diasRestantes !== null && diasRestantes <= 5
+                              ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                              : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                            : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                        }`}>
+                          {inscripcionAbierta
+                            ? diasRestantes !== null && diasRestantes <= 5
+                              ? `⏰ ${diasRestantes}d`
+                              : '✓ Abierta'
+                            : '✗ Cerrada'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Plazas destacadas */}
+                    {conv.num_plazas && conv.num_plazas > 0 && (
+                      <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-lg">
+                        <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                          {conv.num_plazas}
+                        </span>
+                        <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                          {conv.num_plazas === 1 ? 'plaza' : 'plazas'}
+                        </span>
+                      </div>
                     )}
                   </div>
 
-                  {/* Plazas destacadas */}
-                  {conv.num_plazas && conv.num_plazas > 0 && (
-                    <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-lg">
-                      <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                        {conv.num_plazas}
-                      </span>
-                      <span className="text-sm text-emerald-600 dark:text-emerald-400">
-                        {conv.num_plazas === 1 ? 'plaza' : 'plazas'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Título */}
-                {conv.oposicion_relacionada ? (
-                  <Link
-                    href={`/oposiciones/${conv.oposicion_relacionada}`}
-                    className="block group"
-                  >
-                    <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  {/* Título */}
+                  {conv.oposicion_relacionada ? (
+                    <Link
+                      href={`/oposiciones/${conv.oposicion_relacionada}`}
+                      className="block group"
+                    >
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {conv.titulo_limpio || conv.titulo}
+                      </h3>
+                    </Link>
+                  ) : (
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug">
                       {conv.titulo_limpio || conv.titulo}
                     </h3>
-                  </Link>
-                ) : (
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug">
-                    {conv.titulo_limpio || conv.titulo}
-                  </h3>
-                )}
+                  )}
 
-                {/* Resumen si existe */}
-                {conv.resumen && (
-                  <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                    {conv.resumen}
-                  </p>
-                )}
+                  {/* Resumen si existe */}
+                  {conv.resumen && (
+                    <p className="mt-1.5 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                      {conv.resumen}
+                    </p>
+                  )}
 
-                {/* Meta info */}
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-gray-500 dark:text-gray-400">
-                  {/* Fecha BOE */}
-                  <span className="flex items-center">
-                    <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    {new Date(conv.boe_fecha).toLocaleDateString('es-ES', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric'
-                    })}
-                  </span>
-
-                  {/* Fecha límite inscripción */}
-                  {conv.fecha_limite_inscripcion && (
-                    <span className={`flex items-center ${
-                      inscripcionAbierta
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-500 dark:text-red-400'
-                    }`}>
-                      <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  {/* Meta info */}
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-gray-500 dark:text-gray-400">
+                    {/* Fecha BOE */}
+                    <span className="flex items-center">
+                      <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      Límite: {new Date(conv.fecha_limite_inscripcion).toLocaleDateString('es-ES', {
+                      {new Date(conv.boe_fecha).toLocaleDateString('es-ES', {
                         day: 'numeric',
-                        month: 'short'
+                        month: 'short',
+                        year: 'numeric'
                       })}
                     </span>
-                  )}
 
-                  {/* Ubicación */}
-                  {ubicacion && (
-                    <span className="flex items-center">
-                      <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <span className="truncate max-w-[180px]">{ubicacion}</span>
-                    </span>
-                  )}
-
-                  {/* Departamento */}
-                  {conv.departamento_nombre && (
-                    <span className="flex items-center">
-                      <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                      <span className="truncate max-w-[200px]">
-                        {conv.departamento_nombre.replace('MINISTERIO DE ', '').replace('MINISTERIO PARA ', '')}
+                    {/* Fecha límite inscripción */}
+                    {conv.fecha_limite_inscripcion && (
+                      <span className={`flex items-center ${
+                        inscripcionAbierta
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-red-500 dark:text-red-400'
+                      }`}>
+                        <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Límite: {new Date(conv.fecha_limite_inscripcion).toLocaleDateString('es-ES', {
+                          day: 'numeric',
+                          month: 'short'
+                        })}
                       </span>
-                    </span>
+                    )}
+
+                    {/* Ubicación */}
+                    {ubicacion && (
+                      <span className="flex items-center">
+                        <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="truncate max-w-[180px]">{ubicacion}</span>
+                      </span>
+                    )}
+
+                    {/* Departamento */}
+                    {conv.departamento_nombre && (
+                      <span className="flex items-center">
+                        <svg className="mr-1 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span className="truncate max-w-[200px]">
+                          {conv.departamento_nombre.replace('MINISTERIO DE ', '').replace('MINISTERIO PARA ', '')}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Detalles de plazas si hay desglose */}
+                  {(conv.num_plazas_libre || conv.num_plazas_pi) && (
+                    <div className="mt-2 flex gap-3 text-xs text-gray-500 dark:text-gray-400">
+                      {conv.num_plazas_libre && (
+                        <span>Libre: {conv.num_plazas_libre}</span>
+                      )}
+                      {conv.num_plazas_pi && (
+                        <span>PI: {conv.num_plazas_pi}</span>
+                      )}
+                    </div>
                   )}
+
+                  {/* Actions */}
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    <div className="flex gap-4">
+                      {conv.oposicion_relacionada && (
+                        <Link
+                          href={`/oposiciones/${conv.oposicion_relacionada}`}
+                          className="text-sm font-medium text-green-600 dark:text-green-400 hover:underline flex items-center"
+                        >
+                          <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          Ver oposición
+                        </Link>
+                      )}
+                      {conv.boe_url_html && (
+                        <a
+                          href={conv.boe_url_html}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={handleBoeClick}
+                          className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center"
+                        >
+                          <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          Ver BOE
+                        </a>
+                      )}
+                      {/* Botón expandir relacionadas */}
+                      {tieneRelacionadas && (
+                        <button
+                          onClick={() => toggleExpanded(conv.id)}
+                          className="text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center transition-colors"
+                        >
+                          <svg
+                            className={`mr-1 h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                          {isExpanded ? 'Ocultar' : 'Ver'} actualizaciones
+                        </button>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {conv.boe_id}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Detalles de plazas si hay desglose */}
-                {(conv.num_plazas_libre || conv.num_plazas_pi) && (
-                  <div className="mt-2 flex gap-3 text-xs text-gray-500 dark:text-gray-400">
-                    {conv.num_plazas_libre && (
-                      <span>Libre: {conv.num_plazas_libre}</span>
-                    )}
-                    {conv.num_plazas_pi && (
-                      <span>PI: {conv.num_plazas_pi}</span>
-                    )}
+                {/* Cajón de publicaciones relacionadas */}
+                {tieneRelacionadas && isExpanded && (
+                  <div className="border-t border-green-200 dark:border-green-700/50 bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
+                    <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                      Publicaciones relacionadas ({relacionadas.length})
+                    </h4>
+                    <div className="space-y-0">
+                      {relacionadas.map((pub) => (
+                        <PublicacionRelacionadaItem
+                          key={pub.id}
+                          pub={pub}
+                          onBoeClick={handleBoeClick}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
-
-                {/* Actions */}
-                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                  <div className="flex gap-4">
-                    {conv.oposicion_relacionada && (
-                      <Link
-                        href={`/oposiciones/${conv.oposicion_relacionada}`}
-                        className="text-sm font-medium text-green-600 dark:text-green-400 hover:underline flex items-center"
-                      >
-                        <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        Ver oposición
-                      </Link>
-                    )}
-                    {conv.boe_url_html && (
-                      <a
-                        href={conv.boe_url_html}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={handleBoeClick}
-                        className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center"
-                      >
-                        <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                        Ver BOE
-                      </a>
-                    )}
-                  </div>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">
-                    {conv.boe_id}
-                  </span>
-                </div>
               </div>
             </div>
           </article>
