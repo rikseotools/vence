@@ -24,8 +24,21 @@ export class VerificationDomain implements ChatDomain {
    * Determina si este dominio puede manejar el contexto
    */
   async canHandle(context: ChatContext): Promise<boolean> {
+    const qc = context.questionContext
+
+    // Debug: ver qué tenemos
+    logger.info('VerificationDomain.canHandle check', {
+      domain: 'verification',
+      hasQC: !!qc,
+      questionText: qc?.questionText?.substring(0, 50),
+      correctAnswer: qc?.correctAnswer,
+      correctAnswerType: typeof qc?.correctAnswer,
+      message: context.currentMessage?.substring(0, 50),
+    })
+
     // Necesitamos contexto de pregunta para verificar
     if (!hasQuestionToVerify(context)) {
+      logger.info('VerificationDomain: hasQuestionToVerify = false', { domain: 'verification' })
       return false
     }
 
@@ -34,6 +47,12 @@ export class VerificationDomain implements ChatDomain {
 
     // También manejar si el usuario pregunta sobre la respuesta
     const asksAboutAnswer = this.asksAboutAnswer(context.currentMessage)
+
+    logger.info('VerificationDomain pattern check', {
+      domain: 'verification',
+      isVerification,
+      asksAboutAnswer,
+    })
 
     if (isVerification || asksAboutAnswer) {
       logger.debug('VerificationDomain will handle request', {
