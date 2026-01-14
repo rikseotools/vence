@@ -283,6 +283,7 @@ async function main() {
           questionId: question.id,
           questionText: question.question_text.substring(0, 60) + '...',
           assignedArticle: assignedInfo,
+          assignedArticleId: assignedArticleId,
           similarity: assignedSimilarity,
           rank: rankInTop
         })
@@ -344,22 +345,99 @@ async function main() {
   }
 
   // 4. Guardar en BD si no es dry-run
-  if (!DRY_RUN && results.wrong.length > 0) {
+  if (!DRY_RUN) {
     console.log('\n💾 Guardando resultados en BD...')
 
-    for (const wrong of results.wrong) {
-      await supabase
-        .from('questions')
-        .update({
-          topic_review_status: 'wrong_article',
-          verification_status: 'problem',
-          verified_at: new Date().toISOString()
-        })
-        .eq('id', wrong.questionId)
+    const now = new Date().toISOString()
+    let savedCount = 0
+    let errorCount = 0
+
+    // Guardar TODOS los resultados en ai_verification_results (para auditoría)
+    const allResults = [
+      ...results.correct.map(c => ({ ...c, isCorrect: true })),
+      ...results.wrong.map(w => ({ ...w, isCorrect: false }))
+    ]
+
+    for (const result of allResults) {
+      try {
+        // Insertar en ai_verification_results
+        const { error: insertError } = await supabase
+          .from('ai_verification_results')
+          .upsert({
+            question_id: result.questionId,
+            article_id: result.assignedArticleId,
+            article_ok: result.isCorrect,
+            is_correct: result.isCorrect,
+            ai_provider: 'embedding_similarity',
+            ai_model: 'text-embedding-3-small',
+            confidence: `${(result.similarity || result.assignedSimilarity || 0) * 100}%`,
+            explanation: JSON.stringify({
+              similarity: result.similarity || result.assignedSimilarity,
+              rank: result.rank || result.rankInTop,
+              threshold: SIMILARITY_THRESHOLD,
+              suggestedArticleId: result.suggestedArticleId,
+              suggestedSimilarity: result.suggestedSimilarity,
+              topMatches: result.allMatches
+            }),
+            correct_article_suggestion: result.isCorrect ? null : result.suggestedArticle,
+            verified_at: now
+          }, {
+            onConflict: 'question_id,ai_provider',
+            ignoreDuplicates: false
+          })
+
+        if (insertError) {
+          // Si falla upsert, intentar insert normal
+          await supabase
+            .from('ai_verification_results')
+            .insert({
+              question_id: result.questionId,
+              article_id: result.assignedArticleId,
+              article_ok: result.isCorrect,
+              is_correct: result.isCorrect,
+              ai_provider: 'embedding_similarity',
+              ai_model: 'text-embedding-3-small',
+              confidence: `${(result.similarity || result.assignedSimilarity || 0) * 100}%`,
+              explanation: JSON.stringify({
+                similarity: result.similarity || result.assignedSimilarity,
+                rank: result.rank || result.rankInTop,
+                threshold: SIMILARITY_THRESHOLD,
+                suggestedArticleId: result.suggestedArticleId,
+                suggestedSimilarity: result.suggestedSimilarity,
+                topMatches: result.allMatches
+              }),
+              correct_article_suggestion: result.isCorrect ? null : result.suggestedArticle,
+              verified_at: now
+            })
+        }
+
+        savedCount++
+      } catch (err) {
+        errorCount++
+      }
     }
 
-    console.log(`✅ ${results.wrong.length} preguntas marcadas como 'wrong_article'`)
-  } else if (DRY_RUN) {
+    console.log(`   ✅ ${savedCount} verificaciones guardadas en ai_verification_results`)
+    if (errorCount > 0) {
+      console.log(`   ⚠️ ${errorCount} errores al guardar`)
+    }
+
+    // Marcar preguntas con artículo mal asignado
+    if (results.wrong.length > 0) {
+      for (const wrong of results.wrong) {
+        await supabase
+          .from('questions')
+          .update({
+            topic_review_status: 'wrong_article',
+            verification_status: 'problem',
+            verified_at: now
+          })
+          .eq('id', wrong.questionId)
+      }
+
+      console.log(`   ✅ ${results.wrong.length} preguntas marcadas como 'wrong_article'`)
+    }
+  } else {
     console.log('\n⚠️ Dry run - no se guardaron cambios en BD')
   }
 
