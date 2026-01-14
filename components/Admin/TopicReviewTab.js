@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import EmbeddingReviewTab from './EmbeddingReviewTab'
 
 // Spinner component
 const Spinner = ({ size = 'sm' }) => {
@@ -96,12 +97,14 @@ const formatPositionName = (position) => {
 
 export default function TopicReviewTab() {
   const router = useRouter()
+  const [activeTab, setActiveTab] = useState('topics') // 'topics' | 'embeddings'
   const [positions, setPositions] = useState([])
   const [selectedPosition, setSelectedPosition] = useState('')
   const [blocks, setBlocks] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchFilter, setSearchFilter] = useState('')
+  const [embeddingCount, setEmbeddingCount] = useState(0)
 
   // Estado para bloques colapsables
   const [expandedBlocks, setExpandedBlocks] = useState(new Set())
@@ -127,12 +130,26 @@ export default function TopicReviewTab() {
     loadPositions()
     loadAiConfig()
     loadVerificationQueue()
+    loadEmbeddingCount()
 
     // Polling para actualizar progreso de verificaciones cada 10 segundos
     const interval = setInterval(loadVerificationQueue, 10000)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Cargar conteo de preguntas pendientes por embeddings
+  const loadEmbeddingCount = async () => {
+    try {
+      const response = await fetch('/api/admin/embedding-review')
+      const data = await response.json()
+      if (data.success) {
+        setEmbeddingCount(data.stats?.total || 0)
+      }
+    } catch (err) {
+      console.error('Error cargando conteo embeddings:', err)
+    }
+  }
 
   // Cargar temas cuando cambia la oposición
   useEffect(() => {
@@ -453,7 +470,7 @@ export default function TopicReviewTab() {
   return (
     <div className="p-3 sm:p-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 space-y-4 sm:space-y-0">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             📚 Revisión de Temas
@@ -462,6 +479,47 @@ export default function TopicReviewTab() {
             Verificar preguntas organizadas por tema con IA
           </p>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+        <button
+          onClick={() => setActiveTab('topics')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'topics'
+              ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          📋 Por Temas
+        </button>
+        <button
+          onClick={() => setActiveTab('embeddings')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+            activeTab === 'embeddings'
+              ? 'border-purple-600 text-purple-600 dark:text-purple-400'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          🧠 Embeddings
+          {embeddingCount > 0 && (
+            <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full text-xs">
+              {embeddingCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Contenido de la tab Embeddings */}
+      {activeTab === 'embeddings' && (
+        <EmbeddingReviewTab />
+      )}
+
+      {/* Contenido de la tab Temas */}
+      {activeTab === 'topics' && (
+        <>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
+        <div></div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
           {/* Selector de oposición */}
@@ -770,6 +828,8 @@ export default function TopicReviewTab() {
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           No se encontraron temas con &quot;{searchFilter}&quot;
         </div>
+      )}
+        </>
       )}
     </div>
   )
