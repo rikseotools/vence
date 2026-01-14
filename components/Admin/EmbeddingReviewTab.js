@@ -29,9 +29,10 @@ export default function EmbeddingReviewTab() {
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [stats, setStats] = useState({ total: 0, withTopic: 0, withoutTopic: 0 })
+  const [stats, setStats] = useState({ total: 0, withTopic: 0, withoutTopic: 0, deactivated: 0 })
   const [filterPosition, setFilterPosition] = useState('all')
   const [filterHasTopic, setFilterHasTopic] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all') // 'all', 'wrong_article', 'topic_incorrecto'
 
   useEffect(() => {
     loadEmbeddingResults()
@@ -47,7 +48,11 @@ export default function EmbeddingReviewTab() {
 
       if (data.success) {
         setQuestions(data.questions || [])
-        setStats(data.stats || { total: 0, withTopic: 0, withoutTopic: 0 })
+        const deactivatedCount = (data.questions || []).filter(q => q.topic_review_status === 'topic_incorrecto').length
+        setStats({
+          ...(data.stats || { total: 0, withTopic: 0, withoutTopic: 0 }),
+          deactivated: deactivatedCount
+        })
       } else {
         setError(data.error || 'Error cargando datos')
       }
@@ -80,6 +85,10 @@ export default function EmbeddingReviewTab() {
     // Filtro por tiene/no tiene topic
     if (filterHasTopic === 'with' && (!q.topics || q.topics.length === 0)) return false
     if (filterHasTopic === 'without' && q.topics && q.topics.length > 0) return false
+
+    // Filtro por estado (topic_incorrecto vs wrong_article)
+    if (filterStatus === 'topic_incorrecto' && q.topic_review_status !== 'topic_incorrecto') return false
+    if (filterStatus === 'wrong_article' && q.topic_review_status === 'topic_incorrecto') return false
 
     return true
   })
@@ -127,7 +136,7 @@ export default function EmbeddingReviewTab() {
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex flex-wrap items-center gap-4 text-sm">
           <span className="text-gray-600 dark:text-gray-400">
             Total: <strong>{stats.total}</strong>
           </span>
@@ -137,6 +146,11 @@ export default function EmbeddingReviewTab() {
           <span className="text-orange-600 dark:text-orange-400">
             Sin topic: <strong>{stats.withoutTopic}</strong>
           </span>
+          {stats.deactivated > 0 && (
+            <span className="text-red-600 dark:text-red-400">
+              Desactivadas: <strong>{stats.deactivated}</strong>
+            </span>
+          )}
         </div>
       </div>
 
@@ -162,6 +176,16 @@ export default function EmbeddingReviewTab() {
           <option value="all">Todos</option>
           <option value="with">Con topic asignado</option>
           <option value="without">Sin topic asignado</option>
+        </select>
+
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg px-3 py-2"
+        >
+          <option value="all">Todos los estados</option>
+          <option value="wrong_article">Solo artículo mal</option>
+          <option value="topic_incorrecto">Desactivadas (topic incorrecto)</option>
         </select>
 
         <button
@@ -206,12 +230,21 @@ export default function EmbeddingReviewTab() {
           {filteredQuestions.map((q, idx) => (
             <div
               key={q.id}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4"
+              className={`rounded-lg shadow border p-4 ${
+                q.topic_review_status === 'topic_incorrecto'
+                  ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+              }`}
             >
               {/* Header con pregunta */}
               <div className="flex items-start gap-3 mb-3">
                 <span className="text-gray-400 text-sm font-mono">{idx + 1}</span>
                 <div className="flex-1">
+                  {q.topic_review_status === 'topic_incorrecto' && (
+                    <span className="inline-block px-2 py-0.5 bg-red-600 text-white text-xs rounded mb-2">
+                      🚫 DESACTIVADA - Topic incorrecto
+                    </span>
+                  )}
                   <p className="text-gray-900 dark:text-white text-sm">
                     {q.question_text}
                   </p>
