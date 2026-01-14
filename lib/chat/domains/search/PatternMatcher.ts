@@ -1,0 +1,347 @@
+// lib/chat/domains/search/PatternMatcher.ts
+// Detector de patrones en consultas de chat
+
+import type { DetectedPattern, PatternType } from '../../core/types'
+import { logger } from '../../shared/logger'
+
+// ============================================
+// DEFINICIÓN DE PATRONES
+// ============================================
+
+interface QueryPattern {
+  name: PatternType
+  detect: (msg: string) => boolean
+  keywords: string[]
+  description: string
+  suggestedLaws?: string[]
+}
+
+const QUERY_PATTERNS: Record<string, QueryPattern> = {
+  plazos: {
+    name: 'plazo',
+    detect: (msg) => /plazos?|t[eé]rminos?|d[ií]as?\s*(h[aá]biles?|naturales?)|\bcu[aá]nto\s*tiempo\b|\bcu[aá]ntos?\s*d[ií]as?\b/i.test(msg),
+    keywords: ['plazo', 'plazos', 'término', 'términos', 'días', 'hábiles', 'naturales', 'tiempo', 'máximo'],
+    description: 'Consulta sobre plazos y términos legales',
+    suggestedLaws: ['Ley 39/2015', 'Ley 40/2015'],
+  },
+
+  definiciones: {
+    name: 'general',
+    detect: (msg) => /\bqu[eé]\s+(es|son|significa)\b|\bdefin[ei]|concepto\s+de|\bexplica\s+(qu[eé]\s+es|el|la)\b/i.test(msg),
+    keywords: ['definición', 'concepto', 'significa', 'entiende'],
+    description: 'Consulta sobre definiciones y conceptos',
+  },
+
+  organos: {
+    name: 'organo',
+    detect: (msg) => /[oó]rganos?\s*(colegiados?|administrativos?|competentes?)|\bconsejo\s+de\s+ministros\b|\bgobierno\b|\bministros?\b|\bsecretar[ií]os?\b|\bsubsecretar[ií]os?\b|\bdirectores?\s+generales?\b/i.test(msg),
+    keywords: ['órgano', 'órganos', 'colegiado', 'colegiados', 'consejo', 'ministro', 'gobierno', 'secretario', 'director'],
+    description: 'Consulta sobre órganos administrativos',
+    suggestedLaws: ['Ley 40/2015', 'Ley 50/1997'],
+  },
+
+  recursos: {
+    name: 'recurso',
+    detect: (msg) => /recursos?\s*(de)?\s*(alzada|reposici[oó]n|extraordinario|contencioso|administrativo)|\bc[oó]mo\s+recurr|\bimpugnar\b/i.test(msg),
+    keywords: ['recurso', 'recursos', 'alzada', 'reposición', 'impugnar', 'impugnación', 'recurrente'],
+    description: 'Consulta sobre recursos administrativos',
+    suggestedLaws: ['Ley 39/2015'],
+  },
+
+  silencio: {
+    name: 'procedimiento',
+    detect: (msg) => /silencio\s*(administrativo|positivo|negativo)|\bfalta\s+de\s+resoluci[oó]n\b/i.test(msg),
+    keywords: ['silencio', 'administrativo', 'positivo', 'negativo', 'desestimatorio', 'estimatorio'],
+    description: 'Consulta sobre silencio administrativo',
+    suggestedLaws: ['Ley 39/2015'],
+  },
+
+  notificaciones: {
+    name: 'procedimiento',
+    detect: (msg) => /notificaci[oó]n|notificar|notificaciones|\bc[oó]mo\s+se\s+notifica\b|\bd[oó]nde\s+se\s+notifica\b/i.test(msg),
+    keywords: ['notificación', 'notificaciones', 'notificar', 'publicación', 'edicto', 'electrónica'],
+    description: 'Consulta sobre notificaciones administrativas',
+    suggestedLaws: ['Ley 39/2015'],
+  },
+
+  delegacion: {
+    name: 'competencia',
+    detect: (msg) => /delegaci[oó]n|delegar|\bavocaci[oó]n\b|\bencomienda\s+de\s+gesti[oó]n\b|\bsuplencia\b|\bsustituc/i.test(msg),
+    keywords: ['delegación', 'delegar', 'avocación', 'encomienda', 'suplencia', 'sustitución', 'competencia'],
+    description: 'Consulta sobre delegación de competencias',
+    suggestedLaws: ['Ley 40/2015'],
+  },
+
+  responsabilidad: {
+    name: 'sancion',
+    detect: (msg) => /responsabilidad\s*(patrimonial|del\s+estado|administraci[oó]n)|\bindemnizaci[oó]n|\bda[ñn]os?\s*(y\s*perjuicios)?/i.test(msg),
+    keywords: ['responsabilidad', 'patrimonial', 'indemnización', 'daños', 'perjuicios', 'lesión'],
+    description: 'Consulta sobre responsabilidad patrimonial',
+    suggestedLaws: ['Ley 40/2015'],
+  },
+
+  nulidad: {
+    name: 'procedimiento',
+    detect: (msg) => /nulidad|anulabilidad|nulos?\s+de\s+pleno|anulable|vicios?|revisi[oó]n\s+de\s+oficio/i.test(msg),
+    keywords: ['nulidad', 'anulabilidad', 'nulo', 'anulable', 'vicio', 'revisión', 'oficio'],
+    description: 'Consulta sobre nulidad y anulabilidad de actos',
+    suggestedLaws: ['Ley 39/2015'],
+  },
+
+  sancionador: {
+    name: 'sancion',
+    detect: (msg) => /procedimiento\s+sancionador|potestad\s+sancionadora|sanci[oó]n|sanciones|infracci[oó]n|multa/i.test(msg),
+    keywords: ['sanción', 'sanciones', 'sancionador', 'infracción', 'multa', 'potestad', 'expediente'],
+    description: 'Consulta sobre procedimiento sancionador',
+    suggestedLaws: ['Ley 39/2015', 'Ley 40/2015'],
+  },
+
+  interesados: {
+    name: 'requisito',
+    detect: (msg) => /\binteresados?\b.*procedimiento|\bqui[eé]n\s+(puede|es)\s+interesado|\bcapacidad\s+de\s+obrar\b|\blegitimaci[oó]n\b/i.test(msg),
+    keywords: ['interesado', 'interesados', 'capacidad', 'legitimación', 'representación'],
+    description: 'Consulta sobre interesados en el procedimiento',
+    suggestedLaws: ['Ley 39/2015'],
+  },
+
+  convenios: {
+    name: 'procedimiento',
+    detect: (msg) => /convenios?\s*(administrativos?|colaboraci[oó]n)?|\bacuerdos?\s+de\s+colaboraci[oó]n\b/i.test(msg),
+    keywords: ['convenio', 'convenios', 'acuerdo', 'colaboración', 'coordinación'],
+    description: 'Consulta sobre convenios administrativos',
+    suggestedLaws: ['Ley 40/2015'],
+  },
+}
+
+// ============================================
+// FUNCIONES PÚBLICAS
+// ============================================
+
+/**
+ * Detecta el patrón que coincide con el mensaje
+ */
+export function detectQueryPattern(message: string): DetectedPattern | null {
+  const msgLower = message.toLowerCase()
+
+  for (const [patternId, pattern] of Object.entries(QUERY_PATTERNS)) {
+    if (pattern.detect(msgLower)) {
+      logger.debug(`Pattern detected: ${patternId}`, { domain: 'search' })
+
+      return {
+        type: pattern.name,
+        confidence: calculateConfidence(msgLower, pattern.keywords),
+        keywords: pattern.keywords,
+        suggestedLaws: pattern.suggestedLaws,
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Obtiene los keywords de un patrón por su tipo
+ */
+export function getPatternKeywords(patternType: PatternType): string[] {
+  for (const pattern of Object.values(QUERY_PATTERNS)) {
+    if (pattern.name === patternType) {
+      return pattern.keywords
+    }
+  }
+  return []
+}
+
+/**
+ * Obtiene todos los patrones disponibles
+ */
+export function getAllPatterns(): QueryPattern[] {
+  return Object.values(QUERY_PATTERNS)
+}
+
+// ============================================
+// DETECCIÓN DE LEYES MENCIONADAS
+// ============================================
+
+// Cache de leyes para detección rápida
+let lawsCache: Array<{ shortName: string; aliases: string[] }> | null = null
+
+const LAW_ALIASES: Record<string, string[]> = {
+  'Ley 39/2015': ['39/2015', 'lpac', 'procedimiento administrativo', 'ley 39', 'la 39'],
+  'Ley 40/2015': ['40/2015', 'lrjsp', 'régimen jurídico', 'ley 40', 'la 40'],
+  'Ley 50/1997': ['50/1997', 'ley del gobierno', 'ley 50', 'la 50'],
+  'CE': ['constitución', 'constitución española', 'carta magna'],
+  'Ley 19/2013': ['19/2013', 'transparencia', 'ley 19', 'la 19'],
+  'RDL 5/2015': ['5/2015', 'trebep', 'ebep', 'estatuto básico', 'empleado público'],
+}
+
+/**
+ * Detecta qué leyes se mencionan en el mensaje
+ */
+export function detectMentionedLaws(message: string): string[] {
+  const msgLower = message.toLowerCase()
+  const mentioned: string[] = []
+
+  for (const [lawName, aliases] of Object.entries(LAW_ALIASES)) {
+    for (const alias of aliases) {
+      if (msgLower.includes(alias.toLowerCase())) {
+        mentioned.push(lawName)
+        break
+      }
+    }
+  }
+
+  // Detectar patrones genéricos de ley (ej: "ley 40", "la 39/2015")
+  const genericLawPattern = /(?:ley|l[ea])\s*(\d+)(?:\/(\d{4}))?/gi
+  let match
+  while ((match = genericLawPattern.exec(msgLower)) !== null) {
+    const lawNum = match[1]
+    const year = match[2]
+
+    // Mapear número a ley conocida
+    const knownLaw = mapLawNumber(lawNum, year)
+    if (knownLaw && !mentioned.includes(knownLaw)) {
+      mentioned.push(knownLaw)
+    }
+  }
+
+  return [...new Set(mentioned)]
+}
+
+function mapLawNumber(num: string, year?: string): string | null {
+  const lawMap: Record<string, string> = {
+    '39': 'Ley 39/2015',
+    '40': 'Ley 40/2015',
+    '50': 'Ley 50/1997',
+    '19': 'Ley 19/2013',
+  }
+
+  return lawMap[num] || null
+}
+
+/**
+ * Detecta si es una consulta genérica sobre una ley
+ */
+export function isGenericLawQuery(
+  message: string,
+  mentionedLaws: string[],
+  lawFromHistory = false
+): boolean {
+  if (mentionedLaws.length === 0) return false
+
+  // Si la ley viene del historial, no es genérica
+  if (lawFromHistory) return false
+
+  const msgLower = message.toLowerCase().trim()
+
+  // Si el mensaje es corto, probablemente es genérico
+  if (message.length < 18) return true
+
+  // Si es largo pero tiene más palabras además de la ley, no es genérico
+  if (message.length > 30) {
+    const wordsWithoutLaw = msgLower
+      .replace(/ley\s*\d+\/?\d*/g, '')
+      .replace(/\bla\s+\d+\b/g, '')
+      .trim()
+      .split(/\s+/)
+      .filter(w => w.length > 2)
+
+    if (wordsWithoutLaw.length >= 2) {
+      return false
+    }
+  }
+
+  // Patrones de consultas genéricas
+  const genericPatterns = [
+    /^(que|qué|cual|cuál)\s+(es|son)\s+(la|el)?\s*(ley|l)\s*\d/i,
+    /^(explica|explícame|explicame)\s+(la|el)?\s*(ley|l)\s*\d/i,
+    /^resumen\s+(de)?\s*(la|el)?\s*(ley|l)\s*\d/i,
+    /^info(rmación)?\s*(de|sobre)?\s*(la|el)?\s*(ley|l)\s*\d/i,
+  ]
+
+  return genericPatterns.some(p => p.test(message))
+}
+
+// ============================================
+// EXTRACCIÓN DE DATOS
+// ============================================
+
+export interface ExtractedPatternData {
+  patternName: string
+  patternDescription: string
+  articlesFound: number
+  details: Array<{
+    article: string
+    law: string
+    title: string | null
+    plazos?: string[]
+    snippet?: string
+  }>
+}
+
+/**
+ * Extrae datos específicos de artículos según el patrón
+ */
+export function extractPatternData(
+  patternType: PatternType,
+  articles: Array<{ articleNumber: string; lawShortName: string; title: string | null; content: string | null }>
+): ExtractedPatternData | null {
+  if (!articles || articles.length === 0) return null
+
+  const pattern = Object.values(QUERY_PATTERNS).find(p => p.name === patternType)
+  if (!pattern) return null
+
+  const extractedData: ExtractedPatternData = {
+    patternName: pattern.name,
+    patternDescription: pattern.description,
+    articlesFound: articles.length,
+    details: [],
+  }
+
+  // Extraer información según el patrón
+  if (patternType === 'plazo') {
+    articles.forEach(art => {
+      const content = art.content || ''
+      const plazoRegex = /(\d+)\s*(d[ií]as?|meses?|a[ñn]os?)\s*(h[aá]biles?|naturales?)?/gi
+      const plazos = content.match(plazoRegex) || []
+
+      if (plazos.length > 0 || content.toLowerCase().includes('plazo')) {
+        extractedData.details.push({
+          article: art.articleNumber,
+          law: art.lawShortName,
+          title: art.title,
+          plazos: [...new Set(plazos)].slice(0, 5),
+          snippet: content.substring(0, 300),
+        })
+      }
+    })
+  } else {
+    // Para otros patrones, extraer snippet básico
+    articles.forEach(art => {
+      extractedData.details.push({
+        article: art.articleNumber,
+        law: art.lawShortName,
+        title: art.title,
+        snippet: (art.content || '').substring(0, 300),
+      })
+    })
+  }
+
+  return extractedData
+}
+
+// ============================================
+// HELPERS
+// ============================================
+
+function calculateConfidence(message: string, keywords: string[]): number {
+  let matchCount = 0
+  const msgLower = message.toLowerCase()
+
+  for (const keyword of keywords) {
+    if (msgLower.includes(keyword.toLowerCase())) {
+      matchCount++
+    }
+  }
+
+  return Math.min(1, matchCount / Math.max(1, keywords.length / 2))
+}

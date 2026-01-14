@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown'
 import { useQuestionContext } from '../contexts/QuestionContext'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
+import { getChatEndpoint } from '../lib/chat/config'
 
 export default function AIChatWidget() {
   const pathname = usePathname()
@@ -32,6 +33,8 @@ export default function AIChatWidget() {
   const [limitReached, setLimitReached] = useState(false) // Límite diario alcanzado (usuarios free)
   const [dynamicSuggestions, setDynamicSuggestions] = useState([]) // Sugerencias dinámicas desde BD
   const [lawContextSuggestions, setLawContextSuggestions] = useState([]) // Sugerencias contextuales de ley
+  const [isVerifying, setIsVerifying] = useState(false) // Estado de verificación independiente
+  const [verificationResult, setVerificationResult] = useState(null) // Resultado de verificación
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortControllerRef = useRef(null)
@@ -63,22 +66,28 @@ export default function AIChatWidget() {
   }, [currentQuestionContext, isPsicotecnico])
 
   // Cargar sugerencias dinámicas al abrir el chat (siempre fresco para CTR actualizado)
+  // También refetch cuando oposicionId cambia (puede cargar después de abrir el chat)
   useEffect(() => {
-    if (isOpen) {
-      const pageContext = getPageContext()
-      const params = new URLSearchParams()
-      if (oposicionId) params.set('oposicionId', oposicionId)
-      params.set('pageContext', pageContext)
-
-      fetch(`/api/ai/chat/suggestions?${params.toString()}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.suggestions) {
-            setDynamicSuggestions(data.suggestions)
-          }
-        })
-        .catch(err => console.error('Error loading suggestions:', err))
+    // Solo fetch si el chat está abierto
+    if (!isOpen) {
+      return
     }
+
+    const pageContext = getPageContext()
+    const params = new URLSearchParams()
+    if (oposicionId) params.set('oposicionId', oposicionId)
+    params.set('pageContext', pageContext)
+
+    const url = `/api/ai/chat/suggestions?${params.toString()}`
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.suggestions) {
+          setDynamicSuggestions(data.suggestions)
+        }
+      })
+      .catch(err => console.error('Error loading suggestions:', err))
   }, [isOpen, oposicionId, getPageContext])
 
   // Cargar sugerencias contextuales de ley cuando hay una pregunta con ley
@@ -118,6 +127,7 @@ export default function AIChatWidget() {
         messages.length > 0) {
       console.log('🔄 Pregunta cambiada, limpiando historial del chat')
       setMessages([])
+      setVerificationResult(null) // Limpiar resultado de verificación anterior
     }
 
     previousQuestionIdRef.current = currentQuestionId
@@ -291,7 +301,9 @@ export default function AIChatWidget() {
               c: currentQuestionContext.options.c ? String(currentQuestionContext.options.c) : '',
               d: currentQuestionContext.options.d ? String(currentQuestionContext.options.d) : ''
             } : null,
-            correctAnswer: currentQuestionContext.correctAnswer ? String(currentQuestionContext.correctAnswer) : null,
+            // IMPORTANTE: correctAnswer puede ser 0 (opción A), usar != null para no perderlo
+            correctAnswer: currentQuestionContext.correctAnswer != null ? Number(currentQuestionContext.correctAnswer) : null,
+            selectedAnswer: currentQuestionContext.selectedAnswer != null ? Number(currentQuestionContext.selectedAnswer) : null,
             explanation: currentQuestionContext.explanation ? String(currentQuestionContext.explanation) : null,
             lawName: currentQuestionContext.lawName ? String(currentQuestionContext.lawName) : null,
             articleNumber: currentQuestionContext.articleNumber ? String(currentQuestionContext.articleNumber) : null,
@@ -330,7 +342,10 @@ export default function AIChatWidget() {
       // Serializar body
       const bodyString = JSON.stringify(requestBody)
 
-      const response = await fetch('/api/ai/chat', {
+      // Obtener endpoint según feature flag (chat original o chat-v2)
+      const chatEndpoint = getChatEndpoint(user?.id)
+
+      const response = await fetch(chatEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: bodyString,
@@ -471,6 +486,54 @@ export default function AIChatWidget() {
 
     sendMessage(text, suggestionKey)
   }, [sendMessage, user?.id])
+
+  // Verificar respuesta de forma independiente (sin conocer la respuesta de antemano)
+  const verifyAnswer = useCallback(async () => {
+    if (!currentQuestionContext || isVerifying) return
+
+    setIsVerifying(true)
+    setVerificationResult(null)
+
+    try {
+      const response = await fetch('/api/ai/verify-answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: currentQuestionContext.id,
+          questionText: currentQuestionContext.questionText,
+          options: currentQuestionContext.options,
+          lawName: currentQuestionContext.lawName,
+          articleNumber: currentQuestionContext.articleNumber,
+          dbCorrectAnswer: currentQuestionContext.correctAnswer
+        })
+      })
+
+      const result = await response.json()
+      setVerificationResult(result)
+
+      // Agregar mensaje al chat con el resultado
+      const verificationMessage = result.discrepancy
+        ? `⚠️ **POSIBLE ERROR DETECTADO**\n\nLa base de datos dice: **${result.dbAnswer}**\nMi análisis independiente dice: **${result.aiAnswer}**\n\n**Fundamento legal:**\n${result.legalBasis}\n\n**Razonamiento:**\n${result.reasoning}\n\n_Confianza: ${result.confidence}_`
+        : `✅ **RESPUESTA VERIFICADA**\n\nLa respuesta **${result.dbAnswer}** es correcta según mi análisis independiente.\n\n**Fundamento legal:**\n${result.legalBasis}\n\n_Confianza: ${result.confidence}_`
+
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: verificationMessage,
+        isVerification: true,
+        verificationResult: result
+      }])
+
+    } catch (err) {
+      console.error('Error en verificación:', err)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: '❌ Error al verificar la respuesta. Intenta de nuevo.',
+        isError: true
+      }])
+    } finally {
+      setIsVerifying(false)
+    }
+  }, [currentQuestionContext, isVerifying])
 
   // Enviar feedback (pulgar arriba/abajo)
   const sendFeedback = useCallback(async (logId, feedback, msgIndex) => {
@@ -639,7 +702,7 @@ export default function AIChatWidget() {
           {messages.length === 0 ? (
             <div className="text-gray-500 dark:text-gray-400 py-2">
               {/* Layout horizontal: muñeca izquierda, texto derecha */}
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-3">
                 {/* Muñeca pequeña */}
                 <div className="flex-shrink-0 scale-[0.6] origin-top-left -ml-2 -mt-1">
                   <div className="flex flex-col items-center">
@@ -711,7 +774,7 @@ export default function AIChatWidget() {
                   80% { transform: rotate(-5deg); }
                 }
               `}</style>
-              <div className="mt-4 space-y-2">
+              <div className="space-y-2">
                 {currentQuestionContext ? (
                   currentQuestionContext.isPsicotecnico ? (
                     // Sugerencias para psicotécnicos con contexto de pregunta
@@ -907,8 +970,20 @@ export default function AIChatWidget() {
                   </>
                 ) : (
                   <>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Pregúntame sobre:</p>
-                    {dynamicSuggestions.length > 0 ? (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">Pregúntame sobre:</p>
+                    {/* Botón fijo PRIMERO: ¿Te ayudo con psicotécnicos? */}
+                    <button
+                      onClick={() => useSuggestion('¿Me ayudas a practicar psicotécnicos?', 'hacemos_psicotecnicos')}
+                      className="flex items-center gap-2 w-full text-left px-3 py-2 text-xs bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition text-green-700 dark:text-green-300"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
+                        <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
+                      </svg>
+                      ¿Te ayudo con psicotécnicos?
+                    </button>
+                    {/* Sugerencias dinámicas después */}
+                    {dynamicSuggestions.length > 0 && (
                       dynamicSuggestions.map((suggestion) => (
                         <button
                           key={suggestion.id}
@@ -918,9 +993,6 @@ export default function AIChatWidget() {
                           {suggestion.emoji} {suggestion.label}
                         </button>
                       ))
-                    ) : (
-                      // Fallback mientras cargan las sugerencias
-                      <p className="text-xs text-gray-400 text-center py-2">Cargando sugerencias...</p>
                     )}
                     {/* Nota de capacidades avanzadas */}
                     <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
@@ -982,14 +1054,40 @@ export default function AIChatWidget() {
                       </p>
                     </div>
                   )}
-                  {/* Oferta de test - NO mostrar si ya está en un test */}
-                  {msg.suggestions?.offerTest && !msg.isStreaming && testFlowState !== 'selecting_laws' && !currentQuestionContext && (
+                  {/* Oferta de test - SOLO mostrar si hay leyes específicas y NO es consulta de stats */}
+                  {msg.suggestions?.offerTest && msg.suggestions?.laws?.length > 0 && !msg.suggestions?.offerWeakAreasTest && !msg.isStreaming && testFlowState !== 'selecting_laws' && !currentQuestionContext && (
                     <div className="mt-3">
                       <button
                         onClick={() => handleOfferTestClick(msg.suggestions.laws)}
                         className="text-xs px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/60 border border-green-300 dark:border-green-700 transition-all"
                       >
-                        📝 ¿Te preparo un test sobre esto?
+                        📝 ¿Te preparo un test sobre {msg.suggestions.laws.length === 1
+                          ? msg.suggestions.laws[0].name || msg.suggestions.laws[0].shortName
+                          : `${msg.suggestions.laws.length} leyes`}?
+                      </button>
+                    </div>
+                  )}
+                  {/* 🆕 Oferta de test de repaso de puntos débiles */}
+                  {msg.suggestions?.offerWeakAreasTest && !msg.isStreaming && !currentQuestionContext && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => {
+                          // Construir URL con filtro temporal dinámico
+                          const params = new URLSearchParams({
+                            n: '10',
+                            order: 'worst_accuracy'
+                          })
+                          // Usar fromDate si está disponible, si no usar days=30 como default
+                          if (msg.suggestions.weakAreasFromDate) {
+                            params.set('fromDate', msg.suggestions.weakAreasFromDate)
+                          } else {
+                            params.set('days', '30')
+                          }
+                          window.open(`/test/repaso-fallos?${params.toString()}`, '_blank')
+                        }}
+                        className="text-xs px-3 py-1.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 border border-red-300 dark:border-red-700 transition-all"
+                      >
+                        🎯 ¿Te preparo un test de repaso de fallos{msg.suggestions.weakAreasLabel ? ` (${msg.suggestions.weakAreasLabel})` : ''}?
                       </button>
                     </div>
                   )}
@@ -1042,21 +1140,6 @@ export default function AIChatWidget() {
                           Crear test de {selectedLaws.length} {selectedLaws.length === 1 ? 'ley' : 'leyes'}
                         </button>
                       )}
-                    </div>
-                  )}
-                  {msg.sources && msg.sources.length > 0 && !msg.isStreaming && (
-                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Fuentes:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {msg.sources.map((s, i) => (
-                          <span
-                            key={i}
-                            className="text-xs bg-white/20 dark:bg-gray-600 px-2 py-0.5 rounded"
-                          >
-                            {s.law} Art.{s.article}
-                          </span>
-                        ))}
-                      </div>
                     </div>
                   )}
                   {/* Botones de feedback (pulgar arriba/abajo) */}
