@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
-import { useQuestionContext } from '../contexts/QuestionContext'
+import { useQuestionContext, answerToLetter } from '../contexts/QuestionContext'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getChatEndpoint } from '../lib/chat/config'
@@ -301,9 +301,9 @@ export default function AIChatWidget() {
               c: currentQuestionContext.options.c ? String(currentQuestionContext.options.c) : '',
               d: currentQuestionContext.options.d ? String(currentQuestionContext.options.d) : ''
             } : null,
-            // IMPORTANTE: correctAnswer puede ser 0 (opción A), usar != null para no perderlo
-            correctAnswer: currentQuestionContext.correctAnswer != null ? Number(currentQuestionContext.correctAnswer) : null,
-            selectedAnswer: currentQuestionContext.selectedAnswer != null ? Number(currentQuestionContext.selectedAnswer) : null,
+            // IMPORTANTE: correctAnswer ya es número (0-3) desde QuestionContext
+            correctAnswer: currentQuestionContext.correctAnswer != null ? currentQuestionContext.correctAnswer : null,
+            selectedAnswer: currentQuestionContext.selectedAnswer != null ? currentQuestionContext.selectedAnswer : null,
             explanation: currentQuestionContext.explanation ? String(currentQuestionContext.explanation) : null,
             lawName: currentQuestionContext.lawName ? String(currentQuestionContext.lawName) : null,
             articleNumber: currentQuestionContext.articleNumber ? String(currentQuestionContext.articleNumber) : null,
@@ -817,7 +817,7 @@ export default function AIChatWidget() {
                     <>
                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Sobre esta pregunta:</p>
                       <button
-                        onClick={() => useSuggestion(`Explícame por qué la respuesta correcta es "${currentQuestionContext.correctAnswer}" en la pregunta: "${currentQuestionContext.questionText?.substring(0, 100)}..."`, 'explicar_respuesta')}
+                        onClick={() => useSuggestion(`Explícame por qué la respuesta correcta es "${answerToLetter(currentQuestionContext.correctAnswer) || '?'}" en la pregunta: "${currentQuestionContext.questionText?.substring(0, 100)}..."`, 'explicar_respuesta')}
                         className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
                       >
                         💡 Explícame la respuesta correcta

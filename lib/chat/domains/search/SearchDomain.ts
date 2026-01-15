@@ -49,13 +49,26 @@ export class SearchDomain implements ChatDomain {
       /nulidad|anulabilidad/i,
       /sanci[oó]n|sancionador/i,
 
-      // Preguntas de concepto
+      // Preguntas de concepto (con soporte de tildes)
       /qu[eé]\s+es\s+(el|la|un|una)/i,
-      /explica|explicame/i,
+      /expl[ií]ca(me|r)?/i,  // explica, explícame, explicar, etc.
       /c[oó]mo\s+(funciona|se|es)/i,
+      /por\s*qu[eé]/i,  // por qué, porque
+      /cu[aá]l\s+(es|son)/i,  // cuál es, cuáles son
+      /d[oó]nde/i,  // dónde
+      /respuesta\s+(correcta|incorrecta)/i,
     ]
 
-    // Detectar si hay leyes mencionadas
+    // Si hay contexto de pregunta con ley, activar búsqueda
+    if (context.questionContext?.lawName) {
+      logger.debug('SearchDomain: questionContext has lawName, will handle', {
+        domain: 'search',
+        lawName: context.questionContext.lawName,
+      })
+      return true
+    }
+
+    // Detectar si hay leyes mencionadas en el mensaje
     const mentionedLaws = detectMentionedLaws(msg)
     if (mentionedLaws.length > 0) return true
 

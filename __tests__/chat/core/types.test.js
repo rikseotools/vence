@@ -35,31 +35,50 @@ describe('Chat Core Types', () => {
       expect(result.success).toBe(true)
     })
 
-    test('debe rechazar selectedAnswer fuera de rango', () => {
-      const invalid = {
-        selectedAnswer: 5, // Fuera de rango 0-3
+    test('debe aceptar selectedAnswer como número', () => {
+      const valid = {
+        selectedAnswer: 2,
       }
 
-      const result = questionContextSchema.safeParse(invalid)
-      expect(result.success).toBe(false)
+      const result = questionContextSchema.safeParse(valid)
+      expect(result.success).toBe(true)
     })
 
-    test('debe rechazar correctAnswer fuera de rango', () => {
-      const invalid = {
-        correctAnswer: -1, // Fuera de rango 0-3
+    test('debe aceptar selectedAnswer como string (letra)', () => {
+      const valid = {
+        selectedAnswer: 'B',
       }
 
-      const result = questionContextSchema.safeParse(invalid)
-      expect(result.success).toBe(false)
+      const result = questionContextSchema.safeParse(valid)
+      expect(result.success).toBe(true)
     })
 
-    test('debe rechazar questionId mal formateado', () => {
-      const invalid = {
-        questionId: 'not-a-uuid',
+    test('debe aceptar correctAnswer como número', () => {
+      const valid = {
+        correctAnswer: 3,
       }
 
-      const result = questionContextSchema.safeParse(invalid)
-      expect(result.success).toBe(false)
+      const result = questionContextSchema.safeParse(valid)
+      expect(result.success).toBe(true)
+    })
+
+    test('debe aceptar correctAnswer como string (letra)', () => {
+      const valid = {
+        correctAnswer: 'D',
+      }
+
+      const result = questionContextSchema.safeParse(valid)
+      expect(result.success).toBe(true)
+    })
+
+    test('debe aceptar questionId como string', () => {
+      // Schema flexible para aceptar diferentes formatos de ID del frontend
+      const valid = {
+        questionId: 'any-string-id',
+      }
+
+      const result = questionContextSchema.safeParse(valid)
+      expect(result.success).toBe(true)
     })
   })
 

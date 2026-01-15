@@ -7,24 +7,37 @@ const QuestionContext = createContext(null)
 export function QuestionProvider({ children }) {
   const [currentQuestionContext, setCurrentQuestionContext] = useState(null)
 
-  // Convertir respuesta correcta a letra (A, B, C, D)
+  // Normalizar respuesta correcta a número (0-3)
   // IMPORTANTE: La base de datos usa 0-indexed (0=A, 1=B, 2=C, 3=D)
-  const formatCorrectAnswer = (correct) => {
+  // Mantenemos como número para compatibilidad con chat-v2
+  const normalizeCorrectAnswer = (correct) => {
     if (correct === null || correct === undefined) return null
 
-    // Si ya es una letra, devolverla en mayúscula
-    if (typeof correct === 'string' && /^[a-dA-D]$/.test(correct)) {
-      return correct.toUpperCase()
+    // Si ya es un número válido (0-3), devolverlo
+    if (typeof correct === 'number' && correct >= 0 && correct <= 3) {
+      return correct
     }
 
-    // Si es un número, convertir usando 0-indexed: 0->A, 1->B, 2->C, 3->D
+    // Si es una letra, convertir a número: A->0, B->1, C->2, D->3
+    if (typeof correct === 'string' && /^[a-dA-D]$/.test(correct)) {
+      const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 }
+      return letterMap[correct.toUpperCase()]
+    }
+
+    // Si es un string numérico, parsearlo
     const num = parseInt(correct, 10)
     if (!isNaN(num) && num >= 0 && num <= 3) {
-      const letters = ['A', 'B', 'C', 'D']
-      return letters[num]
+      return num
     }
 
-    return String(correct).toUpperCase()
+    return null
+  }
+
+  // Convertir número a letra para mostrar al usuario
+  const numberToLetter = (num) => {
+    if (num === null || num === undefined) return null
+    const letters = ['A', 'B', 'C', 'D']
+    return letters[num] || null
   }
 
   // Establecer contexto de pregunta actual (desde TestLayout o PsychometricTestLayout)
@@ -39,7 +52,7 @@ export function QuestionProvider({ children }) {
           c: questionData.option_c,
           d: questionData.option_d
         },
-        correctAnswer: formatCorrectAnswer(questionData.correct),
+        correctAnswer: normalizeCorrectAnswer(questionData.correct),
         explanation: questionData.explanation,
         // Campos para tests de leyes
         lawName: questionData.law?.short_name || questionData.law?.name || questionData.law || null,
@@ -86,4 +99,19 @@ export function useQuestionContext() {
     }
   }
   return context
+}
+
+// Helper para convertir número de respuesta (0-3) a letra (A-D)
+// Útil para mostrar al usuario
+export function answerToLetter(answer) {
+  if (answer === null || answer === undefined) return null
+  if (typeof answer === 'string' && /^[a-dA-D]$/.test(answer)) {
+    return answer.toUpperCase()
+  }
+  const num = typeof answer === 'number' ? answer : parseInt(answer, 10)
+  if (!isNaN(num) && num >= 0 && num <= 3) {
+    const letters = ['A', 'B', 'C', 'D']
+    return letters[num]
+  }
+  return null
 }

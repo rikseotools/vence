@@ -207,6 +207,57 @@ export function detectMentionedLaws(message: string): string[] {
   return [...new Set(mentioned)]
 }
 
+/**
+ * Extrae leyes específicas mencionadas en el texto (Real Decreto, Ley Orgánica, etc.)
+ * Devuelve el short_name tal como aparece en el texto para buscar en BD
+ */
+export function extractSpecificLawMentions(message: string): string[] {
+  const mentions: string[] = []
+
+  // Patrones para diferentes tipos de normas
+  const patterns = [
+    // Real Decreto: "Real Decreto 366/2007", "RD 366/2007"
+    /(?:real\s+decreto|r\.?d\.?)\s*(\d+)\/(\d{4})/gi,
+    // Ley Orgánica: "Ley Orgánica 3/2007", "LO 3/2007"
+    /(?:ley\s+org[aá]nica|l\.?o\.?)\s*(\d+)\/(\d{4})/gi,
+    // Real Decreto Legislativo: "RDL 5/2015", "Real Decreto Legislativo 5/2015"
+    /(?:real\s+decreto\s+legislativo|r\.?d\.?l\.?)\s*(\d+)\/(\d{4})/gi,
+    // Real Decreto-ley: "RDL 5/2015" (otro formato)
+    /(?:real\s+decreto[- ]ley)\s*(\d+)\/(\d{4})/gi,
+  ]
+
+  for (const pattern of patterns) {
+    let match
+    while ((match = pattern.exec(message)) !== null) {
+      const num = match[1]
+      const year = match[2]
+
+      // Determinar el tipo de norma basándose en el patrón
+      const fullMatch = match[0].toLowerCase()
+      let prefix = ''
+
+      if (fullMatch.includes('orgánica') || fullMatch.includes('organica') || /l\.?o\.?/i.test(fullMatch)) {
+        prefix = 'LO'
+      } else if (fullMatch.includes('legislativo') || /r\.?d\.?l\.?/i.test(fullMatch)) {
+        prefix = 'RDL'
+      } else if (fullMatch.includes('decreto-ley') || fullMatch.includes('decreto ley')) {
+        prefix = 'RDL'
+      } else if (fullMatch.includes('real decreto') || /r\.?d\.?\s/i.test(fullMatch)) {
+        prefix = 'RD'
+      }
+
+      if (prefix) {
+        const lawRef = `${prefix} ${num}/${year}`
+        if (!mentions.includes(lawRef)) {
+          mentions.push(lawRef)
+        }
+      }
+    }
+  }
+
+  return mentions
+}
+
 function mapLawNumber(num: string, year?: string): string | null {
   const lawMap: Record<string, string> = {
     '39': 'Ley 39/2015',

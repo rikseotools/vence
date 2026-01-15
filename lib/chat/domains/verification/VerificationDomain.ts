@@ -98,9 +98,10 @@ export class VerificationDomain implements ChatDomain {
       .text(result.response)
       .processingTime(Date.now() - startTime)
 
-    // Añadir fuentes si hay
+    // Añadir fuentes a metadata (sin mostrar al usuario)
     if (result.sources.length > 0) {
-      builder.addSources(result.sources).withSourcesBlock()
+      builder.addSources(result.sources)
+      // NO llamamos .withSourcesBlock() para no mostrar fuentes al usuario
     }
 
     // Añadir metadata de verificación

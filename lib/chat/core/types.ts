@@ -8,14 +8,33 @@ import { z } from 'zod'
 // ============================================
 
 export const questionContextSchema = z.object({
-  questionId: z.string().uuid().optional(),
-  questionText: z.string().optional(),
-  options: z.array(z.string()).optional(),
-  selectedAnswer: z.number().min(0).max(3).optional(),
-  correctAnswer: z.number().min(0).max(3).optional(),
-  lawName: z.string().optional(),
-  articleNumber: z.string().optional(),
-  explanation: z.string().optional(),
+  // IDs - acepta tanto 'id' como 'questionId' del frontend
+  id: z.string().nullable().optional(),
+  questionId: z.string().nullable().optional(),
+  questionText: z.string().nullable().optional(),
+  // Options puede ser array o objeto {a,b,c,d} del frontend
+  options: z.union([
+    z.array(z.string()),
+    z.object({
+      a: z.string().optional(),
+      b: z.string().optional(),
+      c: z.string().optional(),
+      d: z.string().optional(),
+    }),
+  ]).nullable().optional(),
+  // Acepta número (0-3), string ('A'-'D'), o null
+  selectedAnswer: z.union([z.number(), z.string()]).nullable().optional(),
+  correctAnswer: z.union([z.number(), z.string()]).nullable().optional(),
+  lawName: z.string().nullable().optional(),
+  articleNumber: z.string().nullable().optional(),
+  explanation: z.string().nullable().optional(),
+  // Campos adicionales del frontend
+  difficulty: z.string().nullable().optional(),
+  source: z.string().nullable().optional(),
+  isPsicotecnico: z.boolean().optional(),
+  questionSubtype: z.string().nullable().optional(),
+  questionTypeName: z.string().nullable().optional(),
+  contentData: z.any().nullable().optional(),
 })
 
 export const chatMessageSchema = z.object({

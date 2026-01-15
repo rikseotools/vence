@@ -115,16 +115,18 @@ function prioritizeByLaw(
   targetLawName: string,
   limit: number
 ): any[] {
+  // FILTRAR solo artículos de la ley del contexto
+  // No incluir artículos de otras leyes cuando hay una ley específica en el contexto
   const contextArticles = articles.filter(a => lawMap[a.law_id]?.short_name === targetLawName)
-  const otherArticles = articles.filter(a => lawMap[a.law_id]?.short_name !== targetLawName)
 
-  const numContext = Math.min(contextArticles.length, Math.ceil(limit * 0.7))
-  const numOther = limit - numContext
+  // Si no hay artículos de la ley del contexto, devolver vacío
+  // para que el sistema sepa que no encontró resultados relevantes
+  if (contextArticles.length === 0) {
+    logger.debug(`No articles found for context law: ${targetLawName}`, { domain: 'search' })
+    return []
+  }
 
-  return [
-    ...contextArticles.slice(0, numContext),
-    ...otherArticles.slice(0, numOther),
-  ]
+  return contextArticles.slice(0, limit)
 }
 
 function prioritizeByLawIds(
@@ -394,11 +396,49 @@ export async function searchArticlesForPattern(
 
 /**
  * Busca una ley por nombre corto o nombre completo
+ * Prioriza exact match antes de fuzzy search
  */
 export async function findLawByName(
   name: string
 ): Promise<{ id: string; shortName: string; name: string } | null> {
-  const { data } = await supabase
+  // 1. Primero intentar exact match por short_name (más preciso)
+  const { data: exactMatch } = await supabase
+    .from('laws')
+    .select('id, short_name, name')
+    .eq('short_name', name)
+    .eq('is_derogated', false)
+    .limit(1)
+    .single()
+
+  if (exactMatch) {
+    logger.debug(`🔎 findLawByName: exact match for "${name}" → ${exactMatch.short_name}`, { domain: 'search' })
+    return {
+      id: exactMatch.id,
+      shortName: exactMatch.short_name,
+      name: exactMatch.name,
+    }
+  }
+
+  // 2. Si no hay exact match, intentar case-insensitive exact
+  const { data: ciExact } = await supabase
+    .from('laws')
+    .select('id, short_name, name')
+    .ilike('short_name', name)
+    .eq('is_derogated', false)
+    .limit(1)
+    .single()
+
+  if (ciExact) {
+    logger.debug(`🔎 findLawByName: case-insensitive match for "${name}" → ${ciExact.short_name}`, { domain: 'search' })
+    return {
+      id: ciExact.id,
+      shortName: ciExact.short_name,
+      name: ciExact.name,
+    }
+  }
+
+  // 3. Fallback: fuzzy search (solo si no hay match exacto)
+  const { data: fuzzyMatch } = await supabase
     .from('laws')
     .select('id, short_name, name')
     .or(`short_name.ilike.%${name}%,name.ilike.%${name}%`)
@@ -406,13 +446,17 @@ export async function findLawByName(
     .limit(1)
     .single()
 
-  if (!data) return null
-
-  return {
-    id: data.id,
-    shortName: data.short_name,
-    name: data.name,
+  if (fuzzyMatch) {
+    logger.debug(`🔎 findLawByName: fuzzy match for "${name}" → ${fuzzyMatch.short_name}`, { domain: 'search' })
+    return {
+      id: fuzzyMatch.id,
+      shortName: fuzzyMatch.short_name,
+      name: fuzzyMatch.name,
+    }
   }
+
+  logger.warn(`🔎 findLawByName: no law found for "${name}"`, { domain: 'search' })
+  return null
 }
 
 /**

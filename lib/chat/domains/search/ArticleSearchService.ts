@@ -16,6 +16,7 @@ import {
   detectMentionedLaws,
   isGenericLawQuery,
   extractPatternData,
+  extractSpecificLawMentions,
 } from './PatternMatcher'
 import { logger } from '../../shared/logger'
 import type { ArticleMatch, ChatContext, DetectedPattern } from '../../core/types'
@@ -36,6 +37,8 @@ export interface SearchOptions {
   userOposicion?: string
   contextLawName?: string
   limit?: number
+  // Query de búsqueda personalizada (en vez de usar context.currentMessage)
+  searchQuery?: string
 }
 
 // ============================================
@@ -51,27 +54,69 @@ export async function searchArticles(
   options: SearchOptions = {}
 ): Promise<SearchResult> {
   const { limit = 10 } = options
-  const message = context.currentMessage
+  // Usar searchQuery si está disponible, sino el mensaje del usuario
+  const message = options.searchQuery || context.currentMessage
 
-  // 1. Detectar leyes mencionadas en el mensaje
-  const mentionedLaws = detectMentionedLaws(message)
-  logger.debug(`Mentioned laws: ${mentionedLaws.join(', ') || 'none'}`, { domain: 'search' })
-
-  // 2. Obtener ley del contexto de pregunta si existe
+  // 1. Obtener ley del contexto de pregunta si existe
   const contextLaw = context.questionContext?.lawName || options.contextLawName
 
-  // 3. Si hay ley del contexto y NO hay leyes mencionadas, priorizar contexto
-  if (contextLaw && mentionedLaws.length === 0) {
-    logger.info(`Using context law: ${contextLaw}`, { domain: 'search' })
+  // 2. PRIMERO: Detectar si el texto menciona una ley específica (Real Decreto, Ley Orgánica, etc.)
+  // Esto tiene PRIORIDAD porque el texto de la pregunta dice exactamente qué ley se necesita
+  const specificLaws = extractSpecificLawMentions(message)
+  if (specificLaws.length > 0) {
+    logger.info(`🔎 Detected specific law in text: ${specificLaws.join(', ')}`, { domain: 'search' })
+
+    // Intentar buscar en la ley mencionada
+    for (const lawRef of specificLaws) {
+      const result = await searchByContextLaw(message, lawRef, limit)
+      if (result.articles.length > 0) {
+        logger.info(`🔎 Found ${result.articles.length} articles in ${lawRef}`, { domain: 'search' })
+        return {
+          ...result,
+          contextLaw: lawRef,
+          mentionedLaws: [lawRef],
+        }
+      }
+    }
+
+    // Si no encontramos artículos de la ley específica mencionada,
+    // devolver vacío para usar GPT (mejor que artículos irrelevantes)
+    logger.info(`🔎 Law "${specificLaws[0]}" mentioned but not found in DB, using GPT fallback`, { domain: 'search' })
+    return {
+      articles: [],
+      searchMethod: 'fallback',
+      mentionedLaws: specificLaws,
+      contextLaw: specificLaws[0],
+    }
+  }
+
+  // 3. Si hay ley del contexto pero NO hay ley específica en el texto, usar contextLaw
+  if (contextLaw) {
+    logger.info(`🔎 Using context law: ${contextLaw}`, { domain: 'search' })
     const result = await searchByContextLaw(message, contextLaw, limit)
+    // Si encontramos artículos, devolverlos
     if (result.articles.length > 0) {
       return {
         ...result,
         contextLaw,
-        mentionedLaws,
+        mentionedLaws: [contextLaw],
       }
     }
+    // Si NO encontramos artículos de la ley del contexto,
+    // devolver vacío para que use el fallback de GPT
+    // (mejor que devolver artículos de otras leyes irrelevantes)
+    logger.info(`🔎 No articles found for context law ${contextLaw}, using fallback`, { domain: 'search' })
+    return {
+      articles: [],
+      searchMethod: 'fallback',
+      mentionedLaws: [],
+      contextLaw,
+    }
   }
+
+  // 3. Detectar leyes mencionadas en el mensaje (solo si NO hay contextLaw)
+  const mentionedLaws = detectMentionedLaws(message)
+  logger.debug(`Mentioned laws: ${mentionedLaws.join(', ') || 'none'}`, { domain: 'search' })
 
   // 4. Si hay leyes mencionadas, buscar en ellas
   if (mentionedLaws.length > 0) {
@@ -136,7 +181,7 @@ async function searchByContextLaw(
   lawName: string,
   limit: number
 ): Promise<SearchResult> {
-  logger.info(`Searching by context law: ${lawName}`, { domain: 'search' })
+  logger.info(`🔎 searchByContextLaw START - law: ${lawName}, message: "${message.substring(0, 50)}..."`, { domain: 'search' })
 
   // Encontrar la ley
   const law = await findLawByName(lawName)
@@ -153,6 +198,8 @@ async function searchByContextLaw(
     searchTerms,
   })
 
+  logger.info(`🔎 searchByContextLaw - direct search found ${articles.length} articles`, { domain: 'search' })
+
   if (articles.length > 0) {
     return {
       articles,
@@ -163,11 +210,13 @@ async function searchByContextLaw(
 
   // Si no hay resultados directos, intentar semántica
   try {
+    logger.info(`🔎 searchByContextLaw - trying semantic search for ${law.shortName}`, { domain: 'search' })
     const { embedding } = await generateEmbedding(message)
     const semanticArticles = await searchArticlesBySimilarity(embedding, {
       limit,
       mentionedLawNames: [law.shortName],
     })
+    logger.info(`🔎 searchByContextLaw - semantic search found ${semanticArticles.length} articles`, { domain: 'search' })
 
     return {
       articles: semanticArticles,

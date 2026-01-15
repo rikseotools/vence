@@ -27,9 +27,11 @@ export interface QuestionAnalysis {
 // ============================================
 
 const ERROR_PATTERNS = [
-  /⚠️\s*POSIBLE\s*ERROR/i,
+  /⚠️\s*\*?\*?POSIBLE\s*ERROR/i,
+  /⚠️\s*\*?\*?Posible\s+error\s+detectado/i,
   /ERROR\s*DETECTADO/i,
-  /la\s+respuesta\s+correcta\s+(debería|sería|es)\s+(?!.*según\s+la\s+base)/i,
+  // Solo detectar error si dice "debería ser" o "sería" (no "es" que es confirmación)
+  /la\s+respuesta\s+correcta\s+(debería|sería)\s+/i,
   /contradice\s+(el|la|lo)\s+(artículo|ley|normativa)/i,
   /según\s+(el|la)\s+artículo.*(?:no\s+es|es\s+incorrecta)/i,
 ]

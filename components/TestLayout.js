@@ -404,8 +404,8 @@ export default function TestLayout({
         // 🔒 Solo exponer la respuesta correcta después de responder
         correct: showResult ? verifiedCorrectAnswer : null,
         explanation: currentQ.explanation,
-        law: currentQ.law || currentQ.article?.law_short_name || currentQ.article?.law_name,
-        article_number: currentQ.article_number || currentQ.article?.number,
+        law: currentQ.law || currentQ.article?.law?.short_name || currentQ.article?.law?.name || currentQ.article?.law_short_name || currentQ.article?.law_name,
+        article_number: currentQ.article_number || currentQ.article?.article_number || currentQ.article?.number,
         difficulty: currentQ.difficulty || currentQ.metadata?.difficulty,
         source: currentQ.source || currentQ.metadata?.exam_source
       })
@@ -1836,13 +1836,9 @@ export default function TestLayout({
                         onContextMenu={(e) => e.preventDefault()}
                         onDragStart={(e) => e.preventDefault()}
                       >
-                        <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-2">📖 Explicación:</h4>
-                        <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed">
-                          {currentQ.explanation}
-                        </p>
-
-                        {/* 🤖 Botón para pedir explicación a la IA cuando falla */}
-                        {verifiedCorrectAnswer !== null && selectedAnswer !== verifiedCorrectAnswer && (
+                        {/* Header con título y botón IA arriba a la derecha */}
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-bold text-blue-800 dark:text-blue-300">📖 Explicación:</h4>
                           <button
                             onClick={() => {
                               window.dispatchEvent(new CustomEvent('openAIChat', {
@@ -1852,12 +1848,32 @@ export default function TestLayout({
                                 }
                               }))
                             }}
-                            className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition-colors text-sm font-medium"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs font-medium"
                           >
                             <span>✨</span>
-                            <span>Explícamelo con IA, quiero interactuar</span>
+                            <span>No lo tengo claro</span>
                           </button>
-                        )}
+                        </div>
+
+                        <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed">
+                          {currentQ.explanation}
+                        </p>
+
+                        {/* 🤖 Botón también al final de la explicación */}
+                        <button
+                          onClick={() => {
+                            window.dispatchEvent(new CustomEvent('openAIChat', {
+                              detail: {
+                                message: 'Explícame la respuesta correcta',
+                                suggestion: 'Explícame la respuesta correcta'
+                              }
+                            }))
+                          }}
+                          className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                        >
+                          <span>✨</span>
+                          <span>Explícamelo mejor, no lo tengo claro</span>
+                        </button>
                       </div>
                     )}
 
