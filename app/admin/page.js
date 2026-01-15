@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   const [emailStats, setEmailStats] = useState(null)
   const [users, setUsers] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
+  const [activeUsersLastWeekAtThisHour, setActiveUsersLastWeekAtThisHour] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -132,6 +133,37 @@ export default function AdminDashboard() {
           throw todayTestsError
         }
 
+        // 5b. Tests de HACE 7 DÍAS hasta esta hora (para comparar mismo día de la semana)
+        // Calcular inicio de hace 7 días (00:00 del mismo día de la semana pasada)
+        const startOfLastWeekSameDayQuery = new Date(startOfDayMadrid)
+        startOfLastWeekSameDayQuery.setDate(startOfLastWeekSameDayQuery.getDate() - 7)
+
+        // Calcular "hace 7 días a esta hora" - misma hora que ahora pero hace una semana
+        const lastWeekAtThisHourQuery = new Date(startOfLastWeekSameDayQuery)
+        lastWeekAtThisHourQuery.setHours(madridDate.getHours(), madridDate.getMinutes(), madridDate.getSeconds(), 0)
+
+        console.log('📅 Query usuarios activos hace 7 días:')
+        console.log('  - Desde:', startOfLastWeekSameDayQuery.toISOString())
+        console.log('  - Hasta:', lastWeekAtThisHourQuery.toISOString())
+
+        const { data: lastWeekTestsAtThisHour, error: lastWeekTestsError } = await supabase
+          .from('tests')
+          .select('user_id')
+          .not('started_at', 'is', null)
+          .gte('started_at', startOfLastWeekSameDayQuery.toISOString())
+          .lte('started_at', lastWeekAtThisHourQuery.toISOString())
+
+        if (lastWeekTestsError) {
+          console.error('❌ Error consultando tests de hace 7 días:', lastWeekTestsError)
+        }
+
+        const activeUsersLastWeekAtThisHour = lastWeekTestsAtThisHour
+          ? [...new Set(lastWeekTestsAtThisHour.map(t => t.user_id))].length
+          : 0
+
+        console.log('📅 Usuarios activos hace 7 días a estas horas:', activeUsersLastWeekAtThisHour)
+        console.log('📅 Tests encontrados hace 7 días a estas horas:', lastWeekTestsAtThisHour?.length || 0)
+
         // 6. Hacer JOIN con user_profiles (TODOS los usuarios, no solo admins)
         let finalTodayActivity = []
 
@@ -170,6 +202,7 @@ export default function AdminDashboard() {
         setEmailStats(processedEmailStats)
         setUsers(usersData || [])
         setRecentActivity(finalTodayActivity)
+        setActiveUsersLastWeekAtThisHour(activeUsersLastWeekAtThisHour)
 
         console.log('✅ Dashboard cargado:', processedStats)
         console.log('📅 Tests hoy encontrados:', finalTodayActivity?.length || 0)
@@ -270,8 +303,26 @@ export default function AdminDashboard() {
       return userDate >= startOfYesterdayMadrid && userDate < startOfTodayMadrid
     }) || []
 
+    // Calcular "hace 7 días a estas horas" - usuarios registrados hace 7 días pero solo hasta la hora actual
+    const currentHourMadrid = madridDateCalc.getHours()
+    const currentMinuteMadrid = madridDateCalc.getMinutes()
+
+    // Inicio de hace 7 días (mismo día de la semana pasada)
+    const startOfLastWeekSameDay = new Date(startOfTodayMadrid)
+    startOfLastWeekSameDay.setDate(startOfLastWeekSameDay.getDate() - 7)
+
+    // Hace 7 días a esta hora
+    const lastWeekAtThisHour = new Date(startOfLastWeekSameDay)
+    lastWeekAtThisHour.setHours(currentHourMadrid, currentMinuteMadrid, 0, 0)
+
+    const usersLastWeekAtThisHour = users?.filter(u => {
+      const userDate = new Date(u.user_created_at)
+      return userDate >= startOfLastWeekSameDay && userDate <= lastWeekAtThisHour
+    }) || []
+
     const newUsersToday = usersToday.length
     const newUsersYesterday = usersYesterday.length
+    const newUsersLastWeekAtThisHour = usersLastWeekAtThisHour.length
 
     const newUsersTodayBySource = usersToday.reduce((acc, user) => {
       const source = user.registration_source || 'unknown'
@@ -549,6 +600,7 @@ export default function AdminDashboard() {
       newUsersThisWeekBySource, // 📊 NUEVO: Desglose por fuente
       newUsersToday, // 📊 NUEVO: Usuarios registrados hoy
       newUsersYesterday, // 📊 NUEVO: Usuarios registrados ayer
+      newUsersLastWeekAtThisHour, // 📊 NUEVO: Usuarios registrados hace 7 días a estas horas
       newUsersTodayBySource, // 📊 NUEVO: Desglose por fuente (hoy)
       abandonedTests: abandonedTests.length,
       totalTestsAttempted: totalAttempts,
@@ -779,12 +831,26 @@ export default function AdminDashboard() {
                 <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
                   Usuarios Activos Hoy
                 </p>
-                <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                    {(() => {
+                      const uniqueUserIds = [...new Set(recentActivity.map(a => a.user_id))]
+                      return uniqueUserIds.length
+                    })()}
+                  </p>
+                  <span className="text-xs text-gray-500">
+                    vs {activeUsersLastWeekAtThisHour} sem. pasada
+                  </span>
                   {(() => {
-                    const uniqueUserIds = [...new Set(recentActivity.map(a => a.user_id))]
-                    return uniqueUserIds.length
+                    const today = [...new Set(recentActivity.map(a => a.user_id))].length
+                    const lastWeek = activeUsersLastWeekAtThisHour
+                    if (lastWeek === 0) return today > 0 ? <span className="text-xs font-medium text-green-600">+100%</span> : null
+                    const change = Math.round(((today - lastWeek) / lastWeek) * 100)
+                    const color = change >= 0 ? 'text-green-600' : 'text-red-600'
+                    const sign = change >= 0 ? '+' : ''
+                    return <span className={`text-xs font-medium ${color}`}>{sign}{change}%</span>
                   })()}
-                </p>
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {stats.testsCompletedToday > 0
                     ? (() => {
@@ -809,7 +875,21 @@ export default function AdminDashboard() {
                 <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400 truncate">
                   Registros Hoy
                 </p>
-                <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.newUsersToday}</p>
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.newUsersToday}</p>
+                  <span className="text-xs text-gray-500">
+                    vs {stats.newUsersLastWeekAtThisHour} sem. pasada
+                  </span>
+                  {(() => {
+                    const today = stats.newUsersToday
+                    const lastWeek = stats.newUsersLastWeekAtThisHour
+                    if (lastWeek === 0) return today > 0 ? <span className="text-xs font-medium text-green-600">+100%</span> : null
+                    const change = Math.round(((today - lastWeek) / lastWeek) * 100)
+                    const color = change >= 0 ? 'text-green-600' : 'text-red-600'
+                    const sign = change >= 0 ? '+' : ''
+                    return <span className={`text-xs font-medium ${color}`}>{sign}{change}%</span>
+                  })()}
+                </div>
                 <div className="text-xs text-gray-700 dark:text-gray-300 mt-1 space-y-0.5">
                   <div>🌱 {stats.newUsersTodayBySource?.organic || 0} Orgánico</div>
                   <div>💰 {stats.newUsersTodayBySource?.google_ads || 0} Google</div>
@@ -819,7 +899,7 @@ export default function AdminDashboard() {
                   )}
                 </div>
                 <div className="text-xs text-gray-500 mt-2 pt-1 border-t border-gray-200 dark:border-gray-600">
-                  Ayer: {stats.newUsersYesterday}
+                  Ayer total: {stats.newUsersYesterday}
                 </div>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
