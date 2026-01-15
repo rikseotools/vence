@@ -9,7 +9,9 @@ import { z } from 'zod/v3'
 export const weakArticleSchema = z.object({
   lawName: z.string(),
   articleNumber: z.string(),
-  failedCount: z.number().int().min(1),
+  failedCount: z.number().int().min(1),      // Preguntas fallidas (success_rate < 60%)
+  totalAttempts: z.number().int().min(1),    // Total de intentos en esas preguntas
+  correctCount: z.number().int().min(0),     // Aciertos estimados
   avgSuccessRate: z.number().int().min(0).max(100),
 })
 
@@ -59,7 +61,7 @@ export type GetTopicProgressResponse = z.infer<typeof getTopicProgressResponseSc
 export const getWeakArticlesRequestSchema = z.object({
   userId: z.string().uuid('ID de usuario inválido'),
   minAttempts: z.number().int().min(1).default(2),
-  maxSuccessRate: z.number().int().min(0).max(100).default(60),
+  maxSuccessRate: z.number().int().min(0).max(100).default(80), // Mostrar artículos con <80% aciertos
   maxPerTopic: z.number().int().min(1).max(10).default(5),
   positionType: z.string().optional(), // Para filtrar topic_scope por oposición
 })

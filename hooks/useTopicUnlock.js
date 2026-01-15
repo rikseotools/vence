@@ -1,10 +1,15 @@
 // hooks/useTopicUnlock.js - Hook para obtener progreso del usuario por tema
 // NOTA: Simplificado - ya no hay sistema de bloqueo, solo tracking de progreso
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
-export function useTopicUnlock() {
+/**
+ * Hook para obtener progreso del usuario por tema
+ * @param {Object} options - Opciones del hook
+ * @param {string} options.positionType - Tipo de oposición para filtrar (ej: 'auxiliar_administrativo')
+ */
+export function useTopicUnlock({ positionType } = {}) {
   const { user, supabase } = useAuth()
   const [topicProgress, setTopicProgress] = useState({})
   const [weakArticlesByTopic, setWeakArticlesByTopic] = useState({})
@@ -13,13 +18,17 @@ export function useTopicUnlock() {
   useEffect(() => {
     if (user && supabase) {
       loadUserProgress()
-      loadWeakArticles()
+      // Solo cargar weak articles si hay positionType definido
+      // Esto evita llamadas duplicadas desde componentes que no necesitan filtrar por oposición
+      if (positionType) {
+        loadWeakArticles()
+      }
     } else {
       setTopicProgress({})
       setWeakArticlesByTopic({})
       setLoading(false)
     }
-  }, [user, supabase])
+  }, [user, supabase, positionType])
 
   // Cargar progreso del usuario desde la base de datos
   const loadUserProgress = async () => {
@@ -96,8 +105,16 @@ export function useTopicUnlock() {
         return
       }
 
+      // Construir URL con parámetro positionType si está disponible
+      const params = new URLSearchParams()
+      if (positionType) {
+        params.set('positionType', positionType)
+      }
+      const queryString = params.toString()
+      const url = `/api/v2/topic-progress/weak-articles${queryString ? `?${queryString}` : ''}`
+
       // Llamar a la API v2
-      const response = await fetch('/api/v2/topic-progress/weak-articles', {
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },

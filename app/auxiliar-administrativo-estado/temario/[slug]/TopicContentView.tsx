@@ -1,12 +1,24 @@
 // app/auxiliar-administrativo-estado/temario/[slug]/TopicContentView.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
+import { useTopicUnlock } from '@/hooks/useTopicUnlock'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface TopicContentViewProps {
   content: TopicContent
+}
+
+// Tipo para artículos débiles
+interface WeakArticleInfo {
+  lawName: string
+  articleNumber: string
+  failedCount: number
+  totalAttempts: number
+  correctCount: number
+  avgSuccessRate: number
 }
 
 // Determinar el bloque según el número de tema (auxiliar administrativo)
@@ -20,11 +32,30 @@ function getBlockInfo(topicNumber: number): { block: string; displayNum: number 
 }
 
 export default function TopicContentView({ content }: TopicContentViewProps) {
-  const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
-    new Set(content.laws.map((l) => l.law.id))
-  )
+  // Por defecto colapsado para mejor orden visual
+  const [expandedLaws, setExpandedLaws] = useState<Set<string>>(new Set())
+  const { user } = useAuth() as { user: any }
+  const { getWeakArticles } = useTopicUnlock({ positionType: 'auxiliar_administrativo' }) as {
+    getWeakArticles: (topicNumber: number) => WeakArticleInfo[]
+  }
 
   const blockInfo = getBlockInfo(content.topicNumber)
+
+  // Obtener artículos débiles para este tema
+  const weakArticles = useMemo(() => {
+    if (!user) return []
+    return getWeakArticles(content.topicNumber)
+  }, [user, content.topicNumber, getWeakArticles])
+
+  // Crear un mapa para búsqueda rápida: "lawShortName_articleNumber" -> WeakArticleInfo
+  const weakArticlesMap = useMemo(() => {
+    const map = new Map<string, WeakArticleInfo>()
+    weakArticles.forEach(wa => {
+      const key = `${wa.lawName}_${wa.articleNumber}`
+      map.set(key, wa)
+    })
+    return map
+  }, [weakArticles])
 
   const toggleLaw = (lawId: string) => {
     setExpandedLaws((prev) => {
@@ -198,6 +229,7 @@ export default function TopicContentView({ content }: TopicContentViewProps) {
               isExpanded={expandedLaws.has(lawData.law.id)}
               onToggle={() => toggleLaw(lawData.law.id)}
               isFirst={index === 0}
+              weakArticlesMap={weakArticlesMap}
             />
           ))}
         </div>
@@ -266,40 +298,62 @@ interface LawSectionProps {
   isExpanded: boolean
   onToggle: () => void
   isFirst: boolean
+  weakArticlesMap: Map<string, WeakArticleInfo>
 }
 
-function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps) {
+function LawSection({ lawData, isExpanded, onToggle, isFirst, weakArticlesMap }: LawSectionProps) {
   const { law, articles } = lawData
   const officialCount = articles.filter(a => a.officialQuestionCount > 0).length
 
+  // Contar artículos débiles de esta ley
+  const weakCount = articles.filter(a =>
+    weakArticlesMap.has(`${law.shortName}_${a.articleNumber}`)
+  ).length
+
   return (
     <section className={`law-section ${!isFirst ? 'print-break-before' : ''}`}>
-      {/* Law header - clickable */}
+      {/* Law header - clickable - fondo azul distintivo */}
       <button
         onClick={onToggle}
-        className="no-print w-full flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+        className="no-print w-full flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl hover:from-indigo-100 hover:to-blue-100 dark:hover:from-indigo-900/50 dark:hover:to-blue-900/50 transition-all shadow-sm"
       >
         <div className="text-left">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {law.shortName}
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center justify-center w-8 h-8 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg text-xs font-bold">
+              LEY
+            </span>
+            <h2 className="text-lg font-bold text-indigo-900 dark:text-indigo-100">
+              {law.shortName}
+            </h2>
+          </div>
+          <p className="text-sm text-indigo-600 dark:text-indigo-300 mt-1 ml-10">
             {law.name} {law.year && `(${law.year})`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <span className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-4">
+          <div className="text-right space-y-1">
+            <span className="block text-sm font-medium text-indigo-700 dark:text-indigo-300">
               {articles.length} artículos
             </span>
             {officialCount > 0 && (
-              <span className="block text-xs text-amber-600 dark:text-amber-400">
-                {officialCount} con examen
+              <span className="flex items-center justify-end gap-1 text-xs text-amber-700 dark:text-amber-400" title="Artículos que han aparecido en exámenes oficiales anteriores">
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                </svg>
+                {officialCount} {officialCount === 1 ? 'artículo preguntado' : 'artículos preguntados'} en examen oficial
+              </span>
+            )}
+            {weakCount > 0 && (
+              <span className="flex items-center justify-end gap-1 text-xs text-red-600 dark:text-red-400 font-medium" title="Artículos donde tu porcentaje de aciertos es menor al 80%">
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+                {weakCount} {weakCount === 1 ? 'artículo' : 'artículos'} a repasar
               </span>
             )}
           </div>
           <svg
-            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-indigo-500 dark:text-indigo-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -322,9 +376,16 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps)
       {/* Articles list */}
       {(isExpanded || true) && (
         <div className={`mt-2 space-y-4 ${!isExpanded ? 'hidden print:block' : ''}`}>
-          {articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
-          ))}
+          {articles.map((article) => {
+            const weakInfo = weakArticlesMap.get(`${law.shortName}_${article.articleNumber}`)
+            return (
+              <ArticleCard
+                key={article.id}
+                article={article}
+                weakInfo={weakInfo}
+              />
+            )
+          })}
         </div>
       )}
     </section>
@@ -332,8 +393,14 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst }: LawSectionProps)
 }
 
 // Article card component
-function ArticleCard({ article }: { article: Article }) {
+interface ArticleCardProps {
+  article: Article
+  weakInfo?: WeakArticleInfo
+}
+
+function ArticleCard({ article, weakInfo }: ArticleCardProps) {
   const hasOfficialQuestions = article.officialQuestionCount > 0
+  const needsReview = !!weakInfo
 
   const formatContent = (content: string | null) => {
     if (!content) return null
@@ -345,21 +412,72 @@ function ArticleCard({ article }: { article: Article }) {
     ))
   }
 
+  // Determinar nivel de urgencia según porcentaje de aciertos
+  // 0-40% = crítico (rojo), 40-60% = malo (naranja), 60-80% = mejorable (amarillo)
+  const getReviewLevel = (): 'critical' | 'bad' | 'improvable' | null => {
+    if (!weakInfo) return null
+    if (weakInfo.avgSuccessRate < 40) return 'critical'
+    if (weakInfo.avgSuccessRate < 60) return 'bad'
+    return 'improvable' // 60-80%
+  }
+
+  const reviewLevel = getReviewLevel()
+
+  // Determinar estilos según prioridad: repasar > examen > normal
+  const getBorderClass = () => {
+    if (reviewLevel === 'critical') return 'border-red-400 dark:border-red-500 ring-2 ring-red-200 dark:ring-red-800'
+    if (reviewLevel === 'bad') return 'border-orange-400 dark:border-orange-500 ring-2 ring-orange-200 dark:ring-orange-800'
+    if (reviewLevel === 'improvable') return 'border-yellow-400 dark:border-yellow-500 ring-1 ring-yellow-200 dark:ring-yellow-700'
+    if (hasOfficialQuestions) return 'border-amber-300 dark:border-amber-600 ring-1 ring-amber-200 dark:ring-amber-700'
+    return 'border-gray-200 dark:border-gray-700'
+  }
+
+  const getHeaderClass = () => {
+    if (reviewLevel === 'critical') return 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700'
+    if (reviewLevel === 'bad') return 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700'
+    if (reviewLevel === 'improvable') return 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-700'
+    if (hasOfficialQuestions) return 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
+    return 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'
+  }
+
   return (
-    <article className={`print-avoid-break bg-white dark:bg-gray-800 border rounded-lg overflow-hidden ${
-      hasOfficialQuestions
-        ? 'border-amber-300 dark:border-amber-600 ring-1 ring-amber-200 dark:ring-amber-700'
-        : 'border-gray-200 dark:border-gray-700'
-    }`}>
+    <article className={`print-avoid-break bg-white dark:bg-gray-800 border rounded-lg overflow-hidden ${getBorderClass()}`}>
+      {/* Badge de repasar - arriba del todo */}
+      {needsReview && weakInfo && (
+        <div className={`px-4 py-2 border-b ${
+          reviewLevel === 'critical'
+            ? 'bg-red-100 dark:bg-red-900/40 border-red-200 dark:border-red-700'
+            : reviewLevel === 'bad'
+            ? 'bg-orange-100 dark:bg-orange-900/40 border-orange-200 dark:border-orange-700'
+            : 'bg-yellow-100 dark:bg-yellow-900/40 border-yellow-200 dark:border-yellow-700'
+        }`}>
+          <div className={`flex items-center gap-2 ${
+            reviewLevel === 'critical'
+              ? 'text-red-700 dark:text-red-300'
+              : reviewLevel === 'bad'
+              ? 'text-orange-700 dark:text-orange-300'
+              : 'text-yellow-700 dark:text-yellow-300'
+          }`}>
+            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <span className="text-sm font-medium">
+              {reviewLevel === 'critical' ? 'Repasar urgente' : reviewLevel === 'bad' ? 'Repasar' : 'Practicar más'} - {weakInfo.totalAttempts} {weakInfo.totalAttempts === 1 ? 'intento' : 'intentos'}, {weakInfo.totalAttempts - weakInfo.correctCount} {weakInfo.totalAttempts - weakInfo.correctCount === 1 ? 'fallo' : 'fallos'} ({weakInfo.avgSuccessRate}%)
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Article header */}
-      <div className={`px-4 py-3 border-b ${
-        hasOfficialQuestions
-          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
-          : 'bg-gray-50 dark:bg-gray-750 border-gray-200 dark:border-gray-700'
-      }`}>
+      <div className={`px-4 py-3 border-b ${getHeaderClass()}`}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2 flex-1 min-w-0">
-            <span className="font-mono text-sm font-semibold text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+            <span className={`font-mono text-sm font-semibold flex-shrink-0 ${
+              reviewLevel === 'critical' ? 'text-red-600 dark:text-red-400'
+              : reviewLevel === 'bad' ? 'text-orange-600 dark:text-orange-400'
+              : reviewLevel === 'improvable' ? 'text-yellow-600 dark:text-yellow-400'
+              : 'text-indigo-600 dark:text-indigo-400'
+            }`}>
               Art. {article.articleNumber}
             </span>
             {article.title && (

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
+import { slugToPositionType } from '@/lib/config/oposiciones'
 
 // Tipos
 interface Tema {
@@ -30,7 +31,9 @@ interface TemarioClientProps {
 
 export default function TemarioClient({ bloques, oposicion, fechaActualizacion }: TemarioClientProps) {
   const { user } = useAuth() as { user: any }
-  const { getTopicProgress } = useTopicUnlock() as { getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number } }
+  // Convertir slug de URL a positionType de BD (ej: 'administrativo-estado' -> 'administrativo_estado')
+  const positionType = useMemo(() => slugToPositionType(oposicion) || undefined, [oposicion])
+  const { getTopicProgress } = useTopicUnlock({ positionType }) as { getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number } }
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({
     bloque1: true,
     bloque2: false,

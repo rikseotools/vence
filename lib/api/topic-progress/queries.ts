@@ -28,6 +28,7 @@ interface WeakArticleAggregate {
   lawName: string
   articleNumber: string
   failedCount: number
+  totalAttempts: number
   rates: number[]
 }
 
@@ -53,6 +54,7 @@ export async function getWeakArticlesForUser(
     console.log(`🎯 [DRIZZLE/weak-articles] Getting weak articles for user ${userId.substring(0, 8)}...`)
 
     // Paso 1: Construir mapeo artículo -> tema desde topic_scope
+    // Filtrar por positionType directamente en SQL para mejor rendimiento
     const scopeQuery = db
       .select({
         topicId: topicScope.topicId,
@@ -64,21 +66,22 @@ export async function getWeakArticlesForUser(
       .from(topicScope)
       .innerJoin(topics, eq(topicScope.topicId, topics.id))
 
-    const scopes = await scopeQuery
+    // Aplicar filtro de positionType en SQL si se especifica
+    const scopes = positionType
+      ? await scopeQuery.where(eq(topics.positionType, positionType))
+      : await scopeQuery
 
-    // Filtrar por positionType si se especifica
-    const filteredScopes = positionType
-      ? scopes.filter(s => s.positionType === positionType)
-      : scopes
+    const filteredScopes = scopes
 
-    // Construir mapeo: law_id_articleNumber -> topicNumber (1-indexed)
+    // Construir mapeo: law_id_articleNumber -> topicNumber
+    // NOTA: topic_number en BD ya es 1-indexed (empieza en 1)
     const articleToTopic: ArticleToTopicMap = {}
     filteredScopes.forEach(s => {
       if (!s.topicNumber || !s.lawId || !s.articleNumbers) return
       s.articleNumbers.forEach(artNum => {
         if (!artNum) return
         const key = `${s.lawId}_${artNum}`
-        articleToTopic[key] = s.topicNumber + 1 // Convertir a 1-indexed
+        articleToTopic[key] = s.topicNumber // Ya es 1-indexed
       })
     })
 
@@ -134,11 +137,13 @@ export async function getWeakArticlesForUser(
           lawName: q.lawName || '?',
           articleNumber: q.articleNumber,
           failedCount: 0,
+          totalAttempts: 0,
           rates: [],
         }
       }
 
       weakByTopic[topicNum][artKey].failedCount++
+      weakByTopic[topicNum][artKey].totalAttempts += Number(q.totalAttempts) || 0
       const rate = parseFloat(q.successRate || '0')
       weakByTopic[topicNum][artKey].rates.push(rate)
     })
@@ -148,14 +153,21 @@ export async function getWeakArticlesForUser(
 
     Object.entries(weakByTopic).forEach(([topicNum, articlesMap]) => {
       result[topicNum] = Object.values(articlesMap)
-        .map(a => ({
-          lawName: a.lawName,
-          articleNumber: a.articleNumber,
-          failedCount: a.failedCount,
-          avgSuccessRate: Math.round(
+        .map(a => {
+          const avgSuccessRate = Math.round(
             a.rates.reduce((sum, r) => sum + r, 0) / a.rates.length
-          ),
-        }))
+          )
+          // Calcular aciertos estimados: totalAttempts * (avgSuccessRate / 100)
+          const correctCount = Math.round(a.totalAttempts * (avgSuccessRate / 100))
+          return {
+            lawName: a.lawName,
+            articleNumber: a.articleNumber,
+            failedCount: a.failedCount,
+            totalAttempts: a.totalAttempts,
+            correctCount,
+            avgSuccessRate,
+          }
+        })
         .sort((a, b) => a.avgSuccessRate - b.avgSuccessRate)
         .slice(0, maxPerTopic)
     })
