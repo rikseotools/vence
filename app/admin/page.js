@@ -15,6 +15,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
   const [activeUsersLastWeekAtThisHour, setActiveUsersLastWeekAtThisHour] = useState(0)
+  const [activeUsersYesterday, setActiveUsersYesterday] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -164,6 +165,31 @@ export default function AdminDashboard() {
         console.log('📅 Usuarios activos hace 7 días a estas horas:', activeUsersLastWeekAtThisHour)
         console.log('📅 Tests encontrados hace 7 días a estas horas:', lastWeekTestsAtThisHour?.length || 0)
 
+        // 5c. Tests de AYER (para mostrar usuarios activos ayer)
+        const startOfYesterdayQuery = new Date(startOfDayMadrid)
+        startOfYesterdayQuery.setDate(startOfYesterdayQuery.getDate() - 1)
+
+        console.log('📅 Query usuarios activos ayer:')
+        console.log('  - Desde:', startOfYesterdayQuery.toISOString())
+        console.log('  - Hasta:', startOfDayMadrid.toISOString())
+
+        const { data: yesterdayTests, error: yesterdayTestsError } = await supabase
+          .from('tests')
+          .select('user_id')
+          .not('started_at', 'is', null)
+          .gte('started_at', startOfYesterdayQuery.toISOString())
+          .lt('started_at', startOfDayMadrid.toISOString())
+
+        if (yesterdayTestsError) {
+          console.error('❌ Error consultando tests de ayer:', yesterdayTestsError)
+        }
+
+        const activeUsersYesterdayCount = yesterdayTests
+          ? [...new Set(yesterdayTests.map(t => t.user_id))].length
+          : 0
+
+        console.log('📅 Usuarios activos ayer:', activeUsersYesterdayCount)
+
         // 6. Hacer JOIN con user_profiles (TODOS los usuarios, no solo admins)
         let finalTodayActivity = []
 
@@ -203,6 +229,7 @@ export default function AdminDashboard() {
         setUsers(usersData || [])
         setRecentActivity(finalTodayActivity)
         setActiveUsersLastWeekAtThisHour(activeUsersLastWeekAtThisHour)
+        setActiveUsersYesterday(activeUsersYesterdayCount)
 
         console.log('✅ Dashboard cargado:', processedStats)
         console.log('📅 Tests hoy encontrados:', finalTodayActivity?.length || 0)
@@ -860,6 +887,9 @@ export default function AdminDashboard() {
                       })()
                     : 'Sin actividad hoy'
                   }
+                </p>
+                <p className="text-xs text-gray-500 mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
+                  Ayer: {activeUsersYesterday}
                 </p>
               </div>
               <div className="w-8 h-8 sm:w-12 sm:h-12 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
