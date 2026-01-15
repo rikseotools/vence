@@ -17,8 +17,8 @@ export function useDisputeNotifications() {
     }
 
     loadNotifications()
-    
-    // 🔄 REAL-TIME: Escuchar cambios en impugnaciones
+
+    // 🔄 REAL-TIME: Escuchar cambios en impugnaciones normales
     const subscription = supabase
       .channel('dispute-notifications')
       .on('postgres_changes', {
@@ -28,7 +28,17 @@ export function useDisputeNotifications() {
         filter: `user_id=eq.${user.id}`
       }, (payload) => {
         console.log('🔔 Impugnación actualizada:', payload)
-        loadNotifications() // Recargar notificaciones
+        loadNotifications()
+      })
+      // 🧠 REAL-TIME: Escuchar cambios en impugnaciones psicotécnicas
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'psychometric_question_disputes',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('🔔 Impugnación psicotécnica actualizada:', payload)
+        loadNotifications()
       })
       .subscribe()
 
@@ -41,10 +51,9 @@ export function useDisputeNotifications() {
     try {
       if (!user) return
 
-      // Obtener impugnaciones resueltas/rechazadas recientes (últimos 30 días)
-      // Solo mostrar notificaciones de los últimos 30 días (más relevante)
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      
+
+      // 📚 Cargar impugnaciones de leyes (normales)
       const { data: disputes, error } = await supabase
         .from('question_disputes')
         .select(`
@@ -68,18 +77,19 @@ export function useDisputeNotifications() {
         .eq('user_id', user.id)
         .in('status', ['resolved', 'rejected', 'appealed'])
         .gte('resolved_at', thirtyDaysAgo)
-        .eq('is_read', false) // 🆕 Solo mostrar notificaciones NO leídas
+        .eq('is_read', false)
         .order('resolved_at', { ascending: false })
 
       if (error) throw error
 
-      const notifications = disputes?.map(dispute => ({
+      const normalNotifications = disputes?.map(dispute => ({
         id: dispute.id,
         type: 'dispute_update',
-        title: dispute.status === 'resolved' ? '✅ Impugnación Respondida' : 
+        isPsychometric: false,
+        title: dispute.status === 'resolved' ? '✅ Impugnación Respondida' :
                dispute.status === 'appealed' ? '📝 Alegación Enviada' : '❌ Impugnación Respondida',
         message: `Tu reporte sobre ${dispute.questions.articles.laws.short_name} Art. ${dispute.questions.articles.article_number} ha sido ${
-          dispute.status === 'resolved' ? 'aceptado' : 
+          dispute.status === 'resolved' ? 'aceptado' :
           dispute.status === 'appealed' ? 'alegado - esperando revisión' : 'rechazado'
         }.`,
         timestamp: dispute.resolved_at,
@@ -92,8 +102,50 @@ export function useDisputeNotifications() {
         canAppeal: dispute.status === 'rejected' && !dispute.appeal_text
       })) || []
 
-      setNotifications(notifications)
-      setUnreadCount(notifications.filter(n => !n.isRead).length)
+      // 🧠 Cargar impugnaciones psicotécnicas
+      const { data: psychoDisputes, error: psychoError } = await supabase
+        .from('psychometric_question_disputes')
+        .select(`
+          id,
+          dispute_type,
+          status,
+          resolved_at,
+          admin_response,
+          created_at,
+          is_read,
+          question_id
+        `)
+        .eq('user_id', user.id)
+        .in('status', ['resolved', 'rejected'])
+        .gte('resolved_at', thirtyDaysAgo)
+        .eq('is_read', false)
+        .order('resolved_at', { ascending: false })
+
+      let psychoNotifications = []
+      if (!psychoError && psychoDisputes?.length > 0) {
+        psychoNotifications = psychoDisputes.map(dispute => ({
+          id: dispute.id,
+          type: 'dispute_update',
+          isPsychometric: true,
+          title: dispute.status === 'resolved' ? '✅ Impugnación Psicotécnica Respondida' : '❌ Impugnación Psicotécnica Respondida',
+          message: `Tu reporte sobre una pregunta psicotécnica ha sido ${
+            dispute.status === 'resolved' ? 'aceptado' : 'rechazado'
+          }.`,
+          timestamp: dispute.resolved_at,
+          isRead: dispute.is_read || false,
+          disputeId: dispute.id,
+          status: dispute.status,
+          article: '🧠 Psicotécnico',
+          canAppeal: false
+        }))
+      }
+
+      // Combinar y ordenar por fecha
+      const allNotifications = [...normalNotifications, ...psychoNotifications]
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+
+      setNotifications(allNotifications)
+      setUnreadCount(allNotifications.filter(n => !n.isRead).length)
 
     } catch (error) {
       console.error('Error cargando notificaciones:', error)
@@ -103,14 +155,16 @@ export function useDisputeNotifications() {
   }
 
   // ✅ MARCAR UNA NOTIFICACIÓN ESPECÍFICA COMO LEÍDA
-  const markAsRead = async (notificationId) => {
+  const markAsRead = async (notificationId, isPsychometric = false) => {
     try {
       if (!user) return
 
-      console.log('🔍 Marcando como leída:', { notificationId, userId: user.id })
+      console.log('🔍 Marcando como leída:', { notificationId, userId: user.id, isPsychometric })
+
+      const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
 
       const { error } = await supabase
-        .from('question_disputes')
+        .from(tableName)
         .update({ is_read: true })
         .eq('id', notificationId)
         .eq('user_id', user.id)
@@ -121,9 +175,9 @@ export function useDisputeNotifications() {
       }
 
       // Actualizar estado local
-      setNotifications(prev => 
-        prev.map(notification => 
-          notification.id === notificationId 
+      setNotifications(prev =>
+        prev.map(notification =>
+          notification.id === notificationId
             ? { ...notification, isRead: true }
             : notification
         )
@@ -144,17 +198,28 @@ export function useDisputeNotifications() {
     try {
       if (!user || unreadCount === 0) return
 
-      const { error } = await supabase
+      // Marcar impugnaciones normales
+      const { error: normalError } = await supabase
         .from('question_disputes')
         .update({ is_read: true })
         .eq('user_id', user.id)
         .in('status', ['resolved', 'rejected', 'appealed'])
         .eq('is_read', false)
 
-      if (error) throw error
+      if (normalError) console.error('Error en question_disputes:', normalError)
+
+      // Marcar impugnaciones psicotécnicas
+      const { error: psychoError } = await supabase
+        .from('psychometric_question_disputes')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .in('status', ['resolved', 'rejected'])
+        .eq('is_read', false)
+
+      if (psychoError) console.error('Error en psychometric_question_disputes:', psychoError)
 
       // Actualizar estado local
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(notification => ({ ...notification, isRead: true }))
       )
 

@@ -1,7 +1,7 @@
 // lib/api/filtered-questions/queries.ts - Queries Drizzle para preguntas filtradas
 import { getDb } from '@/db/client'
 import { questions, articles, laws, topicScope, topics, tests, testQuestions } from '@/db/schema'
-import { eq, and, inArray, sql, notInArray, desc } from 'drizzle-orm'
+import { eq, and, inArray, sql, notInArray, desc, or, isNull } from 'drizzle-orm'
 import type {
   GetFilteredQuestionsRequest,
   GetFilteredQuestionsResponse,
@@ -10,6 +10,52 @@ import type {
   CountFilteredQuestionsResponse,
   SectionFilter,
 } from './schemas'
+
+// ============================================
+// 🏛️ MAPEO: positionType → valores válidos de exam_position
+// ============================================
+// Las preguntas oficiales tienen exam_position con valores inconsistentes.
+// Este mapeo permite filtrar preguntas oficiales por oposición del usuario.
+// Si exam_position es NULL, se asume que la pregunta es válida para todas las oposiciones (legacy).
+const EXAM_POSITION_MAP: Record<string, string[]> = {
+  'auxiliar_administrativo': [
+    'auxiliar administrativo del estado',
+    'auxiliar administrativo',
+    'auxiliar_administrativo',
+    'auxiliar_administrativo_estado',
+  ],
+  'tramitacion_procesal': [
+    'tramitacion_procesal',
+    'tramitación procesal',
+  ],
+  'auxilio_judicial': [
+    'auxilio_judicial',
+    'auxilio judicial',
+  ],
+  'gestion_procesal': [
+    'gestion_procesal',
+    'gestión procesal',
+  ],
+  'cuerpo_general_administrativo': [
+    'cuerpo_general_administrativo',
+    'cuerpo general administrativo de la administración del estado',
+    'administrativo',
+  ],
+  'cuerpo_gestion_administracion_civil': [
+    'cuerpo_gestion_administracion_civil',
+    'cuerpo de gestión de la administración civil del estado',
+  ],
+}
+
+/**
+ * Obtiene los valores válidos de exam_position para una oposición dada.
+ * Si no hay mapeo, devuelve array vacío (no filtrará por exam_position).
+ */
+function getValidExamPositions(positionType: string): string[] {
+  // Normalizar: quitar guiones y convertir a minúsculas
+  const normalized = positionType.toLowerCase().replace(/-/g, '_')
+  return EXAM_POSITION_MAP[normalized] || []
+}
 
 // ============================================
 // HELPER: Obtener IDs de preguntas respondidas recientemente
@@ -414,8 +460,24 @@ export async function getFilteredQuestions(
           eq(questions.isActive, true),
           eq(laws.id, mapping.lawId!),
           inArray(articles.articleNumber, mapping.articleNumbers),
-          // Filtro de preguntas oficiales si se solicita
-          onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`
+          // 🏛️ Filtro de preguntas oficiales POR OPOSICIÓN
+          onlyOfficialQuestions
+            ? (() => {
+                const validPositions = getValidExamPositions(positionType)
+                // Si hay posiciones válidas, filtrar: is_official AND (exam_position IS NULL OR exam_position IN validPositions)
+                // Si no hay mapeo para esta oposición, solo filtrar por is_official (comportamiento legacy)
+                if (validPositions.length > 0) {
+                  return and(
+                    eq(questions.isOfficialExam, true),
+                    or(
+                      isNull(questions.examPosition),
+                      inArray(questions.examPosition, validPositions)
+                    )
+                  )
+                }
+                return eq(questions.isOfficialExam, true)
+              })()
+            : sql`true`
         ))
 
       const lawQuestions = await questionsQuery
@@ -642,7 +704,22 @@ export async function countFilteredQuestions(
           eq(questions.isActive, true),
           eq(articles.lawId, mapping.lawId!),
           inArray(articles.articleNumber, mapping.articleNumbers),
-          onlyOfficialQuestions ? eq(questions.isOfficialExam, true) : sql`true`
+          // 🏛️ Filtro de preguntas oficiales POR OPOSICIÓN
+          onlyOfficialQuestions
+            ? (() => {
+                const validPositions = getValidExamPositions(positionType)
+                if (validPositions.length > 0) {
+                  return and(
+                    eq(questions.isOfficialExam, true),
+                    or(
+                      isNull(questions.examPosition),
+                      inArray(questions.examPosition, validPositions)
+                    )
+                  )
+                }
+                return eq(questions.isOfficialExam, true)
+              })()
+            : sql`true`
         ))
 
       const count = Number(countResult[0]?.count || 0)

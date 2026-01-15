@@ -194,7 +194,8 @@ export default function NotificationBell() {
         
         // Marcar como leído inmediatamente (sin esperar animación)
         if (notification.type === 'dispute_update') {
-          disputeNotifications.markAsRead(notification.id)
+          const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
+          disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
         } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
           markAsRead(notification.id)
         } else {
@@ -252,8 +253,9 @@ export default function NotificationBell() {
         // ✅ ACCIÓN PRIMARIA: Manejar según tipo de notificación
         if (notification.type === 'dispute_update') {
           // 🆕 IMPUGNACIONES: Marcar como leído Y navegar
-          await disputeNotifications.markAsRead(notification.id)
-          
+          const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
+          await disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
+
           // Generar URL y navegar
           const actionUrl = generateActionUrl(notification, action.type)
           console.log('🔗 Navigating to dispute URL:', actionUrl)
@@ -475,16 +477,17 @@ export default function NotificationBell() {
   // Manejar botón "Marcar como leído" (solo impugnaciones)
   const handleMarkAsRead = (notification, event) => {
     event.stopPropagation()
-    
-    console.log('🔍 handleMarkAsRead llamado:', { 
-      type: notification.type, 
-      id: notification.id, 
-      disputeId: notification.disputeId 
+
+    console.log('🔍 handleMarkAsRead llamado:', {
+      type: notification.type,
+      id: notification.id,
+      disputeId: notification.disputeId
     })
-    
+
     // Si es una notificación de disputa, usar el hook de disputas
     if (notification.type === 'dispute_update') {
-      disputeNotifications.markAsRead(notification.id)
+      const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
+      disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
     } else {
       markAsRead(notification.id)
     }
@@ -817,7 +820,9 @@ export default function NotificationBell() {
                                   })
                                   // ✅ FIX: Marcar TODAS las notificaciones como leídas permanentemente
                                   if (notification.type === 'dispute_update') {
-                                    disputeNotifications.markAsRead(notification.id)
+                                    // Usar disputeId real (notification.disputeId o extraer de notification.id)
+                                    const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
+                                    disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
                                   } else if (notification.type === 'feedback_response' || notification.id.startsWith('system-')) {
                                     // MARCAR NOTIFICACIONES DE FEEDBACK COMO LEÍDAS EN BD
                                     handleMarkAsRead(notification, e)

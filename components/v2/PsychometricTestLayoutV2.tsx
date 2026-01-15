@@ -27,6 +27,7 @@ import WordAnalysisQuestion from '@/components/WordAnalysisQuestion'
 import SequenceNumericQuestion from '@/components/SequenceNumericQuestion'
 import SequenceLetterQuestion from '@/components/SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from '@/components/SequenceAlphanumericQuestion'
+import PsychometricQuestionDispute from './PsychometricQuestionDispute'
 
 // ============================================
 // COMPONENTE PRINCIPAL
@@ -523,10 +524,19 @@ export default function PsychometricTestLayoutV2({
         {renderQuestion()}
       </div>
 
-      {/* Botón siguiente */}
+      {/* Impugnación y botón siguiente */}
       {showResult && (
         <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-6">
           <div className="max-w-4xl mx-auto px-4">
+            {/* Botón de impugnación */}
+            <div className="mb-4">
+              <PsychometricQuestionDispute
+                questionId={currentQ?.id || ''}
+                user={user}
+                supabase={supabase}
+              />
+            </div>
+
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-4">
               <button
                 onClick={handleNextQuestion}

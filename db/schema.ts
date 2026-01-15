@@ -1542,6 +1542,37 @@ export const questionDisputes = pgTable("question_disputes", {
 	check("question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
 ]);
 
+export const psychometricQuestionDisputes = pgTable("psychometric_question_disputes", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	questionId: uuid("question_id"),
+	userId: uuid("user_id"),
+	disputeType: text("dispute_type").notNull(),
+	description: text().notNull(),
+	status: text().default('pending'),
+	adminResponse: text("admin_response"),
+	adminUserId: uuid("admin_user_id"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: 'string' }),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	isRead: boolean("is_read").default(false),
+}, (table) => [
+	index("idx_psych_disputes_question").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
+	index("idx_psych_disputes_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("idx_psych_disputes_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [psychometricQuestions.id],
+			name: "psychometric_question_disputes_question_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "psychometric_question_disputes_user_id_fkey"
+		}).onDelete("set null"),
+	check("psychometric_question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['ai_detected_error'::text, 'respuesta_incorrecta'::text, 'explicacion_confusa'::text, 'datos_erroneos'::text, 'otro'::text])`),
+	check("psychometric_question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
+]);
+
 export const userNotificationMetrics = pgTable("user_notification_metrics", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id"),

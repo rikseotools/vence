@@ -32,7 +32,25 @@ const DISPUTE_STATUS_CONFIG = {
 const DISPUTE_TYPES = {
   'respuesta_incorrecta': '❌ Respuesta Incorrecta',
   'no_literal': '📝 No Literal',
-  'otro': '❓ Otro Motivo'
+  'otro': '💭 Otro Motivo',
+  // Tipos de impugnaciones psicotécnicas
+  'ai_detected_error': '📊 Error en datos/gráficos',
+  'other': '💭 Otro Motivo'
+}
+
+// Traducciones para subtipos de preguntas psicotécnicas
+const QUESTION_SUBTYPES = {
+  'sequence_numeric': 'Secuencia Numérica',
+  'sequence_letters': 'Secuencia de Letras',
+  'sequence_alphanumeric': 'Secuencia Alfanumérica',
+  'series_numericas': 'Series Numéricas',
+  'series_letras': 'Series de Letras',
+  'series_alfanumericas': 'Series Alfanuméricas',
+  'razonamiento_numerico': 'Razonamiento Numérico',
+  'razonamiento_verbal': 'Razonamiento Verbal',
+  'capacidad_administrativa': 'Capacidad Administrativa',
+  'capacidad_ortografica': 'Capacidad Ortográfica',
+  'pruebas_instrucciones': 'Pruebas de Instrucciones'
 }
 
 function SoporteContent() {
@@ -241,11 +259,35 @@ function SoporteContent() {
   useEffect(() => {
     const disputeId = searchParams.get('dispute_id')
     const tab = searchParams.get('tab')
-    
+
     if (tab === 'impugnaciones') {
       setActiveTab('disputes')
-      
+
       if (disputeId && disputes.length > 0) {
+        // Buscar la disputa para saber si es psicotécnica
+        const dispute = disputes.find(d => d.id === disputeId)
+
+        // Marcar como leída si existe y no está leída
+        if (dispute && !dispute.is_read) {
+          const tableName = dispute.isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+          supabase
+            .from(tableName)
+            .update({ is_read: true })
+            .eq('id', disputeId)
+            .eq('user_id', user.id)
+            .then(({ error }) => {
+              if (error) {
+                console.error('Error marcando disputa como leída:', error)
+              } else {
+                console.log('✅ Disputa marcada como leída:', disputeId)
+                // Actualizar estado local
+                setDisputes(prev => prev.map(d =>
+                  d.id === disputeId ? { ...d, is_read: true } : d
+                ))
+              }
+            })
+        }
+
         // Scroll a la disputa específica después de un breve delay
         setTimeout(() => {
           const disputeElement = document.getElementById(`dispute-${disputeId}`)
@@ -260,7 +302,7 @@ function SoporteContent() {
         }, 500)
       }
     }
-  }, [searchParams, disputes])
+  }, [searchParams, disputes, user, supabase])
 
   // 🆕 AUTO-DETECTAR TAB POR DEFECTO BASADO EN ELEMENTOS PENDIENTES
   useEffect(() => {
@@ -426,7 +468,9 @@ function SoporteContent() {
   const loadUserDisputes = async () => {
     try {
       setDisputesLoading(true)
-      const { data, error } = await supabase
+
+      // Cargar impugnaciones normales (de leyes)
+      const { data: normalDisputes, error: normalError } = await supabase
         .from('question_disputes')
         .select(`
           id,
@@ -438,6 +482,7 @@ function SoporteContent() {
           admin_response,
           appeal_text,
           appeal_submitted_at,
+          is_read,
           questions!inner (
             question_text,
             correct_option,
@@ -457,8 +502,66 @@ function SoporteContent() {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
-      if (error) throw error
-      setDisputes(data || [])
+      if (normalError) throw normalError
+
+      // Cargar impugnaciones psicotécnicas
+      const { data: psychoDisputes, error: psychoError } = await supabase
+        .from('psychometric_question_disputes')
+        .select(`
+          id,
+          dispute_type,
+          description,
+          status,
+          created_at,
+          resolved_at,
+          admin_response,
+          question_id,
+          is_read,
+          psychometric_questions (
+            question_text,
+            question_subtype,
+            option_a,
+            option_b,
+            option_c,
+            option_d,
+            correct_option,
+            explanation,
+            solution_steps,
+            content_data
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (psychoError) {
+        console.warn('Error cargando impugnaciones psicotécnicas:', psychoError)
+      }
+
+      // Marcar y combinar
+      const markedNormal = (normalDisputes || []).map(d => ({ ...d, isPsychometric: false }))
+      const markedPsycho = (psychoDisputes || []).map(d => ({
+        ...d,
+        isPsychometric: true,
+        // Mapear estructura para compatibilidad con preguntas normales
+        questions: d.psychometric_questions ? {
+          question_text: d.psychometric_questions.question_text,
+          question_subtype: d.psychometric_questions.question_subtype,
+          option_a: d.psychometric_questions.option_a,
+          option_b: d.psychometric_questions.option_b,
+          option_c: d.psychometric_questions.option_c,
+          option_d: d.psychometric_questions.option_d,
+          correct_option: d.psychometric_questions.correct_option,
+          explanation: d.psychometric_questions.explanation,
+          solution_steps: d.psychometric_questions.solution_steps,
+          content_data: d.psychometric_questions.content_data
+        } : null
+      }))
+
+      // Combinar y ordenar por fecha
+      const allDisputes = [...markedNormal, ...markedPsycho]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+      setDisputes(allDisputes)
     } catch (error) {
       console.error('Error cargando impugnaciones:', error)
     } finally {
@@ -955,13 +1058,19 @@ function SoporteContent() {
                         
                         {/* Header de la impugnación */}
                         <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3 mb-2">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusConfig.color}`}>
                               {statusConfig.label}
                             </span>
-                            <span className="text-sm text-gray-500 dark:text-gray-400">
-                              {dispute.questions?.articles?.laws?.short_name} - Art. {dispute.questions?.articles?.article_number}
-                            </span>
+                            {dispute.isPsychometric ? (
+                              <span className="text-sm bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">
+                                🧠 Psicotécnico
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-500 dark:text-gray-400">
+                                {dispute.questions?.articles?.laws?.short_name} - Art. {dispute.questions?.articles?.article_number}
+                              </span>
+                            )}
                             <span className="text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-1 rounded">
                               {DISPUTE_TYPES[dispute.dispute_type] || dispute.dispute_type}
                             </span>
@@ -980,7 +1089,9 @@ function SoporteContent() {
                         {/* Pregunta impugnada (versión compacta) */}
                         <div className="mb-4">
                           <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold text-gray-800 dark:text-gray-200">📋 Pregunta impugnada:</h4>
+                            <h4 className="font-semibold text-gray-800 dark:text-gray-200">
+                              {dispute.isPsychometric ? '🧠 Pregunta psicotécnica:' : '📋 Pregunta impugnada:'}
+                            </h4>
                             <button
                               onClick={() => setSelectedQuestionModal(dispute)}
                               className="px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors"
@@ -990,19 +1101,30 @@ function SoporteContent() {
                           </div>
                           <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
                             <p className="text-gray-700 dark:text-gray-300 text-sm mb-3">{dispute.questions?.question_text}</p>
-                            
-                            {/* Respuesta correcta completa */}
-                            <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded border-l-4 border-green-400">
-                              <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">
-                                Respuesta correcta: {['A', 'B', 'C', 'D'][dispute.questions?.correct_option - 1]}
-                              </p>
-                              <p className="text-sm text-green-800 dark:text-green-300">
-                                {dispute.questions?.correct_option === 1 ? dispute.questions?.option_a :
-                                 dispute.questions?.correct_option === 2 ? dispute.questions?.option_b :
-                                 dispute.questions?.correct_option === 3 ? dispute.questions?.option_c :
-                                 dispute.questions?.correct_option === 4 ? dispute.questions?.option_d : 'N/A'}
-                              </p>
-                            </div>
+
+                            {/* Respuesta correcta - solo para preguntas normales */}
+                            {!dispute.isPsychometric && dispute.questions?.correct_option && (
+                              <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded border-l-4 border-green-400">
+                                <p className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">
+                                  Respuesta correcta: {['A', 'B', 'C', 'D'][dispute.questions?.correct_option - 1]}
+                                </p>
+                                <p className="text-sm text-green-800 dark:text-green-300">
+                                  {dispute.questions?.correct_option === 1 ? dispute.questions?.option_a :
+                                   dispute.questions?.correct_option === 2 ? dispute.questions?.option_b :
+                                   dispute.questions?.correct_option === 3 ? dispute.questions?.option_c :
+                                   dispute.questions?.correct_option === 4 ? dispute.questions?.option_d : 'N/A'}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Info adicional para psicotécnicas */}
+                            {dispute.isPsychometric && dispute.questions?.question_subtype && (
+                              <div className="bg-purple-50 dark:bg-purple-900/30 p-2 rounded border-l-4 border-purple-400">
+                                <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                                  Tipo: {QUESTION_SUBTYPES[dispute.questions.question_subtype] || dispute.questions.question_subtype.replace(/_/g, ' ')}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -1033,8 +1155,8 @@ function SoporteContent() {
                               )}
                             </div>
                             
-                            {/* Botones de satisfacción discretos */}
-                            {(dispute.status === 'resolved' || dispute.status === 'rejected') && 
+                            {/* Botones de satisfacción discretos - solo para impugnaciones normales que pueden apelar */}
+                            {!dispute.isPsychometric && (dispute.status === 'resolved' || dispute.status === 'rejected') &&
                              dispute.appeal_text !== 'Usuario de acuerdo con la respuesta del administrador.' && (
                               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
                                 <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
@@ -1058,7 +1180,7 @@ function SoporteContent() {
                             )}
 
                             {/* Mensaje de confirmación cuando usuario está de acuerdo */}
-                            {(dispute.status === 'resolved' || dispute.status === 'rejected') && 
+                            {!dispute.isPsychometric && (dispute.status === 'resolved' || dispute.status === 'rejected') &&
                              dispute.appeal_text === 'Usuario de acuerdo con la respuesta del administrador.' && (
                               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
                                 <p className="text-xs text-emerald-600 dark:text-emerald-400">
@@ -1119,7 +1241,7 @@ function SoporteContent() {
               {/* Header */}
               <div className="flex items-center justify-between p-4 sm:p-6 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
-                  📋 Pregunta Completa
+                  {selectedQuestionModal.isPsychometric ? '🧠 Pregunta Psicotécnica' : '📋 Pregunta Completa'}
                 </h3>
                 <button
                   onClick={() => setSelectedQuestionModal(null)}
@@ -1133,7 +1255,21 @@ function SoporteContent() {
 
               {/* Contenido */}
               <div className="p-4 sm:p-6 space-y-6">
-                
+
+                {/* Badge de tipo de pregunta */}
+                {selectedQuestionModal.isPsychometric && (
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium">
+                      🧠 Pregunta Psicotécnica
+                    </span>
+                    {selectedQuestionModal.questions?.question_subtype && (
+                      <span className="px-3 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-xs">
+                        {QUESTION_SUBTYPES[selectedQuestionModal.questions.question_subtype] || selectedQuestionModal.questions.question_subtype.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Pregunta */}
                 <div>
                   <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">❓ Pregunta:</h4>
@@ -1144,35 +1280,51 @@ function SoporteContent() {
                   </div>
                 </div>
 
-                {/* Opciones */}
-                <div>
-                  <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">📝 Opciones:</h4>
-                  <div className="space-y-2">
-                    {['A', 'B', 'C', 'D'].map((letter, index) => {
-                      const isCorrect = selectedQuestionModal.questions?.correct_option === (index + 1)
-                      const optionText = selectedQuestionModal.questions?.[`option_${letter.toLowerCase()}`]
-                      
-                      return (
-                        <div
-                          key={letter}
-                          className={`p-3 rounded-lg border-2 ${
-                            isCorrect 
-                              ? 'bg-green-50 dark:bg-green-900/30 border-green-400 text-green-800 dark:text-green-200'
-                              : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span className={`font-bold text-sm ${isCorrect ? 'text-green-700 dark:text-green-300' : 'text-gray-500 dark:text-gray-400'}`}>
-                              {letter})
-                            </span>
-                            <span className="flex-1">{optionText}</span>
-                            {isCorrect && <span className="text-green-600 dark:text-green-400">✅</span>}
+                {/* Opciones - Para todas las preguntas que tengan opciones */}
+                {selectedQuestionModal.questions?.option_a && (
+                  <div>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">📝 Opciones:</h4>
+                    <div className="space-y-2">
+                      {['A', 'B', 'C', 'D'].map((letter, index) => {
+                        const isCorrect = selectedQuestionModal.questions?.correct_option === (index + 1)
+                        const optionText = selectedQuestionModal.questions?.[`option_${letter.toLowerCase()}`]
+
+                        if (!optionText) return null
+
+                        return (
+                          <div
+                            key={letter}
+                            className={`p-3 rounded-lg border-2 ${
+                              isCorrect
+                                ? 'bg-green-50 dark:bg-green-900/30 border-green-400 text-green-800 dark:text-green-200'
+                                : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className={`font-bold text-sm ${isCorrect ? 'text-green-700 dark:text-green-300' : 'text-gray-500 dark:text-gray-400'}`}>
+                                {letter})
+                              </span>
+                              <span className="flex-1">{optionText}</span>
+                              {isCorrect && <span className="text-green-600 dark:text-green-400">✅</span>}
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Pasos de solución - Solo para psicotécnicas */}
+                {selectedQuestionModal.isPsychometric && selectedQuestionModal.questions?.solution_steps && (
+                  <div>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">📐 Pasos de solución:</h4>
+                    <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg border-l-4 border-purple-400">
+                      <div className="text-purple-800 dark:text-purple-200 leading-relaxed whitespace-pre-wrap text-sm">
+                        {selectedQuestionModal.questions.solution_steps}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Explicación */}
                 {selectedQuestionModal.questions?.explanation && (

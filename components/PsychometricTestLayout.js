@@ -14,6 +14,7 @@ import SequenceNumericQuestion from './SequenceNumericQuestion'
 import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
+import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 
 export default function PsychometricTestLayout({
@@ -731,6 +732,15 @@ export default function PsychometricTestLayout({
       {showResult && (
         <div className="bg-gray-50 border-t border-gray-200 py-6">
           <div className="max-w-4xl mx-auto px-4">
+            {/* Botón de impugnación */}
+            <div className="mb-4">
+              <PsychometricQuestionDispute
+                questionId={questions[currentQuestion]?.id || ''}
+                user={user}
+                supabase={supabase}
+              />
+            </div>
+
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
               <button
                 onClick={nextQuestion}

@@ -2,14 +2,18 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 
 export default function ImpugnacionesPage() {
   const { supabase } = useAuth()
   const [impugnaciones, setImpugnaciones] = useState([])
+  const [psychometricDisputes, setPsychometricDisputes] = useState([])
+  const [premiumUsers, setPremiumUsers] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filter, setFilter] = useState('pendientes') // Cambiado: Por defecto mostrar pendientes
+  const [filter, setFilter] = useState('pendientes')
+  const [typeFilter, setTypeFilter] = useState('todas') // 'todas', 'normales', 'psicotecnicas'
   useEffect(() => {
     loadImpugnaciones()
   }, [supabase])
@@ -27,8 +31,78 @@ export default function ImpugnacionesPage() {
 
       if (disputesError) throw disputesError
 
-      // Impugnaciones cargadas correctamente
-      setImpugnaciones(disputes || [])
+      // Impugnaciones normales cargadas
+      const normalDisputes = (disputes || []).map(d => ({ ...d, isPsychometric: false }))
+      setImpugnaciones(normalDisputes)
+
+      // Cargar impugnaciones psicotécnicas
+      const supabaseServiceRole = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+
+      const { data: psychoDisputes } = await supabaseServiceRole
+        .from('psychometric_question_disputes')
+        .select(`
+          id,
+          question_id,
+          user_id,
+          dispute_type,
+          description,
+          status,
+          created_at,
+          admin_response
+        `)
+        .order('created_at', { ascending: false })
+
+      // Obtener info de usuarios y preguntas para psicotécnicas
+      if (psychoDisputes && psychoDisputes.length > 0) {
+        const psychoUserIds = [...new Set(psychoDisputes.map(d => d.user_id).filter(Boolean))]
+        const psychoQuestionIds = [...new Set(psychoDisputes.map(d => d.question_id).filter(Boolean))]
+
+        // Obtener perfiles de usuarios
+        const { data: userProfiles } = await supabaseServiceRole
+          .from('user_profiles')
+          .select('id, full_name, email')
+          .in('id', psychoUserIds)
+
+        // Obtener preguntas psicotécnicas
+        const { data: questions } = await supabaseServiceRole
+          .from('psychometric_questions')
+          .select('id, question_text, question_subtype')
+          .in('id', psychoQuestionIds)
+
+        const userMap = new Map((userProfiles || []).map(u => [u.id, u]))
+        const questionMap = new Map((questions || []).map(q => [q.id, q]))
+
+        const enrichedPsychoDisputes = psychoDisputes.map(d => ({
+          ...d,
+          isPsychometric: true,
+          user_full_name: userMap.get(d.user_id)?.full_name || null,
+          user_email: userMap.get(d.user_id)?.email || null,
+          question_text: questionMap.get(d.question_id)?.question_text || null,
+          question_subtype: questionMap.get(d.question_id)?.question_subtype || null
+        }))
+
+        setPsychometricDisputes(enrichedPsychoDisputes)
+      }
+
+      // Cargar usuarios premium
+      const allDisputes = [...(disputes || []), ...(psychoDisputes || [])]
+      if (allDisputes.length > 0) {
+        const userIds = [...new Set(allDisputes.map(d => d.user_id).filter(Boolean))]
+        if (userIds.length > 0) {
+          const { data: premiumData } = await supabaseServiceRole
+            .from('user_profiles')
+            .select('id, plan_type')
+            .in('id', userIds)
+            .in('plan_type', ['premium', 'trial'])
+
+          if (premiumData) {
+            setPremiumUsers(new Set(premiumData.map(p => p.id)))
+          }
+        }
+      }
 
     } catch (err) {
       console.error('❌ Error cargando impugnaciones:', err)
@@ -38,14 +112,21 @@ export default function ImpugnacionesPage() {
     }
   }
 
-  const closeDispute = async (disputeId) => {
+  const closeDispute = async (disputeId, isPsychometric = false) => {
     if (!supabase) return
 
     try {
-      console.log('🔒 Cerrando impugnación:', disputeId)
+      console.log('🔒 Cerrando impugnación:', disputeId, isPsychometric ? '(psicotécnica)' : '(normal)')
 
-      const { error } = await supabase
-        .from('question_disputes')
+      const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+
+      const supabaseServiceRole = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+
+      const { error } = await supabaseServiceRole
+        .from(tableName)
         .update({
           status: 'rejected',
           resolved_at: new Date().toISOString(),
@@ -57,7 +138,28 @@ export default function ImpugnacionesPage() {
       if (error) throw error
 
       console.log('✅ Impugnación cerrada exitosamente')
-      
+
+      // Enviar email de notificación al usuario
+      try {
+        const emailEndpoint = isPsychometric
+          ? '/api/send-dispute-email/psychometric'
+          : '/api/send-dispute-email'
+
+        const emailResponse = await fetch(emailEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ disputeId })
+        })
+
+        if (emailResponse.ok) {
+          console.log('📧 Email de notificación enviado')
+        } else {
+          console.warn('⚠️ No se pudo enviar email de notificación')
+        }
+      } catch (emailError) {
+        console.warn('⚠️ Error enviando email:', emailError)
+      }
+
       // Recargar la lista
       await loadImpugnaciones()
 
@@ -68,15 +170,29 @@ export default function ImpugnacionesPage() {
   }
 
   const getFilteredImpugnaciones = () => {
+    // Combinar todas las impugnaciones
+    let allDisputes = [...impugnaciones, ...psychometricDisputes]
+
+    // Filtrar por tipo
+    if (typeFilter === 'normales') {
+      allDisputes = allDisputes.filter(d => !d.isPsychometric)
+    } else if (typeFilter === 'psicotecnicas') {
+      allDisputes = allDisputes.filter(d => d.isPsychometric)
+    }
+
+    // Ordenar por fecha
+    allDisputes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+    // Filtrar por estado
     switch (filter) {
       case 'pendientes':
-        return impugnaciones.filter(d => d.status === 'pending' || d.status === 'appealed')
+        return allDisputes.filter(d => d.status === 'pending' || d.status === 'appealed')
       case 'resueltas':
-        return impugnaciones.filter(d => d.status === 'resolved')
+        return allDisputes.filter(d => d.status === 'resolved')
       case 'rechazadas':
-        return impugnaciones.filter(d => d.status === 'rejected')
+        return allDisputes.filter(d => d.status === 'rejected')
       default:
-        return impugnaciones
+        return allDisputes
     }
   }
 
@@ -145,10 +261,12 @@ export default function ImpugnacionesPage() {
   }
 
   const filteredImpugnaciones = getFilteredImpugnaciones()
-  const pendingCount = impugnaciones.filter(d => d.status === 'pending' || d.status === 'appealed').length
-  const resolvedCount = impugnaciones.filter(d => d.status === 'resolved').length
-  const rejectedCount = impugnaciones.filter(d => d.status === 'rejected').length
-  const appealedCount = impugnaciones.filter(d => d.status === 'appealed').length
+  const allDisputes = [...impugnaciones, ...psychometricDisputes]
+  const pendingCount = allDisputes.filter(d => d.status === 'pending' || d.status === 'appealed').length
+  const resolvedCount = allDisputes.filter(d => d.status === 'resolved').length
+  const rejectedCount = allDisputes.filter(d => d.status === 'rejected').length
+  const appealedCount = allDisputes.filter(d => d.status === 'appealed').length
+  const psychoCount = psychometricDisputes.length
 
   return (
     <div className="space-y-6">
@@ -180,16 +298,16 @@ export default function ImpugnacionesPage() {
       </div>
 
       {/* Métricas principales */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-6 border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Total</p>
-              <p className="text-lg sm:text-2xl font-bold text-gray-600">{impugnaciones.length}</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-600">{allDisputes.length}</p>
             </div>
             <span className="text-2xl sm:text-3xl">📋</span>
           </div>
-          <p className="text-xs text-gray-500 mt-2 hidden sm:block">Impugnaciones totales</p>
+          <p className="text-xs text-gray-500 mt-2 hidden sm:block">{impugnaciones.length} normales + {psychoCount} psico</p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-6 border">
@@ -227,9 +345,35 @@ export default function ImpugnacionesPage() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-3 sm:p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border p-3 sm:p-4 space-y-3">
+        {/* Filtro por tipo */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filtrar:</span>
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tipo:</span>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'todas', label: 'Todas', count: allDisputes.length },
+              { key: 'normales', label: 'Normales', icon: '📚', count: impugnaciones.length },
+              { key: 'psicotecnicas', label: 'Psicotécnicas', icon: '🧠', count: psychoCount }
+            ].map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setTypeFilter(opt.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm transition-colors ${
+                  typeFilter === opt.key
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {opt.icon && <span className="mr-1">{opt.icon}</span>}
+                {opt.label} ({opt.count})
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Filtro por estado */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado:</span>
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
             {[
               { key: 'todas', label: 'Todas', icon: '📋' },
@@ -247,10 +391,10 @@ export default function ImpugnacionesPage() {
                 }`}
               >
                 <span className="block sm:inline">{filterOption.icon}</span>
-                <span className="block sm:inline sm:ml-1">{filterOption.label}</span> 
+                <span className="block sm:inline sm:ml-1">{filterOption.label}</span>
                 {filterOption.key !== 'todas' && (
                   <span className="block sm:inline sm:ml-1 text-xs">
-                    ({filterOption.key === 'pendientes' ? pendingCount : 
+                    ({filterOption.key === 'pendientes' ? pendingCount :
                       filterOption.key === 'resueltas' ? resolvedCount : rejectedCount})
                   </span>
                 )}
@@ -280,15 +424,16 @@ export default function ImpugnacionesPage() {
           </div>
         ) : (
           filteredImpugnaciones.map((dispute, index) => (
-            <DisputeCard 
-              key={dispute.id} 
-              dispute={dispute} 
+            <DisputeCard
+              key={dispute.id}
+              dispute={dispute}
               index={index}
               getStatusBadge={getStatusBadge}
               getPriorityBadge={getPriorityBadge}
               getCorrectOptionLetter={getCorrectOptionLetter}
               onCloseDispute={closeDispute}
               supabase={supabase}
+              isPremium={premiumUsers.has(dispute.user_id)}
             />
           ))
         )}
@@ -299,7 +444,7 @@ export default function ImpugnacionesPage() {
 }
 
 // Componente separado para cada tarjeta de impugnación (solo lectura)
-function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, supabase }) {
+function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, supabase, isPremium }) {
   const [showFullQuestion, setShowFullQuestion] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
 
@@ -310,7 +455,7 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
 
     setIsClosing(true)
     try {
-      await onCloseDispute(dispute.id)
+      await onCloseDispute(dispute.id, dispute.isPsychometric)
     } finally {
       setIsClosing(false)
     }
@@ -325,8 +470,13 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
             <span className="text-base sm:text-lg font-bold text-gray-600 flex-shrink-0">#{index + 1}</span>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-2">
+                {dispute.isPsychometric && (
+                  <span className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-1 rounded-full text-xs font-medium">
+                    🧠 Psicotécnica
+                  </span>
+                )}
                 {getStatusBadge(dispute.status)}
-                {getPriorityBadge(dispute.priority)}
+                {!dispute.isPsychometric && getPriorityBadge(dispute.priority)}
               </div>
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -341,6 +491,11 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="flex items-center gap-1">
                       👤 <strong className="text-blue-600 dark:text-blue-400 truncate">{dispute.user_full_name || dispute.user_email || 'Usuario desconocido'}</strong>
+                      {isPremium && (
+                        <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm">
+                          Premium
+                        </span>
+                      )}
                     </span>
                     <span className="text-xs text-gray-500">
                       {new Date(dispute.created_at).toLocaleDateString('es-ES', {

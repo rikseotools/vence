@@ -24,8 +24,9 @@ function PerfilPageContent() {
   
   // 🆕 EMAIL PREFERENCES - SIMPLIFICADO
   const [emailPreferences, setEmailPreferences] = useState({
-    receive_emails: true, // Una sola opción simple
-    support_emails: true  // Nueva opción para emails de soporte
+    receive_emails: true, // Opción principal (unsubscribed_all)
+    support_emails: true, // Emails de soporte
+    newsletter_emails: true // Emails de newsletter/información de oposición
   })
   const [emailPrefLoading, setEmailPrefLoading] = useState(true)
   const [emailPrefSaving, setEmailPrefSaving] = useState(false)
@@ -221,19 +222,27 @@ function PerfilPageContent() {
         if (error && error.code === 'PGRST116') {
           // No existe, crear con valores por defecto
           setEmailPreferences({
-            receive_emails: true, // Por defecto, recibir emails
-            support_emails: true  // Por defecto, recibir emails de soporte
+            receive_emails: true,
+            support_emails: true,
+            newsletter_emails: true
           })
         } else if (error) {
           console.error('Error cargando preferencias de email:', error)
-          setEmailPreferences({ receive_emails: true, support_emails: true })
+          setEmailPreferences({ receive_emails: true, support_emails: true, newsletter_emails: true })
         } else {
           // Mapear las preferencias complejas a nuestra opción simple
+          // Si las columnas no existen (undefined), usar true como default
           const receiveEmails = !preferences.unsubscribed_all
-          const supportEmails = !preferences.email_soporte_disabled
+          const supportEmails = preferences.email_soporte_disabled === undefined
+            ? true
+            : !preferences.email_soporte_disabled
+          const newsletterEmails = preferences.email_newsletter_disabled === undefined
+            ? true
+            : !preferences.email_newsletter_disabled
           setEmailPreferences({
             receive_emails: receiveEmails,
-            support_emails: supportEmails
+            support_emails: supportEmails,
+            newsletter_emails: newsletterEmails
           })
         }
       } catch (error) {
@@ -429,16 +438,19 @@ function PerfilPageContent() {
     setHasChanges(hasRealChanges)
   }, [formData, user, profile, isInitialLoad.current]) // Escuchar todo formData y isInitialLoad
 
-  // 🆕 GUARDAR EMAIL PREFERENCES - SIMPLIFICADO
+  // 🆕 GUARDAR EMAIL PREFERENCES - CON LÓGICA AUTOMÁTICA
   const saveEmailPreferences = async (newPreferences) => {
     if (!user || emailPrefSaving) return
-    
+
     try {
       setEmailPrefSaving(true)
-      
+
       // Convertir nuestra opción simple al formato de BD existente (TODOS los tipos)
       const receiveEmails = newPreferences.receive_emails
       const supportEmails = newPreferences.support_emails
+      const newsletterEmails = newPreferences.newsletter_emails
+
+      // Datos base (siempre existen)
       const updateData = {
         user_id: user.id,
         unsubscribed_all: !receiveEmails,
@@ -447,20 +459,32 @@ function PerfilPageContent() {
         email_bienvenida_motivacional: receiveEmails,
         email_bienvenida_inmediato: receiveEmails,
         email_resumen_semanal: receiveEmails,
-        email_soporte_disabled: !supportEmails,  // Nueva columna para soporte
         unsubscribed_at: receiveEmails ? null : new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
 
-      // Usar upsert para simplicidad
-      const { error } = await supabase
+      // Intentar guardar con las nuevas columnas
+      let { error } = await supabase
         .from('email_preferences')
-        .upsert(updateData, { onConflict: 'user_id' })
+        .upsert({
+          ...updateData,
+          email_soporte_disabled: !supportEmails,
+          email_newsletter_disabled: !newsletterEmails
+        }, { onConflict: 'user_id' })
+
+      // Si falla por columnas inexistentes, guardar solo los campos base
+      if (error && error.message?.includes('column')) {
+        console.warn('Columnas nuevas no existen aún, guardando solo campos base')
+        const result = await supabase
+          .from('email_preferences')
+          .upsert(updateData, { onConflict: 'user_id' })
+        error = result.error
+      }
 
       if (error) throw error
 
       setEmailPreferences(newPreferences)
-      setMessage(`✅ ${newPreferences.receive_emails ? 'Activados' : 'Desactivados'} los emails`)
+      setMessage(`✅ Preferencias de email actualizadas`)
       setTimeout(() => setMessage(''), 3000)
 
     } catch (error) {
@@ -472,20 +496,59 @@ function PerfilPageContent() {
     }
   }
 
-  // 🆕 MANEJAR CAMBIOS EN EMAIL PREFERENCES - SIMPLIFICADO
+  // 🆕 MANEJAR CAMBIOS EN EMAIL PREFERENCES - CON LÓGICA AUTOMÁTICA
+  // Si se desactiva "Emails de Vence", desactivar todas las sub-opciones
   const handleEmailPrefChange = (value) => {
-    const newPreferences = { 
-      ...emailPreferences,
-      receive_emails: value 
+    if (!value) {
+      // Desactivar todo
+      const newPreferences = {
+        receive_emails: false,
+        support_emails: false,
+        newsletter_emails: false
+      }
+      saveEmailPreferences(newPreferences)
+    } else {
+      // Activar emails de Vence y mantener las sub-opciones como estaban
+      // (o activarlas si todas estaban desactivadas)
+      const anySubOptionActive = emailPreferences.support_emails || emailPreferences.newsletter_emails
+      const newPreferences = {
+        receive_emails: true,
+        support_emails: anySubOptionActive ? emailPreferences.support_emails : true,
+        newsletter_emails: anySubOptionActive ? emailPreferences.newsletter_emails : true
+      }
+      saveEmailPreferences(newPreferences)
+    }
+  }
+
+  // 🆕 MANEJAR CAMBIOS EN SOPORTE
+  // Si se activa y "Emails de Vence" está desactivado, activarlo automáticamente
+  // Si se desactiva y es la última opción activa, desactivar "Emails de Vence"
+  const handleSupportEmailChange = (value) => {
+    const newNewsletterEmails = emailPreferences.newsletter_emails
+
+    // Si activamos soporte y Vence está desactivado, activar Vence
+    const newReceiveEmails = value ? true : (newNewsletterEmails ? emailPreferences.receive_emails : false)
+
+    const newPreferences = {
+      receive_emails: newReceiveEmails,
+      support_emails: value,
+      newsletter_emails: newNewsletterEmails
     }
     saveEmailPreferences(newPreferences)
   }
 
-  // 🆕 MANEJAR CAMBIOS EN SOPORTE ESPECÍFICAMENTE
-  const handleSupportEmailChange = (value) => {
-    const newPreferences = { 
-      ...emailPreferences,
-      support_emails: value 
+  // 🆕 MANEJAR CAMBIOS EN NEWSLETTER
+  // Misma lógica que soporte
+  const handleNewsletterEmailChange = (value) => {
+    const newSupportEmails = emailPreferences.support_emails
+
+    // Si activamos newsletter y Vence está desactivado, activar Vence
+    const newReceiveEmails = value ? true : (newSupportEmails ? emailPreferences.receive_emails : false)
+
+    const newPreferences = {
+      receive_emails: newReceiveEmails,
+      support_emails: newSupportEmails,
+      newsletter_emails: value
     }
     saveEmailPreferences(newPreferences)
   }
@@ -1163,15 +1226,15 @@ function PerfilPageContent() {
           </div>
 
           {/* Opción específica para emails de soporte */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:border-gray-600 rounded-lg dark:bg-gray-700 p-4">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h5 className="font-medium text-gray-800">
+                <h5 className="font-medium text-gray-800 dark:text-white">
                   💬 Emails de Soporte
                 </h5>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   {emailPreferences.support_emails ? (
-                    <>Recibes emails cuando el equipo responde a tus consultas</>
+                    <>Recibes emails cuando el equipo responde a tus consultas e impugnaciones</>
                   ) : (
                     <>No recibes emails de respuestas del equipo de soporte</>
                   )}
@@ -1189,6 +1252,42 @@ function PerfilPageContent() {
                   <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
                     {emailPreferences.support_emails ? (
                       <span className="text-xs text-blue-600">✓</span>
+                    ) : (
+                      <span className="text-xs text-gray-400">✕</span>
+                    )}
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Opción específica para emails de newsletter */}
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h5 className="font-medium text-gray-800 dark:text-white">
+                  📰 Newsletter de tu Oposición
+                </h5>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {emailPreferences.newsletter_emails ? (
+                    <>Recibes información relevante y novedades sobre tu oposición</>
+                  ) : (
+                    <>No recibes emails con novedades de tu oposición</>
+                  )}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={emailPreferences.newsletter_emails}
+                  onChange={(e) => handleNewsletterEmailChange(e.target.checked)}
+                  disabled={emailPrefSaving}
+                  className="sr-only peer"
+                />
+                <div className="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:bg-purple-500 transition-colors">
+                  <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
+                    {emailPreferences.newsletter_emails ? (
+                      <span className="text-xs text-purple-600">✓</span>
                     ) : (
                       <span className="text-xs text-gray-400">✕</span>
                     )}
