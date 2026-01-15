@@ -3,6 +3,9 @@
  *
  * Estos tests simulan el comportamiento del filtrado sin conexión a BD real
  * (los tests manuales contra BD se realizan con scripts separados)
+ *
+ * IMPORTANTE (actualizado): Las preguntas con exam_position = NULL NO se muestran
+ * a ninguna oposición. Solo se muestran las que tienen un valor específico.
  */
 
 // Mapeo de exam_position (debe coincidir con el código real)
@@ -48,7 +51,7 @@ const mockDatabaseQuestions = [
   // Gestión Procesal
   { id: 'ges-1', exam_position: 'gestion_procesal', is_official_exam: true, is_active: true },
 
-  // Legacy (NULL)
+  // Legacy (NULL) - NO deben mostrarse a nadie
   { id: 'leg-1', exam_position: null, is_official_exam: true, is_active: true },
   { id: 'leg-2', exam_position: null, is_official_exam: true, is_active: true },
   { id: 'leg-3', exam_position: null, is_official_exam: true, is_active: true },
@@ -61,18 +64,20 @@ const mockDatabaseQuestions = [
 ]
 
 // Simulación del comportamiento de la query de Supabase
+// ACTUALIZADO: NO incluye preguntas con exam_position NULL
 function simulateSupabaseQuery(questions, filters) {
   return questions.filter(q => {
     // Filtro base: is_official_exam y is_active
     if (filters.is_official_exam && q.is_official_exam !== true) return false
     if (filters.is_active && q.is_active !== true) return false
 
-    // Filtro de exam_position con OR NULL
+    // Filtro de exam_position SIN NULL
     if (filters.examPositionFilter) {
       const validPositions = filters.examPositionFilter
-      const includesNull = q.exam_position === null
-      const includesPosition = validPositions.includes(q.exam_position)
-      if (!includesNull && !includesPosition) return false
+      // Solo incluir si tiene exam_position Y está en los valores válidos
+      // Las preguntas con NULL NO se incluyen
+      if (q.exam_position === null) return false
+      if (!validPositions.includes(q.exam_position)) return false
     }
 
     return true
@@ -83,25 +88,25 @@ describe('Integración: Simulación de filtrado exam_position', () => {
   describe('Filtro para Tramitación Procesal', () => {
     const tramitacionFilter = EXAM_POSITION_MAP['tramitacion_procesal']
 
-    test('debe incluir solo preguntas de tramitación + legacy', () => {
+    test('debe incluir solo preguntas de tramitación (SIN legacy)', () => {
       const result = simulateSupabaseQuery(mockDatabaseQuestions, {
         is_official_exam: true,
         is_active: true,
         examPositionFilter: tramitacionFilter,
       })
 
-      // Debe incluir 3 de tramitación + 3 legacy = 6
-      expect(result.length).toBe(6)
+      // Debe incluir solo 3 de tramitación (SIN las 3 legacy)
+      expect(result.length).toBe(3)
 
       // Verificar que incluye las de tramitación
       expect(result.some(q => q.id === 'tra-1')).toBe(true)
       expect(result.some(q => q.id === 'tra-2')).toBe(true)
       expect(result.some(q => q.id === 'tra-3')).toBe(true)
 
-      // Verificar que incluye las legacy
-      expect(result.some(q => q.id === 'leg-1')).toBe(true)
-      expect(result.some(q => q.id === 'leg-2')).toBe(true)
-      expect(result.some(q => q.id === 'leg-3')).toBe(true)
+      // NO debe incluir las legacy (NULL)
+      expect(result.some(q => q.id === 'leg-1')).toBe(false)
+      expect(result.some(q => q.id === 'leg-2')).toBe(false)
+      expect(result.some(q => q.id === 'leg-3')).toBe(false)
     })
 
     test('NO debe incluir preguntas de otras oposiciones', () => {
@@ -127,15 +132,15 @@ describe('Integración: Simulación de filtrado exam_position', () => {
   describe('Filtro para Auxiliar Administrativo', () => {
     const auxiliarFilter = EXAM_POSITION_MAP['auxiliar_administrativo']
 
-    test('debe incluir solo preguntas de auxiliar + legacy', () => {
+    test('debe incluir solo preguntas de auxiliar (SIN legacy)', () => {
       const result = simulateSupabaseQuery(mockDatabaseQuestions, {
         is_official_exam: true,
         is_active: true,
         examPositionFilter: auxiliarFilter,
       })
 
-      // Debe incluir 3 de auxiliar + 3 legacy = 6
-      expect(result.length).toBe(6)
+      // Debe incluir solo 3 de auxiliar (SIN las 3 legacy)
+      expect(result.length).toBe(3)
 
       // Verificar que incluye las de auxiliar
       expect(result.some(q => q.id === 'aux-1')).toBe(true)
@@ -143,7 +148,7 @@ describe('Integración: Simulación de filtrado exam_position', () => {
       expect(result.some(q => q.id === 'aux-3')).toBe(true)
     })
 
-    test('NO debe incluir preguntas de otras oposiciones', () => {
+    test('NO debe incluir preguntas de otras oposiciones ni legacy', () => {
       const result = simulateSupabaseQuery(mockDatabaseQuestions, {
         is_official_exam: true,
         is_active: true,
@@ -155,24 +160,27 @@ describe('Integración: Simulación de filtrado exam_position', () => {
 
       // NO debe incluir auxilio judicial
       expect(result.some(q => q.id === 'jud-1')).toBe(false)
+
+      // NO debe incluir legacy
+      expect(result.some(q => q.exam_position === null)).toBe(false)
     })
   })
 
   describe('Filtro para Auxilio Judicial', () => {
     const auxilioFilter = EXAM_POSITION_MAP['auxilio_judicial']
 
-    test('debe incluir solo preguntas de auxilio + legacy', () => {
+    test('debe incluir solo preguntas de auxilio (SIN legacy)', () => {
       const result = simulateSupabaseQuery(mockDatabaseQuestions, {
         is_official_exam: true,
         is_active: true,
         examPositionFilter: auxilioFilter,
       })
 
-      // Debe incluir 4 de auxilio + 3 legacy = 7
-      expect(result.length).toBe(7)
+      // Debe incluir solo 4 de auxilio (SIN las 3 legacy)
+      expect(result.length).toBe(4)
     })
 
-    test('NO debe incluir preguntas de tramitación ni auxiliar', () => {
+    test('NO debe incluir preguntas de tramitación, auxiliar, ni legacy', () => {
       const result = simulateSupabaseQuery(mockDatabaseQuestions, {
         is_official_exam: true,
         is_active: true,
@@ -181,11 +189,12 @@ describe('Integración: Simulación de filtrado exam_position', () => {
 
       expect(result.some(q => q.id === 'tra-1')).toBe(false)
       expect(result.some(q => q.id === 'aux-1')).toBe(false)
+      expect(result.some(q => q.exam_position === null)).toBe(false)
     })
   })
 
   describe('Sin filtro de oposición', () => {
-    test('debe incluir TODAS las preguntas oficiales activas', () => {
+    test('debe incluir TODAS las preguntas oficiales activas (incluyendo legacy)', () => {
       const result = simulateSupabaseQuery(mockDatabaseQuestions, {
         is_official_exam: true,
         is_active: true,
@@ -240,17 +249,12 @@ describe('Integración: Comparación entre oposiciones', () => {
       examPositionFilter: EXAM_POSITION_MAP['auxilio_judicial'],
     })
 
-    // Las preguntas específicas (no legacy) no deben solaparse
-    const auxiliarSpecific = auxiliarResult.filter(q => q.exam_position !== null)
-    const tramitacionSpecific = tramitacionResult.filter(q => q.exam_position !== null)
-    const auxilioSpecific = auxilioResult.filter(q => q.exam_position !== null)
+    // Las preguntas NO deben solaparse (ya no hay legacy compartidas)
+    const auxiliarIds = auxiliarResult.map(q => q.id)
+    const tramitacionIds = tramitacionResult.map(q => q.id)
+    const auxilioIds = auxilioResult.map(q => q.id)
 
-    // Verificar que no hay solapamiento
-    const auxiliarIds = auxiliarSpecific.map(q => q.id)
-    const tramitacionIds = tramitacionSpecific.map(q => q.id)
-    const auxilioIds = auxilioSpecific.map(q => q.id)
-
-    // Ningún ID de auxiliar debe estar en tramitación
+    // Ningún ID de auxiliar debe estar en tramitación ni auxilio
     auxiliarIds.forEach(id => {
       expect(tramitacionIds).not.toContain(id)
       expect(auxilioIds).not.toContain(id)
@@ -262,57 +266,68 @@ describe('Integración: Comparación entre oposiciones', () => {
     })
   })
 
-  test('las preguntas legacy se comparten entre todas las oposiciones', () => {
-    const auxiliarLegacy = simulateSupabaseQuery(mockDatabaseQuestions, {
+  test('las preguntas legacy (NULL) NO se muestran a ninguna oposición', () => {
+    const auxiliarResult = simulateSupabaseQuery(mockDatabaseQuestions, {
       is_official_exam: true,
       is_active: true,
       examPositionFilter: EXAM_POSITION_MAP['auxiliar_administrativo'],
-    }).filter(q => q.exam_position === null)
+    })
 
-    const tramitacionLegacy = simulateSupabaseQuery(mockDatabaseQuestions, {
+    const tramitacionResult = simulateSupabaseQuery(mockDatabaseQuestions, {
       is_official_exam: true,
       is_active: true,
       examPositionFilter: EXAM_POSITION_MAP['tramitacion_procesal'],
-    }).filter(q => q.exam_position === null)
+    })
 
-    // Ambas oposiciones deben ver las mismas preguntas legacy
-    expect(auxiliarLegacy.length).toBe(tramitacionLegacy.length)
-    expect(auxiliarLegacy.map(q => q.id).sort()).toEqual(tramitacionLegacy.map(q => q.id).sort())
+    const auxilioResult = simulateSupabaseQuery(mockDatabaseQuestions, {
+      is_official_exam: true,
+      is_active: true,
+      examPositionFilter: EXAM_POSITION_MAP['auxilio_judicial'],
+    })
+
+    // Ninguna oposición debe ver preguntas con exam_position NULL
+    expect(auxiliarResult.some(q => q.exam_position === null)).toBe(false)
+    expect(tramitacionResult.some(q => q.exam_position === null)).toBe(false)
+    expect(auxilioResult.some(q => q.exam_position === null)).toBe(false)
   })
 })
 
 describe('Integración: Formato de filtro Supabase', () => {
-  // Función que genera el filtro OR para Supabase (copiada del código real)
-  function buildSupabaseOrFilter(positionType) {
+  // Función que genera el filtro IN para Supabase (copiada del código real)
+  // ACTUALIZADO: Ya NO incluye exam_position.is.null
+  function buildSupabaseInFilter(positionType) {
     const validPositions = EXAM_POSITION_MAP[positionType] || []
     if (validPositions.length === 0) {
       return null
     }
-    return `exam_position.is.null,exam_position.in.(${validPositions.map(v => `"${v}"`).join(',')})`
+    // Solo filtro IN, sin NULL
+    const escaped = validPositions.map(p => p.replace(/,/g, '\\,')).join(',')
+    return `exam_position.in.(${escaped})`
   }
 
-  test('genera filtro correcto para auxiliar_administrativo', () => {
-    const filter = buildSupabaseOrFilter('auxiliar_administrativo')
+  test('genera filtro correcto para auxiliar_administrativo (SIN NULL)', () => {
+    const filter = buildSupabaseInFilter('auxiliar_administrativo')
 
-    expect(filter).toContain('exam_position.is.null')
+    // NO debe incluir exam_position.is.null
+    expect(filter).not.toContain('exam_position.is.null')
     expect(filter).toContain('exam_position.in.')
-    expect(filter).toContain('"auxiliar_administrativo_estado"')
-    expect(filter).toContain('"auxiliar administrativo del estado"')
+    expect(filter).toContain('auxiliar_administrativo_estado')
+    expect(filter).toContain('auxiliar administrativo del estado')
   })
 
-  test('genera filtro correcto para tramitacion_procesal', () => {
-    const filter = buildSupabaseOrFilter('tramitacion_procesal')
+  test('genera filtro correcto para tramitacion_procesal (SIN NULL)', () => {
+    const filter = buildSupabaseInFilter('tramitacion_procesal')
 
-    expect(filter).toContain('exam_position.is.null')
-    expect(filter).toContain('"tramitacion_procesal"')
-    expect(filter).toContain('"tramitación procesal"')
+    expect(filter).not.toContain('exam_position.is.null')
+    expect(filter).toContain('tramitacion_procesal')
+    expect(filter).toContain('tramitación procesal')
   })
 
-  test('genera filtro correcto para auxilio_judicial', () => {
-    const filter = buildSupabaseOrFilter('auxilio_judicial')
+  test('genera filtro correcto para auxilio_judicial (SIN NULL)', () => {
+    const filter = buildSupabaseInFilter('auxilio_judicial')
 
-    expect(filter).toContain('exam_position.is.null')
-    expect(filter).toContain('"auxilio_judicial"')
-    expect(filter).toContain('"auxilio judicial"')
+    expect(filter).not.toContain('exam_position.is.null')
+    expect(filter).toContain('auxilio_judicial')
+    expect(filter).toContain('auxilio judicial')
   })
 })

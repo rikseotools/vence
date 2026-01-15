@@ -1,7 +1,7 @@
 // lib/api/filtered-questions/queries.ts - Queries Drizzle para preguntas filtradas
 import { getDb } from '@/db/client'
 import { questions, articles, laws, topicScope, topics, tests, testQuestions } from '@/db/schema'
-import { eq, and, inArray, sql, notInArray, desc, or, isNull } from 'drizzle-orm'
+import { eq, and, inArray, sql, notInArray, desc, or } from 'drizzle-orm'
 import type {
   GetFilteredQuestionsRequest,
   GetFilteredQuestionsResponse,
@@ -16,7 +16,7 @@ import type {
 // ============================================
 // Las preguntas oficiales tienen exam_position con valores inconsistentes.
 // Este mapeo permite filtrar preguntas oficiales por oposición del usuario.
-// Si exam_position es NULL, se asume que la pregunta es válida para todas las oposiciones (legacy).
+// Las preguntas sin exam_position NO se muestran (deben categorizarse primero).
 const EXAM_POSITION_MAP: Record<string, string[]> = {
   'auxiliar_administrativo': [
     'auxiliar administrativo del estado',
@@ -28,7 +28,10 @@ const EXAM_POSITION_MAP: Record<string, string[]> = {
     'administrativo',
     'cuerpo_general_administrativo',
     'cuerpo general administrativo de la administración del estado',
-    'cuerpo_gestion_administracion_civil', // A2 - similar temario
+  ],
+  'gestion_administracion_civil': [
+    'cuerpo_gestion_administracion_civil',
+    'cuerpo de gestión de la administración civil del estado',
   ],
   'tramitacion_procesal': [
     'tramitacion_procesal',
@@ -460,18 +463,16 @@ export async function getFilteredQuestions(
           eq(laws.id, mapping.lawId!),
           inArray(articles.articleNumber, mapping.articleNumbers),
           // 🏛️ Filtro de preguntas oficiales POR OPOSICIÓN
+          // Las preguntas sin exam_position NO se incluyen (deben categorizarse primero)
           onlyOfficialQuestions
             ? (() => {
                 const validPositions = getValidExamPositions(positionType)
-                // Si hay posiciones válidas, filtrar: is_official AND (exam_position IS NULL OR exam_position IN validPositions)
+                // Si hay posiciones válidas, filtrar: is_official AND exam_position IN validPositions
                 // Si no hay mapeo para esta oposición, solo filtrar por is_official (comportamiento legacy)
                 if (validPositions.length > 0) {
                   return and(
                     eq(questions.isOfficialExam, true),
-                    or(
-                      isNull(questions.examPosition),
-                      inArray(questions.examPosition, validPositions)
-                    )
+                    inArray(questions.examPosition, validPositions)
                   )
                 }
                 return eq(questions.isOfficialExam, true)
@@ -705,16 +706,14 @@ export async function countFilteredQuestions(
           eq(articles.lawId, mapping.lawId!),
           inArray(articles.articleNumber, mapping.articleNumbers),
           // 🏛️ Filtro de preguntas oficiales POR OPOSICIÓN
+          // Las preguntas sin exam_position NO se incluyen (deben categorizarse primero)
           onlyOfficialQuestions
             ? (() => {
                 const validPositions = getValidExamPositions(positionType)
                 if (validPositions.length > 0) {
                   return and(
                     eq(questions.isOfficialExam, true),
-                    or(
-                      isNull(questions.examPosition),
-                      inArray(questions.examPosition, validPositions)
-                    )
+                    inArray(questions.examPosition, validPositions)
                   )
                 }
                 return eq(questions.isOfficialExam, true)

@@ -6,6 +6,9 @@
  * viera preguntas oficiales de Tramitación Procesal.
  *
  * Solución: Filtrar por exam_position cuando onlyOfficialQuestions = true
+ *
+ * IMPORTANTE (actualizado): Las preguntas con exam_position = NULL NO se muestran
+ * a ninguna oposición. Solo se muestran las que tienen un valor específico.
  */
 
 // ============================================
@@ -31,13 +34,15 @@ const EXAM_POSITION_MAP = {
 }
 
 // Helper para construir filtro (copiado del código real)
+// ACTUALIZADO: Ya NO incluye exam_position.is.null - las preguntas sin categorizar no se muestran
 function buildExamPositionFilter(positionType) {
   const validPositions = EXAM_POSITION_MAP[positionType] || []
   if (validPositions.length === 0) {
     return null
   }
-  // Formato para Supabase .or()
-  return `exam_position.is.null,exam_position.in.(${validPositions.map(v => `"${v}"`).join(',')})`
+  // Formato para Supabase .in() - Solo preguntas con exam_position específico
+  const escaped = validPositions.map(p => p.replace(/,/g, '\\,')).join(',')
+  return `exam_position.in.(${escaped})`
 }
 
 // Mock de preguntas con exam_position
@@ -64,11 +69,12 @@ const createMockOfficialQuestions = () => [
 ]
 
 // Función para filtrar preguntas simulando el comportamiento del filtro
+// ACTUALIZADO: NO incluye preguntas con NULL - solo las que tienen exam_position específico
 function filterByExamPosition(questions, positionType) {
   const validPositions = EXAM_POSITION_MAP[positionType] || []
   return questions.filter(q => {
-    // Incluir si es NULL (legacy) o si está en los valores válidos
-    return q.exam_position === null || validPositions.includes(q.exam_position)
+    // Solo incluir si tiene exam_position Y está en los valores válidos
+    return q.exam_position !== null && validPositions.includes(q.exam_position)
   })
 }
 
@@ -116,23 +122,26 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
   })
 
   describe('buildExamPositionFilter', () => {
-    test('debe generar filtro correcto para auxiliar_administrativo', () => {
+    test('debe generar filtro correcto para auxiliar_administrativo (SIN NULL)', () => {
       const filter = buildExamPositionFilter('auxiliar_administrativo')
-      expect(filter).toContain('exam_position.is.null')
+      // NO debe incluir exam_position.is.null - preguntas sin categorizar no se muestran
+      expect(filter).not.toContain('exam_position.is.null')
       expect(filter).toContain('auxiliar_administrativo_estado')
       expect(filter).not.toContain('tramitacion_procesal')
     })
 
-    test('debe generar filtro correcto para tramitacion_procesal', () => {
+    test('debe generar filtro correcto para tramitacion_procesal (SIN NULL)', () => {
       const filter = buildExamPositionFilter('tramitacion_procesal')
-      expect(filter).toContain('exam_position.is.null')
+      // NO debe incluir exam_position.is.null
+      expect(filter).not.toContain('exam_position.is.null')
       expect(filter).toContain('tramitacion_procesal')
       expect(filter).not.toContain('auxiliar_administrativo')
     })
 
-    test('debe generar filtro correcto para auxilio_judicial', () => {
+    test('debe generar filtro correcto para auxilio_judicial (SIN NULL)', () => {
       const filter = buildExamPositionFilter('auxilio_judicial')
-      expect(filter).toContain('exam_position.is.null')
+      // NO debe incluir exam_position.is.null
+      expect(filter).not.toContain('exam_position.is.null')
       expect(filter).toContain('auxilio_judicial')
     })
 
@@ -145,16 +154,16 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
   describe('Filtrado de preguntas', () => {
     const mockQuestions = createMockOfficialQuestions()
 
-    test('auxiliar_administrativo solo ve sus preguntas + legacy', () => {
+    test('auxiliar_administrativo solo ve sus preguntas (SIN legacy NULL)', () => {
       const filtered = filterByExamPosition(mockQuestions, 'auxiliar_administrativo')
 
       // Debe incluir preguntas de auxiliar
       expect(filtered.some(q => q.id === 'q1')).toBe(true)
       expect(filtered.some(q => q.id === 'q2')).toBe(true)
 
-      // Debe incluir preguntas legacy (NULL)
-      expect(filtered.some(q => q.id === 'q9')).toBe(true)
-      expect(filtered.some(q => q.id === 'q10')).toBe(true)
+      // NO debe incluir preguntas legacy (NULL) - CAMBIO IMPORTANTE
+      expect(filtered.some(q => q.id === 'q9')).toBe(false)
+      expect(filtered.some(q => q.id === 'q10')).toBe(false)
 
       // NO debe incluir preguntas de otras oposiciones
       expect(filtered.some(q => q.id === 'q3')).toBe(false) // tramitacion
@@ -162,59 +171,71 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
       expect(filtered.some(q => q.id === 'q7')).toBe(false) // administrativo
     })
 
-    test('tramitacion_procesal solo ve sus preguntas + legacy', () => {
+    test('tramitacion_procesal solo ve sus preguntas (SIN legacy NULL)', () => {
       const filtered = filterByExamPosition(mockQuestions, 'tramitacion_procesal')
 
       // Debe incluir preguntas de tramitación
       expect(filtered.some(q => q.id === 'q3')).toBe(true)
       expect(filtered.some(q => q.id === 'q4')).toBe(true)
 
-      // Debe incluir preguntas legacy (NULL)
-      expect(filtered.some(q => q.id === 'q9')).toBe(true)
+      // NO debe incluir preguntas legacy (NULL) - CAMBIO IMPORTANTE
+      expect(filtered.some(q => q.id === 'q9')).toBe(false)
 
       // NO debe incluir preguntas de otras oposiciones
       expect(filtered.some(q => q.id === 'q1')).toBe(false) // auxiliar
       expect(filtered.some(q => q.id === 'q5')).toBe(false) // auxilio
     })
 
-    test('auxilio_judicial solo ve sus preguntas + legacy', () => {
+    test('auxilio_judicial solo ve sus preguntas (SIN legacy NULL)', () => {
       const filtered = filterByExamPosition(mockQuestions, 'auxilio_judicial')
 
       // Debe incluir preguntas de auxilio
       expect(filtered.some(q => q.id === 'q5')).toBe(true)
       expect(filtered.some(q => q.id === 'q6')).toBe(true)
 
-      // Debe incluir preguntas legacy (NULL)
-      expect(filtered.some(q => q.id === 'q9')).toBe(true)
+      // NO debe incluir preguntas legacy (NULL) - CAMBIO IMPORTANTE
+      expect(filtered.some(q => q.id === 'q9')).toBe(false)
 
       // NO debe incluir preguntas de otras oposiciones
       expect(filtered.some(q => q.id === 'q1')).toBe(false) // auxiliar
       expect(filtered.some(q => q.id === 'q3')).toBe(false) // tramitacion
     })
 
-    test('cada oposición ve un número diferente de preguntas', () => {
+    test('cada oposición solo ve sus preguntas propias (sin NULL)', () => {
       const auxiliar = filterByExamPosition(mockQuestions, 'auxiliar_administrativo')
       const tramitacion = filterByExamPosition(mockQuestions, 'tramitacion_procesal')
       const auxilio = filterByExamPosition(mockQuestions, 'auxilio_judicial')
 
-      // Auxiliar: 2 propias + 2 NULL = 4
-      expect(auxiliar.length).toBe(4)
+      // Auxiliar: solo 2 propias (SIN las 2 NULL)
+      expect(auxiliar.length).toBe(2)
 
-      // Tramitación: 2 propias + 2 NULL = 4
-      expect(tramitacion.length).toBe(4)
+      // Tramitación: solo 2 propias (SIN las 2 NULL)
+      expect(tramitacion.length).toBe(2)
 
-      // Auxilio: 2 propias + 2 NULL = 4
-      expect(auxilio.length).toBe(4)
+      // Auxilio: solo 2 propias (SIN las 2 NULL)
+      expect(auxilio.length).toBe(2)
     })
 
-    test('sin filtro de oposición ve TODAS las preguntas', () => {
-      // Simulando cuando no hay filtro de exam_position
+    test('preguntas con NULL no se muestran a ninguna oposición', () => {
+      // Las preguntas q9 y q10 tienen exam_position: null
+      const auxiliar = filterByExamPosition(mockQuestions, 'auxiliar_administrativo')
+      const tramitacion = filterByExamPosition(mockQuestions, 'tramitacion_procesal')
+      const auxilio = filterByExamPosition(mockQuestions, 'auxilio_judicial')
+
+      // Ninguna oposición debe ver las preguntas NULL
+      expect(auxiliar.some(q => q.exam_position === null)).toBe(false)
+      expect(tramitacion.some(q => q.exam_position === null)).toBe(false)
+      expect(auxilio.some(q => q.exam_position === null)).toBe(false)
+    })
+
+    test('sin filtro de oposición el mock tiene TODAS las preguntas', () => {
+      // Esto solo verifica el mock, no el filtro
       expect(mockQuestions.length).toBe(10)
     })
   })
 
-  describe('Compatibilidad con valores legacy', () => {
-    test('preguntas con exam_position NULL se incluyen en todas las oposiciones', () => {
+  describe('Exclusión de valores legacy NULL', () => {
+    test('preguntas con exam_position NULL NO se incluyen en ninguna oposición', () => {
       const mockQuestions = [
         { id: 'legacy1', exam_position: null, is_official_exam: true },
         { id: 'legacy2', exam_position: null, is_official_exam: true },
@@ -224,10 +245,24 @@ describe('Filtrado de preguntas oficiales por oposición', () => {
       const tramitacion = filterByExamPosition(mockQuestions, 'tramitacion_procesal')
       const auxilio = filterByExamPosition(mockQuestions, 'auxilio_judicial')
 
-      // Todas las oposiciones deben ver las preguntas legacy
-      expect(auxiliar.length).toBe(2)
-      expect(tramitacion.length).toBe(2)
-      expect(auxilio.length).toBe(2)
+      // NINGUNA oposición debe ver las preguntas sin categorizar
+      // Esto evita que se mezclen preguntas de diferentes oposiciones
+      expect(auxiliar.length).toBe(0)
+      expect(tramitacion.length).toBe(0)
+      expect(auxilio.length).toBe(0)
+    })
+
+    test('preguntas sin exam_position deben ser categorizadas manualmente', () => {
+      // Este test documenta el comportamiento esperado:
+      // Las preguntas con exam_position=NULL NO se muestran a nadie
+      // Deben ser categorizadas en la base de datos antes de ser visibles
+      const preguntaSinCategorizar = { id: 'x', exam_position: null, is_official_exam: true }
+      const todas = [preguntaSinCategorizar]
+
+      // No aparece en ningún filtro
+      expect(filterByExamPosition(todas, 'auxiliar_administrativo').length).toBe(0)
+      expect(filterByExamPosition(todas, 'tramitacion_procesal').length).toBe(0)
+      expect(filterByExamPosition(todas, 'auxilio_judicial').length).toBe(0)
     })
   })
 
