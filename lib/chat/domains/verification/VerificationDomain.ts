@@ -147,18 +147,31 @@ export class VerificationDomain implements ChatDomain {
   }
 
   /**
-   * Detecta si el usuario pregunta sobre la respuesta
+   * Detecta si el usuario pregunta sobre la respuesta de la pregunta actual
+   * IMPORTANTE: Estos patrones deben ser específicos para preguntas sobre la respuesta,
+   * NO para preguntas generales de búsqueda como "¿Qué artículos han caído en exámenes?"
    */
   private asksAboutAnswer(message: string): boolean {
+    // Excluir preguntas que claramente son de búsqueda, no sobre la respuesta
+    const searchPatterns = [
+      /ca[ií]do.*ex[aá]men/i,     // "han caído en exámenes"
+      /m[aá]s\s+importantes?/i,   // "más importantes"
+      /suelen\s+caer/i,          // "suelen caer"
+      /tipos?\s+de\s+preguntas/i, // "tipo de preguntas"
+    ]
+    if (searchPatterns.some(p => p.test(message))) {
+      return false
+    }
+
     const patterns = [
-      /por\s*qu[eé]/i,
+      /por\s*qu[eé]\s+(es|la|esta)/i,  // "por qué es...", "por qué la respuesta..."
       /c[oó]mo\s+se\s+llega/i,
-      /expl[ií]ca/i,
-      /no\s+entiendo/i,
+      /expl[ií]ca(me)?\s+(la|esta|por)/i,  // "explícame la respuesta", no "explica qué es..."
+      /no\s+entiendo\s+(la|esta|por)/i,    // "no entiendo la respuesta"
       /cu[aá]l\s+es\s+la\s+(correcta|respuesta)/i,
-      /d[oó]nde\s+viene/i,
-      /qu[eé]\s+art[ií]culo/i,
-      /en\s+qu[eé]\s+(ley|art[ií]culo)/i,
+      /d[oó]nde\s+viene\s+(esto|la|esta)/i,  // "dónde viene esto"
+      /qu[eé]\s+art[ií]culo\s+(es|regula|dice)/i,  // "qué artículo es", "qué artículo regula esto"
+      /en\s+qu[eé]\s+(ley|art[ií]culo)\s+(est[aá]|viene|se)/i,  // "en qué artículo está"
     ]
 
     return patterns.some(p => p.test(message))
@@ -171,6 +184,18 @@ export class VerificationDomain implements ChatDomain {
   private isShortGenericMessage(message: string): boolean {
     // Si es muy largo, probablemente es una pregunta específica sobre otro tema
     if (message.length > 100) return false
+
+    // Si parece un follow-up de búsqueda (ej: "y del tribunal constitucional"),
+    // NO es un seguimiento de verificación - déjalo para SearchDomain
+    const isSearchFollowUp = /^y\s+(del?|de la|sobre|en)\s+/i.test(message) ||
+                             /^(qué|que)\s+hay\s+(del?|de la|sobre)/i.test(message)
+    if (isSearchFollowUp) {
+      logger.info('VerificationDomain: Rejecting search follow-up pattern, deferring to SearchDomain', {
+        domain: 'verification',
+        message: message.substring(0, 50),
+      })
+      return false
+    }
 
     // Si menciona una ley específica diferente, probablemente es otra consulta
     const mentionsSpecificLaw = /\b(ley\s+\d+|art[ií]culo\s+\d+|CE\b|LOPJ\b|LOTC\b|LEC\b)/i.test(message)

@@ -62,6 +62,32 @@ const chatApiRequestSchema = z.object({
 const FREE_USER_DAILY_LIMIT = 5
 
 /**
+ * Obtener nombre del usuario desde user_profiles
+ */
+async function getUserName(userId: string): Promise<string | undefined> {
+  if (!userId || userId === 'anonymous') return undefined
+
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('nickname, full_name')
+      .eq('id', userId)
+      .single()
+
+    if (error || !data) return undefined
+
+    // Preferir nickname, luego full_name
+    const name = data.nickname || data.full_name
+    if (!name) return undefined
+
+    // Extraer solo el primer nombre
+    return name.split(' ')[0]
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Obtener conteo de mensajes del día para rate limiting
  */
 async function getUserDailyMessageCount(userId: string): Promise<number> {
@@ -220,6 +246,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Obtener nombre del usuario para personalización
+    const userName = data.userId ? await getUserName(data.userId) : undefined
+    logger.info(`👤 User info: userId=${data.userId}, userName=${userName}`, { domain: 'api' })
+
     // Construir contexto de chat
     const context = buildChatContext(
       {
@@ -229,6 +259,7 @@ export async function POST(request: NextRequest) {
       },
       {
         userId: data.userId || 'anonymous',
+        userName,
         userDomain: data.userOposicion || 'auxiliar_administrativo_estado',
         isPremium: data.isPremium,
       }
@@ -239,17 +270,54 @@ export async function POST(request: NextRequest) {
 
     if (data.stream) {
       // Respuesta streaming
-      const stream = await orchestrator.processStream(context)
+      const originalStream = await orchestrator.processStream(context)
 
-      // Log async (no bloquea la respuesta)
-      logChatInteraction({
-        userId: data.userId,
-        message: data.message,
-        questionContextId: data.questionContext?.questionId,
-        questionContextLaw: data.questionContext?.lawName,
-        suggestionUsed: data.suggestionUsed,
-        userOposicion: data.userOposicion,
-      }).catch(err => logger.error('Error logging chat', err))
+      // Crear un stream que capture la respuesta completa para logging
+      let fullResponse = ''
+      const encoder = new TextEncoder()
+      const decoder = new TextDecoder()
+
+      const transformStream = new TransformStream({
+        transform(chunk, controller) {
+          // Pasar el chunk al cliente
+          controller.enqueue(chunk)
+
+          // Acumular para logging
+          const text = decoder.decode(chunk, { stream: true })
+          // Extraer contenido del formato SSE (data: {"content":"..."})
+          const matches = text.matchAll(/data: ({.*})/g)
+          for (const match of matches) {
+            try {
+              const parsed = JSON.parse(match[1])
+              if (parsed.content) {
+                fullResponse += parsed.content
+              }
+            } catch {
+              // Ignorar chunks que no son JSON válido
+            }
+          }
+        },
+        async flush(controller) {
+          // Cuando termina el stream, loguear la respuesta completa
+          const logId = await logChatInteraction({
+            userId: data.userId,
+            message: data.message,
+            response: fullResponse || null,
+            questionContextId: data.questionContext?.questionId,
+            questionContextLaw: data.questionContext?.lawName,
+            suggestionUsed: data.suggestionUsed,
+            userOposicion: data.userOposicion,
+            responseTimeMs: Date.now() - startTime,
+          })
+
+          // Enviar logId para feedback
+          if (logId) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'logId', logId })}\n\n`))
+          }
+        },
+      })
+
+      const stream = originalStream.pipeThrough(transformStream)
 
       return new Response(stream, {
         headers: {

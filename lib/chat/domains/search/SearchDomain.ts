@@ -14,7 +14,7 @@ import {
   isGenericLawQuery,
 } from './ArticleSearchService'
 import { detectQueryPattern } from './PatternMatcher'
-import { detectLawsFromText } from './queries'
+import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse } from './queries'
 
 // ============================================
 // DOMINIO DE BÚSQUEDA
@@ -95,33 +95,56 @@ export class SearchDomain implements ChatDomain {
       lawName: context.questionContext?.lawName,
     })
 
+    // 0. PRIMERO: Detectar y expandir follow-ups ANTES de detectar leyes
+    // Esto es importante porque "y del tribunal constitucional" no debe buscar en LOTC,
+    // sino mantener la ley de la pregunta anterior (CE)
+    const followUpResult = this.detectAndExpandFollowUp(context)
+    const effectiveMessage = followUpResult.expandedMessage
+
+    // 0.5. ESPECIAL: Detectar preguntas sobre exámenes oficiales
+    // Estas preguntas deben consultar hot_articles, no buscar artículos semánticamente
+    const examQueryResult = await this.handleExamQuery(context, effectiveMessage)
+    if (examQueryResult) {
+      return examQueryResult
+    }
+
     // 1. Detectar ley - PRIORIDAD:
-    //    a) Ley mencionada explícitamente por el usuario en su mensaje
-    //    b) Ley de la explicación (lo que el usuario ve)
-    //    c) Ley del artículo vinculado (interno, puede estar mal)
+    //    a) Ley del follow-up (de la conversación anterior)
+    //    b) Ley mencionada explícitamente por el usuario en su mensaje
+    //    c) Ley de la explicación (lo que el usuario ve)
+    //    d) Ley del artículo vinculado (interno, puede estar mal)
     let effectiveLawName = context.questionContext?.lawName
 
-    // Primero: ¿El usuario mencionó una ley específica en su mensaje?
-    const userMentionedLaws = detectMentionedLaws(context.currentMessage)
-    if (userMentionedLaws.length > 0) {
-      // El usuario preguntó explícitamente sobre una ley, usar esa
-      logger.info(`🔎 SearchDomain: User explicitly mentioned law: ${userMentionedLaws[0]}`, {
+    // Si es follow-up, usar la ley de la conversación anterior
+    if (followUpResult.isFollowUp && followUpResult.previousLaw) {
+      logger.info(`🔎 SearchDomain: Using law from previous conversation: ${followUpResult.previousLaw}`, {
         domain: 'search',
       })
-      effectiveLawName = userMentionedLaws[0]
-    } else if (context.questionContext?.explanation) {
-      // Si no, intentar detectar de la explicación
-      const detectedLaws = await detectLawsFromText(context.questionContext.explanation)
-      if (detectedLaws.length > 0 && detectedLaws[0] !== effectiveLawName) {
-        logger.info(`🔎 SearchDomain: Law from explanation: ${effectiveLawName} -> ${detectedLaws[0]}`, {
+      effectiveLawName = followUpResult.previousLaw
+    } else {
+      // No es follow-up - detectar ley del mensaje actual
+      const userMentionedLaws = detectMentionedLaws(effectiveMessage)
+      if (userMentionedLaws.length > 0) {
+        logger.info(`🔎 SearchDomain: User explicitly mentioned law: ${userMentionedLaws[0]}`, {
           domain: 'search',
         })
-        effectiveLawName = detectedLaws[0]
+        effectiveLawName = userMentionedLaws[0]
+      } else if (context.questionContext?.explanation) {
+        const detectedLaws = await detectLawsFromText(context.questionContext.explanation)
+        if (detectedLaws.length > 0 && detectedLaws[0] !== effectiveLawName) {
+          logger.info(`🔎 SearchDomain: Law from explanation: ${effectiveLawName} -> ${detectedLaws[0]}`, {
+            domain: 'search',
+          })
+          effectiveLawName = detectedLaws[0]
+        }
       }
     }
 
-    // 2. Buscar artículos relevantes
-    const searchResult = await searchArticles(context, {
+    // 2. Buscar artículos relevantes (usar mensaje expandido)
+    const searchContext = followUpResult.isFollowUp
+      ? { ...context, currentMessage: effectiveMessage }
+      : context
+    const searchResult = await searchArticles(searchContext, {
       userOposicion: context.userDomain,
       contextLawName: effectiveLawName,
       limit: 10,
@@ -212,11 +235,9 @@ Puedo ayudarte con:
       }
     }
 
-    // Expandir follow-ups como "y del tribunal constitucional" -> "¿cuáles son los plazos del tribunal constitucional?"
-    const expandedMessage = this.expandFollowUpMessage(context)
-
+    // El mensaje ya viene expandido desde handle() si era un follow-up
     // Añadir contexto de artículos al mensaje actual
-    const userMessageWithContext = `${expandedMessage}
+    const userMessageWithContext = `${context.currentMessage}
 
 ---
 ARTÍCULOS RELEVANTES:
@@ -248,13 +269,13 @@ ${articlesContext}`
   ): string {
     let prompt = `Eres un asistente experto en derecho administrativo español, especializado en oposiciones.
 
-Tu objetivo es responder preguntas sobre legislación de forma precisa y clara, SIEMPRE basándote en los artículos proporcionados.
+Tu objetivo es responder preguntas sobre legislación de forma precisa y útil. SIEMPRE debes dar una respuesta al usuario.
 
 ## Directrices:
-1. **Cita siempre la fuente**: Menciona la ley y artículo específico (ej: "Según el Art. 21 de la Ley 39/2015...")
-2. **Sé preciso**: Usa el contenido exacto de los artículos proporcionados
-3. **Sé conciso**: Responde de forma directa sin rodeos
-4. **Si no hay artículos relevantes**: Indica que no encontraste información específica
+1. **SIEMPRE responde**: Nunca digas "no encontré información". Si los artículos proporcionados no cubren la pregunta, usa tu conocimiento experto sobre la materia.
+2. **Prioriza artículos**: Si hay artículos relevantes, cita la fuente (ej: "Según el Art. 21 de la Ley 39/2015...")
+3. **Conocimiento general**: Si no hay artículos específicos, responde con tu conocimiento de derecho español, indicando que es información general.
+4. **Sé conciso**: Responde de forma directa sin rodeos
 5. **Formato**: Usa markdown para estructurar la respuesta (negritas, listas, etc.)
 
 ## Información de búsqueda:
@@ -281,14 +302,107 @@ Tu objetivo es responder preguntas sobre legislación de forma precisa y clara, 
   }
 
   /**
-   * Expande mensajes de follow-up cortos usando contexto de la conversación anterior
-   * Ej: "y del tribunal constitucional" -> "¿Cuáles son los plazos del tribunal constitucional?"
+   * Detecta si es una pregunta sobre exámenes oficiales y responde con datos de hot_articles
+   * Retorna null si no es una pregunta de exámenes
    */
-  private expandFollowUpMessage(context: ChatContext): string {
+  private async handleExamQuery(
+    context: ChatContext,
+    message: string
+  ): Promise<ChatResponse | null> {
+    // Patrones que indican pregunta sobre exámenes oficiales
+    const examPatterns = [
+      /qu[eé]\s+art[ií]culos?\s+.*\b(ca[ií]do|caen|pregunt)/i,
+      /art[ií]culos?\s+.*\b(ex[aá]men|examen|oficial)/i,
+      /\b(ca[ií]do|caen|pregunt).*\bex[aá]men/i,
+      /m[aá]s\s+preguntad[oa]s?\s+(en\s+)?ex[aá]men/i,
+      /\bex[aá]men(es)?\s+oficial(es)?\b.*art[ií]culo/i,
+      /art[ií]culos?\s+importantes?\s+.*ex[aá]men/i,
+      /qu[eé]\s+(tipo|clase)\s+de\s+preguntas?\s+.*\bcaer?\b/i, // "qué tipo de preguntas suelen caer"
+      /preguntas?\s+.*\b(suelen|pueden)\s+caer\b/i,             // "preguntas que suelen caer"
+    ]
+
+    const isExamQuery = examPatterns.some(p => p.test(message))
+    if (!isExamQuery) {
+      return null
+    }
+
+    const startTime = Date.now()
+
+    // Nombres legibles de oposiciones para logs y respuestas
+    const oposicionNames: Record<string, string> = {
+      auxiliar_administrativo_estado: 'Auxiliar Administrativo del Estado',
+      tramitacion_procesal: 'Tramitación Procesal',
+      auxilio_judicial: 'Auxilio Judicial',
+      gestion_procesal: 'Gestión Procesal',
+      cuerpo_general_administrativo: 'Cuerpo General Administrativo',
+    }
+
+    const userOposicionName = context.userDomain
+      ? (oposicionNames[context.userDomain] || context.userDomain)
+      : null
+
+    logger.info(`🔥 SearchDomain: Detected exam query for ${userOposicionName || 'unknown user'}`, {
+      domain: 'search',
+      message: message.substring(0, 50),
+      userDomain: context.userDomain,
+      userOposicionName,
+    })
+
+    // Verificar que tenemos la oposición del usuario
+    if (!context.userDomain) {
+      logger.warn('🔥 SearchDomain: No userDomain available for exam query', { domain: 'search' })
+      return new ChatResponseBuilder()
+        .domain('search')
+        .text('Para mostrarte los artículos más preguntados en exámenes, necesito saber tu oposición. Por favor, configúrala en tu perfil.')
+        .processingTime(Date.now() - startTime)
+        .build()
+    }
+
+    logger.info(`🔥 Buscando hot_articles para oposición: ${userOposicionName}, usuario: ${context.userName || 'sin nombre'}`, { domain: 'search' })
+
+    // Detectar si hay una ley específica mencionada
+    const mentionedLaws = detectMentionedLaws(message)
+    const lawFilter = mentionedLaws.length > 0 ? mentionedLaws[0] : undefined
+
+    // Consultar hot_articles
+    const searchResult = await getHotArticlesByOposicion(context.userDomain, {
+      lawShortName: lawFilter,
+      limit: 10,
+    })
+
+    // Formatear respuesta con nombre del usuario para personalización
+    const response = formatHotArticlesResponse(searchResult, context.userDomain, {
+      lawName: lawFilter,
+      userName: context.userName,
+    })
+
+    return new ChatResponseBuilder()
+      .domain('search')
+      .text(response)
+      .processingTime(Date.now() - startTime)
+      .build()
+  }
+
+  /**
+   * Detecta si el mensaje es un follow-up y lo expande con contexto de la conversación anterior
+   * También extrae la ley usada en la pregunta anterior para mantener continuidad
+   *
+   * Ej: "y del tribunal constitucional" -> {
+   *   isFollowUp: true,
+   *   expandedMessage: "¿Cuáles son los plazos del tribunal constitucional?",
+   *   previousLaw: "CE"
+   * }
+   */
+  private detectAndExpandFollowUp(context: ChatContext): {
+    isFollowUp: boolean
+    expandedMessage: string
+    previousLaw?: string
+  } {
     const msg = context.currentMessage.trim()
+    const defaultResult = { isFollowUp: false, expandedMessage: msg }
 
     // Solo expandir mensajes cortos que parecen follow-ups
-    if (msg.length > 80) return msg
+    if (msg.length > 80) return defaultResult
 
     // Patrones de follow-up
     const followUpPatterns = [
@@ -298,13 +412,24 @@ Tu objetivo es responder preguntas sobre legislación de forma precisa y clara, 
     ]
 
     const isFollowUp = followUpPatterns.some((p) => p.test(msg))
-    if (!isFollowUp) return msg
+    logger.info(`🔎 Follow-up pattern matched: ${isFollowUp} for message: "${msg}"`, { domain: 'search' })
+    if (!isFollowUp) return defaultResult
 
     // Buscar la pregunta anterior del usuario para extraer el tema
+    // IMPORTANTE: context.messages INCLUYE el mensaje actual, así que necesitamos el penúltimo
     const previousUserMessages = context.messages.filter((m) => m.role === 'user')
-    if (previousUserMessages.length === 0) return msg
 
-    const lastUserMessage = previousUserMessages[previousUserMessages.length - 1]?.content || ''
+    logger.info(`🔎 Follow-up check: messages=${context.messages.length}, userMessages=${previousUserMessages.length}`, { domain: 'search' })
+
+    // Necesitamos al menos 2 mensajes de usuario (el actual y el anterior)
+    if (previousUserMessages.length < 2) {
+      logger.info(`🔎 Not enough previous user messages for follow-up expansion`, { domain: 'search' })
+      return defaultResult
+    }
+
+    // Tomar el PENÚLTIMO mensaje del usuario (el anterior al actual)
+    const previousMessage = previousUserMessages[previousUserMessages.length - 2]?.content || ''
+    logger.info(`🔎 Previous user message for topic extraction: "${previousMessage.substring(0, 60)}..."`, { domain: 'search' })
 
     // Extraer el tema de la pregunta anterior (ej: "plazos", "requisitos", "competencias")
     const topicPatterns = [
@@ -315,23 +440,34 @@ Tu objetivo es responder preguntas sobre legislación de forma precisa y clara, 
 
     let topic = ''
     for (const pattern of topicPatterns) {
-      const match = lastUserMessage.match(pattern)
+      const match = previousMessage.match(pattern)
       if (match) {
         topic = match[1]
         break
       }
     }
 
-    if (!topic) return msg
+    if (!topic) {
+      logger.info(`🔎 Could not extract topic from previous message`, { domain: 'search' })
+      return defaultResult
+    }
+
+    // Extraer la ley de la pregunta anterior para mantener continuidad
+    const previousLaws = detectMentionedLaws(previousMessage)
+    const previousLaw = previousLaws.length > 0 ? previousLaws[0] : undefined
 
     // Expandir el follow-up con el tema
     // "y del tribunal constitucional" -> "¿Cuáles son los plazos del tribunal constitucional?"
     const expandedPart = msg.replace(/^y\s+/i, '').replace(/^\?+/, '')
     const expanded = `¿Cuáles son los ${topic} ${expandedPart}?`
 
-    logger.info(`🔎 SearchDomain: Expanded follow-up: "${msg}" -> "${expanded}"`, { domain: 'search' })
+    logger.info(`🔎 SearchDomain: Expanded follow-up: "${msg}" -> "${expanded}" (previousLaw: ${previousLaw || 'none'})`, { domain: 'search' })
 
-    return expanded
+    return {
+      isFollowUp: true,
+      expandedMessage: expanded,
+      previousLaw,
+    }
   }
 }
 

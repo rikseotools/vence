@@ -7,6 +7,7 @@ import { logger } from '../shared/logger'
 
 interface BuildContextOptions {
   userId: string
+  userName?: string
   userDomain: string
   isPremium?: boolean
 }
@@ -47,6 +48,7 @@ export function buildChatContext(
   const context: ChatContext = {
     request,
     userId: options.userId,
+    userName: options.userName,
     userDomain: options.userDomain,
     isPremium: options.isPremium ?? request.isPremium ?? false,
     questionContext: request.questionContext,

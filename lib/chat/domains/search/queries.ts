@@ -782,3 +782,222 @@ export async function findArticleInLaw(
     lawName: effectiveLaw.name,
   }
 }
+
+// ============================================
+// HOT ARTICLES (ARTÍCULOS DE EXÁMENES OFICIALES)
+// ============================================
+
+export interface HotArticleResult {
+  articleId: string
+  articleNumber: string
+  lawName: string
+  title: string | null
+  content: string | null
+  totalOfficialAppearances: number
+  uniqueExamsCount: number
+  priorityLevel: string
+  hotnessScore: number
+}
+
+/**
+ * Resultado de búsqueda de hot articles con metadata
+ */
+export interface HotArticlesSearchResult {
+  articles: HotArticleResult[]
+  sourceOposicion: string | null  // La oposición de donde vienen los datos
+  isFromUserOposicion: boolean    // true si son datos de la oposición del usuario
+}
+
+/**
+ * Obtiene los artículos más preguntados en exámenes oficiales
+ * Filtra por oposición del usuario y opcionalmente por ley
+ * Si no hay datos para la oposición del usuario, busca en oposiciones generales
+ */
+export async function getHotArticlesByOposicion(
+  userOposicion: string,
+  options: {
+    lawShortName?: string
+    limit?: number
+  } = {}
+): Promise<HotArticlesSearchResult> {
+  const { lawShortName, limit = 10 } = options
+
+  logger.info(`🔥 getHotArticlesByOposicion: oposicion=${userOposicion}, law=${lawShortName || 'all'}`, { domain: 'search' })
+
+  // Helper para ejecutar query
+  const executeQuery = async (targetOposicion: string | null) => {
+    let query = supabase
+      .from('hot_articles')
+      .select(`
+        article_id,
+        article_number,
+        law_name,
+        target_oposicion,
+        total_official_appearances,
+        unique_exams_count,
+        priority_level,
+        hotness_score
+      `)
+      .order('hotness_score', { ascending: false })
+      .limit(limit)
+
+    if (targetOposicion) {
+      query = query.eq('target_oposicion', targetOposicion)
+    }
+
+    if (lawShortName) {
+      query = query.eq('law_name', lawShortName)
+    }
+
+    return query
+  }
+
+  // 1. Primero intentar con la oposición del usuario
+  const { data: hotArticles, error } = await executeQuery(userOposicion)
+
+  if (error) {
+    logger.error('Error fetching hot_articles', error, { domain: 'search' })
+    return { articles: [], sourceOposicion: null, isFromUserOposicion: false }
+  }
+
+  // Si encontramos datos para la oposición del usuario, usarlos
+  if (hotArticles && hotArticles.length > 0) {
+    logger.info(`🔥 Found ${hotArticles.length} hot articles for ${userOposicion}`, { domain: 'search' })
+    const articles = await enrichHotArticles(hotArticles)
+    return { articles, sourceOposicion: userOposicion, isFromUserOposicion: true }
+  }
+
+  logger.info(`🔥 No hot articles found for ${userOposicion}${lawShortName ? ` in ${lawShortName}` : ''}, trying fallback`, { domain: 'search' })
+
+  // 2. Fallback: buscar en oposiciones similares (auxiliar_administrativo_estado como default general)
+  const fallbackOposiciones = ['auxiliar_administrativo_estado', 'cuerpo_general_administrativo']
+
+  for (const fallbackOposicion of fallbackOposiciones) {
+    const { data: fallbackArticles, error: fallbackError } = await executeQuery(fallbackOposicion)
+
+    if (!fallbackError && fallbackArticles && fallbackArticles.length > 0) {
+      logger.info(`🔥 Using fallback data from ${fallbackOposicion}: ${fallbackArticles.length} articles`, { domain: 'search' })
+      const articles = await enrichHotArticles(fallbackArticles)
+      return { articles, sourceOposicion: fallbackOposicion, isFromUserOposicion: false }
+    }
+  }
+
+  return { articles: [], sourceOposicion: null, isFromUserOposicion: false }
+}
+
+/**
+ * Enriquece los hot articles con contenido de la tabla articles
+ */
+async function enrichHotArticles(hotArticles: Array<{
+  article_id: string
+  article_number: string
+  law_name: string
+  total_official_appearances: number
+  unique_exams_count: number
+  priority_level: string
+  hotness_score: number
+}>): Promise<HotArticleResult[]> {
+  const articleIds = hotArticles.map(h => h.article_id)
+  const { data: articlesData } = await supabase
+    .from('articles')
+    .select('id, title, content')
+    .in('id', articleIds)
+
+  const articleContentMap: Record<string, { title: string | null; content: string | null }> = {}
+  articlesData?.forEach(a => {
+    articleContentMap[a.id] = { title: a.title, content: a.content }
+  })
+
+  return hotArticles.map(h => ({
+    articleId: h.article_id,
+    articleNumber: h.article_number,
+    lawName: h.law_name,
+    title: articleContentMap[h.article_id]?.title || null,
+    content: articleContentMap[h.article_id]?.content || null,
+    totalOfficialAppearances: h.total_official_appearances,
+    uniqueExamsCount: h.unique_exams_count,
+    priorityLevel: h.priority_level,
+    hotnessScore: h.hotness_score,
+  }))
+}
+
+/**
+ * Formatea los hot articles para mostrar al usuario
+ */
+export function formatHotArticlesResponse(
+  searchResult: HotArticlesSearchResult,
+  userOposicion: string,
+  options: {
+    lawName?: string
+    userName?: string
+  } = {}
+): string {
+  const { articles: hotArticles, sourceOposicion, isFromUserOposicion } = searchResult
+  const { lawName, userName } = options
+
+  // Nombre legible de las oposiciones
+  const oposicionNames: Record<string, string> = {
+    auxiliar_administrativo_estado: 'Auxiliar Administrativo del Estado',
+    tramitacion_procesal: 'Tramitación Procesal',
+    auxilio_judicial: 'Auxilio Judicial',
+    gestion_procesal: 'Gestión Procesal',
+    cuerpo_general_administrativo: 'Cuerpo General Administrativo',
+    cuerpo_gestion_administracion_civil: 'Cuerpo de Gestión de la Administración Civil',
+  }
+
+  const userOposicionName = oposicionNames[userOposicion] || userOposicion
+  const greeting = userName ? `${userName}, ` : ''
+
+  if (hotArticles.length === 0) {
+    return `${greeting}he visto que estás estudiando **${userOposicionName}**, pero en Vence todavía no tenemos datos de exámenes oficiales${lawName ? ` de ${lawName}` : ''} para esta oposición.\n\n💡 *Los artículos de la Constitución que suelen preguntarse están relacionados con derechos fundamentales (arts. 14-29), organización del Estado y procedimientos.*`
+  }
+
+  const sourceOposicionName = sourceOposicion ? (oposicionNames[sourceOposicion] || sourceOposicion) : ''
+
+  let response = ''
+
+  // Indicar si los datos son de otra oposición con mensaje personalizado
+  if (!isFromUserOposicion && sourceOposicion) {
+    response += `${greeting}he visto que estás estudiando **${userOposicionName}**, pero en Vence todavía no tenemos datos específicos de exámenes oficiales para esta oposición.\n\n`
+    response += `Te muestro los datos de **${sourceOposicionName}** que pueden ser útiles como referencia:\n\n`
+  } else {
+    response += `${greeting}aquí tienes los artículos más preguntados en exámenes oficiales de **${sourceOposicionName}**:\n\n`
+  }
+
+  if (lawName) {
+    response += `**Ley:** ${lawName}\n\n`
+  }
+
+  // Agrupar por ley
+  const byLaw: Record<string, HotArticleResult[]> = {}
+  hotArticles.forEach(h => {
+    if (!byLaw[h.lawName]) byLaw[h.lawName] = []
+    byLaw[h.lawName].push(h)
+  })
+
+  for (const [law, articles] of Object.entries(byLaw)) {
+    response += `### ${law}\n`
+    articles.forEach((a, i) => {
+      const priorityEmoji = a.priorityLevel === 'critical' ? '🔴' : a.priorityLevel === 'high' ? '🟠' : '🟡'
+      const examText = `${a.totalOfficialAppearances} pregunta${a.totalOfficialAppearances > 1 ? 's' : ''}`
+      response += `${i + 1}. **Art. ${a.articleNumber}** ${priorityEmoji} (${examText})\n`
+
+      // Mostrar título si existe
+      if (a.title) {
+        response += `   📌 *${a.title}*\n`
+      }
+
+      // Mostrar resumen del contenido (primeras 150 caracteres)
+      if (a.content) {
+        const summary = a.content.substring(0, 150).replace(/\n/g, ' ').trim()
+        const ellipsis = a.content.length > 150 ? '...' : ''
+        response += `   → ${summary}${ellipsis}\n`
+      }
+      response += `\n`
+    })
+  }
+
+  response += `💡 *Datos de exámenes oficiales anteriores.*`
+
+  return response
+}

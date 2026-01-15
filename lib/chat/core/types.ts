@@ -109,6 +109,7 @@ export interface ChatContext {
 
   // Usuario
   userId: string
+  userName?: string
   userDomain: string
   isPremium: boolean
 
