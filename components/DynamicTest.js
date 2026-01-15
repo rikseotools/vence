@@ -62,6 +62,13 @@ async function validateAnswerSecure(questionId, userAnswer, localCorrectAnswer) 
   }
 }
 
+// Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
+function answerToLetter(index) {
+  if (index === null || index === undefined) return '?'
+  const letters = ['A', 'B', 'C', 'D']
+  return letters[index] || '?'
+}
+
 export default function DynamicTest({ titulo, dificultad }) {
   const { isPremium } = useAuth()
   const [loading, setLoading] = useState(true)
@@ -516,10 +523,12 @@ export default function DynamicTest({ titulo, dificultad }) {
                       {/* Botón para abrir IA */}
                       <button
                         onClick={() => {
+                          const questionText = currentQ?.question || ''
+                          const correctLetter = answerToLetter(verifiedCorrectAnswer)
                           window.dispatchEvent(new CustomEvent('openAIChat', {
                             detail: {
-                              message: 'Explícame la respuesta correcta',
-                              suggestion: 'Explícame la respuesta correcta'
+                              message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                              suggestion: 'explicar_respuesta'
                             }
                           }))
                         }}

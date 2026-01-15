@@ -31,6 +31,13 @@ import dynamic from 'next/dynamic'
 // Carga dinámica del ShareQuestion para evitar problemas de SSR
 const ShareQuestion = dynamic(() => import('@/components/ShareQuestion'), { ssr: false })
 
+// Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
+function answerToLetter(index: number | null | undefined): string {
+  if (index === null || index === undefined) return '?'
+  const letters = ['A', 'B', 'C', 'D']
+  return letters[index] || '?'
+}
+
 // ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
@@ -673,10 +680,12 @@ export default function TestLayoutV2({
                       </h4>
                       <button
                         onClick={() => {
+                          const questionText = currentQ?.question_text || ''
+                          const correctLetter = answerToLetter(verifiedCorrectAnswer)
                           window.dispatchEvent(new CustomEvent('openAIChat', {
                             detail: {
-                              message: 'Explícame la respuesta correcta',
-                              suggestion: 'Explícame la respuesta correcta'
+                              message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                              suggestion: 'explicar_respuesta'
                             }
                           }))
                         }}
@@ -705,10 +714,12 @@ export default function TestLayoutV2({
                     {/* Botón al final de la explicación */}
                     <button
                       onClick={() => {
+                        const questionText = currentQ?.question_text || ''
+                        const correctLetter = answerToLetter(verifiedCorrectAnswer)
                         window.dispatchEvent(new CustomEvent('openAIChat', {
                           detail: {
-                            message: 'Explícame la respuesta correcta',
-                            suggestion: 'Explícame la respuesta correcta'
+                            message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                            suggestion: 'explicar_respuesta'
                           }
                         }))
                       }}

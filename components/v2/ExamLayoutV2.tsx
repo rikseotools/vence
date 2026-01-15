@@ -20,6 +20,13 @@ import { getMotivationalMessage, isLegalArticle } from './types'
 // UTILIDADES
 // ============================================
 
+// Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
+function answerToLetter(index: number | null | undefined): string {
+  if (index === null || index === undefined) return '?'
+  const letters = ['A', 'B', 'C', 'D']
+  return letters[index] || '?'
+}
+
 function formatElapsedTime(seconds: number): string {
   const hours = Math.floor(seconds / 3600)
   const mins = Math.floor((seconds % 3600) / 60)
@@ -469,10 +476,13 @@ export default function ExamLayoutV2({
                     {/* Botón para abrir IA */}
                     <button
                       onClick={() => {
+                        const questionText = question?.question_text || ''
+                        const correctAnswer = validatedResults?.results?.[index]?.correctIndex
+                        const correctLetter = answerToLetter(correctAnswer)
                         window.dispatchEvent(new CustomEvent('openAIChat', {
                           detail: {
-                            message: 'Explícame la respuesta correcta',
-                            suggestion: 'Explícame la respuesta correcta'
+                            message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                            suggestion: 'explicar_respuesta'
                           }
                         }))
                       }}

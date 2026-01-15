@@ -38,6 +38,13 @@ import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
 import { useUserOposicion } from './useUserOposicion'
 
+// Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
+function answerToLetter(index) {
+  if (index === null || index === undefined) return '?'
+  const letters = ['A', 'B', 'C', 'D']
+  return letters[index] || '?'
+}
+
 // 🏛️ Helper para verificar si una pregunta oficial es de la oposición del usuario
 // MEJORADO: Usa exam_position (estructurado) como primera opción, fallback a exam_source (texto libre)
 function isOfficialForUserOposicion(examSource, userOposicionSlug, examPosition = null) {
@@ -1995,10 +2002,12 @@ export default function TestLayout({
                           <h4 className="font-bold text-blue-800 dark:text-blue-300">📖 Explicación:</h4>
                           <button
                             onClick={() => {
+                              const questionText = currentQ?.question_text || currentQ?.question || ''
+                              const correctLetter = answerToLetter(verifiedCorrectAnswer)
                               window.dispatchEvent(new CustomEvent('openAIChat', {
                                 detail: {
-                                  message: 'Explícame la respuesta correcta',
-                                  suggestion: 'Explícame la respuesta correcta'
+                                  message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                                  suggestion: 'explicar_respuesta'
                                 }
                               }))
                             }}
@@ -2016,10 +2025,12 @@ export default function TestLayout({
                         {/* 🤖 Botón también al final de la explicación */}
                         <button
                           onClick={() => {
+                            const questionText = currentQ?.question_text || currentQ?.question || ''
+                            const correctLetter = answerToLetter(verifiedCorrectAnswer)
                             window.dispatchEvent(new CustomEvent('openAIChat', {
                               detail: {
-                                message: 'Explícame la respuesta correcta',
-                                suggestion: 'Explícame la respuesta correcta'
+                                message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                                suggestion: 'explicar_respuesta'
                               }
                             }))
                           }}
