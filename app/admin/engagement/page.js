@@ -43,29 +43,29 @@ export default function EngagementPage() {
           error: recentTestsError
         })
 
-        // Usar los datos RPC si están disponibles
-        const useRPCData = metricsRPC && metricsRPC.length > 0 && !metricsError
+        // NO usar RPC para DAU/MAU - calcular con started_at (usuario activo = inició test)
+        // El RPC usa completed_at que es incorrecto
 
-        // Obtener todos los tests completados - Ordenados por fecha (fallback)
-        const { data: completedTests, error: testsError } = await supabase
+        // Obtener todos los tests INICIADOS - Ordenados por fecha
+        // Usuario activo = usuario que inició al menos 1 test (no necesita completarlo)
+        const { data: activeTests, error: testsError } = await supabase
           .from('tests')
-          .select('user_id, completed_at, is_completed')
-          .eq('is_completed', true)
-          .not('completed_at', 'is', null)
-          .order('completed_at', { ascending: false }) // Más recientes primero
-          .limit(5000) // Obtener hasta 5000 tests más recientes
-        
+          .select('user_id, started_at, is_completed')
+          .not('started_at', 'is', null)
+          .order('started_at', { ascending: false }) // Más recientes primero
+          .limit(10000) // Obtener hasta 10000 tests más recientes
+
         if (testsError) {
           console.error('❌ Error en tests:', testsError)
           throw testsError
         }
-        
+
         console.log('🧪 Tests query result (admin):', {
-          count: completedTests?.length || 0,
+          count: activeTests?.length || 0,
           error: testsError,
-          sampleTests: completedTests?.slice(0, 3),
-          oldestTest: completedTests?.length > 0 ? completedTests[completedTests.length - 1].completed_at : 'No tests',
-          newestTest: completedTests?.length > 0 ? completedTests[0].completed_at : 'No tests'
+          sampleTests: activeTests?.slice(0, 3),
+          oldestTest: activeTests?.length > 0 ? activeTests[activeTests.length - 1].started_at : 'No tests',
+          newestTest: activeTests?.length > 0 ? activeTests[0].started_at : 'No tests'
         })
 
         // Obtener usuarios registrados - Sin límite usando order
@@ -89,84 +89,59 @@ export default function EngagementPage() {
         const totalUsers = users.length
         const now = new Date()
 
-        // Si tenemos datos RPC, úsalos directamente
+        // Filtrar tests válidos (existen usuarios)
+        const existingUserIds = new Set(users.map(u => u.id))
+        const validActiveTests = activeTests.filter(t => existingUserIds.has(t.user_id))
+
+        // 📊 CÁLCULO DAU/MAU - Siempre calcular con started_at (usuario activo = inició test)
         let averageDAU, MAU, dauMauRatio, registeredActiveRatio
 
-        if (useRPCData && metricsRPC[0]) {
-          const metrics = metricsRPC[0]
-          averageDAU = parseInt(metrics.dau) || 0
-          MAU = parseInt(metrics.mau) || 0
-          dauMauRatio = parseInt(metrics.dau_mau_ratio) || 0
-          registeredActiveRatio = parseInt(metrics.activation_rate) || 0
+        // Tests últimos 7 días (para calcular DAU promedio)
+        const last7DaysTests = validActiveTests.filter(t => {
+          const testDate = new Date(t.started_at)
+          const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          return testDate >= sevenDaysAgo
+        })
 
-          console.log('✅ Usando métricas RPC:', {
-            averageDAU,
-            MAU,
-            dauMauRatio,
-            registeredActiveRatio,
-            totalTests: metrics.total_tests,
-            last30DaysTests: metrics.last_30_days_tests
-          })
+        const dailyActiveUsers = {}
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+          const dateKey = date.toISOString().split('T')[0]
+          dailyActiveUsers[dateKey] = new Set()
         }
 
-        // Filtrar tests válidos (existen usuarios) - para cálculos de detalle
-        const existingUserIds = new Set(users.map(u => u.id))
-        const validCompletedTests = useRPCData && recentTestsRPC ? recentTestsRPC : completedTests.filter(t => existingUserIds.has(t.user_id))
-
-        // 📊 CÁLCULO DAU/MAU - Solo si no tenemos datos RPC
-        let last30DaysTests = [] // Inicializar como array vacío
-        let last7DaysTests = [] // Declarar aquí para que esté disponible siempre
-
-        if (!useRPCData || !metricsRPC[0]) {
-          last7DaysTests = validCompletedTests.filter(t => {
-            const testDate = new Date(t.completed_at)
-            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-            return testDate >= sevenDaysAgo
-          })
-
-          const dailyActiveUsers = {}
-          for (let i = 0; i < 7; i++) {
-            const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
-            const dateKey = date.toISOString().split('T')[0]
-            dailyActiveUsers[dateKey] = new Set()
+        last7DaysTests.forEach(test => {
+          const testDate = new Date(test.started_at)
+          const dateKey = testDate.toISOString().split('T')[0]
+          if (dailyActiveUsers[dateKey]) {
+            dailyActiveUsers[dateKey].add(test.user_id)
           }
+        })
 
-          last7DaysTests.forEach(test => {
-            const testDate = new Date(test.completed_at)
-            const dateKey = testDate.toISOString().split('T')[0]
-            if (dailyActiveUsers[dateKey]) {
-              dailyActiveUsers[dateKey].add(test.user_id)
-            }
-          })
+        const dailyActiveUsersArray = Object.values(dailyActiveUsers).map(set => set.size)
+        averageDAU = dailyActiveUsersArray.length > 0 ?
+          Math.round(dailyActiveUsersArray.reduce((sum, dau) => sum + dau, 0) / dailyActiveUsersArray.length) : 0
 
-          const dailyActiveUsersArray = Object.values(dailyActiveUsers).map(set => set.size)
-          averageDAU = dailyActiveUsersArray.length > 0 ?
-            Math.round(dailyActiveUsersArray.reduce((sum, dau) => sum + dau, 0) / dailyActiveUsersArray.length) : 0
+        // MAU = Usuarios que iniciaron al menos 1 test en los últimos 30 días
+        const last30DaysTests = validActiveTests.filter(t => {
+          const testDate = new Date(t.started_at)
+          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          return testDate >= thirtyDaysAgo
+        })
+        MAU = new Set(last30DaysTests.map(t => t.user_id)).size
 
-          // MAU = Usuarios activos en los últimos 30 días
-          last30DaysTests = validCompletedTests.filter(t => {
-            const testDate = new Date(t.completed_at)
-            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            return testDate >= thirtyDaysAgo
-          })
-          MAU = new Set(last30DaysTests.map(t => t.user_id)).size
+        dauMauRatio = MAU > 0 ? Math.round((averageDAU / MAU) * 100) : 0
+        registeredActiveRatio = totalUsers > 0 ? Math.round((MAU / totalUsers) * 100) : 0
 
-          dauMauRatio = MAU > 0 ? Math.round((averageDAU / MAU) * 100) : 0
-          registeredActiveRatio = totalUsers > 0 ? Math.round((MAU / totalUsers) * 100) : 0
-
-          console.log('⚠️ Usando cálculo manual (fallback):', {
-            totalTests: completedTests?.length,
-            validTests: validCompletedTests.length,
-            last7DaysTests: last7DaysTests.length,
-            last30DaysTests: last30DaysTests.length,
-            averageDAU,
-            MAU,
-            totalUsers
-          })
-        } else {
-          // Si tenemos datos RPC, usar esos para last30DaysTests
-          last30DaysTests = validCompletedTests
-        }
+        console.log('📊 Métricas calculadas con started_at (usuario activo = inició test):', {
+          totalTests: activeTests?.length,
+          validTests: validActiveTests.length,
+          last7DaysTests: last7DaysTests.length,
+          last30DaysTests: last30DaysTests.length,
+          averageDAU,
+          MAU,
+          totalUsers
+        })
 
         // 📊 DATOS HISTÓRICOS - Buscar el período con datos más reciente
         const dauMauHistory = []
@@ -176,8 +151,8 @@ export default function EngagementPage() {
         // Calcular MAU (últimos 30 días desde hoy)
         const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
         const fixedMAU = new Set(
-          validCompletedTests
-            .filter(t => new Date(t.completed_at) >= thirtyDaysAgo)
+          validActiveTests
+            .filter(t => new Date(t.started_at) >= thirtyDaysAgo)
             .map(t => t.user_id)
         ).size
 
@@ -188,10 +163,10 @@ export default function EngagementPage() {
           const dateKey = date.toISOString().split('T')[0]
 
           const dayActiveUsers = new Set(
-            validCompletedTests
+            validActiveTests
               .filter(t => {
-                if (!t.completed_at) return false
-                const testDate = new Date(t.completed_at)
+                if (!t.started_at) return false
+                const testDate = new Date(t.started_at)
                 const testDateKey = testDate.toISOString().split('T')[0]
                 return testDateKey === dateKey
               })
@@ -318,8 +293,8 @@ export default function EngagementPage() {
             // Day 1: ¿Hizo test el día después del registro?
             const day1Start = new Date(registrationDate.getTime() + 24 * 60 * 60 * 1000)
             const day1End = new Date(registrationDate.getTime() + 2 * 24 * 60 * 60 * 1000)
-            const hasDay1Activity = validCompletedTests.some(t => {
-              const testDate = new Date(t.completed_at)
+            const hasDay1Activity = validActiveTests.some(t => {
+              const testDate = new Date(t.started_at)
               return t.user_id === user.id && testDate >= day1Start && testDate < day1End
             })
             if (hasDay1Activity) day1Retained++
@@ -327,8 +302,8 @@ export default function EngagementPage() {
             // Day 7: ¿Hizo test alrededor del día 7? (días 6-8)
             const day7Start = new Date(registrationDate.getTime() + 6 * 24 * 60 * 60 * 1000)
             const day7End = new Date(registrationDate.getTime() + 9 * 24 * 60 * 60 * 1000)
-            const hasDay7Activity = validCompletedTests.some(t => {
-              const testDate = new Date(t.completed_at)
+            const hasDay7Activity = validActiveTests.some(t => {
+              const testDate = new Date(t.started_at)
               return t.user_id === user.id && testDate >= day7Start && testDate < day7End
             })
             if (hasDay7Activity) day7Retained++
@@ -336,8 +311,8 @@ export default function EngagementPage() {
             // Day 30: ¿Hizo test alrededor del día 30? (días 27-33)
             const day30Start = new Date(registrationDate.getTime() + 27 * 24 * 60 * 60 * 1000)
             const day30End = new Date(registrationDate.getTime() + 33 * 24 * 60 * 60 * 1000)
-            const hasDay30Activity = validCompletedTests.some(t => {
-              const testDate = new Date(t.completed_at)
+            const hasDay30Activity = validActiveTests.some(t => {
+              const testDate = new Date(t.started_at)
               return t.user_id === user.id && testDate >= day30Start && testDate < day30End
             })
             if (hasDay30Activity) day30Retained++
@@ -373,7 +348,7 @@ export default function EngagementPage() {
           // Días activos por mes para cada usuario activo
           const userDaysActive = {}
           last30DaysTests.forEach(test => {
-            const testDate = new Date(test.completed_at).toISOString().split('T')[0]
+            const testDate = new Date(test.started_at).toISOString().split('T')[0]
             if (!userDaysActive[test.user_id]) {
               userDaysActive[test.user_id] = new Set()
             }
@@ -392,9 +367,9 @@ export default function EngagementPage() {
           // Calcular longest streak promedio
           const userStreaks = []
           Object.keys(userDaysActive).forEach(userId => {
-            const userTests = validCompletedTests
+            const userTests = validActiveTests
               .filter(t => t.user_id === userId)
-              .map(t => new Date(t.completed_at))
+              .map(t => new Date(t.started_at))
               .sort((a, b) => a - b)
 
             let longestStreak = 0
@@ -454,7 +429,7 @@ export default function EngagementPage() {
           
           activeUserIds.forEach(userId => {
             const userTests = last30DaysTests.filter(t => t.user_id === userId)
-            const uniqueDays = new Set(userTests.map(t => new Date(t.completed_at).toISOString().split('T')[0]))
+            const uniqueDays = new Set(userTests.map(t => new Date(t.started_at).toISOString().split('T')[0]))
             
             const daysActiveInMonth = uniqueDays.size
             const avgDaysPerWeek = (daysActiveInMonth / 30) * 7
@@ -495,21 +470,21 @@ export default function EngagementPage() {
           const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 0)
           
           // Tests en ese mes
-          const monthTests = validCompletedTests.filter(t => {
-            const testDate = new Date(t.completed_at)
+          const monthTests = validActiveTests.filter(t => {
+            const testDate = new Date(t.started_at)
             return testDate >= monthStart && testDate <= monthEnd
           })
-          
+
           // Usuarios activos en ese mes
           const monthActiveUsers = new Set(monthTests.map(t => t.user_id)).size
-          
+
           // Calcular métricas del mes
           const testsPerUser = monthActiveUsers > 0 ? Math.round((monthTests.length / monthActiveUsers) * 10) / 10 : 0
-          
+
           // Días activos promedio
           const userDaysActive = {}
           monthTests.forEach(test => {
-            const testDate = new Date(test.completed_at).toISOString().split('T')[0]
+            const testDate = new Date(test.started_at).toISOString().split('T')[0]
             if (!userDaysActive[test.user_id]) {
               userDaysActive[test.user_id] = new Set()
             }
@@ -535,19 +510,19 @@ export default function EngagementPage() {
           const monthEnd = new Date(now.getFullYear(), now.getMonth() - monthOffset + 1, 0)
           
           // Tests en ese mes
-          const monthTests = validCompletedTests.filter(t => {
-            const testDate = new Date(t.completed_at)
+          const monthTests = validActiveTests.filter(t => {
+            const testDate = new Date(t.started_at)
             return testDate >= monthStart && testDate <= monthEnd
           })
-          
+
           const monthActiveUsers = new Set(monthTests.map(t => t.user_id))
           let powerUsers = 0
           let weeklyActiveUsers = 0
-          
+
           if (monthActiveUsers.size > 0) {
             monthActiveUsers.forEach(userId => {
               const userTests = monthTests.filter(t => t.user_id === userId)
-              const uniqueDays = new Set(userTests.map(t => new Date(t.completed_at).toISOString().split('T')[0]))
+              const uniqueDays = new Set(userTests.map(t => new Date(t.started_at).toISOString().split('T')[0]))
               
               const daysInMonth = new Date(monthEnd.getFullYear(), monthEnd.getMonth() + 1, 0).getDate()
               const avgDaysPerWeek = (uniqueDays.size / daysInMonth) * 7
@@ -600,30 +575,30 @@ export default function EngagementPage() {
           
           periodUsers.forEach(user => {
             const registrationDate = new Date(user.created_at)
-            
+
             // Day 1: ¿Hizo test entre día 1-2 después del registro?
             const day1Start = new Date(registrationDate.getTime() + 24 * 60 * 60 * 1000)
             const day1End = new Date(registrationDate.getTime() + 2 * 24 * 60 * 60 * 1000)
-            const hasDay1Activity = validCompletedTests.some(t => {
-              const testDate = new Date(t.completed_at)
+            const hasDay1Activity = validActiveTests.some(t => {
+              const testDate = new Date(t.started_at)
               return t.user_id === user.id && testDate >= day1Start && testDate <= day1End
             })
             if (hasDay1Activity) day1Retained++
-            
+
             // Day 7: ¿Hizo test entre día 2-7 después del registro?
             const day7Start = new Date(registrationDate.getTime() + 2 * 24 * 60 * 60 * 1000)
             const day7End = new Date(registrationDate.getTime() + 7 * 24 * 60 * 60 * 1000)
-            const hasDay7Activity = validCompletedTests.some(t => {
-              const testDate = new Date(t.completed_at)
+            const hasDay7Activity = validActiveTests.some(t => {
+              const testDate = new Date(t.started_at)
               return t.user_id === user.id && testDate >= day7Start && testDate <= day7End
             })
             if (hasDay7Activity) day7Retained++
-            
+
             // Day 30: ¿Hizo test entre día 7-30 después del registro?
             const day30Start = new Date(registrationDate.getTime() + 7 * 24 * 60 * 60 * 1000)
             const day30End = new Date(registrationDate.getTime() + 30 * 24 * 60 * 60 * 1000)
-            const hasDay30Activity = validCompletedTests.some(t => {
-              const testDate = new Date(t.completed_at)
+            const hasDay30Activity = validActiveTests.some(t => {
+              const testDate = new Date(t.started_at)
               return t.user_id === user.id && testDate >= day30Start && testDate <= day30End
             })
             if (hasDay30Activity) day30Retained++
@@ -684,26 +659,26 @@ export default function EngagementPage() {
           apiMauStats,
           dauMauHistoryLength: dauMauHistory.length,
           sampleDay: dauMauHistory[dauMauHistory.length - 1],
-          validCompletedTestsCount: validCompletedTests.length,
-          rawCompletedTestsCount: completedTests.length,
+          validActiveTestsCount: validActiveTests.length,
+          rawActiveTestsCount: activeTests.length,
           usersCount: users.length,
           existingUserIdsSize: existingUserIds.size,
-          firstFewRawTests: completedTests.slice(0, 3).map(t => ({
+          firstFewRawTests: activeTests.slice(0, 3).map(t => ({
             user_id: t.user_id,
-            completed_at: t.completed_at,
-            completed_at_type: typeof t.completed_at
+            started_at: t.started_at,
+            started_at_type: typeof t.started_at
           })),
-          firstFewValidTests: validCompletedTests.slice(0, 3).map(t => ({
+          firstFewValidTests: validActiveTests.slice(0, 3).map(t => ({
             user_id: t.user_id,
-            completed_at: t.completed_at,
-            completed_at_type: typeof t.completed_at
+            started_at: t.started_at,
+            started_at_type: typeof t.started_at
           })),
           dauMauHistorySample: dauMauHistory.slice(-3),
           last30DaysTestsCount: last30DaysTests.length,
           last7DaysTestsCount: last7DaysTests.length
         })
-        console.log('🔍 First few raw tests:', completedTests.slice(0, 5))
-        console.log('🔍 First few valid tests:', validCompletedTests.slice(0, 5))
+        console.log('🔍 First few raw tests:', activeTests.slice(0, 5))
+        console.log('🔍 First few valid tests:', validActiveTests.slice(0, 5))
         console.log('🔍 Users sample:', users.slice(0, 3))
 
         setStats({
@@ -2322,54 +2297,62 @@ export default function EngagementPage() {
                   <p><strong>DAU (Daily Active Users):</strong> {stats?.averageDAU} usuarios únicos promedio diario (últimos 7 días)</p>
                   <p><strong>MAU (Monthly Active Users):</strong> {stats?.MAU} usuarios únicos en los últimos 30 días</p>
                 </div>
-                
+
                 <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
-                  <p className="font-medium mb-2">Tu nivel actual:</p>
+                  <p className="font-medium mb-2">Tu nivel actual en apps educativas:</p>
                   <div className="text-sm">
-                    {stats?.dauMauRatio < 10 && (
-                      <span className="text-orange-600">📊 Engagement bajo - Los usuarios usan la app ocasionalmente</span>
+                    {stats?.dauMauRatio < 8 && (
+                      <span className="text-orange-600">📊 Por debajo del promedio - Usuarios estudian muy esporádicamente</span>
                     )}
-                    {stats?.dauMauRatio >= 10 && stats?.dauMauRatio < 20 && (
-                      <span className="text-yellow-600">📈 Engagement medio - App útil pero no diaria</span>
+                    {stats?.dauMauRatio >= 8 && stats?.dauMauRatio < 15 && (
+                      <span className="text-yellow-600">📈 Promedio del sector - Típico de apps e-learning</span>
                     )}
-                    {stats?.dauMauRatio >= 20 && stats?.dauMauRatio < 50 && (
-                      <span className="text-green-600">🚀 Engagement bueno - Los usuarios han desarrollado un hábito</span>
+                    {stats?.dauMauRatio >= 15 && stats?.dauMauRatio < 25 && (
+                      <span className="text-green-600">🚀 Por encima del promedio - Buen hábito de estudio</span>
                     )}
-                    {stats?.dauMauRatio >= 50 && (
-                      <span className="text-purple-600">⭐ Engagement excepcional - App tipo red social/juego adictivo</span>
+                    {stats?.dauMauRatio >= 25 && stats?.dauMauRatio < 35 && (
+                      <span className="text-blue-600">⭐ Excelente - Nivel Duolingo/Babbel</span>
+                    )}
+                    {stats?.dauMauRatio >= 35 && (
+                      <span className="text-purple-600">🏆 Excepcional - Superas a la mayoría de apps educativas</span>
                     )}
                   </div>
                   <p className="mt-2 text-xs text-gray-500">
-                    Significa que de cada 100 usuarios mensuales, {stats?.dauMauRatio} la usan diariamente
+                    Significa que de cada 100 usuarios mensuales, {stats?.dauMauRatio} estudian diariamente
                   </p>
                 </div>
-                
+
                 <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                  <p className="font-medium mb-2">⚠️ Limitaciones en apps pequeñas:</p>
+                  <p className="font-medium mb-2">📚 Benchmarks Apps Educativas (E-learning):</p>
                   <ul className="text-sm space-y-1">
-                    <li>• <span className="text-orange-600">Volatilidad extrema</span>: Con {stats?.MAU} MAU, un solo usuario puede cambiar el ratio del 0% al {Math.round(100/stats?.MAU)}%</li>
-                    <li>• <span className="text-yellow-600">100% engañoso</span>: 1 usuario activo de 1 total = 100% pero no es significativo</li>
-                    <li>• <span className="text-red-600">Poco fiable</span>: DAU/MAU es útil con 500+ MAU, muy volátil con {'<'}100 MAU</li>
-                    <li>• <span className="text-blue-600">Mejor métrica</span>: Activation Rate ({stats?.registeredActiveRatio}%) es más estable</li>
+                    <li>• <span className="text-gray-500">Apps e-learning promedio:</span> <strong>8-12%</strong></li>
+                    <li>• <span className="text-yellow-600">Coursera, Udemy:</span> <strong>10-15%</strong></li>
+                    <li>• <span className="text-green-600">Duolingo:</span> <strong>20-25%</strong> (gamificación fuerte)</li>
+                    <li>• <span className="text-blue-600">Apps oposiciones:</span> <strong>15-25%</strong> (motivación alta)</li>
+                    <li>• <span className="text-purple-600">Vence:</span> <strong>{stats?.dauMauRatio}%</strong></li>
                   </ul>
-                </div>
-                
-                <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
-                  <p className="font-medium mb-2">📊 ¿Cuándo DAU/MAU se vuelve útil?</p>
-                  <ul className="text-sm space-y-1">
-                    <li>• <span className="text-purple-600">100+ MAU</span>: Empieza a ser indicativo</li>
-                    <li>• <span className="text-blue-600">250+ MAU</span>: Útil para decisiones de producto</li>
-                    <li>• <span className="text-green-600">500+ MAU</span>: Confiable para benchmarking</li>
-                    <li>• <span className="text-orange-600">Tu estado</span>: Con {stats?.MAU} MAU, enfócate en Activation Rate</li>
-                  </ul>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Las apps de oposiciones tienen engagement más alto que e-learning general porque los usuarios tienen una meta concreta (aprobar el examen)
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
-                  <p className="font-medium mb-2">💡 Para Vence específicamente:</p>
+                  <p className="font-medium mb-2">💡 Contexto para Vence:</p>
                   <ul className="text-sm space-y-1">
-                    <li>• <span className="text-green-600">{stats?.registeredActiveRatio}% activación</span> ({stats?.MAU}/{stats?.totalUsers}) es excelente</li>
-                    <li>• <span className="text-blue-600">Enfoque</span>: Activar usuarios dormidos vs. mejorar DAU/MAU</li>
-                    <li>• <span className="text-purple-600">Meta</span>: Llegar a 250+ MAU para DAU/MAU confiable</li>
+                    <li>• <span className="text-green-600">Ventaja</span>: Opositores tienen motivación intrínseca alta</li>
+                    <li>• <span className="text-blue-600">Patrón típico</span>: Uso intenso antes de exámenes, menor entre convocatorias</li>
+                    <li>• <span className="text-purple-600">Meta realista</span>: 20-30% DAU/MAU es excelente para oposiciones</li>
+                    <li>• <span className="text-orange-600">Comparación justa</span>: No comparar con redes sociales (50%+) - son categorías distintas</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                  <p className="font-medium mb-2">🎯 ¿Cómo mejorar en apps de estudio?</p>
+                  <ul className="text-sm space-y-1">
+                    <li>• <span className="text-green-600">Rachas diarias</span>: Duolingo subió de 15% a 25% con streaks</li>
+                    <li>• <span className="text-blue-600">Notificaciones inteligentes</span>: Recordatorios en horarios óptimos</li>
+                    <li>• <span className="text-purple-600">Metas pequeñas</span>: "Solo 5 preguntas hoy" reduce fricción</li>
+                    <li>• <span className="text-orange-600">Progreso visible</span>: Mostrar avance hacia el examen</li>
                   </ul>
                 </div>
               </div>
