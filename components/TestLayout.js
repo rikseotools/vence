@@ -32,6 +32,7 @@ import { testTracker } from '../utils/testTracking.js'
 import { useTestCompletion } from '../hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import { useBotDetection, useBehaviorAnalysis } from '../hooks/useBotDetection'
+import { useInteractionTracker } from '../hooks/useInteractionTracker'
 import DailyLimitBanner from './DailyLimitBanner'
 import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
@@ -264,6 +265,9 @@ export default function TestLayout({
     suspicionScore,
     recordAnswer: recordBehavior
   } = useBehaviorAnalysis(user?.id)
+
+  // 📊 Tracking de interacciones de usuario
+  const { trackTestAction } = useInteractionTracker()
 
   // 🏛️ Oposición del usuario (para formatear exam_source correctamente)
   const { userOposicion } = useUserOposicion()
@@ -915,12 +919,20 @@ export default function TestLayout({
       setFirstInteractionTime(Date.now())
       testTracker.trackInteraction('first_answer_click', { selected_option: answerIndex }, currentQuestion)
     } else {
-      testTracker.trackInteraction('answer_change', { 
-        from_option: selectedAnswer, 
-        to_option: answerIndex 
+      testTracker.trackInteraction('answer_change', {
+        from_option: selectedAnswer,
+        to_option: answerIndex
       }, currentQuestion)
     }
-    
+
+    // 📊 Tracking de interacción
+    trackTestAction('answer_selected', currentQ?.id, {
+      answerIndex,
+      questionIndex: currentQuestion,
+      timeToDecide: Date.now() - questionStartTime,
+      isChange: selectedAnswer !== null
+    })
+
     setSelectedAnswer(answerIndex)
     setInteractionCount(prev => prev + 1)
     
@@ -1171,6 +1183,15 @@ export default function TestLayout({
           console.log(`📊 Preguntas respondidas: ${newDetailedAnswers.length}/${effectiveQuestions.length}`)
           setIsExplicitlyCompleted(true)
 
+          // 📊 Tracking de test completado
+          trackTestAction('test_completed', null, {
+            totalQuestions: effectiveQuestions.length,
+            correctAnswers: newScore,
+            accuracy: Math.round((newScore / effectiveQuestions.length) * 100),
+            totalTimeMs: Date.now() - startTime,
+            testType: tema ? 'tema' : 'general'
+          })
+
           if (user && currentTestSession) {
             setSaveStatus('saving')
             console.log('💾 Completando test final...')
@@ -1265,11 +1286,18 @@ export default function TestLayout({
     }
     
     if (currentQuestion < effectiveQuestions.length - 1) {
-      testTracker.trackInteraction('next_question', { 
+      testTracker.trackInteraction('next_question', {
         completed_question: currentQuestion + 1,
         was_correct: selectedAnswer === effectiveQuestions[currentQuestion].correct
       }, currentQuestion)
-      
+
+      // 📊 Tracking de navegación
+      trackTestAction('navigation_next', effectiveQuestions[currentQuestion]?.id, {
+        fromQuestion: currentQuestion,
+        toQuestion: currentQuestion + 1,
+        totalQuestions: effectiveQuestions.length
+      })
+
       console.log('📍 Navegando a pregunta:', currentQuestion + 2, '/', effectiveQuestions.length)
       
       setCurrentQuestion(currentQuestion + 1)

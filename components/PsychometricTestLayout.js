@@ -16,6 +16,7 @@ import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
+import { useInteractionTracker } from '../hooks/useInteractionTracker'
 
 export default function PsychometricTestLayout({
   categoria,
@@ -24,6 +25,9 @@ export default function PsychometricTestLayout({
 }) {
   const { user, supabase } = useAuth()
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+
+  // 📊 Tracking de interacciones de usuario
+  const { trackPsychometricAction } = useInteractionTracker()
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -192,6 +196,14 @@ export default function PsychometricTestLayout({
     setSelectedAnswer(optionIndex)
     answeredQuestionsGlobal.current.add(currentQ.id)
 
+    // 📊 Tracking de respuesta psicotécnica
+    trackPsychometricAction('answer_selected', currentQ?.id, {
+      answerIndex: optionIndex,
+      questionIndex: currentQuestion,
+      questionType: currentQ?.question_type,
+      timeToDecide: Date.now() - questionStartTime
+    })
+
     // Timeout para evitar respuestas duplicadas
     const timeout = setTimeout(() => {
       answeringTimeouts.current.delete(timeoutKey)
@@ -325,6 +337,13 @@ export default function PsychometricTestLayout({
 
   const nextQuestion = () => {
     if (currentQuestion < totalQuestions - 1) {
+      // 📊 Tracking de navegación
+      trackPsychometricAction('navigation_next', questions[currentQuestion]?.id, {
+        fromQuestion: currentQuestion,
+        toQuestion: currentQuestion + 1,
+        totalQuestions
+      })
+
       setCurrentQuestion(prev => prev + 1)
       setSelectedAnswer(null)
       setShowResult(false)
@@ -343,6 +362,14 @@ export default function PsychometricTestLayout({
   }
 
   const completeTest = async () => {
+    // 📊 Tracking de test completado
+    trackPsychometricAction('test_completed', null, {
+      totalQuestions,
+      correctAnswers: score,
+      accuracy: Math.round((score / totalQuestions) * 100),
+      categoria
+    })
+
     if (testSession && user) {
       // Usuario logueado - guardar sesión completada
       const { error } = await supabase

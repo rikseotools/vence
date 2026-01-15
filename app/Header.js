@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useUserOposicion } from '../components/useUserOposicion'
 // import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
+import { useInteractionTracker } from '@/hooks/useInteractionTracker'
 
 export default function HeaderES() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -36,6 +37,9 @@ export default function HeaderES() {
   const oposicionContext = useOposicion()
   const { userOposicion: hookUserOposicion } = useUserOposicion() // Hook que SÍ funciona
   const adminNotifications = useAdminNotifications()
+
+  // 📊 Tracking de interacciones de usuario
+  const { trackClick, trackNavigation } = useInteractionTracker()
   
   // Valores por defecto seguros
   const oposicionMenu = oposicionContext?.oposicionMenu || {
@@ -294,13 +298,19 @@ export default function HeaderES() {
     setIsMobileMenuOpen(false)
   }, [pathname])
 
-  const handleLinkClick = () => {
+  const handleLinkClick = (linkName) => {
+    // 📊 Tracking de click en navegación
+    if (linkName) {
+      trackClick('Header', 'nav_click', { linkName })
+    }
     setIsMobileMenuOpen(false)
   }
 
   const toggleMobileMenu = (e) => {
     e.preventDefault()
     e.stopPropagation()
+    // 📊 Tracking de toggle menú móvil
+    trackClick('Header', 'mobile_menu_toggle', { willOpen: !isMobileMenuOpen })
     setIsMobileMenuOpen(!isMobileMenuOpen)
   }
 
@@ -438,6 +448,7 @@ export default function HeaderES() {
                 {!isPremium && !isLegacy && userProfile?.plan_type !== 'trial' && (
                   <Link
                     href="/premium"
+                    onClick={() => trackClick('Header', 'premium_button_click', { location: 'mobile' })}
                     className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg text-xs font-semibold shadow-sm"
                   >
                     <span>👑</span>
@@ -530,6 +541,7 @@ export default function HeaderES() {
               {user && !isPremium && !isLegacy && userProfile?.plan_type !== 'trial' && (
                 <Link
                   href="/premium"
+                  onClick={() => trackClick('Header', 'premium_button_click', { location: 'desktop' })}
                   className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold shadow-md hover:shadow-lg transition-all"
                 >
                   <span>👑</span>

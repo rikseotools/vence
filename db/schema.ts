@@ -1238,6 +1238,41 @@ export const pwaEvents = pgTable("pwa_events", {
 	pgPolicy("Service role can manage all PWA events", { as: "permissive", for: "all", to: ["public"] }),
 ]);
 
+export const userInteractions = pgTable("user_interactions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	sessionId: uuid("session_id"),
+	eventType: text("event_type").notNull(),
+	eventCategory: text("event_category").notNull(),
+	component: text(),
+	action: text(),
+	label: text(),
+	value: jsonb().default({}),
+	pageUrl: text("page_url"),
+	elementId: text("element_id"),
+	elementText: text("element_text"),
+	responseTimeMs: integer("response_time_ms"),
+	deviceInfo: jsonb("device_info").default({}),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_user_interactions_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("idx_user_interactions_event_type").using("btree", table.eventType.asc().nullsLast().op("text_ops")),
+	index("idx_user_interactions_category").using("btree", table.eventCategory.asc().nullsLast().op("text_ops")),
+	index("idx_user_interactions_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_user_interactions_component").using("btree", table.component.asc().nullsLast().op("text_ops")),
+	index("idx_user_interactions_session").using("btree", table.sessionId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_interactions_user_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("Users can view own interactions", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can insert own interactions", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(auth.uid() = user_id OR user_id IS NULL)` }),
+	pgPolicy("Admins can view all interactions", { as: "permissive", for: "select", to: ["public"], using: sql`(EXISTS ( SELECT 1 FROM user_profiles WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'ilovetestpro@gmail.com'::text)))))` }),
+	pgPolicy("Service role full access", { as: "permissive", for: "all", to: ["public"] }),
+	check("user_interactions_category_check", sql`event_category = ANY (ARRAY['test'::text, 'chat'::text, 'navigation'::text, 'ui'::text, 'auth'::text, 'error'::text, 'conversion'::text, 'psychometric'::text])`),
+]);
+
 export const userStreaks = pgTable("user_streaks", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	userId: uuid("user_id").notNull(),

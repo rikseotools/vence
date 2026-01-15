@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useQuestionContext } from '@/contexts/QuestionContext'
 import { useTestCompletion } from '@/hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
+import { useInteractionTracker } from '@/hooks/useInteractionTracker'
 
 // Tipos
 import type { TestLayoutV2Props, ValidateAnswerResult, DetailedAnswer, AnsweredQuestion } from './types'
@@ -62,6 +63,9 @@ export default function TestLayoutV2({
 
   // Hook de validación
   const { validateAnswer, isValidating } = useAnswerValidation()
+
+  // 📊 Tracking de interacciones de usuario
+  const { trackTestAction } = useInteractionTracker()
 
   // Estado básico del test
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -157,6 +161,14 @@ export default function TestLayoutV2({
     setSelectedAnswer(answerIndex)
     setInteractionCount(prev => prev + 1)
     setProcessingAnswer(true)
+
+    // 📊 Tracking de interacción
+    trackTestAction('answer_selected', currentQ?.id, {
+      answerIndex,
+      questionIndex: currentQuestion,
+      timeToDecide: Date.now() - questionStartTime,
+      isChange: selectedAnswer !== null
+    })
 
     try {
       // Validar respuesta via API
@@ -296,6 +308,13 @@ export default function TestLayoutV2({
 
   const handleNextQuestion = useCallback(() => {
     if (currentQuestion < effectiveQuestions.length - 1) {
+      // 📊 Tracking de navegación
+      trackTestAction('navigation_next', effectiveQuestions[currentQuestion]?.id, {
+        fromQuestion: currentQuestion,
+        toQuestion: currentQuestion + 1,
+        totalQuestions: effectiveQuestions.length
+      })
+
       setCurrentQuestion(prev => prev + 1)
       setSelectedAnswer(null)
       setShowResult(false)
@@ -309,10 +328,19 @@ export default function TestLayoutV2({
         questionHeaderRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
     } else {
+      // 📊 Tracking de test completado
+      trackTestAction('test_completed', null, {
+        totalQuestions: effectiveQuestions.length,
+        correctAnswers: score,
+        accuracy: Math.round((score / effectiveQuestions.length) * 100),
+        totalTimeMs: Date.now() - startTime,
+        testType: tema ? 'tema' : 'general'
+      })
+
       setIsExplicitlyCompleted(true)
       notifyTestCompletion?.()
     }
-  }, [currentQuestion, effectiveQuestions.length, notifyTestCompletion])
+  }, [currentQuestion, effectiveQuestions, notifyTestCompletion, trackTestAction, score, startTime, tema])
 
   // ============================================
   // RENDER: CARGANDO

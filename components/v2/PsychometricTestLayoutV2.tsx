@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { useQuestionContext } from '@/contexts/QuestionContext'
+import { useInteractionTracker } from '@/hooks/useInteractionTracker'
 
 // Tipos
 import type {
@@ -44,6 +45,9 @@ export default function PsychometricTestLayoutV2({
     supabase: any
   }
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+
+  // 📊 Tracking de interacciones de usuario
+  const { trackPsychometricAction } = useInteractionTracker()
 
   // Estado del test
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -142,6 +146,14 @@ export default function PsychometricTestLayoutV2({
     setSelectedAnswer(optionIndex)
     answeredQuestionsRef.current.add(currentQ.id)
 
+    // 📊 Tracking de respuesta psicotécnica
+    trackPsychometricAction('answer_selected', currentQ?.id, {
+      answerIndex: optionIndex,
+      questionIndex: currentQuestion,
+      questionType: currentQ?.question_subtype,
+      timeToDecide: Date.now() - questionStartTime
+    })
+
     try {
       const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000)
 
@@ -232,6 +244,13 @@ export default function PsychometricTestLayoutV2({
 
   const handleNextQuestion = useCallback(() => {
     if (currentQuestion < totalQuestions - 1) {
+      // 📊 Tracking de navegación
+      trackPsychometricAction('navigation_next', questions[currentQuestion]?.id, {
+        fromQuestion: currentQuestion,
+        toQuestion: currentQuestion + 1,
+        totalQuestions
+      })
+
       setCurrentQuestion(prev => prev + 1)
       setSelectedAnswer(null)
       setShowResult(false)
@@ -241,9 +260,17 @@ export default function PsychometricTestLayoutV2({
     } else {
       completeTest()
     }
-  }, [currentQuestion, totalQuestions])
+  }, [currentQuestion, totalQuestions, questions, trackPsychometricAction])
 
   const completeTest = useCallback(async () => {
+    // 📊 Tracking de test completado
+    trackPsychometricAction('test_completed', null, {
+      totalQuestions,
+      correctAnswers: score,
+      accuracy: Math.round((score / totalQuestions) * 100),
+      categoria
+    })
+
     if (testSessionIdRef.current && user) {
       await supabase
         .from('psychometric_test_sessions')
@@ -257,7 +284,7 @@ export default function PsychometricTestLayoutV2({
     }
 
     setIsTestCompleted(true)
-  }, [score, totalQuestions, user, supabase])
+  }, [score, totalQuestions, user, supabase, trackPsychometricAction, categoria])
 
   // ============================================
   // RENDER: SIN PREGUNTAS

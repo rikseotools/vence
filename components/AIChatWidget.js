@@ -7,12 +7,16 @@ import { useQuestionContext, answerToLetter } from '../contexts/QuestionContext'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { getChatEndpoint } from '../lib/chat/config'
+import { useInteractionTracker } from '../hooks/useInteractionTracker'
 
 export default function AIChatWidget() {
   const pathname = usePathname()
   const { currentQuestionContext } = useQuestionContext()
   const { oposicionId } = useOposicion()
   const { user, isPremium } = useAuth()
+
+  // 📊 Tracking de interacciones
+  const { trackChatAction } = useInteractionTracker()
 
   // Detectar si estamos en psicotécnicos
   const isPsicotecnico = pathname?.startsWith('/psicotecnicos')
@@ -140,6 +144,9 @@ export default function AIChatWidget() {
       const { message, suggestion } = event.detail || {}
       console.log('🔔 Evento openAIChat recibido:', { message, suggestion })
 
+      // 📊 Tracking de apertura de chat
+      trackChatAction('opened', { source: 'event', hasMessage: !!message })
+
       // Abrir el chat
       setIsOpen(true)
 
@@ -259,6 +266,16 @@ export default function AIChatWidget() {
     if (!userMessage || isLoading || isStreaming) return
 
     const currentSuggestion = suggestionLabel || suggestionUsed
+
+    // 📊 Tracking de mensaje enviado
+    trackChatAction('message_sent', {
+      messageLength: userMessage.length,
+      fromSuggestion: !!currentSuggestion,
+      suggestionKey: currentSuggestion || null,
+      hasQuestionContext: !!currentQuestionContext,
+      isPsicotecnico
+    })
+
     setInput('')
     setError(null)
     setSuggestionUsed(null) // Resetear después de usar
@@ -474,6 +491,12 @@ export default function AIChatWidget() {
 
   // Helper para usar sugerencias predefinidas - envía directamente y trackea click
   const useSuggestion = useCallback((text, suggestionKey) => {
+    // 📊 Tracking de click en sugerencia
+    trackChatAction('suggestion_clicked', {
+      suggestionKey,
+      textLength: text?.length || 0
+    })
+
     // Trackear click en background (no bloquear)
     fetch('/api/ai/chat/suggestions', {
       method: 'POST',
@@ -485,7 +508,7 @@ export default function AIChatWidget() {
     }).catch(() => {}) // Ignorar errores de tracking
 
     sendMessage(text, suggestionKey)
-  }, [sendMessage, user?.id])
+  }, [sendMessage, user?.id, trackChatAction])
 
   // Verificar respuesta de forma independiente (sin conocer la respuesta de antemano)
   const verifyAnswer = useCallback(async () => {
@@ -692,6 +715,7 @@ export default function AIChatWidget() {
           {/* Botón cerrar - limpia conversación */}
           <button
             onClick={() => {
+              trackChatAction('closed', { messagesCount: messages.length })
               clearChat()
               setIsOpen(false)
             }}
