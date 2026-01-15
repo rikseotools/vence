@@ -174,13 +174,9 @@ export function useDisputeNotifications() {
         throw error
       }
 
-      // Actualizar estado local
+      // Actualizar estado local - QUITAR de la lista (no solo marcar como leída)
       setNotifications(prev =>
-        prev.map(notification =>
-          notification.id === notificationId
-            ? { ...notification, isRead: true }
-            : notification
-        )
+        prev.filter(notification => notification.id !== notificationId)
       )
 
       // Recalcular contador
