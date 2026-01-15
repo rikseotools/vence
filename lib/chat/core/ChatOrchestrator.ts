@@ -270,61 +270,171 @@ export class ChatOrchestrator {
   }
 
   /**
+   * Detecta si es una pregunta psicotécnica basándose en el questionSubtype
+   */
+  private isPsychometricQuestion(context: ChatContext): boolean {
+    const PSYCHOMETRIC_SUBTYPES = [
+      'bar_chart', 'pie_chart', 'line_chart', 'mixed_chart',
+      'data_tables', 'error_detection',
+      'sequence_numeric', 'sequence_letter', 'sequence_alphanumeric',
+      'word_analysis'
+    ]
+    const subtype = context.questionContext?.questionSubtype
+    return subtype ? PSYCHOMETRIC_SUBTYPES.includes(subtype) : false
+  }
+
+  /**
    * Construye el system prompt con contexto
    */
   private buildSystemPrompt(context: ChatContext): string {
-    let prompt = this.systemPrompt
+    const isPsychometric = this.isPsychometricQuestion(context)
+
+    // Usar prompt específico para psicotécnicos
+    let prompt = isPsychometric ? this.getPsychometricSystemPrompt() : this.systemPrompt
 
     // Añadir contexto de pregunta si existe
     if (context.questionContext) {
       const qc = context.questionContext
-      prompt += '\n\n### Contexto de la pregunta actual:\n'
 
-      if (qc.questionText) {
-        prompt += `Pregunta: ${qc.questionText}\n`
-      }
-
+      // Obtener opciones como objeto
+      let options: { a?: string; b?: string; c?: string; d?: string } = {}
       if (qc.options) {
-        prompt += 'Opciones:\n'
         if (Array.isArray(qc.options)) {
-          qc.options.forEach((opt, i) => {
-            const letter = String.fromCharCode(65 + i)
-            prompt += `${letter}) ${opt}\n`
-          })
+          options = {
+            a: qc.options[0],
+            b: qc.options[1],
+            c: qc.options[2],
+            d: qc.options[3],
+          }
         } else {
-          // options es objeto {a, b, c, d}
-          const opts = qc.options as { a?: string; b?: string; c?: string; d?: string }
-          if (opts.a) prompt += `A) ${opts.a}\n`
-          if (opts.b) prompt += `B) ${opts.b}\n`
-          if (opts.c) prompt += `C) ${opts.c}\n`
-          if (opts.d) prompt += `D) ${opts.d}\n`
+          options = qc.options as { a?: string; b?: string; c?: string; d?: string }
         }
       }
 
-      if (qc.lawName) {
-        prompt += `\nLey relacionada: ${qc.lawName}\n`
-      }
-
-      if (qc.articleNumber) {
-        prompt += `Artículo: ${qc.articleNumber}\n`
-      }
-
-      if (qc.selectedAnswer !== undefined && qc.selectedAnswer !== null) {
-        const selectedLetter = typeof qc.selectedAnswer === 'number'
-          ? String.fromCharCode(65 + qc.selectedAnswer)
-          : qc.selectedAnswer
-        prompt += `\nEl usuario seleccionó: ${selectedLetter}\n`
-      }
-
-      if (qc.correctAnswer !== undefined && qc.correctAnswer !== null) {
-        const correctLetter = typeof qc.correctAnswer === 'number'
+      // Obtener letra de respuesta correcta
+      const correctLetter = qc.correctAnswer !== undefined && qc.correctAnswer !== null
+        ? (typeof qc.correctAnswer === 'number'
           ? String.fromCharCode(65 + qc.correctAnswer)
-          : qc.correctAnswer
-        prompt += `Respuesta marcada como correcta: ${correctLetter}\n`
+          : qc.correctAnswer)
+        : null
+      const correctText = correctLetter
+        ? options[correctLetter.toLowerCase() as 'a' | 'b' | 'c' | 'd'] || ''
+        : ''
+
+      if (isPsychometric) {
+        // Contexto específico para psicotécnicos con verificación
+        prompt += `
+
+PREGUNTA DE PSICOTÉCNICO:
+Tipo: ${qc.questionTypeName || qc.questionSubtype || 'General'}
+
+Pregunta: ${qc.questionText || 'Sin texto'}
+
+Opciones:
+A) ${options.a || 'Sin opción'}
+B) ${options.b || 'Sin opción'}
+C) ${options.c || 'Sin opción'}
+D) ${options.d || 'Sin opción'}
+
+⭐ RESPUESTA CORRECTA: ${correctLetter}) ${correctText}
+${qc.explanation ? `Explicación guardada: ${qc.explanation}` : ''}
+
+⚠️ INSTRUCCIONES CRÍTICAS - VERIFICACIÓN DE PSICOTÉCNICOS:
+
+PASO 1 - RESUELVE TÚ MISMO EL EJERCICIO:
+- Analiza los datos proporcionados (serie, gráfico, tabla, etc.)
+- Encuentra el patrón o realiza los cálculos necesarios
+- Determina cuál es la respuesta correcta según TU análisis matemático/lógico
+
+PASO 2 - COMPARA CON LA RESPUESTA MARCADA:
+- Esta pregunta da por buena: ${correctLetter}) ${correctText}
+- Si TU respuesta (del paso 1) es DIFERENTE a ${correctLetter}:
+  → Di: "⚠️ POSIBLE ERROR DETECTADO: Esta pregunta da por buena la opción ${correctLetter}, pero según mi análisis [explica el razonamiento], la respuesta correcta debería ser [tu respuesta]"
+- Si TU respuesta coincide con ${correctLetter}:
+  → Confirma que es correcta y explica el razonamiento paso a paso
+
+FORMATO DE EXPLICACIÓN:
+1. Muestra el análisis paso a paso (cálculos, patrón encontrado, etc.)
+2. Indica claramente la respuesta: **🎯 Respuesta: X**
+3. Enseña la ESTRATEGIA para resolver este tipo de ejercicios
+
+REGLAS ABSOLUTAS:
+- HAZ los cálculos tú mismo, no asumas que la respuesta marcada es correcta
+- Para series: verifica que el patrón lleva al resultado marcado
+- Para gráficos/tablas: verifica que los datos coinciden con la respuesta
+- Si detectas un error, SIEMPRE empieza con "⚠️ POSIBLE ERROR DETECTADO"
+`
+      } else {
+        // Contexto normal para preguntas de leyes
+        prompt += '\n\n### Contexto de la pregunta actual:\n'
+
+        if (qc.questionText) {
+          prompt += `Pregunta: ${qc.questionText}\n`
+        }
+
+        if (qc.options) {
+          prompt += 'Opciones:\n'
+          if (options.a) prompt += `A) ${options.a}\n`
+          if (options.b) prompt += `B) ${options.b}\n`
+          if (options.c) prompt += `C) ${options.c}\n`
+          if (options.d) prompt += `D) ${options.d}\n`
+        }
+
+        if (qc.lawName) {
+          prompt += `\nLey relacionada: ${qc.lawName}\n`
+        }
+
+        if (qc.articleNumber) {
+          prompt += `Artículo: ${qc.articleNumber}\n`
+        }
+
+        if (qc.selectedAnswer !== undefined && qc.selectedAnswer !== null) {
+          const selectedLetter = typeof qc.selectedAnswer === 'number'
+            ? String.fromCharCode(65 + qc.selectedAnswer)
+            : qc.selectedAnswer
+          prompt += `\nEl usuario seleccionó: ${selectedLetter}\n`
+        }
+
+        if (correctLetter) {
+          prompt += `Respuesta marcada como correcta: ${correctLetter}\n`
+        }
       }
     }
 
     return prompt
+  }
+
+  /**
+   * System prompt específico para psicotécnicos
+   */
+  private getPsychometricSystemPrompt(): string {
+    return `Eres Vence AI, una tutora especializada en tests psicotécnicos para oposiciones en España.
+
+SOBRE TI:
+- Te llamas Vence AI y eres la asistente de IA de Vence
+- Ayudas a los usuarios a resolver y entender ejercicios de razonamiento lógico, series numéricas, gráficos, tablas, etc.
+
+ESTILO DE INTERACCIÓN:
+- Sé claro y didáctico al explicar la lógica detrás de cada ejercicio
+- Usa ejemplos paso a paso cuando sea necesario
+- Si hay datos numéricos o gráficos, analízalos con precisión
+- Explica los patrones y estrategias para resolver este tipo de ejercicios
+
+FORMATO DE RESPUESTA:
+- Usa emojis para hacer las respuestas visuales: 🔢 📊 💡 ✅ 🎯 📈 🧮 ⚡ 🔍
+- Usa **negritas** para destacar números clave y resultados
+- Muestra los cálculos paso a paso con listas numeradas (1. 2. 3.)
+- Destaca el resultado final: **🎯 Respuesta: X**
+- Para series numéricas: muestra el patrón con → (ej: 2 → 4 → 8)
+
+⚠️ DETECCIÓN DE ERRORES - MUY IMPORTANTE:
+- SIEMPRE verifica que la respuesta marcada como correcta sea realmente correcta
+- HAZ los cálculos tú mismo antes de explicar
+- Si detectas que la respuesta marcada NO coincide con tu análisis:
+  → DEBES empezar tu respuesta con "⚠️ POSIBLE ERROR DETECTADO"
+  → Explica por qué la respuesta marcada parece incorrecta
+  → Indica cuál debería ser la respuesta correcta según tu análisis
+- NO asumas que la respuesta marcada es correcta solo porque está marcada`
   }
 
   /**

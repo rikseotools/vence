@@ -34,6 +34,7 @@ export interface CreateDisputeInput {
   userId?: string | null
   disputeType: DisputeType
   description: string
+  isPsychometric?: boolean // Indica si es una pregunta psicotécnica
 }
 
 export interface DisputeResult {
@@ -53,11 +54,12 @@ export interface DisputeResult {
 export async function createAutoDispute(
   questionId: string,
   aiResponse: string,
-  userId?: string | null
+  userId?: string | null,
+  isPsychometric?: boolean
 ): Promise<DisputeResult> {
   try {
     // Verificar si ya existe una disputa automática para esta pregunta
-    const existing = await findExistingDispute(questionId, 'ai_detected_error')
+    const existing = await findExistingDispute(questionId, 'ai_detected_error', isPsychometric)
 
     if (existing) {
       logger.debug('Auto-dispute already exists', {
@@ -80,6 +82,7 @@ export async function createAutoDispute(
       userId,
       disputeType: 'ai_detected_error',
       description,
+      isPsychometric,
     })
 
     if (result.success) {
@@ -87,6 +90,7 @@ export async function createAutoDispute(
         domain: 'verification',
         questionId,
         disputeId: result.disputeId,
+        isPsychometric,
       })
     }
 
@@ -145,8 +149,11 @@ export async function createUserDispute(
  * Crea una impugnación en la base de datos
  */
 async function createDispute(input: CreateDisputeInput): Promise<DisputeResult> {
+  // Elegir tabla según tipo de pregunta
+  const tableName = input.isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+
   const { data, error } = await supabase
-    .from('question_disputes')
+    .from(tableName)
     .insert({
       question_id: input.questionId,
       user_id: input.userId || null,
@@ -158,7 +165,7 @@ async function createDispute(input: CreateDisputeInput): Promise<DisputeResult> 
     .single()
 
   if (error) {
-    logger.error('Database error creating dispute', error, { domain: 'verification' })
+    logger.error('Database error creating dispute', error, { domain: 'verification', table: tableName })
     return {
       success: false,
       error: error.message,
@@ -180,10 +187,13 @@ async function createDispute(input: CreateDisputeInput): Promise<DisputeResult> 
  */
 async function findExistingDispute(
   questionId: string,
-  disputeType: DisputeType
+  disputeType: DisputeType,
+  isPsychometric?: boolean
 ): Promise<Dispute | null> {
+  const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+
   const { data, error } = await supabase
-    .from('question_disputes')
+    .from(tableName)
     .select('*')
     .eq('question_id', questionId)
     .eq('dispute_type', disputeType)
@@ -201,10 +211,13 @@ async function findExistingDispute(
  */
 async function findUserDispute(
   questionId: string,
-  userId: string
+  userId: string,
+  isPsychometric?: boolean
 ): Promise<Dispute | null> {
+  const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+
   const { data, error } = await supabase
-    .from('question_disputes')
+    .from(tableName)
     .select('*')
     .eq('question_id', questionId)
     .eq('user_id', userId)

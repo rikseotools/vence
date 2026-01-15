@@ -513,6 +513,21 @@ export default function DynamicTest({ titulo, dificultad }) {
                       <p className="text-gray-700 leading-relaxed mb-4">
                         {currentQ.explanation}
                       </p>
+                      {/* Botón para abrir IA */}
+                      <button
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('openAIChat', {
+                            detail: {
+                              message: 'Explícame la respuesta correcta',
+                              suggestion: 'Explícame la respuesta correcta'
+                            }
+                          }))
+                        }}
+                        className="mt-2 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                      >
+                        <span>✨</span>
+                        <span>No lo tengo claro</span>
+                      </button>
                     </div>
 
                     {currentQ.article && (

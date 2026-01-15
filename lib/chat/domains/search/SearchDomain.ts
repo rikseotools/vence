@@ -25,9 +25,37 @@ export class SearchDomain implements ChatDomain {
   priority = DOMAIN_PRIORITIES.SEARCH
 
   /**
+   * Subtipos de preguntas psicotécnicas - no deben ir a búsqueda de artículos
+   */
+  private static PSYCHOMETRIC_SUBTYPES = [
+    'bar_chart', 'pie_chart', 'line_chart', 'mixed_chart',
+    'data_tables', 'error_detection',
+    'sequence_numeric', 'sequence_letter', 'sequence_alphanumeric',
+    'word_analysis'
+  ]
+
+  /**
+   * Detecta si es una pregunta psicotécnica
+   */
+  private isPsychometricQuestion(context: ChatContext): boolean {
+    const subtype = context.questionContext?.questionSubtype
+    return subtype ? SearchDomain.PSYCHOMETRIC_SUBTYPES.includes(subtype) : false
+  }
+
+  /**
    * Determina si este dominio puede manejar el contexto
    */
   async canHandle(context: ChatContext): Promise<boolean> {
+    // Las preguntas psicotécnicas NO deben ir a búsqueda de artículos
+    // Se manejan por el fallback del orchestrator con prompt específico
+    if (this.isPsychometricQuestion(context)) {
+      logger.debug('SearchDomain: Skipping psychometric question, will be handled by fallback', {
+        domain: 'search',
+        questionSubtype: context.questionContext?.questionSubtype,
+      })
+      return false
+    }
+
     const msg = context.currentMessage.toLowerCase()
 
     // Patrones que indican búsqueda de información legal

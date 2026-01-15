@@ -451,6 +451,21 @@ export default function PsychometricTestLayoutV2({
                 <p className="text-blue-700 dark:text-blue-200 whitespace-pre-line">
                   {verifiedExplanation}
                 </p>
+                {/* Botón para abrir IA */}
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openAIChat', {
+                      detail: {
+                        message: `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${currentQ.question_text}"`,
+                        suggestion: 'explicar_psico'
+                      }
+                    }))
+                  }}
+                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                >
+                  <span>✨</span>
+                  <span>No lo tengo claro</span>
+                </button>
               </div>
             )}
           </div>

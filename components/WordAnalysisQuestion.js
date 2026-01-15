@@ -77,14 +77,44 @@ export default function WordAnalysisQuestion({
         })}
       </div>
 
-      {/* 🔒 SEGURIDAD: Usar verifiedExplanation de API */}
-      {showResult && verifiedExplanation && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-          <h4 className="font-semibold text-blue-800 mb-2">📝 Explicación:</h4>
-          <div
-            className="text-blue-700 whitespace-pre-line"
-            dangerouslySetInnerHTML={{ __html: verifiedExplanation.replace(/\n/g, '<br>') }}
-          />
+      {/* Resultado y explicación */}
+      {showResult && effectiveCorrectAnswer !== null && (
+        <div className="mt-6 p-6 bg-gray-50 rounded-lg">
+          <div className={`flex items-center mb-4 ${selectedAnswer === effectiveCorrectAnswer ? 'text-green-700' : 'text-red-700'}`}>
+            <span className="text-2xl mr-2">{selectedAnswer === effectiveCorrectAnswer ? '✅' : '❌'}</span>
+            <span className="text-lg font-semibold">
+              {selectedAnswer === effectiveCorrectAnswer ? '¡Correcto!' : 'Incorrecto'}
+            </span>
+            {/* Botón para abrir IA - siempre visible */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openAIChat', {
+                  detail: {
+                    message: `Explícame paso a paso cómo resolver esta Análisis de palabras: "${question.question_text}"\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
+                    suggestion: 'explicar_psico'
+                  }
+                }))
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 ml-auto bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition-colors text-sm font-medium"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
+                <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
+              </svg>
+              <span>¿Necesitas ayuda?</span>
+            </button>
+          </div>
+
+          {/* 🔒 SEGURIDAD: Usar verifiedExplanation de API */}
+          {verifiedExplanation && (
+            <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
+              <h5 className="font-semibold text-green-800 mb-2">📝 Explicación:</h5>
+              <div
+                className="text-gray-700 text-sm whitespace-pre-line"
+                dangerouslySetInnerHTML={{ __html: verifiedExplanation.replace(/\n/g, '<br>') }}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -243,6 +243,11 @@ export async function POST(request: NextRequest) {
         lawName: qc.lawName || undefined,
         articleNumber: qc.articleNumber || undefined,
         explanation: qc.explanation || undefined,
+        // Campos de psicotécnicos
+        isPsicotecnico: qc.isPsicotecnico || false,
+        questionSubtype: qc.questionSubtype || undefined,
+        questionTypeName: qc.questionTypeName || undefined,
+        contentData: qc.contentData || undefined,
       }
     }
 
