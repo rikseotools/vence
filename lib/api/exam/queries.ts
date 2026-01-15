@@ -1,7 +1,7 @@
 // lib/api/exam/queries.ts - Queries tipadas para el módulo de exámenes
 import { getDb } from '@/db/client'
-import { testQuestions, tests } from '@/db/schema'
-import { eq, and, desc, sql, count, isNull } from 'drizzle-orm'
+import { testQuestions, tests, questions } from '@/db/schema'
+import { eq, and, desc, sql, count, isNull, inArray } from 'drizzle-orm'
 import type {
   SaveAnswerRequest,
   SaveAnswerResponse,
@@ -612,5 +612,59 @@ export async function getResumedExamData(testId: string): Promise<GetResumedExam
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
     }
+  }
+}
+
+// ============================================
+// OBTENER CORRECT_OPTION DE PREGUNTAS DESDE BD
+// ============================================
+
+export type QuestionCorrectAnswer = {
+  id: string
+  correctOption: number
+}
+
+export async function getQuestionsCorrectAnswers(
+  questionIds: string[]
+): Promise<Map<string, string>> {
+  try {
+    const db = getDb()
+
+    if (questionIds.length === 0) {
+      return new Map()
+    }
+
+    // Filtrar IDs válidos (UUIDs)
+    const validIds = questionIds.filter(id =>
+      id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+    )
+
+    if (validIds.length === 0) {
+      return new Map()
+    }
+
+    // Consultar la BD para obtener correct_option
+    const result = await db
+      .select({
+        id: questions.id,
+        correctOption: questions.correctOption,
+      })
+      .from(questions)
+      .where(inArray(questions.id, validIds))
+
+    // Crear mapa de id -> letra correcta (a, b, c, d)
+    const correctAnswersMap = new Map<string, string>()
+    for (const q of result) {
+      // Convertir índice (0, 1, 2, 3) a letra (a, b, c, d)
+      const correctLetter = String.fromCharCode(97 + q.correctOption)
+      correctAnswersMap.set(q.id, correctLetter)
+    }
+
+    console.log(`✅ [getQuestionsCorrectAnswers] Obtenidas ${correctAnswersMap.size} respuestas correctas de BD`)
+
+    return correctAnswersMap
+  } catch (error) {
+    console.error('❌ [getQuestionsCorrectAnswers] Error:', error)
+    return new Map()
   }
 }
