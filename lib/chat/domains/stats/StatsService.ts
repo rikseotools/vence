@@ -82,9 +82,53 @@ export function isUserStatsQuery(message: string): boolean {
 }
 
 /**
+ * Detecta si el usuario quiere empezar un test de puntos débiles
+ * (responde afirmativamente a la propuesta o lo pide directamente)
+ */
+export function isWeakPointsTestRequest(message: string): boolean {
+  const msgLower = message.toLowerCase().trim()
+
+  // Respuestas afirmativas simples
+  const affirmativePatterns = [
+    /^s[ií]$/i,
+    /^s[ií]\s*(por\s*favor|porfavor|porfa)?$/i,
+    /^vale$/i,
+    /^ok(ay)?$/i,
+    /^dale$/i,
+    /^venga$/i,
+    /^claro$/i,
+    /^adelante$/i,
+    /^haz(lo|me\s*el\s*test)?$/i,
+    /^prep[aá]ra(me)?(\s*(el|un)\s*test)?$/i,
+  ]
+
+  // Peticiones directas de test de puntos débiles
+  const directPatterns = [
+    /quiero\s*(el|un)\s*test\s*(de\s*)?(puntos?\s*d[eé]biles?|fallos?|errores?)/i,
+    /prep[aá]ra(me)?\s*(el|un)\s*test\s*(de\s*)?(puntos?\s*d[eé]biles?|fallos?|errores?)/i,
+    /hazme\s*(el|un)\s*test\s*(de\s*)?(puntos?\s*d[eé]biles?|fallos?|errores?)/i,
+    /test\s*(de\s*)?(mis\s*)?(puntos?\s*d[eé]biles?|fallos?|errores?)/i,
+    /practicar\s*(mis\s*)?(puntos?\s*d[eé]biles?|fallos?|errores?)/i,
+    /repasar\s*(mis\s*)?(puntos?\s*d[eé]biles?|fallos?|errores?)/i,
+  ]
+
+  return affirmativePatterns.some(p => p.test(msgLower)) ||
+         directPatterns.some(p => p.test(msgLower))
+}
+
+/**
+ * Genera la respuesta con el enlace al test de puntos débiles
+ */
+export function formatWeakPointsTestResponse(): string {
+  return `🎯 **¡Perfecto!** 👉 [Empezar test de puntos débiles](/test/repaso-fallos?n=10)`
+}
+
+/**
  * Detecta el tipo de consulta de estadísticas
  */
 export function detectStatsQueryType(message: string): StatsQueryType {
+  // Primero verificar si quiere test de puntos débiles
+  if (isWeakPointsTestRequest(message)) return 'weak_points_test'
   if (isExamStatsQuery(message)) return 'exam'
   if (isUserStatsQuery(message)) return 'user'
   return 'none'
@@ -237,7 +281,6 @@ export function formatUserStatsResponse(
     response += `**❌ Artículos donde más fallas:**\n\n`
 
     stats.mostFailed.slice(0, 5).forEach((art, i) => {
-      const bar = '█'.repeat(Math.min(Math.round(art.failed / 2), 10))
       response += `${i + 1}. **${art.law} ${art.article}** - ${art.failed} fallos (${art.accuracy}% acierto)\n`
     })
 
@@ -255,7 +298,12 @@ export function formatUserStatsResponse(
     response += `\n`
   }
 
-  response += `💡 *Consejo: Practica más estos artículos para mejorar tu rendimiento.*`
+  // Propuesta de test si hay puntos débiles
+  if (stats.mostFailed.length > 0 || (stats.worstAccuracy.length > 0 && stats.worstAccuracy[0].accuracy < 50)) {
+    response += `\n🎯 **¿Te preparo un test de tus puntos débiles?** 👉 [Sí, empezar test](/test/repaso-fallos?n=10)`
+  } else {
+    response += `💡 *Sigue así, tu rendimiento es bueno.*`
+  }
 
   return response
 }

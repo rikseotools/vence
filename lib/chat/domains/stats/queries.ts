@@ -131,165 +131,102 @@ export async function getExamStats(
 
 /**
  * Obtiene estadísticas de fallos y áreas débiles del usuario
+ * Usa la RPC get_user_statistics_complete para evitar queries lentas
  */
 export async function getUserStats(
   userId: string,
   lawShortName: string | null = null,
   limit: number = 10,
-  fromDate: Date | null = null
+  _fromDate: Date | null = null // No usado por la RPC actual, pero mantenemos la firma
 ): Promise<UserStatsResult | null> {
   if (!userId) return null
 
   const supabase = getSupabase()
-  const PAGE_SIZE = 1000
 
   try {
-    // Paso 1: Obtener TODOS los IDs de tests del usuario (con paginación)
-    let allTests: { id: string }[] = []
-    let testOffset = 0
-    let hasMoreTests = true
+    // Usar la RPC optimizada que hace JOINs server-side
+    const { data: rpcResult, error: rpcError } = await supabase
+      .rpc('get_user_statistics_complete', { p_user_id: userId })
 
-    while (hasMoreTests) {
-      const { data: pageTests, error: testsError } = await supabase
-        .from('tests')
-        .select('id')
-        .eq('user_id', userId)
-        .range(testOffset, testOffset + PAGE_SIZE - 1)
-
-      if (testsError) {
-        logger.error('Error obteniendo tests', testsError, { domain: 'stats' })
-        return null
-      }
-
-      if (!pageTests || pageTests.length === 0) {
-        hasMoreTests = false
-      } else {
-        allTests = allTests.concat(pageTests)
-        testOffset += PAGE_SIZE
-        hasMoreTests = pageTests.length === PAGE_SIZE
-      }
-    }
-
-    if (allTests.length === 0) {
-      logger.debug('No se encontraron tests para el usuario', { domain: 'stats' })
+    if (rpcError) {
+      logger.error('Error llamando RPC get_user_statistics_complete', rpcError, { domain: 'stats' })
       return null
     }
 
-    const testIds = allTests.map(t => t.id)
-    logger.debug(`Found ${testIds.length} total tests for user`, { domain: 'stats' })
-
-    // Paso 2: Obtener respuestas con paginación
-    let allAnswers: any[] = []
-    let offset = 0
-    let hasMore = true
-
-    while (hasMore) {
-      let answersQuery = supabase
-        .from('test_questions')
-        .select('question_id, is_correct, article_number, law_name, created_at')
-        .in('test_id', testIds)
-        .range(offset, offset + PAGE_SIZE - 1)
-        .order('created_at', { ascending: false })
-
-      if (fromDate) {
-        answersQuery = answersQuery.gte('created_at', fromDate.toISOString())
-      }
-
-      const { data: pageAnswers, error: answersError } = await answersQuery
-
-      if (answersError) {
-        logger.error('Error obteniendo respuestas', answersError, { domain: 'stats' })
-        return null
-      }
-
-      if (!pageAnswers || pageAnswers.length === 0) {
-        hasMore = false
-      } else {
-        allAnswers = allAnswers.concat(pageAnswers)
-        offset += PAGE_SIZE
-        hasMore = pageAnswers.length === PAGE_SIZE
-      }
-    }
-
-    if (allAnswers.length === 0) {
-      logger.debug('No se encontraron respuestas en el período', { domain: 'stats' })
+    if (!rpcResult) {
+      logger.debug('No se encontraron estadísticas para el usuario', { domain: 'stats' })
       return null
     }
 
-    logger.debug(`Found ${allAnswers.length} answers in period`, { domain: 'stats' })
+    // La RPC devuelve JSON con article_performance
+    const stats = rpcResult as {
+      total_questions: number
+      correct_answers: number
+      accuracy: number
+      article_performance?: Array<{
+        law_name: string
+        article_number: string | number
+        tema_number: number
+        total: number
+        correct: number
+        accuracy: number
+      }>
+    }
+
+    // Procesar article_performance para obtener mostFailed y worstAccuracy
+    let articlePerf = stats.article_performance || []
 
     // Filtrar por ley si se especifica
-    let filteredAnswers = allAnswers
     if (lawShortName) {
-      filteredAnswers = allAnswers.filter(a =>
+      articlePerf = articlePerf.filter(a =>
         a.law_name?.includes(lawShortName) ||
         a.law_name?.toLowerCase().includes(lawShortName.toLowerCase())
       )
     }
 
-    // Filtrar solo respuestas con artículo asociado
-    filteredAnswers = filteredAnswers.filter(a => a.article_number != null)
+    // Filtrar solo artículos con datos
+    articlePerf = articlePerf.filter(a => a.article_number != null)
 
-    if (filteredAnswers.length === 0) {
-      logger.debug('No hay respuestas con artículos para este filtro', { domain: 'stats' })
+    if (articlePerf.length === 0 && stats.total_questions === 0) {
+      logger.debug('No hay estadísticas para este usuario', { domain: 'stats' })
       return null
     }
 
-    // Agrupar por artículo + ley
-    const articleStats: Record<string, ArticleStats> = {}
-    filteredAnswers.forEach(a => {
-      const law = a.law_name || 'Ley'
+    // Transformar al formato esperado
+    const articleStats: ArticleStats[] = articlePerf.map(a => {
       const article = a.article_number
-      if (article === undefined || article === null) return
-
-      // Artículo 0 = preguntas de estructura (no de un artículo específico)
       const articleLabel = article === 0 || article === '0' ? 'Estructura' : `Art. ${article}`
-      // Extraer nombre corto de la ley
-      const lawShort = law.split(' de ')[0] || law.substring(0, 20)
-      const key = `${lawShort} ${articleLabel}`
+      const lawShort = a.law_name?.split(' de ')[0] || a.law_name?.substring(0, 20) || 'Ley'
+      const failed = a.total - a.correct
 
-      if (!articleStats[key]) {
-        articleStats[key] = {
-          law: lawShort,
-          article: articleLabel,
-          total: 0,
-          correct: 0,
-          failed: 0,
-          accuracy: 0,
-        }
-      }
-      articleStats[key].total += 1
-      if (a.is_correct) {
-        articleStats[key].correct += 1
-      } else {
-        articleStats[key].failed += 1
+      return {
+        law: lawShort,
+        article: articleLabel,
+        total: a.total,
+        correct: a.correct,
+        failed,
+        accuracy: a.accuracy,
       }
     })
 
-    // Calcular porcentaje de acierto
-    const withPercentage = Object.values(articleStats).map(s => ({
-      ...s,
-      accuracy: s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0,
-    }))
-
     // Artículos más fallados (ordenados por número de fallos)
-    const mostFailed = [...withPercentage]
+    const mostFailed = [...articleStats]
       .filter(s => s.failed > 0)
       .sort((a, b) => b.failed - a.failed)
       .slice(0, limit)
 
     // Artículos con peor porcentaje (mínimo 2 intentos)
-    const worstAccuracy = [...withPercentage]
+    const worstAccuracy = [...articleStats]
       .filter(s => s.total >= 2)
       .sort((a, b) => a.accuracy - b.accuracy)
       .slice(0, limit)
 
     // Estadísticas generales
-    const totalAnswers = filteredAnswers.length
-    const totalCorrect = filteredAnswers.filter(a => a.is_correct).length
-    const overallAccuracy = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 100) : 0
+    const totalAnswers = stats.total_questions || 0
+    const totalCorrect = stats.correct_answers || 0
+    const overallAccuracy = stats.accuracy || 0
 
-    logger.info('User stats calculated', {
+    logger.info('User stats calculated via RPC', {
       domain: 'stats',
       totalAnswers,
       overallAccuracy,

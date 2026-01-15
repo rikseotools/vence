@@ -11,6 +11,7 @@ import {
   detectStatsQueryType,
   formatExamStatsResponse,
   formatUserStatsResponse,
+  formatWeakPointsTestResponse,
 } from './StatsService'
 
 // ============================================
@@ -72,7 +73,10 @@ export class StatsDomain implements ChatDomain {
       // Formatear respuesta según el tipo
       let responseText: string
 
-      if (statsResult.type === 'exam' && statsResult.examStats) {
+      if (statsResult.type === 'weak_points_test') {
+        // Usuario quiere empezar un test de puntos débiles
+        responseText = formatWeakPointsTestResponse()
+      } else if (statsResult.type === 'exam' && statsResult.examStats) {
         responseText = formatExamStatsResponse(statsResult.examStats)
       } else if (statsResult.type === 'user' && statsResult.userStats) {
         responseText = formatUserStatsResponse(

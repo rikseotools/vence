@@ -67,7 +67,7 @@ export type TemporalFilter = z.infer<typeof temporalFilterSchema>
 // SCHEMAS DE DETECCIÓN DE CONSULTAS
 // ============================================
 
-export const statsQueryTypeSchema = z.enum(['exam', 'user', 'none'])
+export const statsQueryTypeSchema = z.enum(['exam', 'user', 'weak_points_test', 'none'])
 
 export type StatsQueryType = z.infer<typeof statsQueryTypeSchema>
 
