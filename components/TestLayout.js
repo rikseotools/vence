@@ -35,6 +35,70 @@ import { useBotDetection, useBehaviorAnalysis } from '../hooks/useBotDetection'
 import DailyLimitBanner from './DailyLimitBanner'
 import AdSenseComponent from './AdSenseComponent'
 import UpgradeLimitModal from './UpgradeLimitModal'
+import { useUserOposicion } from './useUserOposicion'
+
+// 🏛️ Helper para verificar si una pregunta oficial es de la oposición del usuario
+// Usa exam_source para determinar de qué oposición es la pregunta
+function isOfficialForUserOposicion(examSource, userOposicionSlug) {
+  if (!examSource) return true // Si no hay exam_source, asumir que es válida
+  if (!userOposicionSlug) return true // Si no hay oposición de usuario, mostrar todo
+
+  const normalizedUserSlug = userOposicionSlug.toLowerCase().replace(/-/g, '_')
+
+  // Mapeo de patrones en exam_source a slugs de oposición
+  const sourceToOposicion = {
+    'Tramitaci': ['tramitacion_procesal'],
+    'Auxilio Judicial': ['auxilio_judicial'],
+    'Auxiliar Administrativo': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
+    'Auxiliar Admin': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
+    'Gestión Procesal': ['gestion_procesal'],
+  }
+
+  // Verificar si el exam_source indica otra oposición
+  for (const [pattern, validSlugs] of Object.entries(sourceToOposicion)) {
+    if (examSource.includes(pattern)) {
+      // Este exam_source es de esta oposición específica
+      return validSlugs.some(slug => normalizedUserSlug.includes(slug))
+    }
+  }
+
+  // Si no coincide con ningún patrón conocido, asumir que es válida
+  return true
+}
+
+// 🏛️ Helper para formatear exam_source según la oposición del usuario
+// Evita mostrar "Tramitación Procesal" a usuarios de Auxiliar Administrativo
+function formatExamSource(examSource, userOposicionSlug) {
+  if (!examSource) return null
+
+  // Mapeo de patrones a slugs de oposición
+  const sourcePatterns = {
+    'Tramitaci': ['tramitacion_procesal', 'tramitacion-procesal', 'gestion_procesal', 'gestion-procesal'],
+    'Auxilio Judicial': ['auxilio_judicial', 'auxilio-judicial'],
+    'Auxiliar Administrativo': ['auxiliar_administrativo', 'auxiliar-administrativo', 'auxiliar_administrativo_estado', 'auxiliar-administrativo-estado'],
+    'Gestión Procesal': ['gestion_procesal', 'gestion-procesal'],
+  }
+
+  // Verificar si el exam_source coincide con la oposición del usuario
+  for (const [pattern, validSlugs] of Object.entries(sourcePatterns)) {
+    if (examSource.includes(pattern)) {
+      // El exam_source es de esta oposición
+      if (validSlugs.some(slug => userOposicionSlug?.includes(slug))) {
+        // El usuario está en la misma oposición - mostrar completo
+        return examSource
+      } else {
+        // El usuario está en otra oposición - mostrar genérico
+        // Extraer solo el año si existe
+        const yearMatch = examSource.match(/20\d{2}/)
+        const year = yearMatch ? yearMatch[0] : ''
+        return `Examen oficial${year ? ` ${year}` : ''}`
+      }
+    }
+  }
+
+  // No coincide con ningún patrón conocido - mostrar tal cual
+  return examSource
+}
 
 // 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar artículo
 const NON_LEGAL_CONTENT = [
@@ -148,6 +212,10 @@ export default function TestLayout({
     suspicionScore,
     recordAnswer: recordBehavior
   } = useBehaviorAnalysis(user?.id)
+
+  // 🏛️ Oposición del usuario (para formatear exam_source correctamente)
+  const { userOposicion } = useUserOposicion()
+  const userOposicionSlug = userOposicion?.slug || null
 
   // Estados del test básicos
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -1877,8 +1945,8 @@ export default function TestLayout({
                       </div>
                     )}
 
-                    {/* Información de procedencia oficial */}
-                      {currentQ?.metadata?.is_official_exam && (
+                    {/* Información de procedencia oficial - Solo si es de la oposición del usuario */}
+                      {currentQ?.metadata?.is_official_exam && isOfficialForUserOposicion(currentQ?.metadata?.exam_source, userOposicionSlug) && (
                         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4 mb-4">
                           <div className="flex items-start space-x-3">
                             <div className="text-2xl">🏛️</div>
@@ -1890,7 +1958,7 @@ export default function TestLayout({
                                 {currentQ.metadata.exam_source && (
                                   <div className="flex items-center space-x-2">
                                     <span>📋</span>
-                                    <span><strong>Examen:</strong> {currentQ.metadata.exam_source}</span>
+                                    <span><strong>Examen:</strong> {formatExamSource(currentQ.metadata.exam_source, userOposicionSlug)}</span>
                                   </div>
                                 )}
                                 {currentQ.metadata.exam_date && (
@@ -1916,7 +1984,8 @@ export default function TestLayout({
                       )}
 
                       {/* 🆕 ADEMÁS - Para artículos que aparecen en exámenes (aunque esta pregunta específica no sea oficial) */}
-                      {!currentQ?.metadata?.is_official_exam && currentQ?.primary_article_id && hotArticleInfo?.total_official_appearances > 0 && (
+                      {/* Solo mostrar si is_hot=true (ya filtrado por oposición del usuario en la función RPC) */}
+                      {!currentQ?.metadata?.is_official_exam && currentQ?.primary_article_id && hotArticleInfo?.is_hot && (
                         <div className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4 mb-4">
                           <div className="flex items-start space-x-3">
                             <div className="text-2xl">🔥</div>
@@ -1925,24 +1994,13 @@ export default function TestLayout({
                                 Artículo Muy Importante para Exámenes
                               </h4>
                               <div className="space-y-1 text-sm text-orange-700 dark:text-orange-400">
-                                <div className="flex items-center space-x-2">
-                                  <span>📊</span>
-                                  <span><strong>Apariciones en exámenes oficiales:</strong> {hotArticleInfo.total_official_appearances}</span>
-                                </div>
-                                {hotArticleInfo.unique_exams_count && (
-                                  <div className="flex items-center space-x-2">
-                                    <span>📋</span>
-                                    <span><strong>Exámenes diferentes:</strong> {hotArticleInfo.unique_exams_count}</span>
-                                  </div>
-                                )}
-                                {hotArticleInfo.last_appearance_date && (
-                                  <div className="flex items-center space-x-2">
-                                    <span>📅</span>
-                                    <span><strong>Última aparición:</strong> {new Date(hotArticleInfo.last_appearance_date).getFullYear()}</span>
+                                {hotArticleInfo.hot_message && (
+                                  <div className="whitespace-pre-line">
+                                    {hotArticleInfo.hot_message.replace(/🔥+\s*/g, '')}
                                   </div>
                                 )}
                                 <div className="mt-3 p-2 bg-orange-100 dark:bg-orange-800/30 rounded text-xs text-orange-800 dark:text-orange-300">
-                                  <strong>🎯 Recomendación:</strong> Este artículo ha aparecido múltiples veces en exámenes oficiales. 
+                                  <strong>🎯 Recomendación:</strong> Este artículo ha aparecido múltiples veces en exámenes oficiales.
                                   Asegúrate de dominarlo completamente.
                                 </div>
                               </div>

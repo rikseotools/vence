@@ -284,12 +284,21 @@ export class ChatOrchestrator {
         prompt += `Pregunta: ${qc.questionText}\n`
       }
 
-      if (qc.options && qc.options.length > 0) {
+      if (qc.options) {
         prompt += 'Opciones:\n'
-        qc.options.forEach((opt, i) => {
-          const letter = String.fromCharCode(65 + i)
-          prompt += `${letter}) ${opt}\n`
-        })
+        if (Array.isArray(qc.options)) {
+          qc.options.forEach((opt, i) => {
+            const letter = String.fromCharCode(65 + i)
+            prompt += `${letter}) ${opt}\n`
+          })
+        } else {
+          // options es objeto {a, b, c, d}
+          const opts = qc.options as { a?: string; b?: string; c?: string; d?: string }
+          if (opts.a) prompt += `A) ${opts.a}\n`
+          if (opts.b) prompt += `B) ${opts.b}\n`
+          if (opts.c) prompt += `C) ${opts.c}\n`
+          if (opts.d) prompt += `D) ${opts.d}\n`
+        }
       }
 
       if (qc.lawName) {
@@ -300,13 +309,17 @@ export class ChatOrchestrator {
         prompt += `Artículo: ${qc.articleNumber}\n`
       }
 
-      if (qc.selectedAnswer !== undefined) {
-        const selectedLetter = String.fromCharCode(65 + qc.selectedAnswer)
+      if (qc.selectedAnswer !== undefined && qc.selectedAnswer !== null) {
+        const selectedLetter = typeof qc.selectedAnswer === 'number'
+          ? String.fromCharCode(65 + qc.selectedAnswer)
+          : qc.selectedAnswer
         prompt += `\nEl usuario seleccionó: ${selectedLetter}\n`
       }
 
-      if (qc.correctAnswer !== undefined) {
-        const correctLetter = String.fromCharCode(65 + qc.correctAnswer)
+      if (qc.correctAnswer !== undefined && qc.correctAnswer !== null) {
+        const correctLetter = typeof qc.correctAnswer === 'number'
+          ? String.fromCharCode(65 + qc.correctAnswer)
+          : qc.correctAnswer
         prompt += `Respuesta marcada como correcta: ${correctLetter}\n`
       }
     }
