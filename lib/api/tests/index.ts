@@ -15,10 +15,25 @@ export {
   type PendingTest,
   type RecoverTestRequest,
   type RecoverTestResponse,
+  // Test de repaso de fallos
+  failedQuestionsOrderSchema,
+  createFailedQuestionsTestRequestSchema,
+  testLayoutQuestionSchema,
+  createFailedQuestionsTestResponseSchema,
+  testConfigSchema,
+  safeParseCreateFailedQuestionsTest,
+  safeParseTestLayoutQuestions,
+  type FailedQuestionsOrder,
+  type CreateFailedQuestionsTestRequest,
+  type TestLayoutQuestion,
+  type CreateFailedQuestionsTestResponse,
+  type TestConfig,
 } from './schemas'
 
 // Queries
 export {
   recoverTest,
   checkNeedsOnboarding,
+  // Test de repaso de fallos (Drizzle)
+  getFailedQuestionsForUser,
 } from './queries'

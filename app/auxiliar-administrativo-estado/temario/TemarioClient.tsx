@@ -28,9 +28,19 @@ interface TemarioClientProps {
   fechaActualizacion: string
 }
 
+interface WeakArticle {
+  lawName: string
+  articleNumber: string
+  failedCount: number
+  avgSuccessRate: number
+}
+
 export default function TemarioClient({ bloques, oposicion, fechaActualizacion }: TemarioClientProps) {
   const { user } = useAuth() as { user: any }
-  const { getTopicProgress } = useTopicUnlock() as { getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number } }
+  const { getTopicProgress, getWeakArticles } = useTopicUnlock() as {
+    getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number }
+    getWeakArticles: (id: number) => WeakArticle[]
+  }
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({
     bloque1: true,
     bloque2: false
@@ -57,7 +67,9 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
 
   const renderTema = (tema: Tema) => {
     const progress = user ? getTopicProgress(tema.id) : { accuracy: 0, questionsAnswered: 0 }
+    const weakArticles = user ? getWeakArticles(tema.id) : []
     const hasProgress = progress.questionsAnswered > 0
+    const hasWeakArticles = weakArticles.length > 0
     const displayNumber = tema.displayNum || tema.id
     const isDisponible = tema.disponible !== false
 
@@ -94,44 +106,71 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
       <Link
         key={tema.id}
         href={`/${oposicion}/temario/tema-${tema.id}`}
-        className={`group flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all duration-200 ${hasProgress ? getProgressBg(progress.accuracy) : ''}`}
+        className={`group block p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all duration-200 ${hasProgress ? getProgressBg(progress.accuracy) : ''}`}
       >
-        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-          <span className="text-base font-bold text-blue-600 dark:text-blue-400">
-            {displayNumber}
-          </span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-            {tema.titulo}
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-            {tema.descripcion}
-          </p>
-        </div>
-        <div className="flex-shrink-0 flex items-center gap-3">
-          {hasProgress && (
-            <div className="text-right hidden sm:block">
-              <div className={`text-sm font-semibold ${progress.accuracy >= 70 ? 'text-green-600' : 'text-amber-600'}`}>
-                {progress.accuracy}%
+        <div className="flex items-center gap-4">
+          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+            <span className="text-base font-bold text-blue-600 dark:text-blue-400">
+              {displayNumber}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+              {tema.titulo}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+              {tema.descripcion}
+            </p>
+          </div>
+          <div className="flex-shrink-0 flex items-center gap-3">
+            {hasProgress && (
+              <div className="text-right hidden sm:block">
+                <div className={`text-sm font-semibold ${progress.accuracy >= 70 ? 'text-green-600' : 'text-amber-600'}`}>
+                  {progress.accuracy}%
+                </div>
+                <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${getProgressColor(progress.accuracy)}`}
+                    style={{ width: `${Math.min(100, progress.accuracy)}%` }}
+                  />
+                </div>
               </div>
-              <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${getProgressColor(progress.accuracy)}`}
-                  style={{ width: `${Math.min(100, progress.accuracy)}%` }}
-                />
-              </div>
+            )}
+            <svg
+              className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Artículos débiles */}
+        {hasWeakArticles && (
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                Repasar:
+              </span>
+              {weakArticles.slice(0, 3).map((art, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
+                >
+                  {art.lawName} Art. {art.articleNumber}
+                  <span className="ml-1 text-red-500">({art.avgSuccessRate}%)</span>
+                </span>
+              ))}
+              {weakArticles.length > 3 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  +{weakArticles.length - 3} más
+                </span>
+              )}
             </div>
-          )}
-          <svg
-            className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
+          </div>
+        )}
       </Link>
     )
   }

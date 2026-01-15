@@ -7,13 +7,16 @@ import { useAuth } from '../contexts/AuthContext'
 export function useTopicUnlock() {
   const { user, supabase } = useAuth()
   const [topicProgress, setTopicProgress] = useState({})
+  const [weakArticlesByTopic, setWeakArticlesByTopic] = useState({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (user && supabase) {
       loadUserProgress()
+      loadWeakArticles()
     } else {
       setTopicProgress({})
+      setWeakArticlesByTopic({})
       setLoading(false)
     }
   }, [user, supabase])
@@ -76,16 +79,59 @@ export function useTopicUnlock() {
     }
   }
 
+  // Obtener artículos débiles de un tema específico
+  const getWeakArticles = (topicNumber) => {
+    return weakArticlesByTopic[topicNumber] || []
+  }
+
+  // Cargar artículos débiles del usuario via API v2 (Drizzle + Zod)
+  const loadWeakArticles = async () => {
+    if (!user || !supabase) return
+
+    try {
+      // Obtener token de sesión
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        console.error('No session token for weak articles API')
+        return
+      }
+
+      // Llamar a la API v2
+      const response = await fetch('/api/v2/topic-progress/weak-articles', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        console.error('Error loading weak articles:', response.statusText)
+        return
+      }
+
+      const data = await response.json()
+
+      if (data.success && data.weakArticlesByTopic) {
+        setWeakArticlesByTopic(data.weakArticlesByTopic)
+      }
+
+    } catch (error) {
+      console.error('Error in loadWeakArticles:', error)
+    }
+  }
+
   // Actualizar progreso cuando el usuario complete tests
   const updateTopicProgress = async () => {
     if (!user) return
     await loadUserProgress()
+    await loadWeakArticles()
   }
 
   return {
     topicProgress,
+    weakArticlesByTopic,
     loading,
     getTopicProgress,
+    getWeakArticles,
     updateTopicProgress,
     refreshProgress: loadUserProgress
   }

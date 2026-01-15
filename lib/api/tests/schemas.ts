@@ -116,3 +116,96 @@ export function safeParseRecoverTest(data: unknown) {
 export function safeParsePendingTest(data: unknown) {
   return pendingTestSchema.safeParse(data)
 }
+
+// ============================================
+// TEST DE REPASO DE FALLOS
+// ============================================
+
+export const failedQuestionsOrderSchema = z.enum([
+  'recent',
+  'most_failed',
+  'worst_accuracy'
+])
+
+export type FailedQuestionsOrder = z.infer<typeof failedQuestionsOrderSchema>
+
+export const createFailedQuestionsTestRequestSchema = z.object({
+  userId: z.string().uuid('ID de usuario inválido'),
+  numQuestions: z.number().int().min(1).max(100).default(10),
+  orderBy: failedQuestionsOrderSchema.default('recent'),
+  fromDate: z.string().datetime().optional(),
+  days: z.number().int().min(1).max(365).optional(),
+})
+
+export type CreateFailedQuestionsTestRequest = z.infer<typeof createFailedQuestionsTestRequestSchema>
+
+/** Pregunta formateada para TestLayout */
+export const testLayoutQuestionSchema = z.object({
+  id: z.string().uuid(),
+  question: z.string().min(1),
+  question_text: z.string().optional(),
+  options: z.tuple([z.string(), z.string(), z.string(), z.string()]),
+  explanation: z.string().nullable(),
+  difficulty: z.string().nullable(),
+  primary_article_id: z.string().uuid().nullable(),
+  article_number: z.string().nullable().optional(),
+  article_title: z.string().nullable().optional(),
+  law_name: z.string().nullable().optional(),
+  law_slug: z.string().nullable().optional(),
+  is_official_exam: z.boolean().optional(),
+  exam_source: z.string().nullable().optional(),
+  exam_date: z.string().nullable().optional(),
+  exam_entity: z.string().nullable().optional(),
+  global_difficulty_category: z.string().nullable().optional(),
+  // Datos del artículo relacionado (de transformQuestions)
+  article: z.object({
+    id: z.string().nullable().optional(),
+    number: z.string().nullable().optional(),
+    article_number: z.string().nullable().optional(),
+    title: z.string().nullable().optional(),
+    law_name: z.string().nullable().optional(),
+    law_short_name: z.string().nullable().optional(),
+  }).nullable().optional(),
+})
+
+export type TestLayoutQuestion = z.infer<typeof testLayoutQuestionSchema>
+
+export const createFailedQuestionsTestResponseSchema = z.object({
+  success: z.boolean(),
+  questions: z.array(testLayoutQuestionSchema).optional(),
+  questionCount: z.number().int().optional(),
+  message: z.string().optional(),
+  error: z.string().optional(),
+})
+
+export type CreateFailedQuestionsTestResponse = z.infer<typeof createFailedQuestionsTestResponseSchema>
+
+// Validadores
+export function safeParseCreateFailedQuestionsTest(data: unknown) {
+  return createFailedQuestionsTestRequestSchema.safeParse(data)
+}
+
+export function safeParseTestLayoutQuestions(data: unknown) {
+  return z.array(testLayoutQuestionSchema).safeParse(data)
+}
+
+// ============================================
+// CONFIG DE TEST LAYOUT
+// ============================================
+
+export const testConfigSchema = z.object({
+  name: z.string().min(1),
+  description: z.string(),
+  subtitle: z.string().optional(),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+  isLawTest: z.boolean().optional(),
+  customNavigationLinks: z.object({
+    backToLaw: z.object({
+      href: z.string(),
+      text: z.string(),
+    }).optional(),
+  }).optional(),
+})
+
+export type TestConfig = z.infer<typeof testConfigSchema>
