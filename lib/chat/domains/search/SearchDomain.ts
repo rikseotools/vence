@@ -95,11 +95,22 @@ export class SearchDomain implements ChatDomain {
       lawName: context.questionContext?.lawName,
     })
 
-    // 1. Detectar ley del contexto de pregunta (prioridad: explicación > artículo vinculado)
-    // El artículo vinculado (questionContext.lawName) es interno y puede estar mal
-    // La explicación es lo que el usuario ve, así que tiene prioridad
+    // 1. Detectar ley - PRIORIDAD:
+    //    a) Ley mencionada explícitamente por el usuario en su mensaje
+    //    b) Ley de la explicación (lo que el usuario ve)
+    //    c) Ley del artículo vinculado (interno, puede estar mal)
     let effectiveLawName = context.questionContext?.lawName
-    if (context.questionContext?.explanation) {
+
+    // Primero: ¿El usuario mencionó una ley específica en su mensaje?
+    const userMentionedLaws = detectMentionedLaws(context.currentMessage)
+    if (userMentionedLaws.length > 0) {
+      // El usuario preguntó explícitamente sobre una ley, usar esa
+      logger.info(`🔎 SearchDomain: User explicitly mentioned law: ${userMentionedLaws[0]}`, {
+        domain: 'search',
+      })
+      effectiveLawName = userMentionedLaws[0]
+    } else if (context.questionContext?.explanation) {
+      // Si no, intentar detectar de la explicación
       const detectedLaws = await detectLawsFromText(context.questionContext.explanation)
       if (detectedLaws.length > 0 && detectedLaws[0] !== effectiveLawName) {
         logger.info(`🔎 SearchDomain: Law from explanation: ${effectiveLawName} -> ${detectedLaws[0]}`, {
@@ -146,7 +157,7 @@ export class SearchDomain implements ChatDomain {
         title: a.title || undefined,
         relevance: a.similarity,
       }))
-      builder.addSources(sources).withSourcesBlock()
+      builder.addSources(sources) // Sin mostrar bloque de fuentes al usuario
     }
 
     return builder.build()
@@ -201,8 +212,11 @@ Puedo ayudarte con:
       }
     }
 
+    // Expandir follow-ups como "y del tribunal constitucional" -> "¿cuáles son los plazos del tribunal constitucional?"
+    const expandedMessage = this.expandFollowUpMessage(context)
+
     // Añadir contexto de artículos al mensaje actual
-    const userMessageWithContext = `${context.currentMessage}
+    const userMessageWithContext = `${expandedMessage}
 
 ---
 ARTÍCULOS RELEVANTES:
@@ -264,6 +278,60 @@ Tu objetivo es responder preguntas sobre legislación de forma precisa y clara, 
     }
 
     return prompt
+  }
+
+  /**
+   * Expande mensajes de follow-up cortos usando contexto de la conversación anterior
+   * Ej: "y del tribunal constitucional" -> "¿Cuáles son los plazos del tribunal constitucional?"
+   */
+  private expandFollowUpMessage(context: ChatContext): string {
+    const msg = context.currentMessage.trim()
+
+    // Solo expandir mensajes cortos que parecen follow-ups
+    if (msg.length > 80) return msg
+
+    // Patrones de follow-up
+    const followUpPatterns = [
+      /^y\s+(del?|de la|sobre|en)\s+/i,
+      /^(qué|que)\s+hay\s+(del?|de la|sobre)/i,
+      /^(y|también)\s+(los?|las?|el|la)\s+/i,
+    ]
+
+    const isFollowUp = followUpPatterns.some((p) => p.test(msg))
+    if (!isFollowUp) return msg
+
+    // Buscar la pregunta anterior del usuario para extraer el tema
+    const previousUserMessages = context.messages.filter((m) => m.role === 'user')
+    if (previousUserMessages.length === 0) return msg
+
+    const lastUserMessage = previousUserMessages[previousUserMessages.length - 1]?.content || ''
+
+    // Extraer el tema de la pregunta anterior (ej: "plazos", "requisitos", "competencias")
+    const topicPatterns = [
+      /(?:cu[aá]les?\s+(?:son\s+)?(?:los?\s+)?)(plazos?|requisitos?|competencias?|funciones?|obligaciones?|derechos?|deberes?|procedimientos?)/i,
+      /(?:qu[eé]\s+)(plazos?|requisitos?|competencias?|funciones?|obligaciones?|derechos?|deberes?|procedimientos?)/i,
+      /(plazos?|requisitos?|competencias?|funciones?|obligaciones?|derechos?|deberes?|procedimientos?)\s+(?:m[aá]s\s+)?importantes?/i,
+    ]
+
+    let topic = ''
+    for (const pattern of topicPatterns) {
+      const match = lastUserMessage.match(pattern)
+      if (match) {
+        topic = match[1]
+        break
+      }
+    }
+
+    if (!topic) return msg
+
+    // Expandir el follow-up con el tema
+    // "y del tribunal constitucional" -> "¿Cuáles son los plazos del tribunal constitucional?"
+    const expandedPart = msg.replace(/^y\s+/i, '').replace(/^\?+/, '')
+    const expanded = `¿Cuáles son los ${topic} ${expandedPart}?`
+
+    logger.info(`🔎 SearchDomain: Expanded follow-up: "${msg}" -> "${expanded}"`, { domain: 'search' })
+
+    return expanded
   }
 }
 

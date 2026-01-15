@@ -689,9 +689,12 @@ export default function AIChatWidget() {
               )}
             </div>
           </div>
-          {/* Botón cerrar */}
+          {/* Botón cerrar - limpia conversación */}
           <button
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              clearChat()
+              setIsOpen(false)
+            }}
             className="w-7 h-7 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-full transition"
             aria-label="Cerrar chat"
           >
@@ -756,7 +759,7 @@ export default function AIChatWidget() {
                 {/* Texto de bienvenida */}
                 <div className="flex-1 pt-1">
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Hola{user?.user_metadata?.name ? <span className="text-blue-500 dark:text-blue-400"> {user.user_metadata.name.split(' ')[0]}</span> : ''}, soy <span className="font-semibold text-purple-600 dark:text-purple-400">Vence AI</span>
+                    Hola{user?.user_metadata?.name ? <span className="text-blue-500 dark:text-blue-400"> {user.user_metadata.name.split(' ')[0]}</span> : ''}, <span className="font-semibold text-purple-600 dark:text-purple-400">¿en qué puedo ayudarte?</span>
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {currentQuestionContext

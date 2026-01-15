@@ -3,6 +3,7 @@
 
 import type { DetectedPattern, PatternType } from '../../core/types'
 import { logger } from '../../shared/logger'
+import { mapLawSlugToShortName } from '@/lib/lawMappingUtils'
 
 // ============================================
 // DEFINICIÓN DE PATRONES
@@ -165,32 +166,53 @@ export function getAllPatterns(): QueryPattern[] {
 // Cache de leyes para detección rápida
 let lawsCache: Array<{ shortName: string; aliases: string[] }> | null = null
 
-const LAW_ALIASES: Record<string, string[]> = {
-  'Ley 39/2015': ['39/2015', 'lpac', 'procedimiento administrativo', 'ley 39', 'la 39'],
-  'Ley 40/2015': ['40/2015', 'lrjsp', 'régimen jurídico', 'ley 40', 'la 40'],
-  'Ley 50/1997': ['50/1997', 'ley del gobierno', 'ley 50', 'la 50'],
-  'CE': ['constitución española', 'carta magna'],
-  'Ley 19/2013': ['19/2013', 'transparencia', 'ley 19', 'la 19'],
-  'RDL 5/2015': ['5/2015', 'trebep', 'ebep', 'estatuto básico', 'empleado público'],
-  // Leyes Orgánicas importantes
-  'LOTC': ['lotc', 'ley orgánica del tribunal constitucional', 'tribunal constitucional', '2/1979', 'lo 2/1979'],
-  'LOPJ': ['lopj', 'ley orgánica del poder judicial', 'poder judicial', '6/1985', 'lo 6/1985'],
-  'LOIEMH': ['loiemh', 'ley de igualdad', 'igualdad efectiva', '3/2007', 'lo 3/2007'],
-  'LOREG': ['loreg', 'régimen electoral', '5/1985', 'lo 5/1985'],
-  'LO 4/2001': ['defensor del pueblo', 'lo 4/2001', '4/2001'],
+// Aliases adicionales para detección en mensajes de chat (no URLs)
+// Estos complementan el mapeo centralizado de lawMappingUtils.ts
+const CHAT_LAW_ALIASES: Record<string, string[]> = {
+  'Ley 39/2015': ['procedimiento administrativo', 'ley 39', 'la 39'],
+  'Ley 40/2015': ['régimen jurídico', 'ley 40', 'la 40'],
+  'Ley 50/1997': ['ley del gobierno', 'ley 50', 'la 50'],
+  'CE': ['constitución española', 'carta magna', 'constitución'],
+  'Ley 19/2013': ['transparencia', 'ley 19', 'la 19'],
+  'RDL 5/2015': ['estatuto básico', 'empleado público'],
+  'LOTC': ['ley orgánica del tribunal constitucional', 'tribunal constitucional'],
+  'LO 6/1985': ['ley orgánica del poder judicial', 'poder judicial'],
+  'LO 3/2007': ['ley de igualdad', 'igualdad efectiva'],
+  'LO 5/1985': ['régimen electoral'],
+  'LO 3/1981': ['defensor del pueblo'],
 }
 
 /**
  * Detecta qué leyes se mencionan en el mensaje
+ * Usa el mapeo centralizado de lawMappingUtils.ts + aliases específicos para chat
  */
 export function detectMentionedLaws(message: string): string[] {
   const msgLower = message.toLowerCase()
   const mentioned: string[] = []
 
-  for (const [lawName, aliases] of Object.entries(LAW_ALIASES)) {
+  // 1. Detectar abreviaturas comunes directamente (ce, lotc, lpac, etc.)
+  const commonAbbreviations = [
+    'ce', 'lotc', 'lopj', 'lpac', 'lrjsp', 'trebep', 'ebep', 'loreg', 'rgpd',
+    'lofcs', 'lopd', 'lopdgdd', 'lec', 'lecrim', 'cp', 'cc', 'lsp'
+  ]
+  for (const abbr of commonAbbreviations) {
+    // Buscar como palabra completa (con límites de palabra)
+    const regex = new RegExp(`\\b${abbr}\\b`, 'i')
+    if (regex.test(msgLower)) {
+      const shortName = mapLawSlugToShortName(abbr)
+      if (shortName && !mentioned.includes(shortName)) {
+        mentioned.push(shortName)
+      }
+    }
+  }
+
+  // 2. Buscar en aliases específicos de chat
+  for (const [lawName, aliases] of Object.entries(CHAT_LAW_ALIASES)) {
     for (const alias of aliases) {
       if (msgLower.includes(alias.toLowerCase())) {
-        mentioned.push(lawName)
+        if (!mentioned.includes(lawName)) {
+          mentioned.push(lawName)
+        }
         break
       }
     }
