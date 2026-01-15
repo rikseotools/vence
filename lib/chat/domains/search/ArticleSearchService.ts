@@ -57,8 +57,9 @@ export async function searchArticles(
   // Usar searchQuery si está disponible, sino el mensaje del usuario
   const message = options.searchQuery || context.currentMessage
 
-  // 1. Obtener ley del contexto de pregunta si existe
-  const contextLaw = context.questionContext?.lawName || options.contextLawName
+  // 1. Obtener ley del contexto - PRIORIDAD: options.contextLawName (detectada dinámicamente) > questionContext.lawName (vinculación estática)
+  // Cuando detectamos una ley específica en la pregunta/explicación, esa tiene prioridad sobre el artículo vinculado
+  const contextLaw = options.contextLawName || context.questionContext?.lawName
 
   // 2. PRIMERO: Detectar si el texto menciona una ley específica (Real Decreto, Ley Orgánica, etc.)
   // Esto tiene PRIORIDAD porque el texto de la pregunta dice exactamente qué ley se necesita

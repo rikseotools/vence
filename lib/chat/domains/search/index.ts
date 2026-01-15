@@ -40,6 +40,9 @@ export {
   getOposicionLawIds,
   extractSearchTerms,
   findLawByName,
+  detectLawsFromText,
+  extractArticleNumbers,
+  findArticleInLaw,
 } from './queries'
 
 // Schemas

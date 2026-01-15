@@ -169,9 +169,15 @@ const LAW_ALIASES: Record<string, string[]> = {
   'Ley 39/2015': ['39/2015', 'lpac', 'procedimiento administrativo', 'ley 39', 'la 39'],
   'Ley 40/2015': ['40/2015', 'lrjsp', 'régimen jurídico', 'ley 40', 'la 40'],
   'Ley 50/1997': ['50/1997', 'ley del gobierno', 'ley 50', 'la 50'],
-  'CE': ['constitución', 'constitución española', 'carta magna'],
+  'CE': ['constitución española', 'carta magna'],
   'Ley 19/2013': ['19/2013', 'transparencia', 'ley 19', 'la 19'],
   'RDL 5/2015': ['5/2015', 'trebep', 'ebep', 'estatuto básico', 'empleado público'],
+  // Leyes Orgánicas importantes
+  'LOTC': ['lotc', 'ley orgánica del tribunal constitucional', 'tribunal constitucional', '2/1979', 'lo 2/1979'],
+  'LOPJ': ['lopj', 'ley orgánica del poder judicial', 'poder judicial', '6/1985', 'lo 6/1985'],
+  'LOIEMH': ['loiemh', 'ley de igualdad', 'igualdad efectiva', '3/2007', 'lo 3/2007'],
+  'LOREG': ['loreg', 'régimen electoral', '5/1985', 'lo 5/1985'],
+  'LO 4/2001': ['defensor del pueblo', 'lo 4/2001', '4/2001'],
 }
 
 /**

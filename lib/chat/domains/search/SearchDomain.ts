@@ -14,6 +14,7 @@ import {
   isGenericLawQuery,
 } from './ArticleSearchService'
 import { detectQueryPattern } from './PatternMatcher'
+import { detectLawsFromText } from './queries'
 
 // ============================================
 // DOMINIO DE BÚSQUEDA
@@ -90,12 +91,28 @@ export class SearchDomain implements ChatDomain {
       domain: 'search',
       userId: context.userId,
       hasQuestionContext: !!context.questionContext,
+      hasExplanation: !!context.questionContext?.explanation,
+      lawName: context.questionContext?.lawName,
     })
 
-    // 1. Buscar artículos relevantes
+    // 1. Detectar ley del contexto de pregunta (prioridad: explicación > artículo vinculado)
+    // El artículo vinculado (questionContext.lawName) es interno y puede estar mal
+    // La explicación es lo que el usuario ve, así que tiene prioridad
+    let effectiveLawName = context.questionContext?.lawName
+    if (context.questionContext?.explanation) {
+      const detectedLaws = await detectLawsFromText(context.questionContext.explanation)
+      if (detectedLaws.length > 0 && detectedLaws[0] !== effectiveLawName) {
+        logger.info(`🔎 SearchDomain: Law from explanation: ${effectiveLawName} -> ${detectedLaws[0]}`, {
+          domain: 'search',
+        })
+        effectiveLawName = detectedLaws[0]
+      }
+    }
+
+    // 2. Buscar artículos relevantes
     const searchResult = await searchArticles(context, {
       userOposicion: context.userDomain,
-      contextLawName: context.questionContext?.lawName,
+      contextLawName: effectiveLawName,
       limit: 10,
     })
 
@@ -104,7 +121,11 @@ export class SearchDomain implements ChatDomain {
     })
 
     // 2. Verificar si es consulta genérica sobre una ley
-    if (isGenericLawQuery(context.currentMessage, searchResult.mentionedLaws)) {
+    // NO mostrar menú genérico si:
+    // - Hay contexto de pregunta (estamos en un test, el usuario pregunta sobre la pregunta)
+    // - Hay historial de conversación (es un mensaje de seguimiento)
+    const hasConversationContext = !!context.questionContext || context.messages.length > 1
+    if (!hasConversationContext && isGenericLawQuery(context.currentMessage, searchResult.mentionedLaws)) {
       return this.handleGenericLawQuery(context, searchResult.mentionedLaws[0])
     }
 

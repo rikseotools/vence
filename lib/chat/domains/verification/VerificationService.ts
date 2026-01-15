@@ -3,7 +3,7 @@
 
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
 import { logger } from '../../shared/logger'
-import { searchArticles, formatArticlesForContext } from '../search'
+import { searchArticles, formatArticlesForContext, detectLawsFromText, extractArticleNumbers, findArticleInLaw } from '../search'
 import {
   detectErrorInResponse,
   analyzeQuestion,
@@ -45,6 +45,16 @@ export interface VerificationResult {
   sources: ArticleSource[]
   processingTime: number
 }
+
+// Tipo para artículo detectado dinámicamente en la explicación
+type ArticleFromExplanation = {
+  id: string
+  articleNumber: string
+  title: string | null
+  content: string | null
+  lawShortName: string
+  lawName: string
+} | null
 
 // ============================================
 // SERVICIO PRINCIPAL
@@ -101,22 +111,123 @@ export async function verifyAnswer(
     })
   }
 
-  // 3. Buscar artículos relevantes por embedding
+  // 3. Detectar ley y artículo desde TRES fuentes posibles:
+  //    a) Artículo vinculado en BD (puede estar mal)
+  //    b) Artículo citado en la PREGUNTA (ej: "Según el art. 9 de la LOTC...")
+  //    c) Artículo mencionado en la EXPLICACIÓN
+  let effectiveLawName = input.lawName
+  let effectiveArticleNumber = input.articleNumber
+  let articleFromQuestion: ArticleFromExplanation = null
+  let articleFromExplanation: ArticleFromExplanation = null
+
+  // PASO 1: Detectar ley/artículo citado en la PREGUNTA (máxima prioridad)
+  if (input.questionText) {
+    const lawsFromQuestion = await detectLawsFromText(input.questionText)
+    const articlesFromQuestion = extractArticleNumbers(input.questionText)
+
+    if (lawsFromQuestion.length > 0 || articlesFromQuestion.length > 0) {
+      const lawToSearch = lawsFromQuestion[0] || effectiveLawName || input.lawName
+
+      if (lawToSearch && articlesFromQuestion.length > 0) {
+        for (const artNum of articlesFromQuestion) {
+          const found = await findArticleInLaw(lawToSearch, artNum)
+          if (found) {
+            articleFromQuestion = found
+            logger.info(`🔎 Found article cited in QUESTION: ${found.lawShortName} art. ${found.articleNumber}`, {
+              domain: 'verification',
+            })
+            break
+          }
+        }
+      }
+
+      // Si la pregunta menciona una ley diferente, usarla
+      if (lawsFromQuestion.length > 0 && lawsFromQuestion[0] !== input.lawName) {
+        logger.info(`🔎 Law from QUESTION: ${lawsFromQuestion[0]}`, { domain: 'verification' })
+        effectiveLawName = lawsFromQuestion[0]
+      }
+    }
+  }
+
+  // PASO 2: Detectar ley/artículo de la EXPLICACIÓN
+  if (input.explanation) {
+    const detectedLaws = await detectLawsFromText(input.explanation)
+    if (detectedLaws.length > 0 && detectedLaws[0] !== input.lawName) {
+      logger.info(`🔎 Law from explanation: ${input.lawName} -> ${detectedLaws[0]}`, {
+        domain: 'verification',
+      })
+      // Solo actualizar si no vino de la pregunta
+      if (!articleFromQuestion) {
+        effectiveLawName = detectedLaws[0]
+      }
+    }
+
+    const articleNumbers = extractArticleNumbers(input.explanation)
+    if (articleNumbers.length > 0) {
+      logger.info(`🔎 Article numbers in explanation: ${articleNumbers.join(', ')}`, {
+        domain: 'verification',
+      })
+
+      const lawToSearch = detectedLaws[0] || effectiveLawName || input.lawName
+      if (lawToSearch) {
+        for (const artNum of articleNumbers) {
+          const found = await findArticleInLaw(lawToSearch, artNum)
+          if (found) {
+            articleFromExplanation = found
+            effectiveArticleNumber = found.articleNumber
+            logger.info(`🔎 Found article from explanation: ${found.lawShortName} art. ${found.articleNumber}`, {
+              domain: 'verification',
+            })
+            break
+          }
+        }
+      }
+    }
+  }
+
   // Usar el texto de la pregunta del test como query de búsqueda
-  const searchQuery = input.articleNumber
-    ? `Artículo ${input.articleNumber} ${input.lawName || ''} ${input.questionText}`
+  const searchQuery = effectiveArticleNumber
+    ? `Artículo ${effectiveArticleNumber} ${effectiveLawName || ''} ${input.questionText}`
     : input.questionText
 
   const searchResult = await searchArticles(context, {
-    contextLawName: input.lawName,
+    contextLawName: effectiveLawName,
     searchQuery,
-    limit: 8, // Reducido porque tenemos el artículo vinculado
+    limit: 8,
   })
 
-  // Combinar artículo vinculado con artículos por embedding
+  // Incluir TODOS los artículos relevantes para que GPT pueda compararlos:
+  // 1. Artículo citado en la PREGUNTA (máxima prioridad)
+  // 2. Artículo vinculado en BD
+  // 3. Artículo detectado en EXPLICACIÓN
   let allArticles = searchResult.articles
+
+  // Helper para añadir artículo si no existe
+  const addArticleIfNotExists = (article: NonNullable<ArticleFromExplanation>) => {
+    const alreadyIncluded = allArticles.some(
+      a => a.articleNumber === article.articleNumber && a.lawShortName === article.lawShortName
+    )
+    if (!alreadyIncluded) {
+      allArticles = [{
+        id: article.id,
+        lawId: '',
+        lawName: article.lawName,
+        lawShortName: article.lawShortName,
+        articleNumber: article.articleNumber,
+        title: article.title,
+        content: article.content,
+        similarity: 1.0,
+      }, ...allArticles]
+    }
+  }
+
+  // 1. Añadir artículo citado en la pregunta (máxima prioridad - va primero)
+  if (articleFromQuestion) {
+    addArticleIfNotExists(articleFromQuestion)
+  }
+
+  // 2. Añadir artículo vinculado original
   if (linkedArticle) {
-    // Añadir artículo vinculado al principio si no está ya
     const alreadyIncluded = allArticles.some(
       a => a.articleNumber === linkedArticle.articleNumber && a.lawShortName === linkedArticle.lawShortName
     )
@@ -129,9 +240,14 @@ export async function verifyAnswer(
         articleNumber: linkedArticle.articleNumber,
         title: linkedArticle.title,
         content: linkedArticle.content,
-        similarity: 1.0, // Máxima relevancia por estar vinculado
+        similarity: 1.0,
       }, ...allArticles]
     }
+  }
+
+  // 3. Añadir artículo detectado en explicación
+  if (articleFromExplanation) {
+    addArticleIfNotExists(articleFromExplanation)
   }
 
   const sources: ArticleSource[] = allArticles.map(a => ({
@@ -141,13 +257,24 @@ export async function verifyAnswer(
     relevance: a.similarity,
   }))
 
-  // 4. Generar respuesta con verificación (pasando TODO el contexto)
+  // 4. Actualizar questionAnalysis con los valores DETECTADOS (no el artículo vinculado que es interno)
+  // Esto es importante porque el prompt usará estos valores para mostrar "Ley relacionada: X"
+  const questionForPrompt: QuestionAnalysis = {
+    ...questionAnalysis,
+    lawName: effectiveLawName,           // Usar ley detectada (LOTC), no vinculada (CE)
+    articleNumber: effectiveArticleNumber, // Usar artículo detectado, no vinculado
+  }
+
+  // 5. Generar respuesta con verificación (pasando TODO el contexto)
+  // Pasar LOS TRES artículos posibles para que GPT pueda comparar
   const response = await generateVerificationResponse(
-    questionAnalysis,
+    questionForPrompt,
     allArticles,
     context.isPremium,
     input.explanation,
-    linkedArticle
+    linkedArticle, // Artículo vinculado en BD
+    articleFromExplanation, // Artículo detectado en explicación
+    articleFromQuestion // Artículo citado en la pregunta
   )
 
   // 4. Detectar si hay error
@@ -192,13 +319,16 @@ export async function verifyAnswer(
 
 /**
  * Genera la respuesta de verificación usando OpenAI
+ * Recibe hasta 3 artículos de diferentes fuentes para comparar
  */
 async function generateVerificationResponse(
   question: QuestionAnalysis,
   articles: Array<{ lawShortName: string; articleNumber: string; title: string | null; content: string | null }>,
   isPremium: boolean,
   ourExplanation?: string,
-  linkedArticle?: LinkedArticle | null
+  linkedArticle?: LinkedArticle | null,
+  articleFromExplanation?: ArticleFromExplanation,
+  articleFromQuestion?: ArticleFromExplanation
 ): Promise<string> {
   const openai = await getOpenAI()
   const model = isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
@@ -216,24 +346,58 @@ async function generateVerificationResponse(
       })))
     : 'No se encontraron artículos relevantes en la base de datos.'
 
-  // Construir sección del artículo vinculado (si existe)
+  // 1. Artículo citado en la PREGUNTA (máxima prioridad)
+  let articleFromQuestionSection = ''
+  if (articleFromQuestion) {
+    articleFromQuestionSection = `
+---
+🎯 ARTÍCULO CITADO EN LA PREGUNTA (máxima prioridad):
+[${articleFromQuestion.lawShortName}] Artículo ${articleFromQuestion.articleNumber}
+${articleFromQuestion.title ? `Título: ${articleFromQuestion.title}` : ''}
+${articleFromQuestion.content || 'Sin contenido disponible'}
+`
+  }
+
+  // 2. Artículo vinculado en BD
   let linkedArticleSection = ''
   if (linkedArticle) {
     linkedArticleSection = `
 ---
-📌 ARTÍCULO VINCULADO A ESTA PREGUNTA (fuente principal):
+📌 ARTÍCULO VINCULADO EN BASE DE DATOS:
 [${linkedArticle.lawShortName}] Artículo ${linkedArticle.articleNumber}
 ${linkedArticle.title ? `Título: ${linkedArticle.title}` : ''}
 ${linkedArticle.content || 'Sin contenido disponible'}
 `
   }
 
-  // Construir sección de nuestra explicación (si existe)
+  // 3. Artículo detectado en la explicación
+  let articleFromExplanationSection = ''
+  if (articleFromExplanation) {
+    // Solo mostrar si es diferente al vinculado Y diferente al de la pregunta
+    const isDifferentFromLinked = !linkedArticle ||
+      linkedArticle.articleNumber !== articleFromExplanation.articleNumber ||
+      linkedArticle.lawShortName !== articleFromExplanation.lawShortName
+    const isDifferentFromQuestion = !articleFromQuestion ||
+      articleFromQuestion.articleNumber !== articleFromExplanation.articleNumber ||
+      articleFromQuestion.lawShortName !== articleFromExplanation.lawShortName
+
+    if (isDifferentFromLinked && isDifferentFromQuestion) {
+      articleFromExplanationSection = `
+---
+🔍 ARTÍCULO DETECTADO EN LA EXPLICACIÓN:
+[${articleFromExplanation.lawShortName}] Artículo ${articleFromExplanation.articleNumber}
+${articleFromExplanation.title ? `Título: ${articleFromExplanation.title}` : ''}
+${articleFromExplanation.content || 'Sin contenido disponible'}
+`
+    }
+  }
+
+  // Sección de nuestra explicación
   let ourExplanationSection = ''
   if (ourExplanation) {
     ourExplanationSection = `
 ---
-📝 EXPLICACIÓN DE NUESTRA BASE DE DATOS:
+📝 EXPLICACIÓN GUARDADA EN NUESTRA BASE DE DATOS:
 ${ourExplanation}
 `
   }
@@ -242,24 +406,115 @@ ${ourExplanation}
   const systemPrompt = buildVerificationSystemPrompt()
 
   // Construir el mensaje del usuario con contexto
+  // NOTA: 'question' ya viene con los valores detectados (effectiveLawName, effectiveArticleNumber)
+  // desde verifyAnswer(), no los del artículo vinculado
   const questionContext = formatQuestionForPrompt(question)
   const verificationInstructions = generateVerificationContext(question)
 
+  // Determinar instrucciones según el caso
+  let analysisInstructions = ''
+
+  // CASO 1: La pregunta cita explícitamente un artículo
+  if (articleFromQuestion) {
+    // Sub-caso 1a: Pregunta y explicación citan artículos DIFERENTES (posible inconsistencia visible para el usuario)
+    // Excepción: si una ley desarrolla a otra (CE→LOTC, Ley→Reglamento) no es inconsistencia
+    const hasExplanationArticle = articleFromExplanation && (
+      articleFromQuestion.lawShortName !== articleFromExplanation.lawShortName ||
+      articleFromQuestion.articleNumber !== articleFromExplanation.articleNumber
+    )
+
+    // Leyes que se desarrollan mutuamente (una remite a la otra)
+    const RELATED_LAWS: Record<string, string[]> = {
+      'CE': ['LOTC', 'LOPJ', 'LOREG', 'LOIEMH'],  // CE remite a estas leyes orgánicas
+      'LOTC': ['CE'],
+      'LOPJ': ['CE', 'LOPJ'],
+      'LOIEMH': ['CE'],
+      'LOREG': ['CE'],
+    }
+
+    const areLawsRelated = hasExplanationArticle && articleFromExplanation && (
+      RELATED_LAWS[articleFromQuestion.lawShortName]?.includes(articleFromExplanation.lawShortName) ||
+      RELATED_LAWS[articleFromExplanation.lawShortName]?.includes(articleFromQuestion.lawShortName)
+    )
+
+    if (hasExplanationArticle && articleFromExplanation && !areLawsRelated) {
+      // Inconsistencia real visible para el usuario
+      analysisInstructions = `
+---
+⚠️ POSIBLE INCONSISTENCIA (pregunta vs explicación):
+- PREGUNTA cita: ${articleFromQuestion.lawShortName} art. ${articleFromQuestion.articleNumber}
+- EXPLICACIÓN cita: ${articleFromExplanation.lawShortName} art. ${articleFromExplanation.articleNumber}
+
+INSTRUCCIONES:
+1. La PREGUNTA tiene prioridad - usa su artículo como referencia principal
+2. Verifica si la explicación es correcta o hay error
+3. Si la explicación cita un artículo incorrecto, señálalo`
+    } else {
+      // Pregunta cita artículo, sin inconsistencia o leyes relacionadas
+      analysisInstructions = `
+---
+🎯 ARTÍCULO CITADO EN LA PREGUNTA:
+La pregunta menciona explícitamente ${articleFromQuestion.lawShortName} art. ${articleFromQuestion.articleNumber}.
+Este es el artículo CORRECTO que debes usar como referencia principal.
+
+INSTRUCCIONES:
+1. Usa el ARTÍCULO CITADO EN LA PREGUNTA como fuente principal
+2. Basa tu explicación en el contenido de este artículo`
+    }
+  }
+  // CASO 2: Hay artículo en la explicación (puede diferir del vinculado, pero eso es un problema interno)
+  // NOTA: El artículo vinculado es para uso INTERNO (categorización/búsqueda). El usuario NUNCA lo ve.
+  // Solo le mostramos la explicación, así que usamos el artículo de la explicación sin mencionar discrepancias.
+  else if (articleFromExplanation) {
+    analysisInstructions = `
+---
+📚 ARTÍCULO DE REFERENCIA:
+${articleFromExplanation.lawShortName} art. ${articleFromExplanation.articleNumber}
+
+INSTRUCCIONES:
+1. Usa este artículo como referencia para verificar la respuesta
+2. Verifica que la respuesta marcada sea correcta según este artículo
+3. Si la respuesta ES correcta, explícala claramente
+4. Si la respuesta NO es correcta según el artículo, indica el error`
+  }
+  // CASO 3: Solo hay artículo vinculado
+  else if (linkedArticle) {
+    analysisInstructions = `
+---
+INSTRUCCIONES DE ANÁLISIS:
+1. El ARTÍCULO VINCULADO es la fuente principal
+2. Compara la explicación con el artículo
+3. Si hay inconsistencias, señálalas`
+  }
+  // CASO 4: Solo hay artículo detectado en explicación
+  else if (articleFromExplanation) {
+    analysisInstructions = `
+---
+INSTRUCCIONES DE ANÁLISIS:
+1. Usa el ARTÍCULO DE LA EXPLICACIÓN como referencia
+2. Verifica que sea coherente con la pregunta`
+  }
+  // CASO 5: No hay artículo específico
+  else {
+    analysisInstructions = `
+---
+INSTRUCCIONES DE ANÁLISIS:
+1. No hay artículo específico vinculado
+2. Usa los artículos encontrados por similitud
+3. Si falta información, usa tu conocimiento pero acláralo`
+  }
+
   const userMessage = `${questionContext}
+${articleFromQuestionSection}
 ${linkedArticleSection}
+${articleFromExplanationSection}
 ${ourExplanationSection}
 ${verificationInstructions}
 
 ---
 ARTÍCULOS ADICIONALES ENCONTRADOS POR SIMILITUD:
 ${articlesContext}
-
----
-INSTRUCCIONES DE ANÁLISIS:
-1. Si hay ARTÍCULO VINCULADO, ese es la fuente principal de verdad
-2. Compara nuestra explicación con lo que dice el artículo real
-3. Si hay inconsistencias entre la explicación y el artículo, señálalas
-4. Si la pregunta menciona una ley específica (ej: "Real Decreto 366/2007") pero no tenemos ese artículo, usa tu conocimiento general pero aclara que no pudiste verificar con la fuente primaria`
+${analysisInstructions}`
 
   try {
     const completion = await openai.chat.completions.create({
@@ -268,7 +523,7 @@ INSTRUCCIONES DE ANÁLISIS:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage },
       ],
-      temperature: 0.3, // Menor temperatura para respuestas más consistentes
+      temperature: 0.3,
       max_tokens: 1500,
     })
 
@@ -342,6 +597,21 @@ export function isVerificationRequest(message: string): boolean {
     /error\s+en\s+(la\s+)?(pregunta|respuesta)/i,
     /por\s+qu[eé]\s+es/i,
     /explica.*respuesta/i,
+    // Mensajes de seguimiento/confirmación
+    /(est[aá]s?|estas)\s+segur[oa]/i,  // "estas seguro?", "estás segura?"
+    /\bseguro\??$/i,                    // "seguro?"
+    /\bde\s+verdad\??/i,                // "de verdad?"
+    /\ben\s*serio\??/i,                 // "enserio?", "en serio?"
+    /\bes\s+as[ií]\??/i,                // "es así?"
+    /\bconfirma/i,                      // "confirma", "confírmame"
+    /\bno\s+me\s+lo\s+creo/i,           // "no me lo creo"
+    // Mensajes después de responder (usuario quiere explicación)
+    /ya\s+(he\s+)?respond/i,            // "ya he respondido", "ya respondí"
+    /ahora\s+s[ií]/i,                   // "ahora sí", "ahora si"
+    /listo/i,                           // "listo"
+    /ya\s+est[aá]/i,                    // "ya está", "ya esta"
+    /explic[aá](me|lo)/i,               // "explícame", "explicalo"
+    /d[ií]me/i,                         // "dime"
   ]
 
   return patterns.some(p => p.test(message))
@@ -379,17 +649,25 @@ function normalizeAnswer(answer: number | string | null | undefined): number | n
 
 /**
  * Determina si el contexto tiene información de pregunta para verificar
+ * NOTA: Ahora también devuelve true si hay pregunta pero no correctAnswer,
+ * para poder mostrar un mensaje amigable pidiendo que responda primero
  */
 export function hasQuestionToVerify(context: ChatContext): boolean {
   const qc = context.questionContext
   if (!qc) return false
 
-  const normalizedAnswer = normalizeAnswer(qc.correctAnswer)
+  // Si hay texto de pregunta, podemos manejar la solicitud
+  // (aunque sea para decir "responde primero")
+  return !!qc.questionText
+}
 
-  return !!(
-    qc.questionText &&
-    normalizedAnswer !== null
-  )
+/**
+ * Verifica si tenemos la respuesta correcta disponible
+ */
+export function hasCorrectAnswer(context: ChatContext): boolean {
+  const qc = context.questionContext
+  if (!qc) return false
+  return normalizeAnswer(qc.correctAnswer) !== null
 }
 
 /**

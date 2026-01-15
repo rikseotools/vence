@@ -526,3 +526,259 @@ export function extractSearchTerms(message: string): string[] | null {
 
   return [...new Set(foundTerms)].slice(0, 5)
 }
+
+// ============================================
+// DETECCIÓN DINÁMICA DE LEYES (desde BD)
+// ============================================
+
+// Cache de leyes para detección (TTL: 1 hora)
+let lawsDetectionCache: Array<{ id: string; shortName: string; name: string; searchPatterns: string[] }> | null = null
+let lawsDetectionCacheTime = 0
+const LAWS_DETECTION_CACHE_TTL = 60 * 60 * 1000 // 1 hora
+
+/**
+ * Carga todas las leyes de la BD con patrones de búsqueda generados
+ */
+async function loadLawsForDetection() {
+  const now = Date.now()
+  if (lawsDetectionCache && (now - lawsDetectionCacheTime) < LAWS_DETECTION_CACHE_TTL) {
+    return lawsDetectionCache
+  }
+
+  const { data } = await supabase
+    .from('laws')
+    .select('id, short_name, name')
+    .eq('is_active', true)
+
+  if (!data || data.length === 0) {
+    lawsDetectionCache = []
+    lawsDetectionCacheTime = now
+    return []
+  }
+
+  // Generar patrones de búsqueda para cada ley
+  lawsDetectionCache = data.map(law => {
+    const patterns: string[] = []
+
+    // short_name siempre es un patrón (ej: "LOTC", "CE", "Ley 39/2015")
+    if (law.short_name) {
+      patterns.push(law.short_name.toLowerCase())
+    }
+
+    // Extraer partes del nombre completo para patrones
+    if (law.name) {
+      const nameLower = law.name.toLowerCase()
+
+      // El nombre completo como patrón
+      patterns.push(nameLower)
+
+      // Si contiene "tribunal constitucional", "poder judicial", etc., extraer esos términos
+      const institutionMatches = nameLower.match(/tribunal\s+constitucional|poder\s+judicial|consejo\s+de\s+estado|defensor\s+del\s+pueblo|tribunal\s+de\s+cuentas/gi)
+      if (institutionMatches) {
+        institutionMatches.forEach(m => patterns.push(m.toLowerCase()))
+      }
+
+      // Extraer "Ley Orgánica del XXX" -> "XXX"
+      const orgMatch = nameLower.match(/ley\s+orgánica\s+(?:del?\s+)?(.+)/i)
+      if (orgMatch && orgMatch[1] && orgMatch[1].length > 5) {
+        patterns.push(orgMatch[1].trim())
+      }
+    }
+
+    return {
+      id: law.id,
+      shortName: law.short_name,
+      name: law.name || '',
+      searchPatterns: [...new Set(patterns)],
+    }
+  })
+
+  lawsDetectionCacheTime = now
+  logger.debug(`📚 Laws detection cache updated: ${lawsDetectionCache.length} laws`, { domain: 'search' })
+
+  return lawsDetectionCache
+}
+
+/**
+ * Detecta leyes mencionadas en un texto usando la BD (dinámico, sin hardcodear)
+ * Retorna los short_name de las leyes detectadas
+ */
+export async function detectLawsFromText(text: string): Promise<string[]> {
+  if (!text || text.length < 3) return []
+
+  const textLower = text.toLowerCase()
+  const detectedLaws: Array<{ shortName: string; score: number }> = []
+
+  const laws = await loadLawsForDetection()
+
+  for (const law of laws) {
+    let score = 0
+
+    // Verificar cada patrón de búsqueda
+    for (const pattern of law.searchPatterns) {
+      // Crear regex con word boundaries para evitar falsos positivos
+      // Escapar caracteres especiales de regex
+      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(`\\b${escapedPattern}\\b`, 'i')
+
+      if (regex.test(textLower)) {
+        // Mayor score para patrones más largos/específicos
+        score += pattern.length
+      }
+    }
+
+    if (score > 0) {
+      detectedLaws.push({ shortName: law.shortName, score })
+    }
+  }
+
+  // Ordenar por score (más específico primero) y eliminar duplicados
+  return [...new Set(
+    detectedLaws
+      .sort((a, b) => b.score - a.score)
+      .map(l => l.shortName)
+  )]
+}
+
+// ============================================
+// EXTRACCIÓN DE ARTÍCULOS DEL TEXTO
+// ============================================
+
+// Mapeo de números ordinales en español a números
+const ORDINAL_TO_NUMBER: Record<string, string> = {
+  'primero': '1', 'primer': '1', 'primera': '1',
+  'segundo': '2', 'segunda': '2',
+  'tercero': '3', 'tercer': '3', 'tercera': '3',
+  'cuarto': '4', 'cuarta': '4',
+  'quinto': '5', 'quinta': '5',
+  'sexto': '6', 'sexta': '6',
+  'séptimo': '7', 'septimo': '7', 'séptima': '7', 'septima': '7',
+  'octavo': '8', 'octava': '8',
+  'noveno': '9', 'novena': '9',
+  'décimo': '10', 'decimo': '10', 'décima': '10', 'decima': '10',
+  'undécimo': '11', 'undecimo': '11',
+  'duodécimo': '12', 'duodecimo': '12',
+}
+
+/**
+ * Extrae números de artículo mencionados en un texto
+ * Detecta formatos: "artículo 9", "art. 9", "artículo noveno", "art. noveno"
+ */
+export function extractArticleNumbers(text: string): string[] {
+  if (!text) return []
+
+  const articles: string[] = []
+  const textLower = text.toLowerCase()
+
+  // Patrón 1: artículo/art. seguido de número
+  const numericPattern = /\b(?:art[ií]culo|art\.?)\s*(\d+(?:\.\d+)?(?:\s*bis)?)/gi
+  let match
+  while ((match = numericPattern.exec(text)) !== null) {
+    articles.push(match[1].trim())
+  }
+
+  // Patrón 2: artículo/art. seguido de ordinal (primero, segundo, etc.)
+  const ordinalPattern = /\b(?:art[ií]culo|art\.?)\s+(primero?|segunda?|tercero?|tercer|cuarto?|quinto?|sexto?|s[eé]ptimo?|octavo?|noveno?|d[eé]cimo?|und[eé]cimo?|duod[eé]cimo?)\b/gi
+  while ((match = ordinalPattern.exec(textLower)) !== null) {
+    const ordinal = match[1].toLowerCase()
+    const number = ORDINAL_TO_NUMBER[ordinal]
+    if (number && !articles.includes(number)) {
+      articles.push(number)
+    }
+  }
+
+  return [...new Set(articles)]
+}
+
+/**
+ * Busca un artículo específico en una ley
+ */
+export async function findArticleInLaw(
+  lawShortName: string,
+  articleNumber: string
+): Promise<{
+  id: string
+  articleNumber: string
+  title: string | null
+  content: string | null
+  lawShortName: string
+  lawName: string
+} | null> {
+  logger.debug(`🔎 findArticleInLaw: searching ${lawShortName} art. ${articleNumber}`, { domain: 'search' })
+
+  // Primero buscar la ley
+  const { data: law } = await supabase
+    .from('laws')
+    .select('id, short_name, name')
+    .eq('short_name', lawShortName)
+    .eq('is_active', true)
+    .single()
+
+  if (!law) {
+    // Intentar búsqueda case-insensitive
+    const { data: lawCI } = await supabase
+      .from('laws')
+      .select('id, short_name, name')
+      .ilike('short_name', lawShortName)
+      .eq('is_active', true)
+      .single()
+
+    if (!lawCI) {
+      logger.debug(`🔎 findArticleInLaw: law not found: ${lawShortName}`, { domain: 'search' })
+      return null
+    }
+  }
+
+  const effectiveLaw = law || (await supabase
+    .from('laws')
+    .select('id, short_name, name')
+    .ilike('short_name', lawShortName)
+    .eq('is_active', true)
+    .single()).data
+
+  if (!effectiveLaw) return null
+
+  // Buscar el artículo en esa ley
+  const { data: article } = await supabase
+    .from('articles')
+    .select('id, article_number, title, content')
+    .eq('law_id', effectiveLaw.id)
+    .eq('article_number', articleNumber)
+    .single()
+
+  if (!article) {
+    // Intentar con variantes (ej: "9" vs "9.1")
+    const { data: articleFuzzy } = await supabase
+      .from('articles')
+      .select('id, article_number, title, content')
+      .eq('law_id', effectiveLaw.id)
+      .ilike('article_number', `${articleNumber}%`)
+      .limit(1)
+      .single()
+
+    if (!articleFuzzy) {
+      logger.debug(`🔎 findArticleInLaw: article ${articleNumber} not found in ${lawShortName}`, { domain: 'search' })
+      return null
+    }
+
+    return {
+      id: articleFuzzy.id,
+      articleNumber: articleFuzzy.article_number,
+      title: articleFuzzy.title,
+      content: articleFuzzy.content,
+      lawShortName: effectiveLaw.short_name,
+      lawName: effectiveLaw.name,
+    }
+  }
+
+  logger.info(`🔎 findArticleInLaw: found ${effectiveLaw.short_name} art. ${article.article_number}`, { domain: 'search' })
+
+  return {
+    id: article.id,
+    articleNumber: article.article_number,
+    title: article.title,
+    content: article.content,
+    lawShortName: effectiveLaw.short_name,
+    lawName: effectiveLaw.name,
+  }
+}

@@ -9,6 +9,7 @@ import {
   verifyAnswer,
   isVerificationRequest,
   hasQuestionToVerify,
+  hasCorrectAnswer,
   extractVerificationInput,
 } from './VerificationService'
 
@@ -48,17 +49,28 @@ export class VerificationDomain implements ChatDomain {
     // También manejar si el usuario pregunta sobre la respuesta
     const asksAboutAnswer = this.asksAboutAnswer(context.currentMessage)
 
+    // INTELIGENTE: Si hay contexto de pregunta con respuesta correcta,
+    // y el mensaje es corto/genérico (no menciona otra ley o tema),
+    // probablemente quiere saber sobre la respuesta actual
+    const hasAnswerContext = hasCorrectAnswer(context)
+    const isShortGenericMessage = this.isShortGenericMessage(context.currentMessage)
+    const contextualFollowUp = hasAnswerContext && isShortGenericMessage
+
     logger.info('VerificationDomain pattern check', {
       domain: 'verification',
       isVerification,
       asksAboutAnswer,
+      hasAnswerContext,
+      isShortGenericMessage,
+      contextualFollowUp,
     })
 
-    if (isVerification || asksAboutAnswer) {
+    if (isVerification || asksAboutAnswer || contextualFollowUp) {
       logger.debug('VerificationDomain will handle request', {
         domain: 'verification',
         isVerification,
         asksAboutAnswer,
+        contextualFollowUp,
       })
       return true
     }
@@ -77,6 +89,19 @@ export class VerificationDomain implements ChatDomain {
       userId: context.userId,
       questionId: context.questionContext?.questionId,
     })
+
+    // Verificar si tenemos la respuesta correcta disponible
+    // (solo está disponible después de que el usuario responde)
+    if (!hasCorrectAnswer(context)) {
+      logger.info('VerificationDomain: No correctAnswer available (user has not answered yet)', {
+        domain: 'verification',
+      })
+      return new ChatResponseBuilder()
+        .domain('verification')
+        .text('🤔 **Primero responde la pregunta** para que pueda explicarte por qué es correcta o incorrecta.\n\nAsí evitamos hacer spoiler de la respuesta. ¡Inténtalo y luego hablamos!')
+        .processingTime(Date.now() - startTime)
+        .build()
+    }
 
     // Extraer datos de verificación
     const input = extractVerificationInput(context)
@@ -137,6 +162,26 @@ export class VerificationDomain implements ChatDomain {
     ]
 
     return patterns.some(p => p.test(message))
+  }
+
+  /**
+   * Detecta si el mensaje es corto y genérico (no menciona otro tema)
+   * Usado para detectar mensajes de seguimiento como "ok", "vale", "ya respondí", etc.
+   */
+  private isShortGenericMessage(message: string): boolean {
+    // Si es muy largo, probablemente es una pregunta específica sobre otro tema
+    if (message.length > 100) return false
+
+    // Si menciona una ley específica diferente, probablemente es otra consulta
+    const mentionsSpecificLaw = /\b(ley\s+\d+|art[ií]culo\s+\d+|CE\b|LOPJ\b|LOTC\b|LEC\b)/i.test(message)
+    if (mentionsSpecificLaw) return false
+
+    // Si menciona palabras clave de otro tema, no es seguimiento
+    const otherTopicKeywords = /\b(plazos?|recurso|procedimiento|competencia|jurisdicci[oó]n|notificaci[oó]n)\b/i
+    if (otherTopicKeywords.test(message)) return false
+
+    // Mensaje corto sin temas específicos = probablemente seguimiento
+    return true
   }
 }
 

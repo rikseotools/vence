@@ -9,6 +9,7 @@ export {
   verifyAnswer,
   isVerificationRequest,
   hasQuestionToVerify,
+  hasCorrectAnswer,
   extractVerificationInput,
   type VerificationInput,
   type VerificationResult,

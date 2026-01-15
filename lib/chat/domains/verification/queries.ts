@@ -69,7 +69,13 @@ export async function getLinkedArticle(questionId: string): Promise<LinkedArticl
       return null
     }
 
-    const law = article.law as { short_name: string; name: string }
+    // Supabase puede devolver el objeto de ley directamente o como array (según la relación)
+    const lawData = article.law as { short_name: string; name: string } | { short_name: string; name: string }[] | null
+    const law = Array.isArray(lawData) ? lawData[0] : lawData
+    if (!law) {
+      logger.warn(`Law not found for article ${question.primary_article_id}`, { domain: 'verification' })
+      return null
+    }
 
     return {
       id: article.id,
@@ -120,7 +126,9 @@ export async function getQuestionFullData(questionId: string): Promise<QuestionF
       linkedArticle = await getLinkedArticle(questionId)
     }
 
-    const law = question.law as { short_name: string } | null
+    // Supabase puede devolver el objeto de ley directamente o como array
+    const lawData = question.law as { short_name: string } | { short_name: string }[] | null
+    const law = Array.isArray(lawData) ? lawData[0] : lawData
 
     return {
       id: question.id,
