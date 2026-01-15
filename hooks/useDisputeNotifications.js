@@ -161,23 +161,26 @@ export function useDisputeNotifications() {
 
       console.log('🔍 Marcando como leída:', { notificationId, userId: user.id, isPsychometric })
 
-      const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
+      // Usar API con service role para bypasear RLS
+      const response = await fetch('/api/dispute/mark-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          disputeId: notificationId,
+          userId: user.id,
+          isPsychometric
+        })
+      })
 
-      const { error } = await supabase
-        .from(tableName)
-        .update({ is_read: true })
-        .eq('id', notificationId)
-        .eq('user_id', user.id)
+      const result = await response.json()
 
-      if (error) {
-        console.error('❌ Error en markAsRead:', error)
-        throw error
+      if (!result.success) {
+        console.error('❌ Error en markAsRead:', result.error)
+        throw new Error(result.error)
       }
 
-      // Actualizar estado local - QUITAR de la lista (no solo marcar como leída)
-      setNotifications(prev =>
-        prev.filter(notification => notification.id !== notificationId)
-      )
+      // Actualizar estado local - QUITAR de la lista
+      setNotifications(prev => prev.filter(notification => notification.id !== notificationId))
 
       // Recalcular contador
       setUnreadCount(prev => Math.max(0, prev - 1))
