@@ -24,6 +24,12 @@ const EXAM_POSITION_MAP: Record<string, string[]> = {
     'auxiliar_administrativo',
     'auxiliar_administrativo_estado',
   ],
+  'administrativo': [
+    'administrativo',
+    'cuerpo_general_administrativo',
+    'cuerpo general administrativo de la administración del estado',
+    'cuerpo_gestion_administracion_civil', // A2 - similar temario
+  ],
   'tramitacion_procesal': [
     'tramitacion_procesal',
     'tramitación procesal',
@@ -35,15 +41,6 @@ const EXAM_POSITION_MAP: Record<string, string[]> = {
   'gestion_procesal': [
     'gestion_procesal',
     'gestión procesal',
-  ],
-  'cuerpo_general_administrativo': [
-    'cuerpo_general_administrativo',
-    'cuerpo general administrativo de la administración del estado',
-    'administrativo',
-  ],
-  'cuerpo_gestion_administracion_civil': [
-    'cuerpo_gestion_administracion_civil',
-    'cuerpo de gestión de la administración civil del estado',
   ],
 }
 
@@ -407,6 +404,7 @@ export async function getFilteredQuestions(
       examSource: string | null
       examDate: string | null
       examEntity: string | null
+      examPosition: string | null // 🏛️ AÑADIDO: Campo para filtrar por oposición
       officialDifficultyLevel: string | null
       articleId: string
       articleNumber: string
@@ -442,6 +440,7 @@ export async function getFilteredQuestions(
           examSource: questions.examSource,
           examDate: questions.examDate,
           examEntity: questions.examEntity,
+          examPosition: questions.examPosition, // 🏛️ AÑADIDO: Campo para filtrar por oposición
           officialDifficultyLevel: questions.officialDifficultyLevel,
           // Article info
           articleId: articles.id,
@@ -593,6 +592,7 @@ export async function getFilteredQuestions(
         exam_source: q.examSource,
         exam_date: q.examDate,
         exam_entity: q.examEntity,
+        exam_position: q.examPosition, // 🏛️ AÑADIDO: Campo para filtrar por oposición
         official_difficulty_level: q.officialDifficultyLevel,
       },
     }))

@@ -11,6 +11,24 @@ import { getOposicionConfig, getThemeNames } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
 
+// Mapeo de exam_position por tipo de oposición
+const EXAM_POSITION_MAP = {
+  'auxiliar_administrativo': [
+    'auxiliar administrativo del estado',
+    'auxiliar administrativo',
+    'auxiliar_administrativo',
+    'auxiliar_administrativo_estado',
+  ],
+  'administrativo': [
+    'administrativo',
+    'cuerpo_general_administrativo',
+    'cuerpo general administrativo de la administración del estado',
+  ],
+  'tramitacion_procesal': ['tramitacion_procesal', 'tramitación procesal'],
+  'auxilio_judicial': ['auxilio_judicial', 'auxilio judicial'],
+  'gestion_procesal': ['gestion_procesal', 'gestión procesal'],
+}
+
 function TestAleatorioExamenContent() {
   const searchParams = useSearchParams()
   const [questions, setQuestions] = useState([])
@@ -151,6 +169,12 @@ function TestAleatorioExamenContent() {
 
           if (testConfig.onlyOfficialQuestions) {
             query = query.eq('is_official_exam', true)
+            // Filtrar por exam_position de la oposición actual
+            // Incluir NULL para compatibilidad con preguntas legacy
+            const examPositionValues = EXAM_POSITION_MAP[oposicionConfig.positionType] || []
+            if (examPositionValues.length > 0) {
+              query = query.or(`exam_position.is.null,exam_position.in.(${examPositionValues.map(v => `"${v}"`).join(',')})`)
+            }
           }
 
           const { data: lawQuestions, error: questionsError } = await query

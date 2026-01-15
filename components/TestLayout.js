@@ -38,12 +38,36 @@ import UpgradeLimitModal from './UpgradeLimitModal'
 import { useUserOposicion } from './useUserOposicion'
 
 // 🏛️ Helper para verificar si una pregunta oficial es de la oposición del usuario
-// Usa exam_source para determinar de qué oposición es la pregunta
-function isOfficialForUserOposicion(examSource, userOposicionSlug) {
-  if (!examSource) return true // Si no hay exam_source, asumir que es válida
+// MEJORADO: Usa exam_position (estructurado) como primera opción, fallback a exam_source (texto libre)
+function isOfficialForUserOposicion(examSource, userOposicionSlug, examPosition = null) {
   if (!userOposicionSlug) return true // Si no hay oposición de usuario, mostrar todo
 
   const normalizedUserSlug = userOposicionSlug.toLowerCase().replace(/-/g, '_')
+
+  // 🏛️ PRIORIDAD 1: Usar exam_position (campo estructurado, más confiable)
+  if (examPosition) {
+    const normalizedExamPosition = examPosition.toLowerCase()
+    // Mapeo de exam_position a slugs de URL válidos
+    const positionToSlugs = {
+      'auxiliar_administrativo_estado': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
+      'auxiliar_administrativo': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
+      'tramitacion_procesal': ['tramitacion_procesal'],
+      'auxilio_judicial': ['auxilio_judicial'],
+      'gestion_procesal': ['gestion_procesal'],
+      'cuerpo_general_administrativo': ['cuerpo_general_administrativo', 'administrativo'],
+      'cuerpo_gestion_administracion_civil': ['cuerpo_gestion_administracion_civil', 'gestion'],
+    }
+
+    const validSlugs = positionToSlugs[normalizedExamPosition]
+    if (validSlugs) {
+      return validSlugs.some(slug => normalizedUserSlug.includes(slug))
+    }
+    // Si exam_position no está en el mapeo, asumimos que es válida
+    return true
+  }
+
+  // 🏛️ FALLBACK: Usar exam_source (texto libre, menos confiable)
+  if (!examSource) return true // Si no hay exam_source, asumir que es válida
 
   // Mapeo de patrones en exam_source a slugs de oposición
   const sourceToOposicion = {
@@ -52,12 +76,13 @@ function isOfficialForUserOposicion(examSource, userOposicionSlug) {
     'Auxiliar Administrativo': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
     'Auxiliar Admin': ['auxiliar_administrativo', 'auxiliar_administrativo_estado'],
     'Gestión Procesal': ['gestion_procesal'],
+    'Cuerpo General Administrativo': ['cuerpo_general_administrativo'],
+    'Cuerpo de Gestión': ['cuerpo_gestion_administracion_civil'],
   }
 
   // Verificar si el exam_source indica otra oposición
   for (const [pattern, validSlugs] of Object.entries(sourceToOposicion)) {
     if (examSource.includes(pattern)) {
-      // Este exam_source es de esta oposición específica
       return validSlugs.some(slug => normalizedUserSlug.includes(slug))
     }
   }
@@ -118,6 +143,33 @@ const NON_LEGAL_CONTENT = [
 function isLegalArticle(lawShortName) {
   if (!lawShortName) return false
   return !NON_LEGAL_CONTENT.includes(lawShortName)
+}
+
+// 🏛️ FUNCIÓN: Verificar si un hot article es válido para la oposición del usuario
+// Mapeo de slugs de URL a valores de target_oposicion en hot_articles
+const HOT_ARTICLE_OPOSICION_MAP = {
+  'auxiliar-administrativo-estado': ['auxiliar_administrativo_estado', 'auxiliar_administrativo'],
+  'auxiliar_administrativo': ['auxiliar_administrativo_estado', 'auxiliar_administrativo'],
+  'tramitacion-procesal': ['tramitacion_procesal'],
+  'tramitacion_procesal': ['tramitacion_procesal'],
+  'auxilio-judicial': ['auxilio_judicial'],
+  'auxilio_judicial': ['auxilio_judicial'],
+  'gestion-procesal': ['gestion_procesal'],
+  'gestion_procesal': ['gestion_procesal'],
+  'cuerpo-general-administrativo': ['cuerpo_general_administrativo', 'administrativo'],
+  'cuerpo_general_administrativo': ['cuerpo_general_administrativo', 'administrativo'],
+}
+
+function isHotArticleForUserOposicion(targetOposicion, userOposicionSlug) {
+  // Si no hay target_oposicion definido, es válido para todas (legacy)
+  if (!targetOposicion) return true
+  // Si no hay oposición de usuario, mostrar todos
+  if (!userOposicionSlug) return true
+
+  const normalized = userOposicionSlug.toLowerCase().replace(/-/g, '_')
+  const validTargets = HOT_ARTICLE_OPOSICION_MAP[normalized] || [normalized]
+
+  return validTargets.includes(targetOposicion.toLowerCase())
 }
 
 // 🔒 FUNCIÓN: Validar respuesta de forma segura via API
@@ -584,27 +636,33 @@ export default function TestLayout({
   // Función para verificar artículos hot
   const checkHotArticle = async (articleId, userId, isOfficialExam = false) => {
     if (!articleId || !userId) return
-    
+
     try {
-      
+
       const { data, error } = await supabase.rpc('check_hot_article_for_current_user', {
         article_id_param: articleId,
         user_id_param: userId
       })
-      
+
       if (error) {
         console.error('Error verificando artículo:', error)
         return
       }
-      
+
       console.log('🔥 Resultado check hot article:', data)
-      
+
       if (data && data.length > 0 && data[0].is_hot) {
         const hotData = data[0]
         console.log('🔥 [DEBUG] Datos del hot article:', hotData)
         console.log('🔥 [DEBUG] isOfficialExam:', isOfficialExam)
         console.log('🔥 [DEBUG] Estados ANTES:', { showHotAlert, hotArticleInfo })
-        
+
+        // 🏛️ FILTRO POR OPOSICIÓN: Verificar que el hot article sea de la oposición del usuario
+        if (!isHotArticleForUserOposicion(hotData.target_oposicion, userOposicionSlug)) {
+          console.log('🔥 [FILTRADO] Hot article ignorado - target_oposicion:', hotData.target_oposicion, 'userOposicion:', userOposicionSlug)
+          return
+        }
+
         // Diferentes notificaciones según tipo
         if (isOfficialExam) {
           // Pregunta oficial
@@ -622,11 +680,11 @@ export default function TestLayout({
             display_title: '¡Artículo súper importante para memorizar!'
           })
         }
-        
+
         setShowHotAlert(true)
         setShowCuriosityDetails(false)
       }
-      
+
     } catch (error) {
       console.error('Error en checkHotArticle:', error)
     }
@@ -1946,7 +2004,7 @@ export default function TestLayout({
                     )}
 
                     {/* Información de procedencia oficial - Solo si es de la oposición del usuario */}
-                      {currentQ?.metadata?.is_official_exam && isOfficialForUserOposicion(currentQ?.metadata?.exam_source, userOposicionSlug) && (
+                      {currentQ?.metadata?.is_official_exam && isOfficialForUserOposicion(currentQ?.metadata?.exam_source, userOposicionSlug, currentQ?.metadata?.exam_position) && (
                         <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4 mb-4">
                           <div className="flex items-start space-x-3">
                             <div className="text-2xl">🏛️</div>

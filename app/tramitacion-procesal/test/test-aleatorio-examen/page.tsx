@@ -11,6 +11,12 @@ import { OPOSICION_BLOCKS_CONFIG } from '@/lib/api/random-test/schemas'
 
 const supabase = getSupabaseClient()
 
+// Mapeo de exam_position para filtrar preguntas oficiales por oposición
+const EXAM_POSITION_VALUES = [
+  'tramitacion_procesal',
+  'tramitación procesal'
+]
+
 // Obtener nombres de temas desde la configuracion
 const config = OPOSICION_BLOCKS_CONFIG['tramitacion-procesal']
 const themeNames: Record<number, string> = {}
@@ -161,6 +167,9 @@ function TestAleatorioExamenContent() {
 
           if (testConfig.onlyOfficialQuestions) {
             query = query.eq('is_official_exam', true)
+            // Filtrar por exam_position de la oposición actual (tramitacion_procesal)
+            // Incluir NULL para compatibilidad con preguntas legacy
+            query = query.or(`exam_position.is.null,exam_position.in.(${EXAM_POSITION_VALUES.map(v => `"${v}"`).join(',')})`)
           }
 
           const { data: lawQuestions, error: questionsError } = await query

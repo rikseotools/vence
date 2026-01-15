@@ -10,6 +10,14 @@ import { normalizeLawShortName } from '../../../../lib/lawMappingUtils'
 
 const supabase = getSupabaseClient()
 
+// Mapeo de exam_position para filtrar preguntas oficiales por oposición
+const EXAM_POSITION_VALUES = [
+  'auxiliar administrativo del estado',
+  'auxiliar administrativo',
+  'auxiliar_administrativo',
+  'auxiliar_administrativo_estado'
+]
+
 function TestAleatorioExamenContent() {
   const searchParams = useSearchParams()
   const [questions, setQuestions] = useState([])
@@ -163,6 +171,9 @@ function TestAleatorioExamenContent() {
 
           if (testConfig.onlyOfficialQuestions) {
             query = query.eq('is_official_exam', true)
+            // Filtrar por exam_position de la oposición actual (auxiliar_administrativo)
+            // Incluir NULL para compatibilidad con preguntas legacy
+            query = query.or(`exam_position.is.null,exam_position.in.(${EXAM_POSITION_VALUES.map(v => `"${v}"`).join(',')})`)
           }
 
           const { data: lawQuestions, error: questionsError } = await query
