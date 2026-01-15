@@ -653,12 +653,16 @@ export default function AIChatWidget() {
     <>
       {/* Panel de chat */}
       <div
-        className={`fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl transition-all duration-300 ${
+        className={`fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl transition-all duration-200 ${
           isOpen
-            ? 'opacity-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 translate-y-4 pointer-events-none'
+            ? 'opacity-100 scale-100 visible'
+            : 'opacity-0 scale-95 invisible pointer-events-none'
         }`}
-        style={{ height: '500px', maxHeight: 'calc(100vh - 140px)' }}
+        style={{
+          height: '500px',
+          maxHeight: 'calc(100vh - 140px)',
+          transformOrigin: 'top right'
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-blue-900 rounded-t-2xl">
@@ -685,14 +689,14 @@ export default function AIChatWidget() {
               )}
             </div>
           </div>
-          {/* Botón minimizar */}
+          {/* Botón cerrar */}
           <button
             onClick={() => setIsOpen(false)}
             className="w-7 h-7 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-full transition"
-            aria-label="Minimizar"
+            aria-label="Cerrar chat"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
@@ -764,16 +768,6 @@ export default function AIChatWidget() {
                   </p>
                 </div>
               </div>
-              {/* Animación CSS para la mano */}
-              <style jsx>{`
-                @keyframes wave {
-                  0%, 100% { transform: rotate(0deg); }
-                  20% { transform: rotate(20deg); }
-                  40% { transform: rotate(-5deg); }
-                  60% { transform: rotate(20deg); }
-                  80% { transform: rotate(-5deg); }
-                }
-              `}</style>
               <div className="space-y-2">
                 {currentQuestionContext ? (
                   currentQuestionContext.isPsicotecnico ? (
