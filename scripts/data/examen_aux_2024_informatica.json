@@ -1,0 +1,437 @@
+{
+  "metadata": {
+    "source": "INAP - Examen Oficial Auxiliar Administrativo Estado 2024",
+    "exam_date": "2024-12-14",
+    "exam_source": "BOE - Examen Auxiliar Administrativo Estado diciembre 2024",
+    "model": "A",
+    "is_official_exam": true,
+    "plantilla": "DEFINITIVA (24 marzo 2025)",
+    "url_cuestionario": "https://sede.inap.gob.es/documents/59312/2364148/CuestionarioAUX-LMODELOAFINAL_TBKCWSFLJK_154AB89SD658.pdf",
+    "url_plantilla": "https://sede.inap.gob.es/documents/59312/2364148/Plantilla+definitiva+respuestas+AUXLI+MODELO+A.pdf"
+  },
+  "questions": [
+    {
+      "id_examen": "2024-AUX-L-P2-12",
+      "question_text": "Indique cuál de los siguientes dispositivos propuestos se utiliza para la impresión.",
+      "option_a": "Plóter.",
+      "option_b": "UPS.",
+      "option_c": "Conmutador de red.",
+      "option_d": "Lápiz óptico.",
+      "correct_option": 0,
+      "category": "hardware"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-13",
+      "question_text": "¿Qué es el \"Contenido destacado\" de Windows 10?",
+      "option_a": "Es el contenido anclado en la barra de tareas.",
+      "option_b": "Es una característica de Windows que muestra diferentes imágenes de fondo y, en ocasiones, ofrece sugerencias en la pantalla de bloqueo.",
+      "option_c": "Es el contenido anclado al área Acceso rápido del Explorador de Windows.",
+      "option_d": "Es un tipo de contenido que se puede seleccionar para que se muestre en Microsoft Edge, al abrir una nueva pestaña.",
+      "correct_option": 1,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-14",
+      "question_text": "Indique cuál de los siguientes tipos de datos se corresponde con el siguiente dato: 6,21",
+      "option_a": "Entero.",
+      "option_b": "Booleano.",
+      "option_c": "Lista.",
+      "option_d": "Coma flotante.",
+      "correct_option": 3,
+      "category": "informatica_basica"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-15",
+      "question_text": "De los siguientes elementos propuestos, ¿cuál recoge el calor generado por el procesador y lo transmite al ambiente?",
+      "option_a": "Tarjeta de red.",
+      "option_b": "Procesador (CPU).",
+      "option_c": "Placa base.",
+      "option_d": "Disipador.",
+      "correct_option": 3,
+      "category": "hardware"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-16",
+      "question_text": "En Windows 10, ¿cuál de las siguientes afirmaciones es verdadera con respecto a la visualización del nombre del dispositivo y de la edición de Windows?",
+      "option_a": "Ambos datos están disponibles en la sección \"Acerca de\", de la Configuración.",
+      "option_b": "El nombre del dispositivo es información sensible y por tanto no está disponible en la Configuración.",
+      "option_c": "El nombre del dispositivo únicamente está disponible en el Administrador de dispositivos, y no en la sección \"Acerca de\", de la Configuración.",
+      "option_d": "La edición de Windows únicamente está disponible en Administración de equipos.",
+      "correct_option": 0,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-17",
+      "question_text": "Indique cuál de las siguientes opciones describe el término informático \"Python\":",
+      "option_a": "Sistema operativo.",
+      "option_b": "Aplicación de hoja de cálculo.",
+      "option_c": "Lenguaje de programación.",
+      "option_d": "Protocolo de comunicaciones.",
+      "correct_option": 2,
+      "category": "informatica_basica"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-18",
+      "question_text": "Indique la afirmación correcta con respecto a la configuración de teléfonos en Windows 10.",
+      "option_a": "Es posible vincular teléfonos con un equipo con Windows 10, siempre y cuando también utilicen un sistema operativo Windows.",
+      "option_b": "Es posible descargar la información almacenada en un teléfono móvil en un equipo Windows 10, pero no es posible la vinculación.",
+      "option_c": "Es posible vincular teléfonos Android o iPhone con Windows 10, de modo que podamos enviar mensajes de texto y mirar fotos del teléfono directamente en el equipo.",
+      "option_d": "Es posible vincular teléfonos Android o iPhone con Windows 10, lo que permite utilizar el sistema de audio del equipo en llamadas de teléfono, pero no es posible enviar mensajes de texto y mirar fotos del teléfono directamente en el equipo.",
+      "correct_option": 2,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-19",
+      "question_text": "Queremos saber el impacto en el consumo de energía de una aplicación que estamos utilizando en un dispositivo con Windows 10, ¿cuál es la herramienta que nos proporcionará esta información entre las opciones propuestas?",
+      "option_a": "Servicios.",
+      "option_b": "Administrador de tareas.",
+      "option_c": "Visor de eventos.",
+      "option_d": "Explorador de archivos.",
+      "correct_option": 1,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-20",
+      "question_text": "De las siguientes afirmaciones propuestas, ¿cuál es correcta con respecto al Explorador de archivos de Windows 10?",
+      "option_a": "Es posible seleccionar distintos diseños para mostrar los archivos, pero no es posible agruparlos por diferentes columnas que podemos elegir.",
+      "option_b": "Es posible agrupar los archivos por diferentes columnas que podemos elegir, pero no existen diferentes diseños para mostrar los archivos.",
+      "option_c": "Solo es posible agrupar los archivos por diferentes columnas que podemos elegir en algunos de los diseños para mostrar los archivos.",
+      "option_d": "Es posible seleccionar distintos diseños para mostrar los archivos, así como también es posible agruparlos por diferentes columnas que podemos elegir.",
+      "correct_option": 3,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-21",
+      "question_text": "Trabajamos en un dispositivo con Windows 10 y necesitamos compartirlo con un técnico de soporte para que acceda en remoto. ¿Cuál de los siguientes accesorios de Windows nos servirá para tal propósito?",
+      "option_a": "Visor XPS.",
+      "option_b": "Windows Media Player.",
+      "option_c": "Grabación de acciones de usuario.",
+      "option_d": "Asistencia rápida.",
+      "correct_option": 3,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-22",
+      "question_text": "¿Cuál de las siguientes afirmaciones es correcta con respecto a las búsquedas de Windows 10?",
+      "option_a": "Es posible optar por ocultar la búsqueda o mostrar el cuadro de búsqueda. La opción de mostrar únicamente el icono no está disponible.",
+      "option_b": "Es posible optar por mostrar únicamente el icono de búsqueda, o mostrar el cuadro de búsqueda, pero no es posible ocultar la búsqueda.",
+      "option_c": "Es posible optar por ocultar la búsqueda o por mostrar únicamente el icono de búsqueda, pero la opción de mostrar el cuadro de búsqueda no está disponible.",
+      "option_d": "Es posible optar por ocultar la búsqueda, mostrar únicamente el icono de búsqueda, o mostrar el cuadro de búsqueda.",
+      "correct_option": 3,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-23",
+      "question_text": "¿Qué es lo que se muestra en el Acceso rápido del Explorador de archivos de Windows 10 por defecto?",
+      "option_a": "Bibliotecas y OneDrive.",
+      "option_b": "Carpetas frecuentes y Archivos recientes.",
+      "option_c": "Configuración y Red.",
+      "option_d": "Bibliotecas y Configuración.",
+      "correct_option": 1,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-24",
+      "question_text": "En una hoja de Excel 365 en idioma español, en una celda a la cual no se le ha aplicado ningún tipo de formato, escribimos el siguiente valor: 20-2 ¿Cuál de las siguientes opciones es la que mostrará tras pulsar la tecla Enter?",
+      "option_a": "20-feb",
+      "option_b": "18",
+      "option_c": "20-2",
+      "option_d": "45342,00",
+      "correct_option": 0,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-25",
+      "question_text": "¿Cuál de las siguientes funciones de Windows 10 permite hacer copias de seguridad automáticas de los archivos?",
+      "option_a": "Historial de archivos.",
+      "option_b": "Acceso rápido.",
+      "option_c": "Copiar a.",
+      "option_d": "Seguridad avanzada.",
+      "correct_option": 0,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-26",
+      "question_text": "De las siguientes propuestas, ¿cuál es la utilidad principal de indexar archivos en la Búsqueda en Windows 10?",
+      "option_a": "Realizar copias de seguridad de los archivos, mensajes de correo electrónico u otro contenido local, como precaución de borrado en la búsqueda.",
+      "option_b": "Copiar los archivos, mensajes de correo electrónico u otro contenido local en OneDrive y sincronizarlos con la copia local.",
+      "option_c": "Seleccionar los archivos, mensajes de correo electrónico u otro contenido local para marcarlo y que no se utilice en las búsquedas.",
+      "option_d": "Obtener resultados aún más rápido al buscar archivos, mensajes de correo electrónico u otro contenido local.",
+      "correct_option": 3,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-27",
+      "question_text": "En un párrafo seleccionado de Word 365 queremos reducir el tamaño de la fuente empleando el teclado para ello. ¿Qué combinación de teclas emplearemos de entre las propuestas?",
+      "option_a": "Ctrl + símbolo \"-\"",
+      "option_b": "Alt + símbolo \"-\"",
+      "option_c": "Ctrl + símbolo \"<\"",
+      "option_d": "Alt + símbolo \"<\"",
+      "correct_option": 2,
+      "category": "word"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-28",
+      "question_text": "Vamos a escribir e imprimir un sobre con Word 365. ¿Cuál de las siguientes afirmaciones es correcta con respecto al remite?",
+      "option_a": "Es necesario escribir el remite cada vez que escribimos el sobre.",
+      "option_b": "Es posible guardar el remite en Word, para reutilizarlo, en las opciones avanzadas del archivo.",
+      "option_c": "No hay ninguna funcionalidad específica de remite en un documento.",
+      "option_d": "Solo es posible reutilizar el remite si lo hemos guardado en Access.",
+      "correct_option": 1,
+      "category": "word"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-29",
+      "question_text": "En Word 365 queremos aplicar formatos preestablecidos a algunos textos y que esta acción nos sirva también para después crear una tabla de contenido. ¿Qué tipo de herramienta de la cinta de opciones aplicaremos?",
+      "option_a": "Tamaño de letra.",
+      "option_b": "Espaciado.",
+      "option_c": "Tipo de fuente.",
+      "option_d": "Estilos.",
+      "correct_option": 3,
+      "category": "word"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-30",
+      "question_text": "¿Cuál de las características de Word 365 será la adecuada para enumerar los términos y los temas que se tratan en un documento, así como las páginas en las que aparecen?",
+      "option_a": "Insertar índice.",
+      "option_b": "Insertar nota al final.",
+      "option_c": "Referencia indexada.",
+      "option_d": "Elementos rápidos.",
+      "correct_option": 0,
+      "category": "word"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-31",
+      "question_text": "De las opciones propuestas, ¿cuál de las siguientes descripciones es adecuada para la función Editor de Word 365?",
+      "option_a": "Cambia la vista del documento para ver únicamente el texto.",
+      "option_b": "Comprueba la ortografía, la gramática y las sugerencias de escritura.",
+      "option_c": "Utiliza la voz para crear contenido en un documento.",
+      "option_d": "Ofrece una lista de antónimos de la palabra seleccionada.",
+      "correct_option": 1,
+      "category": "word"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-32",
+      "question_text": "Una celda de Excel 365 aparece con un valor predeterminado de formato General y posteriormente lo modificaremos al formato Porcentaje. Indique cuál de los siguientes valores hay que introducir primero con el formato General, para que una vez convertido muestre el valor 21,00 %.",
+      "option_a": "21",
+      "option_b": "0,21",
+      "option_c": "21,00",
+      "option_d": "0,0021",
+      "correct_option": 1,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-33",
+      "question_text": "En un libro de Excel 365 tenemos varias hojas, y en la hoja activa varias tablas de las cuales hemos seleccionado una. ¿Cuál de las siguientes opciones debemos elegir para imprimir solo esta tabla?",
+      "option_a": "Imprimir todo el libro.",
+      "option_b": "Imprimir hojas activas.",
+      "option_c": "Imprimir selección.",
+      "option_d": "Imprimir todas las hojas.",
+      "correct_option": 2,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-34",
+      "question_text": "Indique cuál es la utilidad de la función de segmentación de datos en Excel 365.",
+      "option_a": "Es una función que permite realizar operaciones de cálculo sobre una columna numérica.",
+      "option_b": "Permite dividir una tabla de origen en varias tablas de destino separadas, según un criterio de segmentación.",
+      "option_c": "Permite realizar cálculos financieros utilizando varias columnas de una tabla.",
+      "option_d": "Es una función que permite filtrar datos de manera interactiva en tablas o tablas dinámicas.",
+      "correct_option": 3,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-35",
+      "question_text": "En la celda G20 de un libro de Excel 365 tenemos la siguiente fórmula: =SI(E20>1000;\"Grande\";\"Pequeño\") ¿Cuál de las siguientes opciones describe correctamente el valor que se mostrará en la celda G20?",
+      "option_a": "La celda G20 mostrará la fórmula. En la celda E20 se mostrarán los valores Grande o Pequeño en función de que el valor que reciba sea mayor o menor que 1000.",
+      "option_b": "El valor mostrado en la celda E20 será el texto Grande si el valor de la celda G20 es mayor que 1000, y el texto Pequeño, si el valor de la celda G20 es menor de 1000.",
+      "option_c": "El valor mostrado en la celda E20 será el texto Grande si el valor de la celda G20 es menor que 1000, y el texto Pequeño, si el valor de la celda G20 es mayor de 1000.",
+      "option_d": "El valor mostrado en la celda G20 será el texto Grande si el valor de la celda E20 es mayor que 1000, y el texto Pequeño, si el valor de la celda E20 es menor de 1000.",
+      "correct_option": 3,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-36",
+      "question_text": "Necesitamos agregar un campo a una tabla de Access 365, en el cual vamos a almacenar texto con una longitud de hasta 60.000 caracteres. ¿Cuál de los siguientes tipos de campo es el correcto en Access para esta función?",
+      "option_a": "Byte.",
+      "option_b": "Texto largo.",
+      "option_c": "Texto corto.",
+      "option_d": "Número grande.",
+      "correct_option": 1,
+      "category": "access"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-37",
+      "question_text": "Queremos configurar Outlook 365 para que cuando recibamos un mensaje que incluya el texto \"Aviso\" en el asunto, se modifique la importancia a \"alta\". De las siguientes capacidades de Outlook, indique cuál emplearemos.",
+      "option_a": "Alerta.",
+      "option_b": "Regla.",
+      "option_c": "Seguimiento.",
+      "option_d": "Tarea.",
+      "correct_option": 1,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-38",
+      "question_text": "Indique cuál es el tamaño máximo que puede almacenar un campo de tipo \"Datos adjuntos\" en una tabla de Access 365.",
+      "option_a": "Únicamente lo limita el espacio disponible en el disco duro.",
+      "option_b": "Hasta 2GB.",
+      "option_c": "255 caracteres.",
+      "option_d": "64 bytes.",
+      "correct_option": 1,
+      "category": "access"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-39",
+      "question_text": "Añadimos un campo de tipo Calculado en una base de datos de Access 365. De las siguientes opciones, indique cómo debemos obtener el valor de ese campo.",
+      "option_a": "Escribiendo una expresión válida en la celda en la Vista de Hoja de Datos.",
+      "option_b": "Escribiendo una expresión válida en la Descripción de la Vista de Diseño.",
+      "option_c": "Escribiendo una expresión válida en el Generador de expresiones.",
+      "option_d": "Escribiendo una expresión válida en el campo Formato de la pestaña General dentro de la Vista de Diseño.",
+      "correct_option": 2,
+      "category": "access"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-40",
+      "question_text": "Vamos a crear un informe en una base de datos de Access 365. ¿Cuál de las siguientes opciones indica de forma correcta el tipo de objetos sobre los que podemos crear el informe?",
+      "option_a": "Sólo Consultas.",
+      "option_b": "Consultas y Formularios.",
+      "option_c": "Sólo Formularios.",
+      "option_d": "Tablas y Consultas.",
+      "correct_option": 3,
+      "category": "access"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-41",
+      "question_text": "En Outlook 365, ¿cuál de las siguientes afirmaciones es correcta con respecto a los calendarios?",
+      "option_a": "Es posible crear citas, pero para crear eventos es necesario Microsoft Teams.",
+      "option_b": "Los calendarios de Outlook no se pueden enviar por correo electrónico.",
+      "option_c": "Si hay acceso a un sitio de SharePoint, es posible ver las listas de eventos de ese sitio en el Calendario Outlook.",
+      "option_d": "Es posible tener varios calendarios asociados a la cuenta, pero no se pueden visualizar uno al lado del otro.",
+      "correct_option": 2,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-42",
+      "question_text": "Queremos realizar una consulta en una base de datos de Access 365, cuyo objeto es combinar datos de dos o más tablas en una sola consulta. ¿Cuál de los siguientes tipos de consulta deberemos emplear?",
+      "option_a": "Consulta de Unión.",
+      "option_b": "Consulta de Inserción.",
+      "option_c": "Consulta de Resumen.",
+      "option_d": "Consulta de Eliminación.",
+      "correct_option": 0,
+      "category": "access"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-43",
+      "question_text": "¿Cuál de las siguientes opciones corresponde a un sistema de gestión de contenidos (CMS) en internet?",
+      "option_a": "Spotify.",
+      "option_b": "Instagram.",
+      "option_c": "Gmail.",
+      "option_d": "WordPress.",
+      "correct_option": 3,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-44",
+      "question_text": "Tenemos dos cuentas de usuario agregadas a Outlook 365. ¿Cuál de las siguientes opciones es correcta si realizamos una búsqueda sobre el Buzón en el que nos encontramos?",
+      "option_a": "La búsqueda se realiza sobre todas las carpetas de todos los buzones de las dos cuentas de usuario agregadas a Outlook.",
+      "option_b": "La búsqueda se realiza sobre la carpeta en la que nos encontramos dentro del buzón y en ambas cuentas de usuario agregadas a Outlook.",
+      "option_c": "La búsqueda se realiza sobre todas las carpetas del buzón de la cuenta de usuario en el que nos encontramos.",
+      "option_d": "La búsqueda se realiza sobre todos los elementos de Outlook de la cuenta de usuario en el que nos encontramos, incluidas citas o tareas.",
+      "correct_option": 2,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-45",
+      "question_text": "De los siguientes elementos propuestos, indique cuál permite administrar el tamaño del buzón de correo en Outlook 365.",
+      "option_a": "Preferencias de descarga.",
+      "option_b": "Pasos rápidos.",
+      "option_c": "Limpieza de buzón.",
+      "option_d": "Crear grupo.",
+      "correct_option": 2,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-46",
+      "question_text": "¿Cuál de los siguientes es un protocolo asociado a la seguridad en los correos electrónicos?",
+      "option_a": "TLS",
+      "option_b": "XML",
+      "option_c": "ASCII",
+      "option_d": "CSS",
+      "correct_option": 0,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-47",
+      "question_text": "El acceso a servicios informáticos bajo demanda por Internet, a recursos como servidores (físicos y virtuales), almacenamiento de datos, herramientas de desarrollo y capacidades de redes, ¿qué nombre recibe?",
+      "option_a": "Bitdefender.",
+      "option_b": "Computación cuántica.",
+      "option_c": "Computación en la nube.",
+      "option_d": "Factura electrónica.",
+      "correct_option": 2,
+      "category": "informatica_basica"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-48",
+      "question_text": "¿Qué empresa es la actual propietaria del portal del asistente web basado en Inteligencia Artificial de nombre Copilot?",
+      "option_a": "Google.",
+      "option_b": "Amazon.",
+      "option_c": "Lenovo.",
+      "option_d": "Microsoft.",
+      "correct_option": 3,
+      "category": "informatica_basica"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-49",
+      "question_text": "Indique cuál de las siguientes opciones corresponde a un software de servidor web.",
+      "option_a": "Apache.",
+      "option_b": "Kaspersky.",
+      "option_c": "YouTube.",
+      "option_d": "Voz IP.",
+      "correct_option": 0,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-50",
+      "question_text": "De los siguientes organismos propuestos, ¿cuál es el responsable de generar estándares y buenas prácticas de accesibilidad web?",
+      "option_a": "Internet Corporation for Assigned Names and Numbers (ICANN).",
+      "option_b": "Internet Assigned Numbers Authority (IANA).",
+      "option_c": "World Wide Web Consortium (W3C).",
+      "option_d": "Internet Engineering Task Force (IETF).",
+      "correct_option": 2,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-R2",
+      "question_text": "En una hoja de Excel 365 tenemos la fecha 02/02/2024 en la celda A2, y la fecha 11/02/2024 en la celda A3. En la celda C2 tenemos la siguiente fórmula: =DIAS(A2;A3) ¿Cuál de las siguientes opciones será el valor que muestre la celda C2 como resultado de la fórmula?",
+      "option_a": "-9",
+      "option_b": "12/02/2024",
+      "option_c": "9",
+      "option_d": "01/02/2024",
+      "correct_option": 0,
+      "category": "excel",
+      "is_reserve": true
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-R3",
+      "question_text": "En un dispositivo portátil con Windows 10 instalado, queremos configurar algunas opciones como el uso de energía o los perfiles de sincronización. ¿Cuál de las siguientes capacidades podemos utilizar para realizar esta tarea?",
+      "option_a": "Administrador de dispositivos.",
+      "option_b": "Administrador de equipos.",
+      "option_c": "Administrador de tareas.",
+      "option_d": "Centro de movilidad.",
+      "correct_option": 3,
+      "category": "windows",
+      "is_reserve": true
+    },
+    {
+      "id_examen": "2024-AUX-L-P2-R4",
+      "question_text": "En Excel 365 hay tres opciones de inmovilización para facilitar la navegación por los datos de una hoja. ¿Cuál de las siguientes opciones de inmovilización es falsa?",
+      "option_a": "Inmovilizar celdas seleccionadas.",
+      "option_b": "Inmovilizar fila superior.",
+      "option_c": "Inmovilizar paneles.",
+      "option_d": "Inmovilizar primera columna.",
+      "correct_option": 0,
+      "category": "excel",
+      "is_reserve": true
+    }
+  ]
+}

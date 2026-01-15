@@ -8,6 +8,7 @@ import { getCanonicalSlug } from '../lib/lawMappingUtils';
 
 const TestConfigurator = ({
   tema = 7,
+  temaDisplayName = null, // 🆕 Nombre visible del tema (ej: "Tema 9: Hojas de cálculo: Excel")
   totalQuestions = 100,
   onStartTest,
   userStats = null,
@@ -1407,7 +1408,7 @@ const TestConfigurator = ({
                         <span className="text-red-600 text-lg">🏛️</span>
                         <div className="flex-1">
                           <p className="text-sm font-bold text-red-800">
-                            Modo Oficial Activado para Tema {tema}
+                            Modo Oficial Activado{temaDisplayName ? ` para ${temaDisplayName}` : ''}
                           </p>
                           <p className="text-xs text-red-700">
                             {availableQuestions} preguntas de exámenes reales disponibles
@@ -1447,7 +1448,7 @@ const TestConfigurator = ({
                         <span className="text-gray-600 text-lg">📭</span>
                         <div className="flex-1">
                           <p className="text-sm font-bold text-gray-800">
-                            No hay preguntas oficiales disponibles para tema {tema}
+                            No hay preguntas oficiales disponibles{temaDisplayName ? ` para ${temaDisplayName}` : ''}
                           </p>
                           <p className="text-xs text-gray-700">
                             Aún no se han añadido preguntas de exámenes oficiales para este tema.
@@ -1537,7 +1538,7 @@ const TestConfigurator = ({
                     ) : essentialArticlesList.length > 0 ? (
                       <div className="mt-2">
                         <p className="text-xs text-red-700 font-medium mb-1">
-                          📋 Artículos imprescindibles para tema {tema}:
+                          📋 Artículos imprescindibles{temaDisplayName ? ` para ${temaDisplayName}` : ''}:
                         </p>
                         <div className="max-h-24 sm:max-h-16 overflow-y-auto">
                           {essentialArticlesList.map((article, index) => (
@@ -1684,7 +1685,7 @@ const TestConfigurator = ({
           
           {onlyOfficialQuestions && (
             <div className="mt-2 text-xs text-red-700 font-medium">
-              🏛️ Solo preguntas de exámenes oficiales reales del tema {tema} ({officialQuestionsCount} total)
+              🏛️ Solo preguntas de exámenes oficiales reales{temaDisplayName ? ` de ${temaDisplayName}` : ''} ({officialQuestionsCount} total)
             </div>
           )}
           
@@ -2375,7 +2376,7 @@ const TestConfigurator = ({
                 <span className="text-xl sm:text-2xl">❌</span>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-base sm:text-lg font-bold leading-tight">
-                    Preguntas Falladas - Tema {tema}
+                    Preguntas Falladas{temaDisplayName ? ` - ${temaDisplayName}` : ''}
                   </h3>
                   <p className="text-red-100 text-xs sm:text-sm">
                     {failedQuestionsData.totalQuestions} preguntas diferentes • {failedQuestionsData.totalFailures} fallos en total

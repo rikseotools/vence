@@ -1,0 +1,422 @@
+{
+  "metadata": {
+    "source": "INAP - Examen Oficial Auxiliar Administrativo Estado 2023",
+    "exam_date": "2023-09-16",
+    "exam_source": "BOE - Examen Auxiliar Administrativo Estado septiembre 2023",
+    "plantilla": "DEFINITIVA",
+    "convocatoria": "OEP 2021-2022",
+    "notas": "Preguntas 42 y 43 anuladas según plantilla definitiva. Reserva 3 también anulada."
+  },
+  "questions": [
+    {
+      "id_examen": "2023-AUX-L-P2-11",
+      "question_text": "En Word 2019, ¿cuál de las siguientes opciones se utiliza para garantizar que se puede ver correctamente la tabla completa en la vista de diseño web?",
+      "option_a": "Autoajustar a la ventana.",
+      "option_b": "Autoajustar al contenido.",
+      "option_c": "Ancho de columna fijo.",
+      "option_d": "Alinear al centro.",
+      "correct_option": 0,
+      "category": "word"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-12",
+      "question_text": "¿Cuál de los siguientes es un periférico de entrada?",
+      "option_a": "Impresora.",
+      "option_b": "Altavoces.",
+      "option_c": "Cámara web.",
+      "option_d": "Pantalla.",
+      "correct_option": 2,
+      "category": "hardware"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-13",
+      "question_text": "De las opciones propuestas, indique cuál es la última versión del Sistema Operativo para móviles Android:",
+      "option_a": "Android 10",
+      "option_b": "Android 17",
+      "option_c": "Android 16",
+      "option_d": "Android 14",
+      "correct_option": 3,
+      "category": "informatica_basica"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-14",
+      "question_text": "¿Cómo se llama la causa potencial de un incidente que puede causar daños a un sistema de información o a una organización?",
+      "option_a": "Riesgo.",
+      "option_b": "Vulnerabilidad.",
+      "option_c": "Amenaza.",
+      "option_d": "Impacto.",
+      "correct_option": 2,
+      "category": "informatica_basica"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-15",
+      "question_text": "¿Cuál de los siguientes fue el primer fabricante de microprocesadores?",
+      "option_a": "Intel.",
+      "option_b": "ADM.",
+      "option_c": "IBM.",
+      "option_d": "Speadtrum.",
+      "correct_option": 0,
+      "category": "hardware"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-16",
+      "question_text": "En Windows 10, para acceder a una red inalámbrica hay que seguir los siguientes pasos:",
+      "option_a": "Barra de tareas > Red > Conectar.",
+      "option_b": "Barra de tareas > Seguridad de Windows > Conexión de Red.",
+      "option_c": "Inicio > Configuración > Accesibilidad.",
+      "option_d": "Inicio > Configuración > Sistema.",
+      "correct_option": 0,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-17",
+      "question_text": "¿Cuál es el navegador que sustituyó en Windows 10 a Internet Explorer?",
+      "option_a": "Chrome.",
+      "option_b": "Firefox.",
+      "option_c": "Opera.",
+      "option_d": "Microsoft Edge.",
+      "correct_option": 3,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-18",
+      "question_text": "Si hacemos clic con el botón derecho del ratón en una carpeta en el explorador de archivos de Windows 10 nos permite:",
+      "option_a": "Duplicarla.",
+      "option_b": "Imprimir cualquier documento.",
+      "option_c": "Restaurar versiones anteriores.",
+      "option_d": "Mover a OneDrive.",
+      "correct_option": 2,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-19",
+      "question_text": "Abrimos una consola de Windows PowerShell con un usuario administrador y escribimos: certmgr.msc ¿Qué sucederá?",
+      "option_a": "Nos dice que no se reconoce como un comando interno y externo.",
+      "option_b": "Se abre la herramienta de administración de certificados.",
+      "option_c": "No recibimos respuesta alguna.",
+      "option_d": "Se abre la herramienta para certificar archivos de Windows.",
+      "correct_option": 1,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-20",
+      "question_text": "En un sistema Windows se ha configurado la obtención automática de direcciones IP para acceder a una LAN. ¿Cómo se llama este servicio?",
+      "option_a": "DHCP",
+      "option_b": "TTL",
+      "option_c": "HTTPS",
+      "option_d": "AUTOIP",
+      "correct_option": 0,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-21",
+      "question_text": "Para abrir el explorador de archivos en Windows 10 mediante el teclado, ¿qué teclas de las propuestas es necesario pulsar simultáneamente?",
+      "option_a": "Tecla Windows + E",
+      "option_b": "Tecla Ctrl + O",
+      "option_c": "Tecla Windows + O",
+      "option_d": "Tecla Ctrl + E",
+      "correct_option": 0,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-22",
+      "question_text": "Si queremos crear un acceso directo de la herramienta \"Este equipo\" en nuestro escritorio, realizaremos una de las siguientes acciones:",
+      "option_a": "Clic con botón derecho de ratón en \"Este equipo\" y elegir la opción \"Crear vínculo\".",
+      "option_b": "Clic con botón derecho de ratón en \"Este equipo\" y elegir opción \"Anclar a Inicio\".",
+      "option_c": "Seleccionar \"Este equipo\" con botón izquierdo de ratón y arrastrar a Dispositivos y Unidades.",
+      "option_d": "Seleccionar \"Este equipo\" con botón izquierdo de ratón y arrastrar al Escritorio.",
+      "correct_option": 3,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-23",
+      "question_text": "¿Cuál de los siguientes atajos de teclado nos permite ver la carpeta anterior en el Explorador de archivos de Windows 10?",
+      "option_a": "Alt + flecha izquierda",
+      "option_b": "Alt + símbolo \"*\"",
+      "option_c": "Alt + Supr",
+      "option_d": "Alt + símbolo \"+\"",
+      "correct_option": 0,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-24",
+      "question_text": "¿Con qué herramienta accedemos a la base de datos jerárquica que contiene datos críticos para el funcionamiento de Windows y las aplicaciones y servicios que se ejecutan en Windows?",
+      "option_a": "Editor de Registro.",
+      "option_b": "Monitor de recursos.",
+      "option_c": "Visor de eventos.",
+      "option_d": "Programador de tareas.",
+      "correct_option": 0,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-25",
+      "question_text": "¿Qué herramienta de Windows debemos utilizar para limpiar el disco de archivos innecesarios que se pueden eliminar de forma segura?",
+      "option_a": "Desfragmentador de disco.",
+      "option_b": "Copia de seguridad.",
+      "option_c": "Liberador de espacio en disco.",
+      "option_d": "Restaurar sistema.",
+      "correct_option": 2,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-26",
+      "question_text": "Una dirección IP está compuesta por:",
+      "option_a": "4 grupos de números separados por puntos.",
+      "option_b": "4 grupos alfanuméricos separados por guiones.",
+      "option_c": "3 grupos de números separados por puntos.",
+      "option_d": "3 grupos alfanuméricos separados por guiones.",
+      "correct_option": 0,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-27",
+      "question_text": "¿Cuál de las siguientes opciones permite proteger la información personal e identidad en línea y permite acceder a los recursos de una red local?",
+      "option_a": "Los controladores de filtro.",
+      "option_b": "Una red VPN.",
+      "option_c": "Una red PAN.",
+      "option_d": "Los controladores de función.",
+      "correct_option": 1,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-28",
+      "question_text": "De los siguientes Protocolos de Red, indique cuál se utiliza para poder recibir o transferir correos para servidores remotos de archivos:",
+      "option_a": "IMAP",
+      "option_b": "DNS",
+      "option_c": "HTTP GET",
+      "option_d": "ARP",
+      "correct_option": 0,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-29",
+      "question_text": "¿Qué es un FTP?",
+      "option_a": "Un protocolo para conectar ordenadores a Internet mediante wifi.",
+      "option_b": "Un protocolo de transferencia de ficheros.",
+      "option_c": "Un protocolo de capa de acceso al medio.",
+      "option_d": "Un tipo de servidor web.",
+      "correct_option": 1,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-30",
+      "question_text": "¿Cuál de los siguientes lenguajes de programación pueden interpretar los navegadores web de forma nativa para mejorar las funcionalidades y dinamismo de las páginas web?",
+      "option_a": "Basic",
+      "option_b": "C#",
+      "option_c": "Pascal",
+      "option_d": "JavaScript",
+      "correct_option": 3,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-31",
+      "question_text": "En Word 2019 la opción \"Revisar > Control de cambios\", ¿qué funcionalidad aporta?",
+      "option_a": "Permite estar al tanto de los cambios realizados en el documento.",
+      "option_b": "Evita que otras personas activen el antivirus.",
+      "option_c": "Muestra todos los cambios del documento en una lista.",
+      "option_d": "Permite elegir qué tipo de revisión se muestra en el documento.",
+      "correct_option": 0,
+      "category": "word"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-32",
+      "question_text": "En Word 2019 la opción \"Contar palabras\", ¿qué estadísticas muestra?",
+      "option_a": "Páginas, palabras, párrafos, objetos y líneas.",
+      "option_b": "Páginas, palabras, caracteres con y sin espacios, párrafos y líneas.",
+      "option_c": "Páginas, palabras, caracteres con y sin espacios y líneas únicamente del encabezado.",
+      "option_d": "Páginas, palabras, caracteres con y sin espacios, caracteres especiales, fórmulas, párrafos y líneas.",
+      "correct_option": 1,
+      "category": "word"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-33",
+      "question_text": "En Word 2019 si se desea cambiar el estilo de una lista de numeración, ¿cómo se debe proceder?",
+      "option_a": "Pestaña Inicio, en grupo párrafo elegimos lista multinivel y definir nuevo estilo de lista.",
+      "option_b": "Pestaña Insertar, numeración, profundidad.",
+      "option_c": "Pestaña Diseño, numeración, profundidad.",
+      "option_d": "Pestaña Inicio, en grupo párrafo elegimos lista multinivel y definir nueva lista multinivel.",
+      "correct_option": 0,
+      "category": "word"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-34",
+      "question_text": "¿Cómo se puede conseguir un subrayado no predeterminado en Word 2019?",
+      "option_a": "Desde la Pestaña Diseño, grupo fuente, más subrayados.",
+      "option_b": "Desde la Pestaña Vista, grupo fuente, más subrayados.",
+      "option_c": "Desde la Pestaña Inicio, grupo fuente, más subrayados.",
+      "option_d": "Desde la Pestaña Insertar, grupo fuente, más subrayados.",
+      "correct_option": 2,
+      "category": "word"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-35",
+      "question_text": "En Word 2019, ¿qué combinación de teclas se debe pulsar para insertar una nota al pie?",
+      "option_a": "Alt + Ctrl + A",
+      "option_b": "Alt + Ctrl + O",
+      "option_c": "Alt + Ctrl + C",
+      "option_d": "Alt + Ctrl + W",
+      "correct_option": 1,
+      "category": "word"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-36",
+      "question_text": "Excel 2019 clasifica las funciones por categorías. ¿Cuál de las siguientes pertenecen a la categoría \"Matemáticas y Trigonométricas\"?",
+      "option_a": "RAIZ, ENTERO, INT.ACUM",
+      "option_b": "RAIZ, ENTERO, POTENCIA",
+      "option_c": "RAIZ, POTENCIA, INT.ACUM",
+      "option_d": "POTENCIA, ENTERO, INT.ACUM",
+      "correct_option": 1,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-37",
+      "question_text": "En Excel 2019, si en la celda A1 de la Hoja1 queremos copiar el valor de la celda A2 de la Hoja2 deberemos:",
+      "option_a": "Introducir la fórmula =Hoja1!A1 en la celda A1 de la Hoja 1.",
+      "option_b": "Introducir la fórmula =Hoja1!A1 en la celda A1 de la Hoja 2.",
+      "option_c": "Introducir la fórmula =Hoja2!A1 en la celda A1 de la Hoja 1.",
+      "option_d": "Introducir la fórmula =Hoja2!A2 en la celda A1 de la Hoja 1.",
+      "correct_option": 3,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-38",
+      "question_text": "A partir de una fecha en la celda A1 queremos obtener el día de la semana (un número de 1 a 7 empezando por el lunes como día 1 y terminando con el domingo como día 7), ¿cuál de las siguientes funciones de Excel 2019 utilizaremos?",
+      "option_a": "=DIASEM(A1)",
+      "option_b": "=DIA.LABINTL(A1)",
+      "option_c": "=DIA.LAB(A1)",
+      "option_d": "=DIASEM(A1;2)",
+      "correct_option": 3,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-39",
+      "question_text": "El menú de formato de celdas, pestaña \"Número\" en Excel 2019 nos muestra, entre otras, las siguientes categorías:",
+      "option_a": "Personalizada, Número, Fecha, Texto, Vínculo.",
+      "option_b": "General, Número, Fecha, Texto, Personalizada.",
+      "option_c": "Número, Fecha, Texto, Externa, Personalizada.",
+      "option_d": "Vínculo, Número, Fecha, Texto, Personalizada.",
+      "correct_option": 1,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-40",
+      "question_text": "¿Qué tipo de gráfico combina valores en puntos de datos únicos y los muestra en intervalos irregulares en Excel 2019?",
+      "option_a": "Un gráfico de columnas.",
+      "option_b": "Un gráfico de líneas.",
+      "option_c": "Un gráfico de dispersión.",
+      "option_d": "Un gráfico de área.",
+      "correct_option": 2,
+      "category": "excel"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-41",
+      "question_text": "¿Qué respuesta corresponde a la definición \"Lenguaje de computación para trabajar con conjuntos de datos y las relaciones entre ellos, como Microsoft Office Access\"?",
+      "option_a": "MDB",
+      "option_b": "SQL",
+      "option_c": "ACDB",
+      "option_d": "ODB",
+      "correct_option": 1,
+      "category": "access"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-44",
+      "question_text": "El número máximo de caracteres del nombre de un objeto en Access 2019 es:",
+      "option_a": "58",
+      "option_b": "100",
+      "option_c": "73",
+      "option_d": "64",
+      "correct_option": 3,
+      "category": "access"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-45",
+      "question_text": "Señale la afirmación correcta. En Access 2019 existen formularios:",
+      "option_a": "De columnas, tabulares y de gráficos.",
+      "option_b": "De barras, tabulares y subformularios.",
+      "option_c": "De columnas, tabulares y subformularios.",
+      "option_d": "De columnas, combinados y subformularios.",
+      "correct_option": 2,
+      "category": "access"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-46",
+      "question_text": "En Outlook 2019, ¿qué combinación de teclas nos permite acceder a la carpeta de contactos?",
+      "option_a": "CTRL+ 3",
+      "option_b": "CTRL+ 4",
+      "option_c": "CTRL+ 5",
+      "option_d": "CTRL+ 2",
+      "correct_option": 0,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-47",
+      "question_text": "En Outlook 2019 SMTP es:",
+      "option_a": "Un protocolo de mensajería que identifica unívocamente al receptor y al emisor.",
+      "option_b": "Un protocolo de autentificación de correo entre el servidor y el cliente.",
+      "option_c": "Un protocolo de cifrado de mensajes entre servidor y cliente.",
+      "option_d": "Un protocolo de transferencia simple de correo empleado para el intercambio de mensajes entre dispositivos.",
+      "correct_option": 3,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-48",
+      "question_text": "En Outlook 2019, ¿cuál es el límite de caracteres para una dirección de correo electrónico?",
+      "option_a": "64",
+      "option_b": "320",
+      "option_c": "100",
+      "option_d": "255",
+      "correct_option": 1,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-49",
+      "question_text": "En la cinta de opciones de Outlook 2019 encontramos las pestañas:",
+      "option_a": "Bandeja de entrada, Elementos eliminados, Bandeja de salida.",
+      "option_b": "Archivo, Mensaje, Insertar y Opciones.",
+      "option_c": "Cuenta de office, Comentarios, Opciones y Salir.",
+      "option_d": "Archivo, Inicio, Enviar y Recibir, Carpeta y Vista.",
+      "correct_option": 3,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-50",
+      "question_text": "En Outlook 2019, la opción \"Marcar todos como leídos\" se encuentra en la pestaña:",
+      "option_a": "Enviar y recibir.",
+      "option_b": "Archivo.",
+      "option_c": "Carpeta.",
+      "option_d": "Vista.",
+      "correct_option": 2,
+      "category": "outlook"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-R2",
+      "question_text": "De los sistemas de archivos propuestos, indique cuál es el sistema estándar en Windows 10:",
+      "option_a": "APFS",
+      "option_b": "JFS",
+      "option_c": "F2FS",
+      "option_d": "NTFS",
+      "correct_option": 3,
+      "category": "windows"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-R4",
+      "question_text": "¿Qué es una dirección IPv4?",
+      "option_a": "Es un número binario de 64 bits que identifica a un interfaz en red de un dispositivo que utiliza el protocolo IPv4.",
+      "option_b": "Es un identificador de 24 bits expresado en código hexadecimal, para identificar de forma única la tarjeta de red.",
+      "option_c": "Es un identificador de 48 bits expresado en código hexadecimal, para identificar de forma única la tarjeta de red.",
+      "option_d": "Es un número binario de 4 octetos que identifica a un interfaz en red de un dispositivo que utiliza el protocolo IPv4.",
+      "correct_option": 3,
+      "category": "internet"
+    },
+    {
+      "id_examen": "2023-AUX-L-P2-R5",
+      "question_text": "En Excel 2019, si aplicamos la función \"MODA\" sobre los números 7,5,8,1,7,4,3,2,2,7 el resultado es:",
+      "option_a": "2",
+      "option_b": "5",
+      "option_c": "6",
+      "option_d": "7",
+      "correct_option": 3,
+      "category": "excel"
+    }
+  ]
+}

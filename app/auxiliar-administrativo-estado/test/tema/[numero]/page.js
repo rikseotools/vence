@@ -583,6 +583,7 @@ export default function TemaPage({ params }) {
         <section className="mb-8">
           <TestConfigurator
             tema={temaNumber}
+            temaDisplayName={topicData ? `${temaNumber >= 101 ? `Bloque II - Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}: ${topicData.title}` : null}
             totalQuestions={difficultyStats}
             onStartTest={handleStartCustomTest}
             userStats={userRecentStats}
