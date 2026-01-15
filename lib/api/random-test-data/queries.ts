@@ -20,7 +20,7 @@ import {
 
 // Cache simple en memoria (5 minutos)
 const dataCache = new Map<string, { data: GetRandomTestDataResponse; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+const CACHE_TTL = 30 * 1000 // 30 segundos - reducido para mejor UX
 
 /**
  * Obtiene todos los datos iniciales para la página de test aleatorio

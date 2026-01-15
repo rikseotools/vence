@@ -4,9 +4,9 @@ import { tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, isNotNull } from 'drizzle-orm'
 import type { GetThemeStatsResponse, ThemeStat } from './schemas'
 
-// Cache simple en memoria (5 minutos)
+// Cache simple en memoria (30 segundos - reducido para mejor UX)
 const statsCache = new Map<string, { data: GetThemeStatsResponse; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+const CACHE_TTL = 30 * 1000 // 30 segundos
 
 /**
  * Obtiene las estadísticas por tema para un usuario

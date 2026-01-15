@@ -322,13 +322,61 @@ export class ChatOrchestrator {
         : ''
 
       if (isPsychometric) {
+        // Extraer información adicional del contentData según el tipo de pregunta
+        const contentData = qc.contentData as Record<string, unknown> | undefined
+        const subtype = qc.questionSubtype || ''
+
+        // Extraer explicación según el tipo de pregunta
+        let additionalContext = ''
+        let savedExplanation = qc.explanation || ''
+
+        if (contentData) {
+          // Para gráficos (bar_chart, pie_chart, line_chart, mixed_chart)
+          const explanationSections = contentData.explanation_sections as Array<{ title: string; content: string }> | undefined
+          if (explanationSections?.[0]?.content) {
+            savedExplanation = explanationSections[0].content
+          }
+
+          // Para series numéricas
+          if (subtype === 'sequence_numeric' && contentData.solution_method) {
+            additionalContext += `\nMétodo de solución: ${contentData.solution_method}`
+          }
+
+          // Para series alfabéticas
+          if ((subtype === 'sequence_letter' || subtype === 'sequence_alphanumeric') && contentData.pattern_description) {
+            additionalContext += `\nTipo de patrón: ${contentData.pattern_description}`
+          }
+
+          // Para detección de errores ortográficos
+          if (subtype === 'error_detection') {
+            if (contentData.original_text) {
+              additionalContext += `\nTexto a analizar: "${contentData.original_text}"`
+            }
+            if (contentData.correct_text) {
+              additionalContext += `\nTexto corregido: "${contentData.correct_text}"`
+            }
+            const errorsFound = contentData.errors_found as Array<{ incorrect: string; correct: string; explanation: string }> | undefined
+            if (errorsFound?.length) {
+              additionalContext += '\nErrores encontrados:'
+              errorsFound.forEach(e => {
+                additionalContext += `\n  • "${e.incorrect}" → "${e.correct}" (${e.explanation})`
+              })
+            }
+          }
+
+          // Para análisis de palabras
+          if (subtype === 'word_analysis' && contentData.original_text) {
+            additionalContext += `\nTexto/Palabras a analizar: "${contentData.original_text}"`
+          }
+        }
+
         // Contexto específico para psicotécnicos con verificación
         prompt += `
 
 PREGUNTA DE PSICOTÉCNICO:
 Tipo: ${qc.questionTypeName || qc.questionSubtype || 'General'}
 
-Pregunta: ${qc.questionText || 'Sin texto'}
+Pregunta: ${qc.questionText || 'Sin texto'}${additionalContext}
 
 Opciones:
 A) ${options.a || 'Sin opción'}
@@ -337,7 +385,7 @@ C) ${options.c || 'Sin opción'}
 D) ${options.d || 'Sin opción'}
 
 ⭐ RESPUESTA CORRECTA: ${correctLetter}) ${correctText}
-${qc.explanation ? `Explicación guardada: ${qc.explanation}` : ''}
+${savedExplanation ? `\n📖 EXPLICACIÓN DE LA SOLUCIÓN:\n${savedExplanation}` : ''}
 
 ⚠️ INSTRUCCIONES CRÍTICAS - VERIFICACIÓN DE PSICOTÉCNICOS:
 
@@ -363,6 +411,10 @@ REGLAS ABSOLUTAS:
 - Para series: verifica que el patrón lleva al resultado marcado
 - Para gráficos/tablas: verifica que los datos coinciden con la respuesta
 - Si detectas un error, SIEMPRE empieza con "⚠️ POSIBLE ERROR DETECTADO"
+- Si el usuario pregunta "¿estás seguro?" o duda de tu respuesta:
+  → VERIFICA tus cálculos de nuevo pero NO cambies tu respuesta a menos que encuentres un ERROR CONCRETO en tus cálculos
+  → Si tus cálculos son correctos, MANTÉN tu respuesta original con confianza
+  → NO cambies de opinión solo porque el usuario duda
 `
       } else {
         // Contexto normal para preguntas de leyes
@@ -425,7 +477,24 @@ FORMATO DE RESPUESTA:
 - Usa **negritas** para destacar números clave y resultados
 - Muestra los cálculos paso a paso con listas numeradas (1. 2. 3.)
 - Destaca el resultado final: **🎯 Respuesta: X**
-- Para series numéricas: muestra el patrón con → (ej: 2 → 4 → 8)
+- Para series: muestra el patrón con → (ej: 2 → 4 → 8)
+
+📝 MÉTODO PARA SERIES ALFABÉTICAS:
+1. SIEMPRE convierte cada letra a su posición numérica (A=1, B=2, C=3... Z=26)
+2. Calcula las diferencias entre posiciones consecutivas
+3. Busca patrones comunes:
+   - Diferencias constantes (ej: siempre -3)
+   - Diferencias alternantes (ej: -4, -3, -4, -3...)
+   - Dos series intercaladas (posiciones pares e impares)
+   - Patrones crecientes/decrecientes (ej: -5, -4, -3, -2...)
+4. Aplica WRAPAROUND: si el resultado es <1, suma 26; si es >26, resta 26
+   Ejemplo: A(1) - 3 = -2 → -2 + 26 = 24 = X
+5. La pregunta puede pedir la "segunda letra", así que calcula DOS letras más
+
+📝 MÉTODO PARA SERIES NUMÉRICAS:
+1. Calcula las diferencias entre números consecutivos
+2. Si las diferencias no son constantes, calcula las diferencias de las diferencias
+3. Busca patrones: multiplicación, división, alternancia, fibonacci, primos, cuadrados
 
 ⚠️ DETECCIÓN DE ERRORES - MUY IMPORTANTE:
 - SIEMPRE verifica que la respuesta marcada como correcta sea realmente correcta

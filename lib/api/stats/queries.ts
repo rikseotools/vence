@@ -16,7 +16,7 @@ import type {
 
 // Cache simple en memoria (5 minutos)
 const statsCache = new Map<string, { data: GetUserStatsResponse; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+const CACHE_TTL = 30 * 1000 // 30 segundos - reducido para mejor UX
 
 // ============================================
 // FUNCIÓN PRINCIPAL - Obtener todas las estadísticas

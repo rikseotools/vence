@@ -14,7 +14,7 @@ import type {
 
 // Cache simple en memoria (5 minutos)
 const topicCache = new Map<string, { data: GetTopicDataResponse; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+const CACHE_TTL = 30 * 1000 // 30 segundos - reducido para mejor UX
 
 // Mapa de posición
 const POSITION_TYPE_MAP: Record<OposicionKey, string> = {

@@ -26,7 +26,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(stats, { status: 500 })
     }
 
-    return NextResponse.json(stats)
+    return NextResponse.json(stats, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    })
   } catch (error) {
     console.error('Error en API de estadísticas por tema:', error)
     return NextResponse.json(
