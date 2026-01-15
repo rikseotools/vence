@@ -134,6 +134,8 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'logp': 'LOGP',
   'lo-5-1985': 'LO 5/1985',
   'loreg': 'LO 5/1985',
+  'lo-5-1995': 'LO 5/1995',
+  'tribunal-jurado': 'LO 5/1995',
   'lo-4-2000': 'LO 4/2000',
   'loex': 'LO 4/2000',
   'lo-10-1995': 'CP',
@@ -557,6 +559,7 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'LO 3/2018': 'lo-3-2018',
   'LO 3/2020': 'lo-3-2020',
   'LO 5/1985': 'lo-5-1985',
+  'LO 5/1995': 'lo-5-1995',
   'LO 4/2000': 'lo-4-2000',
   'LO 10/1995': 'lo-10-1995',
   'LO 3/2007': 'lo-3-2007',
@@ -730,6 +733,7 @@ const LAW_INFO: LawInfoMapping = {
   'RDL 5/2015': { name: 'Real Decreto Legislativo 5/2015 - TREBEP', description: 'Texto refundido del Estatuto Básico del Empleado Público' },
   'LO 3/2018': { name: 'Ley Orgánica 3/2018 de Protección de Datos', description: 'Protección de Datos Personales y garantía de los derechos digitales' },
   'Ley 9/2017': { name: 'Ley 9/2017 de Contratos del Sector Público', description: 'Contratación del sector público' },
+  'LO 5/1995': { name: 'Ley Orgánica 5/1995 del Tribunal del Jurado', description: 'Regulación del Tribunal del Jurado' },
 }
 
 // ============================================

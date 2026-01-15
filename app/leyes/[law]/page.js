@@ -15,6 +15,15 @@ export async function generateMetadata({ params }) {
   const resolvedParams = await params
   const lawInfo = getLawInfo(resolvedParams.law)
   const lawShortName = mapLawSlugToShortName(resolvedParams.law)
+
+  // Si la ley no es reconocida, devolver metadata básico (notFound() se maneja en el componente)
+  if (!lawInfo || !lawShortName) {
+    return {
+      title: 'Ley no encontrada | Vence',
+      description: 'La ley solicitada no está disponible',
+    }
+  }
+
   const canonicalSlug = getCanonicalSlug(lawShortName)
   
   // Generar descripción SEO específica para cada ley
