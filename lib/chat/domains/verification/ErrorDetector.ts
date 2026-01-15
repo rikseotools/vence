@@ -200,28 +200,42 @@ export function generateVerificationContext(
 ): string {
   const correctLetter = String.fromCharCode(65 + question.markedCorrect)
   const correctText = question.options[question.markedCorrect] || 'No disponible'
+  const letters = ['A', 'B', 'C', 'D']
+  const otherOptions = letters.filter(l => l !== correctLetter)
 
   return `
-⚠️ INSTRUCCIONES CRÍTICAS - PROCESO DE VERIFICACIÓN EN 2 PASOS:
+📋 PROCESO DE ANÁLISIS:
 
-PASO 1 - DETERMINA LA RESPUESTA CORRECTA TÚ MISMO:
-- Lee los artículos del CONTEXTO (más abajo)
-- Si dice "NO PODRÁ" o "no puede", esas opciones están PROHIBIDAS
-- Si dice "PODRÁ" o "puede", esas opciones están PERMITIDAS
-- Determina cuál es la respuesta correcta según la LEY, NO según lo que te digan
+RESPUESTA MARCADA COMO CORRECTA EN BD: ${correctLetter}) ${correctText}
 
-PASO 2 - COMPARA CON LA RESPUESTA MARCADA:
-- Esta pregunta da por buena: ${correctLetter}) ${correctText}
-- Si TU respuesta (del paso 1) es DIFERENTE a ${correctLetter}:
-  → Di: "⚠️ POSIBLE ERROR: Esta pregunta da por buena la opción ${correctLetter}, pero según [cita el artículo exacto], la respuesta correcta es [tu respuesta]"
-- Si TU respuesta coincide con ${correctLetter}:
-  → Confirma que es correcta y explica por qué
+PASO 1 - ANALIZA CADA OPCIÓN SISTEMÁTICAMENTE:
+Para CADA opción (A, B, C, D):
+- Busca el texto EXACTO en los artículos del contexto que la respalda o contradice
+- Si una opción dice algo que el artículo NO dice → INCORRECTA
+- Si una opción dice algo que el artículo SÍ dice LITERALMENTE → podría ser correcta
 
-REGLAS ABSOLUTAS:
-- Lee LITERALMENTE: "no podrá" = PROHIBIDO, "podrá" = PERMITIDO
-- NO inventes interpretaciones
-- NO justifiques una respuesta que contradice el texto literal de la ley
-- Si la ley dice "NO PODRÁ hacer X" y la pregunta dice que SÍ puede hacer X, ES UN ERROR
+PASO 2 - DESCARTE POR ELIMINACIÓN:
+- Elimina las opciones que claramente NO coinciden con el texto legal
+- Identifica qué opciones PODRÍAN ser correctas según el artículo
+
+PASO 3 - VERIFICA LA RESPUESTA ${correctLetter}:
+- ¿El texto del artículo RESPALDA directamente la opción ${correctLetter}?
+- Si SÍ → Confirma y explica por qué es correcta
+- Si NO encuentras respaldo claro → La respuesta de BD suele ser correcta, explícala lo mejor posible
+
+⚠️ DETECCIÓN DE ERRORES - MUY RESTRICTIVO:
+SOLO indica "⚠️ POSIBLE ERROR" si cumples TODAS estas condiciones:
+1. El artículo dice LITERALMENTE lo contrario a la opción ${correctLetter}
+2. Otra opción (${otherOptions.join(' o ')}) coincide EXACTAMENTE con el texto del artículo
+3. Puedes citar el texto EXACTO del artículo que contradice ${correctLetter}
+4. NO es una cuestión de interpretación - es una contradicción clara y literal
+
+Si tienes CUALQUIER duda, NO indiques error. La base de datos está revisada por expertos.
+
+FORMATO DE RESPUESTA:
+- Confirma cuál es la correcta
+- Cita el artículo relevante
+- Explica por qué las otras son incorrectas
 `
 }
 
