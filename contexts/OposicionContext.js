@@ -99,7 +99,7 @@ export function OposicionProvider({ children }) {
         setLoading(true)
 
         if (!user) {
-          console.log('👤 Usuario no autenticado - usando menú genérico')
+          // Usuario no autenticado - menú genérico
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
@@ -108,17 +108,14 @@ export function OposicionProvider({ children }) {
         }
 
         // 2. Cargar oposición asignada
-        console.log('🔍 Buscando oposición para user.id:', user.id)
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('target_oposicion, target_oposicion_data')
           .eq('id', user.id)
           .single()
 
-        console.log('🔍 Resultado query:', { profile, profileError })
-
         if (profileError || !profile?.target_oposicion) {
-          console.log('📋 Usuario sin oposición asignada - usando menú genérico', { profileError, target_oposicion: profile?.target_oposicion })
+          // Usuario sin oposición - menú genérico
           setUserOposicion(null)
           setOposicionId(null)
           setOposicionMenu(DEFAULT_MENU)
@@ -127,8 +124,6 @@ export function OposicionProvider({ children }) {
           const opoId = profile.target_oposicion
           // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
           const oposicionData = profile.target_oposicion_data || null
-
-          console.log('✅ Oposición del usuario:', opoId, 'Data:', oposicionData)
 
           setUserOposicion(oposicionData)
           setOposicionId(opoId) // Guardar el ID (ej: 'auxiliar_administrativo_estado')
@@ -177,15 +172,12 @@ export function OposicionProvider({ children }) {
 
     // Notificación de cambio de oposición desde breadcrumbs
     const oposicionChanged = localStorage.getItem('oposicionChanged')
-    console.log('🔔 Verificando localStorage oposicionChanged:', oposicionChanged)
     if (oposicionChanged) {
       const data = JSON.parse(oposicionChanged)
       const timeDiff = Date.now() - data.timestamp
-      console.log('🔔 Datos de notificación:', data, 'timeDiff:', timeDiff)
 
       if (timeDiff < 30 * 1000) { // 30 segundos de validez
-        console.log('✅ Mostrando notificación de cambio de oposición')
-        localStorage.removeItem('oposicionChanged') // Limpiar inmediatamente para evitar duplicados
+        localStorage.removeItem('oposicionChanged')
         setShowNotification(true)
         setNotificationData({
           type: 'oposicionChanged',
@@ -197,16 +189,13 @@ export function OposicionProvider({ children }) {
           setShowNotification(false)
         }, 5000)
       } else {
-        console.log('⏰ Notificación expirada, limpiando localStorage')
         localStorage.removeItem('oposicionChanged')
       }
     }
   }, [pathname]) // Se ejecuta cada vez que cambia la ruta
 
   const changeOposicion = async (newOposicionId, showNotificationFlag = true) => {
-    console.log('🎯 OposicionContext.changeOposicion llamado:', { newOposicionId, user: user?.id })
     if (!user) {
-      console.log('❌ No hay usuario logueado, retornando false')
       return false
     }
 
@@ -231,13 +220,12 @@ export function OposicionProvider({ children }) {
 
       if (error) throw error
 
-      console.log('✅ Oposición actualizada en BD:', newOposicionId)
+      // Oposición actualizada en BD
       setUserOposicion(newOposicionData)
       setOposicionMenu(menuConfig || DEFAULT_MENU)
 
       // Guardar en localStorage para mostrar notificación después de navegación
       if (showNotificationFlag) {
-        console.log('💾 Guardando en localStorage para notificación')
         localStorage.setItem('oposicionChanged', JSON.stringify({
           name: oposicionName,
           timestamp: Date.now()
@@ -259,7 +247,6 @@ export function OposicionProvider({ children }) {
 
   // Función para mostrar notificación de cambio de oposición directamente
   const showOposicionChangeNotification = (oposicionName) => {
-    console.log('🔔 showOposicionChangeNotification llamado:', oposicionName)
     setShowNotification(true)
     setNotificationData({
       type: 'oposicionChanged',

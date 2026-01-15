@@ -146,6 +146,26 @@ export default function SequenceNumericQuestion({
               Tiempo: {timeTaken}s
             </span>
           )}
+          {/* Botón para abrir IA si la respuesta fue incorrecta */}
+          {!isCorrect && (
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openAIChat', {
+                  detail: {
+                    message: `Explícame paso a paso cómo resolver esta Serie numérica: "${question.question_text}"\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
+                    suggestion: 'explicar_psico'
+                  }
+                }))
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 ml-auto bg-blue-900 text-white rounded-lg hover:bg-blue-950 transition-colors text-sm font-medium"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
+                <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
+              </svg>
+              <span>¿Necesitas ayuda?</span>
+            </button>
+          )}
         </div>
 
         <div className="space-y-4">

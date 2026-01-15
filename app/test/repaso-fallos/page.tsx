@@ -19,6 +19,14 @@ interface CreateTestResponse {
     law_slug: string | null
     article_number: string | null
     article_title: string | null
+    article?: {
+      article_number: string | null
+      number: string | null
+      title: string | null
+      full_text: string | null
+      content: string | null
+      law_short_name: string | null
+    } | null
   }>
   questionCount?: number
   message?: string
@@ -42,12 +50,15 @@ function transformQuestions(apiQuestions: CreateTestResponse['questions']): Test
     article_title: q.article_title,
     law_name: q.law_name,
     law_slug: q.law_slug,
-    article: q.article_number ? {
-      number: q.article_number,
-      article_number: q.article_number,
-      title: q.article_title,
+    // Pasar artículo completo con full_text para ArticleDropdown
+    article: q.article ? {
+      number: q.article.number || q.article_number,
+      article_number: q.article.article_number || q.article_number,
+      title: q.article.title || q.article_title,
+      full_text: q.article.full_text,
+      content: q.article.content,
       law_name: q.law_name,
-      law_short_name: q.law_slug,
+      law_short_name: q.article.law_short_name || q.law_slug,
     } : null,
   }))
 }

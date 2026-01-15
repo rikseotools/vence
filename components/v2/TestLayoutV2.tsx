@@ -23,6 +23,8 @@ import { formatTime } from '@/utils/testAnalytics'
 
 // Componentes adicionales
 import QuestionDispute from '@/components/QuestionDispute'
+import QuestionEvolution from '@/components/QuestionEvolution'
+import ArticleDropdown from './ArticleDropdown'
 import dynamic from 'next/dynamic'
 
 // Carga dinámica del ShareQuestion para evitar problemas de SSR
@@ -690,16 +692,6 @@ export default function TestLayoutV2({
                   </div>
                 )}
 
-                {/* Info del artículo */}
-                {currentQ?.article_number && isLegalArticle(currentQ.law_slug) && (
-                  <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-4 mb-4">
-                    <p className="text-sm text-amber-800 dark:text-amber-300">
-                      <strong>📜 Artículo {currentQ.article_number}</strong>
-                      {currentQ.law_name && ` - ${currentQ.law_name}`}
-                    </p>
-                  </div>
-                )}
-
                 {/* Impugnar pregunta */}
                 <QuestionDispute
                   questionId={currentQ?.id || ''}
@@ -707,7 +699,7 @@ export default function TestLayoutV2({
                   supabase={supabase}
                 />
 
-                {/* Botón siguiente y compartir */}
+                {/* Botón siguiente (azul) y compartir */}
                 {currentQuestion < effectiveQuestions.length - 1 ? (
                   <div className="space-y-3 mt-4">
                     <button
@@ -741,6 +733,39 @@ export default function TestLayoutV2({
                   >
                     Ver Resultados →
                   </button>
+                )}
+
+                {/* Tu evolución en esta pregunta */}
+                {user && currentQ?.id && (
+                  <QuestionEvolution
+                    userId={user.id}
+                    questionId={currentQ.id}
+                    currentResult={{
+                      is_correct: verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
+                      timeSpent: Math.round((Date.now() - questionStartTime) / 1000),
+                      confidence: null
+                    }}
+                  />
+                )}
+
+                {/* Ver artículo completo desplegable (solo si hay full_text y es contenido legal) */}
+                {(currentQ?.article as { full_text?: string })?.full_text &&
+                 isLegalArticle(currentQ?.article?.law_short_name || currentQ?.law_slug) && (
+                  <ArticleDropdown
+                    article={{
+                      article_number: currentQ.article_number || currentQ.article?.article_number,
+                      display_number: currentQ.article?.number,
+                      title: currentQ.article?.title,
+                      full_text: (currentQ.article as { full_text?: string })?.full_text,
+                      content: (currentQ.article as { content?: string })?.content,
+                      law_short_name: currentQ.article?.law_short_name || currentQ.law_slug,
+                    }}
+                    currentQuestion={{
+                      question: currentQ.question,
+                      correct: verifiedCorrectAnswer ?? undefined,
+                      options: currentQ.options as string[],
+                    }}
+                  />
                 )}
               </div>
             )}

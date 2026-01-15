@@ -119,12 +119,12 @@ export function useUserOposicion() {
 
         // 1. Esperar a que termine la autenticación
         if (authLoading) {
-          console.log('⏳ Esperando autenticación...')
+          // Esperando auth...
           return
         }
 
         if (!user) {
-          console.log('👤 Usuario no autenticado - usando menú genérico')
+          // Usuario no autenticado - menú genérico
           setUserOposicion(null)
           setOposicionMenu(DEFAULT_MENU)
           setLoading(false)
@@ -134,35 +134,29 @@ export function useUserOposicion() {
         // 2. Esperar a que el perfil esté cargado desde AuthContext
         if (userProfile === null) {
           // Aún cargando el perfil, esperar
-          console.log('⏳ Esperando perfil de usuario...')
           return
         }
 
-        console.log('👤 Usuario autenticado:', user.id)
+        // Usuario autenticado
 
         // 3. Usar userProfile del AuthContext (evita query que puede fallar con 406)
         const profile = userProfile
 
         if (!profile?.target_oposicion) {
-          console.log('📋 Usuario sin oposición asignada - usando menú genérico')
+          // Usuario sin oposición - menú genérico
           setUserOposicion(null)
           setOposicionMenu(DEFAULT_MENU)
         } else {
           // 3. Usuario con oposición asignada
           const oposicionId = profile.target_oposicion
           // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
-          // No necesita JSON.parse()
           const oposicionData = profile.target_oposicion_data || null
 
-          console.log('✅ Oposición del usuario:', oposicionId, oposicionData)
-
           setUserOposicion(oposicionData)
-          
+
           // 4. Configurar menú personalizado
           const menuConfig = OPOSICION_MENUS[oposicionId] || DEFAULT_MENU
           setOposicionMenu(menuConfig)
-          
-          console.log('📱 Menú configurado:', menuConfig.name)
         }
 
       } catch (error) {
@@ -178,7 +172,7 @@ export function useUserOposicion() {
 
     // Escuchar asignación de nueva oposición
     const handleOposicionAssigned = (event) => {
-      console.log('🎯 Nueva oposición asignada, recargando...')
+      // Nueva oposición asignada - recargar
       loadUserOposicion()
     }
 

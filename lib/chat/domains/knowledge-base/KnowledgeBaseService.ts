@@ -212,27 +212,19 @@ export function getPredefinedResponse(message: string): string | null {
 
   // Psicotécnicos
   if (/psicot[eé]c?n?i?c?o?s?|series\s+num[eé]ricas|series\s+alfab[eé]ticas|domin[oó]s|matrices|razonamiento\s+l[oó]gico/i.test(msgLower)) {
-    return `📊 **¡Genial! ¿Quieres practicar psicotécnicos?**
+    return `📊 **¡Genial! Vamos a practicar psicotécnicos**
 
-Puedes acceder desde el menú o directamente en **/psicotecnicos**
+👉 **[Empezar a practicar psicotécnicos](/psicotecnicos/test)**
 
 **Tipos de ejercicios disponibles:**
 - 🔢 Series numéricas
 - 🔤 Series alfabéticas
 - 🧩 Secuencias lógicas
 - 🎯 Analogías
-- 📐 Razonamiento espacial
 - 🎲 Dominós
-- 🖼️ Figuras
 - 📊 Matrices
 
-**Cómo practicar:**
-1. Ve a la sección **Psicotécnicos** en el menú
-2. Elige el tipo de ejercicio
-3. Configura el número de preguntas
-4. ¡A practicar!
-
-💡 **Tip:** Cuando estés resolviendo preguntas psicotécnicas, ¡pídeme ayuda! Puedo explicarte la lógica de cada ejercicio.`
+💡 Cuando estés resolviendo preguntas, ¡pídeme ayuda! Puedo explicarte la lógica de cada ejercicio.`
   }
 
   return null

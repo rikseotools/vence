@@ -1,0 +1,398 @@
+{
+  "descripcion": "Mapeo corregido de topic_scope para Tramitación Procesal según programa oficial",
+  "nota": "Solo incluir artículos que el epígrafe menciona explícitamente",
+  "temas": [
+    {
+      "numero": 1,
+      "titulo": "La Constitución Española de 1978",
+      "epigrafe": "Estructura y contenido. Las atribuciones de la Corona. Las Cortes Generales: Composición, atribuciones y funcionamiento. La elaboración de las leyes. El Tribunal Constitucional.",
+      "scope_correcto": [
+        {
+          "ley": "CE",
+          "articulos": "1-9, 56-65, 66-96, 159-165",
+          "justificacion": "Título Preliminar (estructura), Título II (Corona), Título III (Cortes y elaboración leyes), Título IX (TC)"
+        }
+      ],
+      "scope_incorrecto": "Se incluyeron TODOS los artículos de la CE (1-169)",
+      "accion": "REDUCIR - Quitar Título I (derechos), IV (Gobierno), V (relaciones), VI (Poder Judicial), VII (Economía), VIII (Organización territorial)"
+    },
+    {
+      "numero": 2,
+      "titulo": "Igualdad y no discriminación por razón de género",
+      "epigrafe": "LO 3/2007 Igualdad Efectiva. LO 1/2004 Violencia de Género. Ley 15/2022 igualdad de trato. Ley 4/2023 trans/LGTBI.",
+      "scope_correcto": [
+        { "ley": "LO 3/2007", "articulos": "TODOS", "justificacion": "Ley completa mencionada" },
+        { "ley": "LO 1/2004", "articulos": "TODOS", "justificacion": "Ley completa mencionada" },
+        { "ley": "Ley 15/2022", "articulos": "TODOS", "justificacion": "Ley completa mencionada" },
+        { "ley": "Ley 4/2023", "articulos": "TODOS", "justificacion": "Ley completa mencionada" }
+      ],
+      "scope_incorrecto": "Solo se incluyeron LO 3/2007 y LO 1/2004",
+      "accion": "AMPLIAR - Añadir Ley 15/2022 y Ley 4/2023"
+    },
+    {
+      "numero": 3,
+      "titulo": "El Gobierno y la Administración",
+      "epigrafe": "El Presidente del Gobierno. El Consejo de Ministros. Organización administrativa: Ministros, Secretarios de Estado, Subsecretarios, Directores Generales. Administración periférica. Delegados y Subdelegados de Gobierno. Secretaria de Estado de Justicia.",
+      "scope_correcto": [
+        { "ley": "CE", "articulos": "97-107", "justificacion": "Título IV - El Gobierno" },
+        { "ley": "Ley 50/1997", "articulos": "TODOS", "justificacion": "Ley del Gobierno completa" },
+        { "ley": "Ley 40/2015", "articulos": "54-80", "justificacion": "Título II - Organización y funcionamiento del sector público" }
+      ],
+      "scope_incorrecto": "Se puso Ley 40/2015 y CE completas",
+      "accion": "REDUCIR CE, AÑADIR Ley 50/1997, REDUCIR Ley 40/2015"
+    },
+    {
+      "numero": 4,
+      "titulo": "Organización territorial del Estado",
+      "epigrafe": "Organización territorial en la CE. Estado de las Autonomías. CCAA: constitución y competencias. Estatutos de Autonomía. Administración Local. Provincia y municipio.",
+      "scope_correcto": [
+        { "ley": "CE", "articulos": "137-158", "justificacion": "Título VIII - Organización Territorial" },
+        { "ley": "Ley 7/1985", "articulos": "1-29", "justificacion": "LBRL: provincia y municipio (Título II)" }
+      ],
+      "scope_incorrecto": "Solo CE completa",
+      "accion": "REDUCIR CE a Título VIII, AÑADIR LBRL arts 1-29"
+    },
+    {
+      "numero": 5,
+      "titulo": "La Unión Europea",
+      "epigrafe": "Competencias de la UE. Instituciones: Parlamento Europeo, Consejo Europeo, Consejo de la UE, Comisión Europea, TJUE, Tribunal de Cuentas.",
+      "scope_correcto": [
+        { "ley": "TUE", "articulos": "13-19", "justificacion": "Título III - Instituciones" },
+        { "ley": "TFUE", "articulos": "223-287", "justificacion": "Parte VI - Instituciones" }
+      ],
+      "scope_incorrecto": "Se pusieron TUE y TFUE completos",
+      "accion": "REDUCIR a artículos de instituciones"
+    },
+    {
+      "numero": 6,
+      "titulo": "El Poder Judicial",
+      "epigrafe": "El Poder Judicial. El CGPJ: composición y funciones. Jueces y Magistrados: funciones y competencias. Independencia judicial. Ministerio Fiscal: organización y funciones. Acceso a carreras judicial y fiscal.",
+      "scope_correcto": [
+        { "ley": "CE", "articulos": "117-127", "justificacion": "Título VI - Del Poder Judicial" },
+        { "ley": "LOPJ", "articulos": "122-148, 541-584", "justificacion": "Libro II (CGPJ) + Libro VII Título I (MF)" }
+      ],
+      "scope_incorrecto": "Se puso LOPJ y CE completas",
+      "accion": "REDUCIR ambas a artículos específicos"
+    },
+    {
+      "numero": 7,
+      "titulo": "Organización y competencia de los órganos judiciales (I)",
+      "epigrafe": "Tribunal Supremo, Audiencia Nacional, TSJ, Audiencias Provinciales.",
+      "scope_correcto": [
+        { "ley": "LOPJ", "articulos": "53-81", "justificacion": "Libro I Títulos I-IV: TS, AN, TSJ, AP" }
+      ],
+      "scope_incorrecto": "Se puso LOPJ completa",
+      "accion": "REDUCIR a Libro I Títulos I-IV"
+    },
+    {
+      "numero": 8,
+      "titulo": "Organización y competencia de los órganos judiciales (II)",
+      "epigrafe": "Tribunales de Instancia, Tribunal Central de Instancia, Secciones, Juzgados de Paz, Oficinas de Justicia.",
+      "scope_correcto": [
+        { "ley": "LOPJ", "articulos": "82-106", "justificacion": "Libro I Títulos V-VI: Tribunales de Instancia, Juzgados de Paz" }
+      ],
+      "scope_incorrecto": "Se puso LOPJ completa",
+      "accion": "REDUCIR a Libro I Títulos V-VI"
+    },
+    {
+      "numero": 9,
+      "titulo": "Carta de Derechos de los Ciudadanos ante la Justicia",
+      "epigrafe": "Derechos de información, atención, gestión, identificación, lingüísticos. Derechos frente a abogados, procuradores, graduados sociales. Justicia gratuita. Plan de Transparencia.",
+      "scope_correcto": [
+        { "ley": "Carta Derechos", "articulos": "TODOS", "justificacion": "Documento completo" },
+        { "ley": "Ley 1/1996", "articulos": "1-22", "justificacion": "Asistencia Jurídica Gratuita" }
+      ],
+      "scope_incorrecto": "Se puso Ley 39/2015 (LPACAP) que NO corresponde",
+      "accion": "QUITAR Ley 39/2015, AÑADIR Carta de Derechos y Ley 1/1996"
+    },
+    {
+      "numero": 10,
+      "titulo": "La modernización de la oficina judicial",
+      "epigrafe": "Nuevo modelo de organización. Eficiencia. Tribunales de Instancia y Oficinas de Justicia en LOPJ. Nuevas tecnologías. Código de Conducta. Expediente digital. Firma digital. Protección de datos.",
+      "scope_correcto": [
+        { "ley": "LOPJ", "articulos": "435-465", "justificacion": "Libro V - Oficina Judicial" },
+        { "ley": "Ley 18/2011", "articulos": "TODOS", "justificacion": "Uso de TIC en la Administración de Justicia" }
+      ],
+      "scope_incorrecto": "Se pusieron Ley 39/2015 y Ley 40/2015 que NO corresponden",
+      "accion": "QUITAR Ley 39/2015 y 40/2015, AÑADIR LOPJ Libro V y Ley 18/2011"
+    },
+    {
+      "numero": 11,
+      "titulo": "El Letrado de la Administración de Justicia",
+      "epigrafe": "Funciones y competencias en LOPJ. Ordenación del cuerpo superior. Secretario de Gobierno y Secretarios Coordinadores.",
+      "scope_correcto": [
+        { "ley": "LOPJ", "articulos": "440-469", "justificacion": "Libro V Título I-II: LAJ" }
+      ],
+      "scope_incorrecto": "Se puso LOPJ completa",
+      "accion": "REDUCIR a Libro V Título I-II"
+    },
+    {
+      "numero": 12,
+      "titulo": "Los Cuerpos de funcionarios al servicio de la Administración de Justicia",
+      "epigrafe": "Cuerpos Generales y Especiales: definición. Cuerpos que los integran. Médicos Forenses: funciones.",
+      "scope_correcto": [
+        { "ley": "LOPJ", "articulos": "470-489", "justificacion": "Libro VI Título I: Cuerpos de funcionarios" }
+      ],
+      "scope_incorrecto": "Se puso LOPJ y TREBEP completos",
+      "accion": "REDUCIR LOPJ a Libro VI Título I, QUITAR TREBEP (se usa en temas 13-14)"
+    },
+    {
+      "numero": 13,
+      "titulo": "Los Cuerpos Generales (I)",
+      "epigrafe": "Funciones. Formas de acceso. Promoción interna. Adquisición y pérdida de condición de funcionario. Rehabilitación. Derechos, deberes, incompatibilidades. Jornada, horarios, vacaciones, permisos, licencias.",
+      "scope_correcto": [
+        { "ley": "LOPJ", "articulos": "470-509", "justificacion": "Libro VI: funciones, acceso, derechos" },
+        { "ley": "TREBEP", "articulos": "14-54, 62-68", "justificacion": "Derechos (14-54), acceso (55-68)" }
+      ],
+      "scope_incorrecto": "Se puso TREBEP completo",
+      "accion": "REDUCIR TREBEP a artículos de derechos y acceso"
+    },
+    {
+      "numero": 14,
+      "titulo": "Los Cuerpos Generales (II)",
+      "epigrafe": "Situaciones administrativas. Ordenación actividad profesional. Provisión de puestos. Régimen disciplinario.",
+      "scope_correcto": [
+        { "ley": "LOPJ", "articulos": "510-540", "justificacion": "Libro VI: situaciones, provisión, disciplinario" },
+        { "ley": "TREBEP", "articulos": "69-98", "justificacion": "Situaciones (85-92), régimen disciplinario (93-98)" }
+      ],
+      "scope_incorrecto": "Se puso TREBEP completo",
+      "accion": "REDUCIR TREBEP a artículos específicos"
+    },
+    {
+      "numero": 15,
+      "titulo": "Libertad sindical",
+      "epigrafe": "El Sindicato en la CE. Elecciones sindicales según Ley de órganos de representación y TREBEP. Derecho de huelga. Salud y prevención de riesgos laborales.",
+      "scope_correcto": [
+        { "ley": "CE", "articulos": "28, 37", "justificacion": "Libertad sindical y huelga" },
+        { "ley": "LO 11/1985", "articulos": "TODOS", "justificacion": "LOLS completa" },
+        { "ley": "TREBEP", "articulos": "31-46", "justificacion": "Representación, negociación, participación" },
+        { "ley": "Ley 31/1995", "articulos": "1-19, 33-40", "justificacion": "LPRL: principios, derechos, participación" }
+      ],
+      "scope_incorrecto": "Solo se puso LO 11/1985",
+      "accion": "AÑADIR CE arts 28,37, TREBEP arts representación, LPRL"
+    },
+    {
+      "numero": 16,
+      "titulo": "Los procedimientos declarativos en la LEC",
+      "epigrafe": "Medios adecuados de solución de controversias en vía no jurisdiccional. Procedimientos declarativos: juicio ordinario y verbal.",
+      "scope_correcto": [
+        { "ley": "LEC", "articulos": "248-447", "justificacion": "Libro II: procesos declarativos (ordinario 399-436, verbal 437-447)" }
+      ],
+      "scope_incorrecto": "Se puso LEC completa",
+      "accion": "REDUCIR a Libro II"
+    },
+    {
+      "numero": 17,
+      "titulo": "Los procedimientos de ejecución en la LEC",
+      "epigrafe": "Clases de ejecución. Libranza de mandamientos. Embargos. Averiguación patrimonial. Vía de apremio. Subastas. Depósito judicial. Medidas cautelares.",
+      "scope_correcto": [
+        { "ley": "LEC", "articulos": "517-747", "justificacion": "Libro III: ejecución forzosa y medidas cautelares" }
+      ],
+      "scope_incorrecto": "Se puso LEC completa",
+      "accion": "REDUCIR a Libro III"
+    },
+    {
+      "numero": 18,
+      "titulo": "Los procesos especiales en la LEC",
+      "epigrafe": "Procesos especiales. Procesos matrimoniales. Proceso monitorio. Requerimiento de pago. Juicio cambiario.",
+      "scope_correcto": [
+        { "ley": "LEC", "articulos": "748-827", "justificacion": "Libro IV: procesos especiales" }
+      ],
+      "scope_incorrecto": "Se puso LEC completa",
+      "accion": "REDUCIR a Libro IV"
+    },
+    {
+      "numero": 19,
+      "titulo": "La jurisdicción voluntaria",
+      "epigrafe": "Naturaleza y clases de procedimientos. Especial referencia a los actos de conciliación.",
+      "scope_correcto": [
+        { "ley": "Ley 15/2015", "articulos": "TODOS", "justificacion": "LJV completa" }
+      ],
+      "scope_incorrecto": "Se puso LEC que NO corresponde",
+      "accion": "QUITAR LEC, AÑADIR Ley 15/2015 (LJV)"
+    },
+    {
+      "numero": 20,
+      "titulo": "Los procedimientos penales en la LECrim (I)",
+      "epigrafe": "Procedimientos: ordinario, abreviado, de jurado. Breve referencia al procedimiento restaurativo.",
+      "scope_correcto": [
+        { "ley": "LECrim", "articulos": "259-749, 757-784, 24-67 LOTJ", "justificacion": "Libro II-IV: sumario, procedimiento ordinario, abreviado" }
+      ],
+      "scope_incorrecto": "Se puso LECrim completa",
+      "accion": "REDUCIR a Libros II-IV"
+    },
+    {
+      "numero": 21,
+      "titulo": "Los procedimientos penales en la LECrim (II)",
+      "epigrafe": "Juicio sobre delitos leves. Juicios Rápidos. Ejecución penal. Pieza de responsabilidad civil.",
+      "scope_correcto": [
+        { "ley": "LECrim", "articulos": "962-998, 795-803, 983-987", "justificacion": "Libro VI (delitos leves), Título III abreviado (rápidos), ejecución" }
+      ],
+      "scope_incorrecto": "Se puso LECrim completa",
+      "accion": "REDUCIR a artículos específicos de delitos leves, rápidos, ejecución"
+    },
+    {
+      "numero": 22,
+      "titulo": "El recurso contencioso-administrativo",
+      "epigrafe": "Recurso contencioso-administrativo. Procedimientos ordinarios, abreviados y especiales.",
+      "scope_correcto": [
+        { "ley": "LJCA", "articulos": "TODOS", "justificacion": "Ley completa (es específica)" }
+      ],
+      "scope_incorrecto": "OK - Se puso LJCA",
+      "accion": "CORRECTO"
+    },
+    {
+      "numero": 23,
+      "titulo": "El proceso laboral",
+      "epigrafe": "Procedimiento ordinario. Procedimiento por despido. Procesos de seguridad social.",
+      "scope_correcto": [
+        { "ley": "LRJS", "articulos": "TODOS", "justificacion": "Ley completa (es específica)" }
+      ],
+      "scope_incorrecto": "OK - Se puso LRJS",
+      "accion": "CORRECTO"
+    },
+    {
+      "numero": 24,
+      "titulo": "Los recursos",
+      "epigrafe": "Cuestiones generales. Depósito para recurrir. Recursos civiles: reposición, revisión, queja, apelación, casación. Recursos penales: reforma, apelación, queja, casación, revisión. Recursos contra resoluciones del LAJ.",
+      "scope_correcto": [
+        { "ley": "LEC", "articulos": "448-516", "justificacion": "Libro II Título IV: recursos civiles" },
+        { "ley": "LECrim", "articulos": "216-238, 787-792, 847-904", "justificacion": "Recursos en penal" },
+        { "ley": "LJCA", "articulos": "79-102", "justificacion": "Recursos en contencioso" }
+      ],
+      "scope_incorrecto": "Se pusieron las 3 leyes completas",
+      "accion": "REDUCIR cada ley a artículos de recursos"
+    },
+    {
+      "numero": 25,
+      "titulo": "Los actos procesales",
+      "epigrafe": "Requisitos: lugar, tiempo (términos, plazos, cómputo), forma (lengua oficial). Defectos: nulidad, anulabilidad, irregularidad, subsanación.",
+      "scope_correcto": [
+        { "ley": "LEC", "articulos": "129-185", "justificacion": "Libro I Título V: actos procesales" },
+        { "ley": "LECrim", "articulos": "175-182, 238-243", "justificacion": "Plazos y nulidades" }
+      ],
+      "scope_incorrecto": "Se pusieron LEC y LECrim completas",
+      "accion": "REDUCIR a artículos de actos procesales"
+    },
+    {
+      "numero": 26,
+      "titulo": "Las resoluciones de los órganos judiciales",
+      "epigrafe": "Clases de resoluciones judiciales: contenido y características. Resoluciones de órganos colegiados. Resoluciones del LAJ.",
+      "scope_correcto": [
+        { "ley": "LEC", "articulos": "206-215", "justificacion": "Título V Cap I: resoluciones" },
+        { "ley": "LOPJ", "articulos": "244-269", "justificacion": "Libro III Título III: resoluciones judiciales" }
+      ],
+      "scope_incorrecto": "Se pusieron LOPJ y LEC completas",
+      "accion": "REDUCIR a artículos de resoluciones"
+    },
+    {
+      "numero": 27,
+      "titulo": "Los actos de comunicación con otros tribunales y autoridades",
+      "epigrafe": "Oficios y mandamientos. Auxilio judicial: exhortos, mandamientos penales. Cooperación jurídica internacional: comisiones rogatorias.",
+      "scope_correcto": [
+        { "ley": "LEC", "articulos": "169-177", "justificacion": "Cap IV: auxilio judicial" },
+        { "ley": "LECrim", "articulos": "183-186", "justificacion": "Auxilio y exhortos penales" },
+        { "ley": "LOPJ", "articulos": "276-278", "justificacion": "Cooperación judicial" }
+      ],
+      "scope_incorrecto": "Se pusieron LEC y LECrim completas",
+      "accion": "REDUCIR a artículos de comunicación"
+    },
+    {
+      "numero": 28,
+      "titulo": "Los actos de comunicación a las partes",
+      "epigrafe": "Notificaciones, requerimientos, citaciones, emplazamientos. Notificaciones en proceso penal. Formas de notificación y nuevas tecnologías.",
+      "scope_correcto": [
+        { "ley": "LEC", "articulos": "149-168", "justificacion": "Cap III: actos de comunicación" },
+        { "ley": "LECrim", "articulos": "166-182", "justificacion": "Citaciones y notificaciones penales" }
+      ],
+      "scope_incorrecto": "Se pusieron LEC y LECrim completas",
+      "accion": "REDUCIR a artículos de comunicación"
+    },
+    {
+      "numero": 29,
+      "titulo": "El Registro Civil (I)",
+      "epigrafe": "Estructura del RC. Las Oficinas: Oficina Central, Oficinas Generales, Oficinas Consulares y sus funciones. Hechos y actos inscribibles.",
+      "scope_correcto": [
+        { "ley": "LRC 20/2011", "articulos": "1-43", "justificacion": "Títulos I-III: disposiciones generales, estructura, inscripción" }
+      ],
+      "scope_incorrecto": "Se puso LRC completa",
+      "accion": "REDUCIR a Títulos I-III"
+    },
+    {
+      "numero": 30,
+      "titulo": "El Registro Civil (II)",
+      "epigrafe": "Las inscripciones: nacimiento, filiación, matrimonio, fallecimiento. Otras inscripciones. Certificaciones. Expedientes del RC.",
+      "scope_correcto": [
+        { "ley": "LRC 20/2011", "articulos": "44-98", "justificacion": "Títulos IV-X: inscripciones específicas, certificaciones, expedientes" }
+      ],
+      "scope_incorrecto": "Se puso LRC completa",
+      "accion": "REDUCIR a Títulos IV-X"
+    },
+    {
+      "numero": 31,
+      "titulo": "El archivo judicial y la documentación",
+      "epigrafe": "Conceptos de archivo judicial y documentación. Formas de remisión. Relaciones documentales. Nuevas tecnologías en archivos. Juntas de expurgo.",
+      "scope_correcto": [
+        { "ley": "LOPJ", "articulos": "453-458", "justificacion": "Libro V sobre archivos" },
+        { "ley": "RD 937/2003", "articulos": "TODOS", "justificacion": "Reglamento de archivos judiciales (si existe en BD)" }
+      ],
+      "scope_incorrecto": "Se puso LOPJ completa",
+      "accion": "REDUCIR a artículos de archivos"
+    },
+    {
+      "numero": 32,
+      "titulo": "Informática básica",
+      "epigrafe": "Hardware y software. Almacenamiento de datos. Sistemas operativos. Seguridad informática.",
+      "scope_correcto": [],
+      "scope_incorrecto": "Sin leyes asociadas",
+      "accion": "SIN LEYES - Tema técnico"
+    },
+    {
+      "numero": 33,
+      "titulo": "Introducción al sistema operativo Windows",
+      "epigrafe": "Entorno Windows. Fundamentos. Ventanas, iconos, menús, cuadros de diálogo. Escritorio. Menú inicio.",
+      "scope_correcto": [],
+      "scope_incorrecto": "Sin leyes asociadas",
+      "accion": "SIN LEYES - Tema técnico"
+    },
+    {
+      "numero": 34,
+      "titulo": "El explorador de Windows",
+      "epigrafe": "Gestión de carpetas y archivos. Búsqueda. Este equipo. Acceso rápido. Accesorios. Herramientas del sistema.",
+      "scope_correcto": [],
+      "scope_incorrecto": "Sin leyes asociadas",
+      "accion": "SIN LEYES - Tema técnico"
+    },
+    {
+      "numero": 35,
+      "titulo": "Procesadores de texto: Word 365",
+      "epigrafe": "Funciones y utilidades. Creación y estructuración. Gestión, grabación, recuperación, impresión. Personalización.",
+      "scope_correcto": [],
+      "scope_incorrecto": "Sin leyes asociadas",
+      "accion": "SIN LEYES - Tema técnico"
+    },
+    {
+      "numero": 36,
+      "titulo": "Correo electrónico: Outlook 365",
+      "epigrafe": "Conceptos elementales y funcionamiento. Entorno de trabajo. Enviar, recibir, responder, reenviar. Reglas. Libreta de direcciones.",
+      "scope_correcto": [],
+      "scope_incorrecto": "Sin leyes asociadas",
+      "accion": "SIN LEYES - Tema técnico"
+    },
+    {
+      "numero": 37,
+      "titulo": "La Red Internet",
+      "epigrafe": "Origen, evolución y estado actual. Protocolos y servicios. Navegadores web.",
+      "scope_correcto": [],
+      "scope_incorrecto": "Sin leyes asociadas",
+      "accion": "SIN LEYES - Tema técnico"
+    }
+  ],
+  "resumen_acciones": {
+    "reducir": [1, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 16, 17, 18, 20, 21, 24, 25, 26, 27, 28, 29, 30, 31],
+    "ampliar": [2, 15],
+    "quitar_y_reemplazar": [9, 10, 19],
+    "correctos": [22, 23],
+    "sin_leyes": [32, 33, 34, 35, 36, 37]
+  }
+}

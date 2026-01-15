@@ -115,6 +115,7 @@ export default function HomePage() {
               Test por Oposición
             </h2>
             <div className="space-y-3">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">Administración General</p>
               <Link
                 href="/auxiliar-administrativo-estado/test"
                 className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
@@ -126,6 +127,19 @@ export default function HomePage() {
                 className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
               >
                 Administrativo del Estado (C1)
+              </Link>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide pt-2">Justicia</p>
+              <Link
+                href="/auxilio-judicial/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Auxilio Judicial (C2)
+              </Link>
+              <Link
+                href="/tramitacion-procesal/test"
+                className="block py-2 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm"
+              >
+                Tramitación Procesal (C1)
               </Link>
             </div>
           </div>

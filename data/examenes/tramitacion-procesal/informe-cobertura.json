@@ -1,0 +1,685 @@
+{
+  "fecha": "2026-01-13T15:40:23.750Z",
+  "position_type": "tramitacion_procesal",
+  "total_preguntas": 104,
+  "cubiertas": 65,
+  "no_cubiertas": 0,
+  "sin_ley": 39,
+  "cobertura_pct": "100.0",
+  "por_ley": {
+    "LO 3/2007": {
+      "cubiertas": 1,
+      "noCubiertas": 0
+    },
+    "LO 6/1985": {
+      "cubiertas": 16,
+      "noCubiertas": 0
+    },
+    "LECrim": {
+      "cubiertas": 5,
+      "noCubiertas": 0
+    },
+    "Ley 1/2000": {
+      "cubiertas": 29,
+      "noCubiertas": 0
+    },
+    "LRC": {
+      "cubiertas": 3,
+      "noCubiertas": 0
+    },
+    "TUE": {
+      "cubiertas": 2,
+      "noCubiertas": 0
+    },
+    "LO 11/1985": {
+      "cubiertas": 1,
+      "noCubiertas": 0
+    },
+    "LO 1/2004": {
+      "cubiertas": 2,
+      "noCubiertas": 0
+    },
+    "Ley 29/1998": {
+      "cubiertas": 3,
+      "noCubiertas": 0
+    },
+    "LRJS": {
+      "cubiertas": 1,
+      "noCubiertas": 0
+    },
+    "Ley 15/2015": {
+      "cubiertas": 1,
+      "noCubiertas": 0
+    },
+    "CE": {
+      "cubiertas": 1,
+      "noCubiertas": 0
+    }
+  },
+  "detalles": [
+    {
+      "numero": 1,
+      "texto": "La capacidad y legitimación para intervenir en los procesos ",
+      "estado": "CUBIERTA",
+      "ley": "LO 3/2007"
+    },
+    {
+      "numero": 2,
+      "texto": "No constituye una prohibición para ser jurado:",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 3,
+      "texto": "Conforme a lo establecido en la LOPJ, los funcionarios a los",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 4,
+      "texto": "Según la LECrim, el recurso de queja podrá interponerse cont",
+      "estado": "CUBIERTA",
+      "ley": "LECrim"
+    },
+    {
+      "numero": 5,
+      "texto": "Conforme al artículo 149 de la LEC, a través de qué acto de ",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 6,
+      "texto": "De conformidad con la Ley 20/2011, de 21 de julio, de Regist",
+      "estado": "CUBIERTA",
+      "ley": "LRC"
+    },
+    {
+      "numero": 7,
+      "texto": "El Instituto Nacional de Toxicología y Ciencias Forenses com",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 8,
+      "texto": "Según la LEC, los actos de comunicación se realizarán bajo l",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 9,
+      "texto": "Según el Tratado de la Unión Europea, el Consejo Europeo se ",
+      "estado": "CUBIERTA",
+      "ley": "TUE"
+    },
+    {
+      "numero": 10,
+      "texto": "¿Qué derecho no está comprendido en la libertad sindical de ",
+      "estado": "CUBIERTA",
+      "ley": "LO 11/1985"
+    },
+    {
+      "numero": 11,
+      "texto": "En el procedimiento para el juicio sobre delitos leves, en e",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 12,
+      "texto": "De conformidad con la LEC, el recurso de queja se interpondr",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 13,
+      "texto": "La organización de los servicios de asistencia social integr",
+      "estado": "CUBIERTA",
+      "ley": "LO 1/2004"
+    },
+    {
+      "numero": 14,
+      "texto": "¿Pueden las partes solicitar la modificación provisional de ",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 15,
+      "texto": "Los Letrados de la Administración de Justicia que sean desig",
+      "estado": "CUBIERTA",
+      "ley": "LRC"
+    },
+    {
+      "numero": 16,
+      "texto": "De conformidad con el artículo 456 de la LOPJ, ¿cuál de las ",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 17,
+      "texto": "Si la persona citada y requerida a exhibir una cosa no atend",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 18,
+      "texto": "Conforme a lo dispuesto en la LEC, cuando la ley no exprese ",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 19,
+      "texto": "Conforme a la Ley de Bases de Régimen Local, ¿cuál de las si",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 20,
+      "texto": "Según el artículo 41 de la Ley 9/1987, de 12 de junio, de lo",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 21,
+      "texto": "La sentencia en el procedimiento abreviado de la jurisdicció",
+      "estado": "CUBIERTA",
+      "ley": "Ley 29/1998"
+    },
+    {
+      "numero": 22,
+      "texto": "De conformidad con lo dispuesto en la LOPJ, los programas y ",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 23,
+      "texto": "Para el ingreso en el Cuerpo de Facultativos del Instituto N",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 24,
+      "texto": "De conformidad con lo dispuesto en el artículo 184 de la LOP",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 25,
+      "texto": "En relación a la asistencia o inasistencia al acto de concil",
+      "estado": "CUBIERTA",
+      "ley": "LRJS"
+    },
+    {
+      "numero": 26,
+      "texto": "La Sala de Gobierno del Tribunal Supremo estará constituida ",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 27,
+      "texto": "El ámbito de aplicación de las obligaciones establecidas en ",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 28,
+      "texto": "¿En qué supuesto para reformar la Constitución han de ser di",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 29,
+      "texto": "En base a lo establecido en la LOPJ, los funcionarios de los",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 30,
+      "texto": "Si en una demanda de desahucio por falta de pago se reclaman",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 31,
+      "texto": "¿Cúal de las siguientes funciones no corresponde al Consejo ",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 32,
+      "texto": "De conformidad con el Real Decreto 1065/2015 sobre comunicac",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 33,
+      "texto": "En el recurso contencioso-administrativo, las partes demanda",
+      "estado": "CUBIERTA",
+      "ley": "Ley 29/1998"
+    },
+    {
+      "numero": 34,
+      "texto": "La Carta de Derechos de los Ciudadanos ante la Justicia esta",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 35,
+      "texto": "Respecto a las diligencias preliminares previstas en la LEC,",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 36,
+      "texto": "De conformidad con lo dispuesto en la LECrim, la resolución ",
+      "estado": "CUBIERTA",
+      "ley": "LECrim"
+    },
+    {
+      "numero": 37,
+      "texto": "La remisión de los documentos que se hallen en un Archivo Ju",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 38,
+      "texto": "En los procedimientos de impugnación de altas médicas en los",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 39,
+      "texto": "En el procedimiento monitorio si el domicilio del deudor es ",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 40,
+      "texto": "Según la LOPJ, las aclaraciones de algún concepto oscuro en ",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 41,
+      "texto": "Los hechos relativos a nacionalidad o vecindad se inscribirá",
+      "estado": "CUBIERTA",
+      "ley": "LRC"
+    },
+    {
+      "numero": 42,
+      "texto": "En base a lo establecido en la LOPJ, cuál de los siguientes ",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 43,
+      "texto": "¿Cuál es la respuesta incorrecta respecto al número de repre",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 44,
+      "texto": "Si los plazos procesales estuvieren fijados por meses o años",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 45,
+      "texto": "El Tribunal Constitucional está compuesto por:",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 46,
+      "texto": "Si se suscitare oposición en el procedimiento de jurisdicció",
+      "estado": "CUBIERTA",
+      "ley": "Ley 15/2015"
+    },
+    {
+      "numero": 47,
+      "texto": "De conformidad con la Ley 7/1985, de Bases de Regimen Local,",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 48,
+      "texto": "Si el demandado atendiere el requerimiento en cuanto al desa",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 49,
+      "texto": "En relación con el Presidente de la Audiencia Nacional, seña",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 50,
+      "texto": "Los funcionarios que prestan sus servicios en las oficinas j",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 51,
+      "texto": "¿Cuál es el plazo máximo para ratificar judicialmente el int",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 52,
+      "texto": "Los conflictos de competencia entre los órganos jurisdiccion",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 53,
+      "texto": "Los pronunciamientos sobre responsabilidad civil que se cont",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 54,
+      "texto": "Dispone el artículo 524 de la LEC que son ejecutables provis",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 55,
+      "texto": "El procedimiento abreviado regulado en la LECrim se aplicará",
+      "estado": "CUBIERTA",
+      "ley": "LECrim"
+    },
+    {
+      "numero": 56,
+      "texto": "De conformidad con lo establecido en la LOPJ, los Jueces de ",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 57,
+      "texto": "De los concursos de persona natural que no sea empresario en",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 58,
+      "texto": "Según lo dispuesto en el artículo 131 de la LEC contra las r",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 59,
+      "texto": "De conformidad con la LECrim, ¿en qué supuestos puede entreg",
+      "estado": "CUBIERTA",
+      "ley": "LECrim"
+    },
+    {
+      "numero": 60,
+      "texto": "¿Cuál de las siguientes atribuciones no corresponde al Rey?:",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 61,
+      "texto": "Interpuestos los recursos de apelación en la jurisdicción ci",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 62,
+      "texto": "La sentencia declarará la inadmisibilidad del recurso conten",
+      "estado": "CUBIERTA",
+      "ley": "Ley 29/1998"
+    },
+    {
+      "numero": 63,
+      "texto": "A efectos del procedimiento para el enjuiciamiento rápido de",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 64,
+      "texto": "No se puede continuar con la tramitación de un expediente de",
+      "estado": "CUBIERTA",
+      "ley": "CE"
+    },
+    {
+      "numero": 65,
+      "texto": "Según la Ley 7/1985 de Bases de Régimen Local y con referenc",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 66,
+      "texto": "Según el Tratado de la Unión Europea y el Tratado de Funcion",
+      "estado": "CUBIERTA",
+      "ley": "TUE"
+    },
+    {
+      "numero": 67,
+      "texto": "¿Quién procederá a notificar a cada candidato al jurado su i",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 68,
+      "texto": "De conformidad con la LEC, se dictará providencia:",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 69,
+      "texto": "¿En qué supuestos pueden los jueces de instrucción practicar",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 70,
+      "texto": "La Comisión Disciplinaria del Consejo General del Poder Judi",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 71,
+      "texto": "Según lo dispuesto en la LOPJ, a efectos de la ordenación de",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 72,
+      "texto": "La Comisión Nacional de la Administración Local es:",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 73,
+      "texto": "En las poblaciones donde haya diez o más juzgados, sus titul",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 74,
+      "texto": "Compete a la Comisión Permanente del Consejo General del Pod",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 75,
+      "texto": "En base a lo establecido en el R.D. 796/2005 por el que se a",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 76,
+      "texto": "La Carta de Derechos de los Ciudadanos ante la Justicia, est",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 77,
+      "texto": "En los procesos especiales civiles las pruebas se proponen y",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 78,
+      "texto": "La función de dirección en el aspecto técnico-procesal al pe",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 79,
+      "texto": "El órgano competente para establecer la sede de los Juzgados",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 80,
+      "texto": "De conformidad con el artículo 1.3 de la Ley 50/1997, del Go",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 81,
+      "texto": "Las resoluciones dictadas por Jueces y Tribunales, así como ",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 82,
+      "texto": "¿Cuál de las siguientes materias no son competencia de los ó",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 83,
+      "texto": "La prestación de cooperación internacional sólo será denegad",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 84,
+      "texto": "Conforme al artículo 3.1 de la Ley 1/2004 de Medidas de Prot",
+      "estado": "CUBIERTA",
+      "ley": "LO 1/2004"
+    },
+    {
+      "numero": 517,
+      "texto": "2.9º LEC, en caso de avenencia en el acto de conciliación?:",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 86,
+      "texto": "Conforme a lo dispuesto en la LOPJ, los funcionarios tendrán",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 87,
+      "texto": "De conformidad con la LEC, ¿en qué supuestos la oposición a ",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 88,
+      "texto": "A los efectos del Real Decreto 1065/2015 de 27 noviembre, so",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 89,
+      "texto": "Conforme al artículo 592.2 de la LEC las rentas en dinero cu",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 90,
+      "texto": "Según lo establecido en la LOPJ, cuál de las siguientes func",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 91,
+      "texto": "Si se hubiera formulado recurso de apelación en la Jurisdicc",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 92,
+      "texto": "En caso de revocación de sentencia provisionalmente ejecutad",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 93,
+      "texto": "Concluida la audiencia preliminar en el procedimiento para l",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 94,
+      "texto": "Respecto al plazo para dictar las resoluciones judiciales, e",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 95,
+      "texto": "¿Quién preside las Juntas de Expurgo adscritas al Ministerio",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 96,
+      "texto": "Los órganos colegiados de la Administración General del Esta",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 97,
+      "texto": "El Consejo General del Poder Judicial estará integrado por:",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 98,
+      "texto": "De los incidentes de recusación que se interpusieren contra ",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 99,
+      "texto": "Si no se hubiere fijado en el fallo de la sentencia que resu",
+      "estado": "CUBIERTA",
+      "ley": "LECrim"
+    },
+    {
+      "numero": 100,
+      "texto": "En base a lo establecido en la LOPJ, la rehabilitación proce",
+      "estado": "CUBIERTA",
+      "ley": "LO 6/1985"
+    },
+    {
+      "numero": 101,
+      "texto": "(Pregunta Reserva 1) Los Encargados de los Registros Civiles",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 102,
+      "texto": "(Pregunta Reserva 2) La Carta de Derechos de los Ciudadanos ",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    },
+    {
+      "numero": 103,
+      "texto": "(Pregunta Reserva 3) Las competencias respecto a todo el per",
+      "estado": "SIN_LEY",
+      "ley": null
+    },
+    {
+      "numero": 104,
+      "texto": "(Pregunta Reserva 4) Según la LEC, las resoluciones que dict",
+      "estado": "CUBIERTA",
+      "ley": "Ley 1/2000"
+    }
+  ]
+}

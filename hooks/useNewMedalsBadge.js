@@ -31,10 +31,8 @@ export function useNewMedalsBadge() {
       
       const inCooldown = hoursSinceLastViewed < MEDALS_BADGE_COOLDOWN_HOURS
       
-      if (inCooldown) {
-        const remainingHours = Math.ceil(MEDALS_BADGE_COOLDOWN_HOURS - hoursSinceLastViewed)
-        console.log(`🕒 Badge de medallas en cooldown: ${remainingHours}h restantes`)
-      }
+      // Cooldown activo - no mostrar badge
+      // if (inCooldown) console.log(`🕒 Badge medallas cooldown: ${Math.ceil(MEDALS_BADGE_COOLDOWN_HOURS - hoursSinceLastViewed)}h`)
       
       return inCooldown
     } catch (error) {

@@ -780,34 +780,24 @@ export default function AIChatWidget() {
                       <button
                         onClick={() => {
                           const dataInfo = formatPsicotecnicoData(currentQuestionContext)
-                          useSuggestion(`Explícame cómo resolver esta ${currentQuestionContext.questionTypeName || 'pregunta'}: "${currentQuestionContext.questionText}"\n\nLas opciones son:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS DEL GRÁFICO/TABLA:${dataInfo}` : ''}`, 'explicar_psico')
+                          useSuggestion(`Explícame paso a paso cómo resolver esta ${currentQuestionContext.questionTypeName || 'pregunta'}: "${currentQuestionContext.questionText}"\n\nLas opciones son:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS DEL GRÁFICO/TABLA:${dataInfo}` : ''}`, 'explicar_psico')
                         }}
                         className="block w-full text-left px-3 py-2 text-xs bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition text-blue-700 dark:text-blue-300"
                       >
                         💡 Explícame cómo resolverla
                       </button>
-                      <button
-                        onClick={() => {
-                          const dataInfo = formatPsicotecnicoData(currentQuestionContext)
-                          useSuggestion(`Analiza los datos y dime cuál es la respuesta correcta para: "${currentQuestionContext.questionText}"\n\nOpciones:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS:${dataInfo}` : ''}`, 'analizar_psico')
-                        }}
-                        className="block w-full text-left px-3 py-2 text-xs bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition text-green-700 dark:text-green-300"
-                      >
-                        🔍 Analiza los datos
-                      </button>
-                      <button
-                        onClick={() => useSuggestion(`Dame un truco o técnica rápida para resolver este tipo de ${currentQuestionContext.questionTypeName || 'ejercicio'} en oposiciones`, 'truco_psico')}
-                        className="block w-full text-left px-3 py-2 text-xs bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition text-purple-700 dark:text-purple-300"
-                      >
-                        ⚡ Dame un truco rápido
-                      </button>
-
-                      {/* Nota de capacidades */}
-                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
-                          ✨ Te ayudo con series, razonamiento y más
-                        </p>
-                      </div>
+                      {/* Solo mostrar "Analiza los datos" para gráficos y tablas */}
+                      {['bar_chart', 'pie_chart', 'line_chart', 'mixed_chart', 'data_tables'].includes(currentQuestionContext.questionSubtype) && (
+                        <button
+                          onClick={() => {
+                            const dataInfo = formatPsicotecnicoData(currentQuestionContext)
+                            useSuggestion(`Analiza los datos y dime cuál es la respuesta correcta para: "${currentQuestionContext.questionText}"\n\nOpciones:\nA) ${currentQuestionContext.options?.a}\nB) ${currentQuestionContext.options?.b}\nC) ${currentQuestionContext.options?.c}\nD) ${currentQuestionContext.options?.d}${dataInfo ? `\n\nDATOS:${dataInfo}` : ''}`, 'analizar_psico')
+                          }}
+                          className="block w-full text-left px-3 py-2 text-xs bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/50 transition text-green-700 dark:text-green-300"
+                        >
+                          🔍 Analiza los datos
+                        </button>
+                      )}
                     </>
                   ) : (
                     // Sugerencias para tests de leyes con contexto de pregunta

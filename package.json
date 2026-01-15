@@ -29,6 +29,7 @@
     "test-image-upload": "node scripts/test-image-upload.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@fingerprintjs/botd": "^2.0.0",
     "@heroicons/react": "^2.2.0",
     "@sentry/nextjs": "^10.32.1",

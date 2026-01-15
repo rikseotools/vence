@@ -1,0 +1,3846 @@
+{
+  "fecha": "2026-01-13T16:29:59.368Z",
+  "position_type": "tramitacion_procesal",
+  "total_temas": 37,
+  "temas_derecho": 31,
+  "cobertura_buena": 6,
+  "cobertura_parcial": 8,
+  "cobertura_baja": 17,
+  "cobertura_media": 43.225806451612904,
+  "leyes_faltantes": {
+    "8303adeb-1f26-4754-872b-e74fd27fc5dd": {
+      "name": "RD 829/2023",
+      "temas": [
+        1,
+        3,
+        11
+      ]
+    },
+    "f76a0a5f-9e39-43ff-9dd9-d90826ffeba1": {
+      "name": "Ley 2/2014",
+      "temas": [
+        1,
+        6
+      ]
+    },
+    "f68371e0-5dd9-4803-a667-c5672e8241df": {
+      "name": "LRSC",
+      "temas": [
+        1
+      ]
+    },
+    "d69ff916-62c3-4a31-85f0-394a88cc8adf": {
+      "name": "LO 5/1985",
+      "temas": [
+        1,
+        7,
+        15,
+        20
+      ]
+    },
+    "07daa1fe-7e8e-4e2d-9a33-6893229869e0": {
+      "name": "Ley 29/1998",
+      "temas": [
+        1,
+        19,
+        21,
+        28
+      ]
+    },
+    "190f387b-e1c8-4a04-99f4-28186cdf039e": {
+      "name": "LO 2/1982",
+      "temas": [
+        1,
+        5
+      ]
+    },
+    "1beea280-f5ab-4466-b4ad-e4240fc05b54": {
+      "name": "LO 3/1980",
+      "temas": [
+        1,
+        7
+      ]
+    },
+    "a3d58ada-b284-46f7-ab7c-2092d4bb06ff": {
+      "name": "LO 6/1985",
+      "temas": [
+        2,
+        3,
+        4,
+        15,
+        16,
+        20,
+        21,
+        24,
+        27,
+        28
+      ]
+    },
+    "64f52575-3902-48e2-83b2-db05af494da5": {
+      "name": "RD 2169/1984",
+      "temas": [
+        3
+      ]
+    },
+    "267adc37-f147-4fe9-9a88-c76d146276a0": {
+      "name": "RD 501/2024",
+      "temas": [
+        3
+      ]
+    },
+    "b26504ff-c10b-49f6-bf4b-f6ebbc32418b": {
+      "name": "Ley 3/2015",
+      "temas": [
+        3
+      ]
+    },
+    "cafc71dd-bb9f-4f35-97f2-1aea2a4d22cb": {
+      "name": "LOFCS",
+      "temas": [
+        3
+      ]
+    },
+    "95680d57-feb1-41c0-bb27-236024815feb": {
+      "name": "Ley 40/2015",
+      "temas": [
+        4,
+        5,
+        14
+      ]
+    },
+    "e602d0b8-1529-4c04-9bd1-8dccdbd5baa0": {
+      "name": "RDL 5/2015",
+      "temas": [
+        4,
+        9
+      ]
+    },
+    "5fcc4f3a-a719-415f-958f-46c840e1c4e7": {
+      "name": "RDL 2/2004",
+      "temas": [
+        4
+      ]
+    },
+    "effe3259-8168-43a0-9730-9923452205c4": {
+      "name": "Ley 47/2003",
+      "temas": [
+        4
+      ]
+    },
+    "54629fa9-5c10-4800-818a-f3b978606669": {
+      "name": "Ley 31/1990",
+      "temas": [
+        4
+      ]
+    },
+    "77cec287-cec8-4adc-b4c6-69bec1316d95": {
+      "name": "LPI",
+      "temas": [
+        4,
+        16,
+        18
+      ]
+    },
+    "09c18214-a630-4ae8-9f63-a742919f7f4c": {
+      "name": "Ley 38/2003",
+      "temas": [
+        5
+      ]
+    },
+    "fbf0e71a-0189-4720-9d32-e9a8a9ffa63b": {
+      "name": "Ley 33/2003",
+      "temas": [
+        5
+      ]
+    },
+    "48748122-ea67-4308-a978-1a828e2c1c1a": {
+      "name": "Ley 17/2009",
+      "temas": [
+        5
+      ]
+    },
+    "2bc32b1a-9b5f-4e11-ba0b-3b014293882c": {
+      "name": "LOTC",
+      "temas": [
+        7,
+        11
+      ]
+    },
+    "ee06e181-b33d-4fb7-93f1-117a70a0c1a7": {
+      "name": "LN",
+      "temas": [
+        7,
+        19
+      ]
+    },
+    "628cc88a-a425-4d89-8ace-878a4db7a5db": {
+      "name": "RH",
+      "temas": [
+        7,
+        29
+      ]
+    },
+    "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5": {
+      "name": "LECrim",
+      "temas": [
+        7,
+        9,
+        16,
+        17,
+        22,
+        26
+      ]
+    },
+    "d7addcab-3179-4667-8037-9fcae8097faa": {
+      "name": "Reglamento del Congreso",
+      "temas": [
+        7
+      ]
+    },
+    "6ad91a6c-41ec-431f-9c80-5f5566834941": {
+      "name": "CE",
+      "temas": [
+        8,
+        26
+      ]
+    },
+    "9218e38c-f514-4c5a-82ad-4e6281ffc58f": {
+      "name": "RDL 6/2023",
+      "temas": [
+        9,
+        20,
+        28
+      ]
+    },
+    "07c2113d-cc6b-499c-8412-adf79692d390": {
+      "name": "RD 951/2005",
+      "temas": [
+        9
+      ]
+    },
+    "a76f584e-26d4-4c50-afef-b7811cc2bffd": {
+      "name": "RD 208/1996",
+      "temas": [
+        9
+      ]
+    },
+    "14b4b825-2078-44cb-bff8-53d332c4f473": {
+      "name": "Ley 1/2000",
+      "temas": [
+        10,
+        20,
+        21,
+        22,
+        31
+      ]
+    },
+    "b468b0f9-590c-4872-99d5-eba966980cfe": {
+      "name": "LRJS",
+      "temas": [
+        11,
+        15,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        24,
+        25,
+        27
+      ]
+    },
+    "3f57d8ca-d4d3-480b-a785-31e4a1345765": {
+      "name": "RDL 3/2000",
+      "temas": [
+        12
+      ]
+    },
+    "73830f77-e083-4e2d-ab05-efe767840550": {
+      "name": "TRRL",
+      "temas": [
+        12,
+        14
+      ]
+    },
+    "9f60b1b4-0aa1-49bf-8757-b71ab261108a": {
+      "name": "Ley 30/1984",
+      "temas": [
+        13,
+        14
+      ]
+    },
+    "edbce811-d91b-4b55-8689-610925dd6e63": {
+      "name": "RD 364/1995",
+      "temas": [
+        13,
+        14,
+        15
+      ]
+    },
+    "c955d78e-ed64-4af6-9efa-ee3fc0278380": {
+      "name": "RD 210/2024",
+      "temas": [
+        13
+      ]
+    },
+    "3735e11a-5400-469f-881f-8c9695d50f96": {
+      "name": "RDL 4/2000",
+      "temas": [
+        13
+      ]
+    },
+    "bd84b18b-7f6e-4d24-ac54-e2666bc7802d": {
+      "name": "RD 365/1995",
+      "temas": [
+        13,
+        14
+      ]
+    },
+    "e7c1b27d-96ba-4d21-8e03-a2486b8abdda": {
+      "name": "RD 577/1997",
+      "temas": [
+        13
+      ]
+    },
+    "ecbeb63b-b64b-424e-bb8b-8237dd387503": {
+      "name": "Ley 31/2022",
+      "temas": [
+        13
+      ]
+    },
+    "b3acd8cc-9152-48db-8e7d-cae468f26a87": {
+      "name": "RD 349/2001",
+      "temas": [
+        14
+      ]
+    },
+    "df6f7ac1-b1e6-4bef-b2d4-ea21747934ea": {
+      "name": "LH",
+      "temas": [
+        14,
+        18
+      ]
+    },
+    "8b1ae300-4ed3-4019-876c-780ea40ebbfe": {
+      "name": "LPRL",
+      "temas": [
+        14
+      ]
+    },
+    "c2442e02-e68c-4d20-9281-b158197cc304": {
+      "name": "RDL 1/2020",
+      "temas": [
+        15,
+        16,
+        18,
+        22,
+        28
+      ]
+    },
+    "aa7d0693-106f-47a8-b41d-9c713d20781d": {
+      "name": "Ley 15/2022",
+      "temas": [
+        15
+      ]
+    },
+    "2b403577-4a8e-45f3-8320-0a7b819203cb": {
+      "name": "Ley 15/2015",
+      "temas": [
+        16,
+        17,
+        18,
+        24
+      ]
+    },
+    "4676d1d6-34ca-48fd-8544-bb6120697e80": {
+      "name": "LO 1/2025",
+      "temas": [
+        19
+      ]
+    },
+    "4f0356a7-0f95-4208-8572-af66dc1ab232": {
+      "name": "LP",
+      "temas": [
+        19
+      ]
+    },
+    "3b2c702d-25c4-4fd9-86cb-12157f6799a2": {
+      "name": "CP",
+      "temas": [
+        20,
+        21
+      ]
+    },
+    "7fd4f5d8-b045-4234-8daf-b4c4cd2fb04c": {
+      "name": "REx",
+      "temas": [
+        22,
+        23
+      ]
+    },
+    "6dba7138-0a39-45e2-87c6-972599fe86ca": {
+      "name": "LISOS",
+      "temas": [
+        23
+      ]
+    },
+    "eabb640e-fa9b-47a8-8d76-2a580115cfb0": {
+      "name": "RDL 8/2015",
+      "temas": [
+        23,
+        25
+      ]
+    },
+    "6a6710e7-9853-4a3a-a9ff-b0d6bc60d5f1": {
+      "name": "RD 375/2003",
+      "temas": [
+        24
+      ]
+    },
+    "5521d2cf-010d-4641-8054-0690a9d0e70d": {
+      "name": "LRC",
+      "temas": [
+        24
+      ]
+    },
+    "218452f5-b9f6-48f0-a25b-26df9cb19644": {
+      "name": "Ley 39/2015",
+      "temas": [
+        24,
+        25
+      ]
+    },
+    "55c416ab-d78f-41e8-acc2-8dd993b32f94": {
+      "name": "LO 4/2015",
+      "temas": [
+        24
+      ]
+    },
+    "a3454e55-b709-4a62-a946-df83f71a6e62": {
+      "name": "LGT",
+      "temas": [
+        25
+      ]
+    },
+    "d1b3951e-c6fb-43c0-8d70-b9e445b8629b": {
+      "name": "RGGIT",
+      "temas": [
+        25
+      ]
+    },
+    "3c6f5f95-a839-4301-aaa1-45fee9fa94ea": {
+      "name": "RDL 670/1987",
+      "temas": [
+        25
+      ]
+    },
+    "3eb377e6-98b8-467f-832a-85532b55668a": {
+      "name": "RN",
+      "temas": [
+        26
+      ]
+    },
+    "087b6bba-33b2-4fe6-8b46-1c93893f8f8a": {
+      "name": "Ley 38/1988",
+      "temas": [
+        26
+      ]
+    },
+    "06c4e9d1-84cb-4f14-8760-6a8d71c4809a": {
+      "name": "RD 2073/1999",
+      "temas": [
+        29
+      ]
+    },
+    "899e61d1-e168-482b-9e86-4e7787eab6fc": {
+      "name": "Código Civil",
+      "temas": [
+        30
+      ]
+    }
+  },
+  "resultados": [
+    {
+      "numero": 1,
+      "titulo": "La Constitución Española de 1978",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 30,
+      "matches": [
+        {
+          "law_id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "law_name": "CE",
+          "article": "1",
+          "similarity": 0.587446314470582,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8303adeb-1f26-4754-872b-e74fd27fc5dd",
+          "law_name": "RD 829/2023",
+          "article": "3",
+          "similarity": 0.53036781964494,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "law_name": "CE",
+          "article": "123",
+          "similarity": 0.52773389054931,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "f76a0a5f-9e39-43ff-9dd9-d90826ffeba1",
+          "law_name": "Ley 2/2014",
+          "article": "4",
+          "similarity": 0.519817855390695,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "law_name": "CE",
+          "article": "T3C2",
+          "similarity": 0.508667766014604,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "f68371e0-5dd9-4803-a667-c5672e8241df",
+          "law_name": "LRSC",
+          "article": "70",
+          "similarity": 0.506682023206891,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "law_name": "LO 5/1985",
+          "article": "13",
+          "similarity": 0.505967020988468,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "07daa1fe-7e8e-4e2d-9a33-6893229869e0",
+          "law_name": "Ley 29/1998",
+          "article": "24",
+          "similarity": 0.500209704047736,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "law_name": "LO 2/1982",
+          "article": "3",
+          "similarity": 0.500039190046933,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "1beea280-f5ab-4466-b4ad-e4240fc05b54",
+          "law_name": "LO 3/1980",
+          "article": "1",
+          "similarity": 0.498192101609244,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "8303adeb-1f26-4754-872b-e74fd27fc5dd",
+          "name": "RD 829/2023"
+        },
+        {
+          "id": "f76a0a5f-9e39-43ff-9dd9-d90826ffeba1",
+          "name": "Ley 2/2014"
+        },
+        {
+          "id": "f68371e0-5dd9-4803-a667-c5672e8241df",
+          "name": "LRSC"
+        },
+        {
+          "id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "name": "LO 5/1985"
+        },
+        {
+          "id": "07daa1fe-7e8e-4e2d-9a33-6893229869e0",
+          "name": "Ley 29/1998"
+        },
+        {
+          "id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "name": "LO 2/1982"
+        },
+        {
+          "id": "1beea280-f5ab-4466-b4ad-e4240fc05b54",
+          "name": "LO 3/1980"
+        }
+      ]
+    },
+    {
+      "numero": 2,
+      "titulo": "Igualdad y no discriminación por razón de género",
+      "tipo": "derecho",
+      "cobertura": "BUENA",
+      "cobertura_pct": 90,
+      "matches": [
+        {
+          "law_id": "6e59eacd-9298-4164-9d78-9e9343d9a900",
+          "law_name": "LO 3/2007",
+          "article": "1",
+          "similarity": 0.77264955369836,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "6e59eacd-9298-4164-9d78-9e9343d9a900",
+          "law_name": "LO 3/2007",
+          "article": "11",
+          "similarity": 0.718343887526531,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "aa7d0693-106f-47a8-b41d-9c713d20781d",
+          "law_name": "Ley 15/2022",
+          "article": "1",
+          "similarity": 0.685073394472994,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "aa7d0693-106f-47a8-b41d-9c713d20781d",
+          "law_name": "Ley 15/2022",
+          "article": "19",
+          "similarity": 0.672529935836792,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "f5c17b23-2547-43d2-800c-39f5ea925c2f",
+          "law_name": "LO 1/2004",
+          "article": "31",
+          "similarity": 0.661642670631409,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "f5c17b23-2547-43d2-800c-39f5ea925c2f",
+          "law_name": "LO 1/2004",
+          "article": "15",
+          "similarity": 0.650744317538531,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "d3a41325-047e-4d6a-99c5-fd8d5c8dc782",
+          "law_name": "Ley 4/2023",
+          "article": "76",
+          "similarity": 0.643355446261821,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "6e59eacd-9298-4164-9d78-9e9343d9a900",
+          "law_name": "LO 3/2007",
+          "article": "51",
+          "similarity": 0.642158431749535,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "310",
+          "similarity": 0.635508401929335,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "d3a41325-047e-4d6a-99c5-fd8d5c8dc782",
+          "law_name": "Ley 4/2023",
+          "article": "7",
+          "similarity": 0.635235152528576,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        }
+      ]
+    },
+    {
+      "numero": 3,
+      "titulo": "El Gobierno y la Administración",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 30,
+      "matches": [
+        {
+          "law_id": "1ed89e01-ace0-4894-8bd4-fa00db74d34a",
+          "law_name": "Ley 50/1997",
+          "article": "1",
+          "similarity": 0.754830866476199,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "1ed89e01-ace0-4894-8bd4-fa00db74d34a",
+          "law_name": "Ley 50/1997",
+          "article": "7",
+          "similarity": 0.723005933940766,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8303adeb-1f26-4754-872b-e74fd27fc5dd",
+          "law_name": "RD 829/2023",
+          "article": "1",
+          "similarity": 0.715066509540886,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "64f52575-3902-48e2-83b2-db05af494da5",
+          "law_name": "RD 2169/1984",
+          "article": "6",
+          "similarity": 0.69298905134201,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "8303adeb-1f26-4754-872b-e74fd27fc5dd",
+          "law_name": "RD 829/2023",
+          "article": "3",
+          "similarity": 0.684266030788422,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "267adc37-f147-4fe9-9a88-c76d146276a0",
+          "law_name": "RD 501/2024",
+          "article": "2",
+          "similarity": 0.650064927331819,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b26504ff-c10b-49f6-bf4b-f6ebbc32418b",
+          "law_name": "Ley 3/2015",
+          "article": "27",
+          "similarity": 0.645096442395662,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "law_name": "Ley 40/2015",
+          "article": "60",
+          "similarity": 0.64417618312027,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "464",
+          "similarity": 0.641416234801269,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "cafc71dd-bb9f-4f35-97f2-1aea2a4d22cb",
+          "law_name": "LOFCS",
+          "article": "10",
+          "similarity": 0.640532352956079,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "8303adeb-1f26-4754-872b-e74fd27fc5dd",
+          "name": "RD 829/2023"
+        },
+        {
+          "id": "64f52575-3902-48e2-83b2-db05af494da5",
+          "name": "RD 2169/1984"
+        },
+        {
+          "id": "267adc37-f147-4fe9-9a88-c76d146276a0",
+          "name": "RD 501/2024"
+        },
+        {
+          "id": "b26504ff-c10b-49f6-bf4b-f6ebbc32418b",
+          "name": "Ley 3/2015"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        },
+        {
+          "id": "cafc71dd-bb9f-4f35-97f2-1aea2a4d22cb",
+          "name": "LOFCS"
+        }
+      ]
+    },
+    {
+      "numero": 4,
+      "titulo": "Organización territorial del Estado",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 20,
+      "matches": [
+        {
+          "law_id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "law_name": "CE",
+          "article": "T8",
+          "similarity": 0.608364100011956,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "law_name": "Ley 40/2015",
+          "article": "84",
+          "similarity": 0.543999785423246,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "e602d0b8-1529-4c04-9bd1-8dccdbd5baa0",
+          "law_name": "RDL 5/2015",
+          "article": "6",
+          "similarity": 0.538322329521179,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5fcc4f3a-a719-415f-958f-46c840e1c4e7",
+          "law_name": "RDL 2/2004",
+          "article": "140",
+          "similarity": 0.53309439418564,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "law_name": "Ley 40/2015",
+          "article": "21",
+          "similarity": 0.499018907546997,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "effe3259-8168-43a0-9730-9923452205c4",
+          "law_name": "Ley 47/2003",
+          "article": "40",
+          "similarity": 0.493846089014645,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "54629fa9-5c10-4800-818a-f3b978606669",
+          "law_name": "Ley 31/1990",
+          "article": "82",
+          "similarity": 0.493714035306691,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "33",
+          "similarity": 0.491883993632556,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "73830f77-e083-4e2d-ab05-efe767840550",
+          "law_name": "TRRL",
+          "article": "2",
+          "similarity": 0.487053036689758,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "77cec287-cec8-4adc-b4c6-69bec1316d95",
+          "law_name": "LPI",
+          "article": "144",
+          "similarity": 0.486187800353402,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "name": "Ley 40/2015"
+        },
+        {
+          "id": "e602d0b8-1529-4c04-9bd1-8dccdbd5baa0",
+          "name": "RDL 5/2015"
+        },
+        {
+          "id": "5fcc4f3a-a719-415f-958f-46c840e1c4e7",
+          "name": "RDL 2/2004"
+        },
+        {
+          "id": "effe3259-8168-43a0-9730-9923452205c4",
+          "name": "Ley 47/2003"
+        },
+        {
+          "id": "54629fa9-5c10-4800-818a-f3b978606669",
+          "name": "Ley 31/1990"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        },
+        {
+          "id": "77cec287-cec8-4adc-b4c6-69bec1316d95",
+          "name": "LPI"
+        }
+      ]
+    },
+    {
+      "numero": 5,
+      "titulo": "La Unión Europea",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 0,
+      "matches": [
+        {
+          "law_id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "law_name": "LO 2/1982",
+          "article": "19",
+          "similarity": 0.569875683195849,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "09c18214-a630-4ae8-9f63-a742919f7f4c",
+          "law_name": "Ley 38/2003",
+          "article": "7",
+          "similarity": 0.554226398468018,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "law_name": "LO 2/1982",
+          "article": "46",
+          "similarity": 0.514603315043058,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "law_name": "LO 2/1982",
+          "article": "1",
+          "similarity": 0.508844285676225,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "law_name": "Ley 40/2015",
+          "article": "8",
+          "similarity": 0.500560671124499,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "law_name": "LO 2/1982",
+          "article": "2",
+          "similarity": 0.492758572101593,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "law_name": "LO 2/1982",
+          "article": "3",
+          "similarity": 0.482566954783568,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "fbf0e71a-0189-4720-9d32-e9a8a9ffa63b",
+          "law_name": "Ley 33/2003",
+          "article": "195",
+          "similarity": 0.480726751002464,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "48748122-ea67-4308-a978-1a828e2c1c1a",
+          "law_name": "Ley 17/2009",
+          "article": "27",
+          "similarity": 0.47346062879147,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "law_name": "LO 2/1982",
+          "article": "35",
+          "similarity": 0.472306533822612,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "190f387b-e1c8-4a04-99f4-28186cdf039e",
+          "name": "LO 2/1982"
+        },
+        {
+          "id": "09c18214-a630-4ae8-9f63-a742919f7f4c",
+          "name": "Ley 38/2003"
+        },
+        {
+          "id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "name": "Ley 40/2015"
+        },
+        {
+          "id": "fbf0e71a-0189-4720-9d32-e9a8a9ffa63b",
+          "name": "Ley 33/2003"
+        },
+        {
+          "id": "48748122-ea67-4308-a978-1a828e2c1c1a",
+          "name": "Ley 17/2009"
+        }
+      ]
+    },
+    {
+      "numero": 6,
+      "titulo": "El Poder Judicial",
+      "tipo": "derecho",
+      "cobertura": "BUENA",
+      "cobertura_pct": 90,
+      "matches": [
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "612",
+          "similarity": 0.686593447150754,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "f76a0a5f-9e39-43ff-9dd9-d90826ffeba1",
+          "law_name": "Ley 2/2014",
+          "article": "10",
+          "similarity": 0.673070310401276,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "598",
+          "similarity": 0.656552137752996,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "law_name": "CE",
+          "article": "124",
+          "similarity": 0.649972242120256,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "087b6bba-33b2-4fe6-8b46-1c93893f8f8a",
+          "law_name": "Ley 38/1988",
+          "article": "22",
+          "similarity": 0.64663463830952,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "298",
+          "similarity": 0.630052133792402,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "478",
+          "similarity": 0.628076321826649,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "465",
+          "similarity": 0.626798979401894,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "435",
+          "similarity": 0.626274611610991,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "299",
+          "similarity": 0.620594398762799,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "f76a0a5f-9e39-43ff-9dd9-d90826ffeba1",
+          "name": "Ley 2/2014"
+        }
+      ]
+    },
+    {
+      "numero": 7,
+      "titulo": "Organización y competencia de los órganos judiciales (I)",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 0,
+      "matches": [
+        {
+          "law_id": "2bc32b1a-9b5f-4e11-ba0b-3b014293882c",
+          "law_name": "LOTC",
+          "article": "100",
+          "similarity": 0.572444336573311,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "law_name": "LO 5/1985",
+          "article": "9",
+          "similarity": 0.485620229579225,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "ee06e181-b33d-4fb7-93f1-117a70a0c1a7",
+          "law_name": "LN",
+          "article": "12",
+          "similarity": 0.455758100061646,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "628cc88a-a425-4d89-8ace-878a4db7a5db",
+          "law_name": "RH",
+          "article": "461",
+          "similarity": 0.453777803593213,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "1beea280-f5ab-4466-b4ad-e4240fc05b54",
+          "law_name": "LO 3/1980",
+          "article": "18",
+          "similarity": 0.451373918395457,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "628cc88a-a425-4d89-8ace-878a4db7a5db",
+          "law_name": "RH",
+          "article": "459",
+          "similarity": 0.448680010359289,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "2bc32b1a-9b5f-4e11-ba0b-3b014293882c",
+          "law_name": "LOTC",
+          "article": "5",
+          "similarity": 0.447321203191353,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "863",
+          "similarity": 0.441044304308636,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "d7addcab-3179-4667-8037-9fcae8097faa",
+          "law_name": "Reglamento del Congreso",
+          "article": "141",
+          "similarity": 0.439409304751637,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "628cc88a-a425-4d89-8ace-878a4db7a5db",
+          "law_name": "RH",
+          "article": "508",
+          "similarity": 0.435093540267988,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "2bc32b1a-9b5f-4e11-ba0b-3b014293882c",
+          "name": "LOTC"
+        },
+        {
+          "id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "name": "LO 5/1985"
+        },
+        {
+          "id": "ee06e181-b33d-4fb7-93f1-117a70a0c1a7",
+          "name": "LN"
+        },
+        {
+          "id": "628cc88a-a425-4d89-8ace-878a4db7a5db",
+          "name": "RH"
+        },
+        {
+          "id": "1beea280-f5ab-4466-b4ad-e4240fc05b54",
+          "name": "LO 3/1980"
+        },
+        {
+          "id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "name": "LECrim"
+        },
+        {
+          "id": "d7addcab-3179-4667-8037-9fcae8097faa",
+          "name": "Reglamento del Congreso"
+        }
+      ]
+    },
+    {
+      "numero": 8,
+      "titulo": "Organización y competencia de los órganos judiciales (II)",
+      "tipo": "derecho",
+      "cobertura": "BUENA",
+      "cobertura_pct": 90,
+      "matches": [
+        {
+          "law_id": "087b6bba-33b2-4fe6-8b46-1c93893f8f8a",
+          "law_name": "Ley 38/1988",
+          "article": "7",
+          "similarity": 0.671069581253628,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "439 ter",
+          "similarity": 0.660512130199422,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "439",
+          "similarity": 0.638108491897601,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "087b6bba-33b2-4fe6-8b46-1c93893f8f8a",
+          "law_name": "Ley 38/1988",
+          "article": "13",
+          "similarity": 0.632483883800048,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "law_name": "CE",
+          "article": "117",
+          "similarity": 0.62681198120119,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "087b6bba-33b2-4fe6-8b46-1c93893f8f8a",
+          "law_name": "Ley 38/1988",
+          "article": "33",
+          "similarity": 0.616949297007904,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "087b6bba-33b2-4fe6-8b46-1c93893f8f8a",
+          "law_name": "Ley 38/1988",
+          "article": "4",
+          "similarity": 0.609756433382257,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "100",
+          "similarity": 0.60362898068083,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "174",
+          "similarity": 0.601792299640647,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "19",
+          "similarity": 0.593088829929312,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "name": "CE"
+        }
+      ]
+    },
+    {
+      "numero": 9,
+      "titulo": "Carta de Derechos de los Ciudadanos ante la Justicia",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 10,
+      "matches": [
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "15",
+          "similarity": 0.699187708094686,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "07c2113d-cc6b-499c-8412-adf79692d390",
+          "law_name": "RD 951/2005",
+          "article": "9",
+          "similarity": 0.654092552526166,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "2",
+          "similarity": 0.607842896498961,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a76f584e-26d4-4c50-afef-b7811cc2bffd",
+          "law_name": "RD 208/1996",
+          "article": "4",
+          "similarity": 0.601657366357495,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "10",
+          "similarity": 0.600995993376751,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "07c2113d-cc6b-499c-8412-adf79692d390",
+          "law_name": "RD 951/2005",
+          "article": "8",
+          "similarity": 0.595026744301332,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "439 quater",
+          "similarity": 0.586899806630672,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "e602d0b8-1529-4c04-9bd1-8dccdbd5baa0",
+          "law_name": "RDL 5/2015",
+          "article": "14",
+          "similarity": 0.576912453542692,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "520",
+          "similarity": 0.575480323915421,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "59",
+          "similarity": 0.571216413016205,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "name": "RDL 6/2023"
+        },
+        {
+          "id": "07c2113d-cc6b-499c-8412-adf79692d390",
+          "name": "RD 951/2005"
+        },
+        {
+          "id": "a76f584e-26d4-4c50-afef-b7811cc2bffd",
+          "name": "RD 208/1996"
+        },
+        {
+          "id": "e602d0b8-1529-4c04-9bd1-8dccdbd5baa0",
+          "name": "RDL 5/2015"
+        },
+        {
+          "id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "name": "LECrim"
+        }
+      ]
+    },
+    {
+      "numero": 10,
+      "titulo": "La modernización de la oficina judicial",
+      "tipo": "derecho",
+      "cobertura": "BUENA",
+      "cobertura_pct": 90,
+      "matches": [
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "36",
+          "similarity": 0.722898943597027,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "92",
+          "similarity": 0.717469462895895,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "35",
+          "similarity": 0.71531557209863,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "236 sexies",
+          "similarity": 0.712770308586401,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "34",
+          "similarity": 0.702256209061661,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "27",
+          "similarity": 0.691763960333348,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "89",
+          "similarity": 0.69127176571962,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "268 bis",
+          "similarity": 0.687749825447782,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "81",
+          "similarity": 0.687317533391349,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "229",
+          "similarity": 0.686180353164692,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "name": "Ley 1/2000"
+        }
+      ]
+    },
+    {
+      "numero": 11,
+      "titulo": "El Letrado de la Administración de Justicia",
+      "tipo": "derecho",
+      "cobertura": "PARCIAL",
+      "cobertura_pct": 70,
+      "matches": [
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "465",
+          "similarity": 0.803580009510522,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "464",
+          "similarity": 0.736366899446624,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "469",
+          "similarity": 0.71774423122406,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "2bc32b1a-9b5f-4e11-ba0b-3b014293882c",
+          "law_name": "LOTC",
+          "article": "101",
+          "similarity": 0.699644643089496,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "612",
+          "similarity": 0.693836963911423,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "478",
+          "similarity": 0.676547646522522,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "62",
+          "similarity": 0.673780700419037,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "435",
+          "similarity": 0.670996447533263,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "598",
+          "similarity": 0.666288316249847,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8303adeb-1f26-4754-872b-e74fd27fc5dd",
+          "law_name": "RD 829/2023",
+          "article": "3",
+          "similarity": 0.663385212421417,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "2bc32b1a-9b5f-4e11-ba0b-3b014293882c",
+          "name": "LOTC"
+        },
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "8303adeb-1f26-4754-872b-e74fd27fc5dd",
+          "name": "RD 829/2023"
+        }
+      ]
+    },
+    {
+      "numero": 12,
+      "titulo": "Los Cuerpos de funcionarios al servicio de la Administración de Justicia",
+      "tipo": "derecho",
+      "cobertura": "BUENA",
+      "cobertura_pct": 80,
+      "matches": [
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "475",
+          "similarity": 0.72250798672343,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "474",
+          "similarity": 0.620444059371948,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "472",
+          "similarity": 0.615499294728,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "484",
+          "similarity": 0.613733099254005,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "3f57d8ca-d4d3-480b-a785-31e4a1345765",
+          "law_name": "RDL 3/2000",
+          "article": "7",
+          "similarity": 0.608611070596513,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "440",
+          "similarity": 0.607807195651961,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "476",
+          "similarity": 0.605418181742322,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "73830f77-e083-4e2d-ab05-efe767840550",
+          "law_name": "TRRL",
+          "article": "170",
+          "similarity": 0.599348843097687,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "463",
+          "similarity": 0.595767319202423,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "444",
+          "similarity": 0.581616965177209,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "3f57d8ca-d4d3-480b-a785-31e4a1345765",
+          "name": "RDL 3/2000"
+        },
+        {
+          "id": "73830f77-e083-4e2d-ab05-efe767840550",
+          "name": "TRRL"
+        }
+      ]
+    },
+    {
+      "numero": 13,
+      "titulo": "Los Cuerpos Generales (I)",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 10,
+      "matches": [
+        {
+          "law_id": "9f60b1b4-0aa1-49bf-8757-b71ab261108a",
+          "law_name": "Ley 30/1984",
+          "article": "20",
+          "similarity": 0.658652663230901,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "edbce811-d91b-4b55-8689-610925dd6e63",
+          "law_name": "RD 364/1995",
+          "article": "78",
+          "similarity": 0.656225761400119,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "c955d78e-ed64-4af6-9efa-ee3fc0278380",
+          "law_name": "RD 210/2024",
+          "article": "12",
+          "similarity": 0.626406811093879,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "3735e11a-5400-469f-881f-8c9695d50f96",
+          "law_name": "RDL 4/2000",
+          "article": "5",
+          "similarity": 0.625879250414417,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "edbce811-d91b-4b55-8689-610925dd6e63",
+          "law_name": "RD 364/1995",
+          "article": "72",
+          "similarity": 0.621708960125699,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "bd84b18b-7f6e-4d24-ac54-e2666bc7802d",
+          "law_name": "RD 365/1995",
+          "article": "11",
+          "similarity": 0.619813107263262,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "e602d0b8-1529-4c04-9bd1-8dccdbd5baa0",
+          "law_name": "RDL 5/2015",
+          "article": "54",
+          "similarity": 0.616975069046025,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "e7c1b27d-96ba-4d21-8e03-a2486b8abdda",
+          "law_name": "RD 577/1997",
+          "article": "2",
+          "similarity": 0.615795538926656,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "edbce811-d91b-4b55-8689-610925dd6e63",
+          "law_name": "RD 364/1995",
+          "article": "68",
+          "similarity": 0.614659511169225,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "ecbeb63b-b64b-424e-bb8b-8237dd387503",
+          "law_name": "Ley 31/2022",
+          "article": "32",
+          "similarity": 0.612340019662378,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "9f60b1b4-0aa1-49bf-8757-b71ab261108a",
+          "name": "Ley 30/1984"
+        },
+        {
+          "id": "edbce811-d91b-4b55-8689-610925dd6e63",
+          "name": "RD 364/1995"
+        },
+        {
+          "id": "c955d78e-ed64-4af6-9efa-ee3fc0278380",
+          "name": "RD 210/2024"
+        },
+        {
+          "id": "3735e11a-5400-469f-881f-8c9695d50f96",
+          "name": "RDL 4/2000"
+        },
+        {
+          "id": "bd84b18b-7f6e-4d24-ac54-e2666bc7802d",
+          "name": "RD 365/1995"
+        },
+        {
+          "id": "e7c1b27d-96ba-4d21-8e03-a2486b8abdda",
+          "name": "RD 577/1997"
+        },
+        {
+          "id": "ecbeb63b-b64b-424e-bb8b-8237dd387503",
+          "name": "Ley 31/2022"
+        }
+      ]
+    },
+    {
+      "numero": 14,
+      "titulo": "Los Cuerpos Generales (II)",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 0,
+      "matches": [
+        {
+          "law_id": "9f60b1b4-0aa1-49bf-8757-b71ab261108a",
+          "law_name": "Ley 30/1984",
+          "article": "20",
+          "similarity": 0.689440727233892,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b3acd8cc-9152-48db-8e7d-cae468f26a87",
+          "law_name": "RD 349/2001",
+          "article": "4",
+          "similarity": 0.645283622111842,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "edbce811-d91b-4b55-8689-610925dd6e63",
+          "law_name": "RD 364/1995",
+          "article": "68",
+          "similarity": 0.641573390866913,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "law_name": "Ley 40/2015",
+          "article": "100",
+          "similarity": 0.638286213925894,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "law_name": "Ley 40/2015",
+          "article": "55",
+          "similarity": 0.637598137927113,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "df6f7ac1-b1e6-4bef-b2d4-ea21747934ea",
+          "law_name": "LH",
+          "article": "261",
+          "similarity": 0.637123422279784,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "bd84b18b-7f6e-4d24-ac54-e2666bc7802d",
+          "law_name": "RD 365/1995",
+          "article": "11",
+          "similarity": 0.631533644704007,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "8b1ae300-4ed3-4019-876c-780ea40ebbfe",
+          "law_name": "LPRL",
+          "article": "45",
+          "similarity": 0.631113730006593,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "law_name": "Ley 40/2015",
+          "article": "59",
+          "similarity": 0.630841857640412,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "73830f77-e083-4e2d-ab05-efe767840550",
+          "law_name": "TRRL",
+          "article": "168",
+          "similarity": 0.62924445344607,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "9f60b1b4-0aa1-49bf-8757-b71ab261108a",
+          "name": "Ley 30/1984"
+        },
+        {
+          "id": "b3acd8cc-9152-48db-8e7d-cae468f26a87",
+          "name": "RD 349/2001"
+        },
+        {
+          "id": "edbce811-d91b-4b55-8689-610925dd6e63",
+          "name": "RD 364/1995"
+        },
+        {
+          "id": "95680d57-feb1-41c0-bb27-236024815feb",
+          "name": "Ley 40/2015"
+        },
+        {
+          "id": "df6f7ac1-b1e6-4bef-b2d4-ea21747934ea",
+          "name": "LH"
+        },
+        {
+          "id": "bd84b18b-7f6e-4d24-ac54-e2666bc7802d",
+          "name": "RD 365/1995"
+        },
+        {
+          "id": "8b1ae300-4ed3-4019-876c-780ea40ebbfe",
+          "name": "LPRL"
+        },
+        {
+          "id": "73830f77-e083-4e2d-ab05-efe767840550",
+          "name": "TRRL"
+        }
+      ]
+    },
+    {
+      "numero": 15,
+      "titulo": "Libertad sindical",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 30,
+      "matches": [
+        {
+          "law_id": "5d8db71e-0228-4283-bda9-9af17fce65a7",
+          "law_name": "LO 11/1985",
+          "article": "15",
+          "similarity": 0.569415534945659,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "136",
+          "similarity": 0.526213241260066,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "443",
+          "similarity": 0.440102527150738,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "173",
+          "similarity": 0.438776267730483,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "e602d0b8-1529-4c04-9bd1-8dccdbd5baa0",
+          "law_name": "RDL 5/2015",
+          "article": "42",
+          "similarity": 0.434039315518207,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "edbce811-d91b-4b55-8689-610925dd6e63",
+          "law_name": "RD 364/1995",
+          "article": "63",
+          "similarity": 0.423405983156501,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "law_name": "LO 5/1985",
+          "article": "9",
+          "similarity": 0.417381562356493,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "aa7d0693-106f-47a8-b41d-9c713d20781d",
+          "law_name": "Ley 15/2022",
+          "article": "13",
+          "similarity": 0.414546049941723,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "e602d0b8-1529-4c04-9bd1-8dccdbd5baa0",
+          "law_name": "RDL 5/2015",
+          "article": "65",
+          "similarity": 0.410707463110384,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "law_name": "LO 5/1985",
+          "article": "67",
+          "similarity": 0.405422204248117,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        },
+        {
+          "id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "name": "RDL 1/2020"
+        },
+        {
+          "id": "edbce811-d91b-4b55-8689-610925dd6e63",
+          "name": "RD 364/1995"
+        },
+        {
+          "id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "name": "LO 5/1985"
+        },
+        {
+          "id": "aa7d0693-106f-47a8-b41d-9c713d20781d",
+          "name": "Ley 15/2022"
+        }
+      ]
+    },
+    {
+      "numero": 16,
+      "titulo": "Los procedimientos declarativos en la LEC",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 40,
+      "matches": [
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "248",
+          "similarity": 0.696091431612288,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "250",
+          "similarity": 0.663077473640442,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "law_name": "Ley 15/2015",
+          "article": "80 quinquies",
+          "similarity": 0.630504771410855,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "law_name": "Ley 15/2015",
+          "article": "22",
+          "similarity": 0.615888879789252,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "770",
+          "similarity": 0.590626096166737,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "247",
+          "similarity": 0.582658926806722,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "437",
+          "similarity": 0.564120683915657,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "207",
+          "similarity": 0.561527576355484,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "808",
+          "similarity": 0.561213698314805,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "77cec287-cec8-4adc-b4c6-69bec1316d95",
+          "law_name": "LPI",
+          "article": "103",
+          "similarity": 0.560655083617266,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "name": "Ley 15/2015"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        },
+        {
+          "id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "name": "RDL 1/2020"
+        },
+        {
+          "id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "name": "LECrim"
+        },
+        {
+          "id": "77cec287-cec8-4adc-b4c6-69bec1316d95",
+          "name": "LPI"
+        }
+      ]
+    },
+    {
+      "numero": 17,
+      "titulo": "Los procedimientos de ejecución en la LEC",
+      "tipo": "derecho",
+      "cobertura": "PARCIAL",
+      "cobertura_pct": 60,
+      "matches": [
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "545",
+          "similarity": 0.71330388109066,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "634",
+          "similarity": 0.690567550906468,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "554",
+          "similarity": 0.685600154781291,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "241",
+          "similarity": 0.684224721629969,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "law_name": "Ley 15/2015",
+          "article": "147",
+          "similarity": 0.670144338573375,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "245",
+          "similarity": 0.665076792524436,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "622",
+          "similarity": 0.652305608163263,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "539",
+          "similarity": 0.65111172338322,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "600",
+          "similarity": 0.640441400952177,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "685",
+          "similarity": 0.628706913330959,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "name": "Ley 15/2015"
+        },
+        {
+          "id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "name": "LECrim"
+        }
+      ]
+    },
+    {
+      "numero": 18,
+      "titulo": "Los procesos especiales en la LEC",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 40,
+      "matches": [
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "770",
+          "similarity": 0.620993293582994,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "250",
+          "similarity": 0.577005505561829,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "law_name": "Ley 15/2015",
+          "article": "22",
+          "similarity": 0.557927482375211,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "263",
+          "similarity": 0.557665755540053,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "692 bis",
+          "similarity": 0.55208145330396,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "207",
+          "similarity": 0.550620880685993,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "772",
+          "similarity": 0.544114026076439,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "551",
+          "similarity": 0.542913263191378,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "77cec287-cec8-4adc-b4c6-69bec1316d95",
+          "law_name": "LPI",
+          "article": "103",
+          "similarity": 0.53972086073632,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "df6f7ac1-b1e6-4bef-b2d4-ea21747934ea",
+          "law_name": "LH",
+          "article": "42",
+          "similarity": 0.539627130076039,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "name": "Ley 15/2015"
+        },
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "name": "RDL 1/2020"
+        },
+        {
+          "id": "77cec287-cec8-4adc-b4c6-69bec1316d95",
+          "name": "LPI"
+        },
+        {
+          "id": "df6f7ac1-b1e6-4bef-b2d4-ea21747934ea",
+          "name": "LH"
+        }
+      ]
+    },
+    {
+      "numero": 19,
+      "titulo": "La jurisdicción voluntaria",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 30,
+      "matches": [
+        {
+          "law_id": "4676d1d6-34ca-48fd-8544-bb6120697e80",
+          "law_name": "LO 1/2025",
+          "article": "14",
+          "similarity": 0.682883460349832,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "law_name": "Ley 15/2015",
+          "article": "1",
+          "similarity": 0.679249146074163,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "ee06e181-b33d-4fb7-93f1-117a70a0c1a7",
+          "law_name": "LN",
+          "article": "81",
+          "similarity": 0.643095569979621,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "64",
+          "similarity": 0.614156700024409,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "law_name": "Ley 15/2015",
+          "article": "140",
+          "similarity": 0.607618414901591,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "19",
+          "similarity": 0.605299967685341,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "66",
+          "similarity": 0.595417773450481,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "07daa1fe-7e8e-4e2d-9a33-6893229869e0",
+          "law_name": "Ley 29/1998",
+          "article": "77",
+          "similarity": 0.591970682144165,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "4f0356a7-0f95-4208-8572-af66dc1ab232",
+          "law_name": "LP",
+          "article": "116",
+          "similarity": 0.587995946407318,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "4676d1d6-34ca-48fd-8544-bb6120697e80",
+          "law_name": "LO 1/2025",
+          "article": "2",
+          "similarity": 0.580334578772461,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "4676d1d6-34ca-48fd-8544-bb6120697e80",
+          "name": "LO 1/2025"
+        },
+        {
+          "id": "ee06e181-b33d-4fb7-93f1-117a70a0c1a7",
+          "name": "LN"
+        },
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "07daa1fe-7e8e-4e2d-9a33-6893229869e0",
+          "name": "Ley 29/1998"
+        },
+        {
+          "id": "4f0356a7-0f95-4208-8572-af66dc1ab232",
+          "name": "LP"
+        }
+      ]
+    },
+    {
+      "numero": 20,
+      "titulo": "Los procedimientos penales en la LECrim (I)",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 30,
+      "matches": [
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "258 bis",
+          "similarity": 0.66751762226119,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "law_name": "LO 5/1985",
+          "article": "151",
+          "similarity": 0.606771694806617,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "3b2c702d-25c4-4fd9-86cb-12157f6799a2",
+          "law_name": "CP",
+          "article": "4",
+          "similarity": 0.58014327287674,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "65",
+          "similarity": 0.569392238223091,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "12",
+          "similarity": 0.566126875147004,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "305",
+          "similarity": 0.564655601978302,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "697",
+          "similarity": 0.551997714996614,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "758",
+          "similarity": 0.548457557146844,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "237",
+          "similarity": 0.538049340248108,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "665",
+          "similarity": 0.5244110197531,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "name": "RDL 6/2023"
+        },
+        {
+          "id": "d69ff916-62c3-4a31-85f0-394a88cc8adf",
+          "name": "LO 5/1985"
+        },
+        {
+          "id": "3b2c702d-25c4-4fd9-86cb-12157f6799a2",
+          "name": "CP"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        },
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "name": "Ley 1/2000"
+        }
+      ]
+    },
+    {
+      "numero": 21,
+      "titulo": "Los procedimientos penales en la LECrim (II)",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 40,
+      "matches": [
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "524",
+          "similarity": 0.578145911914602,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "100",
+          "similarity": 0.55125367641449,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "304",
+          "similarity": 0.54997855424881,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "637",
+          "similarity": 0.529275611915458,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "07daa1fe-7e8e-4e2d-9a33-6893229869e0",
+          "law_name": "Ley 29/1998",
+          "article": "84",
+          "similarity": 0.528010547161102,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "846 ter",
+          "similarity": 0.527040243148804,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "235",
+          "similarity": 0.521889746189117,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "15",
+          "similarity": 0.519042253494263,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "666",
+          "similarity": 0.515109865956911,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "3b2c702d-25c4-4fd9-86cb-12157f6799a2",
+          "law_name": "CP",
+          "article": "71",
+          "similarity": 0.51504489869147,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "name": "Ley 1/2000"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        },
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "07daa1fe-7e8e-4e2d-9a33-6893229869e0",
+          "name": "Ley 29/1998"
+        },
+        {
+          "id": "3b2c702d-25c4-4fd9-86cb-12157f6799a2",
+          "name": "CP"
+        }
+      ]
+    },
+    {
+      "numero": 22,
+      "titulo": "El recurso contencioso-administrativo",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 0,
+      "matches": [
+        {
+          "law_id": "7fd4f5d8-b045-4234-8daf-b4c4cd2fb04c",
+          "law_name": "REx",
+          "article": "232",
+          "similarity": 0.594184434067276,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "467",
+          "similarity": 0.579283748822437,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "136",
+          "similarity": 0.529846222987547,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "485",
+          "similarity": 0.521298079413298,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "547",
+          "similarity": 0.517086775129246,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "450",
+          "similarity": 0.511334089398272,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "170",
+          "similarity": 0.499326616525654,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "208",
+          "similarity": 0.493326694966572,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "976",
+          "similarity": 0.491978675605145,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "223",
+          "similarity": 0.479528992147983,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "7fd4f5d8-b045-4234-8daf-b4c4cd2fb04c",
+          "name": "REx"
+        },
+        {
+          "id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "name": "Ley 1/2000"
+        },
+        {
+          "id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "name": "RDL 1/2020"
+        },
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "name": "LECrim"
+        }
+      ]
+    },
+    {
+      "numero": 23,
+      "titulo": "El proceso laboral",
+      "tipo": "derecho",
+      "cobertura": "PARCIAL",
+      "cobertura_pct": 60,
+      "matches": [
+        {
+          "law_id": "6dba7138-0a39-45e2-87c6-972599fe86ca",
+          "law_name": "LISOS",
+          "article": "52",
+          "similarity": 0.634231372567256,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "184",
+          "similarity": 0.626707695322771,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "120",
+          "similarity": 0.621137738227844,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "7fd4f5d8-b045-4234-8daf-b4c4cd2fb04c",
+          "law_name": "REx",
+          "article": "254",
+          "similarity": 0.611483151747273,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "148",
+          "similarity": 0.609497785568237,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "138",
+          "similarity": 0.599610519362754,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "7",
+          "similarity": 0.592165915990764,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "7fd4f5d8-b045-4234-8daf-b4c4cd2fb04c",
+          "law_name": "REx",
+          "article": "226",
+          "similarity": 0.589365934691784,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "153",
+          "similarity": 0.587601661682129,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "eabb640e-fa9b-47a8-8d76-2a580115cfb0",
+          "law_name": "RDL 8/2015",
+          "article": "38",
+          "similarity": 0.576682686805725,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "6dba7138-0a39-45e2-87c6-972599fe86ca",
+          "name": "LISOS"
+        },
+        {
+          "id": "7fd4f5d8-b045-4234-8daf-b4c4cd2fb04c",
+          "name": "REx"
+        },
+        {
+          "id": "eabb640e-fa9b-47a8-8d76-2a580115cfb0",
+          "name": "RDL 8/2015"
+        }
+      ]
+    },
+    {
+      "numero": 24,
+      "titulo": "Los recursos",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 20,
+      "matches": [
+        {
+          "law_id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "law_name": "Ley 15/2015",
+          "article": "20",
+          "similarity": 0.727999768495553,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "206",
+          "similarity": 0.705629131365691,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "6a6710e7-9853-4a3a-a9ff-b0d6bc60d5f1",
+          "law_name": "RD 375/2003",
+          "article": "156",
+          "similarity": 0.658538718776069,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "86",
+          "similarity": 0.646422782327103,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "218452f5-b9f6-48f0-a25b-26df9cb19644",
+          "law_name": "Ley 39/2015",
+          "article": "121",
+          "similarity": 0.645438273115107,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "55c416ab-d78f-41e8-acc2-8dd993b32f94",
+          "law_name": "LO 4/2015",
+          "article": "51",
+          "similarity": 0.633467115966506,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "226",
+          "similarity": 0.630913916446522,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "121",
+          "similarity": 0.626855272855022,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "959",
+          "similarity": 0.625465311137754,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "50",
+          "similarity": 0.617254848830836,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "2b403577-4a8e-45f3-8320-0a7b819203cb",
+          "name": "Ley 15/2015"
+        },
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "6a6710e7-9853-4a3a-a9ff-b0d6bc60d5f1",
+          "name": "RD 375/2003"
+        },
+        {
+          "id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "name": "LRC"
+        },
+        {
+          "id": "218452f5-b9f6-48f0-a25b-26df9cb19644",
+          "name": "Ley 39/2015"
+        },
+        {
+          "id": "55c416ab-d78f-41e8-acc2-8dd993b32f94",
+          "name": "LO 4/2015"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        }
+      ]
+    },
+    {
+      "numero": 25,
+      "titulo": "Los actos procesales",
+      "tipo": "derecho",
+      "cobertura": "BAJA",
+      "cobertura_pct": 10,
+      "matches": [
+        {
+          "law_id": "218452f5-b9f6-48f0-a25b-26df9cb19644",
+          "law_name": "Ley 39/2015",
+          "article": "73",
+          "similarity": 0.593378610010889,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "eabb640e-fa9b-47a8-8d76-2a580115cfb0",
+          "law_name": "RDL 8/2015",
+          "article": "140",
+          "similarity": 0.565617646836208,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "287",
+          "similarity": 0.528106146310298,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3454e55-b709-4a62-a946-df83f71a6e62",
+          "law_name": "LGT",
+          "article": "67",
+          "similarity": 0.523173345043677,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "d1b3951e-c6fb-43c0-8d70-b9e445b8629b",
+          "law_name": "RGGIT",
+          "article": "180",
+          "similarity": 0.523016716894507,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "d1b3951e-c6fb-43c0-8d70-b9e445b8629b",
+          "law_name": "RGGIT",
+          "article": "192",
+          "similarity": 0.520056869973512,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "218452f5-b9f6-48f0-a25b-26df9cb19644",
+          "law_name": "Ley 39/2015",
+          "article": "55",
+          "similarity": 0.514109369728719,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "3c6f5f95-a839-4301-aaa1-45fee9fa94ea",
+          "law_name": "RDL 670/1987",
+          "article": "15",
+          "similarity": 0.513649937236328,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "71",
+          "similarity": 0.50993886530766,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3454e55-b709-4a62-a946-df83f71a6e62",
+          "law_name": "LGT",
+          "article": "148",
+          "similarity": 0.499270022132987,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "218452f5-b9f6-48f0-a25b-26df9cb19644",
+          "name": "Ley 39/2015"
+        },
+        {
+          "id": "eabb640e-fa9b-47a8-8d76-2a580115cfb0",
+          "name": "RDL 8/2015"
+        },
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "a3454e55-b709-4a62-a946-df83f71a6e62",
+          "name": "LGT"
+        },
+        {
+          "id": "d1b3951e-c6fb-43c0-8d70-b9e445b8629b",
+          "name": "RGGIT"
+        },
+        {
+          "id": "3c6f5f95-a839-4301-aaa1-45fee9fa94ea",
+          "name": "RDL 670/1987"
+        }
+      ]
+    },
+    {
+      "numero": 26,
+      "titulo": "Las resoluciones de los órganos judiciales",
+      "tipo": "derecho",
+      "cobertura": "PARCIAL",
+      "cobertura_pct": 50,
+      "matches": [
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "439",
+          "similarity": 0.553277618083674,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "law_name": "CE",
+          "article": "117",
+          "similarity": 0.534654442626771,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "192 bis",
+          "similarity": 0.53455492648155,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "631",
+          "similarity": 0.530210971832275,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "634",
+          "similarity": 0.518133401870728,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "3eb377e6-98b8-467f-832a-85532b55668a",
+          "law_name": "RN",
+          "article": "354",
+          "similarity": 0.515076623714863,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "439 ter",
+          "similarity": 0.513728618621826,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "3eb377e6-98b8-467f-832a-85532b55668a",
+          "law_name": "RN",
+          "article": "363",
+          "similarity": 0.512683032431245,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "087b6bba-33b2-4fe6-8b46-1c93893f8f8a",
+          "law_name": "Ley 38/1988",
+          "article": "7",
+          "similarity": 0.511442063874956,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "666",
+          "similarity": 0.505927532557993,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "6ad91a6c-41ec-431f-9c80-5f5566834941",
+          "name": "CE"
+        },
+        {
+          "id": "3eb377e6-98b8-467f-832a-85532b55668a",
+          "name": "RN"
+        },
+        {
+          "id": "087b6bba-33b2-4fe6-8b46-1c93893f8f8a",
+          "name": "Ley 38/1988"
+        },
+        {
+          "id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "name": "LECrim"
+        }
+      ]
+    },
+    {
+      "numero": 27,
+      "titulo": "Los actos de comunicación con otros tribunales y autoridades",
+      "tipo": "derecho",
+      "cobertura": "PARCIAL",
+      "cobertura_pct": 70,
+      "matches": [
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "171",
+          "similarity": 0.688910998235827,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "177",
+          "similarity": 0.687446177005768,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "165",
+          "similarity": 0.66667870680563,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "149",
+          "similarity": 0.662068784236908,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "152",
+          "similarity": 0.657383799552917,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "169",
+          "similarity": 0.657295504647227,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "law_name": "LRJS",
+          "article": "62",
+          "similarity": 0.651842612247783,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "439 quater",
+          "similarity": 0.645138698236792,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "478",
+          "similarity": 0.645005285739899,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "154",
+          "similarity": 0.634965560736326,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "b468b0f9-590c-4872-99d5-eba966980cfe",
+          "name": "LRJS"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        }
+      ]
+    },
+    {
+      "numero": 28,
+      "titulo": "Los actos de comunicación a las partes",
+      "tipo": "derecho",
+      "cobertura": "PARCIAL",
+      "cobertura_pct": 50,
+      "matches": [
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "399",
+          "similarity": 0.582440972328186,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "179",
+          "similarity": 0.580746854499171,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "law_name": "RDL 1/2020",
+          "article": "692 bis",
+          "similarity": 0.570985896352332,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "248",
+          "similarity": 0.537711354357682,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "772",
+          "similarity": 0.536478193788422,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "588 quater",
+          "similarity": 0.535265207290649,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "8ea21d39-5f6c-4d4c-801b-ffdf7ca366e5",
+          "law_name": "LECrim",
+          "article": "836",
+          "similarity": 0.534539906111962,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "78",
+          "similarity": 0.534266444102911,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "07daa1fe-7e8e-4e2d-9a33-6893229869e0",
+          "law_name": "Ley 29/1998",
+          "article": "109",
+          "similarity": 0.53413952988802,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "247",
+          "similarity": 0.531679741935807,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "c2442e02-e68c-4d20-9281-b158197cc304",
+          "name": "RDL 1/2020"
+        },
+        {
+          "id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "name": "LO 6/1985"
+        },
+        {
+          "id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "name": "RDL 6/2023"
+        },
+        {
+          "id": "07daa1fe-7e8e-4e2d-9a33-6893229869e0",
+          "name": "Ley 29/1998"
+        }
+      ]
+    },
+    {
+      "numero": 29,
+      "titulo": "El Registro Civil (I)",
+      "tipo": "derecho",
+      "cobertura": "PARCIAL",
+      "cobertura_pct": 50,
+      "matches": [
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "11",
+          "similarity": 0.640362479708344,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "43",
+          "similarity": 0.623960174558174,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "5",
+          "similarity": 0.618256339146581,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "06c4e9d1-84cb-4f14-8760-6a8d71c4809a",
+          "law_name": "RD 2073/1999",
+          "article": "3",
+          "similarity": 0.61026259599552,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "06c4e9d1-84cb-4f14-8760-6a8d71c4809a",
+          "law_name": "RD 2073/1999",
+          "article": "1",
+          "similarity": 0.60352643707238,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "06c4e9d1-84cb-4f14-8760-6a8d71c4809a",
+          "law_name": "RD 2073/1999",
+          "article": "10",
+          "similarity": 0.592067347538594,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "38",
+          "similarity": 0.591807723045353,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "7",
+          "similarity": 0.582481299786646,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "06c4e9d1-84cb-4f14-8760-6a8d71c4809a",
+          "law_name": "RD 2073/1999",
+          "article": "12",
+          "similarity": 0.580167829990391,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "628cc88a-a425-4d89-8ace-878a4db7a5db",
+          "law_name": "RH",
+          "article": "356",
+          "similarity": 0.577805127036275,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "06c4e9d1-84cb-4f14-8760-6a8d71c4809a",
+          "name": "RD 2073/1999"
+        },
+        {
+          "id": "628cc88a-a425-4d89-8ace-878a4db7a5db",
+          "name": "RH"
+        }
+      ]
+    },
+    {
+      "numero": 30,
+      "titulo": "El Registro Civil (II)",
+      "tipo": "derecho",
+      "cobertura": "PARCIAL",
+      "cobertura_pct": 70,
+      "matches": [
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "4",
+          "similarity": 0.733188748359701,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "79",
+          "similarity": 0.724784851074239,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "44",
+          "similarity": 0.691261768341084,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "27",
+          "similarity": 0.672393857920726,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "899e61d1-e168-482b-9e86-4e7787eab6fc",
+          "law_name": "Código Civil",
+          "article": "120",
+          "similarity": 0.629525034540883,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "71",
+          "similarity": 0.620645270270677,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "36",
+          "similarity": 0.616989502253027,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "5521d2cf-010d-4641-8054-0690a9d0e70d",
+          "law_name": "LRC",
+          "article": "18",
+          "similarity": 0.615917512908428,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "899e61d1-e168-482b-9e86-4e7787eab6fc",
+          "law_name": "Código Civil",
+          "article": "113",
+          "similarity": 0.611765430955244,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        },
+        {
+          "law_id": "899e61d1-e168-482b-9e86-4e7787eab6fc",
+          "law_name": "Código Civil",
+          "article": "61",
+          "similarity": 0.610254012927184,
+          "en_scope_tema": false,
+          "en_scope_general": false
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "899e61d1-e168-482b-9e86-4e7787eab6fc",
+          "name": "Código Civil"
+        }
+      ]
+    },
+    {
+      "numero": 31,
+      "titulo": "El archivo judicial y la documentación",
+      "tipo": "derecho",
+      "cobertura": "BUENA",
+      "cobertura_pct": 80,
+      "matches": [
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "458",
+          "similarity": 0.687996350287957,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "86",
+          "similarity": 0.63445937345559,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "70",
+          "similarity": 0.611690612389239,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "10",
+          "similarity": 0.606192643004,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "6cea0a54-de66-44ac-8f8e-041a6abce4aa",
+          "law_name": "RD 1708/2011",
+          "article": "10",
+          "similarity": 0.599016445845862,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "15",
+          "similarity": 0.597702914271022,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "9218e38c-f514-4c5a-82ad-4e6281ffc58f",
+          "law_name": "RDL 6/2023",
+          "article": "44",
+          "similarity": 0.589267187351037,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "a3d58ada-b284-46f7-ab7c-2092d4bb06ff",
+          "law_name": "LO 6/1985",
+          "article": "439 quater",
+          "similarity": 0.580405594791149,
+          "en_scope_tema": true,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "165",
+          "similarity": 0.579750981889812,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        },
+        {
+          "law_id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "law_name": "Ley 1/2000",
+          "article": "137 bis",
+          "similarity": 0.575652054755576,
+          "en_scope_tema": false,
+          "en_scope_general": true
+        }
+      ],
+      "leyes_faltantes": [
+        {
+          "id": "14b4b825-2078-44cb-bff8-53d332c4f473",
+          "name": "Ley 1/2000"
+        }
+      ]
+    },
+    {
+      "numero": 32,
+      "titulo": "Informática básica",
+      "tipo": "informatica",
+      "cobertura": "N/A"
+    },
+    {
+      "numero": 33,
+      "titulo": "Introducción al sistema operativo Windows",
+      "tipo": "informatica",
+      "cobertura": "N/A"
+    },
+    {
+      "numero": 34,
+      "titulo": "El explorador de Windows",
+      "tipo": "informatica",
+      "cobertura": "N/A"
+    },
+    {
+      "numero": 35,
+      "titulo": "Procesadores de texto: Word 365",
+      "tipo": "informatica",
+      "cobertura": "N/A"
+    },
+    {
+      "numero": 36,
+      "titulo": "Correo electrónico: Outlook 365",
+      "tipo": "informatica",
+      "cobertura": "N/A"
+    },
+    {
+      "numero": 37,
+      "titulo": "La Red Internet",
+      "tipo": "informatica",
+      "cobertura": "N/A"
+    }
+  ]
+}

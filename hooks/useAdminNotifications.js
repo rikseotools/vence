@@ -37,7 +37,7 @@ export function useAdminNotifications() {
     }
 
     try {
-      console.log('🔔 Cargando notificaciones admin...')
+      // Debug: console.log('🔔 Cargando notificaciones admin...')
 
       // Usar Promise.allSettled para manejar errores independientemente
       const results = await Promise.allSettled([
@@ -73,7 +73,10 @@ export function useAdminNotifications() {
       if (feedbackResult.status === 'fulfilled') {
         const unviewedConversations = feedbackResult.value.data || []
         pendingFeedback = unviewedConversations.length
-        console.log(`🔔 useAdminNotifications BD: ${pendingFeedback} conversaciones pendientes (no vistas por admin)`)
+        // Solo loguear si hay cambios significativos (más de 0)
+        if (pendingFeedback > 0) {
+          console.log(`🔔 Admin: ${pendingFeedback} conversaciones pendientes`)
+        }
       } else {
         console.warn('Error cargando feedback pendiente:', feedbackResult.reason?.message)
         pendingFeedback = 0
@@ -91,10 +94,7 @@ export function useAdminNotifications() {
         loading: false
       })
 
-      console.log('✅ Notificaciones actualizadas:', {
-        feedback: pendingFeedback,
-        impugnaciones: pendingImpugnaciones
-      })
+      // Debug: console.log('✅ Notificaciones admin actualizadas')
 
     } catch (error) {
       console.error('❌ Error cargando notificaciones admin:', error)

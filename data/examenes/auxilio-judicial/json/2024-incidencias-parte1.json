@@ -1,0 +1,1843 @@
+{
+  "year": "2024",
+  "convocatoria": "2024-incidencias-parte1",
+  "examFile": "2024-incidencias-parte1.pdf",
+  "answersFile": "2024-incidencias-parte1-resp.pdf",
+  "questions": [
+    {
+      "number": 1,
+      "text": "La elaboración de la Carta de derechos de los ciudadanos ante la Justicia, atiende a los principios de:",
+      "options": {
+        "a": "Transparencia, información y atención adecuada.",
+        "b": "Transparencia, responsabilidad y atención adecuada.",
+        "c": "Transparencia, coordinación y atención adecuada.",
+        "d": "Transparencia, celeridad y atención adecuada."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 2,
+      "text": "Respecto al trámite de audiencia previsto en el artículo 23 del Reglamento general de régimen disciplinario del personal al servicio de la Administración de Justicia, en el caso de faltas leves, la citación que se efectúe al funcionario para su práctica se realizará con, al menos, una antelación de:",
+      "options": {
+        "a": "Cinco días",
+        "b": "Siete días",
+        "c": "Diez días",
+        "d": "Quince días"
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 3,
+      "text": "El artículo 31.4 del Reglamento general de régimen disciplinario del personal al servicio de la Administración de Justicia recoge que, para la práctica de las pruebas del procedimiento disciplinario se dispondrá del plazo máximo de:",
+      "options": {
+        "a": "Diez días.",
+        "b": "Quince días.",
+        "c": "Un mes.",
+        "d": "Dos meses."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 4,
+      "text": "Según el artículo 43 del Reglamento de Ingreso, Provisión de Puestos de Trabajo y Promoción Profesional del Personal funcionario al Servicio de la Administración de Justicia, los sancionados con traslado forzoso no podrán tomar parte en los concursos genéricos, para destino en la misma localidad en la que se les impuso la sanción, hasta que transcurran:",
+      "options": {
+        "a": "Un año si se trata de falta grave.",
+        "b": "Dos años si se trata de falta grave.",
+        "c": "Dos años si se trata de falta muy grave.",
+        "d": "Un año si se trata de falta muy grave."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 5,
+      "text": "¿En qué artículo de la Constitución española viene regulado el derecho a la huelga?",
+      "options": {
+        "a": "28",
+        "b": "18",
+        "c": "27",
+        "d": "17"
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 6,
+      "text": "Conforme al artículo 4 de Ley Orgánica 11/1985, de 2 de agosto, de Libertad Sindical, el plazo que debe transcurrir, desde el depósito de los Estatutos, para que un Sindicato adquiera personalidad jurídica y plena capacidad de obrar es de:",
+      "options": {
+        "a": "En el decreto de admisión de la demanda se acordará lo que corresponda para posibilitar su práctica.",
+        "b": "El Letrado de la Administración de Justicia dará cuenta al juez, jueza o tribunal para que resuelva lo procedente, dentro de los tres días siguientes.",
+        "c": "El Letrado de la Administración de Justicia dará cuenta al juez, jueza o tribunal para que resuelva lo procedente, dentro de los dos días siguientes.",
+        "d": "El juez, la jueza o el tribunal decidirá lo procedente sobre su admisión, admitiéndose, en este caso, la demanda mediante auto."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 8,
+      "text": "Conforme al artículo 110.3 de la Ley 36/2011 reguladora de la Jurisdicción Social, en el caso de un despido declarado improcedente, la opción entre readmisión o indemnización deberá ejercitarse:",
+      "options": {
+        "a": "En el acto del juicio, mediante escrito.",
+        "b": "Dentro del plazo de cinco días desde la notificación de la sentencia, sin esperar a la firmeza de la misma, si fuera la de instancia.",
+        "c": "Dentro del plazo de diez días desde la firmeza de la sentencia, si fuera la de instancia.",
+        "d": "En el acto del juicio, mediante expresa manifestación."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 9,
+      "text": "Conforme al artículo 82bis de la Ley Orgánica 6/1985 del Poder Judicial, ¿quién podrá acordar que una o varias secciones de la misma Audiencia Provincial asuman el conocimiento de los recursos que se interpongan contra las resoluciones dictadas en primera instancia por los Juzgados de Violencia sobre la Mujer de la provincia?:",
+      "options": {
+        "a": "El Consejo General del Poder Judicial.",
+        "b": "La Sala de Gobierno del Tribunal Superior de Justicia.",
+        "c": "El Ministerio de Justicia o la Comunidad Autónoma con competencias transferidas.",
+        "d": "El Ministerio de Justicia"
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 10,
+      "text": "Según el artículo 9 de la Ley Orgánica 6/1985 del Poder Judicial, de las materias que no estén atribuidas a otro orden jurisdiccional conocerán:",
+      "options": {
+        "a": "Los Tribunales y Juzgados del orden civil.",
+        "b": "Los Tribunales y Juzgados del orden contencioso-administrativo.",
+        "c": "Los Tribunales y Juzgados del orden social.",
+        "d": "Todas las materias han de estar concretadas y atribuidas al orden que corresponda."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 11,
+      "text": "Conforme al artículo 32 del Reglamento general de régimen disciplinario del personal al servicio de la Administración de Justicia, el instructor pondrá de manifiesto el expediente al interesado para formular alegaciones en el plazo de:",
+      "options": {
+        "a": "Corresponderá al demandado la carga probatoria de los hechos justificativos del despido.",
+        "b": "El demandado podrá oponer hechos nuevos, acaecidos después del despido.",
+        "c": "Si se trata del despido de un delegado de personal deberá ser llamado el sindicato.",
+        "d": "Si es de un miembro del comité de empresa no será necesario el expediente contradictorio."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 13,
+      "text": "Según el artículo 79.4 de la Ley 36/2011 reguladora de la Jurisdicción Social, la solicitud de embargo preventivo:",
+      "options": {
+        "a": "Suspenderá el curso de las actuaciones",
+        "b": "Habrá de presentarse en el escrito de demanda o de medidas cautelares.",
+        "c": "Habrá de presentarse en cualquier momento antes del acto del juicio.",
+        "d": "Podrá ser presentada en cualquier momento del proceso antes de la sentencia."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 14,
+      "text": "¿Cuáles son las clases de asientos, conforme al artículo 38 de la Ley 20/2011 del Registro Civil?",
+      "options": {
+        "a": "Inscripciones, anotaciones y cancelaciones.",
+        "b": "Inscripciones, cancelaciones y negativas.",
+        "c": "Inscripciones, notas simples y negativas.",
+        "d": "Inscripciones, cancelaciones y notas simples."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 15,
+      "text": "El artículo 92 de la Ley 20/2011 del Registro Civil establece que puede declararse con valor de simple presunción:",
+      "options": {
+        "a": "Que ha ocurrido hecho determinado que pudiera afectar al estado civil.",
+        "b": "La nacionalidad, si no consta en el Registro Civil.",
+        "c": "La vecindad civil, en todo caso.",
+        "d": "El domicilio de cualquier persona con nacionalidad española."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 16,
+      "text": "Según el artículo 26 de la Ley 20/2011 del Registro Civil, supervisar y coordinar el cumplimiento de las normas registrales por el Encargado y demás personal al servicio de las Oficinas del Registro Civil, es función de:",
+      "options": {
+        "a": "La Dirección General de los Registros y del Notariado en el Registro Civil.",
+        "b": "Las Oficinas Consulares del Registro Civil.",
+        "c": "Las Oficinas Generales del Registro Civil.",
+        "d": "La Oficina Central del Registro Civil."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 17,
+      "text": "¿Quiénes no podrán desempeñar otros cargos públicos, ni pertenecer a partidos políticos o sindicatos?",
+      "options": {
+        "a": "Suplicatorio.",
+        "b": "Mandamiento.",
+        "c": "Exhorto.",
+        "d": "Todas son correctas."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 19,
+      "text": "Según el artículo 206 de la Ley de Enjuiciamiento Civil, no son resoluciones judiciales:",
+      "options": {
+        "a": "Sentencias.",
+        "b": "Autos.",
+        "c": "Decretos.",
+        "d": "Providencias."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 20,
+      "text": "Según la Ley de Enjuiciamiento Civil, una vez dictada resolución por la que se despacha ejecución, el Letrado de la Administración de Justicia, dictará Decreto. ¿Qué recurso cabe interponer contra el mismo?",
+      "options": {
+        "a": "Recurso directo de reposición con efecto suspensivo",
+        "b": "Recurso directo de revisión con efecto suspensivo",
+        "c": "Recurso directo de revisión sin efecto suspensivo",
+        "d": "No cabrá recurso contra ese Decreto, solo oposición."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 21,
+      "text": "Según el artículo 149 de la Ley de Enjuiciamiento Civil, en relación a los actos procesales de comunicación, señale la respuesta correcta:",
+      "options": {
+        "a": "Notificaciones, para personarse y actuar dentro de un plazo.",
+        "b": "Emplazamiento, cuando tengan por objeto dar noticia de una resolución.",
+        "c": "Requerimiento, para ordenar conforme a la Ley, una conducta o inactividad.",
+        "d": "Oficio, para la comunicación con autoridades judiciales."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 22,
+      "text": "De conformidad con el artículo 155 de la Ley de Enjuiciamiento Civil, cuando el demandante indique en su demanda varios domicilios del demandado, el orden de las citaciones se determinará:",
+      "options": {
+        "a": "El orden lo determinará el Juez.",
+        "b": "Se hará la citación simultáneamente en todos los domicilios aportados.",
+        "c": "El orden lo determinará el Letrado de la Administración de Justicia.",
+        "d": "Se hará según las indicaciones del demandante en su escrito de demanda."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 23,
+      "text": "De conformidad con el artículo 710 de la Ley de Enjuiciamiento Civil, si el condenado a no hacer alguna cosa quebrantare la sentencia, por el Letrado de la Administración de Justicia, a instancia del ejecutante, le requerirá para que:",
+      "options": {
+        "a": "Las actuaciones procesales.",
+        "b": "Documentos que hayan sido aportado por terceros al proceso.",
+        "c": "Expedientes Gubernativos.",
+        "d": "Expedientes relativos al Registro Civil."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 25,
+      "text": "En virtud del artículo 3 del Real Decreto 937/2003, de 18 de julio, de modernización de archivos judiciales, los programas y aplicaciones informáticas que gestionan los archivos judiciales serán aprobados por:",
+      "options": {
+        "a": "El Ministerio de la Justicia a propuesta del Consejo General del Poder Judicial.",
+        "b": "Las Comunidades Autónomas con competencias en materia de provisión de medios materiales, a propuesta del Ministerio de Justicia.",
+        "c": "El Ministerio de Justicia a propuesta del Consejo General del Poder Judicial o de las Comunidades Autónomas con competencias en materia de provisión de medios materiales y económicos para el funcionamiento de la Administración de justicia.",
+        "d": "El Consejo General del Poder Judicial a propuesta del Ministerio de Justicia o de las Comunidades con competencia en materia de provisión de medios materiales y económicos para el funcionamiento de la Administración de justicia."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 26,
+      "text": "De conformidad con el artículo 13 del Real Decreto 937/2003, de 18 de julio, de modernización de los archivos judiciales, la remisión de los documentos que se hallen en un Archivo de Gestión al correspondiente Archivo Judicial territorial se formalizará periódicamente:",
+      "options": {
+        "a": "Como mínimo con carácter anual.",
+        "b": "Como mínimo cada dos años.",
+        "c": "Como mínimo cada cuatro años.",
+        "d": "Como mínimo cada cinco años."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 27,
+      "text": "Conforme a lo establecido en el artículo 14 del Real Decreto 937/2003, de 18 de julio, de modernización de archivos judiciales, se constituirá una Junta de Expurgo:",
+      "options": {
+        "a": "En cada provincia que ejercerá sus competencias en todo el ámbito territorial de estas.",
+        "b": "En cada partido judicial que ejercerá sus competencias en todo el ámbito territorial de dicho partido.",
+        "c": "En cada Comunidad Autónoma que ejercerá sus competencias en todo el ámbito territorial de estas.",
+        "d": "En las localidades que se establezcan por Real Decreto Ley."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 28,
+      "text": "De conformidad con el artículo 466 de la Ley Orgánica del Poder Judicial, el nombramiento del secretario de Coordinador en cada provincia corresponde:",
+      "options": {
+        "a": "Secretario de Gobierno.",
+        "b": "Secretario General de la Administración de Justicia.",
+        "c": "Subsecretario del Tribunal Superior de Justicia.",
+        "d": "Subsecretario del Tribunal Supremo."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 30,
+      "text": "De conformidad con el artículo 479.1 de la Ley Orgánica del Poder Judicial, los Institutos de Medicina Legal y Ciencias Forenses son:",
+      "options": {
+        "a": "Órganos de carácter material adscritos al Ministerio de Justicia.",
+        "b": "Órganos de carácter técnico adscritos al Ministerio de Sanidad.",
+        "c": "Órganos de carácter procesal adscritos al Tribunal Superior de Justicia.",
+        "d": "Órganos de carácter técnico adscritos al Ministerio de Justicia o a las Comunidades Autónomas con competencia en la materia."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 31,
+      "text": "Conforme a lo establecido en el artículo 475 de la Ley Orgánica del Poder Judicial, son Cuerpos Generales:",
+      "options": {
+        "a": "Cuando su cometido consista exclusivamente en tareas de contenido procesal.",
+        "b": "Cuando su cometido suponga el desempeño de funciones objeto de una profesión.",
+        "c": "Cuando su cometido consista esencialmente en tareas de contenido procesal, sin perjuicio de la realización de funciones administrativas vinculadas a las anteriores.",
+        "d": "Cuando su cometido suponga el desempeño de funciones objeto de una titulación especifica."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 32,
+      "text": "De conformidad con el artículo 490. 5 de la Ley Orgánica del Poder Judicial, un funcionario de la Administración de Justicia que quiera promocionar a un cuerpo superior deberá tener una antigüedad de al menos:",
+      "options": {
+        "a": "Un año en el cuerpo al que pertenezcan.",
+        "b": "Dos años en el cuerpo al que pertenezcan.",
+        "c": "Seis meses en el cuerpo al que pertenezcan.",
+        "d": "No será necesario tener ninguna antigüedad, debiendo superar las pruebas selectivas."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 33,
+      "text": "En virtud del artículo 504 de la Ley Orgánica del Poder Judicial, los funcionarios de la Administración de Justicia tendrán derecho a una licencia por razón de matrimonio de:",
+      "options": {
+        "a": "Diez días con plenitud de derecho económicos.",
+        "b": "Diez días con derecho a las prestaciones básicas.",
+        "c": "Quince días con plenitud de derechos económicos.",
+        "d": "Quince días con derecho a las prestaciones básicas."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 34,
+      "text": "De conformidad con el artículo 429.2 de la Ley de Enjuiciamiento Civil, el juicio ordinario deberá celebrarse en el plazo de:",
+      "options": {
+        "a": "Si en la demanda no se señalase caución que ha de prestar el demandado, en caso de contestar a la demanda.",
+        "b": "Si en la demanda no se acompaña requerimiento previo al demandado.",
+        "c": "Si se interponen transcurrido el plazo de un año a contar desde el acto de perturbación o despojo.",
+        "d": "Si no se expresan las medidas que se consideren necesarias para asegurar la eficacia de la sentencia que se dicte."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 36,
+      "text": "De conformidad con el artículo 609 de la Ley de Enjuiciamiento Civil, el ejecutado podrá denunciar el embargo realizado sobre bienes inembargables:",
+      "options": {
+        "a": "Se deberá personar obligatoriamente en la ejecución, oponiéndose a la misma.",
+        "b": "Interponiendo denuncia penal.",
+        "c": "Mediante los recursos ordinarios ante el Tribunal.",
+        "d": "Interponiendo demanda civil."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 37,
+      "text": "En virtud del artículo 628.1 de la Ley de Enjuiciamiento Civil, ¿quién tendrá derecho a verse resarcido por los daños y perjuicios que sufra a causa del depósito?",
+      "options": {
+        "a": "El ejecutante.",
+        "b": "El ejecutado.",
+        "c": "El tercero depositario.",
+        "d": "Solo se resarcirán los gastos ocasionados por el depósito."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 38,
+      "text": "Conforme a lo establecido en el artículo 4 del Real Decreto 937/2013, de 18 de Julio, de modernización de archivos judiciales, se considera archivo judicial:",
+      "options": {
+        "a": "Archivo Judicial Provincial.",
+        "b": "Archivo Judicial Autonómico.",
+        "c": "Archivo Judicial Nacional.",
+        "d": "Archivo Judicial Central."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 39,
+      "text": "De conformidad con el artículo 1 del Real Decreto 937/2003, de 18 de julio, de modernización de archivos judiciales, se entiende por expurgo:",
+      "options": {
+        "a": "Conjunto orgánico de documentos judiciales.",
+        "b": "Lugar en que quedan debidamente custodiados dichos procedimientos.",
+        "c": "Procedimiento a través del cual se determina cuándo un documento pierde toda su utilidad o por el contrario ha de ser conservado.",
+        "d": "El procedimiento de archivo de los distintos procedimientos judiciales."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 40,
+      "text": "De conformidad con el artículo 407 de la Ley de Enjuiciamiento Civil, en el procedimiento ordinario, el actor reconvenido podrá contestar a la reconvención en el plazo máximo de:",
+      "options": {
+        "a": "Por el Letrado de la Administración de Justicia se procederá a citarlo nuevamente con los apercibimientos legales correspondientes.",
+        "b": "El Letrado de la Administración de Justicia transformará el procedimiento en contencioso, citando a los cónyuges a una vista.",
+        "c": "El tribunal dictará sentencia concediendo o denegando la separación.",
+        "d": "El Letrado de la Administración de Justicia acordará el inmediato archivo de las actuaciones."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 42,
+      "text": "En el procedimiento para la protección de los derechos fundamentales, de conformidad con el artículo 120 de la Ley reguladora de la Jurisdicción Contencioso-administrativa, el periodo probatorio no será en ningún caso superior a:",
+      "options": {
+        "a": "Veinte días comunes para su proposición y práctica.",
+        "b": "Diez días para su proposición y veinte días para su práctica.",
+        "c": "Treinta días comunes para su proposición y práctica.",
+        "d": "Veinte días para su proposición y treinta días para su práctica."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 43,
+      "text": "De conformidad con artículo 214 de la Ley de Enjuiciamiento Civil, los Tribunales podrán variar las resoluciones que pronuncien después de firmadas:",
+      "options": {
+        "a": "A instancia de parte, si así lo solicitan en el plazo de dos días hábiles siguientes a la publicación de la resolución.",
+        "b": "A instancia de parte, si así lo solicitan en el plazo de tres días hábiles siguientes a la publicación de la resolución.",
+        "c": "De oficio, en el plazo de dos hábiles siguientes a la publicación de la resolución.",
+        "d": "No podrán variar las resoluciones que pronuncien después de firmadas, pero si aclarar algún concepto oscuro y rectificar cualquier error material de que adolezcan."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 44,
+      "text": "De conformidad con el artículo 172 de la Ley de Enjuiciamiento Criminal, cuando a la primera diligencia en busca, el que haya de ser notificado, no fuere hallado:",
+      "options": {
+        "a": "Se entregará la cédula al pariente, mayor de catorce años, que se halle en dicha habitación.",
+        "b": "Se entregará la cédula al pariente, mayor de dieciséis años, que se halle en la habitación.",
+        "c": "Se entregará la cédula al pariente, mayor de edad, que se halle en la habitación.",
+        "d": "Si no hubiere nadie, se entregará al conserje, si lo hubiere."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 45,
+      "text": "De conformidad con el artículo 134 de la Ley de Enjuiciamiento Civil, los plazos son improrrogables, pero podrán interrumpirse los plazos y demorarse los términos por causa de fuerza mayor, ¿por quién habrá de ser apreciada la concurrencia de fuerza mayor?",
+      "options": {
+        "a": "Se perderá la posibilidad de realizar el acto de que se trate.",
+        "b": "El Letrado de la Administración de Justicia dejará constancia del transcurso del plazo por medio de Decreto.",
+        "c": "El Letrado de la Administración de Justicia otorgará un nuevo plazo a instancia de parte.",
+        "d": "El Letrado de la Administración de Justicia otorgará un nuevo plazo si la parte a quien perjudique no se opone."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 47,
+      "text": "Si no se fijara plazo para la realización de una actuación judicial, la Ley de Enjuiciamiento Civil, en su artículo 132 dispone que:",
+      "options": {
+        "a": "Ha de practicarse sin dilación.",
+        "b": "Ha de practicarse en un plazo de 10 días",
+        "c": "Ha de practicarse en un plazo de 15 días.",
+        "d": "Ha de practicarse en el plazo que dispongan las partes de común acuerdo."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 48,
+      "text": "Conforme al artículo 435 de la Ley Orgánica del Poder Judicial, la estructura básica de la Oficina Judicial estará basada en los siguientes principios:",
+      "options": {
+        "a": "Jerarquía, división de funciones y coordinación.",
+        "b": "Eficacia, eficiencia, racionalización del trabajo.",
+        "c": "Responsabilidad por la gestión, coordinación y cooperación entre Administraciones.",
+        "d": "Agilidad, eficacia y eficiencia."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 49,
+      "text": "Según lo establecido en el artículo 439 de la Ley Orgánica del Poder Judicial, se entiende por unidad administrativa:",
+      "options": {
+        "a": "Aquella unidad de la Oficina judicial que, sin estar integrada en un órgano judicial concreto, asume labores centralizadas de gestión y apoyo en actuaciones derivadas de la aplicación de las leyes procesales.",
+        "b": "Aquella unidad de la Oficina judicial que directamente asiste a jueces y magistrados en el ejercicio de las funciones que les son propias.",
+        "c": "Aquella unidad que, sin estar integrada en la Oficina Judicial, se constituye en el ámbito de la organización de la Administración de Justicia para encargarse de la llevanza del Registro Civil.",
+        "d": "Aquella que, sin estar integrada en la Oficina judicial, se constituye en el ámbito de la organización de la Administración de Justicia para la jefatura, ordenación y gestión de los recursos humanos de la Oficina judicial sobre los que se tienen competencias, así como sobre los medios informáticos, nuevas tecnologías y demás medios materiales."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 50,
+      "text": "Conforme al artículo 135 de la Ley de Enjuiciamiento Civil, si el servicio de comunicaciones telemáticas o electrónicas resultase insuficiente para la presentación de los escritos o documentos, se deberá presentar en soporte electrónico en la oficina judicial:",
+      "options": {
+        "a": "Sí, con cinco años de antigüedad.",
+        "b": "Sí, con diez años de antigüedad.",
+        "c": "Sí, con quince años de antigüedad.",
+        "d": "En ningún caso."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 52,
+      "text": "Los órganos superiores de gobierno del Cuerpo de Letrados de la Administración de Justicia son, por orden jerárquico, los siguientes:",
+      "options": {
+        "a": "Los Secretarios de Gobierno, el Secretario General de la Administración de Justicia y los Secretarios Coordinadores Provinciales.",
+        "b": "El Secretario General de la Administración de Justicia, los Secretarios de Gobierno y los Secretarios Coordinadores Provinciales.",
+        "c": "El Secretario de Gobierno del Tribunal Supremo, el Secretario General de la Administración de Justicia y los Secretarios Coordinadores Provinciales.",
+        "d": "El Secretario General de la Administración de Justicia, los Secretarios Coordinadores Provinciales y los Secretarios de Gobierno."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 53,
+      "text": "De conformidad con el artículo 504 de la Ley Orgánica del Poder Judicial, los funcionarios podrán disfrutar de una licencia por asuntos propios sin derecho a retribución alguna, cuya duración acumulada no podrá, en ningún caso, exceder de:",
+      "options": {
+        "a": "Tres meses cada dos años de servicios efectivos.",
+        "b": "Cinco meses cada dos años de servicios efectivos.",
+        "c": "Dos meses cada tres años de servicios efectivos.",
+        "d": "Dos meses cada dos años de servicios efectivos."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 54,
+      "text": "Conforme al artículo 499 de la Ley Orgánica del Poder Judicial, en una recusación de un funcionario, quién instruirá el incidente gubernativo:",
+      "options": {
+        "a": "El secretario competente para dictar la resolución que ponga término al pleito o causa en la respectiva instancia.",
+        "b": "El Secretario Coordinador Provincial.",
+        "c": "El Secretario de Gobierno.",
+        "d": "El secretario del juzgado del que jerárquicamente dependa."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 55,
+      "text": "De conformidad con lo establecido en el artículo 414 de la Ley de Enjuiciamiento Civil, ¿en qué plazo habrá de celebrarse la audiencia previa en un juicio ordinario?",
+      "options": {
+        "a": "Cinco días desde la convocatoria.",
+        "b": "Diez días desde la convocatoria.",
+        "c": "Veinte días desde la convocatoria.",
+        "d": "Treinta días desde la convocatoria."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 56,
+      "text": "Conforme al artículo 250.2 de la Ley de Enjuiciamiento Civil, se decidirá por los trámites de un juicio verbal las demandas que no se refieran a ninguna de las materias previstas en el apartado 1 del artículo anterior y cuya cuantía no exceda de:",
+      "options": {
+        "a": "Mediante diligencia de ordenación podrá plantear al peticionario aceptar o rechazar una propuesta de requerimiento de pago por el importe inferior al inicialmente solicitado que especifique.",
+        "b": "Mediante decreto podrá plantear al peticionario aceptar o rechazar una propuesta de requerimiento de pago por el importe inferior al inicialmente solicitado que especifique.",
+        "c": "Dará traslado al juez, quien, en su caso, mediante providencia podrá plantear al peticionario aceptar o rechazar una propuesta de requerimiento de pago por el importe inferior al inicialmente solicitado que especifique.",
+        "d": "Dará traslado al juez, quien, en su caso, mediante auto podrá plantear al peticionario aceptar o rechazar una propuesta de requerimiento de pago por el importe inferior al inicialmente solicitado que especifique."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 58,
+      "text": "De conformidad con lo preceptuado en el artículo 16 de la Ley de Jurisdicción Voluntaria, el Letrado de la Administración de Justicia, si entendiese que carece de competencia territorial para conocer del asunto, podrá acordar:",
+      "options": {
+        "a": "La remisión al órgano que considere competente, previa audiencia del Ministerio Fiscal y del solicitante, en aquellos expedientes que sean de su competencia.",
+        "b": "La remisión al órgano que considere competente, previa audiencia del solicitante, en aquellos expedientes que sean de su competencia.",
+        "c": "El archivo del expediente, previa audiencia del Ministerio Fiscal y del solicitante, en aquellos expedientes que sean de su competencia.",
+        "d": "El archivo del expediente, previa audiencia del solicitante, en aquellos expedientes que sean de su competencia."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 59,
+      "text": "Conforme al artículo 518 de la Ley de Enjuiciamiento Civil, ¿en qué plazo caducará la acción ejecutiva fundada en una resolución del tribunal si no se interpone la correspondiente demanda ejecutiva?",
+      "options": {
+        "a": "Diez días posteriores a aquel en que la resolución de condena sea firme.",
+        "b": "Quince días posteriores a aquel en que la resolución de condena sea firme.",
+        "c": "Veinte días posteriores a aquel en que la resolución de condena sea firme.",
+        "d": "Treinta días posteriores a aquel en que la resolución de condena sea firme."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 61,
+      "text": "Conforme al artículo 723 de la Ley de Enjuiciamiento Civil, será tribunal competente para conocer de las solicitudes sobre medidas cautelares:",
+      "options": {
+        "a": "Se admitirá la respuesta que diera el requerido.",
+        "b": "Se consignará la respuesta que diera el interesado.",
+        "c": "En ningún caso se admitirá respuesta alguna.",
+        "d": "Se admitirá respuesta si se hubiera mandado en la resolución."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 65,
+      "text": "Si el Encargado de la Oficina del Registro Civil tuviere fundadas dudas sobre la exactitud de las declaraciones, realizará antes de extender la inscripción las comprobaciones oportunas:",
+      "options": {
+        "a": "Más breve posible.",
+        "b": "De tres días.",
+        "c": "De cinco días.",
+        "d": "En el mismo día de la presentación."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 67,
+      "text": "Corresponde con carácter general al Cuerpo de Tramitación Procesal y Administrativa:",
+      "options": {
+        "a": "Que reglamentariamente se establezca.",
+        "b": "Que legalmente se establezca.",
+        "c": "De quince días.",
+        "d": "De un mes."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 69,
+      "text": "La Sala de Apelación de la Audiencia Nacional conocerá de los recursos de esta clase que establezca la ley contra las resoluciones de la Sala de lo:",
+      "options": {
+        "a": "Penal.",
+        "b": "Civil.",
+        "c": "Social.",
+        "d": "Contencioso-Administrativo."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 70,
+      "text": "El Tribunal Superior de Justicia tomará el nombre:",
+      "options": {
+        "a": "De la capital de la provincia donde tenga su sede.",
+        "b": "Del municipio donde tenga su sede.",
+        "c": "De la Comunidad Autónoma.",
+        "d": "Del partido judicial donde tenga su sede."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 71,
+      "text": "La solicitud de reconocimiento del derecho a la asistencia jurídica gratuita suspenderá el curso del proceso:",
+      "options": {
+        "a": "En ningún caso.",
+        "b": "En todo caso.",
+        "c": "Únicamente en los expedientes administrativos.",
+        "d": "No tiene efecto suspensivo, salvo que se decrete por el Letrado de la Administración de Justicia."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 72,
+      "text": "Cuando en la resolución que ponga fin al proceso fuera condenado en costas quien hubiera obtenido el reconocimiento del derecho a la asistencia jurídica gratuita o quien lo tuviera legalmente reconocido, éste quedará obligado a pagar las causadas en su defensa y las de la parte contraria:",
+      "options": {
+        "a": "Si dentro de los tres años siguientes a la terminación del proceso viniere a mejor fortuna.",
+        "b": "Si dentro de los cuatro años siguientes a la terminación del proceso viniere a mejor fortuna.",
+        "c": "Si dentro de los cinco años siguientes a la terminación del proceso viniere a mejor fortuna.",
+        "d": "En ningún caso."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 73,
+      "text": "El juez, en el momento de terminar el juicio, podrá pronunciar sentencia de viva voz, de conformidad con lo establecido en el artículo 50 de la Ley Reguladora de la Jurisdicción Social:",
+      "options": {
+        "a": "Un mes.",
+        "b": "Dos meses.",
+        "c": "Tres meses.",
+        "d": "Seis meses."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 75,
+      "text": "Según el artículo 62 de la Ley del Registro Civil, la inscripción de la defunción, una vez recibida y examinada la documentación preceptiva, se practicará:",
+      "options": {
+        "a": "Inmediatamente.",
+        "b": "En el plazo que reglamentariamente se establezca.",
+        "c": "En el plazo de veinticuatro horas.",
+        "d": "En el plazo de setenta y dos horas."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 76,
+      "text": "Si una reforma constitucional es aprobada por las Cortes Generales, ¿qué plazo máximo fija la Constitución para solicitar que esta sea sometida a referéndum?",
+      "options": {
+        "a": "5 días.",
+        "b": "10 días.",
+        "c": "15 días.",
+        "d": "1 mes."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 77,
+      "text": "Los proyectos de reforma constitucional deberán ser aprobados por:",
+      "options": {
+        "a": "Consenso de ambas Cámaras.",
+        "b": "Una mayoría de dos tercios de cada una de las Cámaras.",
+        "c": "Mayoría absoluta en el Congreso y mayoría cualificada en el Senado.",
+        "d": "Una mayoría de tres quintos de cada una de las Cámaras."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 78,
+      "text": "Sería necesario activar el procedimiento agravado de reforma constitucional contemplado en el artículo 168 de la Constitución Española si se pretendiera modificar:",
+      "options": {
+        "a": "El artículo 12 sobre la mayoría de edad de los españoles.",
+        "b": "El artículo 7 sobre los sindicatos de trabajadores y las asociaciones empresariales.",
+        "c": "El artículo 33 sobre el derecho a la propiedad privada y a la herencia.",
+        "d": "El artículo 43 sobre el derecho a la protección de la salud."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 79,
+      "text": "Según el artículo 16 de la Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres, ¿cómo se denomina el principio que debe regir los nombramientos de los cargos de responsabilidad por parte de los poderes públicos?",
+      "options": {
+        "a": "Presencia equilibrada de mujeres y hombres.",
+        "b": "Paridad entre mujeres y hombres.",
+        "c": "Justicia de género.",
+        "d": "Igualdad efectiva."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 80,
+      "text": "Según el artículo 48 de la Ley 15/2022, de 12 de julio, integral para la igualdad de trato y la no discriminación, las infracciones graves serán sancionadas con multas:",
+      "options": {
+        "a": "El artículo 2.",
+        "b": "El artículo 4.",
+        "c": "El artículo 3.",
+        "d": "El artículo 5."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 82,
+      "text": "La Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género establece la constitución del Observatorio Estatal de Violencia sobre la Mujer, siendo este:",
+      "options": {
+        "a": "Una Dirección General adscrita a la Secretaría de Estado del Ministerio de la Presidencia, Justicia y Relaciones con las Cortes.",
+        "b": "Un organismo independiente con rango de Real Patronato.",
+        "c": "Un organismo judicial establecido por directiva europea.",
+        "d": "Un órgano colegiado adscrito al Ministerio de Trabajo y Asuntos Sociales."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 83,
+      "text": "Según el artículo 60 de la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, los secretarios generales técnicos tienen la categoría de:",
+      "options": {
+        "a": "Directores Generales.",
+        "b": "Subdirectores Generales.",
+        "c": "Secretarios Generales.",
+        "d": "Subsecretarios."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 84,
+      "text": "Tal y como indica el artículo 46 de la Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local, con carácter general, el Pleno de las Corporaciones Locales se constituye válidamente con la asistencia de:",
+      "options": {
+        "a": "La mitad del mínimo legal de miembros del mismo, que nunca podrá ser inferior a cinco.",
+        "b": "Un tercio del mínimo legal de miembros del mismo, que nunca podrá ser inferior a tres.",
+        "c": "Dos tercios del mínimo legal de miembros del mismo, que nunca podrá ser inferior a tres.",
+        "d": "Tres quintos del mínimo legal de miembros del mismo, que nunca podrá ser inferior a cinco."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 85,
+      "text": "La Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local, establece que, en los Plenos de los Ayuntamientos, es requisito imprescindible para su válida constitución la asistencia de:",
+      "options": {
+        "a": "El presidente o sustituto.",
+        "b": "El secretario o sustituto.",
+        "c": "El presidente y secretario o sus sustitutos.",
+        "d": "El alcalde y el juez de paz."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 86,
+      "text": "Indique la fecha cuándo se proclamó la Carta de Derechos Fundamentales de la Unión Europea:",
+      "options": {
+        "a": "El Parlamento y el Consejo Europeo, por un período mínimo de cuatro años.",
+        "b": "El Parlamento y el Consejo, por un período mínimo de cuatro años.",
+        "c": "El Consejo Europeo y el Parlamento, por un período mínimo de cinco años.",
+        "d": "El Consejo y el Parlamento, por un período mínimo de cinco años."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 88,
+      "text": "Indique el artículo del Tratado de Funcionamiento de la Unión Europea donde se establece que, en todas sus acciones, la Unión se fijará el objetivo de eliminar las desigualdades entre el hombre y la mujer y promover su igualdad:",
+      "options": {
+        "a": "Artículo 7.",
+        "b": "Artículo 8.",
+        "c": "Artículo 9.",
+        "d": "Artículo 10."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 89,
+      "text": "El artículo 19 del Tratado de la Unión Europea dice que:",
+      "options": {
+        "a": "El Tribunal de Justicia de la Unión Europea comprenderá el Tribunal de Justicia, el Tribunal General y los tribunales especializados.",
+        "b": "El Consejo Europeo nombrará por mayoría cualificada, con la aprobación del Presidente de la Comisión, al Alto Representante de la Unión para Asuntos Exteriores y Política de Seguridad.",
+        "c": "La Comisión promoverá el interés general de la Unión y tomará las iniciativas adecuadas con este fin.",
+        "d": "El Consejo ejercerá conjuntamente con el Parlamento Europeo la función legislativa y la función presupuestaria."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 90,
+      "text": "De conformidad con el artículo 151 de la Ley de Enjuiciamiento Civil, cuando la entrega de un documento o despacho que deba acompañarse al acto de comunicación sea posterior a la recepción del acto de comunicación, este se tendrá por realizado:",
+      "options": {
+        "a": "En la fecha en que se realice el acto de comunicación.",
+        "b": "Cuando conste efectuada la entrega del documento.",
+        "c": "Se tendrá por no realizado el acto de comunicación.",
+        "d": "En el plazo de tres días a partir del siguiente a la entrega del documento."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 91,
+      "text": "Conforme al artículo 133 de la Ley de Enjuiciamiento Civil, los plazos comenzarán a correr desde:",
+      "options": {
+        "a": "Sin dilación.",
+        "b": "Las actuaciones sólo podrán realizarse en cualquier lugar del territorio de su circunscripción, en ningún caso fuera del partido judicial.",
+        "c": "Cuando proceda, mediante videoconferencia siempre que sea posible y, en otro caso,",
+        "d": "En todo caso, lo mas pronto posible."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 93,
+      "text": "De conformidad con el artículo 161 de la Ley de Enjuiciamiento Civil, cuando al ir a practicar una notificación en un proceso civil, y el destinatario no sea hallado en su domicilio, y este fuere el lugar en que el tenga su domicilio según el padrón municipal, podrá efectuarse la entrega:",
+      "options": {
+        "a": "A cualquier familiar.",
+        "b": "A cualquier vecino.",
+        "c": "Al conserje de la finca.",
+        "d": "Al vecino más próximo."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 94,
+      "text": "De conformidad con el artículo 797 de la Ley de Enjuiciamiento Criminal, el Juzgado de Guardia tras recibir el atestado judicial incoará, si procede, diligencias urgentes y practicará las siguientes diligencias, señale la respuesta incorrecta:",
+      "options": {
+        "a": "Tomará declaración a los testigos citados por la policía judicial que hayan comparecido.",
+        "b": "Practicará el reconocimiento en rueda del investigado, de resultar pertinente y haber comparecido el testigo.",
+        "c": "Ordenará la citación, siempre por escrito, de las personas que considere necesario que comparezcan ante él.",
+        "d": "Ordenará, si lo considera necesario, el careo entre testigos, entre testigos o investigados o investigados entre sí."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 95,
+      "text": "Conforme al artículo 802 de la Ley de Enjuiciamiento Criminal, en el caso de que el juicio oral no pudiera celebrarse en el día señalado, o no pueda continuarse en un solo acto, se señalará fecha para su celebración el día más inmediato posible y en todo caso:",
+      "options": {
+        "a": "Dentro de los veinte días siguientes.",
+        "b": "Dentro de los quince días siguientes.",
+        "c": "Dentro del mes siguiente.",
+        "d": "En un plazo máximo de dos meses."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 96,
+      "text": "De conformidad con el artículo 803 de la Ley de Enjuiciamiento Criminal, contra la sentencia dictada en el Juzgado de lo Penal en Juicio Rápido, podrá interponerse recurso de apelación, cuál de las respuestas siguientes es una de sus especialidades:",
+      "options": {
+        "a": "Para el conocimiento de delitos castigados con pena privativa de libertad no superior a cinco años, o bien cualesquiera otras penas de distinta naturaleza cualquiera que sea su cuantía o duración.",
+        "b": "Para el conocimiento de delitos castigados con pena privativa de libertad no superior a nueve años o bien cualesquiera otras penas de distinta naturaleza cualquiera que sea su cuantía o cuya duración no exceda de cinco años.",
+        "c": "Para el conocimiento de delitos castigados con pena privativa de libertad no superior a seis años, o bien con cualesquiera otras penas de distinta naturaleza cualquiera que sea su cuantía o duración.",
+        "d": "Para el conocimiento de los delitos castigados con pena privativa de libertad no superior a nueve años o bien con cualesquiera otras penas de distinta naturaleza cualquiera que sea su cuantía o duración."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 98,
+      "text": "Conforme al artículo 778 de la Ley de Enjuiciamiento Criminal, en el ámbito de las Diligencias Previas del Procedimiento Abreviado, el informe pericial:",
+      "options": {
+        "a": "Siempre será prestado por un perito.",
+        "b": "Podrá ser prestado por un solo perito cuando el Juez lo considere suficiente.",
+        "c": "Podrá ser prestado por un solo perito cuando el Ministerio Fiscal lo considere suficiente.",
+        "d": "Siempre será prestado por dos peritos."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 99,
+      "text": "De acuerdo con el contenido del artículo 2.1 de la Ley del Tribunal del Jurado si, por razón de aforamiento del acusado, el juicio del Jurado debe celebrarse en el ámbito del Tribunal Supremo, el Magistrado-Presidente del Tribunal del Jurado será:",
+      "options": {
+        "a": "Un Magistrado de la Sala de lo Penal del Tribunal Supremo.",
+        "b": "El Magistrado de mayor antigüedad en la Sala de lo Penal del Tribunal Supremo.",
+        "c": "El Magistrado más moderno en la Sala de lo Penal del Tribunal Supremo.",
+        "d": "El Magistrado de mayor edad en la Sala de lo Penal del Tribunal Supremo."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 100,
+      "text": "De conformidad con lo establecido en el artículo 244 de la Ley Orgánica del Poder Judicial, las resoluciones de los Tribunales cuando no estén constituidos en Salas de Justicia, las de las Salas de Gobierno y las de los Jueces y Presidentes, cuando tengan carácter gubernativo, se llamarán:",
+      "options": {
+        "a": "Expedientes gubernativos.",
+        "b": "Autos.",
+        "c": "Providencias.",
+        "d": "Acuerdos. RESERVA"
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 101,
+      "text": "De conformidad con lo establecido en el artículo 253 de la Ley Orgánica del Poder Judicial, los autos y sentencias se deliberarán y votarán:",
+      "options": {
+        "a": "En el plazo de los tres días siguientes a la celebración de la vista.",
+        "b": "Inmediatamente después de las vistas y cuando así no pudiera hacerse, señalará el Presidente el día en que deban votarse que no podrá exceder de quince días.",
+        "c": "Inmediatamente después de las vistas y cuando así no pudiera hacerse, señalará el Presidente el día en que deban votarse que no podrá exceder de veinte días.",
+        "d": "Inmediatamente después de las vistas, y cuando así no pudiera hacerse, señalará el Presidente el día en que deba votarse, dentro del plazo señalado para dictar la resolución."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 102,
+      "text": "De conformidad con el artículo 60 de la Ley reguladora de la Jurisdicción Contencioso- administrativa, en el procedimiento ordinario las partes pueden pedir el recibimiento del proceso a prueba:",
+      "options": {
+        "a": "En cualquier momento.",
+        "b": "En el escrito de demanda y contestación, mediante otrosí.",
+        "c": "La prueba solo la puede acordar el órgano judicial de oficio.",
+        "d": "Después de presentada la demanda y contestación mediante escrito."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 103,
+      "text": "Conforme al artículo 115 de la Ley reguladora de la Jurisdicción Contencioso- administrativa, en el procedimiento para la protección de los derechos fundamentales de la persona contra una inactividad administrativa, el plazo de interposición del recurso es:",
+      "options": {
+        "a": "Diez días.",
+        "b": "Quince días.",
+        "c": "Veinte días.",
+        "d": "Treinta días."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 104,
+      "text": "De conformidad con artículo 10 de la Ley reguladora de la Jurisdicción Contencioso- administrativa, ¿qué órgano jurisdiccional conoce de los procedimientos contencioso- administrativos contra la prohibición o propuesta de modificación de reuniones previstas en la Ley Orgánica 9/1983, de 15 de julio?",
+      "options": {
+        "a": "La Sala de lo Contencioso-administrativo del Tribunal Supremo.",
+        "b": "La Sala de lo Contencioso-administrativo de la Audiencia Nacional.",
+        "c": "Los Juzgados de lo Contencioso-administrativo.",
+        "d": "La Sala de lo Contencioso-administrativo del Tribunal Superior de Justicia."
+      },
+      "correctAnswer": "D"
+    }
+  ],
+  "newQuestions": [
+    {
+      "number": 1,
+      "text": "La elaboración de la Carta de derechos de los ciudadanos ante la Justicia, atiende a los principios de:",
+      "options": {
+        "a": "Transparencia, información y atención adecuada.",
+        "b": "Transparencia, responsabilidad y atención adecuada.",
+        "c": "Transparencia, coordinación y atención adecuada.",
+        "d": "Transparencia, celeridad y atención adecuada."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 2,
+      "text": "Respecto al trámite de audiencia previsto en el artículo 23 del Reglamento general de régimen disciplinario del personal al servicio de la Administración de Justicia, en el caso de faltas leves, la citación que se efectúe al funcionario para su práctica se realizará con, al menos, una antelación de:",
+      "options": {
+        "a": "Cinco días",
+        "b": "Siete días",
+        "c": "Diez días",
+        "d": "Quince días"
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 3,
+      "text": "El artículo 31.4 del Reglamento general de régimen disciplinario del personal al servicio de la Administración de Justicia recoge que, para la práctica de las pruebas del procedimiento disciplinario se dispondrá del plazo máximo de:",
+      "options": {
+        "a": "Diez días.",
+        "b": "Quince días.",
+        "c": "Un mes.",
+        "d": "Dos meses."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 4,
+      "text": "Según el artículo 43 del Reglamento de Ingreso, Provisión de Puestos de Trabajo y Promoción Profesional del Personal funcionario al Servicio de la Administración de Justicia, los sancionados con traslado forzoso no podrán tomar parte en los concursos genéricos, para destino en la misma localidad en la que se les impuso la sanción, hasta que transcurran:",
+      "options": {
+        "a": "Un año si se trata de falta grave.",
+        "b": "Dos años si se trata de falta grave.",
+        "c": "Dos años si se trata de falta muy grave.",
+        "d": "Un año si se trata de falta muy grave."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 5,
+      "text": "¿En qué artículo de la Constitución española viene regulado el derecho a la huelga?",
+      "options": {
+        "a": "28",
+        "b": "18",
+        "c": "27",
+        "d": "17"
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 6,
+      "text": "Conforme al artículo 4 de Ley Orgánica 11/1985, de 2 de agosto, de Libertad Sindical, el plazo que debe transcurrir, desde el depósito de los Estatutos, para que un Sindicato adquiera personalidad jurídica y plena capacidad de obrar es de:",
+      "options": {
+        "a": "En el decreto de admisión de la demanda se acordará lo que corresponda para posibilitar su práctica.",
+        "b": "El Letrado de la Administración de Justicia dará cuenta al juez, jueza o tribunal para que resuelva lo procedente, dentro de los tres días siguientes.",
+        "c": "El Letrado de la Administración de Justicia dará cuenta al juez, jueza o tribunal para que resuelva lo procedente, dentro de los dos días siguientes.",
+        "d": "El juez, la jueza o el tribunal decidirá lo procedente sobre su admisión, admitiéndose, en este caso, la demanda mediante auto."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 8,
+      "text": "Conforme al artículo 110.3 de la Ley 36/2011 reguladora de la Jurisdicción Social, en el caso de un despido declarado improcedente, la opción entre readmisión o indemnización deberá ejercitarse:",
+      "options": {
+        "a": "En el acto del juicio, mediante escrito.",
+        "b": "Dentro del plazo de cinco días desde la notificación de la sentencia, sin esperar a la firmeza de la misma, si fuera la de instancia.",
+        "c": "Dentro del plazo de diez días desde la firmeza de la sentencia, si fuera la de instancia.",
+        "d": "En el acto del juicio, mediante expresa manifestación."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 9,
+      "text": "Conforme al artículo 82bis de la Ley Orgánica 6/1985 del Poder Judicial, ¿quién podrá acordar que una o varias secciones de la misma Audiencia Provincial asuman el conocimiento de los recursos que se interpongan contra las resoluciones dictadas en primera instancia por los Juzgados de Violencia sobre la Mujer de la provincia?:",
+      "options": {
+        "a": "El Consejo General del Poder Judicial.",
+        "b": "La Sala de Gobierno del Tribunal Superior de Justicia.",
+        "c": "El Ministerio de Justicia o la Comunidad Autónoma con competencias transferidas.",
+        "d": "El Ministerio de Justicia"
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 10,
+      "text": "Según el artículo 9 de la Ley Orgánica 6/1985 del Poder Judicial, de las materias que no estén atribuidas a otro orden jurisdiccional conocerán:",
+      "options": {
+        "a": "Los Tribunales y Juzgados del orden civil.",
+        "b": "Los Tribunales y Juzgados del orden contencioso-administrativo.",
+        "c": "Los Tribunales y Juzgados del orden social.",
+        "d": "Todas las materias han de estar concretadas y atribuidas al orden que corresponda."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 11,
+      "text": "Conforme al artículo 32 del Reglamento general de régimen disciplinario del personal al servicio de la Administración de Justicia, el instructor pondrá de manifiesto el expediente al interesado para formular alegaciones en el plazo de:",
+      "options": {
+        "a": "Corresponderá al demandado la carga probatoria de los hechos justificativos del despido.",
+        "b": "El demandado podrá oponer hechos nuevos, acaecidos después del despido.",
+        "c": "Si se trata del despido de un delegado de personal deberá ser llamado el sindicato.",
+        "d": "Si es de un miembro del comité de empresa no será necesario el expediente contradictorio."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 13,
+      "text": "Según el artículo 79.4 de la Ley 36/2011 reguladora de la Jurisdicción Social, la solicitud de embargo preventivo:",
+      "options": {
+        "a": "Suspenderá el curso de las actuaciones",
+        "b": "Habrá de presentarse en el escrito de demanda o de medidas cautelares.",
+        "c": "Habrá de presentarse en cualquier momento antes del acto del juicio.",
+        "d": "Podrá ser presentada en cualquier momento del proceso antes de la sentencia."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 14,
+      "text": "¿Cuáles son las clases de asientos, conforme al artículo 38 de la Ley 20/2011 del Registro Civil?",
+      "options": {
+        "a": "Inscripciones, anotaciones y cancelaciones.",
+        "b": "Inscripciones, cancelaciones y negativas.",
+        "c": "Inscripciones, notas simples y negativas.",
+        "d": "Inscripciones, cancelaciones y notas simples."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 15,
+      "text": "El artículo 92 de la Ley 20/2011 del Registro Civil establece que puede declararse con valor de simple presunción:",
+      "options": {
+        "a": "Que ha ocurrido hecho determinado que pudiera afectar al estado civil.",
+        "b": "La nacionalidad, si no consta en el Registro Civil.",
+        "c": "La vecindad civil, en todo caso.",
+        "d": "El domicilio de cualquier persona con nacionalidad española."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 16,
+      "text": "Según el artículo 26 de la Ley 20/2011 del Registro Civil, supervisar y coordinar el cumplimiento de las normas registrales por el Encargado y demás personal al servicio de las Oficinas del Registro Civil, es función de:",
+      "options": {
+        "a": "La Dirección General de los Registros y del Notariado en el Registro Civil.",
+        "b": "Las Oficinas Consulares del Registro Civil.",
+        "c": "Las Oficinas Generales del Registro Civil.",
+        "d": "La Oficina Central del Registro Civil."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 17,
+      "text": "¿Quiénes no podrán desempeñar otros cargos públicos, ni pertenecer a partidos políticos o sindicatos?",
+      "options": {
+        "a": "Suplicatorio.",
+        "b": "Mandamiento.",
+        "c": "Exhorto.",
+        "d": "Todas son correctas."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 19,
+      "text": "Según el artículo 206 de la Ley de Enjuiciamiento Civil, no son resoluciones judiciales:",
+      "options": {
+        "a": "Sentencias.",
+        "b": "Autos.",
+        "c": "Decretos.",
+        "d": "Providencias."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 20,
+      "text": "Según la Ley de Enjuiciamiento Civil, una vez dictada resolución por la que se despacha ejecución, el Letrado de la Administración de Justicia, dictará Decreto. ¿Qué recurso cabe interponer contra el mismo?",
+      "options": {
+        "a": "Recurso directo de reposición con efecto suspensivo",
+        "b": "Recurso directo de revisión con efecto suspensivo",
+        "c": "Recurso directo de revisión sin efecto suspensivo",
+        "d": "No cabrá recurso contra ese Decreto, solo oposición."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 21,
+      "text": "Según el artículo 149 de la Ley de Enjuiciamiento Civil, en relación a los actos procesales de comunicación, señale la respuesta correcta:",
+      "options": {
+        "a": "Notificaciones, para personarse y actuar dentro de un plazo.",
+        "b": "Emplazamiento, cuando tengan por objeto dar noticia de una resolución.",
+        "c": "Requerimiento, para ordenar conforme a la Ley, una conducta o inactividad.",
+        "d": "Oficio, para la comunicación con autoridades judiciales."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 22,
+      "text": "De conformidad con el artículo 155 de la Ley de Enjuiciamiento Civil, cuando el demandante indique en su demanda varios domicilios del demandado, el orden de las citaciones se determinará:",
+      "options": {
+        "a": "El orden lo determinará el Juez.",
+        "b": "Se hará la citación simultáneamente en todos los domicilios aportados.",
+        "c": "El orden lo determinará el Letrado de la Administración de Justicia.",
+        "d": "Se hará según las indicaciones del demandante en su escrito de demanda."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 23,
+      "text": "De conformidad con el artículo 710 de la Ley de Enjuiciamiento Civil, si el condenado a no hacer alguna cosa quebrantare la sentencia, por el Letrado de la Administración de Justicia, a instancia del ejecutante, le requerirá para que:",
+      "options": {
+        "a": "Las actuaciones procesales.",
+        "b": "Documentos que hayan sido aportado por terceros al proceso.",
+        "c": "Expedientes Gubernativos.",
+        "d": "Expedientes relativos al Registro Civil."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 25,
+      "text": "En virtud del artículo 3 del Real Decreto 937/2003, de 18 de julio, de modernización de archivos judiciales, los programas y aplicaciones informáticas que gestionan los archivos judiciales serán aprobados por:",
+      "options": {
+        "a": "El Ministerio de la Justicia a propuesta del Consejo General del Poder Judicial.",
+        "b": "Las Comunidades Autónomas con competencias en materia de provisión de medios materiales, a propuesta del Ministerio de Justicia.",
+        "c": "El Ministerio de Justicia a propuesta del Consejo General del Poder Judicial o de las Comunidades Autónomas con competencias en materia de provisión de medios materiales y económicos para el funcionamiento de la Administración de justicia.",
+        "d": "El Consejo General del Poder Judicial a propuesta del Ministerio de Justicia o de las Comunidades con competencia en materia de provisión de medios materiales y económicos para el funcionamiento de la Administración de justicia."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 26,
+      "text": "De conformidad con el artículo 13 del Real Decreto 937/2003, de 18 de julio, de modernización de los archivos judiciales, la remisión de los documentos que se hallen en un Archivo de Gestión al correspondiente Archivo Judicial territorial se formalizará periódicamente:",
+      "options": {
+        "a": "Como mínimo con carácter anual.",
+        "b": "Como mínimo cada dos años.",
+        "c": "Como mínimo cada cuatro años.",
+        "d": "Como mínimo cada cinco años."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 27,
+      "text": "Conforme a lo establecido en el artículo 14 del Real Decreto 937/2003, de 18 de julio, de modernización de archivos judiciales, se constituirá una Junta de Expurgo:",
+      "options": {
+        "a": "En cada provincia que ejercerá sus competencias en todo el ámbito territorial de estas.",
+        "b": "En cada partido judicial que ejercerá sus competencias en todo el ámbito territorial de dicho partido.",
+        "c": "En cada Comunidad Autónoma que ejercerá sus competencias en todo el ámbito territorial de estas.",
+        "d": "En las localidades que se establezcan por Real Decreto Ley."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 28,
+      "text": "De conformidad con el artículo 466 de la Ley Orgánica del Poder Judicial, el nombramiento del secretario de Coordinador en cada provincia corresponde:",
+      "options": {
+        "a": "Secretario de Gobierno.",
+        "b": "Secretario General de la Administración de Justicia.",
+        "c": "Subsecretario del Tribunal Superior de Justicia.",
+        "d": "Subsecretario del Tribunal Supremo."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 30,
+      "text": "De conformidad con el artículo 479.1 de la Ley Orgánica del Poder Judicial, los Institutos de Medicina Legal y Ciencias Forenses son:",
+      "options": {
+        "a": "Órganos de carácter material adscritos al Ministerio de Justicia.",
+        "b": "Órganos de carácter técnico adscritos al Ministerio de Sanidad.",
+        "c": "Órganos de carácter procesal adscritos al Tribunal Superior de Justicia.",
+        "d": "Órganos de carácter técnico adscritos al Ministerio de Justicia o a las Comunidades Autónomas con competencia en la materia."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 31,
+      "text": "Conforme a lo establecido en el artículo 475 de la Ley Orgánica del Poder Judicial, son Cuerpos Generales:",
+      "options": {
+        "a": "Cuando su cometido consista exclusivamente en tareas de contenido procesal.",
+        "b": "Cuando su cometido suponga el desempeño de funciones objeto de una profesión.",
+        "c": "Cuando su cometido consista esencialmente en tareas de contenido procesal, sin perjuicio de la realización de funciones administrativas vinculadas a las anteriores.",
+        "d": "Cuando su cometido suponga el desempeño de funciones objeto de una titulación especifica."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 32,
+      "text": "De conformidad con el artículo 490. 5 de la Ley Orgánica del Poder Judicial, un funcionario de la Administración de Justicia que quiera promocionar a un cuerpo superior deberá tener una antigüedad de al menos:",
+      "options": {
+        "a": "Un año en el cuerpo al que pertenezcan.",
+        "b": "Dos años en el cuerpo al que pertenezcan.",
+        "c": "Seis meses en el cuerpo al que pertenezcan.",
+        "d": "No será necesario tener ninguna antigüedad, debiendo superar las pruebas selectivas."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 33,
+      "text": "En virtud del artículo 504 de la Ley Orgánica del Poder Judicial, los funcionarios de la Administración de Justicia tendrán derecho a una licencia por razón de matrimonio de:",
+      "options": {
+        "a": "Diez días con plenitud de derecho económicos.",
+        "b": "Diez días con derecho a las prestaciones básicas.",
+        "c": "Quince días con plenitud de derechos económicos.",
+        "d": "Quince días con derecho a las prestaciones básicas."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 34,
+      "text": "De conformidad con el artículo 429.2 de la Ley de Enjuiciamiento Civil, el juicio ordinario deberá celebrarse en el plazo de:",
+      "options": {
+        "a": "Si en la demanda no se señalase caución que ha de prestar el demandado, en caso de contestar a la demanda.",
+        "b": "Si en la demanda no se acompaña requerimiento previo al demandado.",
+        "c": "Si se interponen transcurrido el plazo de un año a contar desde el acto de perturbación o despojo.",
+        "d": "Si no se expresan las medidas que se consideren necesarias para asegurar la eficacia de la sentencia que se dicte."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 36,
+      "text": "De conformidad con el artículo 609 de la Ley de Enjuiciamiento Civil, el ejecutado podrá denunciar el embargo realizado sobre bienes inembargables:",
+      "options": {
+        "a": "Se deberá personar obligatoriamente en la ejecución, oponiéndose a la misma.",
+        "b": "Interponiendo denuncia penal.",
+        "c": "Mediante los recursos ordinarios ante el Tribunal.",
+        "d": "Interponiendo demanda civil."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 37,
+      "text": "En virtud del artículo 628.1 de la Ley de Enjuiciamiento Civil, ¿quién tendrá derecho a verse resarcido por los daños y perjuicios que sufra a causa del depósito?",
+      "options": {
+        "a": "El ejecutante.",
+        "b": "El ejecutado.",
+        "c": "El tercero depositario.",
+        "d": "Solo se resarcirán los gastos ocasionados por el depósito."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 38,
+      "text": "Conforme a lo establecido en el artículo 4 del Real Decreto 937/2013, de 18 de Julio, de modernización de archivos judiciales, se considera archivo judicial:",
+      "options": {
+        "a": "Archivo Judicial Provincial.",
+        "b": "Archivo Judicial Autonómico.",
+        "c": "Archivo Judicial Nacional.",
+        "d": "Archivo Judicial Central."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 39,
+      "text": "De conformidad con el artículo 1 del Real Decreto 937/2003, de 18 de julio, de modernización de archivos judiciales, se entiende por expurgo:",
+      "options": {
+        "a": "Conjunto orgánico de documentos judiciales.",
+        "b": "Lugar en que quedan debidamente custodiados dichos procedimientos.",
+        "c": "Procedimiento a través del cual se determina cuándo un documento pierde toda su utilidad o por el contrario ha de ser conservado.",
+        "d": "El procedimiento de archivo de los distintos procedimientos judiciales."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 40,
+      "text": "De conformidad con el artículo 407 de la Ley de Enjuiciamiento Civil, en el procedimiento ordinario, el actor reconvenido podrá contestar a la reconvención en el plazo máximo de:",
+      "options": {
+        "a": "Por el Letrado de la Administración de Justicia se procederá a citarlo nuevamente con los apercibimientos legales correspondientes.",
+        "b": "El Letrado de la Administración de Justicia transformará el procedimiento en contencioso, citando a los cónyuges a una vista.",
+        "c": "El tribunal dictará sentencia concediendo o denegando la separación.",
+        "d": "El Letrado de la Administración de Justicia acordará el inmediato archivo de las actuaciones."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 42,
+      "text": "En el procedimiento para la protección de los derechos fundamentales, de conformidad con el artículo 120 de la Ley reguladora de la Jurisdicción Contencioso-administrativa, el periodo probatorio no será en ningún caso superior a:",
+      "options": {
+        "a": "Veinte días comunes para su proposición y práctica.",
+        "b": "Diez días para su proposición y veinte días para su práctica.",
+        "c": "Treinta días comunes para su proposición y práctica.",
+        "d": "Veinte días para su proposición y treinta días para su práctica."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 43,
+      "text": "De conformidad con artículo 214 de la Ley de Enjuiciamiento Civil, los Tribunales podrán variar las resoluciones que pronuncien después de firmadas:",
+      "options": {
+        "a": "A instancia de parte, si así lo solicitan en el plazo de dos días hábiles siguientes a la publicación de la resolución.",
+        "b": "A instancia de parte, si así lo solicitan en el plazo de tres días hábiles siguientes a la publicación de la resolución.",
+        "c": "De oficio, en el plazo de dos hábiles siguientes a la publicación de la resolución.",
+        "d": "No podrán variar las resoluciones que pronuncien después de firmadas, pero si aclarar algún concepto oscuro y rectificar cualquier error material de que adolezcan."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 44,
+      "text": "De conformidad con el artículo 172 de la Ley de Enjuiciamiento Criminal, cuando a la primera diligencia en busca, el que haya de ser notificado, no fuere hallado:",
+      "options": {
+        "a": "Se entregará la cédula al pariente, mayor de catorce años, que se halle en dicha habitación.",
+        "b": "Se entregará la cédula al pariente, mayor de dieciséis años, que se halle en la habitación.",
+        "c": "Se entregará la cédula al pariente, mayor de edad, que se halle en la habitación.",
+        "d": "Si no hubiere nadie, se entregará al conserje, si lo hubiere."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 45,
+      "text": "De conformidad con el artículo 134 de la Ley de Enjuiciamiento Civil, los plazos son improrrogables, pero podrán interrumpirse los plazos y demorarse los términos por causa de fuerza mayor, ¿por quién habrá de ser apreciada la concurrencia de fuerza mayor?",
+      "options": {
+        "a": "Se perderá la posibilidad de realizar el acto de que se trate.",
+        "b": "El Letrado de la Administración de Justicia dejará constancia del transcurso del plazo por medio de Decreto.",
+        "c": "El Letrado de la Administración de Justicia otorgará un nuevo plazo a instancia de parte.",
+        "d": "El Letrado de la Administración de Justicia otorgará un nuevo plazo si la parte a quien perjudique no se opone."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 47,
+      "text": "Si no se fijara plazo para la realización de una actuación judicial, la Ley de Enjuiciamiento Civil, en su artículo 132 dispone que:",
+      "options": {
+        "a": "Ha de practicarse sin dilación.",
+        "b": "Ha de practicarse en un plazo de 10 días",
+        "c": "Ha de practicarse en un plazo de 15 días.",
+        "d": "Ha de practicarse en el plazo que dispongan las partes de común acuerdo."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 48,
+      "text": "Conforme al artículo 435 de la Ley Orgánica del Poder Judicial, la estructura básica de la Oficina Judicial estará basada en los siguientes principios:",
+      "options": {
+        "a": "Jerarquía, división de funciones y coordinación.",
+        "b": "Eficacia, eficiencia, racionalización del trabajo.",
+        "c": "Responsabilidad por la gestión, coordinación y cooperación entre Administraciones.",
+        "d": "Agilidad, eficacia y eficiencia."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 49,
+      "text": "Según lo establecido en el artículo 439 de la Ley Orgánica del Poder Judicial, se entiende por unidad administrativa:",
+      "options": {
+        "a": "Aquella unidad de la Oficina judicial que, sin estar integrada en un órgano judicial concreto, asume labores centralizadas de gestión y apoyo en actuaciones derivadas de la aplicación de las leyes procesales.",
+        "b": "Aquella unidad de la Oficina judicial que directamente asiste a jueces y magistrados en el ejercicio de las funciones que les son propias.",
+        "c": "Aquella unidad que, sin estar integrada en la Oficina Judicial, se constituye en el ámbito de la organización de la Administración de Justicia para encargarse de la llevanza del Registro Civil.",
+        "d": "Aquella que, sin estar integrada en la Oficina judicial, se constituye en el ámbito de la organización de la Administración de Justicia para la jefatura, ordenación y gestión de los recursos humanos de la Oficina judicial sobre los que se tienen competencias, así como sobre los medios informáticos, nuevas tecnologías y demás medios materiales."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 50,
+      "text": "Conforme al artículo 135 de la Ley de Enjuiciamiento Civil, si el servicio de comunicaciones telemáticas o electrónicas resultase insuficiente para la presentación de los escritos o documentos, se deberá presentar en soporte electrónico en la oficina judicial:",
+      "options": {
+        "a": "Sí, con cinco años de antigüedad.",
+        "b": "Sí, con diez años de antigüedad.",
+        "c": "Sí, con quince años de antigüedad.",
+        "d": "En ningún caso."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 52,
+      "text": "Los órganos superiores de gobierno del Cuerpo de Letrados de la Administración de Justicia son, por orden jerárquico, los siguientes:",
+      "options": {
+        "a": "Los Secretarios de Gobierno, el Secretario General de la Administración de Justicia y los Secretarios Coordinadores Provinciales.",
+        "b": "El Secretario General de la Administración de Justicia, los Secretarios de Gobierno y los Secretarios Coordinadores Provinciales.",
+        "c": "El Secretario de Gobierno del Tribunal Supremo, el Secretario General de la Administración de Justicia y los Secretarios Coordinadores Provinciales.",
+        "d": "El Secretario General de la Administración de Justicia, los Secretarios Coordinadores Provinciales y los Secretarios de Gobierno."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 53,
+      "text": "De conformidad con el artículo 504 de la Ley Orgánica del Poder Judicial, los funcionarios podrán disfrutar de una licencia por asuntos propios sin derecho a retribución alguna, cuya duración acumulada no podrá, en ningún caso, exceder de:",
+      "options": {
+        "a": "Tres meses cada dos años de servicios efectivos.",
+        "b": "Cinco meses cada dos años de servicios efectivos.",
+        "c": "Dos meses cada tres años de servicios efectivos.",
+        "d": "Dos meses cada dos años de servicios efectivos."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 54,
+      "text": "Conforme al artículo 499 de la Ley Orgánica del Poder Judicial, en una recusación de un funcionario, quién instruirá el incidente gubernativo:",
+      "options": {
+        "a": "El secretario competente para dictar la resolución que ponga término al pleito o causa en la respectiva instancia.",
+        "b": "El Secretario Coordinador Provincial.",
+        "c": "El Secretario de Gobierno.",
+        "d": "El secretario del juzgado del que jerárquicamente dependa."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 55,
+      "text": "De conformidad con lo establecido en el artículo 414 de la Ley de Enjuiciamiento Civil, ¿en qué plazo habrá de celebrarse la audiencia previa en un juicio ordinario?",
+      "options": {
+        "a": "Cinco días desde la convocatoria.",
+        "b": "Diez días desde la convocatoria.",
+        "c": "Veinte días desde la convocatoria.",
+        "d": "Treinta días desde la convocatoria."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 56,
+      "text": "Conforme al artículo 250.2 de la Ley de Enjuiciamiento Civil, se decidirá por los trámites de un juicio verbal las demandas que no se refieran a ninguna de las materias previstas en el apartado 1 del artículo anterior y cuya cuantía no exceda de:",
+      "options": {
+        "a": "Mediante diligencia de ordenación podrá plantear al peticionario aceptar o rechazar una propuesta de requerimiento de pago por el importe inferior al inicialmente solicitado que especifique.",
+        "b": "Mediante decreto podrá plantear al peticionario aceptar o rechazar una propuesta de requerimiento de pago por el importe inferior al inicialmente solicitado que especifique.",
+        "c": "Dará traslado al juez, quien, en su caso, mediante providencia podrá plantear al peticionario aceptar o rechazar una propuesta de requerimiento de pago por el importe inferior al inicialmente solicitado que especifique.",
+        "d": "Dará traslado al juez, quien, en su caso, mediante auto podrá plantear al peticionario aceptar o rechazar una propuesta de requerimiento de pago por el importe inferior al inicialmente solicitado que especifique."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 58,
+      "text": "De conformidad con lo preceptuado en el artículo 16 de la Ley de Jurisdicción Voluntaria, el Letrado de la Administración de Justicia, si entendiese que carece de competencia territorial para conocer del asunto, podrá acordar:",
+      "options": {
+        "a": "La remisión al órgano que considere competente, previa audiencia del Ministerio Fiscal y del solicitante, en aquellos expedientes que sean de su competencia.",
+        "b": "La remisión al órgano que considere competente, previa audiencia del solicitante, en aquellos expedientes que sean de su competencia.",
+        "c": "El archivo del expediente, previa audiencia del Ministerio Fiscal y del solicitante, en aquellos expedientes que sean de su competencia.",
+        "d": "El archivo del expediente, previa audiencia del solicitante, en aquellos expedientes que sean de su competencia."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 59,
+      "text": "Conforme al artículo 518 de la Ley de Enjuiciamiento Civil, ¿en qué plazo caducará la acción ejecutiva fundada en una resolución del tribunal si no se interpone la correspondiente demanda ejecutiva?",
+      "options": {
+        "a": "Diez días posteriores a aquel en que la resolución de condena sea firme.",
+        "b": "Quince días posteriores a aquel en que la resolución de condena sea firme.",
+        "c": "Veinte días posteriores a aquel en que la resolución de condena sea firme.",
+        "d": "Treinta días posteriores a aquel en que la resolución de condena sea firme."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 61,
+      "text": "Conforme al artículo 723 de la Ley de Enjuiciamiento Civil, será tribunal competente para conocer de las solicitudes sobre medidas cautelares:",
+      "options": {
+        "a": "Se admitirá la respuesta que diera el requerido.",
+        "b": "Se consignará la respuesta que diera el interesado.",
+        "c": "En ningún caso se admitirá respuesta alguna.",
+        "d": "Se admitirá respuesta si se hubiera mandado en la resolución."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 65,
+      "text": "Si el Encargado de la Oficina del Registro Civil tuviere fundadas dudas sobre la exactitud de las declaraciones, realizará antes de extender la inscripción las comprobaciones oportunas:",
+      "options": {
+        "a": "Más breve posible.",
+        "b": "De tres días.",
+        "c": "De cinco días.",
+        "d": "En el mismo día de la presentación."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 67,
+      "text": "Corresponde con carácter general al Cuerpo de Tramitación Procesal y Administrativa:",
+      "options": {
+        "a": "Que reglamentariamente se establezca.",
+        "b": "Que legalmente se establezca.",
+        "c": "De quince días.",
+        "d": "De un mes."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 69,
+      "text": "La Sala de Apelación de la Audiencia Nacional conocerá de los recursos de esta clase que establezca la ley contra las resoluciones de la Sala de lo:",
+      "options": {
+        "a": "Penal.",
+        "b": "Civil.",
+        "c": "Social.",
+        "d": "Contencioso-Administrativo."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 70,
+      "text": "El Tribunal Superior de Justicia tomará el nombre:",
+      "options": {
+        "a": "De la capital de la provincia donde tenga su sede.",
+        "b": "Del municipio donde tenga su sede.",
+        "c": "De la Comunidad Autónoma.",
+        "d": "Del partido judicial donde tenga su sede."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 71,
+      "text": "La solicitud de reconocimiento del derecho a la asistencia jurídica gratuita suspenderá el curso del proceso:",
+      "options": {
+        "a": "En ningún caso.",
+        "b": "En todo caso.",
+        "c": "Únicamente en los expedientes administrativos.",
+        "d": "No tiene efecto suspensivo, salvo que se decrete por el Letrado de la Administración de Justicia."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 72,
+      "text": "Cuando en la resolución que ponga fin al proceso fuera condenado en costas quien hubiera obtenido el reconocimiento del derecho a la asistencia jurídica gratuita o quien lo tuviera legalmente reconocido, éste quedará obligado a pagar las causadas en su defensa y las de la parte contraria:",
+      "options": {
+        "a": "Si dentro de los tres años siguientes a la terminación del proceso viniere a mejor fortuna.",
+        "b": "Si dentro de los cuatro años siguientes a la terminación del proceso viniere a mejor fortuna.",
+        "c": "Si dentro de los cinco años siguientes a la terminación del proceso viniere a mejor fortuna.",
+        "d": "En ningún caso."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 73,
+      "text": "El juez, en el momento de terminar el juicio, podrá pronunciar sentencia de viva voz, de conformidad con lo establecido en el artículo 50 de la Ley Reguladora de la Jurisdicción Social:",
+      "options": {
+        "a": "Un mes.",
+        "b": "Dos meses.",
+        "c": "Tres meses.",
+        "d": "Seis meses."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 75,
+      "text": "Según el artículo 62 de la Ley del Registro Civil, la inscripción de la defunción, una vez recibida y examinada la documentación preceptiva, se practicará:",
+      "options": {
+        "a": "Inmediatamente.",
+        "b": "En el plazo que reglamentariamente se establezca.",
+        "c": "En el plazo de veinticuatro horas.",
+        "d": "En el plazo de setenta y dos horas."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 76,
+      "text": "Si una reforma constitucional es aprobada por las Cortes Generales, ¿qué plazo máximo fija la Constitución para solicitar que esta sea sometida a referéndum?",
+      "options": {
+        "a": "5 días.",
+        "b": "10 días.",
+        "c": "15 días.",
+        "d": "1 mes."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 77,
+      "text": "Los proyectos de reforma constitucional deberán ser aprobados por:",
+      "options": {
+        "a": "Consenso de ambas Cámaras.",
+        "b": "Una mayoría de dos tercios de cada una de las Cámaras.",
+        "c": "Mayoría absoluta en el Congreso y mayoría cualificada en el Senado.",
+        "d": "Una mayoría de tres quintos de cada una de las Cámaras."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 78,
+      "text": "Sería necesario activar el procedimiento agravado de reforma constitucional contemplado en el artículo 168 de la Constitución Española si se pretendiera modificar:",
+      "options": {
+        "a": "El artículo 12 sobre la mayoría de edad de los españoles.",
+        "b": "El artículo 7 sobre los sindicatos de trabajadores y las asociaciones empresariales.",
+        "c": "El artículo 33 sobre el derecho a la propiedad privada y a la herencia.",
+        "d": "El artículo 43 sobre el derecho a la protección de la salud."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 79,
+      "text": "Según el artículo 16 de la Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres, ¿cómo se denomina el principio que debe regir los nombramientos de los cargos de responsabilidad por parte de los poderes públicos?",
+      "options": {
+        "a": "Presencia equilibrada de mujeres y hombres.",
+        "b": "Paridad entre mujeres y hombres.",
+        "c": "Justicia de género.",
+        "d": "Igualdad efectiva."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 82,
+      "text": "La Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género establece la constitución del Observatorio Estatal de Violencia sobre la Mujer, siendo este:",
+      "options": {
+        "a": "Una Dirección General adscrita a la Secretaría de Estado del Ministerio de la Presidencia, Justicia y Relaciones con las Cortes.",
+        "b": "Un organismo independiente con rango de Real Patronato.",
+        "c": "Un organismo judicial establecido por directiva europea.",
+        "d": "Un órgano colegiado adscrito al Ministerio de Trabajo y Asuntos Sociales."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 84,
+      "text": "Tal y como indica el artículo 46 de la Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local, con carácter general, el Pleno de las Corporaciones Locales se constituye válidamente con la asistencia de:",
+      "options": {
+        "a": "La mitad del mínimo legal de miembros del mismo, que nunca podrá ser inferior a cinco.",
+        "b": "Un tercio del mínimo legal de miembros del mismo, que nunca podrá ser inferior a tres.",
+        "c": "Dos tercios del mínimo legal de miembros del mismo, que nunca podrá ser inferior a tres.",
+        "d": "Tres quintos del mínimo legal de miembros del mismo, que nunca podrá ser inferior a cinco."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 85,
+      "text": "La Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local, establece que, en los Plenos de los Ayuntamientos, es requisito imprescindible para su válida constitución la asistencia de:",
+      "options": {
+        "a": "El presidente o sustituto.",
+        "b": "El secretario o sustituto.",
+        "c": "El presidente y secretario o sus sustitutos.",
+        "d": "El alcalde y el juez de paz."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 86,
+      "text": "Indique la fecha cuándo se proclamó la Carta de Derechos Fundamentales de la Unión Europea:",
+      "options": {
+        "a": "El Parlamento y el Consejo Europeo, por un período mínimo de cuatro años.",
+        "b": "El Parlamento y el Consejo, por un período mínimo de cuatro años.",
+        "c": "El Consejo Europeo y el Parlamento, por un período mínimo de cinco años.",
+        "d": "El Consejo y el Parlamento, por un período mínimo de cinco años."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 88,
+      "text": "Indique el artículo del Tratado de Funcionamiento de la Unión Europea donde se establece que, en todas sus acciones, la Unión se fijará el objetivo de eliminar las desigualdades entre el hombre y la mujer y promover su igualdad:",
+      "options": {
+        "a": "Artículo 7.",
+        "b": "Artículo 8.",
+        "c": "Artículo 9.",
+        "d": "Artículo 10."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 89,
+      "text": "El artículo 19 del Tratado de la Unión Europea dice que:",
+      "options": {
+        "a": "El Tribunal de Justicia de la Unión Europea comprenderá el Tribunal de Justicia, el Tribunal General y los tribunales especializados.",
+        "b": "El Consejo Europeo nombrará por mayoría cualificada, con la aprobación del Presidente de la Comisión, al Alto Representante de la Unión para Asuntos Exteriores y Política de Seguridad.",
+        "c": "La Comisión promoverá el interés general de la Unión y tomará las iniciativas adecuadas con este fin.",
+        "d": "El Consejo ejercerá conjuntamente con el Parlamento Europeo la función legislativa y la función presupuestaria."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 90,
+      "text": "De conformidad con el artículo 151 de la Ley de Enjuiciamiento Civil, cuando la entrega de un documento o despacho que deba acompañarse al acto de comunicación sea posterior a la recepción del acto de comunicación, este se tendrá por realizado:",
+      "options": {
+        "a": "En la fecha en que se realice el acto de comunicación.",
+        "b": "Cuando conste efectuada la entrega del documento.",
+        "c": "Se tendrá por no realizado el acto de comunicación.",
+        "d": "En el plazo de tres días a partir del siguiente a la entrega del documento."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 91,
+      "text": "Conforme al artículo 133 de la Ley de Enjuiciamiento Civil, los plazos comenzarán a correr desde:",
+      "options": {
+        "a": "Sin dilación.",
+        "b": "Las actuaciones sólo podrán realizarse en cualquier lugar del territorio de su circunscripción, en ningún caso fuera del partido judicial.",
+        "c": "Cuando proceda, mediante videoconferencia siempre que sea posible y, en otro caso,",
+        "d": "En todo caso, lo mas pronto posible."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 93,
+      "text": "De conformidad con el artículo 161 de la Ley de Enjuiciamiento Civil, cuando al ir a practicar una notificación en un proceso civil, y el destinatario no sea hallado en su domicilio, y este fuere el lugar en que el tenga su domicilio según el padrón municipal, podrá efectuarse la entrega:",
+      "options": {
+        "a": "A cualquier familiar.",
+        "b": "A cualquier vecino.",
+        "c": "Al conserje de la finca.",
+        "d": "Al vecino más próximo."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 94,
+      "text": "De conformidad con el artículo 797 de la Ley de Enjuiciamiento Criminal, el Juzgado de Guardia tras recibir el atestado judicial incoará, si procede, diligencias urgentes y practicará las siguientes diligencias, señale la respuesta incorrecta:",
+      "options": {
+        "a": "Tomará declaración a los testigos citados por la policía judicial que hayan comparecido.",
+        "b": "Practicará el reconocimiento en rueda del investigado, de resultar pertinente y haber comparecido el testigo.",
+        "c": "Ordenará la citación, siempre por escrito, de las personas que considere necesario que comparezcan ante él.",
+        "d": "Ordenará, si lo considera necesario, el careo entre testigos, entre testigos o investigados o investigados entre sí."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 95,
+      "text": "Conforme al artículo 802 de la Ley de Enjuiciamiento Criminal, en el caso de que el juicio oral no pudiera celebrarse en el día señalado, o no pueda continuarse en un solo acto, se señalará fecha para su celebración el día más inmediato posible y en todo caso:",
+      "options": {
+        "a": "Dentro de los veinte días siguientes.",
+        "b": "Dentro de los quince días siguientes.",
+        "c": "Dentro del mes siguiente.",
+        "d": "En un plazo máximo de dos meses."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 96,
+      "text": "De conformidad con el artículo 803 de la Ley de Enjuiciamiento Criminal, contra la sentencia dictada en el Juzgado de lo Penal en Juicio Rápido, podrá interponerse recurso de apelación, cuál de las respuestas siguientes es una de sus especialidades:",
+      "options": {
+        "a": "Para el conocimiento de delitos castigados con pena privativa de libertad no superior a cinco años, o bien cualesquiera otras penas de distinta naturaleza cualquiera que sea su cuantía o duración.",
+        "b": "Para el conocimiento de delitos castigados con pena privativa de libertad no superior a nueve años o bien cualesquiera otras penas de distinta naturaleza cualquiera que sea su cuantía o cuya duración no exceda de cinco años.",
+        "c": "Para el conocimiento de delitos castigados con pena privativa de libertad no superior a seis años, o bien con cualesquiera otras penas de distinta naturaleza cualquiera que sea su cuantía o duración.",
+        "d": "Para el conocimiento de los delitos castigados con pena privativa de libertad no superior a nueve años o bien con cualesquiera otras penas de distinta naturaleza cualquiera que sea su cuantía o duración."
+      },
+      "correctAnswer": "C"
+    },
+    {
+      "number": 98,
+      "text": "Conforme al artículo 778 de la Ley de Enjuiciamiento Criminal, en el ámbito de las Diligencias Previas del Procedimiento Abreviado, el informe pericial:",
+      "options": {
+        "a": "Siempre será prestado por un perito.",
+        "b": "Podrá ser prestado por un solo perito cuando el Juez lo considere suficiente.",
+        "c": "Podrá ser prestado por un solo perito cuando el Ministerio Fiscal lo considere suficiente.",
+        "d": "Siempre será prestado por dos peritos."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 99,
+      "text": "De acuerdo con el contenido del artículo 2.1 de la Ley del Tribunal del Jurado si, por razón de aforamiento del acusado, el juicio del Jurado debe celebrarse en el ámbito del Tribunal Supremo, el Magistrado-Presidente del Tribunal del Jurado será:",
+      "options": {
+        "a": "Un Magistrado de la Sala de lo Penal del Tribunal Supremo.",
+        "b": "El Magistrado de mayor antigüedad en la Sala de lo Penal del Tribunal Supremo.",
+        "c": "El Magistrado más moderno en la Sala de lo Penal del Tribunal Supremo.",
+        "d": "El Magistrado de mayor edad en la Sala de lo Penal del Tribunal Supremo."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 100,
+      "text": "De conformidad con lo establecido en el artículo 244 de la Ley Orgánica del Poder Judicial, las resoluciones de los Tribunales cuando no estén constituidos en Salas de Justicia, las de las Salas de Gobierno y las de los Jueces y Presidentes, cuando tengan carácter gubernativo, se llamarán:",
+      "options": {
+        "a": "Expedientes gubernativos.",
+        "b": "Autos.",
+        "c": "Providencias.",
+        "d": "Acuerdos. RESERVA"
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 101,
+      "text": "De conformidad con lo establecido en el artículo 253 de la Ley Orgánica del Poder Judicial, los autos y sentencias se deliberarán y votarán:",
+      "options": {
+        "a": "En el plazo de los tres días siguientes a la celebración de la vista.",
+        "b": "Inmediatamente después de las vistas y cuando así no pudiera hacerse, señalará el Presidente el día en que deban votarse que no podrá exceder de quince días.",
+        "c": "Inmediatamente después de las vistas y cuando así no pudiera hacerse, señalará el Presidente el día en que deban votarse que no podrá exceder de veinte días.",
+        "d": "Inmediatamente después de las vistas, y cuando así no pudiera hacerse, señalará el Presidente el día en que deba votarse, dentro del plazo señalado para dictar la resolución."
+      },
+      "correctAnswer": "D"
+    },
+    {
+      "number": 102,
+      "text": "De conformidad con el artículo 60 de la Ley reguladora de la Jurisdicción Contencioso- administrativa, en el procedimiento ordinario las partes pueden pedir el recibimiento del proceso a prueba:",
+      "options": {
+        "a": "En cualquier momento.",
+        "b": "En el escrito de demanda y contestación, mediante otrosí.",
+        "c": "La prueba solo la puede acordar el órgano judicial de oficio.",
+        "d": "Después de presentada la demanda y contestación mediante escrito."
+      },
+      "correctAnswer": "B"
+    },
+    {
+      "number": 103,
+      "text": "Conforme al artículo 115 de la Ley reguladora de la Jurisdicción Contencioso- administrativa, en el procedimiento para la protección de los derechos fundamentales de la persona contra una inactividad administrativa, el plazo de interposición del recurso es:",
+      "options": {
+        "a": "Diez días.",
+        "b": "Quince días.",
+        "c": "Veinte días.",
+        "d": "Treinta días."
+      },
+      "correctAnswer": "A"
+    },
+    {
+      "number": 104,
+      "text": "De conformidad con artículo 10 de la Ley reguladora de la Jurisdicción Contencioso- administrativa, ¿qué órgano jurisdiccional conoce de los procedimientos contencioso- administrativos contra la prohibición o propuesta de modificación de reuniones previstas en la Ley Orgánica 9/1983, de 15 de julio?",
+      "options": {
+        "a": "La Sala de lo Contencioso-administrativo del Tribunal Supremo.",
+        "b": "La Sala de lo Contencioso-administrativo de la Audiencia Nacional.",
+        "c": "Los Juzgados de lo Contencioso-administrativo.",
+        "d": "La Sala de lo Contencioso-administrativo del Tribunal Superior de Justicia."
+      },
+      "correctAnswer": "D"
+    }
+  ],
+  "duplicates": [],
+  "possible": [
+    {
+      "number": 80,
+      "text": "Según el artículo 48 de la Ley 15/2022, de 12 de julio, integral para la igualdad de trato y la no discriminación, las infracciones graves serán sancionadas con multas:",
+      "options": {
+        "a": "El artículo 2.",
+        "b": "El artículo 4.",
+        "c": "El artículo 3.",
+        "d": "El artículo 5."
+      },
+      "correctAnswer": "C",
+      "similarity": 73,
+      "matchedWith": "Según el artículo 48 de la Ley 15/2022, de 12 de j"
+    },
+    {
+      "number": 83,
+      "text": "Según el artículo 60 de la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, los secretarios generales técnicos tienen la categoría de:",
+      "options": {
+        "a": "Directores Generales.",
+        "b": "Subdirectores Generales.",
+        "c": "Secretarios Generales.",
+        "d": "Subsecretarios."
+      },
+      "correctAnswer": "A",
+      "similarity": 71,
+      "matchedWith": "Según el artículo 38 de la Ley 40/2015, de 1 de oc"
+    }
+  ]
+}

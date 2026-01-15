@@ -24,7 +24,7 @@ export type SectionFilter = z.infer<typeof sectionFilterSchema>
 export const getFilteredQuestionsRequestSchema = z.object({
   // Tema y tipo de oposición (topicNumber=0 o null significa sin filtro de tema)
   topicNumber: z.number().int().min(0).nullable().transform(v => v ?? 0),
-  positionType: z.enum(['administrativo_estado', 'auxiliar_administrativo', 'administrativo']),
+  positionType: z.enum(['administrativo_estado', 'auxiliar_administrativo', 'administrativo', 'auxilio_judicial', 'tramitacion_procesal']),
 
   // 🆕 Múltiples temas (para test aleatorio multi-tema)
   multipleTopics: z.array(z.number().int().min(1)).default([]),
@@ -149,7 +149,7 @@ export function safeParseGetFilteredQuestions(data: unknown) {
 
 export const countFilteredQuestionsRequestSchema = z.object({
   topicNumber: z.number().int().min(1),
-  positionType: z.enum(['administrativo_estado', 'auxiliar_administrativo', 'administrativo']),
+  positionType: z.enum(['administrativo_estado', 'auxiliar_administrativo', 'administrativo', 'auxilio_judicial', 'tramitacion_procesal']),
   selectedLaws: z.array(z.string()).default([]),
   selectedArticlesByLaw: z.record(z.string(), z.array(z.number().int())).default({}),
   selectedSectionFilters: z.array(sectionFilterSchema).default([]),

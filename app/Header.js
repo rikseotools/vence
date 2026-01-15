@@ -197,7 +197,10 @@ export default function HeaderES() {
           }
         } else {
           const unviewedCount = data?.length || 0
-          console.log(`🔔 Header: ${unviewedCount} conversaciones no vistas por admin`)
+          // Solo loguear si hay pendientes
+          if (unviewedCount > 0) {
+            console.log(`🔔 Header: ${unviewedCount} conversaciones pendientes`)
+          }
           setPendingFeedbacks(unviewedCount)
         }
       } catch (err) {
@@ -208,9 +211,9 @@ export default function HeaderES() {
 
     if (!authLoading && isAdmin) {
       checkPendingFeedbacks()
-      
-      // Verificar cada 10 segundos para sincronización más rápida
-      const interval = setInterval(checkPendingFeedbacks, 10000)
+
+      // Verificar cada 30 segundos
+      const interval = setInterval(checkPendingFeedbacks, 30000)
       return () => clearInterval(interval)
     }
   }, [user, supabase, authLoading, isAdmin])

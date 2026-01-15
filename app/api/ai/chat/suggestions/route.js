@@ -9,10 +9,32 @@ const supabase = createClient(
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
-    const oposicionId = searchParams.get('oposicionId')
+    let oposicionId = searchParams.get('oposicionId')
     const contextType = searchParams.get('contextType') || 'general' // 'general' | 'law_context'
     const pageContext = searchParams.get('pageContext') || 'general' // 'general' | 'test' | 'psicotecnico' | 'psicotecnico_test'
     const lawName = searchParams.get('lawName') // Para reemplazar {lawName} en plantillas
+
+    console.log('🔍 [Suggestions API] Request params:', { oposicionId, contextType, pageContext, lawName })
+
+    // Si oposicionId es un slug (no UUID), buscar el UUID real
+    if (oposicionId && !oposicionId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+      // Convertir underscore a dash para buscar el slug correcto
+      const slugToSearch = oposicionId.replace(/_/g, '-')
+      console.log('🔍 [Suggestions API] Converting slug:', oposicionId, '→', slugToSearch)
+
+      const { data: oposicion, error: oposError } = await supabase
+        .from('oposiciones')
+        .select('id')
+        .eq('slug', slugToSearch)
+        .single()
+
+      console.log('🔍 [Suggestions API] Oposicion lookup result:', oposicion, oposError?.message)
+
+      if (oposicion) {
+        oposicionId = oposicion.id
+        console.log('🔍 [Suggestions API] Using UUID:', oposicionId)
+      }
+    }
 
     // Obtener sugerencias con conteo de clicks
     let query = supabase
@@ -78,6 +100,8 @@ export async function GET(request) {
         return b.priority - a.priority
       })
       .slice(0, 6) // Máximo 6 sugerencias
+
+    console.log('🔍 [Suggestions API] Returning', suggestions.length, 'suggestions:', suggestions.map(s => s.label))
 
     return Response.json({ success: true, suggestions })
   } catch (error) {

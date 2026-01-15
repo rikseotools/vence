@@ -166,7 +166,7 @@ export default function PushNotificationManager() {
   useEffect(() => {
     if (!notificationState.settings || !user || !supabase) return
     
-    console.log('🔧 Configuraciones cargadas, iniciando sistema de verificación automática...')
+    // Debug: console.log('🔧 Sistema verificación push inicializado')
     
     // Funciones de verificación automática (movidas aquí desde el useEffect anterior)
     let verificationInterval = null
@@ -186,36 +186,24 @@ export default function PushNotificationManager() {
       const twoDaysInMs = 2 * 24 * 60 * 60 * 1000 // 2 días
       const daysSince = (now - lastCheck) / (24 * 60 * 60 * 1000)
       
-      console.log(`🕐 Sistema verificación automática:`, {
-        lastCheck: lastCheck > 0 ? new Date(lastCheck).toLocaleString() : 'Nunca',
-        daysSince: daysSince.toFixed(1),
-        shouldVerify: (now - lastCheck) >= twoDaysInMs,
-        pushEnabled: notificationState.settings?.push_enabled
-      })
-      
+      // Debug desactivado - solo ejecutar cada 2 días
       return (now - lastCheck) >= twoDaysInMs
     }
     
     const startSmartVerification = () => {
       if (verificationInterval) return // Ya está corriendo
-      
-      console.log('🚀 Iniciando sistema de verificación automática (cada 6h, ejecuta cada 2 días)')
+
+      // Debug: console.log('🚀 Sistema verificación push activo')
       
       // Verificar cada 6 horas, pero solo ejecutar si han pasado 2+ días
       verificationInterval = setInterval(() => {
-        console.log('⏰ Tick verificación (cada 6h) - evaluando condiciones...')
-        if (document.visibilityState === 'visible' && 
-            shouldVerifyToday() && 
+        if (document.visibilityState === 'visible' &&
+            shouldVerifyToday() &&
             notificationState.settings?.push_enabled) {
           refreshSubscriptionIfExpired()
           setLastVerificationTime(Date.now())
-        } else {
-          console.log('⏸️ Verificación omitida:', {
-            visible: document.visibilityState === 'visible',
-            shouldVerify: shouldVerifyToday(),
-            pushEnabled: notificationState.settings?.push_enabled
-          })
         }
+        // No loguear omisiones - son la mayoría de los casos
       }, 6 * 60 * 60 * 1000) // Chequear cada 6 horas
     }
     

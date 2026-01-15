@@ -3,6 +3,7 @@ import ClientLayoutContent from './ClientLayoutContent'
 import GoogleAnalytics from '../components/GoogleAnalytics'
 import { AuthProvider } from '../contexts/AuthContext'
 import { QuestionProvider } from '../contexts/QuestionContext'
+import { OposicionProvider } from '../contexts/OposicionContext'
 import AIChatWidget from '../components/AIChatWidget'
 import GoogleOneTapWrapper from '../components/GoogleOneTapWrapper'
 import SentryInit from '../components/SentryInit'
@@ -15,18 +16,20 @@ export default function SpanishLayout({ children }) {
       <body className="min-h-screen">
         <SentryInit />
         <AuthProvider initialUser={null}>
-          <QuestionProvider>
-            <div className="flex flex-col min-h-screen">
-              <ClientLayoutContent>
-                <main className="flex-1 min-h-0">
-                  {children}
-                </main>
-              </ClientLayoutContent>
-            </div>
-            <AIChatWidget />
-            <GoogleOneTapWrapper />
-            <FraudTracker />
-          </QuestionProvider>
+          <OposicionProvider>
+            <QuestionProvider>
+              <div className="flex flex-col min-h-screen">
+                <ClientLayoutContent>
+                  <main className="flex-1 min-h-0">
+                    {children}
+                  </main>
+                </ClientLayoutContent>
+              </div>
+              <AIChatWidget />
+              <GoogleOneTapWrapper />
+              <FraudTracker />
+            </QuestionProvider>
+          </OposicionProvider>
         </AuthProvider>
         <GoogleAnalytics />
       </body>
