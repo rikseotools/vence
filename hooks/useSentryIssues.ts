@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 interface SentryIssue {
   id: string
@@ -27,7 +28,7 @@ export function useSentryIssues(enabled: boolean = true): UseSentryIssuesResult 
   const [issues, setIssues] = useState<SentryIssue[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { supabase, user } = useAuth()
+  const { supabase, user } = useAuth() as { supabase: SupabaseClient | null, user: { id: string } | null }
 
   const fetchIssues = async () => {
     if (!enabled || !user || !supabase) return
