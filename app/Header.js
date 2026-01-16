@@ -18,6 +18,7 @@ import { useUserOposicion } from '../components/useUserOposicion'
 // import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
+import { useSentryIssues } from '@/hooks/useSentryIssues'
 
 export default function HeaderES() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -37,6 +38,7 @@ export default function HeaderES() {
   const oposicionContext = useOposicion()
   const { userOposicion: hookUserOposicion } = useUserOposicion() // Hook que SÍ funciona
   const adminNotifications = useAdminNotifications()
+  const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
 
   // 📊 Tracking de interacciones de usuario
   const { trackClick, trackNavigation } = useInteractionTracker()
@@ -280,12 +282,13 @@ export default function HeaderES() {
     if (user && isAdmin && !adminLoading) {
       return [
         ...baseLinks,
-        { 
-          href: '/admin', 
-          label: 'Panel Admin', 
-          icon: '👨‍💼', 
+        {
+          href: '/admin',
+          label: 'Panel Admin',
+          icon: '👨‍💼',
           isAdmin: true,
-          badge: pendingFeedbacks > 0 ? pendingFeedbacks : null
+          badge: pendingFeedbacks > 0 ? pendingFeedbacks : null,
+          sentryBadge: sentryIssuesCount > 0 ? sentryIssuesCount : null
         }
       ]
     }
@@ -781,6 +784,11 @@ export default function HeaderES() {
                     {link.badge && (
                       <span className="bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold animate-bounce">
                         {link.badge > 9 ? '9+' : link.badge}
+                      </span>
+                    )}
+                    {link.sentryBadge && (
+                      <span className="bg-orange-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold" title="Errores en Sentry">
+                        {link.sentryBadge > 9 ? '9+' : link.sentryBadge}
                       </span>
                     )}
                     {(pathname === link.href || (link.isAdmin && pathname.startsWith('/admin'))) && (
