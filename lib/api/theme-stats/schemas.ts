@@ -1,12 +1,38 @@
 // lib/api/theme-stats/schemas.ts - Schemas de validación para estadísticas por tema
+// V2: Stats derivadas dinámicamente desde article_id + topic_scope por oposición
 import { z } from 'zod'
+
+// ============================================
+// CONSTANTES DE OPOSICIÓN
+// ============================================
+
+// Oposiciones válidas (slug de URL)
+export const VALID_OPOSICIONES = [
+  'auxiliar-administrativo-estado',
+  'administrativo-estado',
+  'tramitacion-procesal',
+  'auxilio-judicial',
+] as const
+
+export type OposicionSlug = typeof VALID_OPOSICIONES[number]
+
+// Mapeo de oposición (slug URL) a position_type (DB)
+export const OPOSICION_TO_POSITION_TYPE: Record<OposicionSlug, string> = {
+  'auxiliar-administrativo-estado': 'auxiliar_administrativo',
+  'administrativo-estado': 'administrativo',
+  'tramitacion-procesal': 'tramitacion_procesal',
+  'auxilio-judicial': 'auxilio_judicial',
+}
 
 // ============================================
 // REQUEST SCHEMAS
 // ============================================
 
+export const oposicionSlugSchema = z.enum(VALID_OPOSICIONES)
+
 export const getThemeStatsRequestSchema = z.object({
   userId: z.string().uuid('ID de usuario inválido'),
+  oposicionId: oposicionSlugSchema.optional(), // Opcional para compatibilidad hacia atrás
 })
 
 export type GetThemeStatsRequest = z.infer<typeof getThemeStatsRequestSchema>

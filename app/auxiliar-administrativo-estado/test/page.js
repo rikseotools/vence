@@ -70,11 +70,12 @@ export default function TestsAuxiliarAdministrativoEstado() {
     bloque2: false
   })
 
-  // Cargar estadísticas usando la nueva API con Drizzle + Zod
+  // Cargar estadísticas usando la nueva API V2 con derivación dinámica por oposición
   const loadUserThemeStats = useCallback(async (userId) => {
     setStatsLoading(true)
     try {
-      const response = await fetch(`/api/user/theme-stats?userId=${userId}`)
+      // V2: Pasar oposicionId para derivar tema desde article_id + topic_scope
+      const response = await fetch(`/api/user/theme-stats?userId=${userId}&oposicionId=auxiliar-administrativo-estado`)
       const data = await response.json()
 
       if (data.success && data.stats) {

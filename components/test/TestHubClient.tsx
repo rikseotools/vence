@@ -87,11 +87,12 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
     return defaults
   })
 
-  // Cargar estadísticas del usuario
+  // Cargar estadísticas del usuario usando API V2 con derivación dinámica por oposición
   const loadUserThemeStats = useCallback(async (userId: string) => {
     setStatsLoading(true)
     try {
-      const response = await fetch(`/api/user/theme-stats?userId=${userId}&positionType=${positionType}`)
+      // V2: Pasar oposicionId para derivar tema desde article_id + topic_scope
+      const response = await fetch(`/api/user/theme-stats?userId=${userId}&oposicionId=${oposicion}`)
       const data = await response.json()
 
       if (data.success && data.stats) {
@@ -112,7 +113,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
     } finally {
       setStatsLoading(false)
     }
-  }, [positionType])
+  }, [oposicion])
 
   useEffect(() => {
     if (user?.id && !loading) {

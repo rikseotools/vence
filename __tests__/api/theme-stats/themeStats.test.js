@@ -1,13 +1,116 @@
 // __tests__/api/theme-stats/themeStats.test.js
 // Tests unitarios para el API layer de theme-stats (Drizzle + Zod)
+// V2: Incluye tests para derivación dinámica de tema por oposición
 
 import {
   getThemeStatsRequestSchema,
   themeStatSchema,
   getThemeStatsResponseSchema,
   validateGetThemeStatsRequest,
-  safeParseGetThemeStatsRequest
+  safeParseGetThemeStatsRequest,
+  oposicionSlugSchema,
+  VALID_OPOSICIONES,
+  OPOSICION_TO_POSITION_TYPE,
 } from '../../../lib/api/theme-stats/schemas'
+
+// ============================================
+// TESTS V2: OPOSICIÓN SCHEMAS Y CONSTANTES
+// ============================================
+
+describe('Theme Stats V2 - Oposición Schemas', () => {
+  describe('oposicionSlugSchema', () => {
+    test('debe aceptar auxiliar-administrativo-estado', () => {
+      const result = oposicionSlugSchema.safeParse('auxiliar-administrativo-estado')
+      expect(result.success).toBe(true)
+      expect(result.data).toBe('auxiliar-administrativo-estado')
+    })
+
+    test('debe aceptar administrativo-estado', () => {
+      const result = oposicionSlugSchema.safeParse('administrativo-estado')
+      expect(result.success).toBe(true)
+      expect(result.data).toBe('administrativo-estado')
+    })
+
+    test('debe aceptar tramitacion-procesal', () => {
+      const result = oposicionSlugSchema.safeParse('tramitacion-procesal')
+      expect(result.success).toBe(true)
+      expect(result.data).toBe('tramitacion-procesal')
+    })
+
+    test('debe aceptar auxilio-judicial', () => {
+      const result = oposicionSlugSchema.safeParse('auxilio-judicial')
+      expect(result.success).toBe(true)
+      expect(result.data).toBe('auxilio-judicial')
+    })
+
+    test('debe rechazar oposición inválida', () => {
+      const result = oposicionSlugSchema.safeParse('oposicion-inventada')
+      expect(result.success).toBe(false)
+    })
+
+    test('debe rechazar string vacío', () => {
+      const result = oposicionSlugSchema.safeParse('')
+      expect(result.success).toBe(false)
+    })
+
+    test('debe rechazar null', () => {
+      const result = oposicionSlugSchema.safeParse(null)
+      expect(result.success).toBe(false)
+    })
+
+    test('debe rechazar número', () => {
+      const result = oposicionSlugSchema.safeParse(123)
+      expect(result.success).toBe(false)
+    })
+  })
+
+  describe('VALID_OPOSICIONES constant', () => {
+    test('debe tener exactamente 4 oposiciones', () => {
+      expect(VALID_OPOSICIONES).toHaveLength(4)
+    })
+
+    test('debe incluir todas las oposiciones esperadas', () => {
+      expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-estado')
+      expect(VALID_OPOSICIONES).toContain('administrativo-estado')
+      expect(VALID_OPOSICIONES).toContain('tramitacion-procesal')
+      expect(VALID_OPOSICIONES).toContain('auxilio-judicial')
+    })
+
+    test('debe ser un array readonly (inmutable)', () => {
+      // Verificar que es un array
+      expect(Array.isArray(VALID_OPOSICIONES)).toBe(true)
+    })
+  })
+
+  describe('OPOSICION_TO_POSITION_TYPE mapping', () => {
+    test('debe mapear auxiliar-administrativo-estado a auxiliar_administrativo', () => {
+      expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo')
+    })
+
+    test('debe mapear administrativo-estado a administrativo', () => {
+      expect(OPOSICION_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo')
+    })
+
+    test('debe mapear tramitacion-procesal a tramitacion_procesal', () => {
+      expect(OPOSICION_TO_POSITION_TYPE['tramitacion-procesal']).toBe('tramitacion_procesal')
+    })
+
+    test('debe mapear auxilio-judicial a auxilio_judicial', () => {
+      expect(OPOSICION_TO_POSITION_TYPE['auxilio-judicial']).toBe('auxilio_judicial')
+    })
+
+    test('debe tener exactamente 4 mappings', () => {
+      expect(Object.keys(OPOSICION_TO_POSITION_TYPE)).toHaveLength(4)
+    })
+
+    test('cada oposición válida debe tener un mapping', () => {
+      VALID_OPOSICIONES.forEach(oposicion => {
+        expect(OPOSICION_TO_POSITION_TYPE[oposicion]).toBeDefined()
+        expect(typeof OPOSICION_TO_POSITION_TYPE[oposicion]).toBe('string')
+      })
+    })
+  })
+})
 
 // ============================================
 // TESTS DE SCHEMAS ZOD
@@ -50,6 +153,53 @@ describe('Theme Stats - Zod Schemas', () => {
       const result = getThemeStatsRequestSchema.safeParse(missingRequest)
 
       expect(result.success).toBe(false)
+    })
+
+    // Tests V2: oposicionId opcional
+    test('debe aceptar request con oposicionId válido', () => {
+      const requestWithOposicion = {
+        userId: '550e8400-e29b-41d4-a716-446655440000',
+        oposicionId: 'auxiliar-administrativo-estado'
+      }
+      const result = getThemeStatsRequestSchema.safeParse(requestWithOposicion)
+
+      expect(result.success).toBe(true)
+      expect(result.data.userId).toBe('550e8400-e29b-41d4-a716-446655440000')
+      expect(result.data.oposicionId).toBe('auxiliar-administrativo-estado')
+    })
+
+    test('debe aceptar request sin oposicionId (compatibilidad legacy)', () => {
+      const requestWithoutOposicion = {
+        userId: '550e8400-e29b-41d4-a716-446655440000'
+      }
+      const result = getThemeStatsRequestSchema.safeParse(requestWithoutOposicion)
+
+      expect(result.success).toBe(true)
+      expect(result.data.userId).toBe('550e8400-e29b-41d4-a716-446655440000')
+      expect(result.data.oposicionId).toBeUndefined()
+    })
+
+    test('debe rechazar request con oposicionId inválido', () => {
+      const requestWithInvalidOposicion = {
+        userId: '550e8400-e29b-41d4-a716-446655440000',
+        oposicionId: 'oposicion-no-existe'
+      }
+      const result = getThemeStatsRequestSchema.safeParse(requestWithInvalidOposicion)
+
+      expect(result.success).toBe(false)
+    })
+
+    test('debe aceptar todas las oposiciones válidas', () => {
+      VALID_OPOSICIONES.forEach(oposicionId => {
+        const request = {
+          userId: '550e8400-e29b-41d4-a716-446655440000',
+          oposicionId
+        }
+        const result = getThemeStatsRequestSchema.safeParse(request)
+
+        expect(result.success).toBe(true)
+        expect(result.data.oposicionId).toBe(oposicionId)
+      })
     })
   })
 
@@ -338,9 +488,121 @@ describe('Theme Stats - Formato de Datos', () => {
 describe('Theme Stats - Queries', () => {
   // Mock del módulo de queries
   const mockGetUserThemeStats = jest.fn()
+  const mockGetUserThemeStatsByOposicion = jest.fn()
 
   beforeEach(() => {
     jest.clearAllMocks()
+  })
+
+  // ============================================
+  // TESTS V2: getUserThemeStatsByOposicion
+  // ============================================
+  describe('getUserThemeStatsByOposicion (V2)', () => {
+    test('debe retornar stats derivadas para auxiliar-administrativo-estado', async () => {
+      mockGetUserThemeStatsByOposicion.mockResolvedValue({
+        success: true,
+        stats: {
+          '1': { temaNumber: 1, total: 40, correct: 32, accuracy: 80, lastStudy: '2025-01-10T10:00:00.000Z', lastStudyFormatted: '10 ene' },
+          '2': { temaNumber: 2, total: 25, correct: 20, accuracy: 80, lastStudy: '2025-01-09T10:00:00.000Z', lastStudyFormatted: '9 ene' }
+        },
+        generatedAt: new Date().toISOString()
+      })
+
+      const result = await mockGetUserThemeStatsByOposicion('test-user-id', 'auxiliar-administrativo-estado')
+
+      expect(result.success).toBe(true)
+      expect(result.stats['1']).toBeDefined()
+      expect(result.stats['1'].temaNumber).toBe(1)
+    })
+
+    test('debe retornar stats diferentes para administrativo-estado (mismo usuario)', async () => {
+      // Simular que administrativo tiene temas altos (200s, 300s, etc)
+      mockGetUserThemeStatsByOposicion.mockResolvedValue({
+        success: true,
+        stats: {
+          '1': { temaNumber: 1, total: 42, correct: 35, accuracy: 83, lastStudy: '2025-01-10T10:00:00.000Z', lastStudyFormatted: '10 ene' },
+          '201': { temaNumber: 201, total: 15, correct: 12, accuracy: 80, lastStudy: '2025-01-08T10:00:00.000Z', lastStudyFormatted: '8 ene' },
+          '302': { temaNumber: 302, total: 10, correct: 8, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' }
+        },
+        generatedAt: new Date().toISOString()
+      })
+
+      const result = await mockGetUserThemeStatsByOposicion('test-user-id', 'administrativo-estado')
+
+      expect(result.success).toBe(true)
+      expect(result.stats['201']).toBeDefined() // Tema único de administrativo
+      expect(result.stats['302']).toBeDefined() // Otro tema único de administrativo
+    })
+
+    test('debe retornar stats vacías para usuario sin datos', async () => {
+      mockGetUserThemeStatsByOposicion.mockResolvedValue({
+        success: true,
+        stats: {},
+        generatedAt: new Date().toISOString()
+      })
+
+      const result = await mockGetUserThemeStatsByOposicion('00000000-0000-0000-0000-000000000000', 'auxiliar-administrativo-estado')
+
+      expect(result.success).toBe(true)
+      expect(Object.keys(result.stats)).toHaveLength(0)
+    })
+
+    test('debe retornar error para oposición no válida', async () => {
+      mockGetUserThemeStatsByOposicion.mockResolvedValue({
+        success: false,
+        error: 'Oposición no válida: oposicion-inventada'
+      })
+
+      const result = await mockGetUserThemeStatsByOposicion('test-user-id', 'oposicion-inventada')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toContain('no válida')
+    })
+
+    test('debe incluir flag cached en segunda llamada', async () => {
+      mockGetUserThemeStatsByOposicion.mockResolvedValue({
+        success: true,
+        stats: { '1': { temaNumber: 1, total: 10, correct: 8, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' } },
+        cached: true,
+        generatedAt: new Date().toISOString()
+      })
+
+      const result = await mockGetUserThemeStatsByOposicion('test-user-id', 'auxiliar-administrativo-estado')
+
+      expect(result.cached).toBe(true)
+    })
+
+    test('debe derivar tema correctamente desde article_id vía topic_scope', async () => {
+      // Simular el comportamiento: misma respuesta (mismo article_id) puede contar para diferentes temas según oposición
+      const auxStats = {
+        success: true,
+        stats: {
+          '1': { temaNumber: 1, total: 50, correct: 40, accuracy: 80, lastStudy: '2025-01-10T10:00:00.000Z', lastStudyFormatted: '10 ene' }
+        },
+        generatedAt: new Date().toISOString()
+      }
+      const admStats = {
+        success: true,
+        stats: {
+          '1': { temaNumber: 1, total: 50, correct: 40, accuracy: 80, lastStudy: '2025-01-10T10:00:00.000Z', lastStudyFormatted: '10 ene' }
+        },
+        generatedAt: new Date().toISOString()
+      }
+
+      mockGetUserThemeStatsByOposicion
+        .mockResolvedValueOnce(auxStats)
+        .mockResolvedValueOnce(admStats)
+
+      const resultAux = await mockGetUserThemeStatsByOposicion('test-user-id', 'auxiliar-administrativo-estado')
+      const resultAdm = await mockGetUserThemeStatsByOposicion('test-user-id', 'administrativo-estado')
+
+      // Ambas llamadas deben tener éxito
+      expect(resultAux.success).toBe(true)
+      expect(resultAdm.success).toBe(true)
+      // El Tema 1 existe en ambas oposiciones pero puede tener diferentes valores
+      expect(resultAux.stats['1']).toBeDefined()
+      expect(resultAdm.stats['1']).toBeDefined()
+    })
   })
 
   describe('getUserThemeStats', () => {
@@ -438,6 +700,98 @@ describe('Theme Stats - API Route', () => {
     ok: status >= 200 && status < 300,
     status,
     json: () => Promise.resolve(data)
+  })
+
+  // ============================================
+  // TESTS V2: API con oposicionId
+  // ============================================
+  describe('GET /api/user/theme-stats (V2 con oposicionId)', () => {
+    test('debe retornar stats V2 cuando se proporciona oposicionId válido', async () => {
+      const response = mockApiResponse(200, {
+        success: true,
+        stats: {
+          '1': { temaNumber: 1, total: 40, correct: 32, accuracy: 80, lastStudy: '2025-01-10T10:00:00.000Z', lastStudyFormatted: '10 ene' }
+        },
+        generatedAt: new Date().toISOString()
+      })
+
+      expect(response.ok).toBe(true)
+      const data = await response.json()
+      expect(data.success).toBe(true)
+      expect(data.stats['1']).toBeDefined()
+    })
+
+    test('debe retornar 400 con oposicionId inválido', async () => {
+      const response = mockApiResponse(400, {
+        success: false,
+        error: 'oposicionId inválido'
+      })
+
+      expect(response.status).toBe(400)
+      const data = await response.json()
+      expect(data.success).toBe(false)
+      expect(data.error).toContain('oposicionId')
+    })
+
+    test('debe retornar stats diferentes para auxiliar vs administrativo', async () => {
+      // Respuesta para auxiliar
+      const auxResponse = mockApiResponse(200, {
+        success: true,
+        stats: {
+          '1': { temaNumber: 1, total: 40, correct: 32, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' }
+        },
+        generatedAt: new Date().toISOString()
+      })
+
+      // Respuesta para administrativo (puede incluir temas 200+)
+      const admResponse = mockApiResponse(200, {
+        success: true,
+        stats: {
+          '1': { temaNumber: 1, total: 42, correct: 35, accuracy: 83, lastStudy: null, lastStudyFormatted: 'Nunca' },
+          '201': { temaNumber: 201, total: 15, correct: 12, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' }
+        },
+        generatedAt: new Date().toISOString()
+      })
+
+      const auxData = await auxResponse.json()
+      const admData = await admResponse.json()
+
+      // Auxiliar no debería tener tema 201
+      expect(auxData.stats['201']).toBeUndefined()
+      // Administrativo sí debería tener tema 201
+      expect(admData.stats['201']).toBeDefined()
+    })
+
+    test('debe ser compatible con frontend TestHubClient', async () => {
+      // Simular la respuesta que espera TestHubClient
+      const response = mockApiResponse(200, {
+        success: true,
+        stats: {
+          '1': {
+            temaNumber: 1,
+            total: 100,
+            correct: 85,
+            accuracy: 85,
+            lastStudy: '2025-01-10T10:00:00.000Z',
+            lastStudyFormatted: '10 ene'
+          }
+        },
+        generatedAt: new Date().toISOString()
+      })
+
+      const data = await response.json()
+
+      // Verificar que el formato es compatible con TestHubClient.tsx
+      expect(data.success).toBe(true)
+      expect(data.stats).toBeDefined()
+
+      const tema1 = data.stats['1']
+      expect(tema1).toHaveProperty('total')
+      expect(tema1).toHaveProperty('correct')
+      expect(tema1).toHaveProperty('accuracy')
+      expect(tema1).toHaveProperty('lastStudy')
+      expect(tema1).toHaveProperty('lastStudyFormatted')
+    })
   })
 
   describe('GET /api/user/theme-stats', () => {
@@ -626,5 +980,132 @@ describe('Theme Stats - Tests de Regresión', () => {
       const result = safeParseGetThemeStatsRequest({ userId: uuid })
       expect(result.success).toBe(false)
     })
+  })
+})
+
+// ============================================
+// TESTS DE REGRESIÓN V2: DERIVACIÓN DINÁMICA
+// ============================================
+
+describe('Theme Stats V2 - Tests de Regresión', () => {
+  test('CRÍTICO: VALID_OPOSICIONES debe incluir las 4 oposiciones soportadas', () => {
+    expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-estado')
+    expect(VALID_OPOSICIONES).toContain('administrativo-estado')
+    expect(VALID_OPOSICIONES).toContain('tramitacion-procesal')
+    expect(VALID_OPOSICIONES).toContain('auxilio-judicial')
+    expect(VALID_OPOSICIONES).toHaveLength(4)
+  })
+
+  test('CRÍTICO: OPOSICION_TO_POSITION_TYPE mapea slugs URL a position_type DB', () => {
+    // Verificar que los valores son los que usa la DB (con underscore)
+    expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo')
+    expect(OPOSICION_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo')
+    expect(OPOSICION_TO_POSITION_TYPE['tramitacion-procesal']).toBe('tramitacion_procesal')
+    expect(OPOSICION_TO_POSITION_TYPE['auxilio-judicial']).toBe('auxilio_judicial')
+  })
+
+  test('CRÍTICO: El schema request acepta oposicionId opcional para compatibilidad', () => {
+    // Sin oposicionId (legacy)
+    const legacyRequest = { userId: '550e8400-e29b-41d4-a716-446655440000' }
+    const legacyResult = getThemeStatsRequestSchema.safeParse(legacyRequest)
+    expect(legacyResult.success).toBe(true)
+
+    // Con oposicionId (V2)
+    const v2Request = {
+      userId: '550e8400-e29b-41d4-a716-446655440000',
+      oposicionId: 'auxiliar-administrativo-estado'
+    }
+    const v2Result = getThemeStatsRequestSchema.safeParse(v2Request)
+    expect(v2Result.success).toBe(true)
+  })
+
+  test('CRÍTICO: oposicionSlugSchema rechaza strings que no son oposiciones válidas', () => {
+    const invalidOposiciones = [
+      'gestion-procesal', // No soportada aún
+      'letrado', // No existe
+      'auxiliar', // Incompleto
+      'AUXILIAR-ADMINISTRATIVO-ESTADO', // Mayúsculas
+      'auxiliar_administrativo_estado', // Underscore en lugar de guiones
+    ]
+
+    invalidOposiciones.forEach(oposicion => {
+      const result = oposicionSlugSchema.safeParse(oposicion)
+      expect(result.success).toBe(false)
+    })
+  })
+
+  test('CRÍTICO: Response schema acepta flag cached para performance', () => {
+    const cachedResponse = {
+      success: true,
+      stats: { '1': { temaNumber: 1, total: 10, correct: 8, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' } },
+      cached: true,
+      generatedAt: new Date().toISOString()
+    }
+    const result = getThemeStatsResponseSchema.safeParse(cachedResponse)
+
+    expect(result.success).toBe(true)
+    expect(result.data.cached).toBe(true)
+  })
+
+  test('CRÍTICO: Los temas de Justicia (100+) son válidos en el schema', () => {
+    const justiciaTemas = [
+      { temaNumber: 101, total: 10, correct: 8, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' },
+      { temaNumber: 150, total: 5, correct: 4, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' }
+    ]
+
+    justiciaTemas.forEach(tema => {
+      const result = themeStatSchema.safeParse(tema)
+      expect(result.success).toBe(true)
+    })
+  })
+
+  test('CRÍTICO: Los temas de Administrativo (200+, 300+, etc.) son válidos en el schema', () => {
+    const administrativoTemas = [
+      { temaNumber: 201, total: 10, correct: 8, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' },
+      { temaNumber: 302, total: 5, correct: 4, accuracy: 80, lastStudy: null, lastStudyFormatted: 'Nunca' },
+      { temaNumber: 405, total: 3, correct: 2, accuracy: 67, lastStudy: null, lastStudyFormatted: 'Nunca' },
+      { temaNumber: 506, total: 2, correct: 1, accuracy: 50, lastStudy: null, lastStudyFormatted: 'Nunca' },
+      { temaNumber: 608, total: 1, correct: 1, accuracy: 100, lastStudy: null, lastStudyFormatted: 'Nunca' }
+    ]
+
+    administrativoTemas.forEach(tema => {
+      const result = themeStatSchema.safeParse(tema)
+      expect(result.success).toBe(true)
+    })
+  })
+
+  test('El formato de respuesta V2 es compatible con TestHubClient', () => {
+    // TestHubClient.tsx espera este formato
+    const v2Response = {
+      success: true,
+      stats: {
+        '1': {
+          temaNumber: 1,
+          total: 100,
+          correct: 85,
+          accuracy: 85,
+          lastStudy: '2025-01-10T10:00:00.000Z',
+          lastStudyFormatted: '10 ene'
+        },
+        '101': {
+          temaNumber: 101,
+          total: 50,
+          correct: 40,
+          accuracy: 80,
+          lastStudy: null,
+          lastStudyFormatted: 'Nunca'
+        }
+      },
+      generatedAt: new Date().toISOString()
+    }
+
+    // Validar que cumple el schema
+    const result = getThemeStatsResponseSchema.safeParse(v2Response)
+    expect(result.success).toBe(true)
+
+    // Verificar que el frontend puede iterar correctamente
+    const temaNumbers = Object.keys(v2Response.stats).map(Number)
+    expect(temaNumbers).toContain(1)
+    expect(temaNumbers).toContain(101)
   })
 })

@@ -122,9 +122,10 @@ export async function getTopicFullData(
     const articlesByLaw = processArticlesByLaw(questionResults, scopeMappings)
 
     // 7️⃣ OBTENER PROGRESO DEL USUARIO (si hay userId)
+    // V2: Deriva progreso desde article_id via topic_scope (no usa tema_number guardado)
     let userProgress: UserProgress | null = null
     if (userId) {
-      userProgress = await getUserProgressForTopic(db, userId, topicNumber, totalQuestions)
+      userProgress = await getUserProgressForTopicV2(db, userId, scopeMappings, totalQuestions)
     }
 
     const response: GetTopicDataResponse = {
@@ -298,7 +299,178 @@ function processArticlesByLaw(
 }
 
 /**
- * Obtiene el progreso del usuario para un tema
+ * V2: Obtiene el progreso del usuario para un tema derivando desde article_id
+ *
+ * IMPORTANTE: Esta función NO usa tema_number guardado. En su lugar:
+ * 1. Obtiene las respuestas del usuario que tienen preguntas con primary_article_id
+ * 2. Filtra solo las que corresponden a artículos del topic_scope de este tema
+ *
+ * Esto permite que la misma respuesta cuente para diferentes temas según la oposición.
+ */
+async function getUserProgressForTopicV2(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  scopeMappings: Array<{
+    articleNumbers: string[] | null
+    lawId: string | null
+    lawShortName: string | null
+    lawName: string | null
+  }>,
+  totalQuestionsAvailable: number
+): Promise<UserProgress> {
+  try {
+    // Si no hay mappings, no hay progreso posible
+    if (!scopeMappings.length) {
+      return {
+        totalAnswers: 0,
+        overallAccuracy: 0,
+        uniqueQuestionsAnswered: 0,
+        totalQuestionsAvailable,
+        neverSeen: totalQuestionsAvailable,
+        performanceByDifficulty: {},
+      }
+    }
+
+    // Construir condiciones para cada mapping de ley/artículos
+    // Necesitamos obtener respuestas donde la pregunta tiene un artículo
+    // que pertenece a alguno de los scope mappings de este tema
+    const lawConditions: string[] = []
+    const params: string[] = []
+
+    scopeMappings.forEach((mapping, idx) => {
+      if (!mapping.lawId) return
+
+      if (mapping.articleNumbers && mapping.articleNumbers.length > 0) {
+        // Artículos específicos de esta ley
+        const articleList = mapping.articleNumbers.map(a => `'${a}'`).join(',')
+        lawConditions.push(`(a.law_id = '${mapping.lawId}' AND a.article_number IN (${articleList}))`)
+      } else {
+        // Toda la ley (leyes virtuales)
+        lawConditions.push(`a.law_id = '${mapping.lawId}'`)
+      }
+    })
+
+    if (lawConditions.length === 0) {
+      return {
+        totalAnswers: 0,
+        overallAccuracy: 0,
+        uniqueQuestionsAnswered: 0,
+        totalQuestionsAvailable,
+        neverSeen: totalQuestionsAvailable,
+        performanceByDifficulty: {},
+      }
+    }
+
+    // Query V2: Obtener respuestas del usuario cuyos artículos pertenecen a este tema
+    const whereClause = lawConditions.join(' OR ')
+
+    const userAnswers = await db.execute<{
+      question_id: string
+      is_correct: boolean
+      difficulty: string | null
+      created_at: string
+    }>(sql.raw(`
+      SELECT
+        tq.question_id,
+        tq.is_correct,
+        tq.difficulty,
+        tq.created_at
+      FROM test_questions tq
+      INNER JOIN tests t ON tq.test_id = t.id
+      INNER JOIN questions q ON tq.question_id = q.id
+      INNER JOIN articles a ON q.primary_article_id = a.id
+      WHERE t.user_id = '${userId}'
+        AND q.primary_article_id IS NOT NULL
+        AND (${whereClause})
+    `))
+
+    // execute() retorna array directamente con postgres-js
+    const rows = Array.isArray(userAnswers) ? userAnswers : (userAnswers as any).rows || []
+
+    if (!rows.length) {
+      return {
+        totalAnswers: 0,
+        overallAccuracy: 0,
+        uniqueQuestionsAnswered: 0,
+        totalQuestionsAvailable,
+        neverSeen: totalQuestionsAvailable,
+        performanceByDifficulty: {},
+      }
+    }
+
+    // Calcular estadísticas
+    const totalAnswers = rows.length
+    const correctAnswers = rows.filter((a: any) => a.is_correct).length
+    const overallAccuracy = totalAnswers > 0 ? (correctAnswers / totalAnswers) * 100 : 0
+
+    // Preguntas únicas
+    const uniqueQuestionIds = new Set(rows.map((a: any) => a.question_id))
+    const uniqueQuestionsAnswered = uniqueQuestionIds.size
+    const neverSeen = Math.max(0, totalQuestionsAvailable - uniqueQuestionsAnswered)
+
+    // Performance por dificultad
+    const performanceByDifficulty: UserProgress['performanceByDifficulty'] = {}
+    const difficultyGroups = new Map<string, { total: number; correct: number }>()
+
+    for (const answer of rows) {
+      const diff = answer.difficulty || 'auto'
+      if (!difficultyGroups.has(diff)) {
+        difficultyGroups.set(diff, { total: 0, correct: 0 })
+      }
+      const group = difficultyGroups.get(diff)!
+      group.total++
+      if (answer.is_correct) group.correct++
+    }
+
+    for (const [diff, stats] of difficultyGroups) {
+      performanceByDifficulty[diff] = {
+        total: stats.total,
+        correct: stats.correct,
+        accuracy: stats.total > 0 ? (stats.correct / stats.total) * 100 : 0,
+      }
+    }
+
+    // Estadísticas recientes
+    const now = Date.now()
+    const last7Days = rows.filter((a: any) =>
+      new Date(a.created_at).getTime() >= now - 7 * 24 * 60 * 60 * 1000
+    )
+    const last15Days = rows.filter((a: any) =>
+      new Date(a.created_at).getTime() >= now - 15 * 24 * 60 * 60 * 1000
+    )
+    const last30Days = rows.filter((a: any) =>
+      new Date(a.created_at).getTime() >= now - 30 * 24 * 60 * 60 * 1000
+    )
+
+    return {
+      totalAnswers,
+      overallAccuracy,
+      uniqueQuestionsAnswered,
+      totalQuestionsAvailable,
+      neverSeen,
+      performanceByDifficulty,
+      recentStats: {
+        last7Days: new Set(last7Days.map((a: any) => a.question_id)).size,
+        last15Days: new Set(last15Days.map((a: any) => a.question_id)).size,
+        last30Days: new Set(last30Days.map((a: any) => a.question_id)).size,
+      },
+    }
+  } catch (error) {
+    console.error('Error obteniendo progreso del usuario (V2):', error)
+    return {
+      totalAnswers: 0,
+      overallAccuracy: 0,
+      uniqueQuestionsAnswered: 0,
+      totalQuestionsAvailable,
+      neverSeen: totalQuestionsAvailable,
+      performanceByDifficulty: {},
+    }
+  }
+}
+
+/**
+ * @deprecated Usar getUserProgressForTopicV2 que deriva desde article_id
+ * Obtiene el progreso del usuario para un tema (legacy - usa tema_number guardado)
  */
 async function getUserProgressForTopic(
   db: ReturnType<typeof getDb>,
