@@ -96,10 +96,10 @@ export default function ProgressiveRegistrationModal({
       setLoading(true)
       setError(null)
       
-      console.log('🚀 [MODAL] Iniciando OAuth con Google...')
-      
-      // ⚡ Usar función simplificada del singleton
-      const result = await signInWithGoogle()
+      console.log('🚀 [MODAL] Iniciando OAuth con Google desde test...')
+
+      // ⚡ Usar función simplificada del singleton con funnel='test'
+      const result = await signInWithGoogle({ funnel: 'test' })
       
       if (!result.success) {
         throw new Error(result.error || 'Error desconocido en OAuth')

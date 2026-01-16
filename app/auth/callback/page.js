@@ -207,6 +207,10 @@ function AuthCallbackContent() {
         const oposicionParam = searchParams.get('oposicion')
         console.log('🎯 [CALLBACK] Oposición detectada:', oposicionParam || 'ninguna')
 
+        // 🎯 DETECTAR FUNNEL DE REGISTRO (test, temario_pdf, etc.)
+        const funnelParam = searchParams.get('funnel')
+        console.log('📋 [CALLBACK] Funnel de registro:', funnelParam || 'ninguno')
+
         // 🎯 DETECTAR ORIGEN (Google Ads o Meta)
         // Método 1: URL contiene parámetros especiales de landing page premium
         const isGoogleAdsFromUrl = finalReturnUrl.includes('/premium-ads') ||
@@ -325,6 +329,22 @@ function AuthCallbackContent() {
           if (oposicionParam) {
             newProfileData.target_oposicion = oposicionParam
             console.log('📋 [CALLBACK] Guardando oposición objetivo:', oposicionParam)
+          }
+
+          // Añadir funnel de registro si se especifica (test, temario_pdf, etc.)
+          if (funnelParam) {
+            newProfileData.registration_funnel = funnelParam
+            console.log('📋 [CALLBACK] Funnel de registro:', funnelParam)
+          } else if (oposicionParam) {
+            // Si hay oposición pero no funnel, asumimos que viene del temario PDF
+            newProfileData.registration_funnel = 'temario_pdf'
+            console.log('📋 [CALLBACK] Funnel de registro inferido: temario_pdf')
+          }
+
+          // 🆕 Guardar URL exacta desde donde se registró
+          if (finalReturnUrl) {
+            newProfileData.registration_url = finalReturnUrl
+            console.log('📍 [CALLBACK] URL de registro:', finalReturnUrl)
           }
 
           const { error: profileError } = await supabase

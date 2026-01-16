@@ -15,9 +15,12 @@ function LoginPageContent() {
   const { user, loading: authLoading, supabase } = useAuth()
   
   // URL de retorno después del login
-  const returnTo = searchParams.get('return_to') || '/auxiliar-administrativo-estado'
+  const returnToParam = searchParams.get('return_to')
+  const returnTo = returnToParam || '/auxiliar-administrativo-estado'
   // Oposición detectada (para preseleccionar en registro)
   const oposicion = searchParams.get('oposicion')
+  // Si no hay return_to, es login directo
+  const isDirectLogin = !returnToParam && !oposicion
 
   useEffect(() => {
     if (authLoading) return
@@ -56,6 +59,12 @@ function LoginPageContent() {
       // Propagar oposición detectada al callback
       if (oposicion) {
         redirectUrl += `&oposicion=${encodeURIComponent(oposicion)}`
+      }
+
+      // 🆕 Si es login directo (sin return_to específico), marcar el funnel
+      if (isDirectLogin) {
+        redirectUrl += `&funnel=login_directo`
+        console.log('📋 Funnel: login_directo')
       }
       
       if (campaignInfo) {

@@ -192,6 +192,45 @@ export default function HomePage() {
 
         </div>
 
+        {/* Temarios */}
+        <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-8">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-4">📖</div>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
+              Temarios Completos
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">
+              Estudia los artículos de cada tema con la legislación actualizada
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Link
+              href="/auxiliar-administrativo-estado/temario"
+              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-center transition-colors"
+            >
+              <span className="block text-2xl mb-2">🏛️</span>
+              <span className="block font-medium text-slate-700 dark:text-slate-300">Auxiliar Administrativo</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">28 temas</span>
+            </Link>
+            <Link
+              href="/administrativo-estado/temario"
+              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-center transition-colors"
+            >
+              <span className="block text-2xl mb-2">🏢</span>
+              <span className="block font-medium text-slate-700 dark:text-slate-300">Administrativo del Estado</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">45 temas</span>
+            </Link>
+            <Link
+              href="/tramitacion-procesal/temario"
+              className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg text-center transition-colors"
+            >
+              <span className="block text-2xl mb-2">⚖️</span>
+              <span className="block font-medium text-slate-700 dark:text-slate-300">Tramitación Procesal</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">26 temas</span>
+            </Link>
+          </div>
+        </div>
+
       </div>
     </div>
   )
