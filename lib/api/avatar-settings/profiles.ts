@@ -262,10 +262,10 @@ export function determineProfile(metrics: StudyMetrics): { profileId: string; ma
     })
   }
 
-  // 🦊 Zorro Astuto - >70% en temas difíciles
+  // 🐿️ Ardilla Astuta - >70% en temas difíciles
   if (metrics.hardTopicsAccuracy > 70 && metrics.weeklyQuestionsCount >= 10) {
     matches.push({
-      profileId: 'clever_fox',
+      profileId: 'clever_squirrel',
       priority: 65,
       condition: `${metrics.hardTopicsAccuracy.toFixed(1)}% en temas difíciles > 70%`
     })

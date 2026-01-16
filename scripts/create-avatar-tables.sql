@@ -72,7 +72,7 @@ INSERT INTO avatar_profiles (id, emoji, name_es, name_es_f, description_es, colo
   ('worker_ant', '🐜', 'Hormiga Trabajadora', NULL, 'Estudias todos los días de la semana', '#8b5cf6', 80),
   ('smart_dolphin', '🐬', 'Delfín Inteligente', NULL, 'Has mejorado más del 10% esta semana', '#06b6d4', 75),
   ('relaxed_koala', '🐨', 'Koala Relajado', 'Koala Relajada', 'Te lo tomas con calma, menos de 20 preguntas esta semana', '#94a3b8', 10),
-  ('clever_fox', '🦊', 'Estratega Astuto', 'Estratega Astuta', 'Dominas los temas difíciles con >70% de acierto', '#f97316', 65),
+  ('clever_squirrel', '🐿️', 'Ardilla Astuta', NULL, 'Dominas los temas difíciles con >70% de acierto', '#f97316', 65),
   ('busy_bee', '🐝', 'Abeja Productiva', NULL, 'Estudias mañana, tarde y noche', '#eab308', 55)
 ON CONFLICT (id) DO UPDATE SET
   emoji = EXCLUDED.emoji,

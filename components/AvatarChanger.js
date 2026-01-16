@@ -48,7 +48,7 @@ const AVATAR_CATEGORIES = {
       { id: 'ladybug', emoji: '🐞', name: 'Mariquita', color: 'from-red-500 to-black' },
       { id: 'spider', emoji: '🕷️', name: 'Araña', color: 'from-gray-800 to-gray-900' },
       { id: 'scorpion', emoji: '🦂', name: 'Escorpión', color: 'from-orange-600 to-brown-600' },
-      { id: 'fox', emoji: '🦊', name: 'Zorro', color: 'from-orange-500 to-red-500' },
+      { id: 'squirrel', emoji: '🐿️', name: 'Ardilla', color: 'from-orange-500 to-brown-500' },
       { id: 'wolf', emoji: '🐺', name: 'Lobo', color: 'from-gray-600 to-gray-700' },
       { id: 'zebra', emoji: '🦓', name: 'Cebra', color: 'from-gray-300 to-gray-800' },
       { id: 'giraffe', emoji: '🦒', name: 'Jirafa', color: 'from-yellow-500 to-orange-600' },

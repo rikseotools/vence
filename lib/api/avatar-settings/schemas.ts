@@ -18,7 +18,7 @@ export const avatarProfileIds = [
   'worker_ant',     // Hormiga Trabajadora - estudia todos los días
   'smart_dolphin',  // Delfín Inteligente - mejora >10%
   'relaxed_koala',  // Koala Relajado - <20 preguntas/semana
-  'clever_fox',     // Zorro Astuto - >70% en temas difíciles
+  'clever_squirrel', // Ardilla Astuta - >70% en temas difíciles
   'busy_bee'        // Abeja Productiva - estudia mañana+tarde+noche
 ] as const
 
