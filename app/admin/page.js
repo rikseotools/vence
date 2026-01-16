@@ -599,18 +599,128 @@ export default function AdminDashboard() {
       })
     }
 
-    // 📈 PROYECCIÓN ANUAL basada en crecimiento semanal CORREGIDO
+    // 📈 PROYECCIÓN ANUAL basada en TENDENCIA de crecimiento semanal
     const currentDate = new Date()
     const projectionDayOfWeek = currentDate.getDay() // 0 = domingo, 1 = lunes, etc.
     const daysPassedThisWeek = projectionDayOfWeek === 0 ? 7 : projectionDayOfWeek // Domingo cuenta como 7
-    
+
+    // Calcular semana pasada completa (lunes a domingo anterior)
+    const lastMonday = new Date(thisMonday)
+    lastMonday.setDate(lastMonday.getDate() - 7)
+    const lastSunday = new Date(thisMonday)
+    lastSunday.setMilliseconds(-1) // Justo antes de este lunes
+
+    const newUsersLastWeek = users?.filter(u => {
+      const userDate = new Date(u.user_created_at)
+      return userDate >= lastMonday && userDate < thisMonday
+    }).length || 0
+
     // Calcular promedio diario de esta semana parcial
     const averageUsersPerDay = daysPassedThisWeek > 0 ? newUsersThisWeek / daysPassedThisWeek : 0
-    
-    // Proyectar a semana completa (7 días) y luego a año (52 semanas)
+
+    // Proyectar esta semana completa
     const projectedUsersPerWeek = averageUsersPerDay * 7
-    const projectedUsersNextYear = projectedUsersPerWeek > 0 ? 
-      totalUsers + Math.round(projectedUsersPerWeek * 52) : totalUsers
+
+    // 📊 Calcular TASA DE CRECIMIENTO semanal (comparando esta semana proyectada vs semana pasada)
+    let weeklyGrowthRate = 0
+    let isGrowing = true
+
+    if (newUsersLastWeek > 0 && projectedUsersPerWeek > 0) {
+      // Tasa de crecimiento = (esta semana proyectada / semana pasada) - 1
+      weeklyGrowthRate = ((projectedUsersPerWeek / newUsersLastWeek) - 1) * 100
+      isGrowing = weeklyGrowthRate >= 0
+    } else if (newUsersLastWeek === 0 && projectedUsersPerWeek > 0) {
+      weeklyGrowthRate = 100 // Crecimiento infinito (de 0 a algo)
+      isGrowing = true
+    } else if (newUsersLastWeek > 0 && projectedUsersPerWeek === 0) {
+      weeklyGrowthRate = -100 // Decrecimiento total
+      isGrowing = false
+    }
+
+    // 📈 PROYECCIÓN ANUAL con crecimiento compuesto
+    // Si la tendencia es positiva: aplicar crecimiento compuesto moderado
+    // Si la tendencia es negativa: proyección conservadora (lineal pero reducida)
+    let projectedUsersNextYear = totalUsers
+
+    if (projectedUsersPerWeek > 0) {
+      if (isGrowing && weeklyGrowthRate > 0) {
+        // Crecimiento: usar media entre proyección lineal y compuesta (más realista)
+        const linearProjection = projectedUsersPerWeek * 52
+        // Limitar crecimiento semanal a máx 10% para evitar proyecciones absurdas
+        const cappedGrowthRate = Math.min(weeklyGrowthRate / 100, 0.10)
+        // Proyección compuesta: suma de serie geométrica
+        const compoundProjection = projectedUsersPerWeek * ((Math.pow(1 + cappedGrowthRate, 52) - 1) / cappedGrowthRate)
+        // Usar media ponderada (70% lineal, 30% compuesta) para ser conservador
+        const blendedProjection = (linearProjection * 0.7) + (compoundProjection * 0.3)
+        projectedUsersNextYear = totalUsers + Math.round(blendedProjection)
+      } else {
+        // Decrecimiento o estable: proyección lineal pero ajustada por tendencia
+        const decayFactor = Math.max(0.5, 1 + (weeklyGrowthRate / 100)) // Mínimo 50%
+        projectedUsersNextYear = totalUsers + Math.round(projectedUsersPerWeek * 52 * decayFactor)
+      }
+    }
+
+    // 📊 CRECIMIENTO MENSUAL (últimos 30 días vs 30 días anteriores)
+    const thirtyDaysAgoDate = new Date(now)
+    thirtyDaysAgoDate.setDate(thirtyDaysAgoDate.getDate() - 30)
+    thirtyDaysAgoDate.setHours(0, 0, 0, 0)
+
+    const sixtyDaysAgoDate = new Date(now)
+    sixtyDaysAgoDate.setDate(sixtyDaysAgoDate.getDate() - 60)
+    sixtyDaysAgoDate.setHours(0, 0, 0, 0)
+
+    // Usuarios de los últimos 30 días
+    const newUsersLast30Days = users?.filter(u => {
+      const userDate = new Date(u.user_created_at)
+      return userDate >= thirtyDaysAgoDate
+    }).length || 0
+
+    // Usuarios de hace 30-60 días (mes anterior)
+    const newUsersPrevious30Days = users?.filter(u => {
+      const userDate = new Date(u.user_created_at)
+      return userDate >= sixtyDaysAgoDate && userDate < thirtyDaysAgoDate
+    }).length || 0
+
+    // Calcular tasa de crecimiento mensual
+    let monthlyGrowthRate = 0
+    let isGrowingMonthly = true
+
+    if (newUsersPrevious30Days > 0 && newUsersLast30Days > 0) {
+      monthlyGrowthRate = ((newUsersLast30Days / newUsersPrevious30Days) - 1) * 100
+      isGrowingMonthly = monthlyGrowthRate >= 0
+    } else if (newUsersPrevious30Days === 0 && newUsersLast30Days > 0) {
+      monthlyGrowthRate = 100
+      isGrowingMonthly = true
+    } else if (newUsersPrevious30Days > 0 && newUsersLast30Days === 0) {
+      monthlyGrowthRate = -100
+      isGrowingMonthly = false
+    }
+
+    // 📈 PROYECCIÓN ALTERNATIVA basada en crecimiento mensual
+    let projectedUsersNextYearMonthly = totalUsers
+    if (newUsersLast30Days > 0) {
+      if (isGrowingMonthly && monthlyGrowthRate > 0) {
+        // Proyección con crecimiento compuesto mensual (más conservador)
+        const cappedMonthlyGrowth = Math.min(monthlyGrowthRate / 100, 0.30) // Máx 30% mensual
+        const monthlyCompound = newUsersLast30Days * ((Math.pow(1 + cappedMonthlyGrowth, 12) - 1) / cappedMonthlyGrowth)
+        const monthlyLinear = newUsersLast30Days * 12
+        // 80% lineal, 20% compuesto para ser muy conservador
+        projectedUsersNextYearMonthly = totalUsers + Math.round((monthlyLinear * 0.8) + (monthlyCompound * 0.2))
+      } else {
+        const decayFactor = Math.max(0.5, 1 + (monthlyGrowthRate / 100))
+        projectedUsersNextYearMonthly = totalUsers + Math.round(newUsersLast30Days * 12 * decayFactor)
+      }
+    }
+
+    console.log('📈 Proyección mejorada:')
+    console.log(`  - Semana pasada: ${newUsersLastWeek} usuarios`)
+    console.log(`  - Esta semana (proyectada): ${projectedUsersPerWeek.toFixed(1)} usuarios`)
+    console.log(`  - Crecimiento semanal: ${weeklyGrowthRate.toFixed(1)}%`)
+    console.log(`  - Mes anterior (30-60 días): ${newUsersPrevious30Days} usuarios`)
+    console.log(`  - Último mes (0-30 días): ${newUsersLast30Days} usuarios`)
+    console.log(`  - Crecimiento mensual: ${monthlyGrowthRate.toFixed(1)}%`)
+    console.log(`  - Proyección semanal: ${projectedUsersNextYear} usuarios`)
+    console.log(`  - Proyección mensual: ${projectedUsersNextYearMonthly} usuarios`)
 
     const result = {
       totalUsers,
@@ -637,11 +747,20 @@ export default function AdminDashboard() {
       MAU,
       dauMauRatio,
       dauMauHistory,
-      // 📈 NUEVO: Proyección anual
+      // 📈 NUEVO: Proyección anual con tendencia
       projectedUsersNextYear,
       averageUsersPerDay,
       projectedUsersPerWeek,
       daysPassedThisWeek,
+      newUsersLastWeek,
+      weeklyGrowthRate,
+      isGrowing,
+      // 📈 Crecimiento mensual
+      newUsersLast30Days,
+      newUsersPrevious30Days,
+      monthlyGrowthRate,
+      isGrowingMonthly,
+      projectedUsersNextYearMonthly,
       // 📊 NUEVO: Desglose por modo de test (30 días)
       testsByMode,
       testsByStudyType,
@@ -805,13 +924,34 @@ export default function AdminDashboard() {
                   <div className="text-xs text-gray-700 dark:text-gray-300 mt-1 font-medium">
                     🌱 {stats.newUsersThisWeekBySource?.organic || 0} Orgánico • 💰 {stats.newUsersThisWeekBySource?.google_ads || 0} Google • 📘 {stats.newUsersThisWeekBySource?.meta_ads || 0} Meta
                   </div>
-                  {stats.newUsersThisWeek > 0 && (
-                    <div className="text-xs text-purple-600 mt-2 font-medium">
-                      📈 Proyección a un año: ~{stats.projectedUsersNextYear.toLocaleString()} usuarios
-                      <br />
-                      <span className="text-xs text-gray-500">
-                        ({stats.averageUsersPerDay.toFixed(1)}/día × 365 días)
-                      </span>
+                  {(stats.newUsersThisWeek > 0 || stats.newUsersLast30Days > 0) && (
+                    <div className="text-xs mt-2 font-medium space-y-1">
+                      {/* Tendencia semanal */}
+                      <div className={`flex items-center gap-1 ${stats.isGrowing ? 'text-green-600' : 'text-red-600'}`}>
+                        <span>{stats.isGrowing ? '📈' : '📉'}</span>
+                        <span>Semanal: {stats.weeklyGrowthRate > 0 ? '+' : ''}{stats.weeklyGrowthRate.toFixed(0)}%</span>
+                        <span className="text-gray-500 text-[10px]">
+                          ({stats.newUsersLastWeek}→{stats.projectedUsersPerWeek.toFixed(0)})
+                        </span>
+                      </div>
+                      {/* Tendencia mensual */}
+                      <div className={`flex items-center gap-1 ${stats.isGrowingMonthly ? 'text-green-600' : 'text-red-600'}`}>
+                        <span>{stats.isGrowingMonthly ? '📈' : '📉'}</span>
+                        <span>Mensual: {stats.monthlyGrowthRate > 0 ? '+' : ''}{stats.monthlyGrowthRate.toFixed(0)}%</span>
+                        <span className="text-gray-500 text-[10px]">
+                          ({stats.newUsersPrevious30Days}→{stats.newUsersLast30Days})
+                        </span>
+                      </div>
+                      {/* Proyecciones */}
+                      <div className="pt-1 border-t border-gray-200 dark:border-gray-600 mt-1">
+                        <div className="text-purple-600">
+                          Proyección 1 año:
+                        </div>
+                        <div className="text-gray-600 dark:text-gray-400 text-[10px] space-y-0.5">
+                          <div>• Base semanal: ~{stats.projectedUsersNextYear.toLocaleString()}</div>
+                          <div>• Base mensual: ~{stats.projectedUsersNextYearMonthly.toLocaleString()}</div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
