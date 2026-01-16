@@ -8,7 +8,7 @@ import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 
 export default function UserAvatar() {
   // Using Auth context instead of local state
-  const { user, loading: authLoading, signOut, supabase } = useAuth()
+  const { user, loading: authLoading, signOut, supabase, isPremium } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
@@ -228,9 +228,9 @@ export default function UserAvatar() {
     }
 
     // 3. Name/email initial
-    const initial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() || 
+    const initial = user?.user_metadata?.full_name?.charAt(0).toUpperCase() ||
                    user?.email?.charAt(0).toUpperCase() || 'U'
-    
+
     return {
       type: 'initial',
       element: (
@@ -288,15 +288,22 @@ export default function UserAvatar() {
         <div className="relative">
           {avatarDisplay.element}
           {avatarDisplay.fallback && (
-            <div 
+            <div
               className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg border-2 border-green-500"
               style={{ display: 'none' }}
             >
-              {user?.user_metadata?.full_name?.charAt(0).toUpperCase() || 
+              {user?.user_metadata?.full_name?.charAt(0).toUpperCase() ||
                user?.email?.charAt(0).toUpperCase() || 'U'}
             </div>
           )}
-          
+
+          {/* Premium crown - centered on top */}
+          {isPremium && (
+            <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-lg drop-shadow-md" title="Premium">
+              👑
+            </div>
+          )}
+
           {/* Online indicator */}
           <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
         </div>
@@ -306,7 +313,11 @@ export default function UserAvatar() {
           <div className="text-sm font-medium text-gray-900">
             {getDisplayName()}
           </div>
-          <div className="text-xs text-green-600">✅ Registrado</div>
+          {isPremium ? (
+            <div className="text-xs text-amber-600 font-semibold">⭐ Premium</div>
+          ) : (
+            <div className="text-xs text-green-600">✅ Registrado</div>
+          )}
         </div>
 
         {/* Dropdown arrow */}
@@ -352,12 +363,12 @@ export default function UserAvatar() {
                   <div className="text-sm text-gray-600">
                     {user.email}
                   </div>
-                  {/* Avatar type */}
-                  <div className="text-xs text-gray-500">
-                    {avatarDisplay.type === 'custom' && '🎨 Avatar personalizado'}
-                    {avatarDisplay.type === 'photo' && '📸 Foto de perfil'}
-                    {avatarDisplay.type === 'initial' && '🔤 Avatar inicial'}
-                  </div>
+                  {/* Premium badge */}
+                  {isPremium && (
+                    <div className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full mt-1">
+                      ⭐ Premium
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
