@@ -8,7 +8,8 @@
 CREATE TABLE IF NOT EXISTS avatar_profiles (
   id TEXT PRIMARY KEY,                    -- 'night_owl', 'early_bird', etc.
   emoji TEXT NOT NULL,
-  name_es TEXT NOT NULL,
+  name_es TEXT NOT NULL,                  -- Nombre masculino/neutro
+  name_es_f TEXT,                         -- Nombre femenino (NULL si es neutro)
   description_es TEXT NOT NULL,
   color TEXT NOT NULL,                    -- Color hex para UI
   priority INT DEFAULT 50,                -- Para resolver empates (mayor = más prioritario)
@@ -38,20 +39,21 @@ CREATE INDEX IF NOT EXISTS idx_user_avatar_settings_mode ON user_avatar_settings
 -- Insertar perfiles de avatar iniciales
 -- ============================================
 
-INSERT INTO avatar_profiles (id, emoji, name_es, description_es, color, priority) VALUES
-  ('night_owl', '🦉', 'Búho Nocturno', 'Estudias principalmente después de las 21:00', '#6366f1', 60),
-  ('early_bird', '🐓', 'Gallo Madrugador', 'Estudias principalmente antes de las 9:00', '#f59e0b', 60),
-  ('champion', '🦁', 'León Campeón', 'Tu precisión supera el 85%', '#ef4444', 90),
-  ('consistent', '🐢', 'Tortuga Constante', 'Llevas más de 14 días de racha', '#10b981', 85),
-  ('speed_eagle', '🦅', 'Águila Veloz', 'Respondes más de 100 preguntas por semana', '#3b82f6', 70),
-  ('worker_ant', '🐜', 'Hormiga Trabajadora', 'Estudias todos los días de la semana', '#8b5cf6', 80),
-  ('smart_dolphin', '🐬', 'Delfín Inteligente', 'Has mejorado más del 10% esta semana', '#06b6d4', 75),
-  ('relaxed_koala', '🐨', 'Koala Relajado', 'Te lo tomas con calma, menos de 20 preguntas esta semana', '#94a3b8', 10),
-  ('clever_fox', '🦊', 'Zorro Astuto', 'Dominas los temas difíciles con >70% de acierto', '#f97316', 65),
-  ('busy_bee', '🐝', 'Abeja Productiva', 'Estudias mañana, tarde y noche', '#eab308', 55)
+INSERT INTO avatar_profiles (id, emoji, name_es, name_es_f, description_es, color, priority) VALUES
+  ('night_owl', '🦉', 'Búho Nocturno', NULL, 'Estudias principalmente después de las 21:00', '#6366f1', 60),
+  ('early_bird', '🐓', 'Madrugador/a', NULL, 'Estudias principalmente antes de las 9:00', '#f59e0b', 60),
+  ('champion', '🦁', 'León Campeón', 'Leona Campeona', 'Tu precisión supera el 85%', '#ef4444', 90),
+  ('consistent', '🐢', 'Tortuga Constante', NULL, 'Llevas más de 14 días de racha', '#10b981', 85),
+  ('speed_eagle', '🦅', 'Águila Veloz', NULL, 'Respondes más de 100 preguntas por semana', '#3b82f6', 70),
+  ('worker_ant', '🐜', 'Hormiga Trabajadora', NULL, 'Estudias todos los días de la semana', '#8b5cf6', 80),
+  ('smart_dolphin', '🐬', 'Delfín Inteligente', NULL, 'Has mejorado más del 10% esta semana', '#06b6d4', 75),
+  ('relaxed_koala', '🐨', 'Koala Relajado', 'Koala Relajada', 'Te lo tomas con calma, menos de 20 preguntas esta semana', '#94a3b8', 10),
+  ('clever_fox', '🦊', 'Estratega Astuto', 'Estratega Astuta', 'Dominas los temas difíciles con >70% de acierto', '#f97316', 65),
+  ('busy_bee', '🐝', 'Abeja Productiva', NULL, 'Estudias mañana, tarde y noche', '#eab308', 55)
 ON CONFLICT (id) DO UPDATE SET
   emoji = EXCLUDED.emoji,
   name_es = EXCLUDED.name_es,
+  name_es_f = EXCLUDED.name_es_f,
   description_es = EXCLUDED.description_es,
   color = EXCLUDED.color,
   priority = EXCLUDED.priority;

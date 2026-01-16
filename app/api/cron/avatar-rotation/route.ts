@@ -256,18 +256,32 @@ async function sendAvatarChangeNotifications(
         continue
       }
 
-      // Obtener nombre del perfil para el mensaje
+      // Obtener género del usuario para usar el nombre correcto
+      const { data: userProfile } = await supabase
+        .from('user_profiles')
+        .select('gender')
+        .eq('id', user.userId)
+        .single()
+
+      const isFemale = userProfile?.gender === 'female' || userProfile?.gender === 'mujer'
+
+      // Obtener nombre del perfil para el mensaje (con versión femenina si existe)
       const { data: profileData } = await supabase
         .from('avatar_profiles')
-        .select('name_es, description_es')
+        .select('name_es, name_es_f, description_es')
         .eq('id', user.newProfile)
         .single()
 
       if (!profileData) continue
 
+      // Usar nombre femenino si el usuario es mujer y existe versión femenina
+      const profileName = (isFemale && profileData.name_es_f)
+        ? profileData.name_es_f
+        : profileData.name_es
+
       const notificationPayload = {
         title: `${user.emoji} ¡Nuevo avatar esta semana!`,
-        body: `Eres ${profileData.name_es}. ${profileData.description_es}`,
+        body: `Eres ${profileName}. ${profileData.description_es}`,
         icon: '/icons/icon-192x192.png',
         badge: '/icons/badge-72x72.png',
         tag: 'avatar-rotation',
@@ -288,7 +302,7 @@ async function sendAvatarChangeNotifications(
 
       // En producción, aquí se enviaría la notificación push real
       // usando web-push o el servicio de notificaciones
-      console.log(`📱 [avatar-rotation] Notificación preparada para ${user.userId}: ${user.emoji}`)
+      console.log(`📱 [avatar-rotation] Notificación preparada para ${user.userId}: ${user.emoji} ${profileName}`)
 
     } catch (notifError) {
       console.warn(`⚠️ [avatar-rotation] Error enviando notificación a ${user.userId}:`, notifError)

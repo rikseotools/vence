@@ -117,7 +117,7 @@ export async function getAvatarSettings(
         data: {
           id: '',
           userId: params.userId,
-          mode: 'manual',
+          mode: 'automatic', // Por defecto activado
           currentProfile: null,
           currentEmoji: null,
           currentName: null,
@@ -216,7 +216,7 @@ export async function updateAvatarSettings(
       .from('user_avatar_settings')
       .upsert({
         user_id: params.userId,
-        mode: params.data.mode ?? 'manual',
+        mode: params.data.mode ?? 'automatic', // Por defecto activado
         current_profile: params.data.currentProfile ?? null,
         current_emoji: params.data.currentEmoji ?? null,
         current_name: params.data.currentName ?? null,

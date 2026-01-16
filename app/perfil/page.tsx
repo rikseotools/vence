@@ -185,8 +185,8 @@ function PerfilPageContent() {
   const [portalLoading, setPortalLoading] = useState<boolean>(false)
   const [showCancellationFlow, setShowCancellationFlow] = useState<boolean>(false)
 
-  // 🤖 AVATAR AUTOMÁTICO
-  const [avatarMode, setAvatarMode] = useState<'manual' | 'automatic'>('manual')
+  // 🤖 AVATAR AUTOMÁTICO - Por defecto activado
+  const [avatarMode, setAvatarMode] = useState<'manual' | 'automatic'>('automatic')
   const [autoProfile, setAutoProfile] = useState<AutoProfile | null>(null)
   const [avatarModeLoading, setAvatarModeLoading] = useState<boolean>(true)
   const [avatarModeSaving, setAvatarModeSaving] = useState<boolean>(false)
@@ -1810,7 +1810,7 @@ function PerfilPageContent() {
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
               <div className="text-center">
                 {/* Avatar con cambio de avatar */}
-                <div className="mb-4">
+                <div className="mb-2 flex justify-center">
                   <AvatarChanger
                     user={user}
                     currentAvatar={currentAvatar}
@@ -1818,20 +1818,65 @@ function PerfilPageContent() {
                   />
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-2">
+                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-1">
                   {formData.nickname || getFirstName(user.user_metadata?.full_name) || 'Usuario'}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4">{user.email}</p>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">{user.email}</p>
+
+                {/* 🤖 Toggle Avatar Automático - DENTRO DE LA TARJETA */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🤖</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Avatar Automático</span>
+                    </div>
+                    <button
+                      onClick={handleAvatarModeToggle}
+                      disabled={avatarModeLoading || avatarModeSaving}
+                      className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${
+                        avatarMode === 'automatic'
+                          ? 'bg-purple-500'
+                          : 'bg-gray-300 dark:bg-gray-600'
+                      } ${(avatarModeLoading || avatarModeSaving) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                        avatarMode === 'automatic' ? 'translate-x-5' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {avatarMode === 'automatic'
+                      ? 'Tu avatar cambia cada semana según cómo estudias'
+                      : 'Actívalo para que tu avatar refleje tu estilo de estudio'}
+                  </p>
+
+                  {avatarMode === 'automatic' && autoProfile && (
+                    <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-2 mt-3 text-center">
+                      <span className="text-2xl">{autoProfile.emoji}</span>
+                      <p className="font-medium text-purple-700 dark:text-purple-300 text-sm">
+                        {autoProfile.name}
+                      </p>
+                      <p className="text-xs text-purple-500 dark:text-purple-400">
+                        Según tu actividad
+                      </p>
+                    </div>
+                  )}
+
+                  {avatarModeSaving && (
+                    <p className="text-xs text-center text-gray-500 mt-2">Guardando...</p>
+                  )}
+                </div>
 
                 {/* Estadísticas básicas */}
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded-lg">
                     <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
                       {formData.target_oposicion ? '1' : '0'}
                     </div>
                     <div className="text-xs text-blue-500 dark:text-blue-400">Oposición</div>
                   </div>
-                  <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
+                  <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded-lg">
                     <div className="text-lg font-bold text-green-600 dark:text-green-400">
                       {formData.study_goal}
                     </div>
@@ -1839,51 +1884,6 @@ function PerfilPageContent() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* 🤖 Toggle Avatar Automático - VISIBLE */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mt-6">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🤖</span>
-                  <span className="font-semibold text-gray-800 dark:text-white">Avatar Automático</span>
-                </div>
-                <button
-                  onClick={handleAvatarModeToggle}
-                  disabled={avatarModeLoading || avatarModeSaving}
-                  className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${
-                    avatarMode === 'automatic'
-                      ? 'bg-purple-500'
-                      : 'bg-gray-300 dark:bg-gray-600'
-                  } ${(avatarModeLoading || avatarModeSaving) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${
-                    avatarMode === 'automatic' ? 'translate-x-7' : 'translate-x-1'
-                  }`} />
-                </button>
-              </div>
-
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                {avatarMode === 'automatic'
-                  ? 'Tu avatar cambia cada semana según cómo estudias. ¡Descubre qué animal eres!'
-                  : 'Activa para que tu avatar refleje tu estilo de estudio automáticamente.'}
-              </p>
-
-              {avatarMode === 'automatic' && autoProfile && (
-                <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3 text-center">
-                  <span className="text-3xl">{autoProfile.emoji}</span>
-                  <p className="font-medium text-purple-700 dark:text-purple-300 mt-1">
-                    {autoProfile.name}
-                  </p>
-                  <p className="text-xs text-purple-500 dark:text-purple-400">
-                    Basado en tu actividad de esta semana
-                  </p>
-                </div>
-              )}
-
-              {avatarModeSaving && (
-                <p className="text-xs text-center text-gray-500 mt-2">Guardando...</p>
-              )}
             </div>
           </div>
 

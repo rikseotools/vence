@@ -508,18 +508,18 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative inline-block">
       {/* Avatar actual con botón para cambiar */}
       <div className="relative group cursor-pointer" onClick={() => setIsOpen(true)}>
         {renderCurrentAvatar()}
-        
+
         {/* Overlay con cámara al hacer hover */}
         <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
           <span className="text-white text-2xl">🎨</span>
         </div>
-        
-        {/* Botón editar */}
-        <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors">
+
+        {/* Botón editar - pegado al borde del avatar */}
+        <button className="absolute bottom-0 right-0 w-7 h-7 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors shadow-md text-sm">
           ✏️
         </button>
       </div>
