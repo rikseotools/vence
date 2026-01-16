@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext' // Using context instead of local instance
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
+import { useSentryIssues } from '@/hooks/useSentryIssues'
 // import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 
 export default function UserAvatar() {
@@ -13,6 +14,7 @@ export default function UserAvatar() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
   const adminNotifications = useAdminNotifications()
+  const { issuesCount: sentryIssuesCount } = useSentryIssues(isAdmin && !adminLoading)
   const [userStats, setUserStats] = useState({
     streak: 0,
     accuracy: 0,
@@ -515,11 +517,18 @@ export default function UserAvatar() {
                   >
                     <span>👨‍💼</span>
                     <span>Panel Admin</span>
-                    {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 && (
-                      <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                        {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 9 ? '9+' : (adminNotifications?.feedback + adminNotifications?.impugnaciones)}
-                      </span>
-                    )}
+                    <span className="ml-auto flex items-center gap-1">
+                      {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 0 && (
+                        <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold" title="Feedback pendiente">
+                          {(adminNotifications?.feedback + adminNotifications?.impugnaciones) > 9 ? '9+' : (adminNotifications?.feedback + adminNotifications?.impugnaciones)}
+                        </span>
+                      )}
+                      {sentryIssuesCount > 0 && (
+                        <span className="bg-orange-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold" title="Errores en Sentry">
+                          {sentryIssuesCount > 9 ? '9+' : sentryIssuesCount}
+                        </span>
+                      )}
+                    </span>
                   </Link>
                 </>
               )}

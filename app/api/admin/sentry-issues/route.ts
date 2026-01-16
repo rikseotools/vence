@@ -17,26 +17,34 @@ export async function GET(request: Request) {
 
     const token = authHeader.split(' ')[1]
 
-    // Verificar que es admin usando Supabase
+    // Crear cliente con el token del usuario (no service role)
+    // Esto permite que auth.uid() funcione en las RPC
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }
     )
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    // Verificar que el usuario está autenticado
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    // Verificar si es admin consultando la tabla admin_users
-    const { data: adminUser } = await supabase
-      .from('admin_users')
-      .select('id')
-      .eq('id', user.id)
-      .single()
+    // Verificar si es admin usando RPC (misma función que usa Header.js)
+    // Ahora funciona porque el cliente tiene el contexto del usuario
+    const { data: isAdmin, error: adminError } = await supabase.rpc('is_current_user_admin')
 
-    const isAdmin = !!adminUser
+    if (adminError) {
+      console.error('Error verificando admin:', adminError)
+    }
 
     if (!isAdmin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
