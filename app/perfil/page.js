@@ -7,6 +7,7 @@ import AvatarChanger from '@/components/AvatarChanger'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserOposicion } from '@/components/useUserOposicion'
 import notificationTracker from '@/lib/services/notificationTracker'
+import CancellationFlow from '@/components/CancellationFlow'
 
 function PerfilPageContent() {
   const { user, loading: authLoading, supabase } = useAuth()
@@ -46,6 +47,7 @@ function PerfilPageContent() {
   const [subscriptionData, setSubscriptionData] = useState(null)
   const [subscriptionLoading, setSubscriptionLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [showCancellationFlow, setShowCancellationFlow] = useState(false)
   
   // Para evitar guardado en primera carga
   const isInitialLoad = useRef(true)
@@ -205,90 +207,66 @@ function PerfilPageContent() {
     }
   }, [searchParams])
 
-  // 🆕 CARGAR EMAIL PREFERENCES
+  // 🆕 CARGAR EMAIL PREFERENCES - VIA API TIPADA
   useEffect(() => {
     async function loadEmailPreferences() {
       if (!user) return
-      
+
       try {
         setEmailPrefLoading(true)
-        
-        const { data: preferences, error } = await supabase
-          .from('email_preferences')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
 
-        if (error && error.code === 'PGRST116') {
-          // No existe, crear con valores por defecto
+        const response = await fetch(`/api/profile/email-preferences?userId=${user.id}`)
+        const result = await response.json()
+
+        if (!result.success || !result.data) {
+          // Valores por defecto si no existe
           setEmailPreferences({
             receive_emails: true,
             support_emails: true,
             newsletter_emails: true
           })
-        } else if (error) {
-          console.error('Error cargando preferencias de email:', error)
-          setEmailPreferences({ receive_emails: true, support_emails: true, newsletter_emails: true })
         } else {
-          // Mapear las preferencias complejas a nuestra opción simple
-          // Si las columnas no existen (undefined), usar true como default
-          const receiveEmails = !preferences.unsubscribed_all
-          const supportEmails = preferences.email_soporte_disabled === undefined
-            ? true
-            : !preferences.email_soporte_disabled
-          const newsletterEmails = preferences.email_newsletter_disabled === undefined
-            ? true
-            : !preferences.email_newsletter_disabled
+          // Mapear las preferencias de la API a nuestro formato simple
+          const prefs = result.data
           setEmailPreferences({
-            receive_emails: receiveEmails,
-            support_emails: supportEmails,
-            newsletter_emails: newsletterEmails
+            receive_emails: !prefs.unsubscribedAll,
+            support_emails: true, // Por ahora siempre true (columna no existe aún)
+            newsletter_emails: true // Por ahora siempre true (columna no existe aún)
           })
         }
       } catch (error) {
         console.error('Error general cargando email preferences:', error)
+        setEmailPreferences({ receive_emails: true, support_emails: true, newsletter_emails: true })
       } finally {
         setEmailPrefLoading(false)
       }
     }
 
     loadEmailPreferences()
-  }, [user, supabase])
+  }, [user])
 
-  // 🆕 CARGAR PUSH NOTIFICATIONS
+  // 🆕 CARGAR PUSH NOTIFICATIONS - VIA API TIPADA
   useEffect(() => {
     async function loadPushNotifications() {
       if (!user) return
-      
+
       try {
         setPushLoading(true)
-        
-        // Verificar soporte del navegador
-        const supported = typeof window !== 'undefined' && 
-          'Notification' in window && 
-          'serviceWorker' in navigator && 
-          'PushManager' in window
-        
-        const permission = supported ? Notification.permission : 'denied'
-        
-        // Cargar configuración de la base de datos
-        const { data: settings, error } = await supabase
-          .from('user_notification_settings')
-          .select('*')
-          .eq('user_id', user.id)
-          .single()
 
-        if (error && error.code === 'PGRST116') {
-          // No existe configuración, crear valores por defecto
-          setPushNotifications({
-            supported,
-            permission,
-            enabled: false,
-            subscription: null,
-            settings: null
-          })
-        } else if (error) {
-          console.error('Error cargando configuración de push:', error)
+        // Verificar soporte del navegador
+        const supported = typeof window !== 'undefined' &&
+          'Notification' in window &&
+          'serviceWorker' in navigator &&
+          'PushManager' in window
+
+        const permission = supported ? Notification.permission : 'denied'
+
+        // Cargar configuración via API
+        const response = await fetch(`/api/profile/notification-settings?userId=${user.id}`)
+        const result = await response.json()
+
+        if (!result.success || !result.data || !result.data.id) {
+          // No existe configuración, usar valores por defecto
           setPushNotifications({
             supported,
             permission,
@@ -297,23 +275,43 @@ function PerfilPageContent() {
             settings: null
           })
         } else {
+          const settings = result.data
           setPushNotifications({
             supported,
             permission,
-            enabled: settings.push_enabled || false,
-            subscription: settings.push_subscription ? JSON.parse(settings.push_subscription) : null,
-            settings
+            enabled: settings.pushEnabled || false,
+            subscription: settings.pushSubscription || null,
+            settings: {
+              push_enabled: settings.pushEnabled,
+              push_subscription: settings.pushSubscription,
+              preferred_times: settings.preferredTimes,
+              timezone: settings.timezone,
+              frequency: settings.frequency,
+              oposicion_type: settings.oposicionType,
+              motivation_level: settings.motivationLevel
+            }
           })
         }
       } catch (error) {
         console.error('Error general cargando push notifications:', error)
+        const supported = typeof window !== 'undefined' &&
+          'Notification' in window &&
+          'serviceWorker' in navigator &&
+          'PushManager' in window
+        setPushNotifications({
+          supported,
+          permission: supported ? Notification.permission : 'denied',
+          enabled: false,
+          subscription: null,
+          settings: null
+        })
       } finally {
         setPushLoading(false)
       }
     }
 
     loadPushNotifications()
-  }, [user, supabase])
+  }, [user])
 
   // 🆕 CARGAR DATOS DE SUSCRIPCIÓN
   useEffect(() => {
@@ -343,10 +341,11 @@ function PerfilPageContent() {
     loadSubscription()
   }, [user])
 
+  // CARGAR PERFIL VIA API TIPADA
   useEffect(() => {
     async function loadUserProfile() {
       if (authLoading || oposicionLoading) return
-      
+
       if (!user) {
         setLoading(false)
         return
@@ -357,39 +356,55 @@ function PerfilPageContent() {
         const avatarData = extractAvatarData(user.user_metadata)
         setCurrentAvatar(avatarData)
 
-        // Cargar perfil del usuario
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
+        // Cargar perfil del usuario via API
+        const response = await fetch(`/api/profile?userId=${user.id}`)
+        const result = await response.json()
 
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('Error cargando perfil:', profileError)
-        } else if (profile) {
-          setProfile(profile)
+        if (!result.success || !result.data) {
+          // Crear perfil si no existe
+          await createInitialProfile(user)
+        } else {
+          // Mapear datos de API (camelCase) a formato local (snake_case)
+          const apiProfile = result.data
+          const profileData = {
+            id: apiProfile.id,
+            email: apiProfile.email,
+            full_name: apiProfile.fullName,
+            avatar_url: apiProfile.avatarUrl,
+            preferred_language: apiProfile.preferredLanguage,
+            study_goal: apiProfile.studyGoal,
+            target_oposicion: apiProfile.targetOposicion,
+            target_oposicion_data: apiProfile.targetOposicionData,
+            nickname: apiProfile.nickname,
+            age: apiProfile.age,
+            gender: apiProfile.gender,
+            ciudad: apiProfile.ciudad,
+            daily_study_hours: apiProfile.dailyStudyHours,
+            plan_type: apiProfile.planType,
+            created_at: apiProfile.createdAt,
+            updated_at: apiProfile.updatedAt,
+            is_active_student: apiProfile.isActiveStudent,
+            stripe_customer_id: apiProfile.stripeCustomerId
+          }
+          setProfile(profileData)
 
           // ✅ SINCRONIZAR CON userOposicion del hook
           // Migrar valor antiguo si es necesario
-          let currentOposicion = userOposicion?.slug || profile.target_oposicion || ''
+          let currentOposicion = userOposicion?.slug || profileData.target_oposicion || ''
           if (currentOposicion === 'auxiliar-administrativo-estado') {
             currentOposicion = 'auxiliar_administrativo_estado' // Migrar al nuevo formato
           }
 
           setFormData({
-            nickname: profile.nickname || getFirstName(user.user_metadata?.full_name),
-            study_goal: profile.study_goal || 25,
+            nickname: profileData.nickname || getFirstName(user.user_metadata?.full_name),
+            study_goal: profileData.study_goal || 25,
             target_oposicion: currentOposicion,
             // Campos del onboarding
-            age: profile.age?.toString() || '',
-            gender: profile.gender || '',
-            ciudad: profile.ciudad || '',
-            daily_study_hours: profile.daily_study_hours?.toString() || ''
+            age: profileData.age?.toString() || '',
+            gender: profileData.gender || '',
+            ciudad: profileData.ciudad || '',
+            daily_study_hours: profileData.daily_study_hours?.toString() || ''
           })
-          
-        } else {
-          // Crear perfil si no existe
-          await createInitialProfile(user)
         }
 
       } catch (error) {
@@ -404,7 +419,7 @@ function PerfilPageContent() {
     }
 
     loadUserProfile()
-  }, [user, authLoading, supabase, oposicionLoading, userOposicion])
+  }, [user, authLoading, oposicionLoading, userOposicion])
 
   // DETECCIÓN DE CAMBIOS - Sin guardado automático
   useEffect(() => {
@@ -438,50 +453,37 @@ function PerfilPageContent() {
     setHasChanges(hasRealChanges)
   }, [formData, user, profile, isInitialLoad.current]) // Escuchar todo formData y isInitialLoad
 
-  // 🆕 GUARDAR EMAIL PREFERENCES - CON LÓGICA AUTOMÁTICA
+  // 🆕 GUARDAR EMAIL PREFERENCES - VIA API TIPADA
   const saveEmailPreferences = async (newPreferences) => {
     if (!user || emailPrefSaving) return
 
     try {
       setEmailPrefSaving(true)
 
-      // Convertir nuestra opción simple al formato de BD existente (TODOS los tipos)
+      // Convertir nuestra opción simple al formato de API
       const receiveEmails = newPreferences.receive_emails
-      const supportEmails = newPreferences.support_emails
-      const newsletterEmails = newPreferences.newsletter_emails
 
-      // Datos base (siempre existen)
-      const updateData = {
-        user_id: user.id,
-        unsubscribed_all: !receiveEmails,
-        email_reactivacion: receiveEmails,
-        email_urgente: receiveEmails,
-        email_bienvenida_motivacional: receiveEmails,
-        email_bienvenida_inmediato: receiveEmails,
-        email_resumen_semanal: receiveEmails,
-        unsubscribed_at: receiveEmails ? null : new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      const response = await fetch('/api/profile/email-preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          data: {
+            unsubscribedAll: !receiveEmails,
+            emailReactivacion: receiveEmails,
+            emailUrgente: receiveEmails,
+            emailBienvenidaMotivacional: receiveEmails,
+            emailBienvenidaInmediato: receiveEmails,
+            emailResumenSemanal: receiveEmails
+          }
+        })
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al guardar preferencias')
       }
-
-      // Intentar guardar con las nuevas columnas
-      let { error } = await supabase
-        .from('email_preferences')
-        .upsert({
-          ...updateData,
-          email_soporte_disabled: !supportEmails,
-          email_newsletter_disabled: !newsletterEmails
-        }, { onConflict: 'user_id' })
-
-      // Si falla por columnas inexistentes, guardar solo los campos base
-      if (error && error.message?.includes('column')) {
-        console.warn('Columnas nuevas no existen aún, guardando solo campos base')
-        const result = await supabase
-          .from('email_preferences')
-          .upsert(updateData, { onConflict: 'user_id' })
-        error = result.error
-      }
-
-      if (error) throw error
 
       setEmailPreferences(newPreferences)
       setMessage(`✅ Preferencias de email actualizadas`)
@@ -553,7 +555,7 @@ function PerfilPageContent() {
     saveEmailPreferences(newPreferences)
   }
 
-  // 🆕 FUNCIONES PARA PUSH NOTIFICATIONS
+  // 🆕 FUNCIONES PARA PUSH NOTIFICATIONS - VIA API TIPADA
   const enablePushNotifications = async () => {
     if (!pushNotifications.supported) {
       setMessage('❌ Tu navegador no soporta notificaciones push')
@@ -565,49 +567,54 @@ function PerfilPageContent() {
     try {
       // Track permission request
       await notificationTracker.trackPermissionRequested(user)
-      
+
       // Solicitar permiso
       const permission = await Notification.requestPermission()
-      
+
       if (permission === 'granted') {
         // Track permission granted
         await notificationTracker.trackPermissionGranted(user)
-        
+
         // Registrar service worker
         const registration = await navigator.serviceWorker.register('/sw.js')
         await navigator.serviceWorker.ready
 
         // Obtener o crear suscripción push
         let subscription = await registration.pushManager.getSubscription()
-        
+
         if (!subscription) {
           const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
           })
-          
+
           // Track subscription created
           await notificationTracker.trackSubscriptionCreated(user, subscription)
         }
 
-        // Guardar en base de datos
+        // Guardar en base de datos via API
         const settingsData = {
-          user_id: user.id,
-          push_enabled: true,
-          push_subscription: JSON.stringify(subscription),
-          preferred_times: ['09:00', '14:00', '20:00'],
+          pushEnabled: true,
+          pushSubscription: subscription.toJSON(),
+          preferredTimes: ['09:00', '14:00', '20:00'],
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           frequency: 'smart',
-          oposicion_type: 'auxiliar-administrativo',
-          motivation_level: 'medium'
+          oposicionType: 'auxiliar-administrativo',
+          motivationLevel: 'medium'
         }
 
-        const { error } = await supabase
-          .from('user_notification_settings')
-          .upsert(settingsData, { onConflict: 'user_id' })
+        const response = await fetch('/api/profile/notification-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            data: settingsData
+          })
+        })
 
-        if (error) throw error
+        const result = await response.json()
+        if (!result.success) throw new Error(result.error || 'Error al guardar configuración')
 
         // Track settings updated
         await notificationTracker.trackSettingsUpdated(user, settingsData)
@@ -618,7 +625,15 @@ function PerfilPageContent() {
           permission,
           enabled: true,
           subscription,
-          settings: settingsData
+          settings: {
+            push_enabled: true,
+            push_subscription: subscription.toJSON(),
+            preferred_times: ['09:00', '14:00', '20:00'],
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            frequency: 'smart',
+            oposicion_type: 'auxiliar-administrativo',
+            motivation_level: 'medium'
+          }
         }))
 
         // Mostrar notificación de bienvenida
@@ -654,15 +669,18 @@ function PerfilPageContent() {
   const disablePushNotifications = async () => {
     setPushSaving(true)
     try {
-      // Actualizar en base de datos
-      const { error } = await supabase
-        .from('user_notification_settings')
-        .upsert({
-          user_id: user.id,
-          push_enabled: false
-        }, { onConflict: 'user_id' })
+      // Actualizar en base de datos via API
+      const response = await fetch('/api/profile/notification-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          data: { pushEnabled: false }
+        })
+      })
 
-      if (error) throw error
+      const result = await response.json()
+      if (!result.success) throw new Error(result.error || 'Error al desactivar notificaciones')
 
       // Track subscription deleted (pasando usuario explícitamente)
       await notificationTracker.trackSubscriptionDeleted(user)
@@ -709,27 +727,56 @@ function PerfilPageContent() {
     return fullName.split(' ')[0] || ''
   }
 
+  // GUARDAR PERFIL VIA API TIPADA
   const saveProfile = async () => {
     if (!user || saving || !hasChanges) return
-    
+
     try {
       setSaving(true)
-      
+
       // Preparar datos de la oposición
       let oposicionData = null
       if (formData.target_oposicion) {
         const selectedOposicion = oposiciones.find(op => op.value === formData.target_oposicion)
         if (selectedOposicion && selectedOposicion.data) {
-          oposicionData = JSON.stringify(selectedOposicion.data)
+          oposicionData = selectedOposicion.data
         }
       }
-      
+
+      // Datos en formato camelCase para la API
+      const apiData = {
+        nickname: formData.nickname.trim(),
+        studyGoal: parseInt(formData.study_goal),
+        targetOposicion: formData.target_oposicion,
+        targetOposicionData: oposicionData,
+        // Campos del onboarding
+        age: formData.age ? parseInt(formData.age) : null,
+        gender: formData.gender || null,
+        ciudad: formData.ciudad.trim() || null,
+        dailyStudyHours: formData.daily_study_hours ? parseInt(formData.daily_study_hours) : null
+      }
+
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          data: apiData
+        })
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al guardar perfil')
+      }
+
+      // Actualizar el perfil local (convertir a snake_case)
       const updateData = {
         nickname: formData.nickname.trim(),
         study_goal: parseInt(formData.study_goal),
         target_oposicion: formData.target_oposicion,
-        target_oposicion_data: oposicionData,
-        // Campos del onboarding
+        target_oposicion_data: oposicionData ? JSON.stringify(oposicionData) : null,
         age: formData.age ? parseInt(formData.age) : null,
         gender: formData.gender || null,
         ciudad: formData.ciudad.trim() || null,
@@ -737,14 +784,6 @@ function PerfilPageContent() {
         updated_at: new Date().toISOString()
       }
 
-      const { error } = await supabase
-        .from('user_profiles')
-        .update(updateData)
-        .eq('id', user.id)
-
-      if (error) throw error
-
-      // Actualizar el perfil local
       setProfile(prev => ({
         ...prev,
         ...updateData
@@ -1012,11 +1051,19 @@ function PerfilPageContent() {
                   </>
                 ) : (
                   <>
-                    <span>⚙️</span>
-                    <span>Gestionar Suscripción</span>
+                    <span>💳</span>
+                    <span>Método de pago y facturas</span>
                   </>
                 )}
               </button>
+              {!subscriptionData.subscription.cancelAtPeriodEnd && (
+                <button
+                  onClick={() => setShowCancellationFlow(true)}
+                  className="flex-1 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 py-3 px-6 rounded-lg font-medium hover:bg-red-50 dark:hover:bg-red-900/20 transition-all flex items-center justify-center space-x-2"
+                >
+                  <span>Cancelar suscripción</span>
+                </button>
+              )}
             </div>
 
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -1025,8 +1072,7 @@ function PerfilPageContent() {
                 <div>
                   <h5 className="font-medium text-blue-800 dark:text-blue-200">Portal de gestión</h5>
                   <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    Desde el portal de Stripe puedes actualizar tu método de pago, ver facturas anteriores,
-                    o cancelar tu suscripción.
+                    Desde el portal de Stripe puedes actualizar tu método de pago y ver tus facturas anteriores.
                   </p>
                 </div>
               </div>
@@ -1048,6 +1094,14 @@ function PerfilPageContent() {
                 'Hazte Premium para acceder a todas las funcionalidades sin límites.'
               )}
             </p>
+            {/* TEMPORAL: Botón para probar el modal de cancelación */}
+            <button
+              onClick={() => setShowCancellationFlow(true)}
+              className="mb-4 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 py-3 px-6 rounded-lg font-medium hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all"
+            >
+              🧪 PROBAR Modal de Cancelación
+            </button>
+
             {subscriptionData?.planType !== 'premium' && subscriptionData?.planType !== 'legacy_free' && (
               <a
                 href="/premium"
@@ -2024,6 +2078,24 @@ function PerfilPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Modal de cancelación de suscripción */}
+      <CancellationFlow
+        isOpen={showCancellationFlow}
+        onClose={() => setShowCancellationFlow(false)}
+        userId={user?.id}
+        periodEndDate={subscriptionData?.subscription?.currentPeriodEnd}
+        onCancelled={(periodEnd) => {
+          // Actualizar datos de suscripción localmente
+          setSubscriptionData(prev => ({
+            ...prev,
+            subscription: {
+              ...prev.subscription,
+              cancelAtPeriodEnd: true
+            }
+          }))
+        }}
+      />
     </div>
   )
 }
