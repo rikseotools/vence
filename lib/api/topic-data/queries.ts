@@ -1,4 +1,5 @@
 // lib/api/topic-data/queries.ts - Queries optimizadas para datos de tema
+// V2: Usa módulo compartido topic-progress para el progreso del usuario
 import { getDb } from '@/db/client'
 import { topics, topicScope, laws, questions, articles, tests, testQuestions } from '@/db/schema'
 import { eq, and, sql, inArray, isNotNull } from 'drizzle-orm'
@@ -11,6 +12,13 @@ import type {
   OposicionKey,
   OPOSICION_TO_POSITION_TYPE
 } from './schemas'
+
+// Importar módulo compartido
+import {
+  getUserAnswersWithArticles,
+  filterAnswersByScopeMappings,
+  calculateDetailedProgress,
+} from '@/lib/api/topic-progress'
 
 // Cache simple en memoria (5 minutos)
 const topicCache = new Map<string, { data: GetTopicDataResponse; timestamp: number }>()
@@ -301,9 +309,10 @@ function processArticlesByLaw(
 /**
  * V2: Obtiene el progreso del usuario para un tema derivando desde article_id
  *
- * IMPORTANTE: Esta función NO usa tema_number guardado. En su lugar:
- * 1. Obtiene las respuestas del usuario que tienen preguntas con primary_article_id
- * 2. Filtra solo las que corresponden a artículos del topic_scope de este tema
+ * IMPORTANTE: Usa el módulo compartido topic-progress que:
+ * 1. Cachea las respuestas del usuario por 30 segundos
+ * 2. Filtra por scope mappings del tema
+ * 3. Calcula estadísticas detalladas
  *
  * Esto permite que la misma respuesta cuente para diferentes temas según la oposición.
  */
@@ -331,129 +340,24 @@ async function getUserProgressForTopicV2(
       }
     }
 
-    // Construir condiciones para cada mapping de ley/artículos
-    // Necesitamos obtener respuestas donde la pregunta tiene un artículo
-    // que pertenece a alguno de los scope mappings de este tema
-    const lawConditions: string[] = []
-    const params: string[] = []
+    // 1️⃣ Obtener respuestas del usuario (cacheado 30 segundos)
+    const answers = await getUserAnswersWithArticles(userId)
 
-    scopeMappings.forEach((mapping, idx) => {
-      if (!mapping.lawId) return
+    // 2️⃣ Filtrar por scope mappings de este tema
+    const filteredAnswers = filterAnswersByScopeMappings(answers, scopeMappings)
 
-      if (mapping.articleNumbers && mapping.articleNumbers.length > 0) {
-        // Artículos específicos de esta ley
-        const articleList = mapping.articleNumbers.map(a => `'${a}'`).join(',')
-        lawConditions.push(`(a.law_id = '${mapping.lawId}' AND a.article_number IN (${articleList}))`)
-      } else {
-        // Toda la ley (leyes virtuales)
-        lawConditions.push(`a.law_id = '${mapping.lawId}'`)
-      }
-    })
+    // 3️⃣ Calcular estadísticas
+    const progress = calculateDetailedProgress(filteredAnswers, totalQuestionsAvailable)
 
-    if (lawConditions.length === 0) {
-      return {
-        totalAnswers: 0,
-        overallAccuracy: 0,
-        uniqueQuestionsAnswered: 0,
-        totalQuestionsAvailable,
-        neverSeen: totalQuestionsAvailable,
-        performanceByDifficulty: {},
-      }
-    }
-
-    // Query V2: Obtener respuestas del usuario cuyos artículos pertenecen a este tema
-    const whereClause = lawConditions.join(' OR ')
-
-    const userAnswers = await db.execute<{
-      question_id: string
-      is_correct: boolean
-      difficulty: string | null
-      created_at: string
-    }>(sql.raw(`
-      SELECT
-        tq.question_id,
-        tq.is_correct,
-        tq.difficulty,
-        tq.created_at
-      FROM test_questions tq
-      INNER JOIN tests t ON tq.test_id = t.id
-      INNER JOIN questions q ON tq.question_id = q.id
-      INNER JOIN articles a ON q.primary_article_id = a.id
-      WHERE t.user_id = '${userId}'
-        AND q.primary_article_id IS NOT NULL
-        AND (${whereClause})
-    `))
-
-    // execute() retorna array directamente con postgres-js
-    const rows = Array.isArray(userAnswers) ? userAnswers : (userAnswers as any).rows || []
-
-    if (!rows.length) {
-      return {
-        totalAnswers: 0,
-        overallAccuracy: 0,
-        uniqueQuestionsAnswered: 0,
-        totalQuestionsAvailable,
-        neverSeen: totalQuestionsAvailable,
-        performanceByDifficulty: {},
-      }
-    }
-
-    // Calcular estadísticas
-    const totalAnswers = rows.length
-    const correctAnswers = rows.filter((a: any) => a.is_correct).length
-    const overallAccuracy = totalAnswers > 0 ? (correctAnswers / totalAnswers) * 100 : 0
-
-    // Preguntas únicas
-    const uniqueQuestionIds = new Set(rows.map((a: any) => a.question_id))
-    const uniqueQuestionsAnswered = uniqueQuestionIds.size
-    const neverSeen = Math.max(0, totalQuestionsAvailable - uniqueQuestionsAnswered)
-
-    // Performance por dificultad
-    const performanceByDifficulty: UserProgress['performanceByDifficulty'] = {}
-    const difficultyGroups = new Map<string, { total: number; correct: number }>()
-
-    for (const answer of rows) {
-      const diff = answer.difficulty || 'auto'
-      if (!difficultyGroups.has(diff)) {
-        difficultyGroups.set(diff, { total: 0, correct: 0 })
-      }
-      const group = difficultyGroups.get(diff)!
-      group.total++
-      if (answer.is_correct) group.correct++
-    }
-
-    for (const [diff, stats] of difficultyGroups) {
-      performanceByDifficulty[diff] = {
-        total: stats.total,
-        correct: stats.correct,
-        accuracy: stats.total > 0 ? (stats.correct / stats.total) * 100 : 0,
-      }
-    }
-
-    // Estadísticas recientes
-    const now = Date.now()
-    const last7Days = rows.filter((a: any) =>
-      new Date(a.created_at).getTime() >= now - 7 * 24 * 60 * 60 * 1000
-    )
-    const last15Days = rows.filter((a: any) =>
-      new Date(a.created_at).getTime() >= now - 15 * 24 * 60 * 60 * 1000
-    )
-    const last30Days = rows.filter((a: any) =>
-      new Date(a.created_at).getTime() >= now - 30 * 24 * 60 * 60 * 1000
-    )
-
+    // 4️⃣ Convertir al formato UserProgress esperado
     return {
-      totalAnswers,
-      overallAccuracy,
-      uniqueQuestionsAnswered,
+      totalAnswers: progress.totalAnswers,
+      overallAccuracy: progress.overallAccuracy,
+      uniqueQuestionsAnswered: progress.uniqueQuestionsAnswered,
       totalQuestionsAvailable,
-      neverSeen,
-      performanceByDifficulty,
-      recentStats: {
-        last7Days: new Set(last7Days.map((a: any) => a.question_id)).size,
-        last15Days: new Set(last15Days.map((a: any) => a.question_id)).size,
-        last30Days: new Set(last30Days.map((a: any) => a.question_id)).size,
-      },
+      neverSeen: Math.max(0, totalQuestionsAvailable - progress.uniqueQuestionsAnswered),
+      performanceByDifficulty: progress.performanceByDifficulty,
+      recentStats: progress.recentStats,
     }
   } catch (error) {
     console.error('Error obteniendo progreso del usuario (V2):', error)

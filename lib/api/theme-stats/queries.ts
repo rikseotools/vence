@@ -1,12 +1,23 @@
 // lib/api/theme-stats/queries.ts - Queries optimizadas para estadísticas por tema
-// V2: Stats derivadas dinámicamente desde article_id + topic_scope por oposición
+// V2: Usa módulo compartido topic-progress para derivar stats desde article_id + topic_scope
+
 import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import type { GetThemeStatsResponse, ThemeStat, OposicionSlug } from './schemas'
 import { OPOSICION_TO_POSITION_TYPE } from './schemas'
 
+// Importar módulo compartido
+import {
+  getArticleTopicMapping,
+  getUserAnswersWithArticles,
+  aggregateStatsByTopic,
+  invalidateUserAnswersCache,
+  clearAllArticleTopicMappings,
+  clearAllUserAnswersCache,
+} from '@/lib/api/topic-progress'
+
 // ============================================
-// CACHE LRU OPTIMIZADO (100k usuarios)
+// CACHE LRU PARA RESPUESTAS FORMATEADAS
 // ============================================
 
 interface CacheEntry {
@@ -64,76 +75,16 @@ class LRUCache {
 const statsCache = new LRUCache(10000, 30000)
 
 // ============================================
-// CACHE DE MAPEO ARTICLE → TOPIC (por position_type)
-// ============================================
-interface ArticleTopicMapping {
-  [lawId_articleNumber: string]: number // topic_number
-}
-
-interface TopicScopeCacheEntry {
-  mapping: ArticleTopicMapping
-  timestamp: number
-}
-
-// Cache del mapeo article → topic por position_type (TTL 30 días - raramente cambia)
-const topicScopeCache = new Map<string, TopicScopeCacheEntry>()
-const TOPIC_SCOPE_TTL = 30 * 24 * 60 * 60 * 1000 // 30 días
-
-async function getArticleTopicMapping(
-  db: ReturnType<typeof getDb>,
-  positionType: string
-): Promise<ArticleTopicMapping> {
-  const cacheKey = `topic-scope:${positionType}`
-  const cached = topicScopeCache.get(cacheKey)
-
-  if (cached && Date.now() - cached.timestamp < TOPIC_SCOPE_TTL) {
-    return cached.mapping
-  }
-
-  // Obtener todos los topic_scope para este position_type
-  const scopeRows = await db.execute<{
-    law_id: string
-    article_numbers: string[]
-    topic_number: number
-  }>(sql`
-    SELECT ts.law_id, ts.article_numbers, tp.topic_number
-    FROM topic_scope ts
-    INNER JOIN topics tp ON ts.topic_id = tp.id
-    WHERE tp.position_type = ${positionType}
-      AND tp.is_active = true
-  `)
-
-  const rows = Array.isArray(scopeRows) ? scopeRows : (scopeRows as any).rows || []
-
-  // Construir mapeo: lawId_articleNumber → topic_number
-  const mapping: ArticleTopicMapping = {}
-  for (const row of rows) {
-    if (row.article_numbers && Array.isArray(row.article_numbers)) {
-      for (const articleNum of row.article_numbers) {
-        const key = `${row.law_id}_${articleNum}`
-        // Si ya existe, quedarse con el topic_number más bajo (consistencia)
-        if (!(key in mapping) || row.topic_number < mapping[key]) {
-          mapping[key] = row.topic_number
-        }
-      }
-    }
-  }
-
-  topicScopeCache.set(cacheKey, { mapping, timestamp: Date.now() })
-  console.log(`📊 [theme-stats] Mapeo article→topic cargado: ${Object.keys(mapping).length} entradas para ${positionType}`)
-
-  return mapping
-}
-
-// ============================================
-// QUERY PRINCIPAL V2 (derivación dinámica OPTIMIZADA)
+// QUERY PRINCIPAL V2 (usa módulo compartido)
 // ============================================
 
 /**
  * Obtiene las estadísticas por tema para un usuario en una oposición específica.
  *
- * OPTIMIZACIÓN V2.1: En lugar de usar ANY() en SQL (muy lento),
- * pre-cargamos el mapeo article→topic y hacemos la agregación en memoria.
+ * Usa el módulo compartido topic-progress que:
+ * 1. Cachea el mapeo article→topic por 30 días
+ * 2. Cachea las respuestas del usuario por 30 segundos
+ * 3. Agrega en memoria (muy rápido)
  *
  * @param userId - ID del usuario
  * @param oposicionId - Slug de la oposición (ej: 'auxiliar-administrativo-estado')
@@ -145,11 +96,10 @@ export async function getUserThemeStatsByOposicion(
   try {
     const cacheKey = `theme-stats:${userId}:${oposicionId}`
 
-    // Verificar cache
+    // Verificar cache de respuesta formateada
     const cached = statsCache.get(cacheKey)
     if (cached) return cached
 
-    const db = getDb()
     const positionType = OPOSICION_TO_POSITION_TYPE[oposicionId]
 
     if (!positionType) {
@@ -159,80 +109,25 @@ export async function getUserThemeStatsByOposicion(
       }
     }
 
-    // 1️⃣ Obtener mapeo article → topic (cacheado)
-    const articleTopicMapping = await getArticleTopicMapping(db, positionType)
+    // 1️⃣ Obtener mapeo article → topic (cacheado 30 días)
+    const mapping = await getArticleTopicMapping(positionType)
 
-    // 2️⃣ Obtener respuestas del usuario con info de artículo (query simple sin ANY)
-    const answersResult = await db.execute<{
-      answer_id: string
-      is_correct: boolean
-      created_at: string
-      law_id: string
-      article_number: string
-    }>(sql`
-      SELECT
-        tq.id as answer_id,
-        tq.is_correct,
-        tq.created_at::text,
-        a.law_id,
-        a.article_number
-      FROM test_questions tq
-      INNER JOIN tests t ON tq.test_id = t.id
-      INNER JOIN questions q ON tq.question_id = q.id
-      INNER JOIN articles a ON q.primary_article_id = a.id
-      WHERE t.user_id = ${userId}
-        AND q.primary_article_id IS NOT NULL
-    `)
-
-    const answers = Array.isArray(answersResult) ? answersResult : (answersResult as any).rows || []
+    // 2️⃣ Obtener respuestas del usuario (cacheado 30 segundos)
+    const answers = await getUserAnswersWithArticles(userId)
 
     // 3️⃣ Agregar en memoria usando el mapeo
-    const statsByTopic: Record<number, {
-      total: number
-      correct: number
-      lastStudy: Date | null
-    }> = {}
+    const rawStats = aggregateStatsByTopic(answers, mapping)
 
-    for (const answer of answers) {
-      const key = `${answer.law_id}_${answer.article_number}`
-      const topicNumber = articleTopicMapping[key]
-
-      if (topicNumber === undefined) continue // Artículo no está en ningún tema de esta oposición
-
-      if (!statsByTopic[topicNumber]) {
-        statsByTopic[topicNumber] = { total: 0, correct: 0, lastStudy: null }
-      }
-
-      statsByTopic[topicNumber].total++
-      if (answer.is_correct) {
-        statsByTopic[topicNumber].correct++
-      }
-
-      const answerDate = new Date(answer.created_at)
-      if (!statsByTopic[topicNumber].lastStudy || answerDate > statsByTopic[topicNumber].lastStudy) {
-        statsByTopic[topicNumber].lastStudy = answerDate
-      }
-    }
-
-    // 4️⃣ Formatear resultado
+    // 4️⃣ Convertir al formato esperado por la API
     const stats: Record<string, ThemeStat> = {}
-
-    for (const [topicNumStr, data] of Object.entries(statsByTopic)) {
-      const topicNumber = parseInt(topicNumStr, 10)
-      const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0
-
+    for (const [topicNumStr, stat] of Object.entries(rawStats)) {
       stats[topicNumStr] = {
-        temaNumber: topicNumber,
-        total: data.total,
-        correct: data.correct,
-        accuracy,
-        lastStudy: data.lastStudy?.toISOString() || null,
-        lastStudyFormatted: data.lastStudy
-          ? data.lastStudy.toLocaleDateString('es-ES', {
-              day: 'numeric',
-              month: 'short'
-            })
-          : 'Nunca'
+        temaNumber: stat.temaNumber,
+        total: stat.total,
+        correct: stat.correct,
+        accuracy: stat.accuracy,
+        lastStudy: stat.lastStudy,
+        lastStudyFormatted: stat.lastStudyFormatted,
       }
     }
 
@@ -420,6 +315,9 @@ export function invalidateThemeStatsCache(userId: string): void {
     statsCache.delete(`theme-stats:${userId}:${oposicion}`)
   }
   statsCache.delete(`theme-stats-legacy:${userId}`)
+
+  // También invalidar caché del módulo compartido
+  invalidateUserAnswersCache(userId)
 }
 
 /**
@@ -430,6 +328,9 @@ export function invalidateThemeStatsCacheForOposicion(
   oposicionId: OposicionSlug
 ): void {
   statsCache.delete(`theme-stats:${userId}:${oposicionId}`)
+
+  // También invalidar caché del módulo compartido
+  invalidateUserAnswersCache(userId)
 }
 
 /**
@@ -437,4 +338,6 @@ export function invalidateThemeStatsCacheForOposicion(
  */
 export function clearAllThemeStatsCache(): void {
   statsCache.clear()
+  clearAllArticleTopicMappings()
+  clearAllUserAnswersCache()
 }
