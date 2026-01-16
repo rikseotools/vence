@@ -1,24 +1,154 @@
-// lib/notifications/motivationalAnalyzer.js
+// lib/notifications/motivationalAnalyzer.ts
 // Analizador de datos del usuario para generar notificaciones motivacionales
 
-import { 
-  MOTIVATIONAL_NOTIFICATION_TYPES, 
+import { z } from 'zod'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  MOTIVATIONAL_NOTIFICATION_TYPES,
   MOTIVATIONAL_CONFIG,
   getRandomMessageTemplate,
-  formatNotificationMessage 
-} from './motivationalTypes.js'
+  formatNotificationMessage,
+  getNotificationVisualConfig,
+  type MotivationalNotificationTypeId,
+  type MotivationalNotification
+} from './motivationalTypes'
+
+// ============================================
+// TIPOS E INTERFACES
+// ============================================
+
+// Test de Supabase
+interface TestRecord {
+  id?: string
+  user_id?: string
+  completed_at: string
+  is_completed?: boolean
+  score?: number
+  test_type?: string
+  is_quick_test?: boolean
+  difficulty_filter?: string
+  tema_filter?: string
+  tema_number?: string | number | null
+}
+
+// Respuesta de pregunta transformada de la API
+interface QuestionResponse {
+  id: string
+  created_at: string
+  is_correct: boolean
+  law_name?: string
+  article_number?: string
+  tema_number?: string | number | null
+  time_taken?: number
+}
+
+// Datos de usuario para análisis
+interface UserAnalyticsData {
+  recentTests: TestRecord[]
+  responses: QuestionResponse[]
+  oneWeekAgo: string
+  twoWeeksAgo: string
+}
+
+// Estadísticas agrupadas por tema
+interface TopicStats {
+  correct: number
+  total: number
+}
+
+type TopicStatsMap = Record<string, TopicStats>
+
+// Estadísticas de artículo
+interface ArticleStats {
+  correct: number
+  total: number
+  tema?: string | number | null
+  article?: string
+  law?: string
+}
+
+// Artículo dominado
+interface MasteredArticle {
+  key: string
+  tema?: string | number | null
+  article?: string
+  law?: string
+  accuracy: number
+  total: number
+}
+
+// Logros pasados
+interface PastAchievements {
+  bestStreak: number
+  masteredArticles: number
+}
+
+// Estadísticas por hora
+interface HourStats {
+  count: number
+  totalAccuracy: number
+}
+
+// Mejora de precisión
+interface AccuracyImprovement {
+  topic: string
+  old_accuracy: number
+  new_accuracy: number
+  improvement: number
+}
+
+// ============================================
+// ZOD SCHEMAS PARA VALIDACIÓN
+// ============================================
+
+// Schema para tests de Supabase
+const testRecordSchema = z.object({
+  id: z.string().uuid().optional(),
+  user_id: z.string().uuid().optional(),
+  completed_at: z.string(),
+  is_completed: z.boolean().optional(),
+  score: z.number().nullable().optional(),
+  test_type: z.string().nullable().optional(),
+  is_quick_test: z.boolean().nullable().optional(),
+  difficulty_filter: z.string().nullable().optional(),
+  tema_filter: z.string().nullable().optional(),
+  tema_number: z.union([z.string(), z.number()]).nullable().optional()
+}).passthrough()
+
+const testRecordsArraySchema = z.array(testRecordSchema)
+
+// Schema para respuesta de API analytics
+const analyticsResponseSchema = z.object({
+  success: z.boolean(),
+  responses: z.array(z.object({
+    id: z.string(),
+    createdAt: z.string(),
+    isCorrect: z.boolean(),
+    lawName: z.string().nullable().optional(),
+    articleNumber: z.string().nullable().optional(),
+    temaNumber: z.union([z.string(), z.number()]).nullable().optional(),
+    timeTaken: z.number().nullable().optional()
+  })).optional()
+}).passthrough()
+
+// ============================================
+// CLASE PRINCIPAL
+// ============================================
 
 export class MotivationalAnalyzer {
-  constructor(supabase, userId) {
+  private supabase: SupabaseClient
+  private userId: string
+
+  constructor(supabase: SupabaseClient, userId: string) {
     this.supabase = supabase
     this.userId = userId
   }
 
   // Función principal para generar notificaciones motivacionales
-  async generateMotivationalNotifications() {
+  async generateMotivationalNotifications(): Promise<MotivationalNotification[]> {
     try {
       console.log('🌟 Generando notificaciones motivacionales para usuario:', this.userId)
-      
+
       // 1. Verificar que el usuario tiene actividad suficiente
       const hasMinActivity = await this.checkMinimumActivity()
       if (!hasMinActivity) {
@@ -34,16 +164,11 @@ export class MotivationalAnalyzer {
       }
 
       // 3. Evaluar cada tipo de notificación motivacional
-      const notifications = []
-      
+      const notifications: MotivationalNotification[] = []
+
       // Progreso diario
       const progressNotification = await this.analyzeDailyProgress(userData)
       if (progressNotification) notifications.push(progressNotification)
-
-      // === SISTEMA SOLO MOTIVACIÓN+ ===
-      // Progreso constructivo (reemplaza críticas de baja preparación) - DESACTIVADO
-      // const constructiveProgressNotification = await this.analyzeConstructiveProgress(userData)
-      // if (constructiveProgressNotification) notifications.push(constructiveProgressNotification)
 
       // Aceleración positiva (reemplaza "no llegarás a tiempo")
       const positiveAccelerationNotification = await this.analyzePositiveAcceleration(userData)
@@ -90,7 +215,7 @@ export class MotivationalAnalyzer {
   }
 
   // Verificar actividad mínima del usuario
-  async checkMinimumActivity() {
+  private async checkMinimumActivity(): Promise<boolean> {
     try {
       const { data: tests, error } = await this.supabase
         .from('tests')
@@ -101,7 +226,7 @@ export class MotivationalAnalyzer {
 
       if (error) throw error
 
-      return tests?.length >= MOTIVATIONAL_CONFIG.min_study_sessions
+      return (tests?.length || 0) >= MOTIVATIONAL_CONFIG.min_study_sessions
     } catch (error) {
       console.error('Error verificando actividad mínima:', error)
       return false
@@ -109,13 +234,13 @@ export class MotivationalAnalyzer {
   }
 
   // Obtener datos analíticos del usuario
-  async getUserAnalyticsData() {
+  private async getUserAnalyticsData(): Promise<UserAnalyticsData | null> {
     try {
       const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
       const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
 
       // Tests recientes (esta query es rápida, tiene índice en user_id)
-      const { data: recentTests, error: testsError } = await this.supabase
+      const { data: recentTestsRaw, error: testsError } = await this.supabase
         .from('tests')
         .select('*')
         .eq('user_id', this.userId)
@@ -125,9 +250,17 @@ export class MotivationalAnalyzer {
 
       if (testsError) throw testsError
 
+      // Validar con Zod (soft validation)
+      let recentTests: TestRecord[] = []
+      try {
+        recentTests = testRecordsArraySchema.parse(recentTestsRaw || [])
+      } catch (zodError) {
+        console.warn('⚠️ Zod validation warning for tests:', zodError)
+        recentTests = (recentTestsRaw || []) as TestRecord[]
+      }
+
       // 🚀 OPTIMIZADO: Usar API con Drizzle en lugar del JOIN lento
-      // Antes: JOIN test_questions con tests causaba timeout
-      let responses = []
+      let responses: QuestionResponse[] = []
       try {
         const params = new URLSearchParams({
           action: 'analytics',
@@ -138,25 +271,36 @@ export class MotivationalAnalyzer {
         const response = await fetch(`/api/user/question-history?${params}`)
         const data = await response.json()
 
-        if (data.success && data.responses) {
+        // Validar respuesta de API
+        let validatedData: z.infer<typeof analyticsResponseSchema>
+        try {
+          validatedData = analyticsResponseSchema.parse(data)
+        } catch (zodError) {
+          console.warn('⚠️ Zod validation warning for analytics API:', zodError)
+          validatedData = data
+        }
+
+        if (validatedData.success && validatedData.responses) {
           // Transformar camelCase a snake_case para compatibilidad
-          responses = data.responses.map(r => ({
+          responses = validatedData.responses.map(r => ({
             id: r.id,
             created_at: r.createdAt,
             is_correct: r.isCorrect,
-            law_name: r.lawName,
-            article_number: r.articleNumber,
-            tema_number: r.temaNumber
+            law_name: r.lawName || undefined,
+            article_number: r.articleNumber || undefined,
+            tema_number: r.temaNumber,
+            time_taken: r.timeTaken || undefined
           }))
           console.log(`🚀 API OPTIMIZADA (analytics): ${responses.length} respuestas obtenidas`)
         }
       } catch (apiError) {
-        console.warn('⚠️ Error en API analytics, continuando sin respuestas:', apiError.message)
+        const errorMessage = apiError instanceof Error ? apiError.message : 'Unknown error'
+        console.warn('⚠️ Error en API analytics, continuando sin respuestas:', errorMessage)
       }
 
       return {
-        recentTests: recentTests || [],
-        responses: responses || [],
+        recentTests,
+        responses,
         oneWeekAgo,
         twoWeeksAgo
       }
@@ -167,16 +311,16 @@ export class MotivationalAnalyzer {
   }
 
   // 🚫 ELIMINADO: Progreso diario (el usuario ya está en la app)
-  async analyzeDailyProgress(userData) {
+  private async analyzeDailyProgress(_userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     // No generar notificaciones de "📈 Progreso Constante" - el usuario ya está en la app
     return null
   }
 
   // Analizar mejoras de precisión por tema
-  async analyzeAccuracyImprovement(userData) {
+  private async analyzeAccuracyImprovement(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
       const { responses, oneWeekAgo } = userData
-      
+
       // Separar respuestas por semana
       const thisWeekResponses = responses.filter(r => r.created_at >= oneWeekAgo)
       const lastWeekResponses = responses.filter(r => r.created_at < oneWeekAgo)
@@ -187,7 +331,7 @@ export class MotivationalAnalyzer {
       const thisWeekByTopic = this.groupResponsesByTopic(thisWeekResponses)
       const lastWeekByTopic = this.groupResponsesByTopic(lastWeekResponses)
 
-      let bestImprovement = null
+      let bestImprovement: AccuracyImprovement | null = null
       let bestImprovementValue = 0
 
       for (const [topic, thisWeekData] of Object.entries(thisWeekByTopic)) {
@@ -196,7 +340,7 @@ export class MotivationalAnalyzer {
         if (!lastWeekData || topic === 'desconocido' || !topic || topic === 'null' || topic === 'undefined') {
           continue // No generar notificaciones sobre temas no estudiados
         }
-        
+
         // Verificar que hay suficientes datos para análisis confiable
         if (thisWeekData.total < 10 || lastWeekData.total < 10) continue
 
@@ -218,18 +362,19 @@ export class MotivationalAnalyzer {
       if (!bestImprovement) return null
 
       const template = getRandomMessageTemplate('accuracy_improvement')
+      if (!template) return null
       const message = formatNotificationMessage(template, bestImprovement)
 
       return {
-        id: `motivational-accuracy-improvement`, // ✅ FIX: ID estable
+        id: `motivational-accuracy-improvement`,
         type: 'accuracy_improvement',
         title: '🎯 Mejora Detectada',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         ...bestImprovement,
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.accuracy_improvement
+        ...getNotificationVisualConfig('accuracy_improvement')
       }
     } catch (error) {
       console.error('Error analizando mejora de precisión:', error)
@@ -238,10 +383,10 @@ export class MotivationalAnalyzer {
   }
 
   // Analizar mejoras de velocidad
-  async analyzeSpeedImprovement(userData) {
+  private async analyzeSpeedImprovement(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
       const { responses, oneWeekAgo } = userData
-      
+
       const thisWeekResponses = responses.filter(r => r.created_at >= oneWeekAgo)
       const lastWeekResponses = responses.filter(r => r.created_at < oneWeekAgo)
 
@@ -251,10 +396,11 @@ export class MotivationalAnalyzer {
       const lastWeekAvgTime = lastWeekResponses.reduce((sum, r) => sum + (r.time_taken || 0), 0) / lastWeekResponses.length
 
       const improvement = lastWeekAvgTime - thisWeekAvgTime
-      
+
       if (improvement < 2) return null // Mejora mínima de 2 segundos
 
       const template = getRandomMessageTemplate('speed_improvement')
+      if (!template) return null
       const message = formatNotificationMessage(template, {
         improvement_seconds: Math.round(improvement),
         old_time: Math.round(lastWeekAvgTime),
@@ -262,17 +408,17 @@ export class MotivationalAnalyzer {
       })
 
       return {
-        id: `motivational-speed-improvement`, // ✅ FIX: ID estable
+        id: `motivational-speed-improvement`,
         type: 'speed_improvement',
         title: '⚡ Más Rápido',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         improvement_seconds: Math.round(improvement),
         old_time: Math.round(lastWeekAvgTime),
         new_time: Math.round(thisWeekAvgTime),
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.speed_improvement
+        ...getNotificationVisualConfig('speed_improvement')
       }
     } catch (error) {
       console.error('Error analizando mejora de velocidad:', error)
@@ -281,42 +427,42 @@ export class MotivationalAnalyzer {
   }
 
   // Analizar artículos dominados (nueva maestría)
-  async analyzeArticlesMastery(userData) {
+  private async analyzeArticlesMastery(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
       const { responses } = userData
-      
+
       if (responses.length < 50) return null // Necesitar datos suficientes
-      
+
       // Agrupar respuestas por artículo
-      const articleStats = responses.reduce((acc, response) => {
+      const articleStats: Record<string, ArticleStats> = responses.reduce((acc, response) => {
         // ✅ FILTRO: Solo incluir artículos que realmente han sido estudiados
         if (!response.tema_number || !response.article_number || !response.law_name) {
           return acc // Saltar respuestas sin información completa de tema
         }
-        
+
         const articleKey = `${response.law_name}-${response.article_number}`
         if (!acc[articleKey]) {
-          acc[articleKey] = { 
-            correct: 0, 
-            total: 0, 
-            tema: response.tema_number, 
+          acc[articleKey] = {
+            correct: 0,
+            total: 0,
+            tema: response.tema_number,
             article: response.article_number,
-            law: response.law_name || response.law_short_name || 'Ley'
+            law: response.law_name
           }
         }
         acc[articleKey].total++
         if (response.is_correct) acc[articleKey].correct++
         return acc
-      }, {})
+      }, {} as Record<string, ArticleStats>)
 
       // Encontrar artículos recién dominados (>85% y al menos 10 preguntas)
-      const newMasteredArticles = []
+      const newMasteredArticles: MasteredArticle[] = []
       for (const [key, stats] of Object.entries(articleStats)) {
         // ✅ FILTRO: Solo incluir artículos con datos válidos de tema
         if (!stats.tema || stats.tema === 'desconocido' || !stats.article) {
           continue // No notificar sobre artículos sin tema identificado
         }
-        
+
         if (stats.total >= 10) {
           const accuracy = (stats.correct / stats.total) * 100
           if (accuracy >= 85) {
@@ -333,7 +479,7 @@ export class MotivationalAnalyzer {
       }
 
       const conditions = MOTIVATIONAL_NOTIFICATION_TYPES.articles_mastered.conditions
-      if (newMasteredArticles.length < conditions.min_new_mastered) return null
+      if (newMasteredArticles.length < (conditions.min_new_mastered || 2)) return null
 
       const articleList = newMasteredArticles
         .slice(0, 3) // Máximo 3 para no saturar
@@ -341,22 +487,23 @@ export class MotivationalAnalyzer {
         .join(', ')
 
       const template = getRandomMessageTemplate('articles_mastered')
+      if (!template) return null
       const message = formatNotificationMessage(template, {
         count: newMasteredArticles.length,
         article_list: articleList
       })
 
       return {
-        id: `motivational-articles-mastered`, // ✅ FIX: ID estable
+        id: `motivational-articles-mastered`,
         type: 'articles_mastered',
         title: '🏆 Nuevos Dominios',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         count: newMasteredArticles.length,
         article_list: articleList,
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.articles_mastered
+        ...getNotificationVisualConfig('articles_mastered')
       }
     } catch (error) {
       console.error('Error analizando maestría de artículos:', error)
@@ -365,16 +512,16 @@ export class MotivationalAnalyzer {
   }
 
   // Analizar consistencia de estudio (patrones de horarios)
-  async analyzeStudyConsistency(userData) {
+  private async analyzeStudyConsistency(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
       const { recentTests } = userData
-      
+
       if (recentTests.length < 10) return null
 
       // Analizar patrones de horarios
-      const hourStats = {}
+      const hourStats: Record<string, HourStats> = {}
       recentTests.forEach(test => {
-        const hour = new Date(test.completed_at).getHours()
+        const hour = new Date(test.completed_at).getHours().toString()
         if (!hourStats[hour]) {
           hourStats[hour] = { count: 0, totalAccuracy: 0 }
         }
@@ -383,7 +530,7 @@ export class MotivationalAnalyzer {
       })
 
       // Encontrar hora más productiva
-      let bestHour = null
+      let bestHour: string | null = null
       let bestAccuracy = 0
       let bestCount = 0
 
@@ -399,11 +546,12 @@ export class MotivationalAnalyzer {
       }
 
       const conditions = MOTIVATIONAL_NOTIFICATION_TYPES.study_consistency.conditions
-      if (!bestHour || bestCount < conditions.min_sessions_week) return null
+      if (!bestHour || bestCount < (conditions.min_sessions_week || 3)) return null
 
       const optimalTime = `${bestHour}:00-${parseInt(bestHour) + 1}:00`
-      
+
       const template = getRandomMessageTemplate('study_consistency')
+      if (!template) return null
       const message = formatNotificationMessage(template, {
         optimal_time: optimalTime,
         sessions_count: bestCount,
@@ -411,17 +559,17 @@ export class MotivationalAnalyzer {
       })
 
       return {
-        id: `motivational-consistency-pattern`, // ✅ FIX: ID estable para evitar reapariciones
+        id: `motivational-consistency-pattern`,
         type: 'study_consistency',
         title: '📚 Patrón Óptimo',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         optimal_time: optimalTime,
         sessions_count: bestCount,
         accuracy: Math.round(bestAccuracy),
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.study_consistency
+        ...getNotificationVisualConfig('study_consistency')
       }
     } catch (error) {
       console.error('Error analizando consistencia de estudio:', error)
@@ -430,15 +578,15 @@ export class MotivationalAnalyzer {
   }
 
   // Analizar variedad de aprendizaje
-  async analyzeLearningVariety(userData) {
+  private async analyzeLearningVariety(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
       const { recentTests } = userData
-      
+
       if (recentTests.length < 15) return null
 
       // Contar tipos de tests únicos y temas tocados
-      const testTypes = new Set()
-      const topicsTouched = new Set()
+      const testTypes = new Set<string>()
+      const topicsTouched = new Set<string | number>()
 
       recentTests.forEach(test => {
         // Determinar tipo de test basado en propiedades
@@ -459,27 +607,28 @@ export class MotivationalAnalyzer {
       })
 
       const conditions = MOTIVATIONAL_NOTIFICATION_TYPES.learning_variety.conditions
-      if (testTypes.size < conditions.min_test_types || topicsTouched.size < conditions.min_topics_touched) {
+      if (testTypes.size < (conditions.min_test_types || 3) || topicsTouched.size < (conditions.min_topics_touched || 5)) {
         return null
       }
 
       const template = getRandomMessageTemplate('learning_variety')
+      if (!template) return null
       const message = formatNotificationMessage(template, {
         test_types: testTypes.size,
         topics: topicsTouched.size
       })
 
       return {
-        id: `motivational-learning-variety`, // ✅ FIX: ID estable
+        id: `motivational-learning-variety`,
         type: 'learning_variety',
         title: '🎪 Aprendizaje Diverso',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         test_types: testTypes.size,
         topics: topicsTouched.size,
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.learning_variety
+        ...getNotificationVisualConfig('learning_variety')
       }
     } catch (error) {
       console.error('Error analizando variedad de aprendizaje:', error)
@@ -488,10 +637,10 @@ export class MotivationalAnalyzer {
   }
 
   // Analizar predicción positiva de examen
-  async analyzePositiveExamPrediction(userData) {
+  private async analyzePositiveExamPrediction(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
       const { responses, recentTests } = userData
-      
+
       if (responses.length < 100) return null // Mínimo 100 preguntas para predicción confiable
 
       // Calcular métricas de preparación
@@ -502,8 +651,8 @@ export class MotivationalAnalyzer {
       // ✅ FILTRO: Calcular cobertura de temas solo con temas realmente estudiados
       const validTopics = responses
         .filter(r => r.tema_number && r.tema_number !== 'desconocido' && r.tema_number !== null)
-        .map(r => r.tema_number)
-      
+        .map(r => r.tema_number!)
+
       const topicsCovered = new Set(validTopics).size
       const totalTopics = 15 // Asumiendo 15 temas en total
       const coveragePercentage = topicsCovered > 0 ? (topicsCovered / totalTopics) * 100 : 0
@@ -519,24 +668,25 @@ export class MotivationalAnalyzer {
 
       // Calcular score de preparación estimado
       const readinessScore = Math.round(
-        (currentAccuracy * 0.4) + 
-        (coveragePercentage * 0.3) + 
-        (consistencyScore * 0.2) + 
+        (currentAccuracy * 0.4) +
+        (coveragePercentage * 0.3) +
+        (consistencyScore * 0.2) +
         (Math.min(100, totalQuestions / 5) * 0.1) // Volumen de práctica
       )
 
       const conditions = MOTIVATIONAL_NOTIFICATION_TYPES.positive_exam_prediction.conditions
-      if (readinessScore < conditions.min_readiness_score) return null
+      if (readinessScore < (conditions.min_readiness_score || 70)) return null
 
       // Calcular días restantes hasta febrero 2026 (estimado: 15 febrero 2026)
       const examDate = new Date('2026-02-15')
       const today = new Date()
-      const daysRemaining = Math.ceil((examDate - today) / (1000 * 60 * 60 * 24))
+      const daysRemaining = Math.ceil((examDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
       // Solo mostrar si el examen se acerca (menos de 365 días)
       if (daysRemaining > 365 || daysRemaining < 0) return null
 
       const template = getRandomMessageTemplate('positive_exam_prediction')
+      if (!template) return null
       const message = formatNotificationMessage(template, {
         readiness_score: readinessScore,
         exam_date: '15 febrero 2026',
@@ -544,11 +694,11 @@ export class MotivationalAnalyzer {
       })
 
       return {
-        id: `motivational-exam-prediction`, // ✅ FIX: ID estable
+        id: `motivational-exam-prediction`,
         type: 'positive_exam_prediction',
         title: '🎯 Predicción Examen Positiva',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         readiness_score: readinessScore,
@@ -556,7 +706,7 @@ export class MotivationalAnalyzer {
         current_accuracy: Math.round(currentAccuracy),
         topics_covered: topicsCovered,
         consistency_score: Math.round(consistencyScore),
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.positive_exam_prediction
+        ...getNotificationVisualConfig('positive_exam_prediction')
       }
     } catch (error) {
       console.error('Error analizando predicción positiva de examen:', error)
@@ -568,10 +718,10 @@ export class MotivationalAnalyzer {
   // Reemplazan notificaciones críticas con mensajes constructivos
 
   // Progreso constructivo (en lugar de "baja preparación")
-  async analyzeConstructiveProgress(userData) {
+  private async analyzeConstructiveProgress(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
-      const { responses, recentTests } = userData
-      
+      const { responses } = userData
+
       if (responses.length < 20) return null
 
       // Calcular progreso general
@@ -580,13 +730,14 @@ export class MotivationalAnalyzer {
       const progressPercentage = Math.round((correctAnswers / totalQuestions) * 100)
 
       const conditions = MOTIVATIONAL_NOTIFICATION_TYPES.constructive_progress.conditions
-      if (progressPercentage < conditions.progress_percentage_threshold) return null
+      if (progressPercentage < (conditions.progress_percentage_threshold || 30)) return null
 
       // Calcular objetivos alcanzables
       const dailyQuestions = Math.ceil(totalQuestions / 7) // Promedio semanal
       const nextTarget = Math.min(progressPercentage + 15, 85)
 
       const template = getRandomMessageTemplate('constructive_progress')
+      if (!template) return null
       const message = formatNotificationMessage(template, {
         progress: progressPercentage,
         daily_questions: dailyQuestions,
@@ -594,17 +745,17 @@ export class MotivationalAnalyzer {
       })
 
       return {
-        id: `motivational-constructive-progress`, // ✅ FIX: ID estable
+        id: `motivational-constructive-progress`,
         type: 'constructive_progress',
         title: '🌱 Construyendo Base Sólida',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         progress: progressPercentage,
         daily_questions: dailyQuestions,
         next_target: nextTarget,
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.constructive_progress
+        ...getNotificationVisualConfig('constructive_progress')
       }
     } catch (error) {
       console.error('Error analizando progreso constructivo:', error)
@@ -613,14 +764,14 @@ export class MotivationalAnalyzer {
   }
 
   // Aceleración positiva (en lugar de "no llegarás a tiempo")
-  async analyzePositiveAcceleration(userData) {
+  private async analyzePositiveAcceleration(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
-      const { responses, recentTests } = userData
-      
+      const { responses } = userData
+
       if (responses.length < 30) return null
 
       // Detectar si necesita acelerar pero de forma positiva
-      const weeklyQuestions = responses.filter(r => 
+      const weeklyQuestions = responses.filter(r =>
         new Date(r.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       ).length
 
@@ -633,22 +784,22 @@ export class MotivationalAnalyzer {
       const targetQuestions = Math.ceil((idealWeeklyQuestions - weeklyQuestions) / 5) // 5 días restantes
       const minutesPerDay = targetQuestions * 1.5 // 1.5 min por pregunta
       const weeksToTarget = Math.ceil(targetQuestions / 10)
-      
+
       // ✅ CALCULAR PRECISIÓN ACTUAL REAL
       const correctAnswers = responses.filter(r => r.is_correct).length
       const currentAccuracy = Math.round((correctAnswers / responses.length) * 100)
-      
+
       // ✅ CALCULAR TARGET REALISTA (no inventado)
       const realisticTarget = Math.min(currentAccuracy + 10, 90) // Máximo mejora 10% realista
-      
+
       // 🛡️ VALIDACIÓN: No enviar si no hay datos suficientes para cálculos reales
       if (currentAccuracy < 30 || responses.length < 50) {
         console.log('⚠️ Datos insuficientes para Plan de Aceleración preciso')
         return null // Evitar emails con datos poco fiables
       }
-      
+
       // ✅ CALCULAR MEJORA SEMANAL REAL (no inventada)
-      const lastWeekResponses = responses.filter(r => 
+      const lastWeekResponses = responses.filter(r =>
         new Date(r.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
       )
       const twoWeeksAgoResponses = responses.filter(r => {
@@ -657,7 +808,7 @@ export class MotivationalAnalyzer {
         const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000
         return date >= new Date(twoWeeksAgo) && date < new Date(oneWeekAgo)
       })
-      
+
       let realWeeklyGain = 5 // Conservador por defecto
       if (lastWeekResponses.length >= 5 && twoWeeksAgoResponses.length >= 5) {
         const lastWeekAccuracy = (lastWeekResponses.filter(r => r.is_correct).length / lastWeekResponses.length) * 100
@@ -666,6 +817,7 @@ export class MotivationalAnalyzer {
       }
 
       const template = getRandomMessageTemplate('positive_acceleration')
+      if (!template) return null
       const message = formatNotificationMessage(template, {
         minutes: Math.round(minutesPerDay),
         target: realisticTarget,  // ✅ DATO REAL basado en precisión actual
@@ -676,17 +828,17 @@ export class MotivationalAnalyzer {
       })
 
       return {
-        id: `motivational-positive-acceleration`, // ✅ FIX: ID estable
+        id: `motivational-positive-acceleration`,
         type: 'positive_acceleration',
         title: '⚡ Plan de Aceleración',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         minutes: Math.round(minutesPerDay),
         target_questions: targetQuestions,
         weeks: weeksToTarget,
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.positive_acceleration
+        ...getNotificationVisualConfig('positive_acceleration')
       }
     } catch (error) {
       console.error('Error analizando aceleración positiva:', error)
@@ -695,16 +847,16 @@ export class MotivationalAnalyzer {
   }
 
   // Ánimo constructivo (en lugar de críticas por regresión)
-  async analyzeConstructiveEncouragement(userData) {
+  private async analyzeConstructiveEncouragement(userData: UserAnalyticsData): Promise<MotivationalNotification | null> {
     try {
       const { responses, recentTests } = userData
-      
+
       if (recentTests.length < 5) return null
 
       // Buscar logros pasados para recordar
       const allTimeResponses = responses
       const pastAchievements = this.findPastAchievements(allTimeResponses)
-      
+
       if (!pastAchievements.bestStreak || pastAchievements.bestStreak < 3) return null
 
       // Calcular progreso total
@@ -714,13 +866,15 @@ export class MotivationalAnalyzer {
 
       // Tema recomendado (el mejor histórico)
       const topicStats = this.groupResponsesByTopic(allTimeResponses)
-      const bestTopic = Object.entries(topicStats)
-        .filter(([topic, stats]) => stats.total >= 10)
-        .sort((a, b) => (b[1].correct / b[1].total) - (a[1].correct / a[1].total))[0]
-      
+      const sortedTopics = Object.entries(topicStats)
+        .filter(([, stats]) => stats.total >= 10)
+        .sort((a, b) => (b[1].correct / b[1].total) - (a[1].correct / a[1].total))
+
+      const bestTopic = sortedTopics[0]
       const recommendedTopic = bestTopic ? `Tema ${bestTopic[0]}` : 'tu mejor tema'
 
       const template = getRandomMessageTemplate('constructive_encouragement')
+      if (!template) return null
       const message = formatNotificationMessage(template, {
         past_achievements: `${pastAchievements.masteredArticles} artículos`,
         best_streak: pastAchievements.bestStreak,
@@ -729,17 +883,17 @@ export class MotivationalAnalyzer {
       })
 
       return {
-        id: `motivational-constructive-encouragement`, // ✅ FIX: ID estable
+        id: `motivational-constructive-encouragement`,
         type: 'constructive_encouragement',
         title: '🤗 Momento de Reflexión',
         message,
-        body: message, // ✅ FIX: Add body property for notification validation
+        body: message,
         timestamp: new Date().toISOString(),
         isRead: false,
         past_achievements: pastAchievements,
         total_progress: totalProgress,
         recommended_topic: recommendedTopic,
-        ...MOTIVATIONAL_NOTIFICATION_TYPES.constructive_encouragement
+        ...getNotificationVisualConfig('constructive_encouragement')
       }
     } catch (error) {
       console.error('Error analizando ánimo constructivo:', error)
@@ -748,20 +902,20 @@ export class MotivationalAnalyzer {
   }
 
   // Funciones auxiliares
-  findPastAchievements(responses) {
+  private findPastAchievements(responses: QuestionResponse[]): PastAchievements {
     // Calcular mejor racha histórica
-    const studyDates = [...new Set(responses.map(r => 
+    const studyDates = Array.from(new Set(responses.map(r =>
       new Date(r.created_at).toDateString()
-    ))].sort()
-    
+    ))).sort()
+
     let bestStreak = 0
     let currentStreak = 0
-    
+
     for (let i = 1; i < studyDates.length; i++) {
-      const prevDate = new Date(studyDates[i-1])
+      const prevDate = new Date(studyDates[i - 1])
       const currDate = new Date(studyDates[i])
-      const daysDiff = (currDate - prevDate) / (1000 * 60 * 60 * 24)
-      
+      const daysDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
+
       if (daysDiff === 1) {
         currentStreak++
       } else {
@@ -772,7 +926,7 @@ export class MotivationalAnalyzer {
     bestStreak = Math.max(bestStreak, currentStreak)
 
     // Contar artículos dominados históricos
-    const articleStats = responses.reduce((acc, response) => {
+    const articleStats: Record<string, { correct: number; total: number }> = responses.reduce((acc, response) => {
       const articleKey = `${response.law_name || 'Ley'}-${response.article_number || 'Art'}`
       if (!acc[articleKey]) {
         acc[articleKey] = { correct: 0, total: 0 }
@@ -780,7 +934,7 @@ export class MotivationalAnalyzer {
       acc[articleKey].total++
       if (response.is_correct) acc[articleKey].correct++
       return acc
-    }, {})
+    }, {} as Record<string, { correct: number; total: number }>)
 
     const masteredArticles = Object.values(articleStats)
       .filter(stats => stats.total >= 10 && (stats.correct / stats.total) >= 0.85)
@@ -792,24 +946,25 @@ export class MotivationalAnalyzer {
     }
   }
 
-  groupResponsesByTopic(responses) {
+  private groupResponsesByTopic(responses: QuestionResponse[]): TopicStatsMap {
     return responses.reduce((acc, response) => {
       // ✅ FILTRO: Solo incluir respuestas con tema válido
       const topic = response.tema_number
       if (!topic || topic === 'desconocido' || topic === null || topic === undefined) {
         return acc // Saltar respuestas sin tema válido
       }
-      
-      if (!acc[topic]) {
-        acc[topic] = { correct: 0, total: 0 }
+
+      const topicKey = String(topic)
+      if (!acc[topicKey]) {
+        acc[topicKey] = { correct: 0, total: 0 }
       }
-      acc[topic].total++
-      if (response.is_correct) acc[topic].correct++
+      acc[topicKey].total++
+      if (response.is_correct) acc[topicKey].correct++
       return acc
-    }, {})
+    }, {} as TopicStatsMap)
   }
 
-  formatTime(seconds) {
+  private formatTime(seconds: number): string {
     if (!seconds) return '0m'
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -817,7 +972,7 @@ export class MotivationalAnalyzer {
     return minutes > 0 ? `${minutes}m` : `${seconds}s`
   }
 
-  async applyFrequencyControl(notifications) {
+  private async applyFrequencyControl(notifications: MotivationalNotification[]): Promise<MotivationalNotification[]> {
     // TODO: Implementar control de frecuencia con localStorage/BD
     // Por ahora, limitar a 1 notificación
     return notifications.slice(0, 1)

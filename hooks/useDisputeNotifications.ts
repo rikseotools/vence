@@ -1,12 +1,102 @@
-// hooks/useDisputeNotifications.js
+// hooks/useDisputeNotifications.ts
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { z } from 'zod'
+import type { User, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js'
 
-export function useDisputeNotifications() {
-  const { user, supabase } = useAuth()
-  const [notifications, setNotifications] = useState([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(true)
+// ============================================
+// TIPOS E INTERFACES
+// ============================================
+
+// Tipo para el contexto de autenticación (AuthContext.js no está tipado)
+interface AuthContextValue {
+  user: User | null
+  supabase: SupabaseClient
+}
+
+// Notificación de disputa/impugnación
+export interface DisputeNotification {
+  id: string
+  type: 'dispute_update'
+  isPsychometric: boolean
+  title: string
+  message: string
+  timestamp: string
+  isRead: boolean
+  disputeId: string
+  status: 'resolved' | 'rejected' | 'appealed' | string
+  article: string
+  appealText?: string | null
+  appealSubmittedAt?: string | null
+  canAppeal: boolean
+}
+
+// Retorno del hook
+export interface UseDisputeNotificationsReturn {
+  notifications: DisputeNotification[]
+  unreadCount: number
+  loading: boolean
+  markAsRead: (notificationId: string, isPsychometric?: boolean) => Promise<void>
+  markAllAsRead: () => Promise<void>
+  refreshNotifications: () => Promise<void>
+  submitAppeal: (disputeId: string, appealText: string) => Promise<boolean>
+}
+
+// ============================================
+// SCHEMAS ZOD PARA VALIDACIÓN
+// ============================================
+
+// Schema para disputa normal de Supabase
+const normalDisputeSchema = z.object({
+  id: z.string().uuid(),
+  dispute_type: z.string().nullable(),
+  status: z.enum(['resolved', 'rejected', 'appealed', 'pending']),
+  resolved_at: z.string().nullable(),
+  admin_response: z.string().nullable(),
+  created_at: z.string(),
+  is_read: z.boolean().nullable(),
+  appeal_text: z.string().nullable().optional(),
+  appeal_submitted_at: z.string().nullable().optional(),
+  questions: z.object({
+    question_text: z.string().optional(),
+    articles: z.object({
+      article_number: z.string(),
+      laws: z.object({
+        short_name: z.string()
+      })
+    })
+  })
+})
+
+// Schema para disputa psicotécnica de Supabase
+const psychoDisputeSchema = z.object({
+  id: z.string().uuid(),
+  dispute_type: z.string().nullable(),
+  status: z.enum(['resolved', 'rejected', 'pending']),
+  resolved_at: z.string().nullable(),
+  admin_response: z.string().nullable(),
+  created_at: z.string(),
+  is_read: z.boolean().nullable(),
+  question_id: z.string().uuid().nullable()
+})
+
+// Arrays de schemas
+const normalDisputesArraySchema = z.array(normalDisputeSchema)
+const psychoDisputesArraySchema = z.array(psychoDisputeSchema)
+
+// Tipos inferidos de Zod
+type NormalDispute = z.infer<typeof normalDisputeSchema>
+type PsychoDispute = z.infer<typeof psychoDisputeSchema>
+
+// ============================================
+// HOOK PRINCIPAL
+// ============================================
+
+export function useDisputeNotifications(): UseDisputeNotificationsReturn {
+  const { user, supabase } = useAuth() as AuthContextValue
+  const [notifications, setNotifications] = useState<DisputeNotification[]>([])
+  const [unreadCount, setUnreadCount] = useState<number>(0)
+  const [loading, setLoading] = useState<boolean>(true)
 
   useEffect(() => {
     if (!user) {
@@ -19,7 +109,7 @@ export function useDisputeNotifications() {
     loadNotifications()
 
     // 🔄 REAL-TIME: Escuchar cambios en impugnaciones normales
-    const subscription = supabase
+    const subscription: RealtimeChannel = supabase
       .channel('dispute-notifications')
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -47,7 +137,7 @@ export function useDisputeNotifications() {
     }
   }, [user, supabase])
 
-  async function loadNotifications() {
+  async function loadNotifications(): Promise<void> {
     try {
       if (!user) return
 
@@ -82,9 +172,19 @@ export function useDisputeNotifications() {
 
       if (error) throw error
 
-      const normalNotifications = disputes?.map(dispute => ({
+      // Validar con Zod (soft validation - log pero no romper)
+      let validatedDisputes: NormalDispute[] = []
+      try {
+        validatedDisputes = normalDisputesArraySchema.parse(disputes || [])
+      } catch (zodError) {
+        console.warn('⚠️ Zod validation warning for normal disputes:', zodError)
+        // Fallback: usar datos sin validar
+        validatedDisputes = (disputes || []) as unknown as NormalDispute[]
+      }
+
+      const normalNotifications: DisputeNotification[] = validatedDisputes.map(dispute => ({
         id: dispute.id,
-        type: 'dispute_update',
+        type: 'dispute_update' as const,
         isPsychometric: false,
         title: dispute.status === 'resolved' ? '✅ Impugnación Respondida' :
                dispute.status === 'appealed' ? '📝 Alegación Enviada' : '❌ Impugnación Respondida',
@@ -92,7 +192,7 @@ export function useDisputeNotifications() {
           dispute.status === 'resolved' ? 'aceptado' :
           dispute.status === 'appealed' ? 'alegado - esperando revisión' : 'rechazado'
         }.`,
-        timestamp: dispute.resolved_at,
+        timestamp: dispute.resolved_at || dispute.created_at,
         isRead: dispute.is_read || false,
         disputeId: dispute.id,
         status: dispute.status,
@@ -100,7 +200,7 @@ export function useDisputeNotifications() {
         appealText: dispute.appeal_text,
         appealSubmittedAt: dispute.appeal_submitted_at,
         canAppeal: dispute.status === 'rejected' && !dispute.appeal_text
-      })) || []
+      }))
 
       // 🧠 Cargar impugnaciones psicotécnicas
       const { data: psychoDisputes, error: psychoError } = await supabase
@@ -121,17 +221,27 @@ export function useDisputeNotifications() {
         .eq('is_read', false)
         .order('resolved_at', { ascending: false })
 
-      let psychoNotifications = []
+      let psychoNotifications: DisputeNotification[] = []
       if (!psychoError && psychoDisputes?.length > 0) {
-        psychoNotifications = psychoDisputes.map(dispute => ({
+        // Validar con Zod (soft validation)
+        let validatedPsychoDisputes: PsychoDispute[] = []
+        try {
+          validatedPsychoDisputes = psychoDisputesArraySchema.parse(psychoDisputes)
+        } catch (zodError) {
+          console.warn('⚠️ Zod validation warning for psycho disputes:', zodError)
+          // Fallback: usar datos sin validar
+          validatedPsychoDisputes = psychoDisputes as unknown as PsychoDispute[]
+        }
+
+        psychoNotifications = validatedPsychoDisputes.map(dispute => ({
           id: dispute.id,
-          type: 'dispute_update',
+          type: 'dispute_update' as const,
           isPsychometric: true,
           title: dispute.status === 'resolved' ? '✅ Impugnación Psicotécnica Respondida' : '❌ Impugnación Psicotécnica Respondida',
           message: `Tu reporte sobre una pregunta psicotécnica ha sido ${
             dispute.status === 'resolved' ? 'aceptado' : 'rechazado'
           }.`,
-          timestamp: dispute.resolved_at,
+          timestamp: dispute.resolved_at || dispute.created_at,
           isRead: dispute.is_read || false,
           disputeId: dispute.id,
           status: dispute.status,
@@ -141,8 +251,8 @@ export function useDisputeNotifications() {
       }
 
       // Combinar y ordenar por fecha
-      const allNotifications = [...normalNotifications, ...psychoNotifications]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      const allNotifications: DisputeNotification[] = [...normalNotifications, ...psychoNotifications]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
       setNotifications(allNotifications)
       setUnreadCount(allNotifications.filter(n => !n.isRead).length)
@@ -155,7 +265,7 @@ export function useDisputeNotifications() {
   }
 
   // ✅ MARCAR UNA NOTIFICACIÓN ESPECÍFICA COMO LEÍDA
-  const markAsRead = async (notificationId, isPsychometric = false) => {
+  const markAsRead = async (notificationId: string, isPsychometric: boolean = false): Promise<void> => {
     try {
       if (!user) return
 
@@ -193,7 +303,7 @@ export function useDisputeNotifications() {
   }
 
   // ✅ MARCAR TODAS LAS NOTIFICACIONES COMO LEÍDAS
-  const markAllAsRead = async () => {
+  const markAllAsRead = async (): Promise<void> => {
     try {
       if (!user || unreadCount === 0) return
 
@@ -233,13 +343,13 @@ export function useDisputeNotifications() {
   }
 
   // ✅ ENVIAR ALEGACIÓN PARA IMPUGNACIÓN RECHAZADA
-  const submitAppeal = async (disputeId, appealText) => {
+  const submitAppeal = async (disputeId: string, appealText: string): Promise<boolean> => {
     try {
       if (!user || !appealText.trim()) return false
 
       const { error } = await supabase
         .from('question_disputes')
-        .update({ 
+        .update({
           appeal_text: appealText.trim(),
           appeal_submitted_at: new Date().toISOString(),
           status: 'appealed' // Cambiar estado a 'appealed'

@@ -2866,3 +2866,45 @@ export const convocatoriasBoe = pgTable("convocatorias_boe", {
 	check("convocatorias_boe_categoria_check", sql`categoria IS NULL OR categoria = ANY (ARRAY['A1'::text, 'A2'::text, 'B'::text, 'C1'::text, 'C2'::text])`),
 	check("convocatorias_boe_acceso_check", sql`acceso IS NULL OR acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'mixto'::text, 'discapacidad'::text])`),
 ]);
+
+// ============================================
+// SISTEMA DE AVATARES AUTOMÁTICOS
+// Avatares que cambian según patrones de estudio del usuario
+// ============================================
+
+// Perfiles de avatar (datos estáticos)
+export const avatarProfiles = pgTable("avatar_profiles", {
+	id: text().primaryKey().notNull(),           // 'night_owl', 'early_bird', etc.
+	emoji: text().notNull(),
+	nameEs: text("name_es").notNull(),
+	descriptionEs: text("description_es").notNull(),
+	color: text().notNull(),                      // Color hex para UI
+	priority: integer().default(50),              // Para resolver empates (mayor = más prioritario)
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	pgPolicy("Anyone can view avatar profiles", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+]);
+
+// Configuración de avatar por usuario
+export const userAvatarSettings = pgTable("user_avatar_settings", {
+	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).unique(),
+	mode: text().default('manual').notNull(),     // 'manual' | 'automatic'
+	currentProfile: text("current_profile").references(() => avatarProfiles.id),
+	currentEmoji: text("current_emoji"),
+	currentName: text("current_name"),
+	lastRotationAt: timestamp("last_rotation_at", { withTimezone: true, mode: 'string' }),
+	// Campos para notificación in-app de rotación
+	rotationNotificationPending: boolean("rotation_notification_pending").default(false),
+	previousProfile: text("previous_profile"),
+	previousEmoji: text("previous_emoji"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_user_avatar_settings_user_id").using("btree", table.userId.asc().nullsLast()),
+	index("idx_user_avatar_settings_mode").using("btree", table.mode.asc().nullsLast()).where(sql`mode = 'automatic'`),
+	pgPolicy("Users can view own avatar settings", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can insert own avatar settings", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can update own avatar settings", { as: "permissive", for: "update", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	check("user_avatar_settings_mode_check", sql`mode = ANY (ARRAY['manual'::text, 'automatic'::text])`),
+]);

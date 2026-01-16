@@ -1,6 +1,6 @@
-// app/perfil/page.js - CON PESTAÑAS Y EMAIL PREFERENCES
+// app/perfil/page.tsx - CON PESTAÑAS Y EMAIL PREFERENCES
 'use client'
-import { useState, useEffect, useRef, Suspense, useMemo } from 'react'
+import { useState, useEffect, useRef, Suspense, useMemo, ChangeEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AvatarChanger from '@/components/AvatarChanger'
@@ -8,57 +8,198 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useUserOposicion } from '@/components/useUserOposicion'
 import notificationTracker from '@/lib/services/notificationTracker'
 import CancellationFlow from '@/components/CancellationFlow'
+import type { User, SupabaseClient } from '@supabase/supabase-js'
+
+// ============================================
+// TIPOS E INTERFACES
+// ============================================
+
+interface UserProfile {
+  id: string
+  email: string
+  full_name?: string
+  avatar_url?: string
+  preferred_language?: string
+  study_goal?: number
+  target_oposicion?: string
+  target_oposicion_data?: OposicionData | null
+  nickname?: string
+  age?: number | string
+  gender?: string
+  ciudad?: string
+  daily_study_hours?: number | string
+  plan_type?: string
+  created_at?: string
+  updated_at?: string
+  is_active_student?: boolean
+  stripe_customer_id?: string
+}
+
+interface AvatarData {
+  type: 'default' | 'predefined' | 'custom'
+  emoji?: string
+  color?: string
+  name?: string
+  url?: string
+}
+
+interface EmailPreferences {
+  receive_emails: boolean
+  support_emails: boolean
+  newsletter_emails: boolean
+  unsubscribed_all?: boolean
+  email_reactivacion?: boolean
+  email_urgente?: boolean
+  email_bienvenida_motivacional?: boolean
+}
+
+interface PushNotificationSettings {
+  push_enabled?: boolean
+  push_subscription?: PushSubscriptionJSON | string | null
+  preferred_times?: string[]
+  timezone?: string
+  frequency?: string
+  oposicion_type?: string
+  motivation_level?: string
+}
+
+interface PushNotifications {
+  supported: boolean
+  permission: NotificationPermission | 'default'
+  enabled: boolean
+  subscription: PushSubscription | string | null
+  settings: PushNotificationSettings | null
+}
+
+interface SubscriptionData {
+  hasSubscription: boolean
+  planType?: string
+  stripeCustomerId?: string
+  subscription?: {
+    id: string
+    status: string
+    planAmount?: number
+    planInterval?: string
+    planIntervalCount?: number
+    currentPeriodStart?: number
+    currentPeriodEnd?: number
+    cancelAtPeriodEnd?: boolean
+    plan?: {
+      id: string
+      nickname?: string
+      amount?: number
+      interval?: string
+    }
+  }
+  customer?: {
+    id: string
+    email?: string
+  }
+}
+
+interface AutoProfile {
+  id: string
+  emoji: string
+  name: string
+}
+
+interface FormData {
+  nickname: string
+  study_goal: string
+  target_oposicion: string
+  age: string
+  gender: string
+  ciudad: string
+  daily_study_hours: string
+}
+
+interface OposicionData {
+  name: string
+  slug: string
+  categoria: string
+  administracion: string
+}
+
+interface OposicionOption {
+  value: string
+  label: string
+  data?: OposicionData
+}
+
+type TabType = 'general' | 'emails' | 'notificaciones' | 'suscripcion'
+
+// Tipo para AuthContext (no está tipado)
+interface AuthContextValue {
+  user: User | null
+  loading: boolean
+  supabase: SupabaseClient
+}
+
+// Tipo para UserOposicion hook
+interface UserOposicionValue {
+  userOposicion: { slug: string; name?: string; [key: string]: unknown } | null
+  loading: boolean
+}
+
+// ============================================
+// COMPONENTE PRINCIPAL
+// ============================================
 
 function PerfilPageContent() {
-  const { user, loading: authLoading, supabase } = useAuth()
-  const { userOposicion, loading: oposicionLoading } = useUserOposicion()
+  const { user, loading: authLoading, supabase } = useAuth() as AuthContextValue
+  const { userOposicion, loading: oposicionLoading } = useUserOposicion() as UserOposicionValue
   const searchParams = useSearchParams()
-  
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
-  const [currentAvatar, setCurrentAvatar] = useState(null)
-  
+
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
+  const [saving, setSaving] = useState<boolean>(false)
+  const [message, setMessage] = useState<string>('')
+  const [currentAvatar, setCurrentAvatar] = useState<AvatarData | null>(null)
+
   // 🆕 SISTEMA DE PESTAÑAS
-  const [activeTab, setActiveTab] = useState('general')
-  
+  const [activeTab, setActiveTab] = useState<TabType>('general')
+
   // 🆕 EMAIL PREFERENCES - SIMPLIFICADO
-  const [emailPreferences, setEmailPreferences] = useState({
-    receive_emails: true, // Opción principal (unsubscribed_all)
-    support_emails: true, // Emails de soporte
-    newsletter_emails: true // Emails de newsletter/información de oposición
+  const [emailPreferences, setEmailPreferences] = useState<EmailPreferences>({
+    receive_emails: true,
+    support_emails: true,
+    newsletter_emails: true
   })
-  const [emailPrefLoading, setEmailPrefLoading] = useState(true)
-  const [emailPrefSaving, setEmailPrefSaving] = useState(false)
-  
+  const [emailPrefLoading, setEmailPrefLoading] = useState<boolean>(true)
+  const [emailPrefSaving, setEmailPrefSaving] = useState<boolean>(false)
+
   // 🆕 PUSH NOTIFICATIONS
-  const [pushNotifications, setPushNotifications] = useState({
+  const [pushNotifications, setPushNotifications] = useState<PushNotifications>({
     supported: false,
     permission: 'default',
     enabled: false,
     subscription: null,
     settings: null
   })
-  const [pushLoading, setPushLoading] = useState(true)
-  const [pushSaving, setPushSaving] = useState(false)
+  const [pushLoading, setPushLoading] = useState<boolean>(true)
+  const [pushSaving, setPushSaving] = useState<boolean>(false)
 
   // 🆕 SUSCRIPCIÓN
-  const [subscriptionData, setSubscriptionData] = useState(null)
-  const [subscriptionLoading, setSubscriptionLoading] = useState(true)
-  const [portalLoading, setPortalLoading] = useState(false)
-  const [showCancellationFlow, setShowCancellationFlow] = useState(false)
-  
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null)
+  const [subscriptionLoading, setSubscriptionLoading] = useState<boolean>(true)
+  const [portalLoading, setPortalLoading] = useState<boolean>(false)
+  const [showCancellationFlow, setShowCancellationFlow] = useState<boolean>(false)
+
+  // 🤖 AVATAR AUTOMÁTICO
+  const [avatarMode, setAvatarMode] = useState<'manual' | 'automatic'>('manual')
+  const [autoProfile, setAutoProfile] = useState<AutoProfile | null>(null)
+  const [avatarModeLoading, setAvatarModeLoading] = useState<boolean>(true)
+  const [avatarModeSaving, setAvatarModeSaving] = useState<boolean>(false)
+
   // Para evitar guardado en primera carga
-  const isInitialLoad = useRef(true)
-  const [hasChanges, setHasChanges] = useState(false)
+  const isInitialLoad = useRef<boolean>(true)
+  const [hasChanges, setHasChanges] = useState<boolean>(false)
   
   // Form data - SINCRONIZADO CON useUserOposicion
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     nickname: '',
-    study_goal: 25,
+    study_goal: '25',
     target_oposicion: '',
-    // Campos del onboarding
     age: '',
     gender: '',
     ciudad: '',
@@ -66,11 +207,11 @@ function PerfilPageContent() {
   })
 
   // Estados para el selector de oposición con buscador
-  const [showOposicionSelector, setShowOposicionSelector] = useState(false)
-  const [oposicionSearchTerm, setOposicionSearchTerm] = useState('')
+  const [showOposicionSelector, setShowOposicionSelector] = useState<boolean>(false)
+  const [oposicionSearchTerm, setOposicionSearchTerm] = useState<string>('')
 
   // Oposiciones disponibles - SINCRONIZADO CON ONBOARDING MODAL
-  const oposiciones = [
+  const oposiciones: OposicionOption[] = [
     { value: '', label: 'Ninguna seleccionada' },
     // TOP MÁS POPULARES
     {
@@ -397,7 +538,7 @@ function PerfilPageContent() {
 
           setFormData({
             nickname: profileData.nickname || getFirstName(user.user_metadata?.full_name),
-            study_goal: profileData.study_goal || 25,
+            study_goal: String(profileData.study_goal || 25),
             target_oposicion: currentOposicion,
             // Campos del onboarding
             age: profileData.age?.toString() || '',
@@ -420,6 +561,82 @@ function PerfilPageContent() {
 
     loadUserProfile()
   }, [user, authLoading, oposicionLoading, userOposicion])
+
+  // 🤖 CARGAR CONFIGURACIÓN DE AVATAR AUTOMÁTICO
+  useEffect(() => {
+    async function loadAvatarSettings() {
+      if (!user) {
+        setAvatarModeLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/profile/avatar-settings?userId=${user.id}`)
+        const data = await response.json()
+
+        if (data.success && data.data) {
+          setAvatarMode(data.data.mode || 'manual')
+          if (data.data.mode === 'automatic' && data.data.currentProfile) {
+            setAutoProfile({
+              id: data.data.currentProfile,
+              emoji: data.data.currentEmoji,
+              name: data.data.currentName
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando avatar settings:', error)
+      } finally {
+        setAvatarModeLoading(false)
+      }
+    }
+
+    loadAvatarSettings()
+  }, [user])
+
+  // 🤖 CAMBIAR MODO DE AVATAR (manual/automático)
+  const handleAvatarModeToggle = async () => {
+    if (!user || avatarModeSaving) return
+
+    setAvatarModeSaving(true)
+    const newMode = avatarMode === 'manual' ? 'automatic' : 'manual'
+
+    try {
+      const response = await fetch('/api/profile/avatar-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          mode: newMode
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setAvatarMode(newMode)
+
+        if (newMode === 'automatic' && data.profile) {
+          setAutoProfile({
+            id: data.profile.id,
+            emoji: data.profile.emoji,
+            name: data.profile.nameEs
+          })
+          // Actualizar avatar mostrado
+          setCurrentAvatar({
+            type: 'predefined',
+            emoji: data.profile.emoji,
+            name: data.profile.nameEs,
+            color: data.profile.color
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error cambiando modo avatar:', error)
+    } finally {
+      setAvatarModeSaving(false)
+    }
+  }
 
   // DETECCIÓN DE CAMBIOS - Sin guardado automático
   useEffect(() => {
@@ -500,8 +717,21 @@ function PerfilPageContent() {
 
   // 🆕 MANEJAR CAMBIOS EN EMAIL PREFERENCES - CON LÓGICA AUTOMÁTICA
   // Si se desactiva "Emails de Vence", desactivar todas las sub-opciones
-  const handleEmailPrefChange = (value) => {
-    if (!value) {
+  // Sobrecarga: puede recibir (value) para toggle principal o (field, value) para campos individuales
+  const handleEmailPrefChange = (fieldOrValue: string | boolean, value?: boolean) => {
+    // Si es llamado con dos argumentos, es un cambio de campo individual
+    if (typeof fieldOrValue === 'string' && value !== undefined) {
+      const newPreferences = {
+        ...emailPreferences,
+        [fieldOrValue]: value
+      }
+      saveEmailPreferences(newPreferences)
+      return
+    }
+
+    // Si es llamado con un argumento booleano, es el toggle principal
+    const toggleValue = fieldOrValue as boolean
+    if (!toggleValue) {
       // Desactivar todo
       const newPreferences = {
         receive_emails: false,
@@ -772,22 +1002,19 @@ function PerfilPageContent() {
       }
 
       // Actualizar el perfil local (convertir a snake_case)
-      const updateData = {
+      const updateData: Partial<UserProfile> = {
         nickname: formData.nickname.trim(),
         study_goal: parseInt(formData.study_goal),
         target_oposicion: formData.target_oposicion,
-        target_oposicion_data: oposicionData ? JSON.stringify(oposicionData) : null,
-        age: formData.age ? parseInt(formData.age) : null,
-        gender: formData.gender || null,
-        ciudad: formData.ciudad.trim() || null,
-        daily_study_hours: formData.daily_study_hours ? parseInt(formData.daily_study_hours) : null,
+        target_oposicion_data: oposicionData || null,
+        age: formData.age ? parseInt(formData.age) : undefined,
+        gender: formData.gender || undefined,
+        ciudad: formData.ciudad.trim() || undefined,
+        daily_study_hours: formData.daily_study_hours ? parseInt(formData.daily_study_hours) : undefined,
         updated_at: new Date().toISOString()
       }
 
-      setProfile(prev => ({
-        ...prev,
-        ...updateData
-      }))
+      setProfile(prev => prev ? { ...prev, ...updateData } : null)
 
       // Limpiar estado de cambios
       setHasChanges(false)
@@ -812,32 +1039,32 @@ function PerfilPageContent() {
   }
 
   // Extraer datos del avatar del user_metadata
-  const extractAvatarData = (metadata) => {
-    if (!metadata) return { type: 'default' }
+  const extractAvatarData = (metadata: Record<string, unknown> | undefined): AvatarData => {
+    if (!metadata) return { type: 'default' as const }
 
     // Avatar personalizado (imagen subida)
     if (metadata.avatar_type === 'custom' && metadata.avatar_url) {
       return {
-        type: 'custom',
-        url: metadata.avatar_url
+        type: 'custom' as const,
+        url: metadata.avatar_url as string
       }
     }
 
     // Avatar predefinido (emoji)
     if (metadata.avatar_type === 'predefined' && metadata.avatar_emoji) {
       return {
-        type: 'predefined',
-        emoji: metadata.avatar_emoji,
-        color: metadata.avatar_color,
-        name: metadata.avatar_name
+        type: 'predefined' as const,
+        emoji: metadata.avatar_emoji as string,
+        color: metadata.avatar_color as string,
+        name: metadata.avatar_name as string
       }
     }
 
-    return { type: 'default' }
+    return { type: 'default' as const }
   }
 
   // Callback cuando cambia el avatar
-  const handleAvatarChange = (newAvatarData) => {
+  const handleAvatarChange = (newAvatarData: AvatarData) => {
     setCurrentAvatar(newAvatarData)
     setMessage('✅ Avatar actualizado')
     setTimeout(() => setMessage(''), 2000)
@@ -865,7 +1092,7 @@ function PerfilPageContent() {
       setProfile(data)
       setFormData({
         nickname: data.nickname || getFirstName(user.user_metadata?.full_name),
-        study_goal: data.study_goal || 25,
+        study_goal: String(data.study_goal || 25),
         target_oposicion: data.target_oposicion || '',
         age: data.age?.toString() || '',
         gender: data.gender || '',
@@ -1595,51 +1822,68 @@ function PerfilPageContent() {
                   {formData.nickname || getFirstName(user.user_metadata?.full_name) || 'Usuario'}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 mb-4">{user.email}</p>
-                
+
                 {/* Estadísticas básicas */}
                 <div className="grid grid-cols-2 gap-4 text-center">
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">
+                  <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
                       {formData.target_oposicion ? '1' : '0'}
                     </div>
-                    <div className="text-xs text-blue-500">Oposición</div>
+                    <div className="text-xs text-blue-500 dark:text-blue-400">Oposición</div>
                   </div>
-                  <div className="bg-green-50 p-3 rounded-lg">
-                    <div className="text-lg font-bold text-green-600">
+                  <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
+                    <div className="text-lg font-bold text-green-600 dark:text-green-400">
                       {formData.study_goal}
                     </div>
-                    <div className="text-xs text-green-500">Meta diaria</div>
+                    <div className="text-xs text-green-500 dark:text-green-400">Meta diaria</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Enlaces rápidos */}
+            {/* 🤖 Toggle Avatar Automático - VISIBLE */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mt-6">
-              <h4 className="font-bold text-gray-800 dark:text-white mb-4">🔗 Enlaces Rápidos</h4>
-              <div className="space-y-2">
-                <Link
-                  href="/mis-estadisticas"
-                  className="flex items-center space-x-3 p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🤖</span>
+                  <span className="font-semibold text-gray-800 dark:text-white">Avatar Automático</span>
+                </div>
+                <button
+                  onClick={handleAvatarModeToggle}
+                  disabled={avatarModeLoading || avatarModeSaving}
+                  className={`relative w-14 h-8 rounded-full transition-colors duration-300 ${
+                    avatarMode === 'automatic'
+                      ? 'bg-purple-500'
+                      : 'bg-gray-300 dark:bg-gray-600'
+                  } ${(avatarModeLoading || avatarModeSaving) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
-                  <span>📊</span>
-                  <span>Mis Estadísticas</span>
-                </Link>
-                <Link
-                  href="/auxiliar-administrativo-estado/test"
-                  className="flex items-center space-x-3 p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <span>🎯</span>
-                  <span>Hacer Tests</span>
-                </Link>
-                <Link
-                  href="/auxiliar-administrativo-estado/temario"
-                  className="flex items-center space-x-3 p-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  <span>📚</span>
-                  <span>Ver Temario</span>
-                </Link>
+                  <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                    avatarMode === 'automatic' ? 'translate-x-7' : 'translate-x-1'
+                  }`} />
+                </button>
               </div>
+
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                {avatarMode === 'automatic'
+                  ? 'Tu avatar cambia cada semana según cómo estudias. ¡Descubre qué animal eres!'
+                  : 'Activa para que tu avatar refleje tu estilo de estudio automáticamente.'}
+              </p>
+
+              {avatarMode === 'automatic' && autoProfile && (
+                <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3 text-center">
+                  <span className="text-3xl">{autoProfile.emoji}</span>
+                  <p className="font-medium text-purple-700 dark:text-purple-300 mt-1">
+                    {autoProfile.name}
+                  </p>
+                  <p className="text-xs text-purple-500 dark:text-purple-400">
+                    Basado en tu actividad de esta semana
+                  </p>
+                </div>
+              )}
+
+              {avatarModeSaving && (
+                <p className="text-xs text-center text-gray-500 mt-2">Guardando...</p>
+              )}
             </div>
           </div>
 

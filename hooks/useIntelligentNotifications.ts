@@ -1,30 +1,51 @@
-// hooks/useIntelligentNotifications.js - SISTEMA COMPLETO DE NOTIFICACIONES INTELIGENTES CON PERSISTENCIA Y EMAIL FALLBACK
+// hooks/useIntelligentNotifications.ts - SISTEMA COMPLETO DE NOTIFICACIONES INTELIGENTES CON PERSISTENCIA Y EMAIL FALLBACK
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { 
+import {
   mapLawSlugToShortName,
   generateLawSlug,
-  getLawInfo 
+  getLawInfo
 } from '../lib/lawMappingUtils'
-import { MotivationalAnalyzer } from '../lib/notifications/motivationalAnalyzer.js'
+import { MotivationalAnalyzer } from '../lib/notifications/motivationalAnalyzer'
+import type {
+  Notification,
+  NotificationTypeId,
+  NotificationTypesMap,
+  NotificationAction,
+  CategorizedNotifications,
+  CooldownData,
+  DismissedNotificationsData,
+  ReadNotificationsData,
+  NotificationEmailPayload,
+  UseIntelligentNotificationsReturn
+} from './useIntelligentNotifications.types'
+import type { User, SupabaseClient } from '@supabase/supabase-js'
+
+// Tipo para el contexto de autenticación (AuthContext.js no está tipado)
+interface AuthContextValue {
+  user: User | null
+  userProfile: { id: string; [key: string]: unknown } | null
+  supabase: SupabaseClient
+  loading: boolean
+}
 
 // 🧪 GLOBAL TEST NOTIFICATIONS MANAGER (solo desarrollo)
-let globalTestNotifications = []
-let globalTestNotificationsListeners = []
+let globalTestNotifications: Notification[] = []
+let globalTestNotificationsListeners: Array<(notifications: Notification[]) => void> = []
 
-const addGlobalTestNotificationsListener = (listener) => {
+const addGlobalTestNotificationsListener = (listener: (notifications: Notification[]) => void): void => {
   if (process.env.NODE_ENV === 'development') {
     globalTestNotificationsListeners.push(listener)
   }
 }
 
-const removeGlobalTestNotificationsListener = (listener) => {
+const removeGlobalTestNotificationsListener = (listener: (notifications: Notification[]) => void): void => {
   if (process.env.NODE_ENV === 'development') {
     globalTestNotificationsListeners = globalTestNotificationsListeners.filter(l => l !== listener)
   }
 }
 
-const updateGlobalTestNotifications = (notifications) => {
+const updateGlobalTestNotifications = (notifications: Notification[]): void => {
   if (process.env.NODE_ENV === 'development') {
     globalTestNotifications = notifications
     globalTestNotificationsListeners.forEach(listener => listener(notifications))
@@ -32,7 +53,7 @@ const updateGlobalTestNotifications = (notifications) => {
 }
 
 // 🆕 FUNCIÓN PARA ENVIAR EMAIL FALLBACK DE MENSAJES MOTIVACIONALES
-async function sendMotivationalEmail(user, notification) {
+async function sendMotivationalEmail(user: User, notification: Notification): Promise<boolean> {
   try {
     console.log('📧 Enviando email motivacional fallback:', notification.type)
     
@@ -93,7 +114,7 @@ async function sendMotivationalEmail(user, notification) {
 }
 
 // 🆕 FUNCIÓN PARA INTENTAR PUSH Y FALLBACK A EMAIL
-async function sendNotificationWithFallback(user, notification) {
+async function sendNotificationWithFallback(user: User, notification: Notification): Promise<boolean> {
   // Primero intentar notificación push
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -137,7 +158,7 @@ const MOTIVATIONAL_COOLDOWN_DAYS = 14 // Cooldown de 14 días para notificacione
 const MOTIVATIONAL_COOLDOWN_KEY = 'vence_motivational_cooldowns'
 
 // Obtener notificaciones descartadas del localStorage
-const getDismissedNotifications = () => {
+const getDismissedNotifications = (): Set<string> => {
   try {
     if (typeof window === 'undefined') return new Set() // SSR protection
     
@@ -161,7 +182,7 @@ const getDismissedNotifications = () => {
 }
 
 // Guardar notificación descartada en localStorage
-const saveDismissedNotification = (notificationId) => {
+const saveDismissedNotification = (notificationId: string): void => {
   try {
     if (typeof window === 'undefined') return // SSR protection
     
@@ -181,7 +202,7 @@ const saveDismissedNotification = (notificationId) => {
 }
 
 // 🆕 FUNCIONES PARA COOLDOWN DE ARTÍCULOS PROBLEMÁTICOS
-const getProblematicArticlesCooldown = (userId) => {
+const getProblematicArticlesCooldown = (userId: string): Record<string, CooldownData> => {
   try {
     if (typeof window === 'undefined') return {} // SSR protection
     
@@ -208,7 +229,7 @@ const getProblematicArticlesCooldown = (userId) => {
   }
 }
 
-const saveProblematicArticleCooldown = (userId, lawShortName, articleNumber, testsCompleted) => {
+const saveProblematicArticleCooldown = (userId: string, lawShortName: string, articleNumber: string, testsCompleted: number): void => {
   try {
     if (typeof window === 'undefined') return // SSR protection
     
@@ -229,7 +250,7 @@ const saveProblematicArticleCooldown = (userId, lawShortName, articleNumber, tes
   }
 }
 
-const shouldShowProblematicArticle = (userId, lawShortName, articleNumber, accuracy, currentTestsCompleted) => {
+const shouldShowProblematicArticle = (userId: string, lawShortName: string, articleNumber: string, accuracy: number, currentTestsCompleted: number): boolean => {
   const cooldownData = getProblematicArticlesCooldown(userId)
   const articleKey = `${lawShortName}-${articleNumber}`
   const articleCooldown = cooldownData[articleKey]
@@ -266,7 +287,12 @@ const shouldShowProblematicArticle = (userId, lawShortName, articleNumber, accur
 }
 
 // 🆕 FUNCIONES PARA COOLDOWN GLOBAL DE LOGROS
-const getAchievementCooldown = (userId) => {
+interface AchievementCooldownState {
+  count: number
+  lastReset: number
+}
+
+const getAchievementCooldown = (userId: string): AchievementCooldownState => {
   try {
     if (typeof window === 'undefined') return { count: 0, lastReset: Date.now() }
     
@@ -290,7 +316,7 @@ const getAchievementCooldown = (userId) => {
   }
 }
 
-const canShowAchievement = (userId) => {
+const canShowAchievement = (userId: string): boolean => {
   const cooldownData = getAchievementCooldown(userId)
   const canShow = cooldownData.count < DAILY_ACHIEVEMENT_LIMIT
   
@@ -301,7 +327,7 @@ const canShowAchievement = (userId) => {
   return canShow
 }
 
-const recordAchievementShown = (userId) => {
+const recordAchievementShown = (userId: string): void => {
   try {
     if (typeof window === 'undefined') return
     
@@ -319,7 +345,12 @@ const recordAchievementShown = (userId) => {
 }
 
 // 🆕 FUNCIONES PARA COOLDOWN DE NOTIFICACIONES MOTIVACIONALES (14 días)
-const getMotivationalCooldown = (userId, notificationType) => {
+interface MotivationalCooldownEntry {
+  dismissedAt: number
+  cooldownDays: number
+}
+
+const getMotivationalCooldown = (userId: string, notificationType: string): MotivationalCooldownEntry | null => {
   try {
     if (typeof window === 'undefined') return null
     
@@ -334,7 +365,7 @@ const getMotivationalCooldown = (userId, notificationType) => {
   }
 }
 
-const setMotivationalCooldown = (userId, notificationType) => {
+const setMotivationalCooldown = (userId: string, notificationType: string): void => {
   try {
     if (typeof window === 'undefined') return
     
@@ -353,7 +384,7 @@ const setMotivationalCooldown = (userId, notificationType) => {
   }
 }
 
-const isInMotivationalCooldown = (userId, notificationType) => {
+const isInMotivationalCooldown = (userId: string, notificationType: string): boolean => {
   const cooldown = getMotivationalCooldown(userId, notificationType)
   if (!cooldown) return false
   
@@ -362,7 +393,7 @@ const isInMotivationalCooldown = (userId, notificationType) => {
 }
 
 // 🎯 CONFIGURACIÓN DE TIPOS DE NOTIFICACIONES CON ACCIONES
-const NOTIFICATION_TYPES = {
+const NOTIFICATION_TYPES: NotificationTypesMap = {
   // 🔴 CRÍTICAS (Prioridad 90-100) - ACCIÓN INMEDIATA
   'level_regression': { 
     priority: 90, 
@@ -478,16 +509,17 @@ const NOTIFICATION_TYPES = {
       type: 'view_changelog'
     }
   },
-  'dispute_update': { 
-    priority: 40, 
-    icon: '✅', 
-    color: 'blue',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/50',
-    textColor: 'text-blue-600 dark:text-blue-400',
-    borderColor: 'border-blue-200 dark:border-blue-800',
+  // 🦊 AVATAR AUTOMÁTICO - Notificación de rotación semanal
+  'avatar_rotation': {
+    priority: 45,
+    icon: '🦊',
+    color: 'purple',
+    bgColor: 'bg-purple-100 dark:bg-purple-900/50',
+    textColor: 'text-purple-600 dark:text-purple-400',
+    borderColor: 'border-purple-200 dark:border-purple-800',
     primaryAction: {
-      label: '📋 Ver Impugnación',
-      type: 'view_dispute'
+      label: '👀 Ver mi Avatar',
+      type: 'view_avatar'
     }
   },
 
@@ -504,7 +536,7 @@ const NOTIFICATION_TYPES = {
 }
 
 // ✅ FUNCIÓN AUXILIAR: Validar y mapear law_short_name usando sistema centralizado
-function validateAndMapLawShortName(lawShortName, lawFullName) {
+function validateAndMapLawShortName(lawShortName: string | null | undefined, lawFullName: string | null | undefined): string {
   // Si ya tenemos un short_name válido, usarlo
   if (lawShortName && lawShortName !== 'undefined' && lawShortName !== 'null' && lawShortName.trim() !== '') {
     return lawShortName
@@ -566,28 +598,29 @@ function validateAndMapLawShortName(lawShortName, lawFullName) {
   return 'LPAC' // Fallback a la ley más común
 }
 
-export function useIntelligentNotifications() {
-  const { user, userProfile, supabase, loading: authLoading } = useAuth()
+export function useIntelligentNotifications(): UseIntelligentNotificationsReturn {
+  const { user, userProfile, supabase, loading: authLoading } = useAuth() as AuthContextValue
   
   // Estados principales
-  const [allNotifications, setAllNotifications] = useState([])
-  const [testNotifications, setTestNotifications] = useState(globalTestNotifications) // 🧪 Inicializar desde global
-  const [loading, setLoading] = useState(false) // Cambiar a false para permitir carga inicial
-  const [lastUpdate, setLastUpdate] = useState(null)
-  const [lastMotivationalCheck, setLastMotivationalCheck] = useState(null)
-  
+  const [allNotifications, setAllNotifications] = useState<Notification[]>([])
+  const [testNotifications, setTestNotifications] = useState<Notification[]>(globalTestNotifications) // 🧪 Inicializar desde global
+  const [loading, setLoading] = useState<boolean>(false) // Cambiar a false para permitir carga inicial
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [lastMotivationalCheck, setLastMotivationalCheck] = useState<number | null>(null)
+
   // Estados por categoría
   // const [disputeNotifications, setDisputeNotifications] = useState([]) // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
-  const [problematicArticles, setProblematicArticles] = useState([])
+  const [problematicArticles, setProblematicArticles] = useState<Notification[]>([])
   // const [studyStreaks, setStudyStreaks] = useState([]) // 🚫 ELIMINADO
-  const [achievements, setAchievements] = useState([])
-  const [studyReminders, setStudyReminders] = useState([])
+  const [achievements, setAchievements] = useState<Notification[]>([])
+  const [studyReminders, setStudyReminders] = useState<Notification[]>([])
   // const [progressUpdates, setProgressUpdates] = useState([]) // 🚫 ELIMINADO
-  const [motivationalNotifications, setMotivationalNotifications] = useState([])
-  const [systemNotifications, setSystemNotifications] = useState([])
+  const [motivationalNotifications, setMotivationalNotifications] = useState<Notification[]>([])
+  const [systemNotifications, setSystemNotifications] = useState<Notification[]>([])
+  const [avatarRotationNotifications, setAvatarRotationNotifications] = useState<Notification[]>([])
 
   // 🆕 FUNCIÓN PARA GENERAR URLs DE ACCIÓN ESPECÍFICAS - CON SISTEMA CENTRALIZADO
-  const generateActionUrl = (notification, actionType = 'primary') => {
+  const generateActionUrl = (notification: Notification, actionType: string = 'primary'): string => {
     const baseParams = new URLSearchParams({
       utm_source: 'notification',
       utm_campaign: notification.campaign || 'general',
@@ -696,7 +729,13 @@ export function useIntelligentNotifications() {
             return `/soporte?conversation_id=${notification.context_data?.conversation_id || notification.data?.conversation_id}`
           }
           break
-          
+
+        case 'avatar_rotation':
+          if (actionType === 'view_avatar') {
+            return `/perfil?${baseParams.toString()}`
+          }
+          break
+
         default:
           console.warn('Tipo de notificación no reconocido:', notification.type)
           return `/test/rapido?${baseParams.toString()}`
@@ -711,7 +750,7 @@ export function useIntelligentNotifications() {
   }
 
   // 🆕 FUNCIÓN PARA EJECUTAR ACCIÓN - ACTUALIZADA CON PERSISTENCIA
-  const executeAction = async (notification, actionType = 'primary') => {
+  const executeAction = async (notification: Notification, actionType: 'primary' | 'secondary' = 'primary'): Promise<void> => {
     try {
       const notificationType = NOTIFICATION_TYPES[notification.type]
       if (!notificationType) return
@@ -743,8 +782,8 @@ export function useIntelligentNotifications() {
     } catch (error) {
       console.error('❌ Error ejecutando acción:', error)
       // Si hay error, navegar de todos modos
-      const actionUrl = generateActionUrl(notification, action?.type || 'default')
-      window.location.href = actionUrl
+      const fallbackUrl = generateActionUrl(notification, 'default')
+      window.location.href = fallbackUrl
     }
   }
 
@@ -814,7 +853,8 @@ export function useIntelligentNotifications() {
         loadAchievements(),
         loadStudyReminders(),
         // loadProgressUpdates(), // 🚫 ELIMINADO
-        loadSystemNotifications()
+        loadSystemNotifications(),
+        loadAvatarRotationNotifications() // 🦊 Avatar automático
       ])
       
 
@@ -826,7 +866,8 @@ export function useIntelligentNotifications() {
         ...achievements,
         ...studyReminders,
         // ...progressUpdates, // 🚫 ELIMINADO
-        ...systemNotifications
+        ...systemNotifications,
+        ...avatarRotationNotifications // 🦊 Avatar automático
       ].some(n => !n.isRead)
 
       if (!hasUrgentNotifications) {
@@ -850,10 +891,12 @@ export function useIntelligentNotifications() {
   }
 
   // 1️⃣ CARGAR IMPUGNACIONES CON ACCIONES ESPECÍFICAS
-  const loadDisputeNotifications = async () => {
+  // 🚫 ELIMINADO: ahora se maneja en useDisputeNotifications
+  /*
+  const loadDisputeNotifications = async (): Promise<Notification[]> => {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-      
+
       const { data: disputes, error } = await supabase
         .from('question_disputes')
         .select(`
@@ -884,7 +927,7 @@ export function useIntelligentNotifications() {
 
       const notifications = disputes?.map(dispute => ({
         id: `dispute-${dispute.id}`,
-        type: 'dispute_update',
+        type: 'dispute_update' as const,
         title: dispute.status === 'resolved' ? '✅ Impugnación Aceptada' : '❌ Impugnación Rechazada',
         body: `Tu reporte sobre ${dispute.questions.articles.laws.short_name} Art. ${dispute.questions.articles.article_number} ha sido ${dispute.status === 'resolved' ? 'aceptado' : 'rechazado'}.`,
         timestamp: dispute.resolved_at,
@@ -898,15 +941,14 @@ export function useIntelligentNotifications() {
         ...NOTIFICATION_TYPES.dispute_update
       })) || []
 
-      setDisputeNotifications(notifications)
       return notifications
 
     } catch (error) {
       console.error('❌ Error cargando impugnaciones:', error)
-      setDisputeNotifications([])
       return []
     }
   }
+  */
 
   // 2️⃣ CARGAR ARTÍCULOS PROBLEMÁTICOS - CON SISTEMA CENTRALIZADO Y COOLDOWN
   const loadProblematicArticles = async () => {
@@ -992,13 +1034,18 @@ export function useIntelligentNotifications() {
         // console.log(`📊 ${articles.length} artículos problemáticos encontrados`)
         
         // Agrupar artículos por ley CON VALIDACIÓN CENTRALIZADA
-        const articlesByLaw = articles.reduce((acc, article) => {
+        interface LawGroup {
+          law_short_name: string
+          law_full_name: string
+          articles: Array<{ article_number: string; accuracy_percentage: number; law_short_name: string; [key: string]: unknown }>
+        }
+        const articlesByLaw = articles.reduce<Record<string, LawGroup>>((acc, article) => {
           // 🎯 VALIDAR law_name con sistema centralizado (CORREGIDO: usar law_name, no law_short_name)
           const validatedShortName = validateAndMapLawShortName(
             article.law_name,  // ✅ CORRECTO: usar law_name (campo que existe)
             article.law_name   // ✅ CORRECTO: usar law_name como fallback
           )
-          
+
           if (!acc[validatedShortName]) {
             acc[validatedShortName] = {
               law_short_name: validatedShortName,
@@ -1006,13 +1053,13 @@ export function useIntelligentNotifications() {
               articles: []
             }
           }
-          
+
           // Actualizar el artículo con el short_name validado
           acc[validatedShortName].articles.push({
             ...article,
             law_short_name: validatedShortName
           })
-          
+
           return acc
         }, {})
         
@@ -1087,7 +1134,7 @@ export function useIntelligentNotifications() {
                 ? `${finalShortName} - Art. ${worstArticle.article_number}` 
                 : `${finalShortName} - ${articlesAfterCooldown.length} artículos`,
               accuracy: worstArticle.accuracy_percentage,
-              attempts: articlesAfterCooldown.reduce((sum, a) => sum + (a.total_attempts || 0), 0),
+              attempts: articlesAfterCooldown.reduce((sum, a) => sum + (Number(a.total_attempts) || 0), 0),
               articlesCount: articlesAfterCooldown.length,
               articlesList: articlesAfterCooldown,  // ✅ Todos con law_short_name validado
               
@@ -1125,107 +1172,13 @@ export function useIntelligentNotifications() {
     }
   }
 
-  // 3️⃣ CARGAR RACHAS CON ACCIONES ESPECÍFICAS - ACTUALIZADA CON FILTRO ANTI-REAPACIÓN
-  const loadStudyStreaks = async () => {
-    try {
-      const dismissedNotifications = getDismissedNotifications()
-      
-      // 🆕 OBTENER NOTIFICACIONES YA MARCADAS COMO LEÍDAS
-      const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
-      const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
-      
-      const { data: analytics, error } = await supabase
-        .from('user_learning_analytics')
-        .select('current_streak_days, longest_streak_days, updated_at')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single()
-
-      if (error && error.code !== 'PGRST116') throw error
-
-      const notifications = []
-      
-      if (analytics) {
-        const streakDays = analytics.current_streak_days || 0
-        
-        // 🔥 Racha activa - SOLO HITOS IMPORTANTES (5, 10, 20, 30, 50, 100 días)
-        const streakMilestones = [5, 10, 20, 30, 50, 100, 200, 365]
-        const currentMilestone = streakMilestones.find(milestone => streakDays === milestone)
-        
-        if (currentMilestone && canShowAchievement(user.id)) {
-          const notificationId = `streak-milestone-${currentMilestone}`
-          const isAlreadyRead = !!readNotifications[notificationId]
-          
-          if (!dismissedNotifications.has(notificationId) && !isAlreadyRead) {
-            // Mensaje personalizado según el hito
-            let title = '🔥 Racha de Estudio'
-            let message = `¡${currentMilestone} días seguidos estudiando! ¿Continuamos?`
-            
-            if (currentMilestone >= 100) {
-              title = '🏆 ¡Racha Legendaria!'
-              message = `¡Increíble! ${currentMilestone} días seguidos. ¡Eres una máquina de estudiar!`
-            } else if (currentMilestone >= 50) {
-              title = '🌟 ¡Racha Épica!'
-              message = `¡Impresionante! ${currentMilestone} días seguidos. ¡Estás imparable!`
-            } else if (currentMilestone >= 20) {
-              title = '💪 ¡Racha Sólida!'
-              message = `¡Excelente! ${currentMilestone} días seguidos. ¡La constancia es clave!`
-            } else if (currentMilestone >= 10) {
-              title = '🚀 ¡Gran Racha!'
-              message = `¡Genial! ${currentMilestone} días seguidos. ¡Vas por buen camino!`
-            }
-            
-            // 🆕 Registrar logro mostrado
-            recordAchievementShown(user.id)
-            
-            notifications.push({
-              id: notificationId,
-              type: 'study_streak',
-              title,
-              message,
-              timestamp: analytics.updated_at,
-              isRead: false,
-              streak_days: currentMilestone,
-              priority: NOTIFICATION_TYPES.study_streak.priority,
-              ...NOTIFICATION_TYPES.study_streak
-            })
-          } else if (isAlreadyRead) {
-            console.log(`🚫 Notificación de racha ${notificationId} ya marcada como leída, no recreando`)
-          }
-        }
-
-        // Nuevo récord de racha
-        if (streakDays > 0 && streakDays === analytics.longest_streak_days && streakDays >= 5) {
-          const notificationId = `streak-record-${streakDays}`
-          
-          if (!dismissedNotifications.has(notificationId)) {
-            notifications.push({
-              id: notificationId,
-              type: 'achievement',
-              title: '🏆 ¡Nuevo Récord de Racha!',
-              body: `¡${streakDays} días es tu nueva mejor racha! ¿Subimos el listón?`,
-              timestamp: analytics.updated_at,
-              isRead: false,
-              streak_days: streakDays,
-              priority: NOTIFICATION_TYPES.achievement.priority,
-              ...NOTIFICATION_TYPES.achievement
-            })
-          }
-        }
-      }
-
-      // Filtrar notificaciones leídas (OPCIÓN B: desaparecen)
-      const unreadNotifications = filterUnreadNotifications(notifications)
-      setStudyStreaks(unreadNotifications)
-      return unreadNotifications
-
-    } catch (error) {
-      console.error('❌ Error cargando rachas:', error)
-      setStudyStreaks([])
-      return []
-    }
+  // 3️⃣ CARGAR RACHAS CON ACCIONES ESPECÍFICAS - 🚫 ELIMINADO
+  /*
+  const loadStudyStreaks = async (): Promise<Notification[]> => {
+    // Función comentada porque setStudyStreaks fue eliminado
+    return []
   }
+  */
 
   // 4️⃣ CARGAR LOGROS CON ACCIONES ESPECÍFICAS - ACTUALIZADA CON FILTRO ANTI-REAPACIÓN
   const loadAchievements = async () => {
@@ -1402,67 +1355,13 @@ export function useIntelligentNotifications() {
     }
   };
 
-  // 6️⃣ CARGAR ACTUALIZACIONES DE PROGRESO CON ACCIONES - ACTUALIZADA CON FILTRO ANTI-REAPACIÓN
-  const loadProgressUpdates = async () => {
-    try {
-      const dismissedNotifications = getDismissedNotifications()
-      
-      // 🆕 OBTENER NOTIFICACIONES YA MARCADAS COMO LEÍDAS
-      const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
-      const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
-      
-      const { data: analytics, error } = await supabase
-        .from('user_learning_analytics')
-        .select('tema_number, overall_accuracy, mastery_level, updated_at')
-        .eq('user_id', user.id)
-        .not('tema_number', 'is', null)
-        .gte('updated_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-
-      const notifications = [];
-
-      // Buscar temas con alto dominio (>85%)
-      analytics?.forEach(tema => {
-        if (tema.overall_accuracy >= 85 && tema.mastery_level === 'advanced') {
-          const notificationId = `progress-mastery-tema-${tema.tema_number}`
-          
-          // 🚫 NO CREAR si está descartada O ya marcada como leída
-          const isAlreadyRead = !!readNotifications[notificationId]
-          
-          if (!dismissedNotifications.has(notificationId) && !isAlreadyRead) {
-            notifications.push({
-              id: notificationId,
-              type: 'progress_update',
-              title: '📊 Tema Dominado',
-              body: `Tema ${tema.tema_number}: ${Math.round(tema.overall_accuracy)}% de dominio. ¿Ponemos a prueba tu maestría?`,
-              timestamp: tema.updated_at,
-              isRead: false,
-              tema_number: tema.tema_number,
-              accuracy: Math.round(tema.overall_accuracy),
-              priority: NOTIFICATION_TYPES.progress_update.priority,
-              ...NOTIFICATION_TYPES.progress_update
-            });
-          } else if (isAlreadyRead) {
-            console.log(`🚫 Notificación ${notificationId} ya marcada como leída, no recreando`)
-          }
-        }
-      });
-
-      console.log(`📊 Progreso: ${notifications.length} notificaciones creadas (filtradas por dismissed + leídas)`)
-      
-      // Filtrar notificaciones leídas (OPCIÓN B: desaparecen) - doble verificación
-      const unreadNotifications = filterUnreadNotifications(notifications)
-      setProgressUpdates(unreadNotifications);
-      return unreadNotifications;
-
-    } catch (error) {
-      console.error('❌ Error cargando progreso:', error);
-      setProgressUpdates([]);
-      return [];
-    }
-  };
+  // 6️⃣ CARGAR ACTUALIZACIONES DE PROGRESO CON ACCIONES - 🚫 ELIMINADO
+  /*
+  const loadProgressUpdates = async (): Promise<Notification[]> => {
+    // Función comentada porque setProgressUpdates fue eliminado
+    return []
+  }
+  */
 
   // 7️⃣ CARGAR NOTIFICACIONES DEL SISTEMA (desde tabla notifications)
   const loadSystemNotifications = async () => {
@@ -1533,6 +1432,79 @@ export function useIntelligentNotifications() {
       }
       setSystemNotifications([])
       return []
+    }
+  }
+
+  // 🦊 CARGAR NOTIFICACIONES DE ROTACIÓN DE AVATAR
+  const loadAvatarRotationNotifications = async () => {
+    try {
+      if (!user?.id || !supabase) return []
+
+      const { data: avatarSettings, error } = await supabase
+        .from('user_avatar_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('rotation_notification_pending', true)
+        .single()
+
+      if (error || !avatarSettings) {
+        setAvatarRotationNotifications([])
+        return []
+      }
+
+      // Obtener información del perfil actual
+      const { data: profileData } = await supabase
+        .from('avatar_profiles')
+        .select('emoji, name_es, description_es')
+        .eq('id', avatarSettings.current_profile)
+        .single()
+
+      if (!profileData) {
+        setAvatarRotationNotifications([])
+        return []
+      }
+
+      const notification = {
+        id: `avatar-rotation-${avatarSettings.last_rotation_at}`,
+        type: 'avatar_rotation',
+        title: `${profileData.emoji} ¡Nuevo avatar esta semana!`,
+        message: `Tu avatar automático ha cambiado. Esta semana eres: ${profileData.name_es}. ${profileData.description_es}`,
+        timestamp: avatarSettings.last_rotation_at,
+        isRead: false,
+        avatarEmoji: profileData.emoji,
+        avatarName: profileData.name_es,
+        previousEmoji: avatarSettings.previous_emoji,
+        priority: NOTIFICATION_TYPES.avatar_rotation.priority,
+        ...NOTIFICATION_TYPES.avatar_rotation,
+        // Usar el emoji del nuevo avatar como icono
+        icon: profileData.emoji
+      }
+
+      console.log('🦊 Notificación de avatar cargada:', notification)
+      setAvatarRotationNotifications([notification])
+      return [notification]
+
+    } catch (error) {
+      console.error('❌ Error cargando notificación de avatar:', error)
+      setAvatarRotationNotifications([])
+      return []
+    }
+  }
+
+  // Función para marcar notificación de avatar como leída
+  const markAvatarNotificationAsRead = async () => {
+    try {
+      if (!user?.id || !supabase) return
+
+      await supabase
+        .from('user_avatar_settings')
+        .update({ rotation_notification_pending: false })
+        .eq('user_id', user.id)
+
+      setAvatarRotationNotifications([])
+      console.log('✅ Notificación de avatar marcada como leída')
+    } catch (error) {
+      console.error('❌ Error marcando notificación de avatar:', error)
     }
   }
 
@@ -1611,16 +1583,17 @@ export function useIntelligentNotifications() {
       // ...progressUpdates, // 🚫 ELIMINADO
       ...motivationalNotifications,
       ...systemNotifications,
+      ...avatarRotationNotifications, // 🦊 Avatar automático
       ...testNotifications // 🧪 Incluir notificaciones de testing
     ].sort((a, b) => {
       if (a.priority !== b.priority) {
         return b.priority - a.priority;
       }
-      return new Date(b.timestamp) - new Date(a.timestamp);
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
 
     setAllNotifications(combined);
-  }, [problematicArticles, achievements, studyReminders, motivationalNotifications, systemNotifications, testNotifications]);
+  }, [problematicArticles, achievements, studyReminders, motivationalNotifications, systemNotifications, avatarRotationNotifications, testNotifications]);
 
   // Calcular contadores
   const unreadCount = allNotifications.filter(n => !n.isRead).length;
@@ -1642,12 +1615,13 @@ export function useIntelligentNotifications() {
   };
 
   // Función para marcar como leída (OPCIÓN B: desaparece de la campana)
-  const markAsRead = async (notificationId) => {
+  const markAsRead = async (notificationId: string): Promise<void> => {
     try {
       console.log('🗑️ Marcando como leída (desaparecerá):', notificationId)
       
       if (notificationId.startsWith('dispute-')) {
         // Para impugnaciones: marcar en BD
+        // 🚫 NOTA: Las impugnaciones ahora se manejan en useDisputeNotifications
         const disputeId = notificationId.replace('dispute-', '');
         const { error } = await supabase
           .from('question_disputes')
@@ -1657,14 +1631,7 @@ export function useIntelligentNotifications() {
 
         if (error) throw error;
 
-        // Remover inmediatamente de la lista local
-        setDisputeNotifications(prev => {
-          const updated = prev.filter(notification => notification.id !== notificationId);
-          console.log('✅ Impugnación removida. Antes:', prev.length, 'Después:', updated.length);
-          return updated;
-        });
-        
-        // También remover de la lista general de notificaciones
+        // Remover de la lista general de notificaciones
         setAllNotifications(prev => {
           const updated = prev.filter(notification => notification.id !== notificationId);
           console.log('📝 Lista general actualizada. Antes:', prev.length, 'Después:', updated.length);
@@ -1688,6 +1655,10 @@ export function useIntelligentNotifications() {
           console.log('✅ Notificación del sistema removida. Antes:', prev.length, 'Después:', updated.length);
           return updated;
         });
+      }
+      else if (notificationId.startsWith('avatar-rotation-')) {
+        // 🦊 Para notificaciones de avatar: marcar en BD
+        await markAvatarNotificationAsRead();
       }
       else {
         // Para otros tipos: marcar en localStorage
@@ -1744,7 +1715,12 @@ export function useIntelligentNotifications() {
             case 'learning_variety':
             case 'feedback_response':
             case 'constructive_progress': // 🧪 Incluir testing
-              setMotivationalNotifications(prev => 
+              setMotivationalNotifications(prev =>
+                prev.filter(n => n.id !== notificationId)
+              );
+              break;
+            case 'avatar_rotation': // 🦊 Avatar automático
+              setAvatarRotationNotifications(prev =>
                 prev.filter(n => n.id !== notificationId)
               );
               break;
@@ -1758,7 +1734,7 @@ export function useIntelligentNotifications() {
   };
 
   // Función para descartar notificación - ACTUALIZADA CON PERSISTENCIA
-  const dismissNotification = (notificationId) => {
+  const dismissNotification = (notificationId: string): void => {
     console.log('🗑️ Descartando notificación:', notificationId);
     
     // 🆕 DETECTAR Y APLICAR COOLDOWN PARA NOTIFICACIONES MOTIVACIONALES
@@ -1810,7 +1786,7 @@ export function useIntelligentNotifications() {
   };
 
   // 🆕 FUNCIÓN PARA OBTENER ACCIONES DE UNA NOTIFICACIÓN
-  const getNotificationActions = (notification) => {
+  const getNotificationActions = (notification: Notification): { primary?: NotificationAction & { url: string }; secondary?: NotificationAction & { url: string } | null } => {
     const notificationType = NOTIFICATION_TYPES[notification.type];
     if (!notificationType) return { primary: null, secondary: null };
 
@@ -1907,13 +1883,18 @@ export function useIntelligentNotifications() {
     getDismissedStats,          // Para debugging: ver estadísticas
     
     // 🧪 FUNCIONES DE TESTING (solo desarrollo)
-    injectTestNotification: process.env.NODE_ENV === 'development' ? (notification) => {
+    injectTestNotification: process.env.NODE_ENV === 'development' ? (notification: Partial<Notification>) => {
       // Agregar prioridad desde NOTIFICATION_TYPES si no existe
-      const notificationWithPriority = {
-        ...notification,
-        priority: notification.priority || NOTIFICATION_TYPES[notification.type]?.priority || 50
-      }
-      
+      const notificationWithPriority: Notification = {
+        id: notification.id || `test-${Date.now()}`,
+        type: notification.type || 'achievement',
+        title: notification.title || 'Test',
+        timestamp: notification.timestamp || new Date().toISOString(),
+        isRead: notification.isRead ?? false,
+        priority: notification.priority || (notification.type ? NOTIFICATION_TYPES[notification.type]?.priority : undefined) || 50,
+        ...notification
+      } as Notification
+
       const newNotifications = [notificationWithPriority, ...globalTestNotifications]
       updateGlobalTestNotifications(newNotifications)
       console.log('🧪 Test notification injected globally:', notificationWithPriority)

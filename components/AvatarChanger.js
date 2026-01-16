@@ -1,6 +1,6 @@
-// components/AvatarChanger.js - CON ACTUALIZACIÓN AUTOMÁTICA DEL HEADER
+// components/AvatarChanger.js - CON ACTUALIZACIÓN AUTOMÁTICA DEL HEADER Y AVATARES POR COMPORTAMIENTO
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 
 // 🎨 Avatares organizados por categorías
@@ -110,9 +110,150 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
   const [uploadingImage, setUploadingImage] = useState(false)
   const { supabase } = useAuth() // Obtener supabase del contexto
 
+  // 🤖 Estado para avatar automático
+  const [avatarMode, setAvatarMode] = useState('manual') // 'manual' | 'automatic'
+  const [autoProfile, setAutoProfile] = useState(null)
+  const [previewProfile, setPreviewProfile] = useState(null)
+  const [loadingAutoSettings, setLoadingAutoSettings] = useState(false)
+  const [togglingMode, setTogglingMode] = useState(false)
+
+  // 🔄 Cargar configuración de avatar automático
+  useEffect(() => {
+    if (user?.id) {
+      loadAvatarSettings()
+    }
+  }, [user?.id])
+
+  const loadAvatarSettings = async () => {
+    if (!user?.id) return
+    setLoadingAutoSettings(true)
+    try {
+      const response = await fetch(`/api/profile/avatar-settings?userId=${user.id}&preview=true`)
+      const data = await response.json()
+
+      if (data.success && data.preview) {
+        setPreviewProfile(data.preview)
+        // Si el usuario tiene configuración existente con modo automático
+        if (data.preview.currentProfile) {
+          const settingsResponse = await fetch(`/api/profile/avatar-settings?userId=${user.id}`)
+          const settingsData = await settingsResponse.json()
+          if (settingsData.success && settingsData.data?.mode === 'automatic') {
+            setAvatarMode('automatic')
+            setAutoProfile(settingsData.profile)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error cargando configuración de avatar:', error)
+    } finally {
+      setLoadingAutoSettings(false)
+    }
+  }
+
+  // 🔄 Toggle modo automático
+  const handleToggleAutoMode = async () => {
+    if (!user?.id) return
+    setTogglingMode(true)
+
+    try {
+      const newMode = avatarMode === 'manual' ? 'automatic' : 'manual'
+
+      const response = await fetch('/api/profile/avatar-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          data: { mode: newMode }
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setAvatarMode(newMode)
+
+        if (newMode === 'automatic' && data.profile) {
+          setAutoProfile(data.profile)
+          // Actualizar el avatar en el UI
+          const avatarData = {
+            type: 'predefined',
+            emoji: data.profile.emoji,
+            color: getColorFromProfile(data.profile.color),
+            name: data.profile.nameEs
+          }
+          onAvatarChange(avatarData)
+
+          // También actualizar en la BD
+          await supabase.auth.updateUser({
+            data: {
+              avatar_type: 'predefined',
+              avatar_emoji: data.profile.emoji,
+              avatar_color: getColorFromProfile(data.profile.color),
+              avatar_name: data.profile.nameEs
+            }
+          })
+
+          // Actualizar public_user_profiles
+          await supabase
+            .from('public_user_profiles')
+            .update({
+              avatar_type: 'predefined',
+              avatar_emoji: data.profile.emoji,
+              avatar_color: getColorFromProfile(data.profile.color),
+              avatar_name: data.profile.nameEs,
+              avatar_url: null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', user.id)
+
+          console.log('✅ Modo automático activado:', data.profile.emoji, data.profile.nameEs)
+        } else {
+          setAutoProfile(null)
+          console.log('✅ Modo manual activado')
+        }
+      }
+    } catch (error) {
+      console.error('Error cambiando modo de avatar:', error)
+    } finally {
+      setTogglingMode(false)
+    }
+  }
+
+  // Helper: convertir color hex a clase Tailwind
+  const getColorFromProfile = (hexColor) => {
+    // Mapeo de colores del sistema de avatares
+    const colorMap = {
+      '#6366f1': 'from-indigo-500 to-purple-500',   // night_owl
+      '#f59e0b': 'from-amber-500 to-yellow-500',    // early_bird
+      '#ef4444': 'from-red-500 to-orange-500',      // champion
+      '#10b981': 'from-emerald-500 to-green-500',   // consistent
+      '#3b82f6': 'from-blue-500 to-sky-500',        // speed_eagle
+      '#8b5cf6': 'from-violet-500 to-purple-500',   // worker_ant
+      '#06b6d4': 'from-cyan-500 to-blue-500',       // smart_dolphin
+      '#94a3b8': 'from-gray-400 to-gray-500',       // relaxed_koala
+      '#f97316': 'from-orange-500 to-amber-500',    // clever_fox
+      '#eab308': 'from-yellow-500 to-amber-400'     // busy_bee
+    }
+    return colorMap[hexColor] || 'from-blue-500 to-indigo-500'
+  }
+
   // 🎨 Seleccionar avatar predefinido
   const handleSelectPredefinedAvatar = async (avatar) => {
     try {
+      // Si estaba en modo automático, cambiar a manual
+      if (avatarMode === 'automatic') {
+        await fetch('/api/profile/avatar-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            data: { mode: 'manual' }
+          })
+        })
+        setAvatarMode('manual')
+        setAutoProfile(null)
+      }
+
       const avatarData = {
         type: 'predefined',
         emoji: avatar.emoji,
@@ -417,7 +558,7 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
                 <h3 className="text-xl font-bold text-gray-800">
                   🎨 Cambiar Avatar
                 </h3>
-                <button 
+                <button
                   onClick={() => setIsOpen(false)}
                   className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
                   style={{ lineHeight: 1 }}
@@ -427,8 +568,97 @@ export default function AvatarChanger({ user, currentAvatar, onAvatarChange }) {
               </div>
             </div>
 
+            {/* 🤖 Toggle Avatar Automático */}
+            <div className="px-6 py-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🤖</span>
+                  <div>
+                    <div className="font-medium text-gray-800">Avatar Automático</div>
+                    <div className="text-sm text-gray-500">
+                      Tu avatar cambia según tu estilo de estudio
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleToggleAutoMode}
+                  disabled={togglingMode || loadingAutoSettings}
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${
+                    avatarMode === 'automatic'
+                      ? 'bg-purple-600'
+                      : 'bg-gray-300'
+                  } ${togglingMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
+                      avatarMode === 'automatic' ? 'translate-x-8' : 'translate-x-1'
+                    }`}
+                  />
+                  {togglingMode && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Preview del perfil automático */}
+              {avatarMode === 'automatic' && autoProfile && (
+                <div className="mt-3 p-3 bg-white rounded-lg border border-purple-200">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-12 h-12 bg-gradient-to-r ${getColorFromProfile(autoProfile.color)} rounded-full flex items-center justify-center text-white text-2xl shadow-md`}
+                    >
+                      {autoProfile.emoji}
+                    </div>
+                    <div>
+                      <div className="font-medium text-purple-800">
+                        {autoProfile.nameEs}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {autoProfile.descriptionEs}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-purple-600">
+                    🔄 Se actualiza cada lunes según tu actividad
+                  </div>
+                </div>
+              )}
+
+              {/* Preview sugerido cuando está en manual */}
+              {avatarMode === 'manual' && previewProfile?.suggestedProfile && (
+                <div className="mt-3 p-3 bg-white/50 rounded-lg border border-gray-200">
+                  <div className="text-xs text-gray-500 mb-2">
+                    Si activas el modo automático, serías:
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">
+                      {previewProfile.suggestedProfile.emoji}
+                    </span>
+                    <span className="font-medium text-gray-700">
+                      {previewProfile.suggestedProfile.nameEs}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Contenido */}
-            <div className="p-6">
+            <div className={`p-6 ${avatarMode === 'automatic' ? 'opacity-50 pointer-events-none' : ''}`}>
+              {avatarMode === 'automatic' && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80 rounded-b-xl">
+                  <div className="text-center p-4">
+                    <div className="text-4xl mb-2">🔒</div>
+                    <div className="text-gray-600 font-medium">
+                      Avatar en modo automático
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      Desactiva para elegir manualmente
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Pestañas de categorías */}
               <div className="flex flex-wrap gap-2 mb-4 border-b border-gray-200 pb-3">
                 {Object.entries(AVATAR_CATEGORIES).map(([key, category]) => (

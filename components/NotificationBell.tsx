@@ -1,9 +1,28 @@
-// components/NotificationBell.js - SISTEMA CON INDICADORES ÚTILES Y COMPORTAMIENTO MEJORADO
+// components/NotificationBell.tsx - SISTEMA CON INDICADORES ÚTILES Y COMPORTAMIENTO MEJORADO
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, TouchEvent, MouseEvent } from 'react'
 import { useIntelligentNotifications } from '../hooks/useIntelligentNotifications'
 import { useDisputeNotifications } from '../hooks/useDisputeNotifications'
 import { getActionTimeEstimate, getActionIcon } from '../hooks/useIntelligentNotifications'
+import type { Notification, NotificationAction } from '../hooks/useIntelligentNotifications.types'
+
+// Tipos locales para el componente
+interface SwipeState {
+  startX: number
+  startY: number
+  translateX: number
+  opacity: number
+  isBeingSwiped: boolean
+}
+
+interface SwipeStates {
+  [notificationId: string]: SwipeState
+}
+
+interface NotificationActions {
+  primary?: NotificationAction & { url?: string }
+  secondary?: NotificationAction & { url?: string } | null
+}
 
 export default function NotificationBell() {
   const {
@@ -37,19 +56,19 @@ export default function NotificationBell() {
   const disputeNotifications = useDisputeNotifications()
 
   // Estados locales
-  const [isOpen, setIsOpen] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [isDesktop, setIsDesktop] = useState(false)
-  const dropdownRef = useRef(null)
-  const buttonRef = useRef(null)
-  
+  const [isOpen, setIsOpen] = useState<boolean>(false)
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [isDesktop, setIsDesktop] = useState<boolean>(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
   // Estados para alegaciones
-  const [showingAppealForm, setShowingAppealForm] = useState(null) // ID de la disputa
-  const [appealText, setAppealText] = useState('')
-  const [submittingAppeal, setSubmittingAppeal] = useState(false)
+  const [showingAppealForm, setShowingAppealForm] = useState<string | null>(null) // ID de la disputa
+  const [appealText, setAppealText] = useState<string>('')
+  const [submittingAppeal, setSubmittingAppeal] = useState<boolean>(false)
 
   // 🆕 Estados para swipe de notificaciones
-  const [swipeStates, setSwipeStates] = useState({}) // { notificationId: { isBeingSwiped, translateX, opacity } }
+  const [swipeStates, setSwipeStates] = useState<SwipeStates>({}) // { notificationId: { isBeingSwiped, translateX, opacity } }
 
   // Detectar tamaño de pantalla
   useEffect(() => {
@@ -99,7 +118,7 @@ export default function NotificationBell() {
   }, [isOpen])
 
   // 🆕 MANEJAR ALEGACIÓN DE IMPUGNACIÓN RECHAZADA
-  const handleSubmitAppeal = async (disputeId) => {
+  const handleSubmitAppeal = async (disputeId: string): Promise<void> => {
     if (!appealText.trim() || submittingAppeal) return
     
     setSubmittingAppeal(true)
@@ -122,18 +141,18 @@ export default function NotificationBell() {
     }
   }
 
-  const handleShowAppealForm = (disputeId) => {
+  const handleShowAppealForm = (disputeId: string): void => {
     setShowingAppealForm(disputeId)
     setAppealText('')
   }
 
-  const handleCancelAppeal = () => {
+  const handleCancelAppeal = (): void => {
     setShowingAppealForm(null)
     setAppealText('')
   }
 
   // 🆕 FUNCIONES DE SWIPE PARA MARCAR COMO LEÍDO
-  const handleTouchStart = (notificationId, e) => {
+  const handleTouchStart = (notificationId: string, e: TouchEvent<HTMLDivElement>): void => {
     if (!isDesktop) { // Solo en móvil
       const touch = e.touches[0]
       setSwipeStates(prev => ({
@@ -149,7 +168,7 @@ export default function NotificationBell() {
     }
   }
 
-  const handleTouchMove = (notificationId, e) => {
+  const handleTouchMove = (notificationId: string, e: TouchEvent<HTMLDivElement>): void => {
     if (!isDesktop && swipeStates[notificationId]) {
       const touch = e.touches[0]
       const deltaX = touch.clientX - swipeStates[notificationId].startX
@@ -176,7 +195,7 @@ export default function NotificationBell() {
     }
   }
 
-  const handleTouchEnd = (notificationId, notification) => {
+  const handleTouchEnd = (notificationId: string, notification: Notification): void => {
     if (!isDesktop && swipeStates[notificationId]) {
       const { translateX, isBeingSwiped } = swipeStates[notificationId]
       
@@ -227,7 +246,7 @@ export default function NotificationBell() {
   }
 
   // 🆕 MANEJAR ACCIÓN CON COMPORTAMIENTO DIFERENCIADO
-  const handleActionClick = async (notification, actionType, event) => {
+  const handleActionClick = async (notification: Notification, actionType: 'primary' | 'secondary', event: MouseEvent<HTMLButtonElement>): Promise<void> => {
     event.stopPropagation()
     console.log('🔍 handleActionClick called:', { notificationId: notification?.id, actionType })
     
@@ -299,7 +318,7 @@ export default function NotificationBell() {
   }
 
   // 🆕 GENERAR URL DE ACCIÓN (copiada del hook para uso local)
-  const generateActionUrl = (notification, actionType) => {
+  const generateActionUrl = (notification: Notification, actionType: string): string => {
     console.log('🔍 generateActionUrl called:', { type: notification.type, actionType, notification })
     const baseParams = new URLSearchParams({
       utm_source: 'notification',
@@ -443,7 +462,7 @@ export default function NotificationBell() {
   }
 
   // 🆕 GENERAR SLUG DE LEY (copiada del hook)
-  const generateLawSlug = (lawName) => {
+  const generateLawSlug = (lawName: string | undefined): string => {
     if (!lawName) return 'unknown'
     
     const specialCases = {
@@ -475,7 +494,7 @@ export default function NotificationBell() {
   }
 
   // Manejar botón "Marcar como leído" (solo impugnaciones)
-  const handleMarkAsRead = (notification, event) => {
+  const handleMarkAsRead = (notification: Notification, event: MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation()
 
     console.log('🔍 handleMarkAsRead llamado:', {
@@ -494,34 +513,45 @@ export default function NotificationBell() {
   }
 
   // Manejar botón "Entendido" (descartar otras notificaciones)
-  const handleDismiss = (notification, event) => {
+  const handleDismiss = (notification: Notification, event: MouseEvent<HTMLButtonElement>): void => {
     event.stopPropagation()
     // ✅ FIX: Marcar notificaciones motivacionales como leídas permanentemente
     markAsRead(notification.id)
   }
 
   // Recargar notificaciones
-  const handleRefresh = () => {
+  const handleRefresh = (): void => {
     loadAllNotifications()
     disputeNotifications.refreshNotifications() // Refrescar también las disputas
   }
 
   // 🆕 MEZCLAR NOTIFICACIONES DE DISPUTAS CON NOTIFICACIONES PRINCIPALES
-  const getAllNotifications = () => {
+  const getAllNotifications = (): Notification[] => {
+    // Convertir disputas a formato Notification (añadir priority)
+    const disputeNotifs: Notification[] = (disputeNotifications.notifications || []).map(d => ({
+      ...d,
+      priority: 70, // Prioridad alta para disputas
+      icon: d.status === 'resolved' ? '✅' : d.status === 'appealed' ? '📝' : '❌',
+      color: 'blue' as const,
+      bgColor: 'bg-blue-100 dark:bg-blue-900/50',
+      textColor: 'text-blue-600 dark:text-blue-400',
+      borderColor: 'border-blue-200 dark:border-blue-800'
+    }))
+
     // Combinar notificaciones principales con disputas
-    const combinedNotifications = [
+    const combinedNotifications: Notification[] = [
       ...notifications,
-      ...(disputeNotifications.notifications || [])
+      ...disputeNotifs
     ]
-    
+
     // Ordenar por timestamp (más recientes primero)
-    return combinedNotifications.sort((a, b) => 
-      new Date(b.timestamp || b.resolved_at || 0) - new Date(a.timestamp || a.resolved_at || 0)
+    return combinedNotifications.sort((a, b) =>
+      new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
     )
   }
 
   // Filtrar notificaciones según categoría seleccionada
-  const getFilteredNotifications = () => {
+  const getFilteredNotifications = (): Notification[] => {
     const allNotifications = getAllNotifications()
     
     // Excluir notificaciones que están siendo eliminadas por swipe
@@ -554,14 +584,14 @@ export default function NotificationBell() {
   }
 
   // 🆕 CALCULAR TOTAL DE NOTIFICACIONES NO LEÍDAS INCLUYENDO DISPUTAS
-  const getTotalUnreadCount = () => {
+  const getTotalUnreadCount = (): number => {
     const mainUnread = unreadCount || 0
     const disputeUnread = disputeNotifications.unreadCount || 0
     return mainUnread + disputeUnread
   }
 
   // Obtener color del badge según la prioridad máxima
-  const getBadgeColor = () => {
+  const getBadgeColor = (): string => {
     // Si hay disputas no leídas, prioridad alta
     if ((disputeNotifications.unreadCount || 0) > 0) return 'bg-red-500'
     if (categorizedNotifications.critical.length > 0) return 'bg-red-500'

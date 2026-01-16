@@ -1,7 +1,87 @@
-// lib/notifications/motivationalTypes.js
+// lib/notifications/motivationalTypes.ts
 // Definiciones de notificaciones motivacionales (solo cuando no hay avisos urgentes)
 
-export const MOTIVATIONAL_NOTIFICATION_TYPES = {
+import { z } from 'zod'
+
+// ============================================
+// TIPOS E INTERFACES
+// ============================================
+
+export type MotivationalNotificationTypeId =
+  | 'daily_progress'
+  | 'constructive_progress'
+  | 'positive_acceleration'
+  | 'accuracy_improvement'
+  | 'speed_improvement'
+  | 'constructive_encouragement'
+  | 'articles_mastered'
+  | 'study_consistency'
+  | 'learning_variety'
+  | 'positive_exam_prediction'
+
+export interface MotivationalAction {
+  label: string
+  type: string
+}
+
+export interface MotivationalNotificationConditions {
+  min_consecutive_days?: number
+  max_times_shown?: number
+  min_questions_answered?: number
+  progress_percentage_threshold?: number
+  needs_acceleration?: boolean
+  min_time_remaining?: number
+  min_improvement_percentage?: number
+  min_questions_in_period?: number
+  min_improvement_seconds?: number
+  min_questions_compared?: number
+  needs_encouragement?: boolean
+  has_previous_progress?: boolean
+  min_new_mastered?: number
+  mastery_threshold?: number
+  min_sessions_week?: number
+  consistency_score?: number
+  min_test_types?: number
+  min_topics_touched?: number
+  min_readiness_score?: number
+  exam_approaching?: boolean
+  [key: string]: unknown
+}
+
+export interface MotivationalNotificationTypeConfig {
+  priority: number
+  icon: string
+  color: string
+  bgColor: string
+  textColor: string
+  borderColor: string
+  cooldown_hours: number
+  conditions: MotivationalNotificationConditions
+  primaryAction: MotivationalAction
+  secondaryAction: MotivationalAction
+  messageTemplates: string[]
+}
+
+export type MotivationalNotificationTypesMap = Record<
+  MotivationalNotificationTypeId,
+  MotivationalNotificationTypeConfig
+>
+
+export interface MotivationalConfig {
+  max_daily_motivational: number
+  max_weekly_motivational: number
+  min_user_activity_days: number
+  global_cooldown_hours: number
+  min_priority_when_no_urgent: number
+  min_questions_for_analysis: number
+  min_study_sessions: number
+}
+
+// ============================================
+// CONFIGURACIÓN DE TIPOS DE NOTIFICACIÓN
+// ============================================
+
+export const MOTIVATIONAL_NOTIFICATION_TYPES: MotivationalNotificationTypesMap = {
   // 📈 PROGRESO BASADO EN DATOS REALES
   daily_progress: {
     priority: 25,
@@ -170,7 +250,7 @@ export const MOTIVATIONAL_NOTIFICATION_TYPES = {
     ]
   },
 
-  // 🏆 ARTÍCULOS DOMINADOS  
+  // 🏆 ARTÍCULOS DOMINADOS
   articles_mastered: {
     priority: 18,
     icon: '🏆',
@@ -285,33 +365,93 @@ export const MOTIVATIONAL_NOTIFICATION_TYPES = {
 }
 
 // Configuración de frecuencia para evitar spam
-export const MOTIVATIONAL_CONFIG = {
+export const MOTIVATIONAL_CONFIG: MotivationalConfig = {
   max_daily_motivational: 1,        // Máximo 1 por día
-  max_weekly_motivational: 3,       // Máximo 3 por semana  
+  max_weekly_motivational: 3,       // Máximo 3 por semana
   min_user_activity_days: 2,        // Usuario debe haber estudiado al menos 2 días
   global_cooldown_hours: 12,        // Espacio mínimo entre cualquier motivacional
-  
+
   // Prioridad mínima para mostrar (solo cuando no hay urgentes)
   min_priority_when_no_urgent: 14,
-  
+
   // Análisis requerido para activar
   min_questions_for_analysis: 10,
   min_study_sessions: 3
 }
 
-// Función para obtener templates de mensaje aleatorio
-export const getRandomMessageTemplate = (notificationType) => {
+// ============================================
+// FUNCIONES DE UTILIDAD
+// ============================================
+
+/**
+ * Obtiene un template de mensaje aleatorio para un tipo de notificación
+ */
+export const getRandomMessageTemplate = (
+  notificationType: MotivationalNotificationTypeId
+): string | null => {
   const type = MOTIVATIONAL_NOTIFICATION_TYPES[notificationType]
   if (!type?.messageTemplates?.length) return null
-  
+
   const randomIndex = Math.floor(Math.random() * type.messageTemplates.length)
   return type.messageTemplates[randomIndex]
 }
 
-// Función para formatear mensaje con datos
-export const formatNotificationMessage = (template, data) => {
+/**
+ * Formatea un template de mensaje reemplazando placeholders con datos
+ */
+export const formatNotificationMessage = (
+  template: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Record<string, any>
+): string => {
   return template.replace(/\{(\w+)\}/g, (match, key) => {
     // Usar != null para permitir valores 0 y strings vacíos
-    return data[key] != null ? data[key] : match
+    const value = data[key]
+    return value != null ? String(value) : match
   })
 }
+
+/**
+ * Extrae solo los campos visuales de una configuración de notificación
+ * (excluye conditions y messageTemplates que causan problemas de tipo)
+ */
+export const getNotificationVisualConfig = (
+  notificationType: MotivationalNotificationTypeId
+): Omit<MotivationalNotificationTypeConfig, 'conditions' | 'messageTemplates'> => {
+  const config = MOTIVATIONAL_NOTIFICATION_TYPES[notificationType]
+  const { conditions: _, messageTemplates: __, ...visualConfig } = config
+  return visualConfig
+}
+
+// ============================================
+// ZOD SCHEMAS PARA VALIDACIÓN
+// ============================================
+
+// Schema para notificación motivacional generada
+export const motivationalNotificationSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string(),
+  message: z.string(),
+  body: z.string().optional(),
+  timestamp: z.string(),
+  isRead: z.boolean(),
+  priority: z.number(),
+  icon: z.string(),
+  color: z.string(),
+  bgColor: z.string(),
+  textColor: z.string(),
+  borderColor: z.string(),
+  cooldown_hours: z.number(),
+  conditions: z.record(z.string(), z.unknown()).optional(),
+  primaryAction: z.object({
+    label: z.string(),
+    type: z.string()
+  }).optional(),
+  secondaryAction: z.object({
+    label: z.string(),
+    type: z.string()
+  }).optional()
+}).passthrough() // Permitir campos adicionales
+
+export type MotivationalNotification = z.infer<typeof motivationalNotificationSchema>
