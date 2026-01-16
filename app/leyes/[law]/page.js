@@ -46,7 +46,9 @@ export async function generateMetadata({ params }) {
       'Ley 47/2003': 'Test Ley 47/2003 General Presupuestaria. Régimen presupuestario del sector público, contabilidad pública. Esencial para oposiciones económicas.',
       'LOTC': 'Test Ley Orgánica del Tribunal Constitucional. Organización, competencias, procedimientos constitucionales. Preguntas para oposiciones jurídicas.',
       'LO 3/2007': 'Test Ley Orgánica 3/2007 para la Igualdad Efectiva entre Mujeres y Hombres. Principios de igualdad, políticas públicas. Oposiciones sociales.',
-      'LO 3/2018': 'Test Ley Orgánica 3/2018 de Protección de Datos Personales y Garantía de los Derechos Digitales. RGPD español para oposiciones tecnológicas.'
+      'LO 3/2018': 'Test Ley Orgánica 3/2018 de Protección de Datos Personales y Garantía de los Derechos Digitales. RGPD español para oposiciones tecnológicas.',
+      'RC': 'Test Reglamento del Congreso de los Diputados. Organización parlamentaria, procedimiento legislativo, grupos parlamentarios. Esencial para oposiciones de Tramitación Procesal.',
+      'RS': 'Test Reglamento del Senado. Organización, funcionamiento y procedimientos de la Cámara Alta. Preguntas oficiales para oposiciones de Cortes Generales.'
     }
     
     return seoDescriptions[lawShortName] || `Test ${lawName} con preguntas actualizadas de exámenes oficiales. Contenido completo para preparación de oposiciones y estudio jurídico especializado.`
@@ -105,7 +107,7 @@ export async function generateStaticParams() {
     { law: 'tfue' },
     { law: 'gobierno-abierto' },
     { law: 'agenda-2030' },
-    
+
     // 🏛️ TEMA 4 - PODER JUDICIAL - TODAS LAS VARIANTES
     { law: 'lo-6-1985' },           // ← URL canonical
     { law: 'lopj' },                // ← Alias 1
@@ -114,7 +116,20 @@ export async function generateStaticParams() {
     { law: 'ley-50-1981' },         // ← Ministerio Fiscal canonical
     { law: 'ministerio-fiscal' },   // ← Alias MF 1
     { law: 'estatuto-ministerio-fiscal' }, // ← Alias MF 2
-    { law: 'eomf' }                 // ← Alias MF 3
+    { law: 'eomf' },                // ← Alias MF 3
+
+    // 🏛️ TRAMITACIÓN PROCESAL - REGLAMENTOS PARLAMENTARIOS
+    { law: 'reglamento-del-congreso' },
+    { law: 'reglamento-del-senado' },
+
+    // 🏛️ OTRAS LEYES IMPORTANTES
+    { law: 'ley-50-1997' },         // Ley del Gobierno
+    { law: 'ley-47-2003' },         // Ley General Presupuestaria
+    { law: 'lotc' },                // Tribunal Constitucional
+    { law: 'lo-3-2007' },           // Igualdad
+    { law: 'lo-3-2018' },           // Protección de Datos
+    { law: 'rdl-5-2015' },          // TREBEP
+    { law: 'trebep' }               // Alias TREBEP
   ]
 }
 
@@ -217,7 +232,14 @@ export default async function LawMainPage({ params, searchParams }) {
               </div>
             </div>
             <div className="p-6">
-              <LawTestConfigurator lawShortName={lawShortName} lawDisplayName={lawInfo.name} />
+              <Suspense fallback={
+                <div className="animate-pulse space-y-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              }>
+                <LawTestConfigurator lawShortName={lawShortName} lawDisplayName={lawInfo.name} />
+              </Suspense>
             </div>
           </div>
         </div>

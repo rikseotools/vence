@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import TestConfigurator from '@/components/TestConfigurator'
 import { getLawStats } from '@/lib/lawFetchers'
 import { useAuth } from '@/contexts/AuthContext'
@@ -9,6 +10,9 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }) {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [lawStats, setLawStats] = useState(null)
+  const searchParams = useSearchParams()
+  const selectedArticlesParam = searchParams.get('selected_articles')
+  const sourceParam = searchParams.get('source')
 
   useEffect(() => {
     async function loadData() {
@@ -24,6 +28,20 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }) {
 
     loadData()
   }, [lawShortName])
+
+  // Si hay artículos preseleccionados en la URL, iniciar el test automáticamente
+  useEffect(() => {
+    if (selectedArticlesParam && !loading && lawStats) {
+      console.log('🎯 Auto-starting test with selected articles:', selectedArticlesParam)
+      const canonicalSlug = getCanonicalSlug(lawShortName)
+      const params = new URLSearchParams({
+        n: '50', // Pedir muchas, el sistema devolverá las disponibles
+        selected_articles: selectedArticlesParam,
+        ...(sourceParam && { source: sourceParam })
+      })
+      window.location.href = `/leyes/${canonicalSlug}/avanzado?${params.toString()}`
+    }
+  }, [selectedArticlesParam, sourceParam, loading, lawStats, lawShortName])
 
   if (loading) {
     return (

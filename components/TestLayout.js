@@ -2308,7 +2308,18 @@ export default function TestLayout({
                                     <span>{config.customNavigationLinks.backToTests.label}</span>
                                   </Link>
                                 )}
-                                
+
+                                {/* Botón terciario: Volver al temario (si viene de estudiar) */}
+                                {config.customNavigationLinks?.backToTemario && (
+                                  <Link
+                                    href={config.customNavigationLinks.backToTemario.href}
+                                    className="px-4 sm:px-8 py-3 sm:py-4 rounded-lg font-semibold text-white bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center space-x-2 sm:space-x-3 text-sm sm:text-base w-full sm:w-auto"
+                                  >
+                                    <span>📖</span>
+                                    <span>{config.customNavigationLinks.backToTemario.label}</span>
+                                  </Link>
+                                )}
+
                                 {/* Fallback para tema = 0 sin customNavigationLinks */}
                                 {tema === 0 && !config.customNavigationLinks?.backToLaw && (
                                   <Link
@@ -2350,18 +2361,18 @@ export default function TestLayout({
                             <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
                               {user ? (
                                 <div>💾 Tu progreso se guarda automáticamente</div>
-                              ) : (
+                              ) : !authLoading ? (
                                 <div>
                                   <span>👤 </span>
-                                  <button 
-                                    onClick={() => window.location.href = '/login'} 
+                                  <button
+                                    onClick={() => window.location.href = '/login'}
                                     className="underline hover:text-blue-600 dark:hover:text-blue-400"
                                   >
                                     Regístrate gratis
                                   </button>
                                   <span> para guardar tu progreso</span>
                                 </div>
-                              )}
+                              ) : null}
                             </div>
                           </div>
                         </div>

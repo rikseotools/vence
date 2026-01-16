@@ -29,6 +29,7 @@ export default function PersistentRegistrationManager({
   
   // Estados internos
   const [user, setUser] = useState(null)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true) // 🔄 Nuevo: evitar flash
   const [showModal, setShowModal] = useState(false)
   const [attempt, setAttempt] = useState(1)
   const [userRejected, setUserRejected] = useState(false)
@@ -48,6 +49,8 @@ export default function PersistentRegistrationManager({
       } catch (error) {
         console.log('🔍 Error verificando usuario (normal en localhost):', error.message)
         setUser(null)
+      } finally {
+        setIsCheckingAuth(false) // 🔄 Auth check completado
       }
     }
 
@@ -68,7 +71,8 @@ export default function PersistentRegistrationManager({
 
   // 🎯 MODAL AL INICIAR TEST (después de 10 segundos)
   useEffect(() => {
-    if (!enabled || user || showModal || attempt !== 1 || !totalQuestions || userRejected) return
+    // No iniciar timer hasta que sepamos si hay usuario
+    if (!enabled || user || showModal || attempt !== 1 || !totalQuestions || userRejected || isCheckingAuth) return
 
     console.log('🎯 Trigger: Test iniciado sin usuario')
     const timer = setTimeout(() => {
@@ -76,7 +80,7 @@ export default function PersistentRegistrationManager({
     }, 10000) // Reducido de 15s a 10s
 
     return () => clearTimeout(timer)
-  }, [enabled, user, showModal, attempt, totalQuestions, userRejected])
+  }, [enabled, user, showModal, attempt, totalQuestions, userRejected, isCheckingAuth])
 
   // 🎯 TRIGGERS PROGRESIVOS: cada 2 preguntas, luego cada pregunta
   useEffect(() => {
@@ -159,8 +163,8 @@ export default function PersistentRegistrationManager({
 
   return (
     <>
-      {/* Banner persistente y molesto */}
-      {!user && !userRejected && (
+      {/* Banner persistente y molesto - solo mostrar después de verificar auth */}
+      {!user && !userRejected && !isCheckingAuth && (
         <div className={`border rounded-lg p-4 mb-6 ${
           attempt <= 2 ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200' :
           attempt <= 5 ? 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-300' :

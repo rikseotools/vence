@@ -1,7 +1,7 @@
-// components/LawTestPageWrapper.js - WRAPPER ESPECÍFICO PARA TESTS POR LEY
+// components/LawTestPageWrapper.tsx - WRAPPER ESPECÍFICO PARA TESTS POR LEY
 'use client'
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, ReadonlyURLSearchParams } from 'next/navigation'
 import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
 
@@ -13,46 +13,124 @@ import {
   fetchLawOfficialTest
 } from '../lib/lawFetchers'
 
+// Tipos
+type TestType = 'rapido' | 'avanzado' | 'oficial' | 'aleatorio'
+
+type FetcherFunction = (
+  lawShortName: string,
+  searchParams: ReadonlyURLSearchParams | null,
+  config: TestConfig
+) => Promise<Question[]>
+
+interface Question {
+  id: string
+  question_text: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  correct_option?: number
+  explanation?: string
+  primary_article_id?: string
+  [key: string]: unknown
+}
+
+interface TestConfig {
+  name: string
+  description: string
+  color: string
+  icon: string
+  subtitle: string
+  fetcher?: FetcherFunction
+  tema: number
+  isLawTest?: boolean
+  lawShortName?: string
+  customNavigationLinks?: {
+    backToLaw?: {
+      href: string
+      label: string
+      isPrimary: boolean
+    }
+    backToTests?: {
+      href: string
+      label: string
+      isPrimary: boolean
+    }
+    backToTemario?: {
+      href: string
+      label: string
+      isPrimary: boolean
+    }
+  }
+}
+
+interface LawTestPageWrapperProps {
+  // Props obligatorias para tests de ley
+  lawShortName: string
+  lawSlug: string
+  testType: TestType
+
+  // Props de personalización (opcionales)
+  customTitle?: string
+  customDescription?: string
+  customIcon?: string
+  customColor?: string
+  customSubtitle?: string
+
+  // Props de configuración (opcionales)
+  defaultConfig?: Partial<TestConfig>
+
+  // Props de UI (opcionales)
+  loadingMessage?: string
+  errorMessage?: string
+}
+
 export default function LawTestPageWrapper({
-  // 🎯 Props obligatorias para tests de ley
-  lawShortName, // Ej: 'CE', 'LPAC', 'Ley 19/2013'
-  lawSlug, // Ej: 'rdl-5-2015', 'ley-19-2013' - para navegación
-  testType, // 'rapido', 'avanzado', 'oficial', 'aleatorio'
-  
-  // 🎯 Props de personalización (opcionales)
+  lawShortName,
+  lawSlug,
+  testType,
   customTitle,
   customDescription,
   customIcon,
   customColor,
   customSubtitle,
-  
-  // 🎯 Props de configuración (opcionales)
   defaultConfig = {},
-  
-  // 🎯 Props de UI (opcionales)
   loadingMessage,
   errorMessage
-}) {
+}: LawTestPageWrapperProps) {
   // Estados básicos
-  const [questions, setQuestions] = useState([])
+  const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [config, setConfig] = useState(null)
+  const [error, setError] = useState<string | null>(null)
+  const [config, setConfig] = useState<TestConfig | null>(null)
+  const [temarioReturnUrl, setTemarioReturnUrl] = useState<string | null>(null)
 
   // Hook de Next.js para searchParams
   const searchParams = useSearchParams()
+  const sourceParam = searchParams?.get('source')
+
+  // 📚 Leer URL de temario desde sessionStorage si viene de temario
+  useEffect(() => {
+    if (sourceParam === 'temario' && typeof window !== 'undefined') {
+      const storedUrl = sessionStorage.getItem('temario_return_url')
+      if (storedUrl) {
+        setTemarioReturnUrl(storedUrl)
+        console.log('📚 [LAW WRAPPER] Temario return URL found:', storedUrl)
+      }
+    }
+  }, [sourceParam])
 
   // 🔥 Configuraciones predefinidas por tipo de test
-  const getTestConfig = () => {
-    const baseConfigs = {
+  const getTestConfig = (): TestConfig => {
+    const baseConfigs: Record<TestType, TestConfig> = {
       rapido: {
         name: "Test Rápido",
         description: "Práctica rápida",
-        color: "from-green-500 to-emerald-600", 
+        color: "from-green-500 to-emerald-600",
         icon: "⚡",
         subtitle: "10 preguntas en 5 minutos",
-        fetcher: fetchLawQuickTest,
-        tema: 0 // Para LawTestPageWrapper, tema siempre es 0 (artículos dirigidos)
+        fetcher: fetchLawQuickTest as unknown as FetcherFunction,
+        tema: 0
       },
       avanzado: {
         name: "Test Avanzado",
@@ -60,16 +138,16 @@ export default function LawTestPageWrapper({
         color: "from-blue-500 to-indigo-600",
         icon: "🎯",
         subtitle: "25+ preguntas para dominar el tema",
-        fetcher: fetchLawAdvancedTest,
+        fetcher: fetchLawAdvancedTest as unknown as FetcherFunction,
         tema: 0
       },
       oficial: {
         name: "Test Oficial",
         description: "Preguntas de exámenes reales",
         color: "from-red-500 to-pink-600",
-        icon: "🏛️", 
+        icon: "🏛️",
         subtitle: "Solo preguntas que aparecieron en exámenes oficiales",
-        fetcher: fetchLawOfficialTest,
+        fetcher: fetchLawOfficialTest as unknown as FetcherFunction,
         tema: 0
       },
       aleatorio: {
@@ -78,15 +156,15 @@ export default function LawTestPageWrapper({
         color: "from-blue-500 to-cyan-600",
         icon: "🎲",
         subtitle: "Orden completamente aleatorio",
-        fetcher: fetchQuestionsByLaw,
+        fetcher: fetchQuestionsByLaw as unknown as FetcherFunction,
         tema: 0
       }
     }
 
     const baseConfig = baseConfigs[testType] || baseConfigs.aleatorio
-    
+
     // 🎯 Sobrescribir con props personalizadas
-    const finalConfig = {
+    const finalConfig: TestConfig = {
       ...baseConfig,
       name: customTitle || baseConfig.name,
       description: customDescription || baseConfig.description,
@@ -101,14 +179,14 @@ export default function LawTestPageWrapper({
   }
 
   // 🔧 Función para obtener número de test
-  const getTestNumber = (testType) => {
-    const testNumbers = {
+  const getTestNumber = (type: TestType): number => {
+    const testNumbers: Record<TestType, number> = {
       rapido: 2,
       avanzado: 4,
       oficial: 3,
       aleatorio: 1
     }
-    return testNumbers[testType] || 1
+    return testNumbers[type] || 1
   }
 
   // 🚀 Función principal de carga
@@ -125,7 +203,7 @@ export default function LawTestPageWrapper({
 
       // 🎯 Usar fetcher específico para leyes
       const fetcher = testConfig.fetcher
-      
+
       if (!fetcher) {
         throw new Error(`No hay fetcher configurado para el tipo de test: ${testType}`)
       }
@@ -138,18 +216,18 @@ export default function LawTestPageWrapper({
       })
 
       // Llamar al fetcher específico
-      const questions = await fetcher(lawShortName, searchParams, testConfig)
+      const loadedQuestions = await fetcher(lawShortName, searchParams, testConfig)
 
-      if (!questions || questions.length === 0) {
+      if (!loadedQuestions || loadedQuestions.length === 0) {
         throw new Error(`No se encontraron preguntas para ${lawShortName}`)
       }
 
-      setQuestions(questions)
-      console.log('✅ [LAW WRAPPER] Test cargado exitosamente:', questions.length, 'preguntas de', lawShortName)
+      setQuestions(loadedQuestions)
+      console.log('✅ [LAW WRAPPER] Test cargado exitosamente:', loadedQuestions.length, 'preguntas de', lawShortName)
 
     } catch (err) {
       console.error('❌ [LAW WRAPPER] Error cargando test:', err)
-      setError(err.message || 'Error cargando el test')
+      setError(err instanceof Error ? err.message : 'Error cargando el test')
     } finally {
       setLoading(false)
     }
@@ -160,6 +238,7 @@ export default function LawTestPageWrapper({
     if (lawShortName) {
       loadQuestions()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lawShortName, testType, searchParams])
 
   // 🔄 Estado de carga
@@ -176,7 +255,7 @@ export default function LawTestPageWrapper({
               {config.icon} {config.name}
             </p>
           )}
-          
+
           {/* Información específica para tests de ley */}
           <div className="mt-3 space-y-1 text-xs text-green-600 dark:text-green-400">
             <p>🏛️ Test de ley específica</p>
@@ -201,7 +280,7 @@ export default function LawTestPageWrapper({
             <p className="text-gray-600 dark:text-gray-300 mb-3 text-sm">
               {errorMessage || error || `No se encontraron preguntas para ${lawShortName} con esta configuración.`}
             </p>
-            
+
             {/* Información del test de ley */}
             <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-4 text-left">
               <h4 className="font-bold text-blue-800 dark:text-blue-300 text-sm mb-2">Configuración del test:</h4>
@@ -216,41 +295,41 @@ export default function LawTestPageWrapper({
             </div>
 
             <div className="space-y-3">
-              <button 
+              <button
                 onClick={loadQuestions}
                 className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors text-sm w-full"
               >
                 🔄 Reintentar
               </button>
-              
+
               {/* Botones alternativos para la misma ley */}
               <div className="grid grid-cols-2 gap-2">
                 {testType !== 'rapido' && (
-                  <a 
-                    href={`?n=10`} // Cambiar a test rápido
+                  <a
+                    href="?n=10"
                     className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors text-xs text-center"
                   >
                     ⚡ Test Rápido
                   </a>
                 )}
                 {testType !== 'avanzado' && (
-                  <a 
-                    href={`?n=25`} // Cambiar a test avanzado
+                  <a
+                    href="?n=25"
                     className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-xs text-center"
                   >
                     🎯 Test Avanzado
                   </a>
                 )}
               </div>
-              
-              <a 
+
+              <a
                 href="/leyes"
                 className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors text-sm inline-block w-full text-center"
               >
                 📚 Ver Todas las Leyes
               </a>
-              
-              <a 
+
+              <a
                 href={`/leyes/${lawSlug}`}
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 text-sm inline-block w-full text-center underline"
               >
@@ -267,28 +346,22 @@ export default function LawTestPageWrapper({
   return (
     <>
       <OposicionDetector />
-      
-      {/* ✅ DEBUGGER específico para tests de ley */}
-      {console.log('🔍 [LAW WRAPPER] Debug:', { 
-        lawShortName,
-        tema: config?.tema || 0, // Siempre 0 para tests dirigidos
-        testNumber: getTestNumber(testType), 
-        config, 
-        questionsLength: questions.length,
-        testType
-      })}
-      
+
       <TestLayout
-        tema={config?.tema || 0} // Para tests de ley, tema es 0 (artículos dirigidos)
+        tema={config?.tema || 0}
         testNumber={getTestNumber(testType)}
         config={{
           ...(config || {
             name: `Test ${testType} ${lawShortName}`,
             description: `Test de ${lawShortName}`,
-            subtitle: `${questions.length} preguntas`,
             icon: '🏛️',
-            color: 'from-blue-500 to-cyan-600'
+            color: 'from-blue-500 to-cyan-600',
+            subtitle: `${questions.length} preguntas`,
+            tema: 0
           }),
+          // Sobrescribir con número real de preguntas
+          description: `${questions.length} preguntas para dominar ${lawShortName}`,
+          subtitle: `${questions.length} preguntas de ${lawShortName}`,
           // ✅ AÑADIR CONFIGURACIÓN ESPECÍFICA PARA NAVEGACIÓN DE LEYES
           isLawTest: true,
           lawShortName: lawShortName,
@@ -302,10 +375,18 @@ export default function LawTestPageWrapper({
               href: `/leyes`,
               label: `📚 Tests de Otras Leyes`,
               isPrimary: false
-            }
+            },
+            ...(temarioReturnUrl && {
+              backToTemario: {
+                href: temarioReturnUrl,
+                label: `📖 Volver a mi temario`,
+                isPrimary: true
+              }
+            })
           }
         }}
         questions={questions}
+        children={null}
       />
     </>
   )

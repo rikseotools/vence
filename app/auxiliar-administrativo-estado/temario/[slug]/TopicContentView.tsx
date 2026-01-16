@@ -6,6 +6,7 @@ import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
 import { useAuth } from '@/contexts/AuthContext'
+import { getCanonicalSlug } from '@/lib/lawMappingUtils'
 
 interface TopicContentViewProps {
   content: TopicContent
@@ -35,7 +36,7 @@ export default function TopicContentView({ content }: TopicContentViewProps) {
   // Por defecto colapsado para mejor orden visual
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(new Set())
   const [showPrintModal, setShowPrintModal] = useState(false)
-  const { user } = useAuth() as { user: any }
+  const { user, userProfile } = useAuth() as { user: any; userProfile: any }
   const { getWeakArticles } = useTopicUnlock({ positionType: 'auxiliar_administrativo' }) as {
     getWeakArticles: (topicNumber: number) => WeakArticleInfo[]
   }
@@ -137,32 +138,18 @@ export default function TopicContentView({ content }: TopicContentViewProps) {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span>Volver al temario</span>
+            <span>Volver al índice</span>
           </Link>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={expandAll}
-              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-            >
-              Expandir todo
-            </button>
-            <button
-              onClick={collapseAll}
-              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-            >
-              Colapsar todo
-            </button>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              Imprimir PDF
-            </button>
-          </div>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Imprimir PDF
+          </button>
         </div>
       </div>
 
@@ -208,6 +195,37 @@ export default function TopicContentView({ content }: TopicContentViewProps) {
               </span>
             )}
           </div>
+
+          {/* Mensaje personalizado para usuarios logueados */}
+          {user && (() => {
+            // Obtener nombre: userProfile > user_metadata > email
+            const userName = userProfile?.user_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Opositor/a'
+            // Obtener avatar: userProfile > user_metadata
+            const avatarUrl = userProfile?.avatar_url || user?.user_metadata?.avatar_url
+            return (
+              <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-700 rounded-xl">
+                <div className="flex items-start gap-3">
+                  {/* Avatar del usuario */}
+                  <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-800 rounded-full flex items-center justify-center overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-lg font-bold text-purple-600 dark:text-purple-300">
+                        {userName[0].toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-purple-900 dark:text-purple-100">
+                      <span className="font-semibold">{userName}</span>, este temario está{' '}
+                      <span className="font-semibold text-purple-700 dark:text-purple-300">personalizado para ti</span>.{' '}
+                      Entre más tests de repaso hagas, Vence más aprende de ti, para que seas más productivo y te enfoques en lo importante.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Fecha de actualización y registro */}
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -416,6 +434,16 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst, weakArticlesMap }:
         </div>
       </button>
 
+      {/* Enlace a test - siempre visible */}
+      <div className="no-print flex justify-end mt-1 -mb-1">
+        <Link
+          href={`/leyes/${getCanonicalSlug(law.shortName)}`}
+          className="text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:underline"
+        >
+          Hacer test de {law.shortName} →
+        </Link>
+      </div>
+
       {/* Print-only law header */}
       <div className="hidden print:block mb-4">
         <h2 className="text-xl font-bold text-black border-b-2 border-gray-300 pb-2">
@@ -436,6 +464,8 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst, weakArticlesMap }:
                 key={article.id}
                 article={article}
                 weakInfo={weakInfo}
+                lawShortName={law.shortName}
+                lawName={law.name}
               />
             )
           })}
@@ -449,9 +479,11 @@ function LawSection({ lawData, isExpanded, onToggle, isFirst, weakArticlesMap }:
 interface ArticleCardProps {
   article: Article
   weakInfo?: WeakArticleInfo
+  lawShortName: string
+  lawName: string
 }
 
-function ArticleCard({ article, weakInfo }: ArticleCardProps) {
+function ArticleCard({ article, weakInfo, lawShortName, lawName }: ArticleCardProps) {
   const hasOfficialQuestions = article.officialQuestionCount > 0
   const needsReview = !!weakInfo
 
@@ -569,6 +601,22 @@ function ArticleCard({ article, weakInfo }: ArticleCardProps) {
             Contenido no disponible
           </p>
         )}
+      </div>
+
+      {/* Test button for this article */}
+      <div className="no-print px-4 pb-4 flex justify-end">
+        <Link
+          href={`/leyes/${getCanonicalSlug(lawShortName)}?selected_articles=${article.articleNumber}&source=temario`}
+          onClick={() => {
+            // Store current URL for "Volver a mi temario" button
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('temario_return_url', window.location.href)
+            }
+          }}
+          className="inline-flex items-center px-2 py-1 text-xs font-medium text-white bg-green-600 hover:bg-green-700 rounded transition-colors"
+        >
+          Hacer test Art. {article.articleNumber}
+        </Link>
       </div>
     </article>
   )
