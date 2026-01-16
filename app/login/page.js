@@ -16,6 +16,8 @@ function LoginPageContent() {
   
   // URL de retorno después del login
   const returnTo = searchParams.get('return_to') || '/auxiliar-administrativo-estado'
+  // Oposición detectada (para preseleccionar en registro)
+  const oposicion = searchParams.get('oposicion')
 
   useEffect(() => {
     if (authLoading) return
@@ -50,6 +52,11 @@ function LoginPageContent() {
       // 🆕 DETECTAR SI VIENE DE CAMPAÑA PUBLICITARIA
       const campaignInfo = detectCampaignSource()
       let redirectUrl = `${window.location.origin}/auth/callback?return_to=${encodeURIComponent(returnTo)}`
+
+      // Propagar oposición detectada al callback
+      if (oposicion) {
+        redirectUrl += `&oposicion=${encodeURIComponent(oposicion)}`
+      }
       
       if (campaignInfo) {
         console.log('🎯 Usuario detectado de campaña:', campaignInfo)

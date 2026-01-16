@@ -549,10 +549,24 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
       if (data) {
         console.log('📋 Perfil existente cargado:', data)
         console.log('📋 target_oposicion_data:', data.target_oposicion_data)
+        console.log('📋 target_oposicion (ID):', data.target_oposicion)
+
+        // Determinar oposición preseleccionada
+        let preselectedOposicion = data.target_oposicion_data || null
+
+        // Si no hay target_oposicion_data pero sí target_oposicion (ID),
+        // buscar en la lista de oposiciones oficiales
+        if (!preselectedOposicion && data.target_oposicion) {
+          const found = OFFICIAL_OPOSICIONES.find(o => o.id === data.target_oposicion)
+          if (found) {
+            preselectedOposicion = found
+            console.log('📋 Oposición preseleccionada desde ID:', found.nombre)
+          }
+        }
 
         // Rastrear qué campos ya están completos
         const completed = {
-          oposicion: !!data.target_oposicion_data,
+          oposicion: !!preselectedOposicion,
           age: !!data.age,
           gender: !!data.gender,
           ciudad: !!data.ciudad,
@@ -562,7 +576,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
         // Pre-rellenar con datos existentes
         setFormData(prev => ({
           ...prev,
-          selectedOposicion: data.target_oposicion_data || null,
+          selectedOposicion: preselectedOposicion,
           age: data.age?.toString() || '',
           gender: data.gender || '',
           daily_study_hours: data.daily_study_hours || '', // Sin valor por defecto
@@ -571,7 +585,7 @@ export default function OnboardingModal({ isOpen, onComplete, onSkip, user }) {
 
         setCompletedFields(completed)
         console.log('📋 Campos completados:', completed)
-        console.log('📋 selectedOposicion final:', data.target_oposicion_data)
+        console.log('📋 selectedOposicion final:', preselectedOposicion)
       }
 
       setProfileLoaded(true)

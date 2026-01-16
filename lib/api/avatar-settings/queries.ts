@@ -278,11 +278,47 @@ export async function updateAvatarSettings(
 }
 
 // ============================================
-// OBTENER USUARIOS EN MODO AUTOMÁTICO
+// OBTENER USUARIOS ACTIVOS EN MODO AUTOMÁTICO
 // ============================================
 
-export async function getUsersWithAutomaticAvatar(): Promise<string[]> {
+/**
+ * Obtiene usuarios con avatar automático que tuvieron actividad reciente.
+ * Solo procesa usuarios activos para eficiencia (100k usuarios → solo ~5k activos).
+ * Los usuarios inactivos mantienen su avatar anterior.
+ *
+ * @param daysBack - Días hacia atrás para considerar actividad (default: 7)
+ */
+export async function getUsersWithAutomaticAvatar(daysBack: number = 7): Promise<string[]> {
   try {
+    const supabase = getSupabaseAdmin()
+
+    // Usar función RPC optimizada que filtra por actividad
+    const { data, error } = await supabase.rpc('get_active_users_with_automatic_avatar', {
+      p_days_back: daysBack
+    })
+
+    if (error) {
+      console.error('❌ [AvatarSettings] Error en RPC get_active_users_with_automatic_avatar:', error)
+      // Fallback: método tradicional (menos eficiente)
+      return getUsersWithAutomaticAvatarFallback()
+    }
+
+    const userIds = (data || []).map((row: { user_id: string }) => row.user_id)
+    console.log(`📊 [AvatarSettings] Usuarios activos en modo automático: ${userIds.length}`)
+    return userIds
+  } catch (error) {
+    console.error('❌ [AvatarSettings] Error en getUsersWithAutomaticAvatar:', error)
+    return []
+  }
+}
+
+/**
+ * Fallback: obtiene TODOS los usuarios en modo automático (menos eficiente).
+ * Se usa si la función RPC no está disponible.
+ */
+async function getUsersWithAutomaticAvatarFallback(): Promise<string[]> {
+  try {
+    console.warn('⚠️ [AvatarSettings] Usando fallback - obteniendo todos los usuarios automáticos')
     const supabase = getSupabaseAdmin()
 
     const { data, error } = await supabase
@@ -291,13 +327,13 @@ export async function getUsersWithAutomaticAvatar(): Promise<string[]> {
       .eq('mode', 'automatic')
 
     if (error) {
-      console.error('❌ [AvatarSettings] Error obteniendo usuarios automáticos:', error)
+      console.error('❌ [AvatarSettings] Error en fallback:', error)
       return []
     }
 
     return (data || []).map(row => row.user_id)
   } catch (error) {
-    console.error('❌ [AvatarSettings] Error en getUsersWithAutomaticAvatar:', error)
+    console.error('❌ [AvatarSettings] Error en getUsersWithAutomaticAvatarFallback:', error)
     return []
   }
 }

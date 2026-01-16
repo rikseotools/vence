@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface TopicContentViewProps {
   content: TopicContent
@@ -32,6 +33,8 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
   const [expandedLaws, setExpandedLaws] = useState<Set<string>>(
     new Set(content.laws.map((l) => l.law.id))
   )
+  const [showPrintModal, setShowPrintModal] = useState(false)
+  const { user } = useAuth() as { user: any }
 
   const blockInfo = getBlockInfo(content.topicNumber)
 
@@ -56,6 +59,10 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
   }
 
   const handlePrint = () => {
+    if (!user) {
+      setShowPrintModal(true)
+      return
+    }
     window.print()
   }
 
@@ -267,6 +274,54 @@ export default function TopicContentView({ content, oposicion = 'administrativo-
           </div>
         </footer>
       </main>
+
+      {/* Modal de registro para imprimir */}
+      {showPrintModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => setShowPrintModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+              </div>
+
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Descarga el temario en PDF
+              </h3>
+
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Regístrate gratis para descargar el PDF y recibir actualizaciones cuando cambie la legislación.
+              </p>
+
+              <div className="space-y-3">
+                <Link
+                  href="/login?oposicion=tramitacion_procesal&return_to=/tramitacion-procesal/temario"
+                  className="block w-full py-3 px-4 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Registrarse gratis
+                </Link>
+
+                <button
+                  onClick={() => setShowPrintModal(false)}
+                  className="block w-full py-3 px-4 text-gray-600 dark:text-gray-400 font-medium hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                >
+                  Quizás más tarde
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -203,6 +203,10 @@ function AuthCallbackContent() {
           emailCheckError: emailCheckError?.code
         })
         
+        // 🎯 DETECTAR OPOSICIÓN OBJETIVO (desde modal de PDF o URL)
+        const oposicionParam = searchParams.get('oposicion')
+        console.log('🎯 [CALLBACK] Oposición detectada:', oposicionParam || 'ninguna')
+
         // 🎯 DETECTAR ORIGEN (Google Ads o Meta)
         // Método 1: URL contiene parámetros especiales de landing page premium
         const isGoogleAdsFromUrl = finalReturnUrl.includes('/premium-ads') ||
@@ -305,19 +309,27 @@ function AuthCallbackContent() {
           }
 
           // Crear nuevo perfil
+          const newProfileData = {
+            id: userId,
+            email: userEmail,
+            full_name: user.user_metadata?.full_name || userEmail?.split('@')[0],
+            avatar_url: user.user_metadata?.avatar_url,
+            preferred_language: 'es',
+            plan_type: planType,
+            registration_source: registrationSource,
+            requires_payment: requiresPayment,
+            updated_at: new Date().toISOString()
+          }
+
+          // Añadir oposición objetivo si viene del modal de PDF
+          if (oposicionParam) {
+            newProfileData.target_oposicion = oposicionParam
+            console.log('📋 [CALLBACK] Guardando oposición objetivo:', oposicionParam)
+          }
+
           const { error: profileError } = await supabase
             .from('user_profiles')
-            .insert({
-              id: userId,
-              email: userEmail,
-              full_name: user.user_metadata?.full_name || userEmail?.split('@')[0],
-              avatar_url: user.user_metadata?.avatar_url,
-              preferred_language: 'es',
-              plan_type: planType,
-              registration_source: registrationSource,
-              requires_payment: requiresPayment,
-              updated_at: new Date().toISOString()
-            })
+            .insert(newProfileData)
 
           if (profileError) {
             console.error('❌ [CALLBACK] Error creando perfil:', profileError)
