@@ -226,7 +226,7 @@ export default function HomePage() {
             >
               <span className="block text-2xl mb-2">⚖️</span>
               <span className="block font-medium text-slate-700 dark:text-slate-300">Tramitación Procesal</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">26 temas</span>
+              <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">37 temas</span>
             </Link>
           </div>
         </div>
