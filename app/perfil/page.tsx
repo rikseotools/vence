@@ -101,6 +101,15 @@ interface AutoProfile {
   id: string
   emoji: string
   name: string
+  description: string
+  color: string
+}
+
+interface MatchedBadge {
+  id: string
+  emoji: string
+  name: string
+  condition: string
 }
 
 interface FormData {
@@ -188,6 +197,7 @@ function PerfilPageContent() {
   // 🤖 AVATAR AUTOMÁTICO - Por defecto activado
   const [avatarMode, setAvatarMode] = useState<'manual' | 'automatic'>('automatic')
   const [autoProfile, setAutoProfile] = useState<AutoProfile | null>(null)
+  const [matchedBadges, setMatchedBadges] = useState<MatchedBadge[]>([])
   const [avatarModeLoading, setAvatarModeLoading] = useState<boolean>(true)
   const [avatarModeSaving, setAvatarModeSaving] = useState<boolean>(false)
 
@@ -577,11 +587,50 @@ function PerfilPageContent() {
         if (data.success && data.data) {
           setAvatarMode(data.data.mode || 'manual')
           if (data.data.mode === 'automatic' && data.data.currentProfile) {
+            // Obtener descripción del perfil
+            const profileDescription = data.profile?.descriptionEs || data.allProfiles?.find(
+              (p: { id: string; descriptionEs: string }) => p.id === data.data.currentProfile
+            )?.descriptionEs || 'Según tu actividad'
+
+            // Obtener color del perfil
+            const profileColor = data.profile?.color || data.allProfiles?.find(
+              (p: { id: string; color: string }) => p.id === data.data.currentProfile
+            )?.color || '#8b5cf6'
+
             setAutoProfile({
               id: data.data.currentProfile,
               emoji: data.data.currentEmoji,
-              name: data.data.currentName
+              name: data.data.currentName,
+              description: profileDescription,
+              color: profileColor
             })
+
+            // Calcular badges en tiempo real
+            try {
+              const calcResponse = await fetch('/api/profile/avatar-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'calculate', userId: user.id })
+              })
+              const calcData = await calcResponse.json()
+
+              if (calcData.success && calcData.matchedConditions && data.allProfiles) {
+                const badges: MatchedBadge[] = calcData.matchedConditions.map((condition: string) => {
+                  const [profileId, ...conditionParts] = condition.split(': ')
+                  const profile = data.allProfiles.find((p: { id: string }) => p.id === profileId)
+                  return {
+                    id: profileId,
+                    emoji: profile?.emoji || '🏆',
+                    name: profile?.nameEs || profileId,
+                    condition: conditionParts.join(': ')
+                  }
+                }).filter((b: MatchedBadge) => b.id !== data.data.currentProfile)
+
+                setMatchedBadges(badges)
+              }
+            } catch (calcError) {
+              console.error('Error calculando badges:', calcError)
+            }
           }
         }
       } catch (error) {
@@ -607,7 +656,7 @@ function PerfilPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
-          mode: newMode
+          data: { mode: newMode }
         })
       })
 
@@ -620,7 +669,9 @@ function PerfilPageContent() {
           setAutoProfile({
             id: data.profile.id,
             emoji: data.profile.emoji,
-            name: data.profile.nameEs
+            name: data.profile.nameEs,
+            description: data.profile.descriptionEs || 'Según tu actividad',
+            color: data.profile.color || '#8b5cf6'
           })
           // Actualizar avatar mostrado
           setCurrentAvatar({
@@ -629,6 +680,29 @@ function PerfilPageContent() {
             name: data.profile.nameEs,
             color: data.profile.color
           })
+
+          // Parsear badges conseguidos (matchedConditions: ["profile_id: condición", ...])
+          if (data.matchedConditions && Array.isArray(data.matchedConditions)) {
+            // Obtener perfiles disponibles para lookup
+            const profilesResponse = await fetch(`/api/profile/avatar-settings?userId=${user.id}`)
+            const profilesData = await profilesResponse.json()
+            const allProfiles = profilesData.allProfiles || []
+
+            const badges: MatchedBadge[] = data.matchedConditions.map((condition: string) => {
+              const [profileId, ...conditionParts] = condition.split(': ')
+              const profile = allProfiles.find((p: { id: string }) => p.id === profileId)
+              return {
+                id: profileId,
+                emoji: profile?.emoji || '🏆',
+                name: profile?.nameEs || profileId,
+                condition: conditionParts.join(': ')
+              }
+            }).filter((b: MatchedBadge) => b.id !== data.profile.id) // Excluir el principal
+
+            setMatchedBadges(badges)
+          }
+        } else {
+          setMatchedBadges([])
         }
       }
     } catch (error) {
@@ -1813,7 +1887,11 @@ function PerfilPageContent() {
                 <div className="mb-2 flex justify-center">
                   <AvatarChanger
                     user={user}
-                    currentAvatar={currentAvatar}
+                    currentAvatar={
+                      avatarMode === 'automatic' && autoProfile
+                        ? { type: 'predefined', emoji: autoProfile.emoji, name: autoProfile.name, color: autoProfile.color }
+                        : currentAvatar
+                    }
                     onAvatarChange={handleAvatarChange}
                   />
                 </div>
@@ -1852,14 +1930,39 @@ function PerfilPageContent() {
                   </p>
 
                   {avatarMode === 'automatic' && autoProfile && (
-                    <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-2 mt-3 text-center">
-                      <span className="text-2xl">{autoProfile.emoji}</span>
-                      <p className="font-medium text-purple-700 dark:text-purple-300 text-sm">
-                        {autoProfile.name}
-                      </p>
-                      <p className="text-xs text-purple-500 dark:text-purple-400">
-                        Según tu actividad
-                      </p>
+                    <div className="mt-3 space-y-2">
+                      {/* Avatar principal */}
+                      <div className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-2 text-center">
+                        <span className="text-2xl">{autoProfile.emoji}</span>
+                        <p className="font-medium text-purple-700 dark:text-purple-300 text-sm">
+                          {autoProfile.name}
+                        </p>
+                        <p className="text-xs text-purple-500 dark:text-purple-400">
+                          {autoProfile.description}
+                        </p>
+                      </div>
+
+                      {/* Otros badges conseguidos */}
+                      {matchedBadges.length > 0 && (
+                        <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 text-center">
+                            También conseguido:
+                          </p>
+                          <div className="space-y-1">
+                            {matchedBadges.map((badge) => (
+                              <div
+                                key={badge.id}
+                                className="bg-white dark:bg-gray-700 rounded px-2 py-1 text-xs text-center"
+                              >
+                                <p className="font-medium text-gray-700 dark:text-gray-200">
+                                  {badge.emoji} {badge.name}
+                                </p>
+                                <p className="text-gray-500 dark:text-gray-400 text-[10px]">{badge.condition}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

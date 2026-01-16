@@ -53,8 +53,21 @@ export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
   }
 
   try {
-    // 1. Obtener respuestas de esta semana
-    const { data: thisWeekAnswers, error: answersError } = await supabase
+    // 1. Obtener IDs de tests del usuario
+    const { data: userTests, error: testsError } = await supabase
+      .from('tests')
+      .select('id')
+      .eq('user_id', userId)
+
+    if (testsError || !userTests || userTests.length === 0) {
+      console.log('🦊 [AvatarProfiles] No se encontraron tests para usuario:', userId)
+      return defaultMetrics
+    }
+
+    const userTestIds = userTests.map(t => t.id)
+
+    // 2. Obtener respuestas de esta semana filtradas por tests del usuario
+    const { data: userAnswers, error: answersError } = await supabase
       .from('test_questions')
       .select(`
         id,
@@ -63,24 +76,14 @@ export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
         created_at,
         test_id
       `)
+      .in('test_id', userTestIds)
       .gte('created_at', oneWeekAgo.toISOString())
       .order('created_at', { ascending: false })
 
-    // Necesitamos filtrar por user_id a través de tests
-    const { data: userTests, error: testsError } = await supabase
-      .from('tests')
-      .select('id')
-      .eq('user_id', userId)
-
-    if (testsError || !userTests) {
-      console.log('🦊 [AvatarProfiles] No se encontraron tests para usuario:', userId)
+    if (answersError) {
+      console.error('🦊 [AvatarProfiles] Error obteniendo respuestas:', answersError)
       return defaultMetrics
     }
-
-    const userTestIds = new Set(userTests.map(t => t.id))
-
-    // Filtrar respuestas por tests del usuario
-    const userAnswers = (thisWeekAnswers || []).filter(a => userTestIds.has(a.test_id))
 
     if (userAnswers.length === 0) {
       console.log('🦊 [AvatarProfiles] Sin actividad esta semana para usuario:', userId)
@@ -146,13 +149,13 @@ export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
     // 3. Calcular accuracy de semana anterior para mejora
     const { data: lastWeekAnswers } = await supabase
       .from('test_questions')
-      .select('id, is_correct, test_id')
+      .select('id, is_correct')
+      .in('test_id', userTestIds)
       .gte('created_at', twoWeeksAgo.toISOString())
       .lt('created_at', oneWeekAgo.toISOString())
 
-    const lastWeekUserAnswers = (lastWeekAnswers || []).filter(a => userTestIds.has(a.test_id))
-    const lastWeekAccuracy = lastWeekUserAnswers.length > 0
-      ? (lastWeekUserAnswers.filter(a => a.is_correct).length / lastWeekUserAnswers.length) * 100
+    const lastWeekAccuracy = (lastWeekAnswers && lastWeekAnswers.length > 0)
+      ? (lastWeekAnswers.filter(a => a.is_correct).length / lastWeekAnswers.length) * 100
       : 0
 
     const thisWeekAccuracy = totalAnswers > 0 ? (totalCorrect / totalAnswers) * 100 : 0
