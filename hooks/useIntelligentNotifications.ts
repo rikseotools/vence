@@ -1440,14 +1440,16 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
     try {
       if (!user?.id || !supabase) return []
 
+      // Fetch avatar settings sin filtrar por rotation_notification_pending
+      // para evitar 406 si la columna no existe en cache de PostgREST
       const { data: avatarSettings, error } = await supabase
         .from('user_avatar_settings')
         .select('*')
         .eq('user_id', user.id)
-        .eq('rotation_notification_pending', true)
         .single()
 
-      if (error || !avatarSettings) {
+      // Verificar si hay notificación pendiente (en JS, no en query)
+      if (error || !avatarSettings || !avatarSettings.rotation_notification_pending) {
         setAvatarRotationNotifications([])
         return []
       }

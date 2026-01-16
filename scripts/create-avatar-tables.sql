@@ -20,14 +20,38 @@ CREATE TABLE IF NOT EXISTS avatar_profiles (
 CREATE TABLE IF NOT EXISTS user_avatar_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
-  mode TEXT DEFAULT 'manual' CHECK (mode IN ('manual', 'automatic')),
+  mode TEXT DEFAULT 'automatic' CHECK (mode IN ('manual', 'automatic')),
   current_profile TEXT REFERENCES avatar_profiles(id),
   current_emoji TEXT,
   current_name TEXT,
   last_rotation_at TIMESTAMPTZ,
+  -- Campos para notificación in-app de rotación
+  rotation_notification_pending BOOLEAN DEFAULT false,
+  previous_profile TEXT,
+  previous_emoji TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Para bases de datos existentes, añadir columnas si no existen
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'user_avatar_settings'
+                 AND column_name = 'rotation_notification_pending') THEN
+    ALTER TABLE user_avatar_settings ADD COLUMN rotation_notification_pending BOOLEAN DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'user_avatar_settings'
+                 AND column_name = 'previous_profile') THEN
+    ALTER TABLE user_avatar_settings ADD COLUMN previous_profile TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'user_avatar_settings'
+                 AND column_name = 'previous_emoji') THEN
+    ALTER TABLE user_avatar_settings ADD COLUMN previous_emoji TEXT;
+  END IF;
+END $$;
 
 -- Índice para búsquedas por usuario
 CREATE INDEX IF NOT EXISTS idx_user_avatar_settings_user_id ON user_avatar_settings(user_id);
