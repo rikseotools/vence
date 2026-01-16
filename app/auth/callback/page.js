@@ -246,7 +246,7 @@ function AuthCallbackContent() {
         // 🔧 FIX: Verificar primero si el perfil ya existe para NO sobrescribir plan_type
         const { data: existingProfile, error: existingError } = await supabase
           .from('user_profiles')
-          .select('id, plan_type, registration_source')
+          .select('id, plan_type, registration_source, registration_url, registration_funnel')
           .eq('id', userId)
           .single()
 
@@ -270,6 +270,23 @@ function AuthCallbackContent() {
           } else if (canUpdateSource && isMetaAds) {
             updateData.registration_source = 'meta'
             console.log('🔄 [CALLBACK] Actualizando registration_source de organic → meta')
+          }
+
+          // 🆕 Guardar registration_url si no está guardada (perfil creado por trigger)
+          if (!existingProfile.registration_url && finalReturnUrl) {
+            updateData.registration_url = finalReturnUrl
+            console.log('📍 [CALLBACK] Guardando registration_url:', finalReturnUrl)
+          }
+
+          // 🆕 Guardar registration_funnel si no está guardado
+          if (!existingProfile.registration_funnel) {
+            if (funnelParam) {
+              updateData.registration_funnel = funnelParam
+              console.log('📋 [CALLBACK] Guardando registration_funnel:', funnelParam)
+            } else if (oposicionParam) {
+              updateData.registration_funnel = 'temario_pdf'
+              console.log('📋 [CALLBACK] Guardando registration_funnel inferido: temario_pdf')
+            }
           }
 
           const { error: updateError } = await supabase
