@@ -1,26 +1,13 @@
 // components/LawTestPageWrapper.tsx - WRAPPER ESPECÍFICO PARA TESTS POR LEY
+// 🚀 v2: Usa API /api/questions/filtered (Drizzle ORM) en lugar de lawFetchers
 'use client'
 import { useState, useEffect } from 'react'
-import { useSearchParams, ReadonlyURLSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import TestLayout from './TestLayout'
 import OposicionDetector from './OposicionDetector'
 
-// 🏛️ IMPORTS ESPECÍFICOS PARA TESTS POR LEY
-import {
-  fetchQuestionsByLaw,
-  fetchLawQuickTest,
-  fetchLawAdvancedTest,
-  fetchLawOfficialTest
-} from '../lib/lawFetchers'
-
 // Tipos
 type TestType = 'rapido' | 'avanzado' | 'oficial' | 'aleatorio'
-
-type FetcherFunction = (
-  lawShortName: string,
-  searchParams: ReadonlyURLSearchParams | null,
-  config: TestConfig
-) => Promise<Question[]>
 
 interface Question {
   id: string
@@ -41,10 +28,11 @@ interface TestConfig {
   color: string
   icon: string
   subtitle: string
-  fetcher?: FetcherFunction
   tema: number
   isLawTest?: boolean
   lawShortName?: string
+  numQuestions?: number
+  onlyOfficial?: boolean
   customNavigationLinks?: {
     backToLaw?: {
       href: string
@@ -62,6 +50,85 @@ interface TestConfig {
       isPrimary: boolean
     }
   }
+}
+
+// 🚀 Interfaz para respuesta de API v2
+interface FilteredQuestionResponse {
+  id: string
+  question: string
+  options: [string, string, string, string]
+  explanation: string
+  primary_article_id: string
+  tema: number | null
+  article: {
+    id: string
+    number: string
+    title: string | null
+    full_text: string | null
+    law_name: string
+    law_short_name: string
+    display_number: string
+  }
+  metadata: {
+    id: string
+    difficulty: string
+    question_type: string
+    tags: string[] | null
+    is_active: boolean
+    created_at: string | null
+    updated_at: string | null
+    is_official_exam: boolean | null
+    exam_source: string | null
+    exam_date: string | null
+    exam_entity: string | null
+    exam_position: string | null
+    official_difficulty_level: string | null
+  }
+}
+
+// 🔄 Transformar respuesta de API v2 al formato que espera TestLayout
+function transformApiResponse(apiQuestions: FilteredQuestionResponse[]): Question[] {
+  return apiQuestions.map(q => ({
+    id: q.id,
+    // TestLayout usa tanto 'question' como 'question_text' en diferentes lugares
+    question: q.question,
+    question_text: q.question,
+    option_a: q.options[0],
+    option_b: q.options[1],
+    option_c: q.options[2],
+    option_d: q.options[3],
+    // TestLayout también usa 'options' array en algunos lugares
+    options: q.options,
+    explanation: q.explanation,
+    primary_article_id: q.primary_article_id,
+    is_official_exam: q.metadata.is_official_exam,
+    exam_source: q.metadata.exam_source,
+    exam_date: q.metadata.exam_date,
+    exam_entity: q.metadata.exam_entity,
+    difficulty: q.metadata.difficulty,
+    question_type: q.metadata.question_type,
+    tags: q.metadata.tags,
+    // 📄 Estructura 'article' (singular) para testAnswers.js
+    article: {
+      id: q.article.id,
+      number: q.article.number,
+      law_short_name: q.article.law_short_name,
+      law_name: q.article.law_name,
+      title: q.article.title,
+      full_text: q.article.full_text,
+    },
+    // 📚 Estructura 'articles' (plural) para TestLayout
+    articles: {
+      id: q.article.id,
+      article_number: q.article.number,
+      title: q.article.title,
+      content: q.article.full_text,
+      laws: {
+        short_name: q.article.law_short_name,
+        name: q.article.law_name,
+      }
+    }
+  }))
 }
 
 interface LawTestPageWrapperProps {
@@ -120,8 +187,10 @@ export default function LawTestPageWrapper({
     }
   }, [sourceParam])
 
-  // 🔥 Configuraciones predefinidas por tipo de test
+  // 🔥 Configuraciones predefinidas por tipo de test (v2 - sin fetchers legacy)
   const getTestConfig = (): TestConfig => {
+    const numQuestionsParam = parseInt(searchParams?.get('n') || '0')
+
     const baseConfigs: Record<TestType, TestConfig> = {
       rapido: {
         name: "Test Rápido",
@@ -129,8 +198,9 @@ export default function LawTestPageWrapper({
         color: "from-green-500 to-emerald-600",
         icon: "⚡",
         subtitle: "10 preguntas en 5 minutos",
-        fetcher: fetchLawQuickTest as unknown as FetcherFunction,
-        tema: 0
+        tema: 0,
+        numQuestions: numQuestionsParam || 10,
+        onlyOfficial: false
       },
       avanzado: {
         name: "Test Avanzado",
@@ -138,8 +208,9 @@ export default function LawTestPageWrapper({
         color: "from-blue-500 to-indigo-600",
         icon: "🎯",
         subtitle: "25+ preguntas para dominar el tema",
-        fetcher: fetchLawAdvancedTest as unknown as FetcherFunction,
-        tema: 0
+        tema: 0,
+        numQuestions: numQuestionsParam || 25,
+        onlyOfficial: false
       },
       oficial: {
         name: "Test Oficial",
@@ -147,8 +218,9 @@ export default function LawTestPageWrapper({
         color: "from-red-500 to-pink-600",
         icon: "🏛️",
         subtitle: "Solo preguntas que aparecieron en exámenes oficiales",
-        fetcher: fetchLawOfficialTest as unknown as FetcherFunction,
-        tema: 0
+        tema: 0,
+        numQuestions: numQuestionsParam || 25,
+        onlyOfficial: true
       },
       aleatorio: {
         name: "Test Aleatorio",
@@ -156,8 +228,9 @@ export default function LawTestPageWrapper({
         color: "from-blue-500 to-cyan-600",
         icon: "🎲",
         subtitle: "Orden completamente aleatorio",
-        fetcher: fetchQuestionsByLaw as unknown as FetcherFunction,
-        tema: 0
+        tema: 0,
+        numQuestions: numQuestionsParam || 25,
+        onlyOfficial: false
       }
     }
 
@@ -174,7 +247,7 @@ export default function LawTestPageWrapper({
       ...defaultConfig
     }
 
-    console.log('🔧 [LAW WRAPPER] Config generado:', finalConfig)
+    console.log('🔧 [LAW WRAPPER v2] Config generado:', finalConfig)
     return finalConfig
   }
 
@@ -189,44 +262,79 @@ export default function LawTestPageWrapper({
     return testNumbers[type] || 1
   }
 
-  // 🚀 Función principal de carga
+  // 🚀 Función principal de carga (v2 - usa API /api/questions/filtered)
   const loadQuestions = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      console.log('🚀 [LAW WRAPPER] Cargando test', testType, 'para ley:', lawShortName)
+      console.log('🚀 [LAW WRAPPER v2] Cargando test', testType, 'para ley:', lawShortName)
 
       const testConfig = getTestConfig()
-      console.log('🔧 [LAW WRAPPER] Config generado:', testConfig)
+      console.log('🔧 [LAW WRAPPER v2] Config:', testConfig)
       setConfig(testConfig)
 
-      // 🎯 Usar fetcher específico para leyes
-      const fetcher = testConfig.fetcher
+      // 📄 Parsear artículos seleccionados desde searchParams
+      const selectedArticlesParam = searchParams?.get('selected_articles')
+      let selectedArticlesByLaw: Record<string, number[]> = {}
 
-      if (!fetcher) {
-        throw new Error(`No hay fetcher configurado para el tipo de test: ${testType}`)
+      if (selectedArticlesParam) {
+        const articleNumbers = selectedArticlesParam
+          .split(',')
+          .map(art => parseInt(art.trim()))
+          .filter(num => !isNaN(num))
+
+        if (articleNumbers.length > 0) {
+          selectedArticlesByLaw = { [lawShortName]: articleNumbers }
+          console.log('📄 [LAW WRAPPER v2] Artículos seleccionados:', selectedArticlesByLaw)
+        }
       }
 
-      console.log('📊 [LAW WRAPPER] Llamando fetcher:', {
-        lawShortName,
-        testType,
-        fetcherName: fetcher.name,
-        searchParams: Object.fromEntries(searchParams?.entries() || [])
+      // 🚀 Construir request para API v2
+      const apiRequest = {
+        topicNumber: 0, // Sin filtro de tema (modo ley-only)
+        positionType: 'auxiliar_administrativo' as const,
+        numQuestions: testConfig.numQuestions || 25,
+        selectedLaws: [lawShortName],
+        selectedArticlesByLaw,
+        onlyOfficialQuestions: testConfig.onlyOfficial || false,
+      }
+
+      console.log('📊 [LAW WRAPPER v2] Request a API:', apiRequest)
+
+      // 🔥 Llamar a la API v2
+      const response = await fetch('/api/questions/filtered', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiRequest),
       })
 
-      // Llamar al fetcher específico
-      const loadedQuestions = await fetcher(lawShortName, searchParams, testConfig)
+      const data = await response.json()
 
-      if (!loadedQuestions || loadedQuestions.length === 0) {
-        throw new Error(`No se encontraron preguntas para ${lawShortName}`)
+      if (!data.success) {
+        throw new Error(data.error || `No se encontraron preguntas para ${lawShortName}`)
       }
 
-      setQuestions(loadedQuestions)
-      console.log('✅ [LAW WRAPPER] Test cargado exitosamente:', loadedQuestions.length, 'preguntas de', lawShortName)
+      if (!data.questions || data.questions.length === 0) {
+        const articleInfo = Object.keys(selectedArticlesByLaw).length > 0
+          ? ` para los artículos ${Object.values(selectedArticlesByLaw).flat().join(', ')}`
+          : ''
+        throw new Error(`No hay preguntas disponibles${articleInfo}. Prueba con otros artículos.`)
+      }
+
+      // 🔄 Transformar respuesta al formato que espera TestLayout
+      const transformedQuestions = transformApiResponse(data.questions)
+
+      console.log('✅ [LAW WRAPPER v2] Preguntas cargadas:', {
+        total: transformedQuestions.length,
+        totalAvailable: data.totalAvailable,
+        filtersApplied: data.filtersApplied
+      })
+
+      setQuestions(transformedQuestions)
 
     } catch (err) {
-      console.error('❌ [LAW WRAPPER] Error cargando test:', err)
+      console.error('❌ [LAW WRAPPER v2] Error cargando test:', err)
       setError(err instanceof Error ? err.message : 'Error cargando el test')
     } finally {
       setLoading(false)

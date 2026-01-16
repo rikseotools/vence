@@ -16,6 +16,13 @@ export async function POST(request) {
   try {
     const body = await request.json()
 
+    // 🔍 DEBUG: Ver qué recibe la API
+    console.log('📥 [API/questions/filtered] Request recibido:', {
+      selectedLaws: body.selectedLaws,
+      selectedArticlesByLaw: body.selectedArticlesByLaw,
+      numQuestions: body.numQuestions,
+    })
+
     // Validar request con Zod
     const validation = safeParseGetFilteredQuestions(body)
     if (!validation.success) {
