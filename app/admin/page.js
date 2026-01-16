@@ -924,22 +924,22 @@ export default function AdminDashboard() {
                   <div className="text-xs text-gray-700 dark:text-gray-300 mt-1 font-medium">
                     🌱 {stats.newUsersThisWeekBySource?.organic || 0} Orgánico • 💰 {stats.newUsersThisWeekBySource?.google_ads || 0} Google • 📘 {stats.newUsersThisWeekBySource?.meta_ads || 0} Meta
                   </div>
-                  {(stats.newUsersThisWeek > 0 || stats.newUsersLast30Days > 0) && (
+                  {(stats.newUsersThisWeek > 0 || stats.newUsersLast30Days > 0) && stats.weeklyGrowthRate !== undefined && (
                     <div className="text-xs mt-2 font-medium space-y-1">
                       {/* Tendencia semanal */}
                       <div className={`flex items-center gap-1 ${stats.isGrowing ? 'text-green-600' : 'text-red-600'}`}>
                         <span>{stats.isGrowing ? '📈' : '📉'}</span>
-                        <span>Semanal: {stats.weeklyGrowthRate > 0 ? '+' : ''}{stats.weeklyGrowthRate.toFixed(0)}%</span>
+                        <span>Semanal: {stats.weeklyGrowthRate > 0 ? '+' : ''}{(stats.weeklyGrowthRate || 0).toFixed(0)}%</span>
                         <span className="text-gray-500 text-[10px]">
-                          ({stats.newUsersLastWeek}→{stats.projectedUsersPerWeek.toFixed(0)})
+                          ({stats.newUsersLastWeek || 0}→{(stats.projectedUsersPerWeek || 0).toFixed(0)})
                         </span>
                       </div>
                       {/* Tendencia mensual */}
                       <div className={`flex items-center gap-1 ${stats.isGrowingMonthly ? 'text-green-600' : 'text-red-600'}`}>
                         <span>{stats.isGrowingMonthly ? '📈' : '📉'}</span>
-                        <span>Mensual: {stats.monthlyGrowthRate > 0 ? '+' : ''}{stats.monthlyGrowthRate.toFixed(0)}%</span>
+                        <span>Mensual: {stats.monthlyGrowthRate > 0 ? '+' : ''}{(stats.monthlyGrowthRate || 0).toFixed(0)}%</span>
                         <span className="text-gray-500 text-[10px]">
-                          ({stats.newUsersPrevious30Days}→{stats.newUsersLast30Days})
+                          ({stats.newUsersPrevious30Days || 0}→{stats.newUsersLast30Days || 0})
                         </span>
                       </div>
                       {/* Proyecciones */}
@@ -948,8 +948,8 @@ export default function AdminDashboard() {
                           Proyección 1 año:
                         </div>
                         <div className="text-gray-600 dark:text-gray-400 text-[10px] space-y-0.5">
-                          <div>• Base semanal: ~{stats.projectedUsersNextYear.toLocaleString()}</div>
-                          <div>• Base mensual: ~{stats.projectedUsersNextYearMonthly.toLocaleString()}</div>
+                          <div>• Base semanal: ~{(stats.projectedUsersNextYear || 0).toLocaleString()}</div>
+                          <div>• Base mensual: ~{(stats.projectedUsersNextYearMonthly || 0).toLocaleString()}</div>
                         </div>
                       </div>
                     </div>

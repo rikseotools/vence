@@ -51,6 +51,8 @@ Sentry.init({
     // User cancelled
     'AbortError',
     'The operation was aborted',
+    // Sentry Replay trying to serialize DOM elements with React Fiber (not a real bug)
+    'Converting circular structure to JSON',
   ],
 
   // Environment tag

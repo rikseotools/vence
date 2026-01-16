@@ -163,7 +163,7 @@ export default async function LawMainPage({ params, searchParams }) {
   const canonicalSlug = getCanonicalSlug(lawShortName)
   
   // Validar que la ley es conocida
-  if (!lawShortName) {
+  if (!lawShortName || !lawInfo) {
     console.warn('⚠️ Ley no reconocida:', resolvedParams.law)
     notFound()
   }
