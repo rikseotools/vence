@@ -1961,6 +1961,9 @@ export const laws = pgTable("laws", {
 	lastUpdateBoe: text("last_update_boe"),
 	lastVerificationSummary: jsonb("last_verification_summary"),
 	videoUrl: text("video_url"),
+	// Columnas de cache para optimización de monitoreo BOE
+	boeContentLength: integer("boe_content_length"),
+	dateByteOffset: integer("date_byte_offset"),
 }, (table) => [
 	pgPolicy("Enable read access for laws", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
 	check("laws_scope_check", sql`scope = ANY (ARRAY['national'::text, 'regional'::text, 'local'::text, 'eu'::text])`),
