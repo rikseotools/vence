@@ -64,17 +64,76 @@ class LRUCache {
 const statsCache = new LRUCache(10000, 30000)
 
 // ============================================
-// QUERY PRINCIPAL V2 (derivación dinámica)
+// CACHE DE MAPEO ARTICLE → TOPIC (por position_type)
+// ============================================
+interface ArticleTopicMapping {
+  [lawId_articleNumber: string]: number // topic_number
+}
+
+interface TopicScopeCacheEntry {
+  mapping: ArticleTopicMapping
+  timestamp: number
+}
+
+// Cache del mapeo article → topic por position_type (TTL 30 días - raramente cambia)
+const topicScopeCache = new Map<string, TopicScopeCacheEntry>()
+const TOPIC_SCOPE_TTL = 30 * 24 * 60 * 60 * 1000 // 30 días
+
+async function getArticleTopicMapping(
+  db: ReturnType<typeof getDb>,
+  positionType: string
+): Promise<ArticleTopicMapping> {
+  const cacheKey = `topic-scope:${positionType}`
+  const cached = topicScopeCache.get(cacheKey)
+
+  if (cached && Date.now() - cached.timestamp < TOPIC_SCOPE_TTL) {
+    return cached.mapping
+  }
+
+  // Obtener todos los topic_scope para este position_type
+  const scopeRows = await db.execute<{
+    law_id: string
+    article_numbers: string[]
+    topic_number: number
+  }>(sql`
+    SELECT ts.law_id, ts.article_numbers, tp.topic_number
+    FROM topic_scope ts
+    INNER JOIN topics tp ON ts.topic_id = tp.id
+    WHERE tp.position_type = ${positionType}
+      AND tp.is_active = true
+  `)
+
+  const rows = Array.isArray(scopeRows) ? scopeRows : (scopeRows as any).rows || []
+
+  // Construir mapeo: lawId_articleNumber → topic_number
+  const mapping: ArticleTopicMapping = {}
+  for (const row of rows) {
+    if (row.article_numbers && Array.isArray(row.article_numbers)) {
+      for (const articleNum of row.article_numbers) {
+        const key = `${row.law_id}_${articleNum}`
+        // Si ya existe, quedarse con el topic_number más bajo (consistencia)
+        if (!(key in mapping) || row.topic_number < mapping[key]) {
+          mapping[key] = row.topic_number
+        }
+      }
+    }
+  }
+
+  topicScopeCache.set(cacheKey, { mapping, timestamp: Date.now() })
+  console.log(`📊 [theme-stats] Mapeo article→topic cargado: ${Object.keys(mapping).length} entradas para ${positionType}`)
+
+  return mapping
+}
+
+// ============================================
+// QUERY PRINCIPAL V2 (derivación dinámica OPTIMIZADA)
 // ============================================
 
 /**
  * Obtiene las estadísticas por tema para un usuario en una oposición específica.
  *
- * IMPORTANTE: Esta función deriva el tema_number dinámicamente desde:
- * - question_id → primary_article_id → articles → topic_scope → topics
- *
- * Esto significa que la misma respuesta del usuario contribuye a diferentes
- * temas según qué oposición esté viendo.
+ * OPTIMIZACIÓN V2.1: En lugar de usar ANY() en SQL (muy lento),
+ * pre-cargamos el mapeo article→topic y hacemos la agregación en memoria.
  *
  * @param userId - ID del usuario
  * @param oposicionId - Slug de la oposición (ej: 'auxiliar-administrativo-estado')
@@ -100,76 +159,76 @@ export async function getUserThemeStatsByOposicion(
       }
     }
 
-    // Query optimizada con derivación dinámica de tema
-    // Usamos una CTE para mayor claridad y performance
-    const result = await db.execute<{
-      tema_number: number
-      total: number
-      correct: number
-      last_study: string | null
+    // 1️⃣ Obtener mapeo article → topic (cacheado)
+    const articleTopicMapping = await getArticleTopicMapping(db, positionType)
+
+    // 2️⃣ Obtener respuestas del usuario con info de artículo (query simple sin ANY)
+    const answersResult = await db.execute<{
+      answer_id: string
+      is_correct: boolean
+      created_at: string
+      law_id: string
+      article_number: string
     }>(sql`
-      WITH user_answers AS (
-        -- Obtener todas las respuestas del usuario con article info
-        SELECT
-          tq.id as answer_id,
-          tq.is_correct,
-          tq.created_at,
-          q.primary_article_id,
-          a.law_id,
-          a.article_number
-        FROM test_questions tq
-        INNER JOIN tests t ON tq.test_id = t.id
-        INNER JOIN questions q ON tq.question_id = q.id
-        INNER JOIN articles a ON q.primary_article_id = a.id
-        WHERE t.user_id = ${userId}
-          AND q.primary_article_id IS NOT NULL
-      ),
-      answer_topics AS (
-        -- Mapear cada respuesta a su tema según topic_scope
-        SELECT DISTINCT ON (ua.answer_id)
-          ua.answer_id,
-          ua.is_correct,
-          ua.created_at,
-          tp.topic_number
-        FROM user_answers ua
-        INNER JOIN topic_scope ts ON ts.law_id = ua.law_id
-          AND ua.article_number = ANY(ts.article_numbers)
-        INNER JOIN topics tp ON ts.topic_id = tp.id
-        WHERE tp.position_type = ${positionType}
-          AND tp.is_active = true
-        ORDER BY ua.answer_id, tp.topic_number
-      )
-      -- Agregar por tema
       SELECT
-        topic_number as tema_number,
-        COUNT(*)::int as total,
-        SUM(CASE WHEN is_correct THEN 1 ELSE 0 END)::int as correct,
-        MAX(created_at)::text as last_study
-      FROM answer_topics
-      GROUP BY topic_number
-      ORDER BY topic_number
+        tq.id as answer_id,
+        tq.is_correct,
+        tq.created_at::text,
+        a.law_id,
+        a.article_number
+      FROM test_questions tq
+      INNER JOIN tests t ON tq.test_id = t.id
+      INNER JOIN questions q ON tq.question_id = q.id
+      INNER JOIN articles a ON q.primary_article_id = a.id
+      WHERE t.user_id = ${userId}
+        AND q.primary_article_id IS NOT NULL
     `)
 
-    // Procesar resultados (execute() retorna array directamente con postgres-js)
+    const answers = Array.isArray(answersResult) ? answersResult : (answersResult as any).rows || []
+
+    // 3️⃣ Agregar en memoria usando el mapeo
+    const statsByTopic: Record<number, {
+      total: number
+      correct: number
+      lastStudy: Date | null
+    }> = {}
+
+    for (const answer of answers) {
+      const key = `${answer.law_id}_${answer.article_number}`
+      const topicNumber = articleTopicMapping[key]
+
+      if (topicNumber === undefined) continue // Artículo no está en ningún tema de esta oposición
+
+      if (!statsByTopic[topicNumber]) {
+        statsByTopic[topicNumber] = { total: 0, correct: 0, lastStudy: null }
+      }
+
+      statsByTopic[topicNumber].total++
+      if (answer.is_correct) {
+        statsByTopic[topicNumber].correct++
+      }
+
+      const answerDate = new Date(answer.created_at)
+      if (!statsByTopic[topicNumber].lastStudy || answerDate > statsByTopic[topicNumber].lastStudy) {
+        statsByTopic[topicNumber].lastStudy = answerDate
+      }
+    }
+
+    // 4️⃣ Formatear resultado
     const stats: Record<string, ThemeStat> = {}
-    const rows = Array.isArray(result) ? result : (result as any).rows || []
 
-    for (const row of rows) {
-      if (row.tema_number === null) continue
+    for (const [topicNumStr, data] of Object.entries(statsByTopic)) {
+      const topicNumber = parseInt(topicNumStr, 10)
+      const accuracy = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0
 
-      const total = row.total || 0
-      const correct = row.correct || 0
-      const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0
-      const lastStudyDate = row.last_study ? new Date(row.last_study) : null
-
-      stats[row.tema_number.toString()] = {
-        temaNumber: row.tema_number,
-        total,
-        correct,
+      stats[topicNumStr] = {
+        temaNumber: topicNumber,
+        total: data.total,
+        correct: data.correct,
         accuracy,
-        lastStudy: row.last_study,
-        lastStudyFormatted: lastStudyDate
-          ? lastStudyDate.toLocaleDateString('es-ES', {
+        lastStudy: data.lastStudy?.toISOString() || null,
+        lastStudyFormatted: data.lastStudy
+          ? data.lastStudy.toLocaleDateString('es-ES', {
               day: 'numeric',
               month: 'short'
             })
