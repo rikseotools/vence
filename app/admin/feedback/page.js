@@ -65,6 +65,14 @@ export default function AdminFeedbackPage() {
   // Estado para otras conversaciones del mismo usuario
   const [userOtherConversations, setUserOtherConversations] = useState([])
 
+  // Estados para modal de nueva conversación iniciada por admin
+  const [showNewConversationModal, setShowNewConversationModal] = useState(false)
+  const [newConvEmail, setNewConvEmail] = useState('')
+  const [newConvMessage, setNewConvMessage] = useState('')
+  const [newConvUser, setNewConvUser] = useState(null)
+  const [newConvSearching, setNewConvSearching] = useState(false)
+  const [newConvCreating, setNewConvCreating] = useState(false)
+
   // Efecto para cerrar modal de imagen con ESC
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -403,6 +411,131 @@ export default function AdminFeedbackPage() {
       alert('Error al enviar el mensaje')
     } finally {
       setSendingInlineMessage(false)
+    }
+  }
+
+  // Buscar usuario por email para nueva conversación
+  const searchUserByEmail = async () => {
+    if (!newConvEmail.trim()) return
+
+    setNewConvSearching(true)
+    setNewConvUser(null)
+
+    try {
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+
+      const { data: profile, error } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, email, full_name, nickname, plan_type, target_oposicion')
+        .eq('email', newConvEmail.trim().toLowerCase())
+        .single()
+
+      if (error || !profile) {
+        alert('Usuario no encontrado con ese email')
+        return
+      }
+
+      setNewConvUser(profile)
+    } catch (error) {
+      console.error('Error buscando usuario:', error)
+      alert('Error al buscar usuario')
+    } finally {
+      setNewConvSearching(false)
+    }
+  }
+
+  // Crear nueva conversación iniciada por admin
+  const createAdminConversation = async () => {
+    if (!newConvUser || !newConvMessage.trim()) return
+
+    setNewConvCreating(true)
+
+    try {
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+      )
+
+      // 1. Crear feedback inicial
+      const { data: feedback, error: feedbackError } = await supabaseAdmin
+        .from('user_feedback')
+        .insert({
+          user_id: newConvUser.id,
+          email: newConvUser.email,
+          type: 'other',
+          message: '[Conversación iniciada por soporte]',
+          url: 'https://vencetumiedo.com/',
+          status: 'in_progress',
+          priority: 'high',
+          wants_response: true
+        })
+        .select()
+        .single()
+
+      if (feedbackError) throw feedbackError
+
+      // 2. Crear conversación
+      const { data: conversation, error: convError } = await supabaseAdmin
+        .from('feedback_conversations')
+        .insert({
+          feedback_id: feedback.id,
+          user_id: newConvUser.id,
+          admin_user_id: user.id,
+          status: 'open',
+          last_message_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (convError) throw convError
+
+      // 3. Crear mensaje del admin
+      const { error: msgError } = await supabaseAdmin
+        .from('feedback_messages')
+        .insert({
+          conversation_id: conversation.id,
+          sender_id: user.id,
+          is_admin: true,
+          message: newConvMessage.trim()
+        })
+
+      if (msgError) throw msgError
+
+      // 4. Enviar email de notificación
+      try {
+        await fetch('/api/send-support-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: newConvUser.id,
+            adminMessage: newConvMessage.trim(),
+            conversationId: conversation.id
+          })
+        })
+        console.log('✅ Email enviado')
+      } catch (emailError) {
+        console.error('⚠️ Error enviando email:', emailError)
+      }
+
+      // Cerrar modal y limpiar
+      setShowNewConversationModal(false)
+      setNewConvEmail('')
+      setNewConvMessage('')
+      setNewConvUser(null)
+
+      // Recargar datos
+      loadFeedbacks()
+      loadConversations()
+
+      alert(`Conversación creada y email enviado a ${newConvUser.email}`)
+    } catch (error) {
+      console.error('Error creando conversación:', error)
+      alert('Error al crear la conversación')
+    } finally {
+      setNewConvCreating(false)
     }
   }
 
@@ -1458,6 +1591,14 @@ export default function AdminFeedbackPage() {
                   <span className="font-bold">{newUserMessages.size}</span> mensaje{newUserMessages.size > 1 ? 's' : ''} nuevo{newUserMessages.size > 1 ? 's' : ''}
                 </div>
               )}
+              {/* Botón Nueva Conversación */}
+              <button
+                onClick={() => setShowNewConversationModal(true)}
+                className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-600 transition-colors"
+                title="Iniciar conversación con un usuario"
+              >
+                ➕ Nueva
+              </button>
               {/* Botón temporal de debug */}
               <button
                 onClick={() => {
@@ -2347,9 +2488,135 @@ export default function AdminFeedbackPage() {
           </div>
         )}
 
+        {/* Modal para crear nueva conversación */}
+        {showNewConversationModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="p-4 border-b dark:border-gray-700 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  ➕ Nueva Conversación
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowNewConversationModal(false)
+                    setNewConvEmail('')
+                    setNewConvMessage('')
+                    setNewConvUser(null)
+                  }}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Contenido */}
+              <div className="p-4 space-y-4">
+                {/* Buscar usuario */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email del usuario
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={newConvEmail}
+                      onChange={(e) => setNewConvEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && searchUserByEmail()}
+                      placeholder="usuario@ejemplo.com"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={searchUserByEmail}
+                      disabled={newConvSearching || !newConvEmail.trim()}
+                      className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {newConvSearching ? '...' : '🔍 Buscar'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Usuario encontrado */}
+                {newConvUser && (
+                  <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-800 flex items-center justify-center">
+                        <span className="text-lg">
+                          {newConvUser.full_name ? newConvUser.full_name.charAt(0).toUpperCase() : '👤'}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">
+                          {newConvUser.full_name || newConvUser.nickname || 'Usuario'}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {newConvUser.email}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-500 flex gap-2 mt-0.5">
+                          <span className={newConvUser.plan_type === 'premium' ? 'text-yellow-600' : ''}>
+                            {newConvUser.plan_type === 'premium' ? '⭐ Premium' : 'Free'}
+                          </span>
+                          {newConvUser.target_oposicion && (
+                            <span>📚 {newConvUser.target_oposicion}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Mensaje */}
+                {newConvUser && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Mensaje inicial
+                    </label>
+                    <textarea
+                      value={newConvMessage}
+                      onChange={(e) => setNewConvMessage(e.target.value)}
+                      placeholder={`Hola ${newConvUser.full_name?.split(' ')[0] || 'Usuario'},\n\n¿En qué podemos ayudarte?\n\nUn saludo,\nEquipo de Vence`}
+                      rows={6}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 resize-none"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Se creará la conversación y se enviará un email al usuario.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {newConvUser && (
+                <div className="p-4 border-t dark:border-gray-700 flex justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setShowNewConversationModal(false)
+                      setNewConvEmail('')
+                      setNewConvMessage('')
+                      setNewConvUser(null)
+                    }}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={createAdminConversation}
+                    disabled={newConvCreating || !newConvMessage.trim()}
+                    className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {newConvCreating ? 'Creando...' : '📤 Crear y Enviar'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Modal para expandir imagen (estilo WhatsApp) */}
         {expandedImage && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
             onClick={() => setExpandedImage(null)}
           >
