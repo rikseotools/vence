@@ -21,6 +21,35 @@ import { getLinkedArticle, type LinkedArticle } from './queries'
 import type { ChatContext, ArticleSource } from '../../core/types'
 
 // ============================================
+// LEYES VIRTUALES (INFORMÁTICA)
+// Estas leyes no tienen artículos reales - son contenido técnico
+// No debemos mencionar "artículo vinculado" para estas
+// ============================================
+const VIRTUAL_LAWS = [
+  'Base de datos: Access',
+  'Correo electrónico',
+  'Explorador Windows 11',
+  'Hojas de cálculo. Excel',
+  'Informática Básica',
+  'La Red Internet',
+  'Portal de Internet',
+  'Procesadores de texto',
+  'Windows 11',
+]
+
+/**
+ * Verifica si una ley es virtual (informática/técnica)
+ * Las leyes virtuales no tienen artículos legales reales
+ */
+function isVirtualLaw(lawName: string | undefined): boolean {
+  if (!lawName) return false
+  return VIRTUAL_LAWS.some(vl =>
+    lawName.toLowerCase().includes(vl.toLowerCase()) ||
+    vl.toLowerCase().includes(lawName.toLowerCase())
+  )
+}
+
+// ============================================
 // TIPOS
 // ============================================
 
@@ -358,9 +387,11 @@ ${articleFromQuestion.content || 'Sin contenido disponible'}
 `
   }
 
-  // 2. Artículo vinculado en BD
+  // 2. Artículo vinculado en BD (solo para leyes reales, NO virtuales/informática)
   let linkedArticleSection = ''
-  if (linkedArticle) {
+  const isVirtual = linkedArticle && isVirtualLaw(linkedArticle.lawShortName)
+
+  if (linkedArticle && !isVirtual) {
     linkedArticleSection = `
 ---
 📌 ARTÍCULO VINCULADO EN BASE DE DATOS:
@@ -368,6 +399,15 @@ ${articleFromQuestion.content || 'Sin contenido disponible'}
 ${linkedArticle.title ? `Título: ${linkedArticle.title}` : ''}
 ${linkedArticle.content || 'Sin contenido disponible'}
 `
+  } else if (linkedArticle && isVirtual) {
+    // Para leyes virtuales (informática), solo incluir el contenido técnico sin llamarlo "artículo"
+    linkedArticleSection = `
+---
+📚 CONTENIDO TÉCNICO DE REFERENCIA:
+[${linkedArticle.lawShortName}] ${linkedArticle.title || `Sección ${linkedArticle.articleNumber}`}
+${linkedArticle.content || 'Sin contenido disponible'}
+`
+    logger.info(`📱 Ley virtual detectada: ${linkedArticle.lawShortName}`, { domain: 'verification' })
   }
 
   // 3. Artículo detectado en la explicación
@@ -402,8 +442,8 @@ ${ourExplanation}
 `
   }
 
-  // Construir el system prompt
-  const systemPrompt = buildVerificationSystemPrompt()
+  // Construir el system prompt (diferente para informática vs derecho)
+  const systemPrompt = buildVerificationSystemPrompt(isVirtual)
 
   // Construir el mensaje del usuario con contexto
   // NOTA: 'question' ya viene con los valores detectados (effectiveLawName, effectiveArticleNumber)
@@ -477,14 +517,25 @@ INSTRUCCIONES:
 3. Si la respuesta ES correcta, explícala claramente
 4. Si la respuesta NO es correcta según el artículo, indica el error`
   }
-  // CASO 3: Solo hay artículo vinculado
+  // CASO 3: Solo hay artículo vinculado (o contenido técnico para informática)
   else if (linkedArticle) {
-    analysisInstructions = `
+    if (isVirtual) {
+      // Para leyes virtuales (informática), no mencionar "artículos" legales
+      analysisInstructions = `
+---
+INSTRUCCIONES DE ANÁLISIS:
+1. Esta es una pregunta de INFORMÁTICA/TECNOLOGÍA, no de derecho
+2. El CONTENIDO TÉCNICO proporcionado es la referencia principal
+3. Explica el concepto técnico de forma clara y didáctica
+4. NO menciones "artículos" ni "legislación" - esto es contenido técnico`
+    } else {
+      analysisInstructions = `
 ---
 INSTRUCCIONES DE ANÁLISIS:
 1. El ARTÍCULO VINCULADO es la fuente principal
 2. Compara la explicación con el artículo
 3. Si hay inconsistencias, señálalas`
+    }
   }
   // CASO 4: Solo hay artículo detectado en explicación
   else if (articleFromExplanation) {
@@ -536,8 +587,54 @@ ${analysisInstructions}`
 
 /**
  * Construye el system prompt para verificación
+ * @param isVirtualLaw - Si es true, genera un prompt para informática/tecnología en vez de derecho
  */
-function buildVerificationSystemPrompt(): string {
+function buildVerificationSystemPrompt(isVirtualLaw: boolean = false): string {
+  if (isVirtualLaw) {
+    // Prompt especial para preguntas de INFORMÁTICA
+    return `Eres un tutor experto en informática y tecnología para oposiciones. Tu rol es explicar las respuestas de forma clara, didáctica y amigable.
+
+## 🎯 TU OBJETIVO
+Explicar por qué la respuesta correcta es correcta, ayudando al opositor a entender el concepto técnico.
+
+## 📝 FORMATO DE RESPUESTA
+Usa formato rico para que sea fácil de leer:
+- **Negritas** para conceptos clave y términos técnicos
+- Emojis relevantes (✅ ❌ 💻 💡 🖥️ 📊 🎯) para hacer la lectura más amena
+- Párrafos cortos y claros
+- Listas cuando sea apropiado
+
+## 📋 ESTRUCTURA DE TU RESPUESTA
+
+1. **Respuesta correcta** - Confirma cuál es y por qué
+2. **Explicación técnica** - Explica el concepto de forma clara
+3. **Consejo práctico** - Si aplica, da un tip para recordarlo
+4. **Por qué las otras opciones son incorrectas** (brevemente, opcional)
+
+## ⚠️ SI DETECTAS UN ERROR
+Si la respuesta marcada como correcta parece incorrecta:
+- Empieza con "⚠️ **Posible error detectado**"
+- Explica cuál debería ser la respuesta correcta y por qué
+- Sé claro pero respetuoso
+
+## 🎨 EJEMPLO DE FORMATO
+✅ **La respuesta correcta es la C**
+
+💻 **Explicación**: La función BUSCARV en Excel busca un valor en la primera columna de una tabla y devuelve el valor de una columna especificada en la misma fila...
+
+💡 **Consejo**: Recuerda que BUSCARV siempre busca de izquierda a derecha, por eso la columna de búsqueda debe estar a la izquierda.
+
+❌ Las otras opciones son incorrectas porque...
+
+## REGLAS IMPORTANTES
+- Sé conciso pero completo
+- Usa lenguaje cercano y motivador
+- NO menciones "artículos" ni "legislación" - esto es contenido TÉCNICO de informática
+- NO incluyas sección de "Fuentes" al final
+- Enfócate en explicar el concepto técnico de forma práctica`
+  }
+
+  // Prompt estándar para preguntas de DERECHO
   return `Eres un tutor experto de oposiciones de derecho administrativo español. Tu rol es explicar las respuestas de forma clara, didáctica y amigable.
 
 ## 🎯 TU OBJETIVO

@@ -682,45 +682,56 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
       }
       */
 
-      console.log('💾 Insertando feedback en BD...', {
-        user_id: feedbackData.user_id,
-        email: feedbackData.email,
+      console.log('💾 Insertando feedback via API tipada...', {
+        userId: feedbackData.user_id,
         type: feedbackData.type,
-        message_length: feedbackData.message?.length,
-        url: feedbackData.url,
-        has_attachments: !!feedbackData.attachments
+        messageLength: feedbackData.message?.length,
+        questionId: feedbackData.question_id
       })
-      
-      const { data: feedbackResult, error: submitError } = await supabase
-        .from('user_feedback')
-        .insert(feedbackData)
-        .select()
 
-      if (submitError) {
-        console.error('❌ Error insertando feedback:', {
-          message: submitError.message,
-          code: submitError.code,
-          details: submitError.details,
-          hint: submitError.hint
+      // Usar API tipada con Drizzle + Zod (evita errores de schema)
+      const apiResponse = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: feedbackData.user_id,
+          email: feedbackData.email,
+          type: feedbackData.type,
+          message: feedbackData.message,
+          url: feedbackData.url,
+          userAgent: feedbackData.user_agent,
+          viewport: feedbackData.viewport,
+          referrer: feedbackData.referrer,
+          wantsResponse: feedbackData.wants_response,
+          status: feedbackData.status,
+          priority: feedbackData.priority,
+          questionId: feedbackData.question_id
         })
-        throw submitError
+      })
+
+      const feedbackApiResult = await apiResponse.json()
+
+      if (!apiResponse.ok || !feedbackApiResult.success) {
+        console.error('❌ Error insertando feedback:', feedbackApiResult.error)
+        throw new Error(feedbackApiResult.error || 'Error creando feedback')
       }
-      
-      console.log('✅ Feedback insertado correctamente:', feedbackResult?.[0]?.id)
+
+      const feedbackResult = feedbackApiResult.data
+      console.log('✅ Feedback insertado correctamente:', feedbackResult?.id)
 
       // Enviar email de notificación al admin
-      if (feedbackResult && feedbackResult[0]) {
+      if (feedbackResult) {
         try {
           const { sendAdminFeedbackNotification } = await import('../lib/notifications/adminEmailNotifications')
           await sendAdminFeedbackNotification({
-            id: feedbackResult[0].id,
+            id: feedbackResult.id,
             user_id: user?.id || null,
             user_email: formData.email || 'Usuario anónimo',
             user_name: user?.user_metadata?.full_name || 'Sin nombre',
             feedback_type: feedbackType,
             message: formData.message,
             rating: null,
-            created_at: feedbackResult[0].created_at
+            created_at: feedbackResult.createdAt
           })
         } catch (emailError) {
           console.error('Error enviando email admin:', emailError)
@@ -728,21 +739,7 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
         }
       }
 
-      // Crear conversación de chat automáticamente
-      if (feedbackResult && feedbackResult[0]) {
-        const { error: conversationError } = await supabase
-          .from('feedback_conversations')
-          .insert({
-            feedback_id: feedbackResult[0].id,
-            user_id: user?.id || null,
-            status: 'waiting_admin'
-          })
-
-        if (conversationError) {
-          console.error('Error creando conversación:', conversationError)
-          // No fallar el feedback por esto
-        }
-      }
+      // La conversación ya se crea automáticamente en la API
 
       setSuccess(true)
       
@@ -826,11 +823,10 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
 
             {/* Layout condicional: 2 columnas si hay conversaciones, 1 columna si no */}
             {hasConversations ? (
-              // LAYOUT 2 COLUMNAS (responsive: 1 columna en móvil)
-              <div className="flex flex-col sm:flex-row" style={{ height: 'calc(90vh - 80px)', maxHeight: '600px' }}>
-                {/* Panel izquierdo: Lista de conversaciones */}
-                {/* En móvil: ocultar si hay conversación seleccionada, mostrar si no */}
-                <div className={`${selectedConversationId ? 'hidden sm:flex' : 'flex'} w-full sm:w-64 md:w-72 border-b sm:border-b-0 sm:border-r dark:border-gray-700 flex-col bg-gray-50 dark:bg-gray-900 ${!selectedConversationId ? 'flex-1 sm:flex-none' : ''}`}>
+              // LAYOUT 2 COLUMNAS - siempre lado a lado
+              <div className="flex flex-row" style={{ height: 'calc(90vh - 80px)', maxHeight: '600px' }}>
+                {/* Panel izquierdo: Lista de conversaciones - SIEMPRE visible */}
+                <div className="flex w-1/3 min-w-[140px] max-w-[200px] sm:w-64 sm:max-w-none md:w-72 border-r dark:border-gray-700 flex-col bg-gray-50 dark:bg-gray-900">
                   {/* Botón nueva solicitud */}
                   <button
                     type="button"
@@ -842,12 +838,12 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
                       setFormData(prev => ({ ...prev, type: '', message: '', disputeType: '' }))
                       setActiveTab('new')
                     }}
-                    className="m-3 p-3 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                    className="m-2 p-2 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 bg-blue-600 text-white hover:bg-blue-700"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    <span>Nueva solicitud</span>
+                    <span>Nueva</span>
                   </button>
 
                   {/* Lista de conversaciones */}
@@ -907,30 +903,14 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
                   </div>
                 </div>
 
-                {/* Panel derecho: Formulario o Chat */}
-                {/* En móvil: mostrar solo si hay conversación seleccionada o es nueva solicitud */}
-                <div className={`${!selectedConversationId && activeTab !== 'new' ? 'hidden sm:flex' : 'flex'} flex-1 flex-col bg-white dark:bg-gray-800`}>
+                {/* Panel derecho: Formulario o Chat - SIEMPRE visible */}
+                <div className="flex flex-1 flex-col bg-white dark:bg-gray-800 min-w-0">
                   {activeTab === 'chat' && selectedConversation ? (
                     // VISTA DE CHAT
                     <div className="flex flex-col h-full">
-                      {/* Header del chat con botón volver en móvil */}
-                      <div className="p-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                        {/* Botón volver solo en móvil */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedConversationId(null)
-                            setSelectedConversation(null)
-                            setChatMessages([])
-                          }}
-                          className="sm:hidden flex items-center gap-1 text-blue-600 text-sm mb-2"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                          </svg>
-                          Volver
-                        </button>
-                        <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
+                      {/* Header del chat */}
+                      <div className="p-2 sm:p-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                        <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
                           {selectedConversation.feedback?.message?.substring(0, 100)}
                           {selectedConversation.feedback?.message?.length > 100 ? '...' : ''}
                         </p>
@@ -1126,7 +1106,7 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
                   ) : (
                     // FORMULARIO DE NUEVA SOLICITUD
                     <div className="flex-1 overflow-y-auto">
-                      <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                      <form onSubmit={handleSubmit} className="p-2 sm:p-4 space-y-3 sm:space-y-4">
                         {/* Selección de tipo */}
                         {!formData.type && (
                           <div>

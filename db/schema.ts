@@ -375,6 +375,7 @@ export const userFeedback = pgTable("user_feedback", {
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
 	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	questionId: uuid("question_id"), // ID de pregunta para debugging
 }, (table) => [
 	foreignKey({
 			columns: [table.adminUserId],
@@ -386,6 +387,12 @@ export const userFeedback = pgTable("user_feedback", {
 			foreignColumns: [users.id],
 			name: "user_feedback_user_id_fkey"
 		}),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [questions.id],
+			name: "user_feedback_question_id_fkey"
+		}),
+	index("idx_user_feedback_question_id").using("btree", table.questionId.asc().nullsLast()),
 ]);
 
 export const questionArticles = pgTable("question_articles", {
