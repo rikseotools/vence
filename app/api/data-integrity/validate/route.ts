@@ -165,6 +165,14 @@ async function validateLaw(
   return { errors, warnings, stats }
 }
 
+// Leyes virtuales (informatica) que no tienen articulos reales en BOE
+// Se excluyen de la validacion de topic_scope
+const LEYES_VIRTUALES = [
+  'Base de datos: Access',
+  'Hojas de cálculo. Excel',
+  'Procesadores de texto',
+]
+
 async function validateTopicScopeReferences(db: ReturnType<typeof getDb>): Promise<string[]> {
   const topicScopeErrors: string[] = []
 
@@ -207,6 +215,12 @@ async function validateTopicScopeReferences(db: ReturnType<typeof getDb>): Promi
       .limit(1)
 
     const lawName = lawRecord[0]?.shortName || 'ley desconocida'
+
+    // Saltar leyes virtuales (informatica)
+    if (LEYES_VIRTUALES.includes(lawName)) {
+      continue
+    }
+
     const validNumbers = new Set(lawArticles.map(a => a.articleNumber))
 
     for (const scope of scopesForLaw) {
