@@ -100,8 +100,25 @@ export async function GET(request) {
     const batch = pendingQuestionIds.slice(0, BATCH_SIZE)
 
     // 4. Llamar a la API de verificación existente
+    // Determinar base URL según entorno
+    const getBaseUrl = () => {
+      // 1. Usar variable explícita si está configurada
+      if (process.env.NEXT_PUBLIC_APP_URL) {
+        return process.env.NEXT_PUBLIC_APP_URL
+      }
+      // 2. En Vercel producción, usar URL de producción
+      if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+        return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      }
+      // 3. En Vercel preview/development, usar URL del deployment
+      if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`
+      }
+      // 4. Fallback a localhost
+      return 'http://localhost:3000'
+    }
     const verifyResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/topic-review/verify`,
+      `${getBaseUrl()}/api/topic-review/verify`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
