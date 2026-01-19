@@ -1,26 +1,42 @@
 'use client'
 
-import { useState, useEffect, createContext, useContext, useCallback } from 'react'
+import { useState, useEffect, createContext, useContext, useCallback, ReactNode } from 'react'
 
 // Constantes
 const COOKIE_CONSENT_KEY = 'vence_cookie_consent'
 const CONSENT_VERSION = '1.0' // Incrementar si cambian las opciones
 
+// Tipos
+interface CookieConsentData {
+  analytics: boolean
+  marketing: boolean
+  essential: boolean
+  version: string
+  timestamp: string
+}
+
+interface CookieConsentContextValue {
+  consent: CookieConsentData | null
+  hasConsent: boolean
+  analyticsAllowed: boolean
+  marketingAllowed: boolean
+  updateConsent: (newConsent: Partial<CookieConsentData>) => void
+  resetConsent: () => void
+  isLoaded: boolean
+}
+
+interface LocalSettings {
+  analytics: boolean
+  marketing: boolean
+}
+
 // Contexto para el consentimiento
-const CookieConsentContext = createContext(null)
+const CookieConsentContext = createContext<CookieConsentContextValue | null>(null)
 
 /**
  * Hook para acceder al estado de consentimiento de cookies
- * @returns {{
- *   consent: { analytics: boolean, marketing: boolean, version: string } | null,
- *   hasConsent: boolean,
- *   analyticsAllowed: boolean,
- *   marketingAllowed: boolean,
- *   updateConsent: (newConsent: object) => void,
- *   resetConsent: () => void
- * }}
  */
-export function useCookieConsent() {
+export function useCookieConsent(): CookieConsentContextValue {
   const context = useContext(CookieConsentContext)
   if (!context) {
     throw new Error('useCookieConsent must be used within CookieConsentProvider')
@@ -28,11 +44,15 @@ export function useCookieConsent() {
   return context
 }
 
+interface CookieConsentProviderProps {
+  children: ReactNode
+}
+
 /**
  * Provider que gestiona el estado de consentimiento de cookies
  */
-export function CookieConsentProvider({ children }) {
-  const [consent, setConsent] = useState(null)
+export function CookieConsentProvider({ children }: CookieConsentProviderProps) {
+  const [consent, setConsent] = useState<CookieConsentData | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
 
   // Cargar consentimiento del localStorage al montar
@@ -40,7 +60,7 @@ export function CookieConsentProvider({ children }) {
     try {
       const stored = localStorage.getItem(COOKIE_CONSENT_KEY)
       if (stored) {
-        const parsed = JSON.parse(stored)
+        const parsed = JSON.parse(stored) as CookieConsentData
         // Verificar que la versión coincide
         if (parsed.version === CONSENT_VERSION) {
           setConsent(parsed)
@@ -53,9 +73,11 @@ export function CookieConsentProvider({ children }) {
   }, [])
 
   // Guardar consentimiento
-  const updateConsent = useCallback((newConsent) => {
-    const consentData = {
-      ...newConsent,
+  const updateConsent = useCallback((newConsent: Partial<CookieConsentData>) => {
+    const consentData: CookieConsentData = {
+      analytics: newConsent.analytics ?? false,
+      marketing: newConsent.marketing ?? false,
+      essential: true,
       version: CONSENT_VERSION,
       timestamp: new Date().toISOString()
     }
@@ -79,7 +101,7 @@ export function CookieConsentProvider({ children }) {
     }
   }, [])
 
-  const value = {
+  const value: CookieConsentContextValue = {
     consent,
     hasConsent: consent !== null,
     analyticsAllowed: consent?.analytics === true,
@@ -100,9 +122,9 @@ export function CookieConsentProvider({ children }) {
  * Banner de consentimiento de cookies - RGPD compliant
  */
 export default function CookieBanner() {
-  const { consent, hasConsent, updateConsent, isLoaded } = useCookieConsent()
+  const { hasConsent, updateConsent, isLoaded } = useCookieConsent()
   const [showSettings, setShowSettings] = useState(false)
-  const [localSettings, setLocalSettings] = useState({
+  const [localSettings, setLocalSettings] = useState<LocalSettings>({
     analytics: false,
     marketing: false
   })
@@ -117,7 +139,7 @@ export default function CookieBanner() {
     updateConsent({
       analytics: true,
       marketing: true,
-      essential: true // Siempre true
+      essential: true
     })
   }
 
@@ -125,7 +147,7 @@ export default function CookieBanner() {
     updateConsent({
       analytics: false,
       marketing: false,
-      essential: true // Siempre true
+      essential: true
     })
   }
 
@@ -282,10 +304,14 @@ export default function CookieBanner() {
   )
 }
 
+interface CookieSettingsButtonProps {
+  className?: string
+}
+
 /**
  * Componente para acceder a configuración de cookies desde el footer o perfil
  */
-export function CookieSettingsButton({ className = '' }) {
+export function CookieSettingsButton({ className = '' }: CookieSettingsButtonProps) {
   const { resetConsent } = useCookieConsent()
 
   return (
