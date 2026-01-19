@@ -13,16 +13,20 @@ export default function PrivacidadPage() {
 
         <div className="prose dark:prose-invert max-w-none">
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            <strong>Última actualización:</strong> Enero 2025
+            <strong>Última actualización:</strong> Enero 2026
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
             1. Responsable del Tratamiento
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            El responsable del tratamiento de tus datos personales es Vence, con domicilio en España.
-            Puedes contactarnos en: <a href="mailto:soporte@vence.es" className="text-blue-600 dark:text-blue-400">soporte@vence.es</a>
+            El responsable del tratamiento de tus datos personales es:
           </p>
+          <ul className="list-none pl-0 text-gray-600 dark:text-gray-300 mb-4">
+            <li><strong>Razón social:</strong> DREAM NETWORK SL</li>
+            <li><strong>Domicilio:</strong> Calle Juan Bravo 3, Bl. A, 28006 Madrid, España</li>
+            <li><strong>Email:</strong> <a href="mailto:info@vence.es" className="text-blue-600 dark:text-blue-400">info@vence.es</a></li>
+          </ul>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
             2. Datos que Recopilamos
@@ -33,7 +37,6 @@ export default function PrivacidadPage() {
           <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 mb-4">
             <li>Datos de registro: nombre, email (a través de Google OAuth)</li>
             <li>Datos de uso: respuestas a tests, progreso, estadísticas de estudio</li>
-            <li>Datos técnicos: dirección IP, tipo de navegador, dispositivo</li>
           </ul>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -87,7 +90,7 @@ export default function PrivacidadPage() {
           </ul>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             Para ejercer estos derechos, contacta con nosotros en{' '}
-            <a href="mailto:soporte@vence.es" className="text-blue-600 dark:text-blue-400">soporte@vence.es</a>
+            <a href="mailto:info@vence.es" className="text-blue-600 dark:text-blue-400">info@vence.es</a>
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -103,9 +106,16 @@ export default function PrivacidadPage() {
             8. Cookies
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Utilizamos cookies esenciales para el funcionamiento del servicio y cookies de
-            análisis para mejorar la experiencia. Puedes gestionar las cookies desde la
-            configuración de tu navegador.
+            Utilizamos diferentes tipos de cookies:
+          </p>
+          <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 mb-4">
+            <li><strong>Cookies esenciales:</strong> Necesarias para el funcionamiento básico (autenticación, seguridad, preferencias). Se activan siempre.</li>
+            <li><strong>Cookies analíticas:</strong> Nos ayudan a entender cómo usas la plataforma para mejorarla (Google Analytics). Requieren tu consentimiento.</li>
+            <li><strong>Cookies de marketing:</strong> Permiten medir la efectividad de nuestras campañas (Meta Pixel, Google Ads). Requieren tu consentimiento.</li>
+          </ul>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Al visitar nuestra web por primera vez, te mostraremos un banner para que elijas qué cookies aceptas.
+            Puedes cambiar tus preferencias en cualquier momento haciendo clic en &quot;Cookies&quot; en el pie de página.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -121,7 +131,7 @@ export default function PrivacidadPage() {
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             Si tienes preguntas sobre esta política de privacidad, puedes contactarnos en:{' '}
-            <a href="mailto:soporte@vence.es" className="text-blue-600 dark:text-blue-400">soporte@vence.es</a>
+            <a href="mailto:info@vence.es" className="text-blue-600 dark:text-blue-400">info@vence.es</a>
           </p>
         </div>
 

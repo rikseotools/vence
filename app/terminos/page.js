@@ -13,12 +13,13 @@ export default function TerminosPage() {
 
         <div className="prose dark:prose-invert max-w-none">
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            <strong>Última actualización:</strong> Enero 2025
+            <strong>Última actualización:</strong> Enero 2026
           </p>
 
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Bienvenido a Vence. Al acceder y utilizar nuestra plataforma, aceptas estos
-            términos y condiciones en su totalidad.
+            Bienvenido a Vence, plataforma operada por DREAM NETWORK SL, con domicilio en
+            Calle Juan Bravo 3, Bl. A, 28006 Madrid, España. Al acceder y utilizar nuestra
+            plataforma, aceptas estos términos y condiciones en su totalidad.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -134,11 +135,13 @@ export default function TerminosPage() {
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
-            9. Ley Aplicable
+            9. Ley Aplicable y Jurisdicción
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Estos términos se rigen por la legislación española. Cualquier disputa se
-            someterá a los tribunales de España.
+            Estos términos se rigen por la legislación española. Para cualquier controversia
+            derivada del uso de esta plataforma, las partes se someten a los Juzgados y
+            Tribunales de la ciudad de Madrid, con renuncia expresa a cualquier otro fuero
+            que pudiera corresponderles.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -155,7 +158,7 @@ export default function TerminosPage() {
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             Si tienes preguntas sobre estos términos, contacta con nosotros en:{' '}
-            <a href="mailto:soporte@vence.es" className="text-blue-600 dark:text-blue-400">soporte@vence.es</a>
+            <a href="mailto:info@vence.es" className="text-blue-600 dark:text-blue-400">info@vence.es</a>
           </p>
         </div>
 
