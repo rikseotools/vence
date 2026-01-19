@@ -142,12 +142,6 @@ export default function PrivacidadPage() {
             <li>Estado de la suscripción (activa, cancelada, etc.)</li>
             <li>Fechas de inicio y renovación</li>
           </ul>
-          <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Stripe puede transferir datos a servidores fuera del EEE bajo cláusulas contractuales tipo
-            aprobadas por la Comisión Europea. Puedes consultar su política de privacidad en{' '}
-            <a href="https://stripe.com/es/privacy" className="text-blue-600 dark:text-blue-400" target="_blank" rel="noopener noreferrer">stripe.com/es/privacy</a>.
-          </p>
-
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
             10. Cambios en esta Política
           </h2>
