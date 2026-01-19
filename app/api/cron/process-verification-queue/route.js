@@ -1,5 +1,6 @@
 // app/api/cron/process-verification-queue/route.js
 // Cron job que procesa la cola de verificaciones de preguntas
+// Procesa múltiples batches en una sola ejecución hasta completar o timeout
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -8,14 +9,20 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-// Número de preguntas a procesar por ejecución (para no exceder timeout de 60s)
-const BATCH_SIZE = 10
+// Número de preguntas a procesar por batch
+const BATCH_SIZE = 5
+
+// Tiempo máximo de ejecución (50 segundos para dejar margen antes del timeout de 60s)
+const MAX_EXECUTION_TIME_MS = 50000
 
 /**
  * GET /api/cron/process-verification-queue
  * Procesa la siguiente tarea de verificación en la cola
+ * Continúa procesando batches hasta completar o alcanzar el timeout
  */
 export async function GET(request) {
+  const startTime = Date.now()
+
   try {
     // Verificar cron secret (opcional, para seguridad)
     const authHeader = request.headers.get('authorization')
@@ -75,94 +82,137 @@ export async function GET(request) {
       task = updatedTask
     }
 
-    // 2. Obtener las preguntas pendientes de este tema
-    const pendingQuestionIds = await getPendingQuestionIds(task)
-
-    if (pendingQuestionIds.length === 0) {
-      // Ya no hay pendientes, marcar como completada
-      await supabase
-        .from('verification_queue')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', task.id)
-
-      return Response.json({
-        success: true,
-        message: 'Verificación completada',
-        task_id: task.id,
-        total_processed: task.processed_questions
-      })
-    }
-
-    // 3. Tomar un lote de preguntas
-    const batch = pendingQuestionIds.slice(0, BATCH_SIZE)
-
-    // 4. Llamar a la API de verificación existente
     // Determinar base URL según entorno
     const getBaseUrl = () => {
-      // 1. Usar variable explícita si está configurada
       if (process.env.NEXT_PUBLIC_APP_URL) {
         return process.env.NEXT_PUBLIC_APP_URL
       }
-      // 2. En Vercel producción, usar URL de producción
       if (process.env.VERCEL_ENV === 'production' && process.env.VERCEL_PROJECT_PRODUCTION_URL) {
         return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       }
-      // 3. En Vercel preview/development, usar URL del deployment
       if (process.env.VERCEL_URL) {
         return `https://${process.env.VERCEL_URL}`
       }
-      // 4. Fallback a localhost
       return 'http://localhost:3000'
     }
-    const verifyResponse = await fetch(
-      `${getBaseUrl()}/api/topic-review/verify`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionIds: batch,
-          provider: task.ai_provider,
-          model: task.ai_model
-        })
+
+    const baseUrl = getBaseUrl()
+    let totalProcessedThisRun = 0
+    let totalSuccessfulThisRun = 0
+    let totalFailedThisRun = 0
+    let batchesProcessed = 0
+    let isComplete = false
+    let billingError = false
+
+    // 2. Procesar batches en loop hasta completar o timeout
+    while (!isComplete && !billingError) {
+      // Verificar si nos acercamos al timeout
+      const elapsed = Date.now() - startTime
+      if (elapsed > MAX_EXECUTION_TIME_MS) {
+        console.log(`⏰ Timeout alcanzado después de ${batchesProcessed} batches (${elapsed}ms)`)
+        break
       }
-    )
 
-    const verifyResult = await verifyResponse.json()
+      // Obtener las preguntas pendientes de este tema
+      const pendingQuestionIds = await getPendingQuestionIds(task)
 
-    // 5. Actualizar progreso
-    const newProcessed = task.processed_questions + batch.length
-    const newSuccessful = task.successful_verifications + (verifyResult.results?.length || 0)
-    const newFailed = task.failed_verifications + (verifyResult.errors?.length || 0)
+      if (pendingQuestionIds.length === 0) {
+        isComplete = true
+        break
+      }
 
-    // Verificar si terminamos
-    const isComplete = newProcessed >= task.total_questions ||
-                       pendingQuestionIds.length <= BATCH_SIZE
+      // Tomar un lote de preguntas
+      const batch = pendingQuestionIds.slice(0, BATCH_SIZE)
+      console.log(`📦 Procesando batch ${batchesProcessed + 1}: ${batch.length} preguntas`)
 
-    await supabase
+      // Llamar a la API de verificación
+      const verifyResponse = await fetch(
+        `${baseUrl}/api/topic-review/verify`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionIds: batch,
+            provider: task.ai_provider,
+            model: task.ai_model
+          })
+        }
+      )
+
+      const verifyResult = await verifyResponse.json()
+
+      // Detectar error de billing/créditos
+      if (!verifyResult.success && verifyResult.errorType === 'billing') {
+        console.error(`🛑 Error de billing: ${verifyResult.error}`)
+        billingError = true
+
+        // Marcar la tarea como fallida
+        await supabase
+          .from('verification_queue')
+          .update({
+            status: 'failed',
+            error_message: verifyResult.error,
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', task.id)
+
+        break
+      }
+
+      // Actualizar contadores
+      const batchSuccessful = verifyResult.results?.length || 0
+      const batchFailed = verifyResult.errors?.length || 0
+
+      totalProcessedThisRun += batch.length
+      totalSuccessfulThisRun += batchSuccessful
+      totalFailedThisRun += batchFailed
+      batchesProcessed++
+
+      // Actualizar progreso en BD
+      const newProcessed = task.processed_questions + totalProcessedThisRun
+      const newSuccessful = task.successful_verifications + totalSuccessfulThisRun
+      const newFailed = task.failed_verifications + totalFailedThisRun
+
+      // Verificar si terminamos (usamos pendingQuestionIds.length porque es dinámico)
+      isComplete = pendingQuestionIds.length <= batch.length
+
+      await supabase
+        .from('verification_queue')
+        .update({
+          processed_questions: newProcessed,
+          successful_verifications: newSuccessful,
+          failed_verifications: newFailed,
+          status: isComplete ? 'completed' : 'processing',
+          completed_at: isComplete ? new Date().toISOString() : null
+        })
+        .eq('id', task.id)
+
+      // Pequeña pausa entre batches para no saturar
+      if (!isComplete) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+      }
+    }
+
+    // Recargar task para obtener valores actualizados
+    const { data: finalTask } = await supabase
       .from('verification_queue')
-      .update({
-        processed_questions: newProcessed,
-        successful_verifications: newSuccessful,
-        failed_verifications: newFailed,
-        status: isComplete ? 'completed' : 'processing',
-        completed_at: isComplete ? new Date().toISOString() : null
-      })
+      .select('*')
       .eq('id', task.id)
+      .single()
 
     return Response.json({
-      success: true,
+      success: !billingError,
       task_id: task.id,
       topic_id: task.topic_id,
-      batch_size: batch.length,
-      processed: newProcessed,
-      total: task.total_questions,
-      successful: newSuccessful,
-      failed: newFailed,
+      batches_processed: batchesProcessed,
+      processed_this_run: totalProcessedThisRun,
+      processed_total: finalTask?.processed_questions || 0,
+      total: finalTask?.total_questions || task.total_questions,
+      successful: finalTask?.successful_verifications || 0,
+      failed: finalTask?.failed_verifications || 0,
       is_complete: isComplete,
-      remaining: pendingQuestionIds.length - batch.length
+      billing_error: billingError,
+      execution_time_ms: Date.now() - startTime
     })
 
   } catch (error) {
@@ -170,7 +220,8 @@ export async function GET(request) {
 
     return Response.json({
       success: false,
-      error: error.message
+      error: error.message,
+      execution_time_ms: Date.now() - startTime
     }, { status: 500 })
   }
 }
