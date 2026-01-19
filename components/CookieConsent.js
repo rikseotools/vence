@@ -103,8 +103,8 @@ export default function CookieBanner() {
   const { consent, hasConsent, updateConsent, isLoaded } = useCookieConsent()
   const [showSettings, setShowSettings] = useState(false)
   const [localSettings, setLocalSettings] = useState({
-    analytics: true,
-    marketing: true
+    analytics: false,
+    marketing: false
   })
 
   // No mostrar hasta que se cargue el estado
@@ -149,8 +149,7 @@ export default function CookieBanner() {
                 🍪 Configuración de cookies
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Usamos cookies para mejorar tu experiencia, analizar el tráfico y personalizar contenido.
-                Puedes aceptar todas, rechazar las no esenciales, o configurar tus preferencias.{' '}
+                Usamos cookies para mejorar tu experiencia, analizar el tráfico y personalizar contenido.{' '}
                 <a
                   href="/privacidad"
                   className="text-blue-600 dark:text-blue-400 hover:underline"
@@ -162,22 +161,22 @@ export default function CookieBanner() {
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setShowSettings(true)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                onClick={handleRejectAll}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
-                Configurar
+                Rechazar todo
               </button>
               <button
-                onClick={handleRejectAll}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                onClick={() => setShowSettings(true)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
-                Solo esenciales
+                Personalizar
               </button>
               <button
                 onClick={handleAcceptAll}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
               >
-                Aceptar todas
+                Aceptar todo
               </button>
             </div>
           </div>
@@ -186,7 +185,7 @@ export default function CookieBanner() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Configurar cookies
+                Personalizar cookies
               </h3>
               <button
                 onClick={() => setShowSettings(false)}
@@ -265,9 +264,9 @@ export default function CookieBanner() {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={handleRejectAll}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
-                Rechazar todas
+                Rechazar todo
               </button>
               <button
                 onClick={handleSaveSettings}
