@@ -57,10 +57,12 @@ export default function AdminFeedbackPage() {
   
   // Estados para emojis e imágenes en admin
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showInlineEmojiPicker, setShowInlineEmojiPicker] = useState(false)
   const [uploadedImages, setUploadedImages] = useState([])
   const [uploadingImage, setUploadingImage] = useState(false)
   const messagesEndRef = useRef(null)
   const chatTextareaRef = useRef(null)
+  const inlineTextareaRef = useRef(null)
 
   // Estado para otras conversaciones del mismo usuario
   const [userOtherConversations, setUserOtherConversations] = useState([])
@@ -1709,8 +1711,11 @@ export default function AdminFeedbackPage() {
 
                         {/* Info del usuario */}
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                          <div className="font-medium text-gray-900 dark:text-gray-100 truncate flex items-center gap-1.5">
                             {userData.name || userData.email || 'Usuario anónimo'}
+                            {(userData.planType === 'premium' || userData.planType === 'pro') && (
+                              <span className="text-yellow-500" title="Usuario Premium">👑</span>
+                            )}
                           </div>
                           {userData.name && userData.email && (
                             <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
@@ -1986,33 +1991,86 @@ export default function AdminFeedbackPage() {
 
                     {/* Input de mensaje */}
                     <div className="p-3 border-t dark:border-gray-700 bg-white dark:bg-gray-800">
-                      <div className="flex gap-2">
-                        <textarea
-                          value={inlineNewMessage}
-                          onChange={(e) => setInlineNewMessage(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault()
-                              sendInlineMessage()
-                            }
-                          }}
-                          placeholder="Escribe tu respuesta... (Enter para enviar)"
-                          rows={2}
-                          className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-none"
-                        />
-                        <button
-                          onClick={sendInlineMessage}
-                          disabled={!inlineNewMessage.trim() || sendingInlineMessage}
-                          className="px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {sendingInlineMessage ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                            </svg>
+                      <div className="flex flex-col gap-2">
+                        {/* Barra de herramientas */}
+                        <div className="flex items-center gap-2 relative">
+                          <button
+                            type="button"
+                            onClick={() => setShowInlineEmojiPicker(!showInlineEmojiPicker)}
+                            className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-600"
+                            title="Añadir emoji"
+                          >
+                            <span className="text-lg">😊</span>
+                          </button>
+                          <span className="text-xs text-gray-400">Enter = nuevo párrafo · Ctrl+Enter = enviar</span>
+
+                          {/* Selector de Emojis Inline */}
+                          {showInlineEmojiPicker && (
+                            <div className="absolute bottom-10 left-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-3 z-50 w-64 max-h-40 overflow-y-auto">
+                              <div className="grid grid-cols-8 gap-1">
+                                {EMOJIS.map((emoji, index) => (
+                                  <button
+                                    key={index}
+                                    type="button"
+                                    onClick={() => {
+                                      const textarea = inlineTextareaRef.current
+                                      if (textarea) {
+                                        const cursorPosition = textarea.selectionStart
+                                        const currentValue = inlineNewMessage
+                                        const newValue = currentValue.slice(0, cursorPosition) + emoji + currentValue.slice(cursorPosition)
+                                        setInlineNewMessage(newValue)
+                                        setTimeout(() => {
+                                          textarea.focus()
+                                          textarea.setSelectionRange(cursorPosition + emoji.length, cursorPosition + emoji.length)
+                                        }, 0)
+                                      }
+                                      setShowInlineEmojiPicker(false)
+                                    }}
+                                    className="p-1 text-lg hover:bg-gray-100 dark:hover:bg-gray-600 rounded transition-colors"
+                                    title={`Insertar ${emoji}`}
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           )}
-                        </button>
+                        </div>
+
+                        {/* Textarea y botón enviar */}
+                        <div className="flex gap-2">
+                          <textarea
+                            ref={inlineTextareaRef}
+                            value={inlineNewMessage}
+                            onChange={(e) => setInlineNewMessage(e.target.value)}
+                            onKeyDown={(e) => {
+                              // Ctrl/Cmd + Enter para enviar
+                              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                e.preventDefault()
+                                sendInlineMessage()
+                              }
+                              // Enter normal = nuevo párrafo (comportamiento por defecto)
+                            }}
+                            placeholder="Escribe tu respuesta..."
+                            rows={8}
+                            className="flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm resize-y"
+                            style={{ minHeight: '150px', maxHeight: '400px' }}
+                          />
+                          <button
+                            onClick={sendInlineMessage}
+                            disabled={!inlineNewMessage.trim() || sendingInlineMessage}
+                            className="px-4 self-end h-12 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            title="Enviar (Ctrl+Enter)"
+                          >
+                            {sendingInlineMessage ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -2372,14 +2430,14 @@ export default function AdminFeedbackPage() {
                         <textarea
                           ref={chatTextareaRef}
                           name="message"
-                          placeholder="Escribe tu respuesta... Usa el botón de imagen para adjuntar imagen si lo deseas."
-                          rows={3}
-                          className="w-full p-3 sm:p-4 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base resize-none overflow-hidden"
-                          style={{ 
-                            whiteSpace: 'pre-wrap', 
+                          placeholder="Escribe tu respuesta... (Enter = nuevo párrafo, Ctrl+Enter = enviar)"
+                          rows={8}
+                          className="w-full p-3 sm:p-4 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base resize-y overflow-auto"
+                          style={{
+                            whiteSpace: 'pre-wrap',
                             lineHeight: '1.5',
-                            minHeight: '60px',
-                            maxHeight: '150px'
+                            minHeight: '150px',
+                            maxHeight: '400px'
                           }}
                           onKeyDown={(e) => {
                             // Enviar con Ctrl/Cmd + Enter
@@ -2392,8 +2450,8 @@ export default function AdminFeedbackPage() {
                             // Auto-resize textarea
                             e.target.style.height = 'auto'
                             const scrollHeight = e.target.scrollHeight
-                            const maxHeight = 150
-                            const minHeight = 60
+                            const maxHeight = 400
+                            const minHeight = 150
                             e.target.style.height = `${Math.min(Math.max(scrollHeight, minHeight), maxHeight)}px`
                           }}
                         />

@@ -27,8 +27,8 @@ export default function PrivacidadPage() {
               src="/images/contact-info.png"
               alt="Datos de contacto"
               className="dark:invert dark:brightness-200"
-              width={450}
-              height={85}
+              width={500}
+              height={120}
             />
           </div>
 
