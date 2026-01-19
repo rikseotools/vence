@@ -3,6 +3,7 @@
 // Procesa múltiples batches en una sola ejecución hasta completar o timeout
 
 import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -24,13 +25,12 @@ export async function GET(request) {
   const startTime = Date.now()
 
   try {
-    // Verificar cron secret (opcional, para seguridad)
+    // Verificar autorización (igual que otros cron endpoints)
     const authHeader = request.headers.get('authorization')
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      // Permitir sin auth en desarrollo
-      if (process.env.NODE_ENV === 'production') {
-        return Response.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+    const expectedToken = `Bearer ${process.env.CRON_SECRET}`
+
+    if (authHeader !== expectedToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // 1. Buscar tarea en proceso o tomar la siguiente pendiente
@@ -53,7 +53,7 @@ export async function GET(request) {
         .single()
 
       if (pendingError || !pendingTask) {
-        return Response.json({
+        return NextResponse.json({
           success: true,
           message: 'No hay verificaciones pendientes',
           processed: 0
@@ -73,7 +73,7 @@ export async function GET(request) {
         .single()
 
       if (updateError || !updatedTask) {
-        return Response.json({
+        return NextResponse.json({
           success: false,
           error: 'No se pudo iniciar la tarea (posible race condition)'
         })
@@ -200,7 +200,7 @@ export async function GET(request) {
       .eq('id', task.id)
       .single()
 
-    return Response.json({
+    return NextResponse.json({
       success: !billingError,
       task_id: task.id,
       topic_id: task.topic_id,
@@ -218,7 +218,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('Error en process-verification-queue:', error)
 
-    return Response.json({
+    return NextResponse.json({
       success: false,
       error: error.message,
       execution_time_ms: Date.now() - startTime
