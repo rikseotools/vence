@@ -173,37 +173,18 @@ export default function HeaderES() {
       }
 
       try {
-        // Consultar directamente conversaciones no vistas en BD
+        // Consultar conversaciones abiertas no vistas por admin
         const { data, error } = await supabase
           .from('feedback_conversations')
           .select('id')
-          .eq('status', 'waiting_admin')
-          .is('admin_viewed_at', null) // Solo las que no han sido vistas por admin
+          .eq('status', 'open')
+          .is('admin_viewed_at', null)
 
         if (error) {
-          // Si el campo admin_viewed_at no existe, usar fallback temporal
-          if (error.message && error.message.includes('admin_viewed_at')) {
-            console.log('⚠️ Campo admin_viewed_at no existe, usando conteo básico como fallback')
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from('feedback_conversations')
-              .select('id')
-              .eq('status', 'waiting_admin')
-            
-            if (fallbackError) {
-              console.error('Error en fallback de feedbacks pendientes:', fallbackError)
-              setPendingFeedbacks(0)
-            } else {
-              const count = fallbackData?.length || 0
-              console.log(`🔔 Header (fallback): ${count} conversaciones esperando admin`)
-              setPendingFeedbacks(count)
-            }
-          } else {
-            console.error('Error verificando feedbacks pendientes:', error)
-            setPendingFeedbacks(0)
-          }
+          console.error('Error verificando feedbacks pendientes:', error)
+          setPendingFeedbacks(0)
         } else {
           const unviewedCount = data?.length || 0
-          // Solo loguear si hay pendientes
           if (unviewedCount > 0) {
             console.log(`🔔 Header: ${unviewedCount} conversaciones pendientes`)
           }
