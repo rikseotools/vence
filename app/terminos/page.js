@@ -66,9 +66,19 @@ export default function TerminosPage() {
             3.3 Renovación y Cancelación
           </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Las suscripciones Premium se renuevan automáticamente. Puedes cancelar en
+            Las suscripciones Premium se renuevan automáticamente. Te enviaremos un
+            correo recordatorio 7 días antes de cada renovación. Puedes cancelar en
             cualquier momento desde tu perfil. La cancelación será efectiva al final
             del período de facturación actual.
+          </p>
+          <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mt-4 mb-2">
+            3.4 Devoluciones
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Si no estás satisfecho con la prestación del servicio por un problema
+            imputable a Vence, puedes solicitar la devolución del importe abonado
+            abriendo un chat de soporte dentro de la plataforma. Evaluaremos cada
+            solicitud de forma individual.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -81,41 +91,28 @@ export default function TerminosPage() {
             organización y explicaciones son propiedad de Vence.
           </p>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            No está permitido:
+            No está permitido copiar, redistribuir o explotar comercialmente el contenido
+            sin autorización expresa, ni compartir tu cuenta con terceros.
           </p>
-          <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 mb-4">
-            <li>Copiar o redistribuir el contenido sin autorización</li>
-            <li>Utilizar técnicas de scraping o extracción automatizada</li>
-            <li>Compartir tu cuenta con terceros</li>
-            <li>Usar el servicio para fines comerciales no autorizados</li>
-          </ul>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
             5. Uso Aceptable
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Te comprometes a usar Vence de manera responsable y legal. Está prohibido:
+            Te comprometes a usar Vence de manera responsable y legal, sin intentar
+            acceder a sistemas sin autorización ni interferir con el funcionamiento
+            de la plataforma.
           </p>
-          <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 mb-4">
-            <li>Intentar acceder a sistemas o datos sin autorización</li>
-            <li>Interferir con el funcionamiento de la plataforma</li>
-            <li>Crear múltiples cuentas para evadir restricciones</li>
-            <li>Acosar o molestar a otros usuarios</li>
-          </ul>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
             6. Limitación de Responsabilidad
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Vence proporciona el servicio "tal cual". Aunque nos esforzamos por mantener
-            la precisión del contenido:
+            Vence se exime de responsabilidad por el uso que el usuario pueda realizar
+            de la plataforma o por decisiones basadas en sus contenidos. Aunque nos
+            esforzamos por mantener la calidad y precisión del contenido, este tiene
+            carácter orientativo y complementario a tu preparación.
           </p>
-          <ul className="list-disc pl-6 text-gray-600 dark:text-gray-300 mb-4">
-            <li>No garantizamos que aprobarás las oposiciones</li>
-            <li>El contenido es orientativo y puede contener errores</li>
-            <li>No somos responsables de cambios en los temarios oficiales</li>
-            <li>No garantizamos disponibilidad ininterrumpida del servicio</li>
-          </ul>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
             7. Modificaciones del Servicio
