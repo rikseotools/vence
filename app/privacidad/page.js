@@ -22,11 +22,15 @@ export default function PrivacidadPage() {
           <p className="text-gray-600 dark:text-gray-300 mb-4">
             El responsable del tratamiento de tus datos personales es:
           </p>
-          <ul className="list-none pl-0 text-gray-600 dark:text-gray-300 mb-4">
-            <li><strong>Razón social:</strong> DREAM NETWORK SL</li>
-            <li><strong>Domicilio:</strong> Calle Juan Bravo 3, Bl. A, 28006 Madrid, España</li>
-            <li><strong>Email:</strong> <a href="mailto:info@vence.es" className="text-blue-600 dark:text-blue-400">info@vence.es</a></li>
-          </ul>
+          <div className="mb-4">
+            <img
+              src="/images/contact-info.png"
+              alt="Datos de contacto"
+              className="dark:invert dark:brightness-200"
+              width={450}
+              height={85}
+            />
+          </div>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
             2. Datos que Recopilamos

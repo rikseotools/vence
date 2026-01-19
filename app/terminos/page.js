@@ -17,9 +17,10 @@ export default function TerminosPage() {
           </p>
 
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Bienvenido a Vence, plataforma operada por DREAM NETWORK SL, con domicilio en
-            Calle Juan Bravo 3, Bl. A, 28006 Madrid, España. Al acceder y utilizar nuestra
-            plataforma, aceptas estos términos y condiciones en su totalidad.
+            Bienvenido a Vence. Al acceder y utilizar nuestra plataforma, aceptas estos
+            términos y condiciones en su totalidad. Los datos del responsable están
+            disponibles en nuestra{' '}
+            <a href="/privacidad" className="text-blue-600 dark:text-blue-400">Política de Privacidad</a>.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
@@ -154,8 +155,9 @@ export default function TerminosPage() {
             11. Contacto
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Si tienes preguntas sobre estos términos, contacta con nosotros en:{' '}
-            <a href="mailto:info@vence.es" className="text-blue-600 dark:text-blue-400">info@vence.es</a>
+            Si tienes preguntas sobre estos términos, puedes abrir un chat de soporte
+            dentro de la plataforma o consultar los datos de contacto en nuestra{' '}
+            <a href="/privacidad" className="text-blue-600 dark:text-blue-400">Política de Privacidad</a>.
           </p>
         </div>
 
