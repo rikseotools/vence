@@ -709,107 +709,57 @@ const TestConfigurator = ({
     }
   };
 
-  // 🆕 Función para cargar preguntas falladas del usuario
+  // 🆕 Función para cargar preguntas falladas del usuario (v2 - Drizzle + Zod)
   const loadFailedQuestions = async () => {
     if (!currentUser) return
-    
+
     try {
-      console.log(`🔍 Cargando preguntas falladas para ${tema ? `tema ${tema}` : 'configurador específico'}...`)
-      
-      // Construir la consulta base
-      let query = supabase
-        .from('test_questions')
-        .select(`
-          question_id,
-          created_at,
-          time_spent_seconds,
-          tests!inner(user_id),
-          questions!inner(
-            id,
-            question_text,
-            difficulty,
-            articles!inner(
-              article_number,
-              laws!inner(short_name)
-            )
-          )
-        `)
-        .eq('tests.user_id', currentUser.id)
-        .eq('is_correct', false)
-      
-      // Si es configurador específico de ley, filtrar por leyes seleccionadas
-      if (!tema && selectedLaws.size > 0) {
-        console.log('🎯 Configurador específico - filtrando por leyes:', Array.from(selectedLaws))
-        query = query.in('questions.articles.laws.short_name', Array.from(selectedLaws))
-      } else if (tema) {
-        // Si es tema específico, usar filtro normal
-        query = query.eq('tema_number', tema)
-      } else {
-        // Si no hay tema ni leyes seleccionadas, no hay nada que buscar
+      console.log(`🔍 [v2] Cargando preguntas falladas para ${tema ? `tema ${tema}` : 'configurador específico'}...`)
+
+      // Validar que hay filtros suficientes
+      if (!tema && selectedLaws.size === 0) {
         console.warn('⚠️ No hay tema ni leyes seleccionadas para buscar preguntas falladas')
         alert('No se puede determinar qué preguntas buscar. Selecciona una ley primero.')
         setOnlyFailedQuestions(false)
         return
       }
-      
-      const { data: failedAnswers, error: failedError } = await query.order('created_at', { ascending: false })
-      
-      if (failedError) {
-        console.error('❌ Error obteniendo preguntas falladas:', failedError)
+
+      // Llamar a la API v2
+      const response = await fetch('/api/questions/user-failed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          topicNumber: tema || undefined,
+          selectedLaws: tema ? [] : Array.from(selectedLaws),
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        console.error('❌ Error obteniendo preguntas falladas:', data.error)
         alert('Error al cargar las preguntas falladas')
+        setOnlyFailedQuestions(false)
         return
       }
-      
-      if (!failedAnswers || failedAnswers.length === 0) {
+
+      if (!data.questions || data.questions.length === 0) {
         alert('No tienes preguntas falladas en este tema aún.\nCompleta algunos tests primero para poder usar esta función.')
         setOnlyFailedQuestions(false)
         return
       }
-      
-      // Procesar y agrupar las preguntas falladas
-      const failedQuestionsMap = new Map()
-      
-      failedAnswers.forEach(answer => {
-        const questionId = answer.question_id
-        if (!failedQuestionsMap.has(questionId)) {
-          failedQuestionsMap.set(questionId, {
-            questionId,
-            questionText: answer.questions.question_text.substring(0, 80) + '...',
-            difficulty: answer.questions.difficulty,
-            articleNumber: answer.questions.articles?.article_number,
-            lawShortName: answer.questions.articles?.laws?.short_name,
-            failedCount: 0,
-            lastFailed: answer.created_at,
-            firstFailed: answer.created_at,
-            totalTime: 0
-          })
-        }
-        
-        const question = failedQuestionsMap.get(questionId)
-        question.failedCount++
-        question.totalTime += (answer.time_spent_seconds || 0)
-        
-        // Actualizar fechas
-        if (new Date(answer.created_at) > new Date(question.lastFailed)) {
-          question.lastFailed = answer.created_at
-        }
-        if (new Date(answer.created_at) < new Date(question.firstFailed)) {
-          question.firstFailed = answer.created_at
-        }
-      })
-      
-      const failedQuestionsList = Array.from(failedQuestionsMap.values())
-      
+
       setFailedQuestionsData({
-        totalQuestions: failedQuestionsList.length,
-        totalFailures: failedAnswers.length,
-        questions: failedQuestionsList
+        totalQuestions: data.totalQuestions,
+        totalFailures: data.totalFailures,
+        questions: data.questions
       })
-      
+
       setShowFailedQuestionsModal(true)
-      
-      console.log(`✅ ${failedQuestionsList.length} preguntas falladas cargadas`)
-      
+
+      console.log(`✅ [v2] ${data.questions.length} preguntas falladas cargadas`)
+
     } catch (error) {
       console.error('❌ Error cargando preguntas falladas:', error)
       alert('Error al cargar las preguntas falladas')
