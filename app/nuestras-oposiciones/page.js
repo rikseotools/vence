@@ -129,6 +129,37 @@ export default function OposicionesPage() {
       ],
       href: '/auxilio-judicial',
       boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27053'
+    },
+    {
+      id: 'administrativo-castilla-leon',
+      name: 'Administrativo Junta de Castilla y León',
+      shortName: 'Administrativo CyL',
+      badge: 'C1',
+      icon: '🦁',
+      color: 'purple',
+      description: 'Oposición para trabajar en la Junta de Castilla y León como funcionario del Cuerpo Administrativo. 191 plazas convocadas en BOCYL 08/10/2024.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C1',
+      temarios: 41,
+      tests: 0,
+      difficulty: 'Alto',
+      duration: '12-18 meses',
+      salary: '22.000€ - 28.000€',
+      comingSoon: true,
+      features: [
+        'Temario oficial BOCYL 2024 (41 temas)',
+        '5 grupos temáticos',
+        'Examen 100 preguntas test',
+        'Próximamente con tests',
+        'Próximamente con estadísticas'
+      ],
+      requirements: [
+        'Título de Bachiller o Técnico',
+        'Nacionalidad española o UE',
+        'Tener 16 años y no exceder edad jubilación'
+      ],
+      href: '/administrativo-castilla-leon',
+      boeUrl: 'https://bocyl.jcyl.es/boletines/2024/10/08/pdf/BOCYL-D-08102024-4.pdf'
     }
   ]
 
@@ -150,9 +181,12 @@ export default function OposicionesPage() {
     if (event.target.tagName === 'A' || event.target.tagName === 'BUTTON' || event.target.closest('a, button')) {
       return
     }
-    
-    // Ir directamente a la página principal de la oposición
-    window.location.href = oposicion.href
+
+    // Para oposiciones "comingSoon", ir al temario
+    // Para las demás, ir a la página principal
+    window.location.href = oposicion.comingSoon
+      ? `${oposicion.href}/temario`
+      : oposicion.href
   }
 
   return (
@@ -225,11 +259,18 @@ export default function OposicionesPage() {
               className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 cursor-pointer group border-gray-200 hover:border-blue-300 hover:shadow-blue-100"
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white p-6 relative overflow-hidden">
-                
+              <div className={`${oposicion.comingSoon ? 'bg-gradient-to-r from-amber-600 to-amber-700' : 'bg-gradient-to-r from-slate-700 to-slate-800'} text-white p-6 relative overflow-hidden`}>
+
+                {/* Badge Próximamente */}
+                {oposicion.comingSoon && (
+                  <div className="absolute top-4 right-4 bg-white/20 px-3 py-1 rounded-full text-xs font-medium">
+                    Próximamente
+                  </div>
+                )}
+
                 {/* Efecto hover en header */}
                 <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                
+
                 <div className="flex items-start justify-between relative z-10">
                   <div className="flex items-center space-x-4">
                     <span className="text-4xl transform group-hover:scale-110 transition-transform duration-300">
@@ -316,14 +357,24 @@ export default function OposicionesPage() {
                     <span>📚</span>
                     <span>Ver Temario</span>
                   </Link>
-                  <Link
-                    href={`${oposicion.href}/test`}
-                    className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-semibold transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span>🎯</span>
-                    <span>Hacer Tests</span>
-                  </Link>
+                  {oposicion.comingSoon ? (
+                    <div
+                      className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-amber-100 text-amber-700 rounded-lg font-semibold cursor-not-allowed"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>🕐</span>
+                      <span>Tests próximamente</span>
+                    </div>
+                  ) : (
+                    <Link
+                      href={`${oposicion.href}/test`}
+                      className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-semibold transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>🎯</span>
+                      <span>Hacer Tests</span>
+                    </Link>
+                  )}
                 </div>
 
                 {/* Enlace BOE */}
