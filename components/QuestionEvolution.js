@@ -523,9 +523,10 @@ export default function QuestionEvolution({
   return `Hace ${Math.floor(dias / 365)} años`
 }
 
-  // Loading y error silenciosos
-  if (loading) return null
-  if (error) return null
+  // Loading y error silenciosos - pero mantener contenido anterior mientras carga
+  // Solo retornar null si no hay datos previos que mostrar
+  if (loading && !evolutionData) return null
+  if (error && !evolutionData) return null
   if (!evolutionData) return null
 
   const colorClasses = {
