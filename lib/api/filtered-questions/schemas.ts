@@ -55,6 +55,10 @@ export const getFilteredQuestionsRequestSchema = z.object({
   focusEssentialArticles: z.boolean().default(false),  // Solo artículos con preguntas oficiales
   prioritizeNeverSeen: z.boolean().default(false),     // Priorizar preguntas nunca vistas
   proportionalByTopic: z.boolean().default(false),     // Distribución proporcional entre temas
+
+  // 🔄 Filtro de preguntas falladas
+  onlyFailedQuestions: z.boolean().default(false),     // Solo preguntas que el usuario ha fallado
+  failedQuestionIds: z.array(z.string().uuid()).default([]),  // IDs específicos de preguntas falladas
 })
 
 export type GetFilteredQuestionsRequest = z.infer<typeof getFilteredQuestionsRequestSchema>
