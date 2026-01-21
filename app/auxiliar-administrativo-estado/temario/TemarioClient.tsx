@@ -80,26 +80,26 @@ export default function TemarioClient({ bloques, oposicion, fechaActualizacion }
       return (
         <div
           key={tema.id}
-          className="flex items-center gap-4 p-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 opacity-60"
+          className="flex items-center gap-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-700"
         >
-          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-            <span className="text-base font-bold text-gray-400 dark:text-gray-500">
+          <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-800/50 flex items-center justify-center">
+            <span className="text-base font-bold text-amber-600 dark:text-amber-400">
               {displayNumber}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-500 dark:text-gray-400">
+            <h3 className="font-medium text-gray-700 dark:text-gray-300">
               {tema.titulo}
             </h3>
-            <p className="text-sm text-gray-400 dark:text-gray-500">
-              Tema no disponible
+            <p className="text-sm text-amber-600 dark:text-amber-400">
+              En elaboración · Disponible a partir de abril 2026
             </p>
           </div>
-          <div className="flex-shrink-0 flex items-center gap-1.5 text-gray-400">
+          <div className="flex-shrink-0 flex items-center gap-1.5 text-amber-500">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-xs font-medium hidden sm:inline">No disponible</span>
+            <span className="text-xs font-medium hidden sm:inline">En elaboración</span>
           </div>
         </div>
       )
