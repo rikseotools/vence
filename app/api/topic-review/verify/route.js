@@ -286,10 +286,33 @@ IMPORTANTE:
 }
 
 /**
+ * Fetch con timeout
+ */
+async function fetchWithTimeout(url, options, timeoutMs = 60000) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    })
+    clearTimeout(timeout)
+    return response
+  } catch (error) {
+    clearTimeout(timeout)
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`)
+    }
+    throw error
+  }
+}
+
+/**
  * Verifica con OpenAI
  */
 async function verifyWithOpenAI(prompt, apiKey, model) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -304,7 +327,7 @@ async function verifyWithOpenAI(prompt, apiKey, model) {
       temperature: 0.1,
       max_tokens: getMaxOutputTokens(model)
     })
-  })
+  }, 60000) // 60 segundos timeout
 
   const data = await response.json()
   if (data.error) throw new Error(data.error.message)
@@ -320,7 +343,7 @@ async function verifyWithOpenAI(prompt, apiKey, model) {
  * Verifica con Claude
  */
 async function verifyWithClaude(prompt, apiKey, model) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -332,7 +355,7 @@ async function verifyWithClaude(prompt, apiKey, model) {
       max_tokens: getMaxOutputTokens(model),
       messages: [{ role: 'user', content: prompt }]
     })
-  })
+  }, 60000) // 60 segundos timeout
 
   const data = await response.json()
   if (data.error || data.type === 'error') {
@@ -354,7 +377,7 @@ async function verifyWithClaude(prompt, apiKey, model) {
  * Verifica con Google Gemini
  */
 async function verifyWithGoogle(prompt, apiKey, model) {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
@@ -363,7 +386,8 @@ async function verifyWithGoogle(prompt, apiKey, model) {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.1, maxOutputTokens: getMaxOutputTokens(model) }
       })
-    }
+    },
+    60000 // 60 segundos timeout
   )
 
   const data = await response.json()
@@ -407,12 +431,62 @@ function parseJSONResponse(content) {
 }
 
 /**
+ * Verificar preguntas psicotécnicas (simplificado - solo marcar como verificadas)
+ * Las psicotécnicas solo necesitan is_verified = true/false
+ */
+async function verifyPsychometricQuestions(questionIds, provider, model, apiKey) {
+  try {
+    // Por ahora, solo marcamos como verificadas sin análisis de IA
+    // (se puede implementar verificación con IA en el futuro si se requiere)
+    const results = []
+
+    for (const questionId of questionIds) {
+      // Marcar como verificada
+      const { error: updateError } = await supabase
+        .from('psychometric_questions')
+        .update({ is_verified: true })
+        .eq('id', questionId)
+
+      if (updateError) {
+        console.error(`Error actualizando pregunta psicotécnica ${questionId}:`, updateError)
+        results.push({
+          questionId,
+          success: false,
+          error: updateError.message
+        })
+      } else {
+        results.push({
+          questionId,
+          success: true,
+          status: 'verified'
+        })
+      }
+    }
+
+    return Response.json({
+      success: true,
+      message: `${results.filter(r => r.success).length}/${questionIds.length} preguntas psicotécnicas marcadas como verificadas`,
+      results,
+      isPsychometric: true
+    })
+
+  } catch (error) {
+    console.error('Error verificando preguntas psicotécnicas:', error)
+    return Response.json({
+      success: false,
+      error: 'Error verificando preguntas psicotécnicas',
+      details: error.message
+    }, { status: 500 })
+  }
+}
+
+/**
  * POST /api/topic-review/verify
  * Verifica preguntas seleccionadas con IA
  */
 export async function POST(request) {
   try {
-    const { questionIds, provider = 'openai', model } = await request.json()
+    const { questionIds, provider = 'openai', model, isPsychometric = false } = await request.json()
 
     if (!questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
       return Response.json({
@@ -435,7 +509,12 @@ export async function POST(request) {
 
     const modelUsed = model || aiConfig.model
 
-    // Obtener preguntas con sus artículos
+    // Si son preguntas psicotécnicas, usar tabla diferente
+    if (isPsychometric) {
+      return await verifyPsychometricQuestions(questionIds, normalizedProvider, modelUsed, aiConfig.apiKey)
+    }
+
+    // Obtener preguntas con sus artículos (solo para questions normales)
     // Nota: Las leyes virtuales se detectan por tener "ficticia" en su descripción
     const { data: questions, error: qError } = await supabase
       .from('questions')
@@ -499,7 +578,10 @@ export async function POST(request) {
       invalid_structure: 0
     }
 
-    for (const question of questions) {
+    for (let i = 0; i < questions.length; i++) {
+      const question = questions[i]
+      console.log(`[${i + 1}/${questions.length}] Verificando pregunta ${question.id}`)
+
       try {
         // === VALIDACIÓN ESTRUCTURAL (sin IA) ===
         // Verificar que todas las opciones tienen contenido
@@ -709,16 +791,56 @@ export async function POST(request) {
           explanationFix: aiResponse.explanationFix
         })
 
+        console.log(`✅ [${i + 1}/${questions.length}] Pregunta ${question.id} verificada: ${topicReviewStatus}`)
+
         // Pequeña pausa entre llamadas para evitar rate limits
         await new Promise(resolve => setTimeout(resolve, 300))
 
       } catch (err) {
-        console.error(`Error verificando pregunta ${question.id}:`, err)
+        const isTimeout = err.message?.includes('timeout')
+        const isBillingError = err.message?.includes('credit balance') ||
+                                err.message?.includes('insufficient_quota') ||
+                                err.message?.includes('billing') ||
+                                err.message?.includes('quota')
+        const errorType = isTimeout ? 'TIMEOUT' : isBillingError ? 'SIN CRÉDITOS' : 'ERROR'
+
+        console.error(`❌ [${i + 1}/${questions.length}] Error verificando pregunta ${question.id} (${errorType}):`, err.message)
+
         errors.push({
           questionId: question.id,
-          error: err.message
+          error: err.message,
+          isTimeout,
+          isBillingError,
+          errorType
         })
+
+        // Si es un error de billing, detener el proceso completo
+        if (isBillingError) {
+          console.error(`🛑 Deteniendo verificación: ${normalizedProvider} no tiene créditos`)
+          break
+        }
       }
+    }
+
+    // Si hay errores de billing, devolver error específico
+    const billingErrors = errors.filter(e => e.isBillingError)
+    if (billingErrors.length > 0) {
+      const providerName = normalizedProvider === 'anthropic' ? 'Claude (Anthropic)' :
+                          normalizedProvider === 'openai' ? 'ChatGPT (OpenAI)' :
+                          normalizedProvider === 'google' ? 'Gemini (Google)' : normalizedProvider
+
+      return Response.json({
+        success: false,
+        error: `La API de ${providerName} no tiene créditos suficientes. Por favor, añade créditos o cambia a otro proveedor de IA.`,
+        errorType: 'billing',
+        provider: normalizedProvider,
+        details: {
+          message: billingErrors[0].error,
+          questionsVerified: results.length,
+          questionsFailed: errors.length,
+          totalQuestions: questionIds.length
+        }
+      }, { status: 402 }) // 402 Payment Required
     }
 
     return Response.json({

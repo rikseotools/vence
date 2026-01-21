@@ -35,8 +35,11 @@ export async function GET(request) {
       console.error('Error obteniendo position_types:', posError)
     }
 
-    // Extraer valores únicos de position_type
-    const uniquePositions = [...new Set(positions?.map(p => p.position_type) || [])]
+    // Extraer valores únicos de position_type y añadir psicotécnicos
+    const uniquePositions = [
+      ...new Set(positions?.map(p => p.position_type) || []),
+      'psicotecnicos' // Añadir psicotécnicos como opción especial
+    ]
 
     // Si no hay position seleccionado, devolver solo la lista de oposiciones
     if (!positionType) {
@@ -45,6 +48,11 @@ export async function GET(request) {
         positions: uniquePositions,
         topics: []
       })
+    }
+
+    // Si es psicotécnicos, usar lógica especial
+    if (positionType === 'psicotecnicos') {
+      return await getPsychometricTopics()
     }
 
     // 2. Obtener temas de la oposición seleccionada
@@ -274,11 +282,134 @@ export async function GET(request) {
 }
 
 /**
+ * Obtiene categorías psicotécnicas con sus preguntas (similar a topics pero para psychometric)
+ */
+async function getPsychometricTopics() {
+  try {
+    // 1. Obtener todas las categorías activas
+    const { data: categories, error: categoriesError } = await supabase
+      .from('psychometric_categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('display_order')
+
+    if (categoriesError) {
+      console.error('Error obteniendo categorías psicotécnicas:', categoriesError)
+      return Response.json({
+        success: false,
+        error: 'Error obteniendo categorías psicotécnicas'
+      }, { status: 500 })
+    }
+
+    // 2. Para cada categoría, obtener estadísticas de preguntas
+    const categoriesWithStats = await Promise.all(
+      categories.map(async (category) => {
+        // Obtener preguntas de esta categoría
+        const { data: questions } = await supabase
+          .from('psychometric_questions')
+          .select('id, is_verified, difficulty')
+          .eq('category_id', category.id)
+          .eq('is_active', true)
+
+        const stats = {
+          total_questions: questions?.length || 0,
+          verified: questions?.filter(q => q.is_verified).length || 0,
+          pending: questions?.filter(q => !q.is_verified).length || 0,
+          // Para psicotécnicos solo usamos "tech_perfect" para verificadas
+          tech_perfect: questions?.filter(q => q.is_verified).length || 0
+        }
+
+        return {
+          id: category.id,
+          topic_number: category.display_order,
+          title: category.display_name,
+          description: category.description,
+          position_type: 'psicotecnicos',
+          is_active: category.is_active,
+          stats,
+          laws: [], // Psicotécnicos no tienen leyes
+          hasVirtualLaws: true // Marcar como técnico
+        }
+      })
+    )
+
+    // 3. Crear un solo bloque con todas las categorías psicotécnicas
+    const blocks = [
+      {
+        id: 'psychometric',
+        title: '🧠 Pruebas Psicotécnicas',
+        topics: categoriesWithStats
+      }
+    ]
+
+    return Response.json({
+      success: true,
+      positions: ['psicotecnicos'],
+      blocks
+    })
+
+  } catch (error) {
+    console.error('Error en getPsychometricTopics:', error)
+    return Response.json({
+      success: false,
+      error: 'Error interno del servidor',
+      details: error.message
+    }, { status: 500 })
+  }
+}
+
+/**
  * Obtiene las preguntas de un tema específico para verificación directa
  */
 async function getTopicQuestions(topicId) {
   try {
-    // 1. Obtener el tema
+    // Primero intentar si es una categoría psicotécnica
+    const { data: psychoCategory, error: psychoError } = await supabase
+      .from('psychometric_categories')
+      .select('id, display_name, category_key')
+      .eq('id', topicId)
+      .single()
+
+    // Si es psicotécnico, devolver preguntas psicotécnicas
+    if (psychoCategory && !psychoError) {
+      const { data: psychoQuestions, error: psychoQuestionsError } = await supabase
+        .from('psychometric_questions')
+        .select('id, question_text, is_verified, difficulty')
+        .eq('category_id', topicId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true })
+
+      if (psychoQuestionsError) {
+        return Response.json({
+          success: false,
+          error: 'Error obteniendo preguntas psicotécnicas',
+          details: psychoQuestionsError.message
+        }, { status: 500 })
+      }
+
+      // Mapear al formato esperado (similar a questions normales)
+      const mappedQuestions = psychoQuestions.map(q => ({
+        id: q.id,
+        question_text: q.question_text,
+        // Mapear is_verified a topic_review_status para compatibilidad
+        topic_review_status: q.is_verified ? 'tech_perfect' : 'pending',
+        verified_at: q.is_verified ? new Date().toISOString() : null,
+        verification_status: q.is_verified ? 'ok' : null,
+        primary_article_id: null
+      }))
+
+      return Response.json({
+        success: true,
+        topic: {
+          id: psychoCategory.id,
+          title: psychoCategory.display_name,
+          topic_number: 0
+        },
+        questions: mappedQuestions
+      })
+    }
+
+    // 1. Obtener el tema normal
     const { data: topic, error: topicError } = await supabase
       .from('topics')
       .select('id, title, topic_number')

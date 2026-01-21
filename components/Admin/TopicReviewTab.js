@@ -90,7 +90,10 @@ const formatPositionName = (position) => {
   const names = {
     'auxiliar_administrativo': 'Auxiliar Administrativo del Estado (C2)',
     'administrativo': 'Administrativo del Estado (C1)',
-    'gestion': 'Gestión del Estado (A2)'
+    'gestion': 'Gestión del Estado (A2)',
+    'psicotecnicos': '🧠 Pruebas Psicotécnicas',
+    'tramitacion_procesal': 'Tramitación Procesal',
+    'auxilio_judicial': 'Auxilio Judicial'
   }
   return names[position] || position.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
@@ -211,12 +214,28 @@ export default function TopicReviewTab() {
       if (data.success && data.configs) {
         const activeConfigs = data.configs.filter(c =>
           c.is_active &&
-          c.has_key &&
+          (c.api_key_encrypted || c.has_key) && // Soportar ambos campos
           c.available_models?.some(m => m.status === 'working')
         )
         setAiConfigs(activeConfigs)
 
-        if (activeConfigs.length > 0) {
+        // Intentar cargar selección guardada en localStorage
+        const savedProvider = localStorage.getItem('topic_review_ai_provider')
+        const savedModel = localStorage.getItem('topic_review_ai_model')
+
+        if (savedProvider && activeConfigs.find(c => c.provider === savedProvider)) {
+          // Usar el proveedor guardado si aún está disponible
+          setSelectedProvider(savedProvider)
+          const config = activeConfigs.find(c => c.provider === savedProvider)
+          const models = config?.available_models?.filter(m => m.status === 'working') || []
+
+          if (savedModel && models.find(m => m.id === savedModel)) {
+            setSelectedModel(savedModel)
+          } else if (models.length > 0) {
+            setSelectedModel(models[0].id)
+          }
+        } else if (activeConfigs.length > 0) {
+          // Usar el primer proveedor disponible
           const firstConfig = activeConfigs[0]
           setSelectedProvider(firstConfig.provider)
           const workingModel = firstConfig.available_models?.find(m => m.status === 'working')
@@ -241,11 +260,20 @@ export default function TopicReviewTab() {
   // Cambiar proveedor
   const handleProviderChange = (provider) => {
     setSelectedProvider(provider)
+    localStorage.setItem('topic_review_ai_provider', provider)
+
     const config = aiConfigs.find(c => c.provider === provider)
     const workingModel = config?.available_models?.find(m => m.status === 'working')
     if (workingModel) {
       setSelectedModel(workingModel.id)
+      localStorage.setItem('topic_review_ai_model', workingModel.id)
     }
+  }
+
+  // Cambiar modelo (también guardar)
+  const handleModelChange = (model) => {
+    setSelectedModel(model)
+    localStorage.setItem('topic_review_ai_model', model)
   }
 
   // Cargar estado de la cola de verificaciones
@@ -364,14 +392,34 @@ export default function TopicReviewTab() {
           body: JSON.stringify({
             questionIds: batchIds,
             provider: selectedProvider,
-            model: selectedModel
+            model: selectedModel,
+            isPsychometric: selectedPosition === 'psicotecnicos'
           })
         })
 
         const verifyResult = await verifyResponse.json()
 
-        if (!verifyResult.success && !verifyResult.results) {
-          console.error('Error verificando batch:', verifyResult.error)
+        // Detectar error de billing/créditos
+        if (!verifyResult.success) {
+          if (verifyResult.errorType === 'billing') {
+            const providerName = verifyResult.provider === 'anthropic' ? 'Claude (Anthropic)' :
+                                verifyResult.provider === 'openai' ? 'ChatGPT (OpenAI)' :
+                                verifyResult.provider === 'google' ? 'Gemini (Google)' : verifyResult.provider
+
+            setError(`❌ ${providerName} no tiene créditos. ${verifyResult.details?.questionsVerified || 0}/${verifyResult.details?.totalQuestions || 0} verificadas antes del error. Por favor:\n\n1. Añade créditos a ${providerName}\n2. O cambia a otro proveedor de IA en el selector arriba`)
+
+            setVerifyingDirect(prev => {
+              const newState = { ...prev }
+              delete newState[topicId]
+              return newState
+            })
+
+            // Recargar para mostrar las preguntas que sí se verificaron
+            await loadTopics()
+            return
+          } else {
+            console.error('Error verificando batch:', verifyResult.error)
+          }
         }
 
         processed += batch.length
@@ -518,6 +566,51 @@ export default function TopicReviewTab() {
       {/* Contenido de la tab Temas */}
       {activeTab === 'topics' && (
         <>
+        {/* Selectores de IA - SIEMPRE VISIBLE */}
+        <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">🤖 Proveedor de IA:</span>
+
+            {/* Selector de proveedor */}
+            <select
+              value={selectedProvider}
+              onChange={(e) => handleProviderChange(e.target.value)}
+              disabled={loadingAiConfig || aiConfigs.length === 0}
+              className="bg-white dark:bg-gray-700 border-2 border-blue-400 dark:border-blue-600 text-gray-900 dark:text-white text-sm font-medium rounded-lg px-4 py-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+            >
+              {aiConfigs.length === 0 && <option>Cargando...</option>}
+              {aiConfigs.map(config => (
+                <option key={config.provider} value={config.provider}>
+                  {config.provider === 'anthropic' ? '🔵 Claude (Anthropic)' :
+                   config.provider === 'openai' ? '🟢 ChatGPT (OpenAI)' :
+                   config.provider === 'google' ? '🔴 Gemini (Google)' : config.provider}
+                </option>
+              ))}
+            </select>
+
+            {/* Selector de modelo */}
+            <select
+              value={selectedModel}
+              onChange={(e) => handleModelChange(e.target.value)}
+              disabled={loadingAiConfig || !selectedProvider}
+              className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+            >
+              {getAvailableModels().length === 0 && <option>Sin modelos</option>}
+              {getAvailableModels().map(model => (
+                <option key={model.id} value={model.id}>
+                  {model.name || model.id}
+                </option>
+              ))}
+            </select>
+
+            {aiConfigs.length === 0 && !loadingAiConfig && (
+              <span className="text-xs text-red-600 dark:text-red-400">
+                ⚠️ No hay proveedores de IA configurados
+              </span>
+            )}
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 space-y-4 sm:space-y-0">
         <div></div>
 
