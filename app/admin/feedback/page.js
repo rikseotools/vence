@@ -676,6 +676,22 @@ export default function AdminFeedbackPage() {
       console.log(`✅ Perfiles cargados: ${profiles?.length || 0}/${userIds.length}`)
       console.log('📝 IDs de perfiles obtenidos:', profiles?.map(p => p.id) || [])
 
+      // Cargar refunds/cancelaciones para marcar usuarios que pidieron devolución
+      const { data: refunds } = await supabaseServiceRole
+        .from('cancellation_feedback')
+        .select('user_id, cancellation_type')
+        .in('user_id', userIds)
+        .in('cancellation_type', ['manual_refund', 'self_service']) // Solo refunds, no cancelaciones normales
+
+      // Crear Set de user_ids con refunds
+      const usersWithRefunds = new Set()
+      if (refunds) {
+        refunds.forEach(refund => {
+          usersWithRefunds.add(refund.user_id)
+        })
+        console.log(`💸 Usuarios con refunds: ${usersWithRefunds.size}`)
+      }
+
       // Cargar última sesión de cada usuario para obtener info de dispositivo
       const { data: sessions, error: sessionsError } = await supabaseServiceRole
         .from('user_sessions')
@@ -736,10 +752,11 @@ export default function AdminFeedbackPage() {
             ...profile,
             browserName: lastSession?.browser_name,
             operatingSystem: lastSession?.operating_system,
-            deviceModel: lastSession?.device_model
+            deviceModel: lastSession?.device_model,
+            hasRefund: usersWithRefunds.has(profile.id) // Marcar si pidió devolución
           }
           profilesMap.set(profile.id, profileWithDevice)
-          console.log(`📝 Perfil cargado: ${profile.full_name || profile.email || profile.id}`)
+          console.log(`📝 Perfil cargado: ${profile.full_name || profile.email || profile.id}${usersWithRefunds.has(profile.id) ? ' 💸' : ''}`)
         })
 
         // Actualizar cache global
@@ -751,7 +768,8 @@ export default function AdminFeedbackPage() {
               ...profile,
               browserName: lastSession?.browser_name,
               operatingSystem: lastSession?.operating_system,
-              deviceModel: lastSession?.device_model
+              deviceModel: lastSession?.device_model,
+              hasRefund: usersWithRefunds.has(profile.id)
             })
           })
           return newCache
@@ -799,6 +817,7 @@ export default function AdminFeedbackPage() {
           targetOposicion: profile?.target_oposicion,
           isActiveStudent: profile?.is_active_student,
           ciudad: profile?.ciudad,
+          hasRefund: profile?.hasRefund || false, // Usuario que pidió devolución
           // Info de dispositivo
           browserName: profile?.browserName,
           operatingSystem: profile?.operatingSystem,
@@ -1715,6 +1734,9 @@ export default function AdminFeedbackPage() {
                             {userData.name || userData.email || 'Usuario anónimo'}
                             {(userData.planType === 'premium' || userData.planType === 'pro') && (
                               <span className="text-yellow-500" title="Usuario Premium">👑</span>
+                            )}
+                            {userData.hasRefund && (
+                              <span className="text-red-500" title="Usuario con devolución procesada">💸</span>
                             )}
                           </div>
                           {userData.name && userData.email && (
