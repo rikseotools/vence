@@ -1,0 +1,51 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Regression: Bego Saiz Bug (Score Calculation) Documentation - lecciones aprendidas debe documentar por qué ocurrió el bug 1`] = `
+{
+  "codePattern": {
+    "buggy": "await updateTestScore(sessionId, newScore) // newScore = 6",
+    "fixed": "await updateTestScore(sessionId, Math.round((newScore/total)*100)) // 100",
+  },
+  "howToPrevent": [
+    "Nombrar variables claramente: scoreCount vs scorePercentage",
+    "Validar rango [0-100] en updateTestScore",
+    "Tests unitarios que verifiquen cálculo correcto",
+    "Type hints o JSDoc indicando que se espera porcentaje",
+  ],
+  "symptom": "Usuario respondía correctamente pero veía score bajo",
+  "technicalCause": "Se guardaba contador de correctas en lugar de porcentaje",
+  "whyItHappened": [
+    "Variable "score" se usaba como contador local",
+    "updateTestScore esperaba porcentaje pero recibía contador",
+    "La UI calculaba porcentaje para mostrar, ocultando el bug",
+    "El bug solo se veía en estadísticas y repasos urgentes",
+  ],
+}
+`;
+
+exports[`Regression: Bego Saiz Bug (Score Calculation) Impact analysis - cuántos usuarios afectados debe documentar el alcance del bug 1`] = `
+{
+  "affectedUsers": "Multiple (including premium users)",
+  "correctionScript": "fix_test_scores.cjs",
+  "detectedDate": "2026-01-19",
+  "fixCommit": "Líneas 1146-1148 TestLayout.js, 724-726 ExamLayout.js",
+  "fixedDate": "2026-01-21",
+  "percentageAffected": 88.5,
+  "reportedBy": "begosaiz85@gmail.com",
+  "testsCreated": "__tests__/bugfix/testScoreCalculation.test.js",
+  "testsWithBug": 885,
+  "totalTestsAnalyzed": 1000,
+}
+`;
+
+exports[`Regression: Bego Saiz Bug (Score Calculation) Reproducción exacta del bug reportado usuario responde 6/6 correctas pero veía 6% en lugar de 100% 1`] = `
+{
+  "buggyScore": 6,
+  "fixedDate": "2026-01-21",
+  "fixedScore": 100,
+  "impact": "Usuario premium vio resultados incorrectos",
+  "reportedBy": "begosaiz85@gmail.com",
+  "reportedDate": "2026-01-19",
+  "testId": "c5136bb6-685b-4442-b152-dda6d33e215a",
+}
+`;

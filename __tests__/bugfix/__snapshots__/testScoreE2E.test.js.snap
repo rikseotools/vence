@@ -1,0 +1,39 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`E2E: Complete Test Flow with Score Calculation Snapshot testing - patrones correctos debe documentar casos de prueba del bug 1`] = `
+[
+  {
+    "buggyScore": 6,
+    "correct": 6,
+    "fixedScore": 100,
+    "impact": "Usuario premium reportó que "contesto bien pero aparece mal"",
+    "total": 6,
+    "user": "begosaiz85@gmail.com",
+  },
+  {
+    "buggyScore": 21,
+    "correct": 21,
+    "fixedScore": 84,
+    "impact": "Score aparecía como suspenso siendo aprobado",
+    "total": 25,
+    "user": "production",
+  },
+  {
+    "buggyScore": 48,
+    "correct": 48,
+    "fixedScore": 96,
+    "impact": "Test casi perfecto aparecía como mediocre",
+    "total": 50,
+    "user": "production",
+  },
+]
+`;
+
+exports[`E2E: Complete Test Flow with Score Calculation Snapshot testing - patrones correctos debe matchear patrón correcto de cálculo 1`] = `
+{
+  "step1": "Mantener contador local: score++",
+  "step2": "Calcular porcentaje: Math.round((score / total) * 100)",
+  "step3": "Guardar porcentaje: updateTestScore(id, percentage)",
+  "warning": "NUNCA guardar score directamente sin calcular porcentaje",
+}
+`;

@@ -615,10 +615,11 @@ export default function TestLayout({
             savedCount++
           }
         }
-        
-        // Actualizar puntuación
-        await updateTestScore(session.id, score)
-        
+
+        // Actualizar puntuación (guardar porcentaje, no número absoluto)
+        const scorePercentage = Math.round((score / effectiveQuestions.length) * 100)
+        await updateTestScore(session.id, scorePercentage)
+
         console.log(`✅ Guardadas ${savedCount}/${previousAnswers.length} respuestas previas únicas`)
         
         // Mostrar notificación de éxito
@@ -1143,8 +1144,10 @@ export default function TestLayout({
               } catch (e) {
                 console.warn('⚠️ No se pudo guardar question_id en localStorage:', e)
               }
-              await updateTestScore(session.id, newScore)
-              console.log('✅ Respuesta ÚNICA guardada y puntuación actualizada')
+              // 🐛 FIX: Guardar porcentaje, no número absoluto
+              const scorePercentage = Math.round((newScore / effectiveQuestions.length) * 100)
+              await updateTestScore(session.id, scorePercentage)
+              console.log('✅ Respuesta ÚNICA guardada y puntuación actualizada:', scorePercentage + '%')
 
               // Registrar respuesta en contador diario (solo usuarios FREE)
               if (hasLimit) {

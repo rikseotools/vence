@@ -715,14 +715,15 @@ export default function ExamLayout({
       console.log(`✅ ${allAnswers.length} respuestas preparadas para análisis`)
       console.log('')
 
-      // Actualizar score del test
+      // Actualizar score del test (guardar porcentaje, no número absoluto)
       if (currentTestSession?.id) {
         console.log(`🔢 Actualizando score del test...`)
         console.log(`   Test ID: ${currentTestSession.id}`)
         console.log(`   Score: ${correctCount}/${effectiveQuestions.length}`)
 
-        await updateTestScore(currentTestSession.id, correctCount)
-        console.log(`✅ Score actualizado en BD`)
+        const scorePercentage = Math.round((correctCount / effectiveQuestions.length) * 100)
+        await updateTestScore(currentTestSession.id, scorePercentage)
+        console.log(`✅ Score actualizado en BD: ${scorePercentage}%`)
       }
 
       // 🎯 Completar test con análisis completo
