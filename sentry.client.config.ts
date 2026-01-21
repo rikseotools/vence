@@ -53,6 +53,8 @@ Sentry.init({
     'The operation was aborted',
     // Sentry Replay trying to serialize DOM elements with React Fiber (not a real bug)
     'Converting circular structure to JSON',
+    // Security errors from cross-origin frames, corrupted URLs, or browser extensions
+    /SecurityError/,
   ],
 
   // Environment tag
