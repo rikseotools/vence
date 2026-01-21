@@ -130,6 +130,93 @@ export async function getExamStats(
 // ============================================
 
 /**
+ * Obtiene estadísticas de una semana específica
+ */
+async function getWeekStats(
+  userId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<{
+  totalQuestions: number
+  correctAnswers: number
+  accuracy: number
+} | null> {
+  const supabase = getSupabase()
+
+  try {
+    // Obtener respuestas de la semana
+    const { data, error } = await supabase
+      .from('user_question_history')
+      .select('total_attempts, correct_attempts')
+      .eq('user_id', userId)
+      .gte('last_attempt_at', startDate.toISOString())
+      .lt('last_attempt_at', endDate.toISOString())
+
+    if (error || !data) {
+      return { totalQuestions: 0, correctAnswers: 0, accuracy: 0 }
+    }
+
+    const totalQuestions = data.reduce((sum, record) => sum + record.total_attempts, 0)
+    const correctAnswers = data.reduce((sum, record) => sum + record.correct_attempts, 0)
+    const accuracy = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+
+    return { totalQuestions, correctAnswers, accuracy }
+  } catch (err) {
+    logger.error('Error obteniendo stats de semana', err, { domain: 'stats' })
+    return { totalQuestions: 0, correctAnswers: 0, accuracy: 0 }
+  }
+}
+
+/**
+ * Obtiene comparación de estadísticas entre esta semana y la semana pasada
+ */
+export async function getWeeklyComparison(userId: string): Promise<{
+  thisWeek: { totalQuestions: number; correctAnswers: number; accuracy: number }
+  lastWeek: { totalQuestions: number; correctAnswers: number; accuracy: number }
+  improvement: { questions: number; accuracy: number }
+} | null> {
+  if (!userId) return null
+
+  // Calcular fechas
+  const now = new Date()
+
+  // Esta semana: desde el lunes 00:00
+  const thisWeekStart = new Date(now)
+  const day = thisWeekStart.getDay()
+  const diff = day === 0 ? 6 : day - 1 // Lunes = 0
+  thisWeekStart.setDate(thisWeekStart.getDate() - diff)
+  thisWeekStart.setHours(0, 0, 0, 0)
+
+  // Fin de esta semana: ahora
+  const thisWeekEnd = new Date(now)
+
+  // Semana pasada: 7 días antes del lunes
+  const lastWeekStart = new Date(thisWeekStart)
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7)
+
+  const lastWeekEnd = new Date(thisWeekStart)
+
+  // Obtener stats de ambas semanas
+  const thisWeek = await getWeekStats(userId, thisWeekStart, thisWeekEnd)
+  const lastWeek = await getWeekStats(userId, lastWeekStart, lastWeekEnd)
+
+  if (!thisWeek || !lastWeek) return null
+
+  // Calcular mejoras
+  const questionsDiff = thisWeek.totalQuestions - lastWeek.totalQuestions
+  const accuracyDiff = thisWeek.accuracy - lastWeek.accuracy
+
+  return {
+    thisWeek,
+    lastWeek,
+    improvement: {
+      questions: questionsDiff,
+      accuracy: accuracyDiff
+    }
+  }
+}
+
+/**
  * Obtiene estadísticas de fallos y áreas débiles del usuario
  * Usa la RPC get_user_statistics_complete para evitar queries lentas
  */

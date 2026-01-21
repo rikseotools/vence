@@ -14,11 +14,12 @@ export {
   extractLawFromMessage,
   formatExamStatsResponse,
   formatUserStatsResponse,
+  formatWeeklyComparisonResponse,
   type StatsSearchResult,
 } from './StatsService'
 
 // Queries
-export { getExamStats, getUserStats } from './queries'
+export { getExamStats, getUserStats, getWeeklyComparison } from './queries'
 
 // Schemas
 export * from './schemas'

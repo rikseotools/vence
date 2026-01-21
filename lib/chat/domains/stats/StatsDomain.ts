@@ -12,7 +12,9 @@ import {
   formatExamStatsResponse,
   formatUserStatsResponse,
   formatWeakPointsTestResponse,
+  formatWeeklyComparisonResponse,
 } from './StatsService'
+import { getWeeklyComparison } from './queries'
 
 // ============================================
 // DOMINIO DE ESTADÍSTICAS
@@ -78,11 +80,34 @@ export class StatsDomain implements ChatDomain {
         responseText = formatWeakPointsTestResponse()
       } else if (statsResult.type === 'exam' && statsResult.examStats) {
         responseText = formatExamStatsResponse(statsResult.examStats)
-      } else if (statsResult.type === 'user' && statsResult.userStats) {
-        responseText = formatUserStatsResponse(
-          statsResult.userStats,
-          statsResult.temporalFilter.label
-        )
+      } else if (statsResult.type === 'user') {
+        // Detectar si pregunta específicamente "cómo voy" para comparación semanal
+        const isProgressQuery = /c[oó]mo\s*voy/i.test(context.currentMessage)
+
+        if (isProgressQuery) {
+          // Obtener comparación semanal
+          const weeklyComparison = await getWeeklyComparison(context.userId)
+
+          if (weeklyComparison) {
+            responseText = formatWeeklyComparisonResponse(weeklyComparison)
+          } else if (statsResult.userStats) {
+            // Fallback a stats normales si no hay datos de comparación
+            responseText = formatUserStatsResponse(
+              statsResult.userStats,
+              statsResult.temporalFilter.label
+            )
+          } else {
+            return this.handleNoData(context, statsResult.type, startTime)
+          }
+        } else if (statsResult.userStats) {
+          // Otras queries de usuario (áreas débiles, etc.)
+          responseText = formatUserStatsResponse(
+            statsResult.userStats,
+            statsResult.temporalFilter.label
+          )
+        } else {
+          return this.handleNoData(context, statsResult.type, startTime)
+        }
       } else {
         // Si pidió stats pero no hay datos
         return this.handleNoData(context, statsResult.type, startTime)
