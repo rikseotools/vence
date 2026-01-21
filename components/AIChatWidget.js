@@ -683,7 +683,7 @@ export default function AIChatWidget() {
         }`}
         style={{
           height: '500px',
-          maxHeight: 'calc(100vh - 140px)',
+          maxHeight: 'min(500px, calc(100vh - 180px))',
           transformOrigin: 'top right'
         }}
       >
