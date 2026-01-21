@@ -258,6 +258,19 @@ export function detectCategory(message: string): KBCategory | null {
  * Detecta si un mensaje es una consulta sobre la plataforma
  */
 export function isPlatformQuery(message: string): boolean {
+  // Excluir consultas de progreso personal que deben ir a StatsDomain
+  const personalProgressPatterns = [
+    /c[oó]mo\s+voy/i,
+    /(mis|mi)\s+(fallo|error|punto.*d[eé]bil|[aá]rea.*d[eé]bil)/i,
+    /d[oó]nde\s+fallo/i,
+    /qu[eé]\s+(he\s+fallado|debo\s+repasar)/i,
+  ]
+
+  // Si es consulta de progreso personal, NO es query de plataforma
+  if (personalProgressPatterns.some(p => p.test(message))) {
+    return false
+  }
+
   const platformIndicators = [
     /plan(es)?|precio|suscripci[oó]n|premium|free/i,
     /c[oó]mo\s+(funciona|uso|hago)/i,
@@ -266,7 +279,9 @@ export function isPlatformQuery(message: string): boolean {
     /soporte|ayuda|contacto/i,
     /funcionalidad|caracter[ií]stica/i,
     /test(s)?\s+(personalizad|r[aá]pid|oficial)/i,
-    /estad[ií]sticas|progreso|racha/i,
+    // "estadísticas" de la PLATAFORMA (no estadísticas personales)
+    /estad[ií]sticas\s+(de\s+la\s+)?(app|plataforma|vence)/i,
+    /racha/i,
   ]
 
   return platformIndicators.some(p => p.test(message))
