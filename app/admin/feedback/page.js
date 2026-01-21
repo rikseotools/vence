@@ -689,7 +689,7 @@ export default function AdminFeedbackPage() {
         refunds.forEach(refund => {
           usersWithRefunds.add(refund.user_id)
         })
-        console.log(`💸 Usuarios con refunds: ${usersWithRefunds.size}`)
+        console.log(`🔴 Usuarios con refunds: ${usersWithRefunds.size}`)
       }
 
       // Cargar última sesión de cada usuario para obtener info de dispositivo
@@ -756,7 +756,7 @@ export default function AdminFeedbackPage() {
             hasRefund: usersWithRefunds.has(profile.id) // Marcar si pidió devolución
           }
           profilesMap.set(profile.id, profileWithDevice)
-          console.log(`📝 Perfil cargado: ${profile.full_name || profile.email || profile.id}${usersWithRefunds.has(profile.id) ? ' 💸' : ''}`)
+          console.log(`📝 Perfil cargado: ${profile.full_name || profile.email || profile.id}${usersWithRefunds.has(profile.id) ? ' 🔴' : ''}`)
         })
 
         // Actualizar cache global
@@ -1736,7 +1736,7 @@ export default function AdminFeedbackPage() {
                               <span className="text-yellow-500" title="Usuario Premium">👑</span>
                             )}
                             {userData.hasRefund && (
-                              <span className="text-red-500" title="Usuario con devolución procesada">💸</span>
+                              <span title="Usuario con devolución procesada">🔴</span>
                             )}
                           </div>
                           {userData.name && userData.email && (
@@ -1813,6 +1813,11 @@ export default function AdminFeedbackPage() {
                     {selectedUser.pendingConversations > 0 && (
                       <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded">
                         {selectedUser.pendingConversations} pendiente{selectedUser.pendingConversations > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {selectedUser.hasRefund && (
+                      <span className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs px-2 py-0.5 rounded font-medium flex items-center gap-1">
+                        🔴 Devolución
                       </span>
                     )}
                   </div>
