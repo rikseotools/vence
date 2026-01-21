@@ -56,7 +56,7 @@ export function isUserStatsQuery(message: string): boolean {
   // Patrones que indican pregunta sobre progreso personal:
   // - "mis fallos/errores/áreas débiles"
   // - "qué he fallado / dónde fallo"
-  // - "cómo voy"
+  // - "cómo voy" (con o sin comparación semanal)
   // - "en qué debo mejorar/estudiar/repasar"
   // - "qué artículos/temas debería repasar"
   // - "debería repasar urgentemente"
@@ -68,7 +68,7 @@ export function isUserStatsQuery(message: string): boolean {
     /mi[s]?\s*(progreso|estad[ií]stica|resultado|fallo|error|acierto|rendimiento|punto.*d[eé]bil|[aá]rea.*d[eé]bil)/i,
     /qu[eé].*(he\s*fallado|fallo\s*m[aá]s|me\s*cuesta)/i,
     /d[oó]nde\s*(fallo|tengo.*problema)/i,
-    /c[oó]mo\s*voy/i,
+    /c[oó]mo\s*voy/i, // Detecta "cómo voy" con o sin contexto adicional
     /en\s*qu[eé]\s*debo\s*(mejorar|estudiar|repasar)/i,
     /qu[eé]\s*(art[ií]culos?|temas?|leyes?|partes?)\s*(deber[ií]a|tengo\s*que|necesito)\s*repasar/i,
     /(deber[ií]a|necesito|tengo\s*que)\s*repasar\s*(urgente|m[aá]s)?/i,

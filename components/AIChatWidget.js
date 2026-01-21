@@ -915,10 +915,10 @@ export default function AIChatWidget() {
                           {showProgressMenu && (
                             <div className="mt-2 space-y-1.5 pl-2 border-l-2 border-green-200 dark:border-green-700">
                               <button
-                                onClick={() => { useSuggestion('¿Cómo voy con mi preparación? Dame un resumen de mis estadísticas', 'como_voy'); setShowProgressMenu(false); }}
+                                onClick={() => { useSuggestion('¿Cómo voy esta semana en comparación con la anterior?', 'como_voy'); setShowProgressMenu(false); }}
                                 className="block w-full text-left px-3 py-1.5 text-xs bg-green-50/50 dark:bg-green-900/20 rounded hover:bg-green-100 dark:hover:bg-green-900/40 transition text-green-600 dark:text-green-400"
                               >
-                                📈 ¿Cómo voy?
+                                📈 ¿Cómo voy esta semana?
                               </button>
                               <button
                                 onClick={() => { useSuggestion('¿En qué artículos fallo más? Dime mis puntos débiles', 'donde_fallo'); setShowProgressMenu(false); }}
