@@ -28,6 +28,53 @@ const STATUS_CONFIG = {
   'dismissed': { label: '❌ Descartado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' }
 }
 
+// Función para convertir URLs en enlaces clickeables
+const linkifyText = (text, isAdminMessage = false) => {
+  if (!text) return null
+
+  // Regex para detectar URLs (http://, https://, www.)
+  const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/g
+
+  const parts = []
+  let lastIndex = 0
+  let match
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    const url = match[0]
+    const matchIndex = match.index
+
+    // Añadir texto antes de la URL
+    if (matchIndex > lastIndex) {
+      parts.push(text.substring(lastIndex, matchIndex))
+    }
+
+    // Añadir la URL como enlace
+    const href = url.startsWith('www.') ? `https://${url}` : url
+    parts.push(
+      <a
+        key={matchIndex}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`underline hover:opacity-80 ${isAdminMessage ? 'text-blue-200' : 'text-blue-600 dark:text-blue-400'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {url}
+      </a>
+    )
+
+    lastIndex = matchIndex + url.length
+  }
+
+  // Añadir texto restante
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex))
+  }
+
+  // Si no hay URLs, devolver el texto tal cual
+  return parts.length > 0 ? parts : text
+}
+
 export default function AdminFeedbackPage() {
   const { user, supabase } = useAuth()
   const [feedbacks, setFeedbacks] = useState([])
@@ -1255,8 +1302,8 @@ export default function AdminFeedbackPage() {
     console.log('🖼️ [DEBUG] Mensaje completo para análisis:', messageText)
     
     if (!urls || urls.length === 0) {
-      // No hay imágenes, renderizar solo texto
-      return <span style={{ whiteSpace: 'pre-wrap' }}>{messageText}</span>
+      // No hay imágenes, renderizar solo texto con links clickeables
+      return <span style={{ whiteSpace: 'pre-wrap' }}>{linkifyText(messageText, false)}</span>
     }
     
     // Dividir el texto por las URLs de imagen
@@ -1312,10 +1359,10 @@ export default function AdminFeedbackPage() {
           </div>
         )
       } else {
-        // Si es texto normal, renderizar como texto con saltos de línea
+        // Si es texto normal, renderizar como texto con saltos de línea y links clickeables
         return (
           <span key={index} style={{ whiteSpace: 'pre-wrap' }}>
-            {part}
+            {linkifyText(part, false)}
           </span>
         )
       }
@@ -1996,7 +2043,7 @@ export default function AdminFeedbackPage() {
                               ? 'bg-blue-600 text-white'
                               : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-sm'
                           }`}>
-                            <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                            <p className="text-sm whitespace-pre-wrap">{linkifyText(msg.message, msg.is_admin)}</p>
                             <div className={`text-xs mt-1 text-right ${msg.is_admin ? 'text-blue-200' : 'text-gray-400'}`}>
                               {new Date(msg.created_at).toLocaleTimeString('es-ES', {
                                 hour: '2-digit',

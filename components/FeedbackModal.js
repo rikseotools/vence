@@ -19,6 +19,52 @@ const EMOJIS = [
   '🎉', '🎊', '🔥', '💰', '📚', '✅', '❌', '⭐', '💡', '🚀'
 ]
 
+// Función para convertir URLs en enlaces clickeables
+const linkifyText = (text, isAdminMessage) => {
+  if (!text) return null
+
+  // Regex para detectar URLs (http://, https://, www.)
+  const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/g
+
+  const parts = []
+  let lastIndex = 0
+  let match
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    const url = match[0]
+    const matchIndex = match.index
+
+    // Añadir texto antes de la URL
+    if (matchIndex > lastIndex) {
+      parts.push(text.substring(lastIndex, matchIndex))
+    }
+
+    // Añadir la URL como enlace
+    const href = url.startsWith('www.') ? `https://${url}` : url
+    parts.push(
+      <a
+        key={matchIndex}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`underline hover:opacity-80 ${isAdminMessage ? 'text-blue-600 dark:text-blue-400' : 'text-blue-200'}`}
+      >
+        {url}
+      </a>
+    )
+
+    lastIndex = matchIndex + url.length
+  }
+
+  // Añadir texto restante
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex))
+  }
+
+  // Si no hay URLs, devolver el texto tal cual
+  return parts.length > 0 ? parts : text
+}
+
 export default function FeedbackModal({ isOpen, onClose, questionId = null, autoSelectQuestionDispute = false, currentTheme = null, onOpenQuestionDispute = null, onFeedbackSent = null, initialConversationId = null }) {
   const { user, supabase } = useAuth()
   const router = useRouter()
@@ -955,7 +1001,7 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
                                   </p>
 
                                   {/* Texto del mensaje */}
-                                  {text && <p className="whitespace-pre-wrap">{text}</p>}
+                                  {text && <p className="whitespace-pre-wrap">{linkifyText(text, msg.is_admin)}</p>}
 
                                   {/* Imágenes como miniaturas estilo WhatsApp */}
                                   {images.length > 0 && (
