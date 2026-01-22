@@ -4,9 +4,9 @@
 -- 1. CORREGIR entrada "¿Qué es Vence?" (ID: 271c3589-d8d7-47f8-a3a3-9d2fa170ab62)
 UPDATE ai_knowledge_base
 SET
-  content = E'**Vence** es una plataforma de preparación para oposiciones en España, especializada en:\n\n- 🏛️ **Auxiliar Administrativo del Estado** (C2)\n- 🏛️ **Administrativo del Estado** (C1)\n- ⚖️ **Tramitación Procesal y Administrativa**\n- ⚖️ **Auxilio Judicial**\n\n**¿Qué ofrece?**\n- 📚 **Temarios completos y GRATIS** - Legislación del BOE organizada por temas\n- 📝 Miles de preguntas tipo test de exámenes oficiales\n- 🆓 **Plan Free**: 25 preguntas/día gratis + temarios completos\n- 🤖 Chat con IA para resolver dudas sobre las leyes\n- 📊 Estadísticas de progreso detalladas\n- 🎯 Tests personalizados por ley o tema\n- 📱 Funciona en móvil, tablet y ordenador\n\nCreada por opositores para opositores.',
-  short_answer = 'Plataforma de oposiciones con temarios gratis, tests (25/día gratis en plan Free), chat IA y estadísticas. Auxiliar/Administrativo Estado, Tramitación y Auxilio Judicial.',
-  keywords = ARRAY['vence', 'qué es', 'oposiciones', 'temario', 'gratis', 'tests', 'auxiliar', 'administrativo', 'tramitación', 'auxilio'],
+  content = E'**Vence** es una plataforma de preparación para oposiciones en España, especializada en:\n\n- 🏛️ **Auxiliar Administrativo del Estado** (C2)\n- 🏛️ **Administrativo del Estado** (C1)\n- ⚖️ **Tramitación Procesal y Administrativa**\n- ⚖️ **Auxilio Judicial**\n\n**¿Qué ofrece?**\n- 📚 **Temarios completos y GRATIS** - Legislación del BOE organizada por temas\n- 📝 Miles de preguntas tipo test de exámenes oficiales\n- 🆓 **Plan Free**: 25 preguntas/día gratis + temarios completos\n- 🤖 **Chat con IA** para resolver dudas sobre las leyes\n- 💬 **Chat de soporte** con el equipo de Vence (disponible incluso en plan Free)\n- 📊 Estadísticas de progreso detalladas\n- 🎯 Tests personalizados por ley o tema\n- 📱 Funciona en móvil, tablet y ordenador\n\nCreada por opositores para opositores.',
+  short_answer = 'Plataforma de oposiciones con temarios gratis, tests (25/día gratis), chat IA para dudas de leyes, chat de soporte humano (gratis) y estadísticas.',
+  keywords = ARRAY['vence', 'qué es', 'oposiciones', 'temario', 'gratis', 'tests', 'auxiliar', 'administrativo', 'tramitación', 'auxilio', 'soporte'],
   embedding = NULL,
   updated_at = NOW()
 WHERE id = '271c3589-d8d7-47f8-a3a3-9d2fa170ab62';
@@ -73,6 +73,19 @@ VALUES (
   'Plan Free: temarios completos gratis, 25 preguntas/día, 5 mensajes chat IA/día, estadísticas básicas. Sin tarjeta.',
   ARRAY['plan', 'free', 'gratis', 'gratuito', 'incluye', 'límite', 'preguntas'],
   10,
+  true
+);
+
+-- 7. Chat de soporte gratis
+INSERT INTO ai_knowledge_base (category, subcategory, title, content, short_answer, keywords, priority, is_active)
+VALUES (
+  'funcionalidades',
+  'soporte',
+  '¿El chat de soporte es gratis?',
+  E'## Chat de Soporte en Vence\n\n**Sí, el chat de soporte es completamente gratis**, incluso en el plan Free.\n\n### Dos tipos de chat en Vence:\n\n#### 1. Chat con IA (este chat)\n- Resuelve dudas sobre las leyes y el contenido\n- Explica artículos y conceptos\n- Plan Free: 5 mensajes/día\n- Plan Premium: ilimitado\n\n#### 2. Chat de Soporte Humano\n- Atendido por el equipo de Vence\n- Para dudas sobre la plataforma, pagos, etc.\n- **100% GRATIS** en todos los planes\n- Sin límite de mensajes\n\n### ¿Cómo acceder al soporte?\nDesde tu perfil o desde el menú, busca "Soporte" o "Contacto". Un miembro del equipo te atenderá lo antes posible.',
+  'Sí, el chat de soporte con el equipo de Vence es 100% gratis en todos los planes, incluso en Free. Sin límite.',
+  ARRAY['soporte', 'chat', 'ayuda', 'contacto', 'gratis', 'equipo', 'humano', 'atención'],
+  9,
   true
 );
 
