@@ -225,6 +225,12 @@ const CATEGORY_PATTERNS: Record<KBCategory, RegExp[]> = {
     /problema|error|no\s+(funciona|puedo|me\s+deja)/i,
     /ayuda|soporte|contacto/i,
     /c[oó]mo\s+contacto/i,
+    // Cancelación y devoluciones
+    /cancel(ar|aci[oó]n|o)/i,
+    /devol(ver|uci[oó]n)/i,
+    /reembolso/i,
+    /garant[ií]a/i,
+    /baja.*suscripci[oó]n/i,
   ],
   plataforma: [
     /vence|aplicaci[oó]n|app|plataforma/i,
@@ -282,6 +288,12 @@ export function isPlatformQuery(message: string): boolean {
     // "estadísticas" de la PLATAFORMA (no estadísticas personales)
     /estad[ií]sticas\s+(de\s+la\s+)?(app|plataforma|vence)/i,
     /racha/i,
+    // Cancelación y devoluciones
+    /cancel(ar|aci[oó]n|o)/i,
+    /devol(ver|uci[oó]n)/i,
+    /reembolso/i,
+    /garant[ií]a.*devoluci[oó]n/i,
+    /dar(me)?\s+de\s+baja/i,
   ]
 
   return platformIndicators.some(p => p.test(message))
@@ -320,6 +332,10 @@ export function extractPlatformKeywords(message: string): string[] {
     'app', 'aplicación', 'plataforma', 'vence',
     'ayuda', 'soporte', 'contacto',
     'psicotécnicos', 'psicotécnico',
+    // Cancelación y devoluciones
+    'cancelar', 'cancelación', 'cancelo',
+    'devolver', 'devolución', 'reembolso',
+    'garantía', 'baja',
   ]
 
   const msgLower = message.toLowerCase()
