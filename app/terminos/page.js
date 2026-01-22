@@ -73,13 +73,20 @@ export default function TerminosPage() {
             del período de facturación actual.
           </p>
           <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mt-4 mb-2">
-            3.4 Devoluciones
+            3.4 Garantía de Devolución
           </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Si no estás satisfecho con la prestación del servicio por un problema
-            imputable a Vence, puedes solicitar la devolución del importe abonado
-            abriendo un chat de soporte dentro de la plataforma. Evaluaremos cada
-            solicitud de forma individual.
+            Vence ofrece una <strong>Garantía Total de Satisfacción</strong>. Si dentro de los
+            primeros <strong>15 días naturales</strong> desde tu pago no estás satisfecho con el
+            servicio, te devolvemos el 100% de tu dinero, siempre que no se haya hecho un uso
+            abusivo del servicio y sea la primera vez que solicitas esta garantía.
+          </p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
+            Para más información sobre cancelaciones y nuestra política de devoluciones, consulta
+            nuestra página de{' '}
+            <a href="/cancelacion-y-devoluciones" className="text-blue-600 dark:text-blue-400 hover:underline">
+              Cancelación y Garantía de Devolución
+            </a>.
           </p>
 
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">

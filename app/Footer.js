@@ -60,6 +60,7 @@ export default function FooterES() {
                 <div className="flex items-center space-x-4 text-sm">
                   <Link href="/privacidad" className="text-gray-400 hover:text-white transition-colors">Privacidad</Link>
                   <Link href="/terminos" className="text-gray-400 hover:text-white transition-colors">Términos</Link>
+                  <Link href="/cancelacion-y-devoluciones" className="text-gray-400 hover:text-white transition-colors">Cancelación y Devoluciones</Link>
                   <button onClick={resetConsent} className="text-gray-400 hover:text-white transition-colors">Cookies</button>
                 </div>
               </div>
@@ -183,6 +184,7 @@ export default function FooterES() {
               <div className="flex items-center space-x-4 text-sm">
                 <Link href="/privacidad" className="text-gray-400 hover:text-white transition-colors">Privacidad</Link>
                 <Link href="/terminos" className="text-gray-400 hover:text-white transition-colors">Términos</Link>
+                <Link href="/cancelacion-y-devoluciones" className="text-gray-400 hover:text-white transition-colors">Cancelación y Devoluciones</Link>
                 <button onClick={resetConsent} className="text-gray-400 hover:text-white transition-colors">Cookies</button>
               </div>
             </div>
