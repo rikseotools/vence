@@ -58,8 +58,13 @@ export async function createAutoDispute(
   isPsychometric?: boolean
 ): Promise<DisputeResult> {
   try {
+    // Determinar el tipo de disputa según la tabla
+    // - psychometric_question_disputes permite 'ai_detected_error'
+    // - question_disputes solo permite 'no_literal', 'respuesta_incorrecta', 'otro'
+    const disputeType: DisputeType = isPsychometric ? 'ai_detected_error' : 'respuesta_incorrecta'
+
     // Verificar si ya existe una disputa automática para esta pregunta
-    const existing = await findExistingDispute(questionId, 'ai_detected_error', isPsychometric)
+    const existing = await findExistingDispute(questionId, disputeType, isPsychometric)
 
     if (existing) {
       logger.debug('Auto-dispute already exists', {
@@ -80,7 +85,7 @@ export async function createAutoDispute(
     const result = await createDispute({
       questionId,
       userId,
-      disputeType: 'ai_detected_error',
+      disputeType,
       description,
       isPsychometric,
     })

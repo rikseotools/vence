@@ -43,9 +43,10 @@ const VIRTUAL_LAWS = [
  */
 function isVirtualLaw(lawName: string | undefined): boolean {
   if (!lawName) return false
+  // Solo verificar si el lawName contiene el nombre de una ley virtual
+  // NO al revés (ej: "Correo electrónico".includes("CE") = true, pero CE no es virtual)
   return VIRTUAL_LAWS.some(vl =>
-    lawName.toLowerCase().includes(vl.toLowerCase()) ||
-    vl.toLowerCase().includes(lawName.toLowerCase())
+    lawName.toLowerCase().includes(vl.toLowerCase())
   )
 }
 
