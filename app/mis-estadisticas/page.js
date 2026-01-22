@@ -1219,10 +1219,10 @@ export default function EstadisticasRevolucionarias() {
             const oposicionSlug = apiStats.userOposicion?.slug || 'auxiliar-administrativo-estado'
             return apiStats.recentTests.map(t => {
               const bloquePrefix = t.temaNumber ? formatThemeName(t.temaNumber, oposicionSlug) : null
-              // Combinar: "Bloque I - Tema 1: La Constitución..." o solo el prefijo si no hay título
+              // Solo mostrar el bloque formateado, "Test Tema X" se convierte en "Test Aleatorio"
               const fullTitle = t.temaNumber
-                ? (t.title ? `${bloquePrefix}: ${t.title}` : bloquePrefix)
-                : (t.title || 'Test Aleatorio')
+                ? bloquePrefix
+                : (t.title && !t.title.includes('Test Tema') ? t.title : 'Test Aleatorio')
               return {
                 id: t.id,
                 title: fullTitle,
@@ -1258,10 +1258,8 @@ export default function EstadisticasRevolucionarias() {
               .filter(t => isThemeValidForOposicion(t.temaNumber, oposicionSlug))
             return filtered.map(t => {
                 const bloquePrefix = formatThemeName(t.temaNumber, oposicionSlug)
-                // Combinar: "Bloque I - Tema 1: La Constitución..."
-                const fullTitle = t.title
-                  ? `${bloquePrefix}: ${t.title}`
-                  : bloquePrefix
+                // Solo mostrar el bloque formateado
+                const fullTitle = bloquePrefix
                 return {
                   theme: t.temaNumber,
                   title: fullTitle,

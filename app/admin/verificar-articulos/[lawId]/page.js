@@ -258,6 +258,10 @@ export default function VerificarArticulosPage() {
   const [addingMissing, setAddingMissing] = useState(false)
   const [addMissingResults, setAddMissingResults] = useState(null)
 
+  // Estados para sincronización completa desde BOE
+  const [syncingAll, setSyncingAll] = useState(false)
+  const [syncAllResults, setSyncAllResults] = useState(null)
+
   // Estados para selección de preguntas para IA
   const [selectedQuestions, setSelectedQuestions] = useState(new Set())
   // Configuración de modelos cargada desde la API
@@ -860,6 +864,40 @@ export default function VerificarArticulosPage() {
       setError('Error conectando con el servidor')
     } finally {
       setAddingMissing(false)
+    }
+  }
+
+  // Sincronizar TODOS los artículos desde el BOE
+  const syncAllFromBoe = async () => {
+    try {
+      setSyncingAll(true)
+      setError(null)
+      setSyncAllResults(null)
+
+      const response = await fetch('/api/verify-articles/sync-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lawId })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setSyncAllResults(data)
+
+        // Actualizar el resumen guardado
+        const statsResponse = await fetch('/api/verify-articles/stats-by-law')
+        const statsData = await statsResponse.json()
+        if (statsData.success && statsData.stats[lawId]) {
+          setSavedVerification(statsData.stats[lawId])
+        }
+      } else {
+        setError(data.error || 'Error sincronizando artículos')
+      }
+    } catch (err) {
+      setError('Error conectando con el servidor')
+    } finally {
+      setSyncingAll(false)
     }
   }
 
@@ -1934,6 +1972,14 @@ export default function VerificarArticulosPage() {
                             <div className="text-xs text-purple-700 dark:text-purple-300">Faltan en BD</div>
                           </div>
                         )}
+                        {(savedVerification.summary.structure_articles > 0) && (
+                          <div className="bg-slate-50 dark:bg-slate-900/30 rounded-lg p-3 text-center" title="Artículos de estructura (ej: art. 0) que mantenemos en BD pero no existen en BOE">
+                            <div className="text-xl font-bold text-slate-600 dark:text-slate-400">
+                              {savedVerification.summary.structure_articles}
+                            </div>
+                            <div className="text-xs text-slate-700 dark:text-slate-300">Estructura</div>
+                          </div>
+                        )}
                       </div>
                   </div>
                 )}
@@ -2000,6 +2046,26 @@ export default function VerificarArticulosPage() {
                       )}
                     </button>
                   )}
+                  {/* Botón para sincronizar TODO desde BOE - solo si hay discrepancias */}
+                  {!savedVerification?.isOk && (
+                    <button
+                      onClick={syncAllFromBoe}
+                      disabled={syncingAll}
+                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center space-x-2"
+                    >
+                      {syncingAll ? (
+                        <>
+                          <Spinner size="sm" />
+                          <span>Sincronizando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🔄</span>
+                          <span>Sincronizar todo desde BOE</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
                 {/* Mensaje de éxito al añadir artículos */}
                 {addMissingResults && (
@@ -2009,6 +2075,26 @@ export default function VerificarArticulosPage() {
                       <span>Se añadieron {addMissingResults.added} artículos a la base de datos</span>
                       {addMissingResults.skipped > 0 && (
                         <span className="text-sm text-gray-500">({addMissingResults.skipped} ya existían)</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* Mensaje de éxito al sincronizar todo */}
+                {syncAllResults && (
+                  <div className="mt-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex flex-col items-center gap-2 text-green-700 dark:text-green-300">
+                      <div className="flex items-center gap-2">
+                        <span>✅</span>
+                        <span className="font-medium">{syncAllResults.message}</span>
+                      </div>
+                      {syncAllResults.stats && (
+                        <div className="text-sm text-gray-600 dark:text-gray-400 flex flex-wrap gap-3 justify-center">
+                          {syncAllResults.stats.added > 0 && <span>➕ {syncAllResults.stats.added} añadidos</span>}
+                          {syncAllResults.stats.updated > 0 && <span>🔄 {syncAllResults.stats.updated} actualizados</span>}
+                          {syncAllResults.stats.deactivated > 0 && <span>❌ {syncAllResults.stats.deactivated} desactivados</span>}
+                          {syncAllResults.stats.unchanged > 0 && <span>✓ {syncAllResults.stats.unchanged} sin cambios</span>}
+                          {syncAllResults.stats.structureArticles > 0 && <span>📁 {syncAllResults.stats.structureArticles} de estructura</span>}
+                        </div>
                       )}
                     </div>
                   </div>

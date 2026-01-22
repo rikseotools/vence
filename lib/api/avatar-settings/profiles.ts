@@ -8,6 +8,14 @@ import type {
   AvatarProfile
 } from './schemas'
 
+// Tipo para métricas bulk por usuario
+export interface BulkUserMetrics {
+  userId: string
+  metrics: StudyMetrics
+  profileId: string
+  matchedConditions: string[]
+}
+
 // Cliente de Supabase con service role
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -418,4 +426,163 @@ export async function previewUserProfile(userId: string): Promise<{
     console.error('❌ [AvatarProfiles] Error en previewUserProfile:', error)
     throw error
   }
+}
+
+// ============================================
+// CÁLCULO BULK DE MÉTRICAS (OPTIMIZADO)
+// Una sola query SQL para todos los usuarios
+// ============================================
+
+interface RawUserMetrics {
+  user_id: string
+  weekly_questions: number
+  weekly_correct: number
+  last_week_questions: number
+  last_week_correct: number
+  hard_questions: number
+  hard_correct: number
+  night_sessions: number
+  morning_sessions: number
+  afternoon_sessions: number
+  days_studied: number
+  current_streak: number
+  studied_morning: boolean
+  studied_afternoon: boolean
+  studied_night: boolean
+}
+
+export async function calculateBulkUserProfiles(userIds: string[]): Promise<BulkUserMetrics[]> {
+  if (userIds.length === 0) return []
+
+  const supabase = getSupabaseAdmin()
+  const now = new Date()
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+
+  console.log(`🚀 [AvatarProfiles] Calculando métricas bulk para ${userIds.length} usuarios`)
+
+  try {
+    // Query SQL optimizada que calcula todas las métricas en una sola consulta
+    const { data: metricsData, error } = await supabase.rpc('calculate_avatar_metrics_bulk', {
+      p_user_ids: userIds,
+      p_one_week_ago: oneWeekAgo.toISOString(),
+      p_two_weeks_ago: twoWeeksAgo.toISOString()
+    })
+
+    if (error) {
+      console.error('❌ [AvatarProfiles] Error en RPC bulk:', error)
+      // Fallback: usar método tradicional pero en paralelo
+      return calculateBulkUserProfilesFallback(userIds)
+    }
+
+    // Procesar resultados y determinar perfiles
+    const results: BulkUserMetrics[] = []
+
+    for (const raw of (metricsData as RawUserMetrics[] || [])) {
+      const totalAnswers = raw.weekly_questions || 0
+      const metrics: StudyMetrics = {
+        nightHoursPercentage: totalAnswers > 0 ? (raw.night_sessions / totalAnswers) * 100 : 0,
+        morningHoursPercentage: totalAnswers > 0 ? (raw.morning_sessions / totalAnswers) * 100 : 0,
+        weeklyAccuracy: totalAnswers > 0 ? (raw.weekly_correct / totalAnswers) * 100 : 0,
+        accuracyImprovement: raw.last_week_questions > 0
+          ? ((raw.weekly_correct / Math.max(raw.weekly_questions, 1)) * 100) -
+            ((raw.last_week_correct / raw.last_week_questions) * 100)
+          : 0,
+        hardTopicsAccuracy: raw.hard_questions > 0 ? (raw.hard_correct / raw.hard_questions) * 100 : 0,
+        weeklyQuestionsCount: totalAnswers,
+        daysStudiedThisWeek: raw.days_studied || 0,
+        currentStreak: raw.current_streak || 0,
+        studiedMorning: raw.studied_morning || false,
+        studiedAfternoon: raw.studied_afternoon || false,
+        studiedNight: raw.studied_night || false
+      }
+
+      const { profileId, matchedConditions } = determineProfile(metrics)
+
+      results.push({
+        userId: raw.user_id,
+        metrics,
+        profileId,
+        matchedConditions
+      })
+    }
+
+    // Añadir usuarios sin actividad (koala por defecto)
+    const processedUserIds = new Set(results.map(r => r.userId))
+    for (const userId of userIds) {
+      if (!processedUserIds.has(userId)) {
+        results.push({
+          userId,
+          metrics: {
+            nightHoursPercentage: 0,
+            morningHoursPercentage: 0,
+            weeklyAccuracy: 0,
+            accuracyImprovement: 0,
+            hardTopicsAccuracy: 0,
+            weeklyQuestionsCount: 0,
+            daysStudiedThisWeek: 0,
+            currentStreak: 0,
+            studiedMorning: false,
+            studiedAfternoon: false,
+            studiedNight: false
+          },
+          profileId: 'relaxed_koala',
+          matchedConditions: ['Sin actividad esta semana']
+        })
+      }
+    }
+
+    console.log(`✅ [AvatarProfiles] Métricas bulk calculadas: ${results.length} usuarios`)
+    return results
+
+  } catch (error) {
+    console.error('❌ [AvatarProfiles] Error en calculateBulkUserProfiles:', error)
+    return calculateBulkUserProfilesFallback(userIds)
+  }
+}
+
+// Fallback: procesar en paralelo con batches
+async function calculateBulkUserProfilesFallback(userIds: string[]): Promise<BulkUserMetrics[]> {
+  console.log(`⚠️ [AvatarProfiles] Usando fallback paralelo para ${userIds.length} usuarios`)
+
+  const BATCH_SIZE = 20
+  const results: BulkUserMetrics[] = []
+
+  for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+    const batch = userIds.slice(i, i + BATCH_SIZE)
+
+    const batchResults = await Promise.all(
+      batch.map(async (userId) => {
+        try {
+          const metrics = await getStudyMetrics(userId)
+          const { profileId, matchedConditions } = determineProfile(metrics)
+          return { userId, metrics, profileId, matchedConditions }
+        } catch {
+          return {
+            userId,
+            metrics: {
+              nightHoursPercentage: 0,
+              morningHoursPercentage: 0,
+              weeklyAccuracy: 0,
+              accuracyImprovement: 0,
+              hardTopicsAccuracy: 0,
+              weeklyQuestionsCount: 0,
+              daysStudiedThisWeek: 0,
+              currentStreak: 0,
+              studiedMorning: false,
+              studiedAfternoon: false,
+              studiedNight: false
+            },
+            profileId: 'relaxed_koala',
+            matchedConditions: ['Error calculando métricas']
+          }
+        }
+      })
+    )
+
+    results.push(...batchResults)
+    console.log(`📊 [AvatarProfiles] Procesados ${Math.min(i + BATCH_SIZE, userIds.length)}/${userIds.length}`)
+  }
+
+  return results
 }

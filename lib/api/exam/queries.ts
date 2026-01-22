@@ -1,7 +1,9 @@
 // lib/api/exam/queries.ts - Queries tipadas para el módulo de exámenes
 import { getDb } from '@/db/client'
-import { testQuestions, tests, questions } from '@/db/schema'
+import { testQuestions, tests, questions, userProfiles } from '@/db/schema'
 import { eq, and, desc, sql, count, isNull, inArray } from 'drizzle-orm'
+import { resolveTemaByArticle, resolveTemasBatchByQuestionIds } from '@/lib/api/tema-resolver'
+import type { OposicionId } from '@/lib/api/tema-resolver'
 import type {
   SaveAnswerRequest,
   SaveAnswerResponse,
@@ -9,6 +11,74 @@ import type {
   GetPendingExamsResponse,
   CompleteExamResponse,
 } from './schemas'
+
+// ============================================
+// OBTENER OPOSICIÓN DEL USUARIO
+// ============================================
+
+/**
+ * Obtiene el target_oposicion del usuario desde user_profiles
+ * Retorna el valor o 'auxiliar_administrativo_estado' como default
+ */
+async function getUserOposicion(userId: string): Promise<OposicionId> {
+  try {
+    const db = getDb()
+
+    const result = await db
+      .select({ targetOposicion: userProfiles.targetOposicion })
+      .from(userProfiles)
+      .where(eq(userProfiles.id, userId))
+      .limit(1)
+
+    const oposicion = result[0]?.targetOposicion
+
+    // Validar que sea una oposición conocida
+    const validOposiciones: OposicionId[] = [
+      'auxiliar_administrativo_estado',
+      'administrativo_estado',
+      'tramitacion_procesal',
+      'auxilio_judicial',
+    ]
+
+    if (oposicion && validOposiciones.includes(oposicion as OposicionId)) {
+      return oposicion as OposicionId
+    }
+
+    return 'auxiliar_administrativo_estado'
+  } catch (error) {
+    console.warn('⚠️ [getUserOposicion] Error obteniendo oposición:', error)
+    return 'auxiliar_administrativo_estado'
+  }
+}
+
+/**
+ * Resuelve el tema_number para una pregunta usando el módulo centralizado
+ */
+async function resolveTemaForQuestion(
+  questionId: string | null | undefined,
+  articleId: string | null | undefined,
+  oposicionId: OposicionId
+): Promise<number | null> {
+  if (!questionId && !articleId) return null
+
+  try {
+    const result = await resolveTemaByArticle({
+      questionId: questionId || undefined,
+      articleId: articleId || undefined,
+      oposicionId,
+    })
+
+    if (result.success && result.temaNumber) {
+      console.log(`🎯 [V2 TemaResolver] Tema resuelto: ${result.temaNumber} via ${result.resolvedVia}`)
+      return result.temaNumber
+    }
+
+    return null
+  } catch (error) {
+    console.warn('⚠️ [V2 TemaResolver] Error resolviendo tema:', error)
+    return null
+  }
+}
 
 // ============================================
 // GUARDAR RESPUESTA INDIVIDUAL
@@ -39,7 +109,8 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
     const existing = await db
       .select({
         id: testQuestions.id,
-        correctAnswer: testQuestions.correctAnswer
+        correctAnswer: testQuestions.correctAnswer,
+        temaNumber: testQuestions.temaNumber,
       })
       .from(testQuestions)
       .where(and(
@@ -50,6 +121,22 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
 
     let answerId: string
     let correctAnswer = params.correctAnswer
+    let temaNumber = params.temaNumber
+
+    // Si no hay temaNumber, intentar resolverlo
+    if (temaNumber == null && (params.questionId || params.articleId)) {
+      // Obtener userId del test para determinar la oposición
+      const testInfo = await db
+        .select({ userId: tests.userId })
+        .from(tests)
+        .where(eq(tests.id, params.testId))
+        .limit(1)
+
+      if (testInfo[0]?.userId) {
+        const oposicionId = await getUserOposicion(testInfo[0].userId)
+        temaNumber = await resolveTemaForQuestion(params.questionId, params.articleId, oposicionId)
+      }
+    }
 
     if (existing.length > 0) {
       // Usar correctAnswer del registro existente si no se proporcionó
@@ -57,19 +144,32 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         correctAnswer = existing[0].correctAnswer
       }
 
+      // Usar temaNumber existente si no se resolvió uno nuevo
+      if (temaNumber == null && existing[0].temaNumber != null) {
+        temaNumber = existing[0].temaNumber
+      }
+
       const isCorrect = correctAnswer
         ? params.userAnswer.toLowerCase() === correctAnswer.toLowerCase()
         : false
 
-      // Actualizar respuesta existente
+      // Actualizar respuesta existente (incluir temaNumber si se resolvió)
+      const updateData: Record<string, unknown> = {
+        userAnswer: params.userAnswer,
+        isCorrect,
+        timeSpentSeconds: params.timeSpentSeconds ?? 0,
+        confidenceLevel: params.confidenceLevel,
+      }
+
+      // Solo actualizar temaNumber si estaba null y ahora tenemos uno
+      if (existing[0].temaNumber == null && temaNumber != null) {
+        updateData.temaNumber = temaNumber
+        console.log(`📝 [saveAnswer] Actualizando temaNumber a ${temaNumber} para pregunta existente`)
+      }
+
       await db
         .update(testQuestions)
-        .set({
-          userAnswer: params.userAnswer,
-          isCorrect,
-          timeSpentSeconds: params.timeSpentSeconds ?? 0,
-          confidenceLevel: params.confidenceLevel,
-        })
+        .set(updateData)
         .where(eq(testQuestions.id, existing[0].id))
 
       answerId = existing[0].id
@@ -107,7 +207,7 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
           articleId: params.articleId,
           articleNumber: params.articleNumber,
           lawName: params.lawName,
-          temaNumber: params.temaNumber,
+          temaNumber: temaNumber, // Usar el resuelto
           difficulty: params.difficulty,
           timeSpentSeconds: params.timeSpentSeconds ?? 0,
           confidenceLevel: params.confidenceLevel,
@@ -482,34 +582,67 @@ export type InitExamResponse = {
 
 export async function initExamQuestions(
   testId: string,
-  questions: InitExamQuestion[]
+  questionsData: InitExamQuestion[]
 ): Promise<InitExamResponse> {
   try {
     const db = getDb()
 
-    // Preparar datos para inserción batch
-    const values = questions.map(q => ({
-      testId,
-      questionId: q.questionId,
-      questionOrder: q.questionOrder,
-      questionText: q.questionText,
-      userAnswer: '', // Vacío = no respondida
-      correctAnswer: q.correctAnswer,
-      isCorrect: false,
-      articleId: q.articleId,
-      articleNumber: q.articleNumber,
-      lawName: q.lawName,
-      temaNumber: q.temaNumber,
-      difficulty: q.difficulty,
-      timeSpentSeconds: 0,
-    }))
+    // Obtener userId del test para resolver temas
+    const testInfo = await db
+      .select({ userId: tests.userId })
+      .from(tests)
+      .where(eq(tests.id, testId))
+      .limit(1)
+
+    const userId = testInfo[0]?.userId
+    let oposicionId: OposicionId = 'auxiliar_administrativo_estado'
+
+    if (userId) {
+      oposicionId = await getUserOposicion(userId)
+    }
+
+    // Identificar questionIds sin temaNumber que necesitan resolución
+    const questionIdsNeedingTema = questionsData
+      .filter(q => q.temaNumber == null && q.questionId)
+      .map(q => q.questionId)
+
+    // OPTIMIZADO: Resolver todos los temas en UN SOLO query SQL
+    let resolvedTemas = new Map<string, number>()
+    if (questionIdsNeedingTema.length > 0 && userId) {
+      console.log(`🔍 [initExamQuestions] Resolviendo ${questionIdsNeedingTema.length} temas en batch...`)
+      resolvedTemas = await resolveTemasBatchByQuestionIds(questionIdsNeedingTema, oposicionId)
+    }
+
+    // Preparar datos para inserción batch, usando temas resueltos
+    const values = questionsData.map(q => {
+      let temaNumber = q.temaNumber
+      if (temaNumber == null && q.questionId && resolvedTemas.has(q.questionId)) {
+        temaNumber = resolvedTemas.get(q.questionId) ?? null
+      }
+
+      return {
+        testId,
+        questionId: q.questionId,
+        questionOrder: q.questionOrder,
+        questionText: q.questionText,
+        userAnswer: '', // Vacío = no respondida
+        correctAnswer: q.correctAnswer,
+        isCorrect: false,
+        articleId: q.articleId,
+        articleNumber: q.articleNumber,
+        lawName: q.lawName,
+        temaNumber,
+        difficulty: q.difficulty,
+        timeSpentSeconds: 0,
+      }
+    })
 
     // Insertar todas las preguntas
     await db.insert(testQuestions).values(values)
 
     return {
       success: true,
-      savedCount: questions.length,
+      savedCount: questionsData.length,
     }
   } catch (error) {
     console.error('Error guardando preguntas iniciales:', error)

@@ -15,7 +15,13 @@ export default function ConversionesPage() {
 
   // Estados para datos del funnel
   const [funnelStats, setFunnelStats] = useState([])
-  const [registrationStats, setRegistrationStats] = useState({ total: 0, totalAllTime: 0, bySource: {} })
+  const [registrationStats, setRegistrationStats] = useState({ total: 0, totalAllTime: 0, bySource: {}, activeUsers: 0, activationRate: 0 })
+  const [activeUserMetrics, setActiveUserMetrics] = useState({
+    dauTotal: 0, dauFree: 0, dauPremium: 0, monetizationRate: 0,
+    paidInPeriod: 0, freeToPayRate: 0,
+    dau7Days: 0, dau7DaysFree: 0, dau7DaysPremium: 0, monetizationRate7Days: 0,
+    paidIn7Days: 0, freeToPayRate7Days: 0
+  })
   const [timeAnalysis, setTimeAnalysis] = useState([])
   const [recentEvents, setRecentEvents] = useState([])
   const [dailyStats, setDailyStats] = useState([])
@@ -95,6 +101,12 @@ export default function ConversionesPage() {
     const data = await response.json()
 
     setRegistrationStats(data.registrations)
+    setActiveUserMetrics(data.activeUserMetrics || {
+      dauTotal: 0, dauFree: 0, dauPremium: 0, monetizationRate: 0,
+      paidInPeriod: 0, freeToPayRate: 0,
+      dau7Days: 0, dau7DaysFree: 0, dau7DaysPremium: 0, monetizationRate7Days: 0,
+      paidIn7Days: 0, freeToPayRate7Days: 0
+    })
     setRecentEvents(data.events)
     setDailyStats(data.dailyStats)
   }
@@ -471,6 +483,176 @@ export default function ConversionesPage() {
                 )
               })
           )}
+        </div>
+      </div>
+
+      {/* 🆕 Métricas de Activación y Monetización */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <span>🎯</span>
+          Métricas de Activación y Monetización
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* 1. Registro → Activo */}
+          {(() => {
+            const rate = registrationStats.activationRate || 0
+            const benchmark = { excellent: 60, good: 40, warning: 25 }
+            const status = rate >= benchmark.excellent ? 'excellent' : rate >= benchmark.good ? 'good' : rate >= benchmark.warning ? 'warning' : 'poor'
+            const statusConfig = {
+              excellent: { icon: '🚀', text: 'Excelente', desc: 'Por encima del benchmark', bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', badge: 'bg-green-200 text-green-800' },
+              good: { icon: '✅', text: 'Bueno', desc: 'En el benchmark óptimo', bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-300 dark:border-blue-700', badge: 'bg-blue-200 text-blue-800' },
+              warning: { icon: '⚠️', text: 'Mejorable', desc: 'Por debajo del objetivo', bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border-yellow-300 dark:border-yellow-700', badge: 'bg-yellow-200 text-yellow-800' },
+              poor: { icon: '🔴', text: 'Crítico', desc: 'Requiere atención', bg: 'bg-red-100 dark:bg-red-900/30', border: 'border-red-300 dark:border-red-700', badge: 'bg-red-200 text-red-800' }
+            }
+            const cfg = statusConfig[status]
+            return (
+              <div className={`${cfg.bg} border ${cfg.border} rounded-lg p-4`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xl">👤→✅</span>
+                  <span className={`text-xs font-bold px-2 py-1 rounded ${cfg.badge}`}>
+                    {cfg.icon} {cfg.text}
+                  </span>
+                </div>
+                <div className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Registro → Activo</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  Usuarios que hacen al menos 1 test
+                </div>
+                <div className="flex items-end justify-between mb-2">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                      {registrationStats.activeUsers || 0}
+                    </div>
+                    <div className="text-xs text-gray-500">de {registrationStats.total} registros</div>
+                  </div>
+                  <div className={`text-xl font-bold px-2 py-1 rounded ${cfg.badge}`}>
+                    {rate}%
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-600 pt-2">
+                  Benchmark: {benchmark.good}-{benchmark.excellent}%
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* 2. DAU Free + Premium (combinado) */}
+          <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xl">👥</span>
+              <span className="text-xs font-bold px-2 py-1 rounded bg-blue-200 text-blue-800">
+                Activos
+              </span>
+            </div>
+            <div className="font-semibold text-gray-800 dark:text-gray-200 mb-1">DAU Activos</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+              Usuarios activos (período seleccionado)
+            </div>
+            <div className="flex items-center gap-4 mb-2">
+              <div>
+                <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                  {activeUserMetrics.dauTotal}
+                </div>
+                <div className="text-xs text-gray-500">total</div>
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">Free:</span>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{activeUserMetrics.dauFree}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-amber-600 dark:text-amber-400">Premium:</span>
+                  <span className="font-semibold text-amber-700 dark:text-amber-300">{activeUserMetrics.dauPremium}</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 border-t border-blue-200 dark:border-blue-600 pt-2">
+              7d fijo: {activeUserMetrics.dau7Days} ({activeUserMetrics.dau7DaysFree} free, {activeUserMetrics.dau7DaysPremium} premium)
+            </div>
+          </div>
+
+          {/* 3. Tasa de Monetización */}
+          {(() => {
+            const rate = activeUserMetrics.monetizationRate || 0
+            const benchmark = { excellent: 8, good: 4, warning: 2 }
+            const status = rate >= benchmark.excellent ? 'excellent' : rate >= benchmark.good ? 'good' : rate >= benchmark.warning ? 'warning' : 'poor'
+            const statusConfig = {
+              excellent: { icon: '🚀', text: 'Excelente', desc: 'Muy alta monetización', bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', badge: 'bg-green-200 text-green-800' },
+              good: { icon: '✅', text: 'Bueno', desc: 'En rango SaaS típico', bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-300 dark:border-blue-700', badge: 'bg-blue-200 text-blue-800' },
+              warning: { icon: '⚠️', text: 'Mejorable', desc: 'Optimizar pricing', bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border-yellow-300 dark:border-yellow-700', badge: 'bg-yellow-200 text-yellow-800' },
+              poor: { icon: '🔴', text: 'Bajo', desc: 'Revisar modelo', bg: 'bg-red-100 dark:bg-red-900/30', border: 'border-red-300 dark:border-red-700', badge: 'bg-red-200 text-red-800' }
+            }
+            const cfg = statusConfig[status]
+            return (
+              <div className={`${cfg.bg} border ${cfg.border} rounded-lg p-4`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xl">💰</span>
+                  <span className={`text-xs font-bold px-2 py-1 rounded ${cfg.badge}`}>
+                    {cfg.icon} {cfg.text}
+                  </span>
+                </div>
+                <div className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Tasa Monetización</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  % de usuarios activos que pagan
+                </div>
+                <div className="flex items-end justify-between mb-2">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                      {activeUserMetrics.dauPremium}/{activeUserMetrics.dauTotal}
+                    </div>
+                  </div>
+                  <div className={`text-xl font-bold px-2 py-1 rounded ${cfg.badge}`}>
+                    {rate}%
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-600 pt-2">
+                  7d fijo: {activeUserMetrics.monetizationRate7Days}% · Benchmark: {benchmark.good}-{benchmark.excellent}%
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* 4. DAU Free → Pago */}
+          {(() => {
+            const rate = activeUserMetrics.freeToPayRate || 0
+            const benchmark = { excellent: 5, good: 2, warning: 1 }
+            const status = rate >= benchmark.excellent ? 'excellent' : rate >= benchmark.good ? 'good' : rate >= benchmark.warning ? 'warning' : 'poor'
+            const statusConfig = {
+              excellent: { icon: '🚀', text: 'Excelente', bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-300 dark:border-green-700', badge: 'bg-green-200 text-green-800' },
+              good: { icon: '✅', text: 'Bueno', bg: 'bg-emerald-100 dark:bg-emerald-900/30', border: 'border-emerald-300 dark:border-emerald-700', badge: 'bg-emerald-200 text-emerald-800' },
+              warning: { icon: '⚠️', text: 'Mejorable', bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border-yellow-300 dark:border-yellow-700', badge: 'bg-yellow-200 text-yellow-800' },
+              poor: { icon: '🔴', text: 'Bajo', bg: 'bg-red-100 dark:bg-red-900/30', border: 'border-red-300 dark:border-red-700', badge: 'bg-red-200 text-red-800' }
+            }
+            const cfg = statusConfig[status]
+            return (
+              <div className={`${cfg.bg} border ${cfg.border} rounded-lg p-4`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xl">💰</span>
+                  <span className={`text-xs font-bold px-2 py-1 rounded ${cfg.badge}`}>
+                    {cfg.icon} {cfg.text}
+                  </span>
+                </div>
+                <div className="font-semibold text-gray-800 dark:text-gray-200 mb-1">DAU Free → Pago</div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                  Conversión de usuarios free activos
+                </div>
+                <div className="flex items-end justify-between mb-2">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                      {activeUserMetrics.paidInPeriod}/{activeUserMetrics.dauFree}
+                    </div>
+                    <div className="text-xs text-gray-500">período {dateRange}d</div>
+                  </div>
+                  <div className={`text-xl font-bold px-2 py-1 rounded ${cfg.badge}`}>
+                    {rate.toFixed(1)}%
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-600 pt-2">
+                  7d fijo: {activeUserMetrics.freeToPayRate7Days}% ({activeUserMetrics.paidIn7Days}/{activeUserMetrics.dau7DaysFree}) · Benchmark: {benchmark.good}-{benchmark.excellent}%
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
 

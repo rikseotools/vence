@@ -1,0 +1,2122 @@
+{
+  "metadata": {
+    "oposicion": "Auxiliar Administrativo del Estado",
+    "fuente": "Topic scope actual de la base de datos - Vence",
+    "fecha": "2026-01-20",
+    "total_temas": 28
+  },
+  "temas": [
+    {
+      "numero": 1,
+      "bloque": "I. Organización pública",
+      "titulo": "La Constitución Española de 1978. Características. Los principios constitucionales y los valores superiores. Derechos y deberes fundamentales. Su garantía y suspensión.",
+      "leyes": [
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "44",
+            "45",
+            "46",
+            "47",
+            "48",
+            "49",
+            "50",
+            "51",
+            "52",
+            "53",
+            "54",
+            "55",
+            "56",
+            "68",
+            "87",
+            "116",
+            "117",
+            "128",
+            "137",
+            "159",
+            "160",
+            "161",
+            "162",
+            "164",
+            "165",
+            "166",
+            "167",
+            "168",
+            "169"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 2,
+      "bloque": "I. Organización pública",
+      "titulo": "El Tribunal Constitucional. La reforma de la Constitución. La Corona: funciones constitucionales del Rey. Sucesión y regencia.",
+      "leyes": [
+        {
+          "nombre": "Reglamento del Congreso",
+          "nombre_completo": "Resolución de 24 de febrero de 1982 por la que se ordena la publicación en el «Boletín Oficial del Estado» del nuevo Reglamento del Congreso de los Diputados",
+          "articulos": [
+            "146"
+          ]
+        },
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "13",
+            "56",
+            "57",
+            "58",
+            "59",
+            "60",
+            "61",
+            "62",
+            "63",
+            "64",
+            "65",
+            "87",
+            "91",
+            "100",
+            "114",
+            "159",
+            "160",
+            "161",
+            "162",
+            "163",
+            "164",
+            "165",
+            "166",
+            "167",
+            "168",
+            "169"
+          ]
+        },
+        {
+          "nombre": "LOTC",
+          "nombre_completo": "Ley Orgánica 2/1979, de 3 de octubre, del Tribunal Constitucional",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "5",
+            "6",
+            "7",
+            "9",
+            "16",
+            "19",
+            "20",
+            "23",
+            "32",
+            "41",
+            "46",
+            "75",
+            "79",
+            "29",
+            "43",
+            "10",
+            "27",
+            "75 ter"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 3,
+      "bloque": "I. Organización pública",
+      "titulo": "Las Cortes Generales: composición, atribuciones y funcionamiento del Congreso de los Diputados y Senado. El Defensor del Pueblo.",
+      "leyes": [
+        {
+          "nombre": "LO 3/1981",
+          "nombre_completo": "Ley Orgánica 3/1981, de 6 de abril, del Defensor del Pueblo",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "10",
+            "17",
+            "19",
+            "30",
+            "35",
+            "37",
+            "8"
+          ]
+        },
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "54",
+            "66",
+            "67",
+            "68",
+            "69",
+            "70",
+            "71",
+            "72",
+            "73",
+            "74",
+            "75",
+            "76",
+            "77",
+            "78",
+            "79",
+            "80",
+            "81",
+            "82",
+            "83",
+            "84",
+            "85",
+            "86",
+            "87",
+            "88",
+            "89",
+            "90",
+            "91",
+            "92",
+            "93",
+            "94",
+            "95",
+            "96"
+          ]
+        },
+        {
+          "nombre": "Reglamento del Congreso",
+          "nombre_completo": "Resolución de 24 de febrero de 1982 por la que se ordena la publicación en el «Boletín Oficial del Estado» del nuevo Reglamento del Congreso de los Diputados",
+          "articulos": [
+            "5",
+            "22",
+            "30"
+          ]
+        },
+        {
+          "nombre": "Reglamento del Senado",
+          "nombre_completo": "Texto refundido del Reglamento del Senado aprobado por la Mesa del Senado, oída la Junta de Portavoces, en su reunión del día 3 de mayo de 1994",
+          "articulos": [
+            "5"
+          ]
+        },
+        {
+          "nombre": "LO 5/1985",
+          "nombre_completo": "Ley Orgánica 5/1985, de 19 de junio, del Régimen Electoral General",
+          "articulos": [
+            "162"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 4,
+      "bloque": "I. Organización pública",
+      "titulo": "El Poder Judicial. El Consejo General del Poder Judicial. El Tribunal Supremo. La organización judicial española.",
+      "leyes": [
+        {
+          "nombre": "Ley 50/1981",
+          "nombre_completo": "Ley 50/1981, de 30 de diciembre, por la que se regula el Estatuto Orgánico del Ministerio Fiscal",
+          "articulos": [
+            "1",
+            "2",
+            "29",
+            "6",
+            "31",
+            "12"
+          ]
+        },
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "117",
+            "118",
+            "119",
+            "120",
+            "121",
+            "122",
+            "123",
+            "124",
+            "125",
+            "126",
+            "127",
+            "123",
+            "125",
+            "26"
+          ]
+        },
+        {
+          "nombre": "Ley 29/1998",
+          "nombre_completo": "Ley 29/1998, de 13 de julio, Reguladora de la Jurisdicción Contencioso-administrativa",
+          "articulos": [
+            "5",
+            "8",
+            "9"
+          ]
+        },
+        {
+          "nombre": "LO 6/1985",
+          "nombre_completo": "Ley Orgánica 6/1985, de 1 de julio, del Poder Judicial",
+          "articulos": [
+            "9",
+            "21",
+            "53",
+            "56",
+            "61bis",
+            "63",
+            "64bis",
+            "72",
+            "74",
+            "82",
+            "84",
+            "89",
+            "90",
+            "95",
+            "586",
+            "32",
+            "55",
+            "64",
+            "86",
+            "62",
+            "570",
+            "5",
+            "59",
+            "85",
+            "563",
+            "564",
+            "569",
+            "570bis",
+            "589",
+            "34",
+            "560",
+            "568",
+            "92",
+            "600",
+            "605",
+            "585",
+            "55bis",
+            "558",
+            "602",
+            "96",
+            "6",
+            "567",
+            "87",
+            "82",
+            "593",
+            "595",
+            "58",
+            "70",
+            "89bis",
+            "599",
+            "601",
+            "603",
+            "609",
+            "610",
+            "61",
+            "561",
+            "604",
+            "598bis",
+            "65",
+            "93",
+            "12",
+            "66",
+            "606",
+            "565",
+            "598",
+            "1",
+            "2",
+            "14",
+            "26",
+            "30",
+            "55 bis",
+            "57",
+            "60",
+            "570 bis",
+            "571",
+            "594",
+            "596",
+            "61quinquies"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 5,
+      "bloque": "I. Organización pública",
+      "titulo": "El Gobierno y la Administración. El Presidente del Gobierno. El Consejo de Ministros. Designación, causas de cese y responsabilidad del Gobierno.",
+      "leyes": [
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "97",
+            "98",
+            "99",
+            "100",
+            "101",
+            "102",
+            "103",
+            "104",
+            "105",
+            "106",
+            "107",
+            "108",
+            "109",
+            "110",
+            "111",
+            "113",
+            "116"
+          ]
+        },
+        {
+          "nombre": "Ley 50/1997",
+          "nombre_completo": "Ley 50/1997, de 27 de noviembre, del Gobierno",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "18",
+            "20",
+            "21",
+            "24",
+            "25",
+            "26",
+            "27"
+          ]
+        },
+        {
+          "nombre": "Ley 40/2015",
+          "nombre_completo": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público",
+          "articulos": [
+            "1",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "nombre": "LO 4/1981",
+          "nombre_completo": "Ley Orgánica 4/1981, de 1 de junio, de los estados de alarma, excepción y sitio",
+          "articulos": [
+            "32"
+          ]
+        },
+        {
+          "nombre": "Ley 39/2015",
+          "nombre_completo": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+          "articulos": [
+            "128"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 6,
+      "bloque": "I. Organización pública",
+      "titulo": "El Gobierno Abierto: concepto y principios informadores. La Agenda 2030 y los Objetivos de Desarrollo Sostenible.",
+      "leyes": [
+        {
+          "nombre": "Agenda 2030",
+          "nombre_completo": "Agenda 2030 para el Desarrollo Sostenible",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "00",
+            "0"
+          ]
+        },
+        {
+          "nombre": "Gobierno Abierto",
+          "nombre_completo": "Principios de Gobierno Abierto",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "0"
+          ]
+        },
+        {
+          "nombre": "I Plan Gobierno Abierto",
+          "nombre_completo": "I Plan de Acción de España (2012-2014)",
+          "articulos": [
+            "General"
+          ]
+        },
+        {
+          "nombre": "IV Plan Gobierno Abierto",
+          "nombre_completo": "IV Plan de Acción de España (2020-2024)",
+          "articulos": [
+            "General",
+            "Compromiso8",
+            "00",
+            "0"
+          ]
+        },
+        {
+          "nombre": "RD 210/2024",
+          "nombre_completo": "Real Decreto 210/2024, de 27 de febrero, por el que se establece la estructura orgánica básica del Ministerio para la Transformación Digital y de la Función Pública",
+          "articulos": [
+            "8"
+          ]
+        },
+        {
+          "nombre": "ODM",
+          "nombre_completo": "Objetivos de Desarrollo del Milenio (2000-2015)",
+          "articulos": [
+            "General"
+          ]
+        },
+        {
+          "nombre": "EDS 2030",
+          "nombre_completo": "Estrategia de Desarrollo Sostenible 2030",
+          "articulos": [
+            "Retos",
+            "0"
+          ]
+        },
+        {
+          "nombre": "Orden DSA/819/2020",
+          "nombre_completo": "Orden DSA/819/2020, de 3 de septiembre, por la que se regula la composición y funcionamiento del Consejo de Desarrollo Sostenible",
+          "articulos": [
+            "1",
+            "5.3",
+            "0",
+            "3",
+            "5"
+          ]
+        },
+        {
+          "nombre": "III Plan Gobierno Abierto",
+          "nombre_completo": "III Plan de Acción de España (2017-2019)",
+          "articulos": [
+            "0"
+          ]
+        },
+        {
+          "nombre": "I Plan Gobierno Abierto",
+          "nombre_completo": "I Plan de Acción de España (2012-2014)",
+          "articulos": [
+            "General"
+          ]
+        },
+        {
+          "nombre": "II Plan Gobierno Abierto",
+          "nombre_completo": "II Plan de Acción de España (2014-2016)",
+          "articulos": [
+            "General"
+          ]
+        },
+        {
+          "nombre": "Orden HFP/134/2018",
+          "nombre_completo": "Orden HFP/134/2018, de 15 de febrero, por la que se crea el Foro de Gobierno Abierto",
+          "articulos": [
+            "3",
+            "2",
+            "1",
+            "4",
+            "5",
+            "6"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 7,
+      "bloque": "I. Organización pública",
+      "titulo": "La Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno.",
+      "leyes": [
+        {
+          "nombre": "Ley 19/2013",
+          "nombre_completo": "Ley 19/2013 de Transparencia, Acceso a la Información Pública y Buen Gobierno",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6bis",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40"
+          ]
+        },
+        {
+          "nombre": "Ley 10/2010",
+          "nombre_completo": "Ley 10/2010, de 28 de abril, de prevención del blanqueo de capitales y de la financiación del terrorismo",
+          "articulos": [
+            "14"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 8,
+      "bloque": "I. Organización pública",
+      "titulo": "La Administración General del Estado. Órganos centrales. Órganos superiores y órganos directivos. Órganos territoriales. Otros órganos administrativos. La Administración del Estado en el exterior.",
+      "leyes": [
+        {
+          "nombre": "Ley 2/2014",
+          "nombre_completo": "Ley 2/2014, de 25 de marzo, de la Acción y del Servicio Exterior del Estado",
+          "articulos": [
+            "42",
+            "43",
+            "44",
+            "51",
+            "59"
+          ]
+        },
+        {
+          "nombre": "Ley 50/1997",
+          "nombre_completo": "Ley 50/1997, de 27 de noviembre, del Gobierno",
+          "articulos": [
+            "1",
+            "5",
+            "7",
+            "15"
+          ]
+        },
+        {
+          "nombre": "Ley 40/2015",
+          "nombre_completo": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público",
+          "articulos": [
+            "5",
+            "6",
+            "16",
+            "17",
+            "18",
+            "54",
+            "55",
+            "57",
+            "58",
+            "59",
+            "60",
+            "61",
+            "62",
+            "63",
+            "64",
+            "67",
+            "68",
+            "69",
+            "69.1",
+            "70",
+            "71",
+            "72",
+            "73",
+            "75",
+            "78",
+            "79",
+            "146",
+            "147",
+            "147.1",
+            "147.2",
+            "148",
+            "148.1",
+            "149",
+            "150",
+            "151",
+            "152",
+            "153",
+            "154",
+            "74",
+            "76",
+            "77"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 9,
+      "bloque": "I. Organización pública",
+      "titulo": "La Organización territorial del Estado. Las Comunidades Autónomas: Constitución y distribución de competencias entre el Estado y las Comunidades Autónomas. La Administración local: entidades que la integran. La provincia, el municipio y la isla.",
+      "leyes": [
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "137",
+            "138",
+            "139",
+            "140",
+            "141",
+            "142",
+            "143",
+            "144",
+            "145",
+            "146",
+            "147",
+            "148",
+            "149",
+            "150",
+            "151",
+            "152",
+            "153",
+            "154",
+            "155",
+            "156",
+            "157",
+            "158"
+          ]
+        },
+        {
+          "nombre": "Ley 7/1985",
+          "nombre_completo": "Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "24",
+            "25",
+            "26",
+            "27",
+            "28",
+            "31",
+            "32",
+            "33",
+            "34",
+            "35",
+            "36",
+            "37",
+            "38",
+            "42",
+            "43",
+            "44",
+            "45",
+            "41",
+            "7",
+            "46",
+            "47",
+            "64",
+            "65",
+            "67",
+            "70",
+            "117",
+            "138"
+          ]
+        },
+        {
+          "nombre": "LO 2/1980",
+          "nombre_completo": "Ley Orgánica 2/1980, de 18 de enero, sobre regulación de las distintas modalidades de referéndum",
+          "articulos": [
+            "7"
+          ]
+        },
+        {
+          "nombre": "LO 3/1981",
+          "nombre_completo": "Ley Orgánica 3/1981, de 6 de abril, del Defensor del Pueblo",
+          "articulos": [
+            "26"
+          ]
+        },
+        {
+          "nombre": "LO 5/1985",
+          "nombre_completo": "Ley Orgánica 5/1985, de 19 de junio, del Régimen Electoral General",
+          "articulos": [
+            "207"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 10,
+      "bloque": "I. Organización pública",
+      "titulo": "La organización de la Unión Europea. El Consejo Europeo, el Consejo, el Parlamento Europeo, la Comisión Europea y el Tribunal de Justicia de la Unión Europea.",
+      "leyes": [
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": []
+        },
+        {
+          "nombre": "Ley 19/2013",
+          "nombre_completo": "Ley 19/2013 de Transparencia, Acceso a la Información Pública y Buen Gobierno",
+          "articulos": [
+            "2"
+          ]
+        },
+        {
+          "nombre": "TUE",
+          "nombre_completo": "Tratado de la Unión Europea",
+          "articulos": [
+            "9",
+            "10",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "28",
+            "49",
+            "50"
+          ]
+        },
+        {
+          "nombre": "TFUE",
+          "nombre_completo": "Tratado de Funcionamiento de la Unión Europea",
+          "articulos": [
+            "2",
+            "6",
+            "223",
+            "224",
+            "225",
+            "228",
+            "234",
+            "244",
+            "251",
+            "253",
+            "254",
+            "263",
+            "264",
+            "267",
+            "283",
+            "287",
+            "294",
+            "301",
+            "305",
+            "314",
+            "231",
+            "240",
+            "229",
+            "233",
+            "256",
+            "261"
+          ]
+        },
+        {
+          "nombre": "Ley 25/2014",
+          "nombre_completo": "Ley 25/2014, de 27 de noviembre, de Tratados y otros Acuerdos Internacionales",
+          "articulos": [
+            "1"
+          ]
+        },
+        {
+          "nombre": "Protocolo nº 1",
+          "nombre_completo": "Protocolo nº 1 sobre el cometido de los Parlamentos nacionales en la Unión Europea",
+          "articulos": [
+            "1"
+          ]
+        },
+        {
+          "nombre": "Protocolo nº 2",
+          "nombre_completo": "Protocolo nº 2 sobre la aplicación de los principios de subsidiariedad y proporcionalidad",
+          "articulos": [
+            "5"
+          ]
+        },
+        {
+          "nombre": "Reglamento (UE, Euratom) 2018/1046",
+          "nombre_completo": "Reglamento (UE, Euratom) 2018/1046 del Parlamento Europeo y del Consejo",
+          "articulos": [
+            "3"
+          ]
+        },
+        {
+          "nombre": "Reglamento (CE) nº 1049/2001",
+          "nombre_completo": "Reglamento (CE) nº 1049/2001 del Parlamento Europeo y del Consejo",
+          "articulos": [
+            "2"
+          ]
+        },
+        {
+          "nombre": "Reglamento PE 9ª",
+          "nombre_completo": "Reglamento interno del Parlamento Europeo (9ª Legislatura)",
+          "articulos": [
+            "33",
+            "28",
+            "17"
+          ]
+        },
+        {
+          "nombre": "Protocolo nº 6",
+          "nombre_completo": "Protocolo (nº 6) sobre la fijación de las sedes de las instituciones y de determinados órganos, organismos y servicios de la Unión Europea",
+          "articulos": [
+            "único"
+          ]
+        },
+        {
+          "nombre": "Reglamento Consejo UE",
+          "nombre_completo": "Reglamento interno del Consejo UE (2009/937/UE)",
+          "articulos": [
+            "1"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 11,
+      "bloque": "I. Organización pública",
+      "titulo": "Las Leyes del Procedimiento Administrativo Común de las Administraciones Públicas y del Régimen Jurídico del Sector Público. El procedimiento administrativo común y sus fases. La revisión de los actos en vía administrativa: revisión de oficio y recursos administrativos. El recurso contencioso-administrativo. Actividad administrativa impugnable. Las partes: capacidad, legitimación, representación y defensa.",
+      "leyes": [
+        {
+          "nombre": "Ley 40/2015",
+          "nombre_completo": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público",
+          "articulos": [
+            "1",
+            "10",
+            "12",
+            "2",
+            "24",
+            "3",
+            "36",
+            "4",
+            "5",
+            "64",
+            "65",
+            "66",
+            "8",
+            "9",
+            "33",
+            "11",
+            "13",
+            "19",
+            "51",
+            "145",
+            "155"
+          ]
+        },
+        {
+          "nombre": "Ley 29/1998",
+          "nombre_completo": "Ley 29/1998, de 13 de julio, Reguladora de la Jurisdicción Contencioso-administrativa",
+          "articulos": [
+            "1",
+            "10",
+            "107",
+            "12",
+            "19",
+            "20",
+            "22",
+            "23",
+            "25",
+            "27",
+            "35",
+            "11",
+            "14",
+            "6",
+            "29",
+            "31"
+          ]
+        },
+        {
+          "nombre": "Ley 39/2015",
+          "nombre_completo": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+          "articulos": [
+            "1",
+            "100",
+            "101",
+            "102",
+            "106",
+            "107",
+            "109",
+            "112",
+            "115",
+            "121",
+            "122",
+            "123",
+            "124",
+            "125",
+            "126",
+            "13",
+            "14",
+            "2",
+            "21",
+            "24",
+            "25",
+            "3",
+            "35",
+            "37",
+            "39",
+            "40",
+            "41",
+            "42",
+            "43",
+            "46",
+            "47",
+            "48",
+            "5",
+            "53",
+            "56",
+            "58",
+            "59",
+            "62",
+            "63",
+            "64",
+            "65",
+            "68",
+            "70",
+            "71",
+            "72",
+            "75",
+            "76",
+            "77",
+            "78",
+            "81",
+            "82",
+            "83",
+            "84",
+            "85",
+            "88",
+            "89",
+            "90",
+            "92",
+            "93",
+            "96",
+            "110",
+            "54",
+            "91",
+            "94",
+            "95",
+            "104",
+            "116",
+            "33",
+            "119",
+            "52",
+            "103",
+            "4",
+            "6",
+            "22",
+            "30",
+            "31",
+            "32",
+            "49",
+            "60",
+            "69",
+            "97",
+            "113",
+            "114",
+            "131"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 12,
+      "bloque": "I. Organización pública",
+      "titulo": "La protección de datos personales y su régimen jurídico: principios, derechos y obligaciones.",
+      "leyes": [
+        {
+          "nombre": "Reglamento UE 2016/679",
+          "nombre_completo": "Reglamento (UE) 2016/679 del Parlamento Europeo y del Consejo, de 27 de abril de 2016, relativo a la protección de las personas físicas en lo que respecta al tratamiento de datos personales y a la libre circulación de estos datos",
+          "articulos": [
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "24",
+            "25",
+            "26",
+            "27",
+            "30",
+            "33",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "99",
+            "9",
+            "10",
+            "28",
+            "32",
+            "35"
+          ]
+        },
+        {
+          "nombre": "LO 3/2018",
+          "nombre_completo": "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "13",
+            "14",
+            "28",
+            "29",
+            "30",
+            "32",
+            "33",
+            "34",
+            "37",
+            "11",
+            "12",
+            "16"
+          ]
+        },
+        {
+          "nombre": "RD 1720/2007",
+          "nombre_completo": "Real Decreto 1720/2007, de 21 de diciembre, por el que se aprueba el Reglamento de desarrollo de la Ley Orgánica 15/1999, de 13 de diciembre, de protección de datos de carácter personal",
+          "articulos": [
+            "5"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 13,
+      "bloque": "I. Organización pública",
+      "titulo": "El personal funcionario al servicio de las Administraciones públicas: concepto y clases. Régimen jurídico. El Registro Central de Personal. Programación de efectivos y Oferta de Empleo Público. Selección. Provisión de puestos de trabajo. Situaciones administrativas de los funcionarios.",
+      "leyes": [
+        {
+          "nombre": "RD 364/1995",
+          "nombre_completo": "Real Decreto 364/1995, de 10 de marzo, por el que se aprueba el Reglamento General de Ingreso del Personal al servicio de la Administración General del Estado y de Provisión de Puestos de Trabajo y Promoción Profesional de los Funcionarios Civiles de la Administración General del Estado",
+          "articulos": [
+            "3",
+            "5",
+            "7",
+            "10",
+            "11",
+            "12",
+            "15",
+            "20",
+            "22",
+            "24",
+            "27",
+            "38",
+            "69"
+          ]
+        },
+        {
+          "nombre": "Orden APU/1461/2002",
+          "nombre_completo": "Orden APU/1461/2002, de 6 de junio, por la que se establecen las normas para la selección y nombramiento de personal funcionario interino",
+          "articulos": [
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        {
+          "nombre": "RD 2073/1999",
+          "nombre_completo": "Real Decreto 2073/1999, de 30 de diciembre, por el que se modifica el Reglamento del Registro Central de Personal y las normas de coordinación con los de las restantes Administraciones públicas",
+          "articulos": [
+            "1",
+            "3",
+            "6",
+            "10",
+            "11",
+            "13"
+          ]
+        },
+        {
+          "nombre": "RD 2271/2004",
+          "nombre_completo": "Real Decreto 2271/2004, de 3 de diciembre, por el que se regula el acceso al empleo público y la provisión de puestos de trabajo de las personas con discapacidad",
+          "articulos": [
+            "2",
+            "3",
+            "10",
+            "12",
+            "13"
+          ]
+        },
+        {
+          "nombre": "RDL 8/2015",
+          "nombre_completo": "Real Decreto Legislativo 8/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley General de la Seguridad Social",
+          "articulos": [
+            "205"
+          ]
+        },
+        {
+          "nombre": "Orden HFP/266/2023",
+          "nombre_completo": "Orden HFP/266/2023, de 12 de marzo, por la que se determina la composición y funcionamiento de la Comisión Permanente de Selección",
+          "articulos": [
+            "2",
+            "3"
+          ]
+        },
+        {
+          "nombre": "RD 365/1995",
+          "nombre_completo": "Real Decreto 365/1995, de 10 de marzo, por el que se aprueba el Reglamento de Situaciones Administrativas de los Funcionarios Civiles de la Administración General del Estado",
+          "articulos": [
+            "13"
+          ]
+        },
+        {
+          "nombre": "RDL 5/2015",
+          "nombre_completo": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público",
+          "articulos": [
+            "4",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "16",
+            "55",
+            "57",
+            "58",
+            "61",
+            "62",
+            "65",
+            "67",
+            "69",
+            "70",
+            "74",
+            "75",
+            "76",
+            "78",
+            "80",
+            "82",
+            "84",
+            "85",
+            "86",
+            "87",
+            "88",
+            "89",
+            "90",
+            "96",
+            "3",
+            "42",
+            "56",
+            "60",
+            "68",
+            "79",
+            "81"
+          ]
+        },
+        {
+          "nombre": "RDL 6/2023",
+          "nombre_completo": "Real Decreto-ley 6/2023, de 19 de diciembre, por el que se aprueban medidas urgentes para la ejecución del Plan de Recuperación, Transformación y Resiliencia en materia de servicio público de justicia, función pública, régimen local y mecenazgo",
+          "articulos": [
+            "107",
+            "108",
+            "109",
+            "110",
+            "114",
+            "124",
+            "115",
+            "125"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 14,
+      "bloque": "I. Organización pública",
+      "titulo": "Derechos y deberes de los funcionarios. La carrera administrativa. Promoción interna. El sistema de retribuciones e indemnizaciones. Régimen disciplinario. El régimen de la Seguridad Social de los funcionarios.",
+      "leyes": [
+        {
+          "nombre": "Ley 30/1984",
+          "nombre_completo": "Ley 30/1984, de 2 de agosto, de Medidas para la Reforma de la Función Pública",
+          "articulos": [
+            "23"
+          ]
+        },
+        {
+          "nombre": "RD 364/1995",
+          "nombre_completo": "Real Decreto 364/1995, de 10 de marzo, por el que se aprueba el Reglamento General de Ingreso del Personal al servicio de la Administración General del Estado y de Provisión de Puestos de Trabajo y Promoción Profesional de los Funcionarios Civiles de la Administración General del Estado",
+          "articulos": [
+            "70",
+            "71",
+            "73",
+            "74",
+            "76",
+            "78"
+          ]
+        },
+        {
+          "nombre": "RD 462/2002",
+          "nombre_completo": "Real Decreto 462/2002, de 24 de mayo, sobre indemnizaciones por razón del servicio",
+          "articulos": [
+            "5",
+            "6"
+          ]
+        },
+        {
+          "nombre": "RDL 4/2000",
+          "nombre_completo": "Real Decreto Legislativo 4/2000, de 23 de junio, por el que se aprueba el texto refundido de la Ley sobre Seguridad Social de los funcionarios civiles del Estado",
+          "articulos": [
+            "2",
+            "3",
+            "4",
+            "7",
+            "8",
+            "10",
+            "11",
+            "12"
+          ]
+        },
+        {
+          "nombre": "RDL 8/2015",
+          "nombre_completo": "Real Decreto Legislativo 8/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley General de la Seguridad Social",
+          "articulos": [
+            "136"
+          ]
+        },
+        {
+          "nombre": "RD 33/1986",
+          "nombre_completo": "Real Decreto 33/1986, de 10 de enero, por el que se aprueba el Reglamento de Régimen Disciplinario de los Funcionarios de la Administración del Estado",
+          "articulos": [
+            "7",
+            "19"
+          ]
+        },
+        {
+          "nombre": "RDL 6/2023",
+          "nombre_completo": "Real Decreto-ley 6/2023, de 19 de diciembre, por el que se aprueban medidas urgentes para la ejecución del Plan de Recuperación, Transformación y Resiliencia en materia de servicio público de justicia, función pública, régimen local y mecenazgo",
+          "articulos": [
+            "116",
+            "120",
+            "122"
+          ]
+        },
+        {
+          "nombre": "RDL 670/1987",
+          "nombre_completo": "Real Decreto Legislativo 670/1987, de 30 de abril, por el que se aprueba el texto refundido de Ley de Clases Pasivas del Estado",
+          "articulos": [
+            "2",
+            "28",
+            "29",
+            "33"
+          ]
+        },
+        {
+          "nombre": "RD 861/1986",
+          "nombre_completo": "Real Decreto 861/1986, de 25 de abril, por el que se establece el régimen de las retribuciones de los funcionarios de Administración Local",
+          "articulos": [
+            "4"
+          ]
+        },
+        {
+          "nombre": "RD 375/2003",
+          "nombre_completo": "Real Decreto 375/2003, de 28 de marzo, por el que se aprueba el Reglamento General del Mutualismo Administrativo",
+          "articulos": [
+            "4",
+            "16"
+          ]
+        },
+        {
+          "nombre": "RDL 5/2015",
+          "nombre_completo": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público",
+          "articulos": [
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19",
+            "20",
+            "21",
+            "22",
+            "23",
+            "25",
+            "26",
+            "27",
+            "28",
+            "29",
+            "30",
+            "37",
+            "39",
+            "40",
+            "41",
+            "43",
+            "44",
+            "46",
+            "47",
+            "47bis",
+            "48",
+            "49",
+            "50",
+            "52",
+            "53",
+            "54",
+            "93",
+            "94",
+            "95",
+            "96",
+            "97",
+            "98",
+            "99",
+            "100"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 15,
+      "bloque": "I. Organización pública",
+      "titulo": "El presupuesto del Estado en España. Contenido, elaboración y estructura. Fases del ciclo presupuestario.",
+      "leyes": [
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "134"
+          ]
+        },
+        {
+          "nombre": "Ley 47/2003",
+          "nombre_completo": "Ley 47/2003, de 26 de noviembre, General Presupuestaria",
+          "articulos": [
+            "1",
+            "2",
+            "4",
+            "20",
+            "22",
+            "26",
+            "27",
+            "28",
+            "32",
+            "33",
+            "34",
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "44",
+            "46",
+            "47",
+            "49",
+            "50",
+            "51",
+            "52",
+            "53",
+            "54",
+            "55",
+            "56",
+            "58",
+            "60",
+            "61",
+            "62",
+            "69",
+            "73",
+            "74",
+            "75",
+            "78",
+            "79",
+            "80",
+            "110",
+            "131",
+            "132",
+            "135",
+            "150",
+            "151"
+          ]
+        },
+        {
+          "nombre": "LO 2/2012",
+          "nombre_completo": "Ley Orgánica 2/2012, de 27 de abril, de Estabilidad Presupuestaria y Sostenibilidad Financiera",
+          "articulos": [
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "11",
+            "15",
+            "16"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 16,
+      "bloque": "I. Organización pública",
+      "titulo": "Políticas de igualdad y contra la violencia de género. Políticas de igualdad de trato y no discriminación de las personas LGTBI. Discapacidad y dependencia: régimen jurídico.",
+      "leyes": [
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "9",
+            "14",
+            "32",
+            "35",
+            "39",
+            "50"
+          ]
+        },
+        {
+          "nombre": "LO 3/2007",
+          "nombre_completo": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres",
+          "articulos": [
+            "1",
+            "3",
+            "4",
+            "6",
+            "7",
+            "10",
+            "12",
+            "14",
+            "15",
+            "44",
+            "49",
+            "52",
+            "60",
+            "76",
+            "8",
+            "51",
+            "11",
+            "5",
+            "64",
+            "78",
+            "45"
+          ]
+        },
+        {
+          "nombre": "LO 1/2004",
+          "nombre_completo": "Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género",
+          "articulos": [
+            "1",
+            "2",
+            "14",
+            "17",
+            "19",
+            "20",
+            "10",
+            "21",
+            "24",
+            "30",
+            "23",
+            "27",
+            "16"
+          ]
+        },
+        {
+          "nombre": "Ley 4/2023",
+          "nombre_completo": "Ley 4/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garantía de los derechos de las personas LGTBI",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "8",
+            "9",
+            "59",
+            "56",
+            "28",
+            "38",
+            "42",
+            "36",
+            "64",
+            "66"
+          ]
+        },
+        {
+          "nombre": "Ley 15/2022",
+          "nombre_completo": "Ley 15/2022, de 12 de julio, integral para la igualdad de trato y la no discriminación",
+          "articulos": [
+            "1",
+            "2",
+            "6",
+            "51",
+            "41",
+            "48",
+            "3",
+            "4",
+            "40",
+            "32"
+          ]
+        },
+        {
+          "nombre": "RDL 1/2013",
+          "nombre_completo": "Real Decreto Legislativo 1/2013, de 29 de noviembre, por el que se aprueba el Texto Refundido de la Ley General de derechos de las personas con discapacidad y de su inclusión social",
+          "articulos": [
+            "2",
+            "4",
+            "7",
+            "42",
+            "1",
+            "51",
+            "37",
+            "5",
+            "4",
+            "32"
+          ]
+        },
+        {
+          "nombre": "Estrategia 2022-2030",
+          "nombre_completo": "Estrategia Española sobre Discapacidad 2022-2030",
+          "articulos": [
+            "6"
+          ]
+        },
+        {
+          "nombre": "Ley 39/2006",
+          "nombre_completo": "Ley 39/2006, de 14 de diciembre, de Promoción de la Autonomía Personal y Atención a las personas en situación de dependencia",
+          "articulos": [
+            "1",
+            "2",
+            "26",
+            "15",
+            "6",
+            "14",
+            "3",
+            "28",
+            "27"
+          ]
+        },
+        {
+          "nombre": "RDL 2/2015",
+          "nombre_completo": "Real Decreto Legislativo 2/2015, de 23 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto de los Trabajadores",
+          "articulos": [
+            "48"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 101,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Atención al público: acogida e información al ciudadano. Atención de personas con discapacidad.",
+      "leyes": [
+        {
+          "nombre": "RD 208/1996",
+          "nombre_completo": "Real Decreto 208/1996, de 9 de febrero, por el que se regulan los servicios de información administrativa y atención al ciudadano",
+          "articulos": [
+            "4"
+          ]
+        },
+        {
+          "nombre": "Ley 40/2015",
+          "nombre_completo": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público",
+          "articulos": [
+            "3"
+          ]
+        },
+        {
+          "nombre": "Ley 39/2015",
+          "nombre_completo": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+          "articulos": [
+            "18",
+            "19"
+          ]
+        },
+        {
+          "nombre": "CE",
+          "nombre_completo": "Constitución Española",
+          "articulos": [
+            "103"
+          ]
+        },
+        {
+          "nombre": "RD 366/2007",
+          "nombre_completo": "Real Decreto 366/2007, de 16 de marzo, por el que se establecen las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración General del Estado",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14"
+          ]
+        },
+        {
+          "nombre": "RDL 1/2013",
+          "nombre_completo": "Real Decreto Legislativo 1/2013, de 29 de noviembre, por el que se aprueba el Texto Refundido de la Ley General de derechos de las personas con discapacidad y de su inclusión social",
+          "articulos": [
+            "2",
+            "5",
+            "23",
+            "55",
+            "56"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 102,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Los servicios de información administrativa. Información general y particular al ciudadano. Iniciativas. Reclamaciones. Quejas. Peticiones.",
+      "leyes": [
+        {
+          "nombre": "RD 208/1996",
+          "nombre_completo": "Real Decreto 208/1996, de 9 de febrero, por el que se regulan los servicios de información administrativa y atención al ciudadano",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10"
+          ]
+        },
+        {
+          "nombre": "RD 951/2005",
+          "nombre_completo": "Real Decreto 951/2005, de 29 de julio, por el que se establece el marco general para la mejora de la calidad en la Administración General del Estado",
+          "articulos": [
+            "1",
+            "2",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "18",
+            "19"
+          ]
+        },
+        {
+          "nombre": "LO 4/2001",
+          "nombre_completo": "Ley Orgánica 4/2001, de 12 de noviembre, reguladora del Derecho de Petición",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "Disposición Adicional Segunda"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 103,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Concepto de documento, registro y archivo. Funciones del registro y del archivo. Clases de archivo y criterios de ordenación.",
+      "leyes": [
+        {
+          "nombre": "RD 1708/2011",
+          "nombre_completo": "Real Decreto 1708/2011, de 18 de noviembre, por el que se establece el Sistema Español de Archivos y se regula el Sistema de Archivos de la Administración General del Estado y de sus Organismos Públicos y su régimen de acceso",
+          "articulos": [
+            "2.2",
+            "3.4",
+            "4.3",
+            "5",
+            "5.5",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "24",
+            "25",
+            "26",
+            "30"
+          ]
+        },
+        {
+          "nombre": "Ley 39/2015",
+          "nombre_completo": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+          "articulos": [
+            "6",
+            "17",
+            "26",
+            "27",
+            "28",
+            "31"
+          ]
+        },
+        {
+          "nombre": "Ley 40/2015",
+          "nombre_completo": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público",
+          "articulos": [
+            "46"
+          ]
+        },
+        {
+          "nombre": "RD 203/2021",
+          "nombre_completo": "Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos",
+          "articulos": [
+            "40",
+            "46",
+            "48",
+            "49",
+            "53",
+            "55"
+          ]
+        },
+        {
+          "nombre": "Ley 16/1985",
+          "nombre_completo": "Ley 16/1985, de 25 de junio, del Patrimonio Histórico Español",
+          "articulos": [
+            "49",
+            "59"
+          ]
+        },
+        {
+          "nombre": "RD 829/2023",
+          "nombre_completo": "Real Decreto 829/2023, de 20 de noviembre, por el que se reestructuran los departamentos ministeriales",
+          "articulos": [
+            "15"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 104,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Administración electrónica y servicios al ciudadano. La información administrativa. Análisis de principales páginas web de carácter público. Servicios telemáticos. Oficinas integradas de atención al ciudadano. Ventanilla única empresarial. El Punto de Acceso General de la Administración General del Estado.",
+      "leyes": [
+        {
+          "nombre": "Portal de Internet",
+          "nombre_completo": "Portal de Internet - Análisis de las principales páginas web de carácter público",
+          "articulos": [
+            "0"
+          ]
+        },
+        {
+          "nombre": "Ley 40/2015",
+          "nombre_completo": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público",
+          "articulos": [
+            "38",
+            "39",
+            "40",
+            "41",
+            "42",
+            "44"
+          ]
+        },
+        {
+          "nombre": "RD 203/2021",
+          "nombre_completo": "Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos",
+          "articulos": [
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "9",
+            "10",
+            "11",
+            "12",
+            "14",
+            "19",
+            "23",
+            "25",
+            "32",
+            "41"
+          ]
+        },
+        {
+          "nombre": "RD 951/2005",
+          "nombre_completo": "Real Decreto 951/2005, de 29 de julio, por el que se establece el marco general para la mejora de la calidad en la Administración General del Estado",
+          "articulos": [
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13"
+          ]
+        },
+        {
+          "nombre": "Ley 39/2015",
+          "nombre_completo": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas",
+          "articulos": [
+            "9",
+            "10",
+            "11",
+            "12",
+            "14",
+            "26",
+            "41"
+          ]
+        },
+        {
+          "nombre": "Administración electrónica y servicios al ciudadano (CSL)",
+          "nombre_completo": "Administración electrónica y servicios al ciudadano (CSL)",
+          "articulos": [
+            "1"
+          ]
+        },
+        {
+          "nombre": "Orden HAP/1949/2014",
+          "nombre_completo": "Orden HAP/1949/2014, de 13 de octubre, por la que se regula el Punto de Acceso General de la Administración General del Estado y se crea su sede electrónica",
+          "articulos": [
+            "8"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 105,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Informática básica: conceptos fundamentales sobre el hardware y el software. Sistemas de almacenamiento de datos. Sistemas operativos. Nociones básicas de seguridad informática.",
+      "leyes": [
+        {
+          "nombre": "Informática Básica",
+          "nombre_completo": "Conceptos de Informática Básica",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 106,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Introducción al sistema operativo: el entorno Windows. Fundamentos. Trabajo en el entorno gráfico de Windows: ventanas, iconos, menús contextuales, cuadros de diálogo. El escritorio y sus elementos. El menú inicio. Copilot.",
+      "leyes": [
+        {
+          "nombre": "Windows 11",
+          "nombre_completo": "Introducción al Sistema Operativo Windows 11",
+          "articulos": [
+            "1"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 107,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "El explorador de Windows. Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas «Este equipo» y «Acceso rápido». Accesorios. Herramientas del sistema.",
+      "leyes": [
+        {
+          "nombre": "Explorador Windows 11",
+          "nombre_completo": "Explorador de Windows 11",
+          "articulos": [
+            "1"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 108,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Procesadores de texto: Word 365. Principales funciones y utilidades. Creación y estructuración del documento. Gestión, grabación, recuperación e impresión de ficheros. Personalización del entorno de trabajo.",
+      "leyes": [
+        {
+          "nombre": "Procesadores de texto",
+          "nombre_completo": "Principales funciones y utilidades de procesadores de texto",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 109,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Hojas de cálculo: Excel 365. Principales funciones y utilidades. Libros, hojas y celdas. Configuración. Introducción y edición de datos. Fórmulas y funciones. Gráficos. Gestión de datos. Personalización del entorno de trabajo.",
+      "leyes": [
+        {
+          "nombre": "Hojas de cálculo. Excel",
+          "nombre_completo": "Hojas de cálculo. Excel",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 110,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Bases de datos: Access 365. Principales funciones y utilidades. Tablas. Consultas. Formularios. Informes. Relaciones. Importación, vinculación y exportación de datos.",
+      "leyes": [
+        {
+          "nombre": "Base de datos: Access",
+          "nombre_completo": "Base de datos: Access",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 111,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "Correo electrónico: Outlook 365. Conceptos elementales y funcionamiento. El entorno de trabajo. Enviar, recibir, responder y reenviar mensajes. Creación de mensajes. Reglas de mensaje. Libreta de direcciones.",
+      "leyes": [
+        {
+          "nombre": "Correo electrónico",
+          "nombre_completo": "Correo electrónico",
+          "articulos": [
+            "1",
+            "2",
+            "3"
+          ]
+        }
+      ]
+    },
+    {
+      "numero": 112,
+      "bloque": "II. Actividad administrativa y ofimática",
+      "titulo": "La Red Internet: origen, evolución y estado actual. Conceptos elementales sobre protocolos y servicios en Internet. Funcionalidades básicas de los navegadores web.",
+      "leyes": [
+        {
+          "nombre": "La Red Internet",
+          "nombre_completo": "La red Internet",
+          "articulos": [
+            "1",
+            "2",
+            "3",
+            "4"
+          ]
+        }
+      ]
+    }
+  ]
+}

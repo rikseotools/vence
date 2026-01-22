@@ -5,6 +5,7 @@ import {
   normalizeText,
   compareContent
 } from '@/lib/boe-extractor'
+import { isStructureArticle } from '@/lib/api/article-sync'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -183,7 +184,8 @@ export async function GET(request) {
         title_mismatch: 0,
         content_mismatch: 0,
         missing_in_db: 0,
-        extra_in_db: 0
+        extra_in_db: 0,
+        structure_articles: 0
       },
       details: {
         matching: [],
@@ -269,8 +271,16 @@ export async function GET(request) {
     }
 
     // Verificar artículos extra en BD (no están en BOE)
+    // NOTA: Los artículos de estructura (art. 0, índice) se cuentan por separado
+    let structureArticlesCount = 0
     for (const [artNum, dbArt] of dbMap) {
       if (!boeMap.has(artNum)) {
+        // Verificar si es artículo de estructura
+        if (isStructureArticle(dbArt.article_number)) {
+          structureArticlesCount++
+          // No añadir a extra_in_db ni a details - son intencionales
+          continue
+        }
         comparison.summary.extra_in_db++
         comparison.details.extra_in_db.push({
           article_number: artNum,
@@ -279,6 +289,8 @@ export async function GET(request) {
         })
       }
     }
+    // Guardar count de artículos de estructura
+    comparison.summary.structure_articles = structureArticlesCount
 
     // 6. Calcular estado general
     // isOk solo si no hay discrepancias de ningún tipo
@@ -296,6 +308,7 @@ export async function GET(request) {
       content_mismatch: comparison.summary.content_mismatch || 0,
       extra_in_db: comparison.summary.extra_in_db,
       missing_in_db: comparison.summary.missing_in_db,
+      structure_articles: comparison.summary.structure_articles || 0,
       is_ok: isOk,
       verified_at: new Date().toISOString()
     }

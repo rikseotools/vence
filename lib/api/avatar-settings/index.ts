@@ -49,5 +49,7 @@ export {
   getStudyMetrics,
   determineProfile,
   calculateUserProfile,
-  previewUserProfile
+  previewUserProfile,
+  calculateBulkUserProfiles,
+  type BulkUserMetrics
 } from './profiles'

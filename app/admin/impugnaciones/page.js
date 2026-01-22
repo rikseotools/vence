@@ -14,6 +14,7 @@ export default function ImpugnacionesPage() {
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('pendientes')
   const [typeFilter, setTypeFilter] = useState('todas') // 'todas', 'normales', 'psicotecnicas'
+  const [groupByUser, setGroupByUser] = useState(true) // Agrupar por usuario por defecto
   useEffect(() => {
     loadImpugnaciones()
   }, [supabase])
@@ -194,6 +195,26 @@ export default function ImpugnacionesPage() {
       default:
         return allDisputes
     }
+  }
+
+  // Agrupar impugnaciones por usuario
+  const getGroupedByUser = (disputes) => {
+    const groups = {}
+    disputes.forEach(dispute => {
+      const key = dispute.user_id || 'unknown'
+      if (!groups[key]) {
+        groups[key] = {
+          userId: dispute.user_id,
+          userName: dispute.user_full_name || dispute.user_email || 'Usuario desconocido',
+          userEmail: dispute.user_email,
+          isPremium: premiumUsers.has(dispute.user_id),
+          disputes: []
+        }
+      }
+      groups[key].disputes.push(dispute)
+    })
+    // Ordenar grupos por cantidad de impugnaciones (más primero)
+    return Object.values(groups).sort((a, b) => b.disputes.length - a.disputes.length)
   }
 
   const getStatusBadge = (status) => {
@@ -402,6 +423,22 @@ export default function ImpugnacionesPage() {
             ))}
           </div>
         </div>
+
+        {/* Toggle agrupar por usuario */}
+        <div className="flex items-center gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Vista:</span>
+          <button
+            onClick={() => setGroupByUser(!groupByUser)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              groupByUser
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            <span>👥</span>
+            <span>Agrupar por usuario</span>
+          </button>
+        </div>
       </div>
 
       {/* Lista de impugnaciones */}
@@ -413,16 +450,30 @@ export default function ImpugnacionesPage() {
               No hay impugnaciones {filter !== 'todas' ? filter : ''}
             </h3>
             <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-              {filter === 'pendientes' 
-                ? 'Todas las impugnaciones han sido procesadas' 
-                : filter === 'resueltas' 
+              {filter === 'pendientes'
+                ? 'Todas las impugnaciones han sido procesadas'
+                : filter === 'resueltas'
                 ? 'No hay impugnaciones resueltas todavía'
                 : filter === 'rechazadas'
                 ? 'No hay impugnaciones rechazadas todavía'
                 : 'No se han recibido impugnaciones todavía'}
             </p>
           </div>
+        ) : groupByUser ? (
+          // Vista agrupada por usuario
+          getGroupedByUser(filteredImpugnaciones).map((group) => (
+            <UserDisputeGroup
+              key={group.userId || 'unknown'}
+              group={group}
+              getStatusBadge={getStatusBadge}
+              getPriorityBadge={getPriorityBadge}
+              getCorrectOptionLetter={getCorrectOptionLetter}
+              onCloseDispute={closeDispute}
+              supabase={supabase}
+            />
+          ))
         ) : (
+          // Vista lista plana
           filteredImpugnaciones.map((dispute, index) => (
             <DisputeCard
               key={dispute.id}
@@ -444,7 +495,7 @@ export default function ImpugnacionesPage() {
 }
 
 // Componente separado para cada tarjeta de impugnación (solo lectura)
-function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, supabase, isPremium }) {
+function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, supabase, isPremium, compact = false }) {
   const [showFullQuestion, setShowFullQuestion] = useState(false)
   const [isClosing, setIsClosing] = useState(false)
 
@@ -489,14 +540,16 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
                 </div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                    <span className="flex items-center gap-1">
-                      👤 <strong className="text-blue-600 dark:text-blue-400 truncate">{dispute.user_full_name || dispute.user_email || 'Usuario desconocido'}</strong>
-                      {isPremium && (
-                        <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm">
-                          Premium
-                        </span>
-                      )}
-                    </span>
+                    {!compact && (
+                      <span className="flex items-center gap-1">
+                        👤 <strong className="text-blue-600 dark:text-blue-400 truncate">{dispute.user_full_name || dispute.user_email || 'Usuario desconocido'}</strong>
+                        {isPremium && (
+                          <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm">
+                            Premium
+                          </span>
+                        )}
+                      </span>
+                    )}
                     <span className="text-xs text-gray-500">
                       {new Date(dispute.created_at).toLocaleDateString('es-ES', {
                         day: 'numeric',
@@ -633,6 +686,77 @@ function DisputeCard({ dispute, index, getStatusBadge, getPriorityBadge, getCorr
           <div className="text-sm text-green-800 dark:text-green-300">
             {dispute.admin_notes}
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Componente para agrupar impugnaciones por usuario
+function UserDisputeGroup({ group, getStatusBadge, getPriorityBadge, getCorrectOptionLetter, onCloseDispute, supabase }) {
+  const [isExpanded, setIsExpanded] = useState(true)
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow border overflow-hidden">
+      {/* Header del grupo - Usuario */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 border-b border-indigo-100 dark:border-indigo-800 hover:from-indigo-100 hover:to-purple-100 dark:hover:from-indigo-900/50 dark:hover:to-purple-900/50 transition-colors"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+              <span className="text-lg">👤</span>
+            </div>
+            <div className="text-left">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {group.userName}
+                </span>
+                {group.isPremium && (
+                  <span className="bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm">
+                    Premium
+                  </span>
+                )}
+              </div>
+              {group.userEmail && group.userEmail !== group.userName && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">{group.userEmail}</span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-sm font-medium">
+              {group.disputes.length} impugnacion{group.disputes.length !== 1 ? 'es' : ''}
+            </span>
+            <svg
+              className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+      </button>
+
+      {/* Lista de impugnaciones del usuario */}
+      {isExpanded && (
+        <div className="p-4 space-y-4 bg-gray-50 dark:bg-gray-900/30">
+          {group.disputes.map((dispute, index) => (
+            <DisputeCard
+              key={dispute.id}
+              dispute={dispute}
+              index={index}
+              getStatusBadge={getStatusBadge}
+              getPriorityBadge={getPriorityBadge}
+              getCorrectOptionLetter={getCorrectOptionLetter}
+              onCloseDispute={onCloseDispute}
+              supabase={supabase}
+              isPremium={group.isPremium}
+              compact={true}
+            />
+          ))}
         </div>
       )}
     </div>

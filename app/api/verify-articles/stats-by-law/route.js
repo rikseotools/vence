@@ -7,14 +7,24 @@ const supabase = createClient(
 
 /**
  * Recalcula isOk en tiempo real basándose en el summary
- * Criterios: Sin discrepancias de título o contenido en artículos existentes
- * (Los artículos faltantes se muestran como info, no como alarma)
+ * Criterios: Sin ninguna discrepancia (título, contenido, extras o faltantes)
+ * NOTA: Los artículos de estructura (art. 0, índice) no se cuentan como "extra"
  */
 function calculateIsOk(summary) {
   if (!summary) return false
+  // Si es ley sin texto consolidado (doc.php), se considera OK
+  if (summary.no_consolidated_text) return true
+
+  // Artículos de estructura (art. 0, índice, etc.) son intencionales
+  // No se cuentan como "extra_in_db" para el cálculo de isOk
+  const structureArticles = summary.structure_articles || 0
+  const realExtraInDb = Math.max(0, (summary.extra_in_db || 0) - structureArticles)
+
   return (
     (summary.title_mismatch || 0) === 0 &&
-    (summary.content_mismatch || 0) === 0
+    (summary.content_mismatch || 0) === 0 &&
+    realExtraInDb === 0 &&
+    (summary.missing_in_db || 0) === 0
   )
 }
 

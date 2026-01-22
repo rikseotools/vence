@@ -1,0 +1,92 @@
+name: 📧 Renewal Reminders
+on:
+  schedule:
+    # Ejecutar diariamente a las 9:00 UTC (10:00/11:00 España)
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    # Permite ejecutar manualmente desde GitHub
+    inputs:
+      reason:
+        description: 'Razón para ejecutar manualmente'
+        required: false
+        default: 'Manual trigger'
+      days_before:
+        description: 'Días antes de la renovación (default: 7)'
+        required: false
+        default: '7'
+      dry_run:
+        description: 'Solo simular, no enviar emails (true/false)'
+        required: false
+        default: 'false'
+
+jobs:
+  send-renewal-reminders:
+    runs-on: ubuntu-latest
+    name: 🔔 Enviar recordatorios de renovación
+
+    steps:
+      - name: 📤 Send renewal reminders
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "🚀 Iniciando envío de recordatorios de renovación..."
+          echo "⏰ Timestamp: $(date)"
+
+          # Determinar si es manual o programado
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "📝 Ejecución manual"
+            echo "  - Días antes: ${{ github.event.inputs.days_before }}"
+            echo "  - Dry run: ${{ github.event.inputs.dry_run }}"
+
+            # Llamar al endpoint con POST para parámetros custom
+            response=$(curl -s -w "\n%{http_code}" \
+              --request POST \
+              --header "Authorization: Bearer ${CRON_SECRET}" \
+              --header "Content-Type: application/json" \
+              --data '{"daysBeforeRenewal": ${{ github.event.inputs.days_before }}, "dryRun": ${{ github.event.inputs.dry_run }}}' \
+              https://www.vence.es/api/cron/renewal-reminders)
+          else
+            echo "📅 Ejecución programada (7 días antes)"
+
+            # Llamar al endpoint con GET para defaults
+            response=$(curl -s -w "\n%{http_code}" \
+              --request GET \
+              --header "Authorization: Bearer ${CRON_SECRET}" \
+              https://www.vence.es/api/cron/renewal-reminders)
+          fi
+
+          # Separar body y status code
+          http_code=$(echo "$response" | tail -n1)
+          response_body=$(echo "$response" | head -n -1)
+
+          echo "📊 HTTP Status: $http_code"
+          echo "📄 Response: $response_body"
+
+          # Extraer métricas del response
+          total=$(echo "$response_body" | jq -r '.total // 0')
+          sent=$(echo "$response_body" | jq -r '.sent // 0')
+          skipped=$(echo "$response_body" | jq -r '.skipped // 0')
+          failed=$(echo "$response_body" | jq -r '.failed // 0')
+
+          echo ""
+          echo "📈 Resumen:"
+          echo "  - Total suscripciones: $total"
+          echo "  - Emails enviados: $sent"
+          echo "  - Omitidos: $skipped"
+          echo "  - Fallidos: $failed"
+
+          # Verificar si fue exitoso
+          if [ $http_code -eq 200 ]; then
+            echo "✅ Recordatorios procesados exitosamente"
+          else
+            echo "❌ Error procesando recordatorios"
+            exit 1
+          fi
+
+      - name: 📊 Log execution details
+        if: always()
+        run: |
+          echo "🏷️ Workflow triggered by: ${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "📝 Manual trigger reason: ${{ github.event.inputs.reason }}"
+          fi

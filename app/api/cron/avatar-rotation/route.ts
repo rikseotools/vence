@@ -17,9 +17,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import {
   getUsersWithAutomaticAvatar,
-  updateAvatarRotation,
-  getAvatarSettings,
-  calculateUserProfile,
+  calculateBulkUserProfiles,
+  getAllAvatarProfiles,
   type AvatarProfile
 } from '@/lib/api/avatar-settings'
 
@@ -79,7 +78,25 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 [avatar-rotation] Procesando ${userIds.length} usuarios`)
 
-    // 3. Procesar cada usuario
+    // 3. Obtener configuración actual de todos los usuarios
+    const supabase = getSupabaseAdmin()
+    const { data: currentSettings } = await supabase
+      .from('user_avatar_settings')
+      .select('user_id, current_profile, current_emoji')
+      .in('user_id', userIds)
+
+    const currentSettingsMap = new Map(
+      (currentSettings || []).map(s => [s.user_id, s])
+    )
+
+    // 4. Calcular perfiles en bulk (batches paralelos de 20)
+    const bulkResults = await calculateBulkUserProfiles(userIds)
+
+    // 5. Obtener todos los perfiles para el mapeo
+    const allProfiles = await getAllAvatarProfiles()
+    const profilesMap = new Map<string, AvatarProfile>(allProfiles.map(p => [p.id, p]))
+
+    // 6. Procesar resultados y preparar updates
     const stats = {
       totalUsers: userIds.length,
       rotated: 0,
@@ -93,65 +110,75 @@ export async function POST(request: NextRequest) {
       emoji: string
     }> = []
 
-    for (const userId of userIds) {
-      try {
-        // Obtener configuración actual
-        const currentSettings = await getAvatarSettings({ userId })
-        const previousProfile = currentSettings.data?.currentProfile || null
+    const updates: Array<{
+      userId: string
+      profileId: string
+      emoji: string
+      name: string
+      previousProfile: string | null
+      previousEmoji: string | null
+    }> = []
 
-        // Calcular nuevo perfil
-        const profileResult = await calculateUserProfile({ userId })
+    for (const result of bulkResults) {
+      const current = currentSettingsMap.get(result.userId)
+      const previousProfile = current?.current_profile || null
+      const profile = profilesMap.get(result.profileId)
 
-        if (!profileResult.success || !profileResult.profile) {
-          console.warn(`⚠️ [avatar-rotation] Error calculando perfil para ${userId}:`, profileResult.error)
-          stats.errors++
-          continue
-        }
+      if (!profile) {
+        stats.errors++
+        continue
+      }
 
-        const newProfile = profileResult.profile
+      if (previousProfile === result.profileId) {
+        stats.unchanged++
+        continue
+      }
 
-        // Verificar si cambió
-        if (previousProfile === newProfile.id) {
-          console.log(`✓ [avatar-rotation] ${userId}: Sin cambio (${newProfile.emoji} ${newProfile.nameEs})`)
-          stats.unchanged++
-          continue
-        }
+      updates.push({
+        userId: result.userId,
+        profileId: result.profileId,
+        emoji: profile.emoji,
+        name: profile.nameEs,
+        previousProfile,
+        previousEmoji: current?.current_emoji || null
+      })
+    }
 
-        // Aplicar rotación con notificación pendiente
-        const supabase = getSupabaseAdmin()
-        const { error: updateError } = await supabase
+    // 7. Aplicar updates en batches
+    const UPDATE_BATCH_SIZE = 50
+    for (let i = 0; i < updates.length; i += UPDATE_BATCH_SIZE) {
+      const batch = updates.slice(i, i + UPDATE_BATCH_SIZE)
+
+      await Promise.all(batch.map(async (update) => {
+        const { error } = await supabase
           .from('user_avatar_settings')
           .update({
-            current_profile: newProfile.id,
-            current_emoji: newProfile.emoji,
-            current_name: newProfile.nameEs,
+            current_profile: update.profileId,
+            current_emoji: update.emoji,
+            current_name: update.name,
             last_rotation_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            // Campos para notificación in-app
             rotation_notification_pending: true,
-            previous_profile: previousProfile,
-            previous_emoji: currentSettings.data?.currentEmoji || null
+            previous_profile: update.previousProfile,
+            previous_emoji: update.previousEmoji
           })
-          .eq('user_id', userId)
+          .eq('user_id', update.userId)
 
-        if (!updateError) {
+        if (!error) {
           stats.rotated++
           rotatedUsers.push({
-            userId,
-            previousProfile,
-            newProfile: newProfile.id,
-            emoji: newProfile.emoji
+            userId: update.userId,
+            previousProfile: update.previousProfile,
+            newProfile: update.profileId,
+            emoji: update.emoji
           })
-          console.log(`🔄 [avatar-rotation] ${userId}: ${previousProfile || 'ninguno'} → ${newProfile.emoji} ${newProfile.nameEs}`)
         } else {
-          console.error(`❌ [avatar-rotation] Error actualizando ${userId}:`, updateError)
+          console.error(`❌ [avatar-rotation] Error actualizando ${update.userId}:`, error)
           stats.errors++
         }
+      }))
 
-      } catch (userError) {
-        console.error(`❌ [avatar-rotation] Error procesando usuario ${userId}:`, userError)
-        stats.errors++
-      }
+      console.log(`💾 [avatar-rotation] Updates aplicados: ${Math.min(i + UPDATE_BATCH_SIZE, updates.length)}/${updates.length}`)
     }
 
     // 4. Enviar notificaciones a usuarios con avatar cambiado

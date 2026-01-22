@@ -39,6 +39,13 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         console.error('Error loading public profile:', publicProfileError)
       }
 
+      // 1.5. Cargar avatar automático desde user_avatar_settings
+      const { data: avatarSettings } = await supabase
+        .from('user_avatar_settings')
+        .select('current_emoji, current_profile, mode')
+        .eq('user_id', userId)
+        .maybeSingle()
+
       // 2. Cargar estadísticas generales (incluyendo racha, oposición, actividad de hoy)
       const { data: stats, error: statsError } = await supabase.rpc('get_user_public_stats', {
         p_user_id: userId
@@ -135,15 +142,27 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
         }
       }
 
+      // Determinar avatar (prioridad: automático > manual)
+      let avatarType = publicProfile?.avatar_type
+      let avatarEmoji = publicProfile?.avatar_emoji
+      let avatarColor = publicProfile?.avatar_color
+      let avatarUrl = publicProfile?.avatar_url
+
+      if (avatarSettings?.current_emoji) {
+        avatarType = 'automatic'
+        avatarEmoji = avatarSettings.current_emoji
+        avatarColor = 'from-indigo-500 to-purple-500'
+      }
+
       // Combinar todos los datos (la nueva RPC trae todo)
       const finalData = {
         ...stats?.[0],
         display_name: displayName,
         ciudad: publicProfile?.ciudad,
-        avatar_type: publicProfile?.avatar_type,
-        avatar_emoji: publicProfile?.avatar_emoji,
-        avatar_color: publicProfile?.avatar_color,
-        avatar_url: publicProfile?.avatar_url,
+        avatar_type: avatarType,
+        avatar_emoji: avatarEmoji,
+        avatar_color: avatarColor,
+        avatar_url: avatarUrl,
         streak: stats?.[0]?.current_streak || 0,
         time_in_vence: timeInVence,
         mastered_topics: stats?.[0]?.mastered_topics || 0,
@@ -282,7 +301,7 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-4">
                       {/* Avatar del usuario */}
-                      {profileData.avatar_type === 'predefined' && profileData.avatar_emoji ? (
+                      {(profileData.avatar_type === 'automatic' || profileData.avatar_type === 'predefined') && profileData.avatar_emoji ? (
                         <div className={`w-16 h-16 bg-gradient-to-r ${profileData.avatar_color || 'from-blue-500 to-blue-600'} rounded-full flex items-center justify-center text-3xl`}>
                           {profileData.avatar_emoji}
                         </div>

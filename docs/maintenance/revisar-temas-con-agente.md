@@ -251,7 +251,98 @@ Los estados se muestran con colores:
 5. Re-verificar si es necesario
 ```
 
-## 8. Preguntas Frecuentes
+## 8. Formato de las Explicaciones
+
+Al corregir explicaciones, seguir este formato:
+
+### Estructura obligatoria:
+1. **Párrafos separados**: No apelotonar el texto. Usar saltos de línea entre ideas.
+2. **Fuente oficial verificada**:
+   - Siempre incluir enlace a Microsoft Support en español al final
+   - **IMPORTANTE**: Buscar y confirmar la fuente antes de usarla (usar WebSearch)
+   - No inventar URLs ni usar fuentes genéricas sin verificar
+
+### Ejemplo de explicación bien formateada:
+
+```
+La respuesta correcta es A.
+
+"Combinar y centrar" fusiona TODAS las celdas seleccionadas en un único bloque y centra el contenido horizontalmente.
+
+"Combinar horizontalmente" funciona de forma diferente: combina las celdas de CADA FILA de manera independiente. Por ejemplo, si seleccionas el rango A1:C3, se crearán tres celdas combinadas separadas (A1:C1, A2:C2 y A3:C3), en lugar de una sola celda grande.
+
+Las opciones B y D son incorrectas porque "Combinar horizontalmente" sí existe y hay diferencias claras entre ambas funciones.
+
+Fuente: Microsoft Support - Combinar y separar celdas (https://support.microsoft.com/es-es/office/combinar-y-separar-celdas-5cbd15d5-9375-4540-907b-d673556e51e2)
+```
+
+### Fuentes de Microsoft Support en español:
+- Excel general: `https://support.microsoft.com/es-es/excel`
+- Funciones: `https://support.microsoft.com/es-es/office/funciones-de-excel-por-categoria-5f91f4e9-7b42-46d2-9bd1-63f26a86c0eb`
+- Formato números: `https://support.microsoft.com/es-es/office/crear-un-formato-de-numero-personalizado-78f2a361-936b-4c03-8772-09fab54be7f4`
+- Combinar celdas: `https://support.microsoft.com/es-es/office/combinar-y-separar-celdas-5cbd15d5-9375-4540-907b-d673556e51e2`
+- Inmovilizar paneles: `https://support.microsoft.com/es-es/office/inmovilizar-paneles-para-bloquear-filas-y-columnas-dab2ffc9-020d-4026-8121-67dd25f2508f`
+- Word general: `https://support.microsoft.com/es-es/word`
+- Access general: `https://support.microsoft.com/es-es/access`
+- Outlook general: `https://support.microsoft.com/es-es/outlook`
+- Windows general: `https://support.microsoft.com/es-es/windows`
+
+## 9. Formato de Respuestas en Base de Datos
+
+El campo `correct_option` en la tabla `questions` usa índices numéricos:
+
+| Valor | Letra |
+|-------|-------|
+| 0 | A |
+| 1 | B |
+| 2 | C |
+| 3 | D |
+
+**Ejemplo de corrección:**
+```javascript
+// Cambiar respuesta de B a D
+await supabase
+  .from('questions')
+  .update({ correct_option: 3 }) // D = 3
+  .eq('id', questionId);
+```
+
+## 10. Preguntas con Imágenes
+
+**IMPORTANTE:** Si una pregunta hace referencia a una imagen que no está disponible en el sistema, **hay que desactivarla** (`is_active: false`).
+
+### Cómo identificar preguntas con imágenes:
+- Texto que menciona "la imagen", "en la figura", "observa el gráfico", etc.
+- Preguntas que preguntan por posiciones de celdas específicas sin contexto
+- Referencias a capturas de pantalla de Excel, Word, etc.
+
+### Acción a tomar:
+```javascript
+// Desactivar pregunta con imagen no disponible
+await supabase
+  .from('questions')
+  .update({
+    is_active: false,
+    topic_review_status: 'pending',
+    verification_status: null,
+    verified_at: null
+  })
+  .eq('id', questionId);
+
+// Eliminar verificación existente
+await supabase
+  .from('ai_verification_results')
+  .delete()
+  .eq('question_id', questionId);
+```
+
+### Razón:
+Sin la imagen, no se puede:
+- Verificar si la respuesta marcada es correcta
+- Escribir una explicación útil para el estudiante
+- Garantizar la calidad de la pregunta
+
+## 11. Preguntas Frecuentes
 
 **¿El agente usa tokens de mi suscripción?**
 Sí, usa los tokens de Claude Code (Max), no la API de Anthropic.
@@ -264,6 +355,9 @@ El agente puede lanzar múltiples verificaciones en background.
 
 **¿Qué pasa si una pregunta no tiene artículo?**
 Se marca como error y se reporta. Hay que vincularla primero.
+
+**¿Qué pasa si una pregunta hace referencia a una imagen?**
+Se desactiva la pregunta (`is_active: false`) ya que sin la imagen no se puede verificar ni explicar correctamente.
 
 **¿Los resultados son iguales que los de la web?**
 Sí, se guardan en las mismas tablas con el mismo formato.

@@ -1,0 +1,3590 @@
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 47 Acceso al empleo público y provisión de puestos de las personas con discapacidad
+balance se elevará, para su conocimiento, a la Comisión Superior de Personal y al Consejo
+Nacional de la Discapacidad.
+Disposición adicional única. Supletoriedad.
+Este real decreto tendrá carácter supletorio para el sector público no incluido en el
+ámbito de aplicación descrito en el artículo 1.2.
+Disposición derogatoria única. Derogación normativa.
+Quedan derogados los artículos 19, 26.2, 34 y 43 del Reglamento general de ingreso del
+personal al servicio de la Administración General del Estado y de provisión de puestos de
+trabajo y promoción profesional de los funcionarios civiles de la Administración General del
+Estado, aprobado por el Real Decreto 364/1995, de 10 de marzo.
+Disposición final única. Entrada en vigor.
+El presente real decreto entrará en vigor el día siguiente al de su publicación en el
+«Boletín Oficial del Estado».
+
+– 1815 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE
+LA ADMINISTRACIÓN DEL ESTADO
+
+§ 48
+Real Decreto 366/2007, de 16 de marzo, por el que se establecen las
+condiciones de accesibilidad y no discriminación de las personas con
+discapacidad en sus relaciones con la Administración General del
+Estado
+Ministerio de la Presidencia
+«BOE» núm. 72, de 24 de marzo de 2007
+Última modificación: sin modificaciones
+Referencia: BOE-A-2007-6239
+
+La Constitución Española establece en su artículo 9.2 que corresponde a los poderes
+públicos promover las condiciones para que la libertad e igualdad de los individuos sean
+efectivas. Dentro de este contexto, el artículo 49 contiene un mandato para que dichos
+poderes públicos realicen una política de integración de las personas con discapacidad y las
+amparen para disfrute de los derechos reconocidos en el título I de nuestra Carta Magna.
+En cumplimiento de este mandato constitucional, se dictó la Ley 13/1982, de 7 de abril,
+de Integración Social de los Minusválidos, que fue complementada, incorporando nuevas
+concepciones sobre la discapacidad, por la Ley 51/2003, de 2 de diciembre, de Igualdad de
+Oportunidades, no Discriminación y Accesibilidad Universal de las Personas con
+Discapacidad, en cuya disposición final quinta se encomienda al Gobierno, entre otras
+materias, fijar, en el plazo de dos años desde su entrada en vigor, las condiciones de
+accesibilidad y no discriminación que deberán reunir las oficinas públicas, dispositivos y
+servicios de atención al ciudadano.
+Por su parte, la Ley 6/1997, de 14 de abril, de Organización y Funcionamiento de la
+Administración General del Estado, establece, entre los principios regulados en su artículo 4,
+que la actuación de la Administración General del Estado debe asegurar a los ciudadanos la
+efectividad de sus derechos cuando se relacionen con la Administración, y la continua
+mejora de los procedimientos, servicios y prestaciones públicas, de acuerdo con las políticas
+fijadas por el Gobierno y teniendo en cuenta los recursos disponibles, determinando al
+respecto las prestaciones que proporcionan los servicios estatales, sus contenidos y los
+correspondientes estándares de calidad.
+Asimismo, este precepto dispone que la Administración General del Estado desarrollará
+su actividad y organizará las dependencias administrativas y, en particular, las oficinas
+periféricas, de manera que los ciudadanos puedan resolver sus asuntos, ser auxiliados en la
+redacción formal de documentos administrativos y recibir información de interés general por
+medios telefónicos, informáticos y telemáticos.
+Por todo ello, se hace necesario establecer, en el ámbito de la Administración General
+del Estado y de sus organismos públicos vinculados o dependientes, un conjunto de
+medidas que definan las condiciones de accesibilidad que habrán de reunir las oficinas y
+servicios de atención al ciudadano, al objeto de garantizar que la accesibilidad y no
+
+– 1816 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 48 Condiciones de accesibilidad y no discriminación de las personas con discapacidad en la AGE
+discriminación de las personas con discapacidad en sus relaciones con la Administración
+sea real y efectiva.
+A este objetivo responden las medidas aprobadas mediante el presente real decreto, las
+cuales se estructuran en las siguientes áreas:
+I. Medidas de accesibilidad de las Oficinas de Atención al Ciudadano:
+1. Ubicación de las Oficinas de Atención al Ciudadano.
+2. Acceso a las Oficinas de Atención al Ciudadano.
+3. Recepción en las Oficinas de Atención al Ciudadano.
+4. Señalización interior de las oficinas.
+5. Configuración de los puestos de atención.
+6. Sistemas interactivos de información.
+7. Elementos accesorios en las Oficinas de Atención al Ciudadano.
+II. Medidas para garantizar la accesibilidad en relación con los impresos y documentos
+administrativos.
+III. Medidas para garantizar la accesibilidad en la prestación de servicios de atención al
+ciudadano.
+El proyecto ha sido informado por el Consejo Nacional de la Discapacidad y ha sido
+analizado por la Conferencia Sectorial de Asuntos Sociales.
+En su virtud, a propuesta conjunta de los Ministros de Trabajo y Asuntos Sociales y de
+Administraciones Públicas, de acuerdo con el Consejo de Estado y previa deliberación del
+Consejo de Ministros en su reunión del día 16 de marzo de 2007,
+DISPONGO:
+CAPÍTULO I
+Disposiciones de carácter general
+Artículo 1. Objeto y ámbito de aplicación.
+1. El presente real decreto regula las condiciones de accesibilidad y no discriminación
+que, respecto de las personas con discapacidad, deben presentar las Oficinas de Atención al
+Ciudadano, impresos y cualquier otro medio que la Administración General del Estado
+dedica específicamente y en el ámbito de sus competencias a las relaciones con los
+ciudadanos.
+2. A estos efectos, se consideran medios preferentes de relación con los ciudadanos,
+que deben cumplir las condiciones de accesibilidad, los siguientes:
+a) Oficinas de Atención al Ciudadano: Dependencias o espacios físicos que la
+Administración General del Estado dedica exclusiva o prioritariamente al contacto directo con
+los ciudadanos y sus representantes a los efectos de obtención de información, orientación y
+asesoramiento sobre las prestaciones, servicios y procedimientos; la recepción de
+documentación, solicitudes y comunicaciones; la práctica de comparecencias personales de
+las personas interesadas o, por último, la realización de gestiones directamente relacionadas
+con las competencias o servicios de la Administración General del Estado.
+b) Modelos normalizados: Impresos puestos por la Administración General del Estado a
+disposición de los ciudadanos para formular solicitudes, declaraciones, alegaciones,
+recursos o cualquier pretensión o manifestación de voluntad ante la misma.
+3. Los restantes medios de la Administración General del Estado deberán cumplir las
+condiciones de accesibilidad contempladas en la normativa general que en cada caso resulte
+de aplicación, respetando en todo caso los principios de igualdad de oportunidades y no
+discriminación de las personas con discapacidad.
+4. En los términos previstos en el artículo 10 de la Ley 51/2003, de 2 de diciembre, de
+Igualdad de Oportunidades, no Discriminación y Accesibilidad Universal de las Personas con
+Discapacidad, las regulaciones contenidas en este real decreto son de aplicación a la
+Administración General del Estado y a sus organismos públicos vinculados o dependientes.
+– 1817 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 48 Condiciones de accesibilidad y no discriminación de las personas con discapacidad en la AGE
+Artículo 2. Principios y acciones de la Administración General del Estado en sus relaciones
+con los ciudadanos con discapacidad.
+Con arreglo a lo dispuesto en el segundo párrafo del apartado 1 de la disposición final
+quinta de la Ley 51/2003, de 2 de diciembre, la actuación de la Administración General del
+Estado asegurará a los ciudadanos con discapacidad la efectividad de sus derechos en sus
+relaciones con la Administración mediante:
+a) La garantía de la igualdad de oportunidades, la no discriminación por razón de
+discapacidad y la accesibilidad universal.
+b) La acción positiva para compensar las desventajas que estos ciudadanos en sus
+relaciones con la Administración pudieran presentar.
+c) La adopción de medidas y la puesta a disposición de los ciudadanos con
+discapacidad, en su caso, de medios y apoyos humanos y materiales suplementarios a fin de
+que puedan ejercitar, regular y normalizadamente, los derechos que les asisten.
+d) La eliminación y corrección de cualquier norma, criterio, instrucción, actuación,
+práctica o decisión que suponga una vulneración de la igualdad de oportunidades de las
+personas con discapacidad.
+CAPÍTULO II
+Accesibilidad en las Oficinas de Atención al Ciudadano
+Artículo 3. Determinación de las Oficinas de Atención al Ciudadano.
+La Administración General del Estado, mediante Resolución de la Secretaría General
+para la Administración Pública, previa consulta con los Departamentos Ministeriales
+afectados, determinará las Oficinas que habrán de ajustarse a las condiciones de
+accesibilidad previstas en este real decreto y hará pública una relación de las mismas que
+estará, permanentemente actualizada, a disposición pública.
+Artículo 4. Ubicación de las Oficinas de Atención al Ciudadano.
+1. La Administración General del Estado ubicará las Oficinas de Atención al Ciudadano
+en entornos que garanticen el acceso de las personas con discapacidad.
+2. A los efectos de lo dispuesto en el apartado anterior, las decisiones sobre ubicación de
+estas Oficinas tendrán en consideración las siguientes recomendaciones:
+a) Con carácter preferente y siempre que resulte posible, la Oficina se ubicará en planta
+a nivel de la vía pública. En caso contrario, deberá disponer de rampas de acceso o
+ascensores con características que permitan su uso autónomo y seguro por personas con
+discapacidad.
+b) La Oficina debe estar correctamente señalizada visualmente desde el exterior, de tal
+forma que sea fácilmente identificable. La señalización deberá ser diseñada de modo que
+resulte inteligible y comprensible por parte de las personas con discapacidad intelectual.
+c) Al menos uno de los itinerarios que una los accesos de la Oficina con la vía pública,
+con los servicios o edificaciones anexas y con los aparcamientos, deberá ser accesible de
+acuerdo con las condiciones establecidas para un itinerario urbano accesible. A estos
+efectos se considera suficiente cumplir con los criterios establecidos en la Norma UNE
+41510:2002 Accesibilidad en la Edificación. Espacios de Comunicación Horizontal.
+d) Las Oficinas de Atención al Ciudadano, en el caso de disponer de plazas de
+aparcamiento, reservarán un número suficiente de plazas, convenientemente señalizadas,
+destinadas en exclusividad a personas con movilidad reducida, con dimensiones adecuadas
+para el acceso lateral y posterior a los vehículos, garantizando la existencia de itinerarios
+accesibles entre las plazas y la propia Oficina.
+3. A las Oficinas de Atención al Ciudadano que presenten especialidades, bien por su
+carácter itinerante o ambulante, o bien por que se habiliten provisionalmente por razones del
+servicio fuera de una dependencia o entorno administrativo consolidado, se les aplicarán las
+singularidades o excepciones que sean necesarias, siempre que no supongan menoscabo
+de derechos de las personas con discapacidad.
+– 1818 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 48 Condiciones de accesibilidad y no discriminación de las personas con discapacidad en la AGE
+Artículo 5. Acceso a las Oficinas.
+1. Los accesos a las Oficinas de Atención al Ciudadano deberán diseñarse de modo que
+faciliten su utilización por las personas con discapacidad, en especial en lo relativo a las
+puertas, intercomunicadores y sistemas de aviso o llamada.
+2. A los efectos de lo dispuesto en el apartado anterior, el diseño y ejecución de los
+accesos a las Oficinas tendrán en consideración las siguientes recomendaciones:
+a) El espacio adyacente, tanto interior como exterior, a la puerta de acceso a la Oficina
+debe ser horizontal y no presentar obstáculos, permitiendo la aproximación y la apertura de
+la puerta de forma autónoma a todos los usuarios.
+b) El suelo será continuo entre el espacio exterior e interior. Cualquier elemento en el
+suelo como canaletas de recogida de agua, felpudos, etc., estará enrasado con el
+pavimento.
+c) Junto a la entrada principal, preferiblemente a la derecha de la puerta, un cartel
+indicará, en su caso, el número y letra del portal, además del uso, en casos de edificios de
+interés general. Dichos carteles tendrán buen contraste, diferenciación de textura o color, y
+se situarán a la altura adecuada.
+d) Los intercomunicadores y sistemas de aviso o llamada serán accesibles, tanto por su
+modalidad de uso (texto y voz) como por su localización.
+e) Las puertas de entrada serán accesibles a los usuarios, tanto por su sistema de
+apertura, corredera o abatible, por las dimensiones de su hueco de paso libre, por sus
+mecanismos de apertura y cierre y por las fuerzas de maniobra para ejercer la apertura. A
+estos efectos, se considera suficiente cumplir con el apartado 6 de la Norma UNE 41520:
+Accesibilidad en la Edificación. Espacios de comunicación vertical.
+f) Las puertas automáticas deberán cumplir las especificaciones citadas en el punto
+anterior y, además, aquellas que eliminen los riesgos de atrapamiento o golpeo.
+g) Si se dispone de puertas cortavientos, el espacio existente será tal que permita a
+todos los usuarios la maniobrabilidad, la aproximación y la apertura de las puertas.
+h) Cuando las puertas sean acristaladas o de vidrios se protegerán de forma que se
+eviten roturas por impacto y se señalizarán mediante dos bandas horizontales de 20
+centímetros de ancho, de contraste cromático con el resto de la superficie, colocada, la
+primera, a una altura entre 100 y 120 centímetros, y la segunda entre 150 y 170 centímetros.
+Se evitarán los cristales que produzcan reflejos en su superficie.
+Artículo 6. Recepción en las Oficinas de Atención al Ciudadano.
+1. Las zonas y sistemas de recepción de las Oficinas de Atención al Ciudadano, en
+particular los vestíbulos y sistemas de control de acceso y seguridad, deberán organizarse
+de modo que se garantice su utilización por las personas con discapacidad.
+2. A los efectos de lo dispuesto en el apartado anterior, en el diseño y ejecución de las
+zonas y sistemas de recepción en las Oficinas se tendrán en consideración las siguientes
+recomendaciones:
+a) Los sistemas de control de acceso no supondrán obstáculo para la circulación de
+personas con problemas de deambulación o usuarias de sillas de ruedas, ni para la
+circulación de personas que utilicen otros dispositivos de ayuda a la movilidad como perrosguía o de asistencia o bastón de movilidad. Tampoco deben interferir con dispositivos
+personales electromagnéticos tales como marcapasos y prótesis auditivas.
+b) Cuando el sistema de seguridad o control de acceso no tenga las dimensiones
+suficientes para permitir el paso a personas en silla de ruedas, se tendrán previstas medidas
+o medios alternativos para pasar este control, de forma que la persona permanezca con su
+ayuda técnica.
+c) Los sistemas de seguridad tienen que estar debidamente señalizados y ofrecer
+indicaciones precisas sobre qué se debe hacer en casos particulares, como sillas de ruedas,
+prótesis auditivas o marcapasos.
+d) El vestíbulo de recepción se organizará de forma que facilite la orientación a los
+usuarios. A estos efectos, se señalizarán visual y táctilmente los recorridos que den acceso a
+las diferentes zonas y usos del edificio, a los núcleos de comunicación vertical, además de
+los accesos y salidas del inmueble.
+– 1819 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 48 Condiciones de accesibilidad y no discriminación de las personas con discapacidad en la AGE
+e) Si la Oficina estuviera dotada de zona de espera, esta contará con mobiliario
+concebido con arreglo a criterios de diseño para todos.
+Artículo 7. Señalización interior accesible.
+La señalización interior estará expuesta en un lugar cercano a la entrada o fácilmente
+localizable teniendo en cuenta los usos y las características de la dependencia y las
+siguientes recomendaciones:
+a) Los paneles de información gráfica, permanente o temporal, estarán situados
+paralelamente a la dirección de la marcha y siempre que sea posible, adyacentes a alguna
+pared o superficie, de tal forma que no queden ocultos por ningún obstáculo, ya sea
+concurrencia de personas, puertas abiertas o mobiliario o elementos ornamentales o
+decorativos. No se protegerán con cristales y siempre permitirán el acercamiento para poder
+interactuar con los mismos.
+b) El contenido de la información será conciso, básico y con símbolos sencillos,
+fácilmente comprensible, evitando toda información superflua.
+c) La información relevante se dispondrá, al menos, en dos de las tres modalidades
+sensoriales: visual, acústica y táctil (altorrelieve o braille), para que pueda ser percibida
+también plenamente por las personas con discapacidad visual y auditiva.
+d) La señalización visual se acompañará con símbolos o caracteres gráficos,
+preferentemente los símbolos estándar internacionales que amplían su comprensión. La
+señal debe diferenciarse del entorno. Se usarán los colores de mayor contraste entre figura y
+fondo en elementos como texto y soporte, soporte y paramento donde se ubica, puertas y
+picaportes, pasamanos y mecanismos, y las letras o números no deberán situarse sobre
+ilustraciones o fotografías que limitan el contraste y dificultan la discriminación.
+e) A fin de atender a las personas que usan prótesis auditivas, la señalización acústica
+se adecuará a una gama audible y no molesta de frecuencias e intensidades, y se usará una
+señal de atención, visual y acústica previa al mensaje.
+El nivel de presión sonora de los mensajes audibles debe superar al menos al nivel
+sonoro de fondo.
+En la megafonía, se intentará conseguir un bajo nivel sonoro, pero bien distribuido en la
+estancia o edificio a través de numerosos altavoces de banda ancha, y bien distribuidos.
+Se utilizará una señal de atención previa al mensaje.
+La megafonía estará acondicionada con los bucles de inducción magnética y
+amplificadores de campo magnético necesarios para posibilitar la mejor audición a personas
+usuarias de audífonos.
+Toda la información emitida por megafonía debe mostrarse también en paneles textuales
+bien visibles.
+f) La señalización táctil se proporcionará mediante texturas rugosas y caracteres o
+símbolos en altorrelieve y en braille.
+g) Los sistemas de recogida de número o cualquier sistema establecido para los turnos
+deben ser plenamente accesibles en su localización y manejo, y contar con medios de
+información visuales y sonoros.
+h) Los sistemas de aviso, incluyendo los de alarma o avisos de peligro, deben ser
+emitidos simultáneamente por medios sonoros y visuales fácilmente comprensibles y
+reconocibles.
+Artículo 8. Configuración de los puestos de atención.
+1. Los puestos de atención se ubicarán de forma que sean fácilmente localizables y de
+manera que no obstruyan o entorpezcan la circulación en el edificio. Tanto si está dotado de
+personal de atención o es un punto de información que gestiona el propio usuario de forma
+autónoma, se diseñará de manera que permita la aproximación y uso a todos los usuarios.
+2. A los efectos de lo dispuesto en el apartado anterior, en la configuración de los
+puestos de atención se tendrán en cuenta las siguientes recomendaciones:
+a) La altura de los mostradores y puntos de información debe ser adecuada para recibir
+a todo tipo de usuarios. Al menos una parte del mostrador o mesa de atención ha de estar a
+
+– 1820 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 48 Condiciones de accesibilidad y no discriminación de las personas con discapacidad en la AGE
+la altura de una mesa de trabajo, para atender a personas de diferentes alturas, usuarios de
+sillas de ruedas y muletas o, en general, personas que necesiten sentarse.
+b) El espacio de circulación inmediato a los mostradores y puntos de información debe
+estar libre de obstáculos y disponer del suficiente espacio de maniobra para que los usuarios
+de silla de ruedas puedan aproximarse a ellos.
+c) Los mostradores y puntos de atención no dispondrán de vidrios u otros obstáculos que
+dificultan la transmisión del sonido y la comunicación visual entre el usuario y el empleado.
+d) Los mostradores y puntos de atención deberán contar con sistemas de bucle de
+inducción magnética, debidamente señalizados, para permitir a las personas usuarias de
+prótesis auditivas la mejor audición y comprensión posibles.
+e) Los puntos con información telefónica, así como cualquier tipo de servicio de atención
+telefónica al ciudadano, estarán dotados con sistemas de telefonía de texto, de fax y, de
+permitirlo técnicamente, de videotelefonía para facilitar la lectura labial. Asimismo el personal
+deberá estar formado y conocer su correcta utilización.
+Artículo 9. Sistemas interactivos de información.
+1. Los puntos de información que no estén atendidos directamente por personal estarán
+dotados de sistemas de información complementaria tales como paneles gráficos, sistemas
+audiovisuales y planos táctiles.
+2. A los efectos de lo dispuesto en el apartado anterior, en la configuración de los
+sistemas de información complementaria se tendrán en cuenta las siguientes
+recomendaciones:
+a) Su ubicación será accesible y fácilmente localizable.
+b) Su altura y demás dimensiones deberán ser las adecuadas para un uso normalizado
+por todo tipo de personas con discapacidad. Deberá asegurarse su interacción regular con
+personas con dificultades de manipulación.
+c) Toda la información en formato texto debe estar también en modo sonoro.
+d) Toda la información sonora debe estar transcrita en formato texto.
+e) Los dispositivos audiovisuales que se empleen deben contar con sistemas de
+amplificación y mejora de la señal auditiva.
+f) Debe existir confirmación con mensajes sonoros de todas las acciones activadas.
+g) Los mandos, el teclado y los botones deberán estar adaptados con etiquetas o iconos
+de alto contraste, letras grandes, en altorrelieve y braille.
+h) Las pantallas deben de ser antirreflectantes y tener buen contraste.
+i) La información debe ser clara, sin demasiadas opciones en una misma pantalla y
+permitir un dilatado tiempo de respuesta.
+j) Las pantallas táctiles tendrán un sistema alternativo de acceder a la información para
+todas las personas que lo precisen. Este sistema se basará en la verbalización de las
+distintas opciones de información y se activará mediante la pulsación de un área sensible al
+tacto situado en la parte inferior izquierda y etiquetado con la expresión «uso fácil» que una
+vez pulsada informará con breves instrucciones sobre cómo utilizar el sistema.
+Artículo 10. Elementos complementarios de accesibilidad en las Oficinas de Atención al
+Ciudadano.
+1. Las Oficinas de Atención deberán contar al menos con un área higiénico-sanitaria
+accesible, para cuya configuración se tendrán en cuenta las características y
+especificaciones técnicas a las que se refiere la disposición final segunda de este real
+decreto.
+2. En la colocación del pavimento en las Oficinas de Atención se tendrán en
+consideración las características y especificaciones técnicas a las que se refiere la
+disposición final segunda de este real decreto.
+3. Los sistemas de seguridad contra incendios de los que dispongan las Oficinas de
+Atención seguirán los criterios y especificaciones técnicos a los que se refiere la disposición
+final segunda de este real decreto.
+
+– 1821 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 48 Condiciones de accesibilidad y no discriminación de las personas con discapacidad en la AGE
+Artículo 11. Excepciones.
+1. Las condiciones de accesibilidad y no discriminación establecidas en el presente
+capítulo podrán ser parcialmente exceptuadas cuando en el edificio en el que se ubique la
+Oficina, o en su entorno, concurran circunstancias de infraestructura o protección del
+patrimonio que hagan su aplicación imposible material o económicamente.
+2. La Administración General del Estado, mediante Resolución de la Secretaría General
+para la Administración Pública, establecerá las excepciones a las que se refiere el presente
+artículo. En todo caso, las circunstancias mencionadas en el apartado anterior deberán
+quedar reflejadas en la correspondiente resolución.
+3. Las excepciones a las que se refiere este artículo se atendrán en todo caso a los
+criterios expresados en la letra c) y en el antepenúltimo párrafo del artículo 7 de la Ley
+51/2003, de 2 de diciembre, que define lo que se entiende por ajuste razonable y carga
+desproporcionada.
+CAPÍTULO III
+Condiciones de accesibilidad en los impresos y documentos
+Artículo 12. Disponibilidad de documentos e impresos.
+1. Se garantizará la disponibilidad de los documentos e impresos destinados al
+ciudadano en condiciones de plena accesibilidad para personas con discapacidad, mediante
+su ubicación en estantes, dispensadores u otro mobiliario que permitan la máxima
+autonomía de estas personas para obtenerlos.
+2. A requerimiento de la persona con discapacidad, se ofrecerán en formatos alternativos
+utilizando tipografías grandes o ampliadas, en braille, o bien se contará con personal de
+apoyo para facilitar su cumplimentación.
+3. Además, los documentos e impresos deberán estar en todo caso disponibles en las
+correspondientes páginas web y en formato electrónico accesible.
+4. Los documentos e impresos disponibles en soporte papel deberán cumplir las
+especificaciones técnicas a las que se refiere la disposición final segunda de este real
+decreto.
+Artículo 13. Accesibilidad del contenido y estructura de documentos e impresos.
+1. Los documentos e impresos estarán redactados con un lenguaje simple y directo, sin
+que se utilicen siglas o abreviaturas. Los documentos básicos de información de uso más
+habitual deberán contar con versiones simplificadas para personas con discapacidades
+intelectuales o problemas de comprensión escrita.
+2. En los impresos destinados a cumplimentación por los ciudadanos se reservarán
+espacios apropiados en tamaño para ser rellenados con comodidad y se evitará la utilización
+de fondos con dibujos y tintas que presenten poco contraste. Deberán ir acompañados de
+instrucciones claras y concisas.
+CAPÍTULO IV
+Condiciones de accesibilidad en la prestación de servicios de atención
+Artículo 14. Prestación de servicios de atención.
+1. En la prestación de servicios verbales de atención al ciudadano a través de
+interlocución personal presencial o por medio del canal telefónico o análogo, se seguirán las
+especificaciones técnicas de accesibilidad a los que se refiere la disposición final segunda de
+este real decreto.
+2. En la formación del personal de la Administración General del Estado encargado de la
+prestación de servicios de atención al ciudadano se atenderá especialmente al conocimiento
+de las distintas discapacidades y sus consecuencias en el desarrollo de los servicios de
+atención, en el trato e interacción con las personas con discapacidad y en el uso de medios
+auxiliares facilitadores de dicho trato.
+– 1822 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 48 Condiciones de accesibilidad y no discriminación de las personas con discapacidad en la AGE
+Disposición transitoria única.
+condiciones.
+
+Régimen transitorio de exigibilidad del cumplimiento de
+
+1. La Secretaría General para la Administración Pública, previa consulta con los
+Departamentos Ministeriales afectados, determinará las Oficinas de Atención al Ciudadano
+existentes a la entrada en vigor del presente real decreto, que deberán cumplir las
+condiciones previstas en su capítulo segundo con anterioridad al 4 de diciembre de 2012. A
+estos efectos, se establecerá un calendario de adaptación gradual de las Oficinas, que será
+objeto de actualización y seguimiento periódico.
+2. Los documentos e impresos, la prestación de los servicios de atención y demás
+medios existentes con anterioridad a la entrada en vigor del presente real decreto deberán
+cumplir lo dispuesto en estas condiciones en el plazo de un año desde la entrada en vigor
+del presente real decreto.
+Disposición final primera. No incremento de gasto público. Financiación de las medidas
+previstas.
+La aprobación del presente real decreto no supone incremento de gasto público. Las
+medidas previstas en el mismo serán adoptadas conforme a los plazos previstos en su
+disposición transitoria única, y financiadas, en su momento, con cargo a los créditos
+presupuestarios previstos a tal efecto en los Presupuestos de gastos de los departamentos y
+organismos públicos competentes.
+A tal efecto, los departamentos y organismos públicos competentes, de acuerdo con las
+valoraciones efectuadas por los servicios técnicos especializados de cada una de las áreas a
+las que se refiere este real decreto, realizarán las previsiones de gasto necesarias para
+poder llevar a cabo las medidas previstas en el mismo.
+Disposición final segunda. Aprobación de especificaciones técnicas.
+En el plazo de tres meses desde la entrada en vigor de este real decreto, los Ministros
+de Administraciones Públicas y de Trabajo y Asuntos Sociales, previa audiencia del Consejo
+Nacional de la Discapacidad, adoptarán mediante orden ministerial conjunta, previa consulta
+con los Departamentos Ministeriales, aprobada por el Ministro de la Presidencia, las
+especificaciones y características técnicas de concreción y detalle de las condiciones y
+criterios de accesibilidad y no discriminación establecidos en esta norma.
+Disposición final tercera. Habilitación normativa.
+Se autoriza a los Ministerios de Administraciones Públicas y de Trabajo y Asuntos
+Sociales, previa consulta al Consejo Nacional de la Discapacidad, a dictar cuantas
+disposiciones sean necesarias para el desarrollo y ejecución de este real decreto.
+Disposición final cuarta. Entrada en vigor.
+El presente real decreto entrará en vigor el día siguiente al de su publicación en el
+«Boletín Oficial del Estado».
+
+– 1823 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE
+LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49
+Real Decreto-ley 14/2021, de 6 de julio, de medidas urgentes para la
+reducción de la temporalidad en el empleo público
+Jefatura del Estado
+«BOE» núm. 161, de 7 de julio de 2021
+Última modificación: 29 de diciembre de 2021
+Referencia: BOE-A-2021-11233
+
+El presente Real Decreto-ley se entiende tácitamente sustituido por la Ley 20/2021, de 28 de diciembre, de
+medidas urgentes para la reducción de la temporalidad en el empleo público. Ref. BOE-A-2021-21651
+No obstante, se mantiene en vigor su disposición final segunda, según establece la disposición final segunda
+de la citada Ley. Ref. BOE-A-2021-21651
+
+I
+La Constitución Española, en su artículo 103, exige a la Administración Pública que el
+desempeño de su actividad se realice con garantía de objetividad e imparcialidad y con
+sometimiento al principio de eficacia. Del mismo modo, nuestra Norma Suprema obliga a que
+el acceso a las funciones públicas se efectúe en condiciones de igualdad y de acuerdo con
+los principios de mérito y capacidad, según se establece en los artículos 23.2 y 103.3.
+La modernización y mejora de la Administración Pública ha constituido un objetivo
+permanente a lo largo de distintas etapas, necesario para dar cumplimiento al mandato
+constitucional de contar con una Administración eficaz en su actuar al servicio de los
+intereses generales.
+Por otro lado, las Administraciones Públicas han tenido que hacer frente a desafíos
+derivados de importantes transformaciones económicas y sociodemográficas en su labor de
+garantizar la prestación de unos servicios públicos de calidad. Cambios que han afectado y
+afectan con especial intensidad a las organizaciones públicas, las cuales afrontan el reto de
+responder a nuevas demandas y necesidades de los ciudadanos. Todos estos objetivos de
+modernización y mejora de la calidad de los servicios públicos no se pueden alcanzar sin
+una adecuada gestión del principal activo con el que cuenta la Administración, como es su
+capital humano.
+La mejor gestión del empleo al servicio de las distintas Administraciones Públicas exige,
+sin duda, disponer de políticas coherentes y racionales de dotación de efectivos de carácter
+permanente, que cubran las necesidades reales de los servicios y limiten la temporalidad a
+la atención de necesidades de carácter estrictamente coyuntural.
+La consolidación del Estado del bienestar y el intenso proceso de descentralización
+territorial generaron durante las dos primeras décadas de vigencia de la Constitución
+Española de 1978 un intenso crecimiento del empleo público y una redistribución de
+efectivos desde la Administración central a la autonómica. Así, la provisión pública de
+– 1824 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+servicios básicos o esenciales propios del Estado social y democrático de derecho y su
+extensión al conjunto de la población condicionó, en el transcurso de esos años, la
+necesidad de reforzar la dotación de personal al servicio de las Administraciones Públicas
+para garantizar su desarrollo.
+En paralelo a este proceso, la evolución del empleo en el sector público en España viene
+marcada por el aumento de la tasa de temporalidad, que ha llegado al extremo de que casi
+un treinta por ciento de los empleados públicos en España tienen o han tenido un vínculo
+profesional temporal con la Administración Pública.
+De esa forma, a pesar de que en las sucesivas regulaciones sobre la materia ya se
+establecía la limitación en el nombramiento del personal funcionario interino o personal
+laboral temporal a casos excepcionales de indudable y estricta necesidad y que los mismos
+sólo podían realizarse por el tiempo imprescindible hasta su cobertura por funcionarios de
+carrera, la realidad nos ha mostrado un constante y sostenido aumento de la tasa de empleo
+temporal. Esta situación puede atribuirse a varios factores.
+En primer lugar, es preciso tener en cuenta los factores de tipo presupuestario. Así, en
+las últimas décadas las leyes anuales de presupuestos han venido imponiendo criterios
+restrictivos para la dotación de plazas de nuevo ingreso del personal al servicio de todas las
+Administraciones Públicas en el marco de las directrices presupuestarias de contención del
+gasto público.
+A pesar de la progresiva flexibilización, estas previsiones han limitado las posibilidades
+de reposición de las bajas ocasionadas en las plantillas de personal fijo, funcionario o laboral
+y, al mismo tiempo, han frenado la dotación presupuestaria para acometer nuevas
+actividades.
+A esta situación se ha añadido una disonancia entre la dimensión de las necesidades y
+la capacidad real de financiación de las administraciones territoriales, especialmente en
+importantes servicios como la educación, la sanidad o los servicios sociales, que se
+extienden a toda la población, y que son particularmente sensibles a los cambios sociales y
+demográficos que están teniendo lugar de manera intensa y acelerada en los últimos años.
+En segundo lugar, existe un grupo de factores relacionados con la insuficiente utilización
+de la planificación estratégica en la ordenación del empleo público, así como la falta de
+regularidad de las convocatorias y procedimientos de selección de personal para la
+cobertura de vacantes con carácter definitivo.
+En efecto, se ha constatado que no siempre existe una práctica asentada de
+convocatoria periódica y sistemática, preferentemente con carácter anual, de las plazas
+vacantes, para su provisión definitiva. A su vez, la falta de convocatoria regular obedece a
+que los procedimientos de acceso al empleo público no se desarrollan, en muchos casos,
+con la agilidad y la celeridad necesarias para, respetando en todo caso las garantías
+inherentes a los mismos y la salvaguardia de los principios constitucionales y legales,
+permitir al mismo tiempo la dotación de personal en tiempo razonable y garantizar la
+prestación del servicio por la Administración.
+Así las cosas, los procesos de selección son excesivamente lentos y dilatados en el
+tiempo, ocasionando en muchos casos la necesidad de provisión temporal de los puestos
+por el tiempo necesario hasta la cobertura efectiva. En estas condiciones, el recurso al
+nombramiento de personal interino y a la contratación de personal temporal se ha constituido
+en una alternativa organizativa que ha acabado suponiendo un incremento excesivo de la
+temporalidad.
+En este sentido, ha de tenerse en cuenta que si bien una tasa de temporalidad es
+necesaria e inherente a cualquier organización, no lo es cuando deviene en estructural y
+supone en algunos sectores de la Administración tasas cercanas al cincuenta por ciento de
+su personal.
+El escenario descrito ha de completarse con la importante incidencia que la Directiva
+1999/70 CE del Consejo, de 28 de junio de 1999, relativa al Acuerdo Marco de la CES, la
+UNICE y el CEEP sobre el trabajo de duración determinada (en adelante, el Acuerdo Marco),
+ha tenido y tiene en el ordenamiento jurídico español y, por tanto, en la evolución de la
+jurisprudencia.
+El Acuerdo Marco destaca en su preámbulo la preeminencia de la contratación indefinida
+como «forma más común de relación laboral» y persigue dos grandes objetivos: por una
+
+– 1825 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+parte, mejorar la calidad del trabajo de duración determinada garantizando el respeto al
+principio de no discriminación y, por otra, establecer un marco para evitar los abusos
+derivados de la utilización de sucesivos contratos o relaciones laborales de duración
+determinada.
+Así, la cláusula 4.ª del Acuerdo Marco establece la equiparación entre personal temporal
+y fijo con base en el principio de no discriminación, salvo existencia de causas objetivas que
+justifiquen una diferencia en el régimen jurídico de ambas clases de personal.
+Por su parte, la cláusula 5.ª del Acuerdo Marco prevé la adopción de medidas destinadas
+a evitar la utilización abusiva de nombramientos temporales. Si bien esta cláusula no tiene
+efecto directo, el Tribunal de Justicia de la Unión Europea (en adelante, TJUE) ha insistido
+en que la determinación del abuso corresponde a los jueces nacionales y que la aplicación
+de las soluciones efectivas y disuasorias dependen del Derecho nacional, instando a las
+autoridades nacionales a adoptar medidas efectivas y adecuadas para prevenir y, en su
+caso, sancionar un eventual uso abusivo de la temporalidad.
+En cualquier caso, el TJUE comparte la postura, defendida por España, de que no cabe
+en nuestra Administración la transformación automática de una relación de servicio temporal
+en una relación de servicio permanente. Esta opción está excluida categóricamente en el
+Derecho español, ya que el acceso a la condición de funcionario de carrera o de personal
+laboral fijo sólo es posible a raíz de la superación de un proceso selectivo que garantice los
+principios constitucionales de igualdad, mérito y capacidad.
+En síntesis, la doctrina que ha fijado el TJUE en esta materia dispone que las
+autoridades españolas tienen que instaurar medidas efectivas que disuadan y, en su caso,
+sancionen de forma clara el abuso de la temporalidad; y que las diferencias en el régimen
+jurídico del personal temporal y del fijo deben basarse únicamente en razones objetivas que
+puedan demostrar la necesidad de estas diferencias para lograr su fin.
+Estos parámetros determinan la actuación de la Comisión Europea, que en su papel de
+vigilante de la correcta aplicación del derecho derivado, también ha reclamado medidas
+contundentes para corregir esta situación.
+II
+La experiencia acumulada nos presenta, por tanto, una realidad que se aleja de la
+deseable y que nos separa, en este campo, del modelo de función pública diseñado por el
+constituyente y por el legislador. Todo ello afecta al funcionamiento de la propia
+Administración y de los organismos públicos en el correcto desempeño de la prestación de
+los servicios públicos y perjudica directamente al propio personal interino o temporal que
+lleva mucho tiempo desempeñando sus funciones y que desea, como es lógico, la
+estabilidad profesional.
+La necesidad de dar respuestas a este problema ha determinado que el Plan de
+Recuperación, Transformación y Resiliencia (en adelante, PRTR), ya evaluado
+favorablemente por la Comisión Europea en la Propuesta de Decisión de Ejecución del
+Consejo, de 22 de junio de 2021, relativa a la aprobación de la evaluación del citado Plan,
+contemple en su componente 11, relativo a la Modernización de las Administraciones
+Públicas, la reforma referida a la reducción de la temporalidad en el empleo público. Esto
+supone un antes y un después a la hora de afrontar las reformas estructurales de calado
+para adaptar y hacer más eficiente el funcionamiento de las Administraciones Públicas, su
+régimen jurídico y la ineludible planificación de la gestión de los recursos humanos para
+garantizar la prestación de unos servicios públicos de calidad.
+La primera de las actuaciones previstas por dicha reforma es precisamente la adopción
+de medidas para mejorar la eficiencia de los recursos humanos reduciendo los altos niveles
+de temporalidad y flexibilizando la gestión de los recursos humanos en las Administraciones
+Públicas. El objetivo de la reforma es situar la tasa de temporalidad estructural por debajo
+del 8 por ciento en el conjunto de las Administraciones Públicas españolas, actuando la
+reforma en tres dimensiones: adopción de medidas inmediatas para remediar la elevada
+temporalidad existente, articulación de medidas eficaces para prevenir y sancionar el abuso
+y el fraude en la temporalidad a futuro y, por último, potenciación de la adopción de
+herramientas y una cultura de la planificación para una mejor gestión de los de recursos
+humanos.
+– 1826 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+La reforma contenida en el real decreto-ley se inspira en los siguientes principios
+ordenadores: apuesta por lo público, dotando a la Administración del marco jurídico
+necesario para prestar con garantía y eficacia los servicios públicos; profesionalización del
+modelo de empleo público, con el centro en el personal funcionario de carrera y la
+delimitación de los supuestos de nombramiento de personal temporal; mantenimiento de la
+figura de personal funcionario interino, estableciendo su régimen jurídico de cara a garantizar
+la adecuada utilización de esta modalidad de personal y exigencia de responsabilidad de la
+Administración ante una inadecuada utilización de la figura de personal funcionario interino,
+contribuyendo por otra parte, a impulsar y fortalecer una adecuada planificación de recursos
+humanos.
+La problemática de la excesiva temporalidad en el sector público de una Administración
+multinivel tiene, sin duda, un enfoque poliédrico, por lo que la reforma que se plantea es fruto
+de un intenso y sostenido diálogo.
+En primer lugar, en la Conferencia Sectorial de Administración Pública, como órgano
+político de cooperación en materia de administración pública de la Administración General
+del Estado, de las Administraciones de las comunidades autónomas, de las ciudades de
+Ceuta y Melilla y de la administración local, a través de la Federación Española de
+Municipios y Provincias, que ya en su reunión de 11 de junio de 2020 puso de manifiesto la
+necesidad de abordar la modificación de la normativa para alinearla con las exigencias de la
+aplicación del Acuerdo Marco a la vista de la jurisprudencia europea, clarificar las bases en
+esta materia en todo el territorio nacional y planificar y equiparar una respuesta común y
+equitativa a los posibles abusos de temporalidad, abordando el diseño y la determinación de
+consecuencias efectivas y disuasorias también de cara a su prevención en el futuro, postura
+que fue reiterada en su reunión de 21 de septiembre del mismo año.
+Asimismo, en la Comisión de Coordinación del Empleo Público, como órgano técnico de
+colaboración de la Conferencia Sectorial, que ha estudiado y analizado la propuesta
+normativa de reforma del texto refundido de la Ley del Estatuto Básico del Empleado
+Público, aprobado por el Real Decreto Legislativo 5/2015, de 30 de octubre.
+Igualmente, en el marco del diálogo social, la propuesta se ha negociado con las
+organizaciones sindicales presentes en la Mesa General de Negociación de las
+Administraciones Públicas y se ha plasmado en un Acuerdo entre el Gobierno de España y
+las organizaciones sindicales CCOO, UGT y CSIF.
+En definitiva, la aprobación de este real decreto-ley supone cumplir con el hito contenido
+en el PRTR, así como cumplir con el compromiso con la Comisión Europea de aprobar las
+reformas estructurales en el ámbito del empleo público necesarias para el primer semestre
+de 2021.
+III
+Este real decreto-ley pretende, con pleno respeto a la normativa presupuestaria, reforzar
+el carácter temporal de la figura del personal interino; aclarar los procedimientos de acceso a
+la condición de personal interino; objetivar las causas de cese de este personal e implantar
+un régimen de responsabilidades que constituya un mecanismo proporcionado, eficaz y
+disuasorio de futuros incumplimientos que, además, permita clarificar cualquier vacío o duda
+interpretativa que la actual regulación haya podido generar.
+Para ello, en su artículo 1.uno incluye una nueva redacción del artículo 10 del texto
+refundido de la Ley del Estatuto Básico del Empleado Público que, de acuerdo con la
+cláusula 5.ª del Acuerdo Marco, refuerza la noción de temporalidad de la figura del personal
+funcionario interino, a fin de delimitar claramente la naturaleza de la relación que le une con
+la Administración.
+El carácter temporal se explicita en el apartado 1 del artículo 10, tanto en la referencia a
+su nombramiento, como en la delimitación del plazo máximo de duración del mismo: En el
+supuesto de nombramiento en plazas vacantes cuando no sea posible su cobertura por
+funcionarios de carrera por un máximo de tres años; en el supuesto de nombramiento por
+sustitución, por el tiempo estrictamente indispensable que motive el nombramiento; en el
+supuesto de nombramiento para ejecutar programas de carácter temporal, por un máximo de
+tres años, ampliable doce meses más por las leyes de función pública de cada
+
+– 1827 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+Administración, o en el supuesto de exceso o acumulación de tareas, por un plazo máximo
+de nueve meses.
+En segundo lugar, en cuanto a la selección, los procedimientos de acceso a la condición
+de personal funcionario interino no son equiparables a los de personal funcionario de
+carrera. El apartado 2 del artículo 10 incide explícitamente en su publicidad y celeridad,
+teniendo como finalidad la cobertura inmediata del puesto y establece expresamente que el
+nombramiento como personal interino derivado de los procedimientos de selección no
+implica en ningún caso el reconocimiento de la condición de funcionario de carrera. Es decir,
+se refuerza la nota de temporalidad al descartar cualquier expectativa de permanencia.
+En tercer lugar, se objetivan las causas de terminación de la relación interina. La fijación
+de criterios objetivos para la terminación del nombramiento ofrecerá mayor claridad en
+cuanto a la duración máxima de la permanencia de este personal y, fundamentalmente,
+evitará la perpetuación de la cobertura de puestos de trabajo por personal interino,
+fomentando la estabilidad en el empleo y coadyuvando a la cobertura permanente de los
+puestos de trabajo.
+Así, se prevé que la finalización de la relación de interinidad del personal funcionario
+interino se producirá, además de por las causas genéricas previstas en el artículo 63 del
+texto refundido de la Ley del Estatuto Básico del Empleado Público, que regula las causas
+de la pérdida de la condición de funcionario de carrera, por las que se explicitan en el
+artículo 10, sin que ninguna de ellas genere derecho a compensación económica de ningún
+tipo.
+En cuarto lugar, se endurecen las previsiones legales en cuanto a la duración máxima
+del nombramiento del personal interino por vacante, como medida preventiva para evitar un
+uso abusivo de esta figura para ejercer funciones de carácter permanente o estructural. De
+este modo, las plazas vacantes desempeñadas por personal funcionario interino deberán
+necesariamente ser objeto de cobertura mediante cualquiera de los mecanismos de
+provisión o movilidad previstos en la normativa de cada Administración Pública, priorizando
+la cobertura reglada por personal funcionario de carrera.
+De no cumplirse lo anterior, transcurridos tres años desde el nombramiento se producirá
+el cese del personal funcionario interino y la vacante sólo podrá ser ocupada por personal
+funcionario de carrera, salvo que el correspondiente proceso selectivo quede desierto, en
+cuyo caso se podrá efectuar otro nombramiento de personal funcionario interino.
+Excepcionalmente, el personal funcionario interino podrá permanecer en la plaza que
+ocupe temporalmente, siempre que se haya publicado la correspondiente convocatoria
+dentro del plazo de los tres años a contar desde la fecha del nombramiento del funcionario
+interino. En este supuesto podrá permanecer hasta la resolución de la convocatoria, sin que
+su cese dé lugar a compensación económica.
+En quinto lugar, se determina que al personal funcionario interino le será aplicable el
+régimen general del personal funcionario de carrera en cuanto sea adecuado a la naturaleza
+de su condición temporal y al carácter extraordinario y urgente de su nombramiento, salvo
+aquellos derechos inherentes a la condición de funcionario de carrera.
+El artículo 1.dos del presente real decreto-ley añade un nuevo apartado 3 al artículo 11,
+relativo al personal laboral, estableciendo los principios que en todo caso habrán de regir en
+la selección del personal laboral temporal, como la publicidad, igualdad, mérito, capacidad y
+celeridad, y estableciendo la finalidad que han de perseguir, atendiendo, en todo caso, a
+razones expresamente justificadas de necesidad y urgencia.
+Para finalizar, el apartado tres de este artículo 1 introduce en el texto refundido de la Ley
+del Estatuto Básico del Empleado Público una nueva disposición adicional decimoséptima,
+en la que se prevé un régimen de responsabilidades en caso de incumplimiento de las
+medidas anteriormente enunciadas e introducidas en el artículo 10 del citado texto
+legislativo.
+Así, se refuerza el contenido de esta reforma normativa, de manera que las actuaciones
+irregulares en la aplicación del artículo 10 darán lugar a la exigencia de responsabilidades
+que procedan de conformidad con la normativa vigente en cada una de las Administraciones
+Públicas, constituyendo un mecanismo proporcionado, eficaz y disuasorio para el
+cumplimiento del deber de evitar abusos en la temporalidad del personal al servicio de las
+Administraciones Públicas, en cumplimiento de la cláusula 5.ª del Acuerdo Marco.
+
+– 1828 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+La premisa de partida sobre la que se fundamenta la disposición es la de la nulidad de
+pleno derecho de toda actuación cuyo contenido incumpla directa o indirectamente los
+plazos máximos de permanencia como personal temporal, sea mediante acto, pacto,
+acuerdo o disposición reglamentaria, o a través de las medidas que se adopten en su
+cumplimiento.
+El incumplimiento de los plazos máximos de permanencia, además, dará lugar a una
+compensación económica para el personal temporal, que será equivalente a veinte días de
+sus retribuciones fijas por año de servicio, prorrateándose por meses los períodos de tiempo
+inferiores a un año, hasta un máximo de doce mensualidades. El derecho a esta
+compensación nacerá a partir de la fecha del cese efectivo, no habiendo derecho a
+compensación en caso de que la finalización de la relación de servicio sea por causas
+disciplinarias o por renuncia voluntaria.
+Todo lo anterior se entiende sin perjuicio de las responsabilidades que puedan proceder
+de acuerdo con la normativa vigente en cada una de las Administraciones Públicas, así
+como del necesario establecimiento de criterios de actuación que permitan dar cumplimiento
+de manera coordinada a los mandatos incluidos en la disposición.
+El artículo 2 del real decreto-ley establece la ampliación de los procesos de
+estabilización de empleo temporal como medida complementaria inmediata para paliar la
+situación existente.
+Por una parte, se autoriza un tercer proceso de estabilización de empleo público. Así,
+adicionalmente a los procesos de estabilización que regularon los artículos 19.uno.6 de la
+Ley 3/2017, de 27 de junio, de Presupuestos Generales del Estado para el año 2017 y
+19.uno.9 de la Ley 6/2018, de 3 de julio, de Presupuestos Generales del Estado para el año
+2018, se autoriza una tasa adicional para la estabilización de empleo temporal que incluirá
+las plazas de naturaleza estructural que, estén o no dentro de las relaciones de puestos de
+trabajo, plantillas u otra forma de organización de recursos humanos que estén
+contempladas en las distintas Administraciones Públicas, y estando dotadas
+presupuestariamente, hayan estado ocupadas de forma temporal e ininterrumpidamente al
+menos en los tres años anteriores a 31 de diciembre de 2020.
+Los procesos garantizarán el cumplimiento de los principios de libre concurrencia,
+igualdad, mérito, capacidad y publicidad, pudiendo articularse medidas que posibiliten una
+coordinación entre las diferentes Administraciones en el desarrollo de los mismos.
+Sin perjuicio de lo establecido en su caso en la normativa propia de función pública de
+cada Administración o la normativa específica, el sistema de selección será el de concursooposición, con una valoración en la fase de concurso de un cuarenta por ciento de la
+puntuación total, en la que se tendrá en cuenta mayoritariamente la experiencia en el cuerpo,
+escala, categoría o equivalente de que se trate en el marco de la negociación colectiva
+establecida en el artículo 37.1.c) del texto refundido de la Ley del Estatuto Básico del
+Empleado Público.
+Para evitar dilaciones en estos nuevos procesos, se exigirá que las ofertas de empleo
+relativas a estos procesos de estabilización se aprueben y publiquen en los respectivos
+diarios oficiales antes del 31 de diciembre de 2021, y las respectivas convocatorias antes del
+31 de diciembre de 2022, debiendo finalizar los procesos antes del 31 de diciembre de 2024.
+Se prevé igualmente una compensación económica para el personal funcionario interino
+o el personal laboral temporal que, estando en activo como tal, viera finalizada su relación
+con la Administración por la no superación del proceso selectivo de estabilización.
+Esta compensación económica será equivalente a veinte días de retribuciones fijas por
+año de servicio, prorrateándose por meses los periodos de tiempo inferiores a un año, hasta
+un máximo de doce mensualidades, o la diferencia entre ese máximo de veinte días y la
+indemnización que le correspondiera percibir por la extinción de su contrato en el caso del
+personal laboral temporal.
+Se acompaña al articulado un conjunto de disposiciones imprescindibles para la correcta
+ejecución y comprensión del mismo.
+Una reforma de este calado ha de tener muy en cuenta a la administración local,
+introduciendo medidas que faciliten el desarrollo de los procesos de selección. Así la
+disposición adicional primera determina la posibilidad de que los municipios, especialmente
+aquellos con una capacidad de gestión más limitada, encomienden la gestión material de la
+
+– 1829 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+selección de su personal funcionario de carrera o laboral fijo a las diputaciones provinciales,
+cabildos, consejos insulares, entes supramunicipales u órganos equivalentes en las
+comunidades autónomas uniprovinciales.
+En tal caso, las plazas de los municipios acogidos a este sistema, reunidas según
+categorías, cuerpos, escalas o subescalas, se ofertarán en convocatorias periódicas, cuyas
+bases aprobará la Administración a la que se encomiende dicha selección.
+Los municipios podrán también encomendar, en los mismos términos, la gestión material
+de la selección del personal interino y laboral temporal.
+De forma expresa, y a los solos efectos de los procesos de estabilización de empleo
+temporal en el ámbito local, estos se regirán por lo dispuesto en el artículo 2 de este real
+decreto-ley. No será de aplicación, por tanto, a estos procesos lo dispuesto en los artículos 8
+y 9 del Real Decreto 896/1991, de 7 de junio, por el que se establecen las reglas básicas y
+los programas mínimos a que debe ajustarse el procedimiento de selección de los
+funcionarios de Administración Local.
+Como medida de prevención para facilitar el seguimiento de la eficacia de las medidas
+adoptadas, en la disposición adicional segunda de este real decreto-ley se prevé que el
+Ministerio de Política Territorial y Función Pública elaborará un informe anual de seguimiento
+de la tasa de temporalidad en el empleo público.
+La disposición adicional tercera se refiere a las medidas de seguimiento presupuestario y
+establece, con la finalidad de mantener una adecuada prestación de los servicios públicos,
+que las Administraciones Públicas podrán nombrar personal interino en las plazas vacantes
+por jubilación que se produzcan en el ejercicio presupuestario.
+Esas vacantes ocupadas con personal interino se incluirán obligatoriamente en la oferta
+de empleo público del ejercicio en que se haya nombrado dicho personal y si ello no fuera
+posible, en la oferta del año siguiente. Todo ello, en los términos previstos en la normativa
+presupuestaria.
+La disposición adicional cuarta establece que las Administraciones Públicas deberán
+asegurar el cumplimiento del plazo establecido para la ejecución de los procesos de
+estabilización mediante la adopción de medidas apropiadas para un desarrollo ágil de los
+procesos selectivos, tales como la reducción de plazos, la digitalización de procesos o la
+acumulación de pruebas en un mismo ejercicio, entre otras.
+Finalmente, la disposición adicional quinta regula las peculiaridades de los procesos de
+estabilización de empleo temporal del personal investigador, tanto los derivados de las Leyes
+de Presupuestos Generales del Estado para 2017 y 2018 que no hubieran sido convocados
+o, habiendo sido convocadas y resueltas, hayan quedado sin cubrir y deban volver a
+convocarse, como del previsto en el artículo 2 de este real decreto-ley, en los que podrá
+aplicarse el sistema de concurso previsto en el artículo 26.4 de la Ley 14/2011, de 1 de junio,
+de la Ciencia, la Tecnología y la Innovación.
+Dentro de la anunciada pretensión de agilizar los procesos de estabilización en marcha,
+se establece en la disposición transitoria primera el régimen jurídico de los procesos de
+estabilización de empleo temporal previstos en el artículo 19.uno.6 de la Ley 3/2017, de 27
+de junio, de Presupuestos Generales del Estado para el año 2017, y 19.uno.9 de la Ley
+6/2018, de 3 de julio, de Presupuestos Generales del Estado para el año 2018.
+Así, se dispone que aquellos procesos cuya convocatoria hubiere sido publicada en los
+respectivos diarios oficiales con anterioridad a la fecha de entrada en vigor del presente real
+decreto-ley, seguirán ejecutándose con arreglo a las previsiones de las respectivas
+convocatorias, y a tal fin la resolución de los procesos selectivos deberá finalizar antes del
+31 de diciembre de 2024.
+La disposición transitoria segunda delimita el marco temporal de aplicación de la
+modificación del texto refundido de la Ley del Estatuto Básico del Empleado Público, que
+será de aplicación únicamente respecto del personal temporal nombrado o contratado con
+posterioridad a su entrada en vigor.
+La norma incluye tres disposiciones finales. La primera se refiere al título competencial.
+La segunda prevé que la adecuación de la legislación específica del personal docente y del
+personal estatutario de los servicios de salud a lo dispuesto en la nueva redacción dada a los
+artículos 10 y 11, así como la disposición adicional decimoséptima del texto refundido de la
+Ley del Estatuto Básico del Empleado Público se lleve a cabo en un año. Efectivamente, y
+
+– 1830 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+dada la especial complejidad de la temporalidad en los sectores educativo y sanitario, se
+estima oportuno establecer un marco temporal mayor que permita una correcta planificación
+de las medidas adoptadas.
+La mención contenida en la disposición final segunda al personal equivalente, en
+relación con el personal estatutario, idéntica a la contenida en el artículo 19.uno.3 de la Ley
+11/2020, de 30 de diciembre, de Presupuestos Generales del Estado para el año 2021, ha
+de entenderse referida al personal de la Administración de la Comunidad Foral de Navarra
+que forma parte del Servicio Navarro de Salud y del Departamento de Salud y cualquiera de
+sus organismos adscritos y, por ello, del sistema nacional de salud, constituido
+eminentemente, en el caso de esta comunidad foral, por personal funcionario.
+La disposición final tercera establece la entrada en vigor de la norma.
+IV
+El artículo 86 de la Constitución Española permite al Gobierno dictar reales decretosleyes «en caso de extraordinaria y urgente necesidad», siempre que no afecten al
+ordenamiento de las instituciones básicas del Estado, a los derechos, deberes y libertades
+de los ciudadanos regulados en el título I de la Constitución, al régimen de las comunidades
+autónomas ni al Derecho electoral general.
+El real decreto-ley constituye un instrumento constitucionalmente lícito, siempre que, tal
+como reiteradamente ha exigido nuestro Tribunal Constitucional (sentencias 6/1983, de 4 de
+febrero, F. 5; 11/2002, de 17 de enero, F. 4, 137/2003, de 3 de julio, F. 3, y 189/2005, de 7
+julio, F. 3; 68/2007, F. 10, y 137/2011, F. 7), el fin que justifica la legislación de urgencia sea
+subvenir a una situación concreta, dentro de los objetivos gubernamentales, que por razones
+difíciles de prever requiere una acción normativa inmediata en un plazo más breve que el
+requerido por la vía normal o por el procedimiento de urgencia para la tramitación
+parlamentaria de las leyes, máxime cuando la determinación de dicho procedimiento no
+depende del Gobierno.
+Asimismo, la apreciación de la extraordinaria y urgente necesidad de aprobar las
+medidas que se incluyen en este real decreto-ley forma parte del juicio político o de
+oportunidad que corresponde al Gobierno (SSTC 61/2018, de 7 de junio, FJ 4; 142/2014, de
+11 de septiembre, FJ 3) y esta decisión, sin duda, supone una ordenación de prioridades
+políticas de actuación. En este caso, se trata de medidas dirigidas a incrementar la eficiencia
+en el funcionamiento de las Administraciones Públicas, y centradas en dar una respuesta
+adecuada que permita establecer la necesaria seguridad jurídica y la protección de los
+colectivos que pudieran resultar vulnerables ante la concurrencia de la situación descrita y
+que se definen por su condición extraordinaria y urgente.
+Todas las razones expuestas justifican amplia y razonadamente la adopción de la
+presente norma (SSTC 29/1982, de 31 de mayo, FJ 3; 111/1983, de 2 de diciembre, FJ 5;
+182/1997, de 20 de octubre, FJ 3), existiendo la necesaria conexión entre la situación de
+urgencia expuesta y la medida concreta adoptada para subvenir a ella, sin que constituya un
+supuesto de uso abusivo o arbitrario del referido instrumento constitucional.
+La adecuada fiscalización del recurso al real decreto-ley requiere el análisis de dos
+aspectos desde la perspectiva constitucional: por un lado, la presentación explícita y
+razonada de los motivos que han sido tenidos en cuenta por el Gobierno en su aprobación
+(SSTC 29/1982, de 31 de mayo, FJ 3; 111/1983, de 2 de diciembre, FJ 5; 182/1997, de 20 de
+octubre, FJ 3, y 137/2003, de 3 de julio, FJ 4) y, por otro lado, la existencia de una necesaria
+conexión entre la situación de urgencia definida y la medida concreta adoptada para
+subvenir a ella (SSTC 29/1982, de 31 de mayo, FJ 3; 182/1997, de 20 de octubre, FJ 3, y
+137/2003, de 3 de julio, FJ 4).
+En cuanto a la definición de la situación de urgencia, se ha precisado que no es
+necesario que tal definición expresa de la extraordinaria y urgente necesidad haya de
+contenerse siempre en el propio real decreto-ley, sino que tal presupuesto cabe deducirlo
+igualmente de una pluralidad de elementos. El examen de la concurrencia del presupuesto
+habilitante de la «extraordinaria y urgente necesidad» siempre se ha de llevar a cabo
+mediante la valoración conjunta de todos aquellos factores que determinaron al Gobierno a
+dictar la disposición legal excepcional y que son, básicamente, los que quedan reflejados en
+el preámbulo, en el debate parlamentario de convalidación y en el propio expediente de
+– 1831 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+elaboración de la misma (SSTC 29/1982, de 31 de mayo, FJ 4; 182/1997, de 28 de octubre,
+FJ 4; 11/2002, de 17 de enero, FJ 4, y 137/2003, de 3 de julio, FJ 3).
+En todo caso, la doctrina constitucional viene señalando que la extraordinaria y urgente
+necesidad a que alude el artículo 86.1 de la Constitución Española supone un requisito o
+presupuesto habilitante de inexcusable concurrencia para que el Gobierno pueda dictar
+normas con rango de ley, lo que se erige en auténtico límite jurídico de la actuación
+gubernamental mediante decretos-leyes. (SSTC 100/2012, de 8 de mayo, FJ 8; 26/2016, de
+18 de febrero, FJ 2, y 125/2016, de 7 de julio, FJ 2). La definición de la situación de
+extraordinaria y urgente necesidad que justifica la aprobación de la norma ha de ser
+explícita, razonada y concreta, sin que pueda realizarse mediante fórmulas rituales o
+genéricas, aplicables de modo intercambiable a todo tipo de realidades (SSTC 95/2015, de
+14 de mayo, FJ 4; 215/2015, FJ 4).
+La tasa de temporalidad registrada en el empleo público es ya superior a la registrada en
+el sector privado. Esta situación no solo se aleja de forma manifiesta del modelo de función
+pública configurado por nuestra Constitución Española, sino que compromete la adecuada
+prestación de los servicios públicos, en la medida en que la temporalidad impide articular
+políticas de recursos humanos dirigidas a garantizar la calidad de los servicios públicos.
+En un contexto en que la intervención de los poderes públicos resulta crítica para mitigar
+los impactos de la crisis sanitaria en el tejido social y económico, así como para proporcionar
+los cimientos de la recuperación, la adopción de medidas que permitan controlar y reducir el
+exceso de temporalidad deviene perentoria para garantizar los principios de eficacia y
+eficiencia en el funcionamiento de las administraciones públicas.
+Esta situación no ha pasado inadvertida a las instituciones de la Unión Europea. Tanto la
+Comisión Europea, con ocasión de los informes elaborados en el marco del Semestre
+Europeo, como el propio Consejo, en las recomendaciones específicas dirigidas a nuestro
+país, han subrayado insistentemente la necesidad de poner fin a la elevada temporalidad en
+el empleo público.
+Ello ha motivado que, de conformidad con lo dispuesto en el artículo 17.3 del
+Reglamento (UE) 2021/241 del Parlamento Europeo y del Consejo, de 12 de febrero de
+2021, por el que se establece el Mecanismo de Recuperación y Resiliencia, y que dispone
+que «los planes de recuperación y resiliencia serán coherentes con los retos y prioridades
+específicos de cada país, determinados en el marco del Semestre Europeo», en el
+componente 11 del Plan de Recuperación, Transformación y Resiliencia presentado el
+pasado 30 de abril, referido a la modernización de las Administraciones Públicas, España se
+haya comprometido a adoptar una reforma normativa al término del primer semestre de 2021
+que articule medidas eficaces, proporcionadas y disuasorias para poner fin a la excesiva
+temporalidad en el empleo público. Esta reforma ha merecido un juicio favorable de la
+Comisión Europea, reflejado en el informe que acompaña la Propuesta de Decisión de
+Ejecución del Consejo, de 22 de junio de 2021, relativa a la aprobación de la evaluación del
+citado plan, en el que se señala específicamente que «el plan de España contiene medidas
+que deberían contribuir significativamente a la reducción de la elevada proporción de
+contratos temporales que también se observa en el sector público».
+El Reglamento (UE) 2021/241, de 12 de febrero de 2021, dispone que la liberación de
+los fondos en el marco del Mecanismo depende del cumplimiento satisfactorio por parte de
+los Estados miembros de los hitos y objetivos pertinentes que figuren en los planes de
+recuperación y resiliencia. A la vista del plazo comprometido en el plan para la aprobación de
+la reforma, referido al primer semestre de 2021, no resulta posible acudir a la tramitación de
+un proyecto de ley por la vía de urgencia y la única opción posible para asegurar el
+cumplimiento del compromiso es acudir a la figura del real decreto-ley.
+Existe, además, otra circunstancia que caracteriza de forma sobrevenida la concurrencia
+del presupuesto habilitante, vinculada a uno de los últimos desarrollos de la ya extensa
+jurisprudencia del TJUE en relación con la interpretación de la Directiva 1999/70 (CE) del
+Consejo, de 28 de junio de 1999. La sentencia dictada por el TJUE en el asunto C726/19
+(IMIDRA), de 3 de junio de 2021, ha propiciado una nueva reflexión sobre determinados
+aspectos de la jurisprudencia de los órganos jurisdiccionales nacionales, reflejada en la
+reciente sentencia dictada en unificación de doctrina por el Tribunal Supremo, Sala de lo
+Social, n.º 649/2021, de 28 de junio. A la luz de esta evolución se hace necesaria una
+
+– 1832 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+intervención urgente del legislador a fin de precisar el régimen jurídico aplicable, de forma
+que pueda conjugarse adecuadamente el efecto útil de la directiva mencionada con el
+aseguramiento de los principios constitucionales de igualdad, mérito y capacidad en el
+acceso al empleo público.
+En cuanto a la segunda dimensión del presupuesto habilitante de la legislación de
+urgencia, concebida como conexión de sentido entre la situación de necesidad definida y las
+medidas que en el real decreto-ley se adoptan, el hecho de que se considere una reforma
+estructural no impide, por sí sola, la utilización de la figura del decreto-ley; pues, y esto es
+particularmente pertinente en el supuesto que se analiza, el posible carácter estructural del
+problema que se pretende atajar no excluye que dicho problema pueda convertirse en un
+momento dado en un supuesto de extraordinaria y urgente necesidad, como ocurre en el
+caso que nos ocupa tras los últimos pronunciamientos judiciales, para cuyo tratamiento
+representa un instrumento constitucionalmente lícito, en tanto que pertinente y adecuado
+para la consecución del fin que justifica la legislación de urgencia, que no es otro que
+subvenir a «situaciones concretas de los objetivos gubernamentales que por razones difíciles
+de prever requieran una acción normativa inmediata en un plazo más breve que el requerido
+por la vía normal o por el procedimiento de urgencia para la tramitación parlamentaria de las
+leyes» (SSTC 31/2011, de 17 de marzo, FJ 4; 137/2011, de 14 de septiembre, FJ 6, y
+100/2012, de 8 de mayo, FJ 8).
+Las medidas contenidas en el real decreto-ley pretenden garantizar que las
+Administraciones Públicas inician una senda de reequilibrio que aporte credibilidad a la
+evolución futura de la temporalidad en el empleo público, a fin de situar la tasa de cobertura
+temporal por debajo del ocho por ciento de las plazas estructurales, y, en esa medida, puede
+predicarse de cada una de ellas la conexión de sentido requerida por la jurisprudencia
+constitucional.
+Hacia el pasado, la reforma activa en el artículo 2 un último proceso de estabilización de
+plazas de carácter estructural que se suma a los ya iniciados en 2017 y 2018, y establece
+plazos tasados para asegurar el cumplimiento del hito de ejecución de todas las ofertas
+antes del 31 de diciembre de 2024, evitando de esta forma que se produzcan dilaciones que
+comprometan el objetivo de estabilización de plazas de carácter estructural. En todo caso,
+estos procesos deberán desarrollarse con arreglo a los principios de libre concurrencia,
+igualdad, mérito y capacidad y se prevén compensaciones para el personal funcionario
+interino o el personal laboral temporal que, estando en activo como tal, viera finalizada su
+relación con la Administración por la no superación del proceso selectivo de estabilización.
+Hacia el futuro, la reforma de la legislación básica pretende activar un conjunto de
+medidas regulatorias directamente ordenadas a atajar la excesiva temporalidad. Las
+medidas de carácter preventivo actúan mediante una delimitación de la causa y término en la
+figura del personal funcionario interino y se dirigen a evitar un uso indebido de esta figura;
+descartar cualquier expectativa de permanencia tras su selección por procedimientos
+presididos por la publicidad, igualdad, mérito, capacidad y celeridad, y objetivar las causas
+de terminación de la relación interina, ofreciendo mayor claridad sobre la duración máxima
+de la permanencia de este personal. Al propio tiempo se aplica al personal funcionario
+interino el régimen general del personal funcionario de carrera en cuanto sea adecuado a la
+naturaleza de su condición temporal y al carácter extraordinario y urgente de su
+nombramiento, salvo aquellos derechos inherentes a la condición de funcionario de carrera.
+Asimismo, se recogen las medidas que contemplan, en línea con la jurisprudencia del
+TJUE, sanciones efectivas, proporcionadas y disuasorias. Se establece en primer término la
+obligación que corresponde a las Administraciones Públicas de evitar cualquier tipo de
+irregularidad en la contratación laboral temporal y nombramientos de personal funcionario
+interino, para lo cual promoverán la adopción de criterios de actuación y una actuación
+coordinada de los órganos con responsabilidades en materia de gestión de personal.
+Seguidamente se dispone que las actuaciones irregulares en la presente materia darán lugar
+a la exigencia de las responsabilidades que procedan de conformidad con la normativa
+vigente en cada una de las administraciones públicas. En tercer lugar, se contempla la
+nulidad de pleno derecho de todo acto, pacto, acuerdo o disposición reglamentaria, así como
+las medidas que se adopten en su cumplimiento o desarrollo, cuyo contenido directa o
+indirectamente suponga el incumplimiento por parte de la Administración de los plazos
+
+– 1833 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+máximos de permanencia como personal temporal. En cuarto lugar, en el caso de las
+interinidades por vacante se establece que, transcurridos tres años desde el nombramiento,
+se producirá el fin de la relación de interinidad, y la vacante sólo podrá ser ocupada por
+personal funcionario de carrera, salvo que el correspondiente proceso selectivo quede
+desierto. Por último, se prevé un régimen de compensaciones aplicable tanto al personal
+funcionario interino como al personal laboral temporal en los supuestos de incumplimiento de
+los plazos máximos de permanencia.
+En suma, en las medidas que se adoptan en el presente real decreto-ley concurren las
+circunstancias de extraordinaria y urgente necesidad previstas en el artículo 86 de la
+Constitución Española, considerando, por otra parte, que los objetivos que se pretenden
+alcanzar con el mismo no pueden conseguirse a través de la tramitación de una ley por el
+procedimiento de urgencia, y sin que este real decreto-ley constituya un supuesto de uso
+abusivo o arbitrario de este instrumento constitucional (SSTC 61/2018, de 7 de junio, FJ 4;
+100/2012, de 8 de mayo, FJ 8; 237/2012, de 13 de diciembre, FJ 4; 39/2013, de 14 de
+febrero, FJ 5).
+Asimismo, debe señalarse que este real decreto-ley no afecta al ordenamiento de las
+instituciones básicas del Estado, a los derechos, deberes y libertades de los ciudadanos
+regulados en el Título I de las Constitución Española, al régimen de las comunidades
+autónomas ni al Derecho electoral general.
+En primer lugar, y en cuanto a la afectación al régimen de las comunidades autónomas,
+se trata de un límite que la doctrina del Tribunal Constitucional ha considerado de modo
+flexible y finalista, de manera que, como sintetiza la STC 23/1993, de 21 de enero (FJ.2):
+«(…) ha de tenerse en cuenta que el artículo 86.1 CE utiliza un término "régimen de las
+Comunidades Autónomas" más extenso y comprensivo que el mero de "Estatutos de
+Autonomía", por lo que dicha expresión ha de ser interpretada, como ha señalado la STC
+29/1986 "en el sentido de que el Decreto-ley no puede afectar al régimen constitucional de
+las Comunidades Autónomas, incluida la posición institucional que les otorga la
+Constitución". De ese "régimen constitucional" forman parte los Estatutos, que no pueden ser
+alterados por un Decreto-ley, pero también se incluyen otras Leyes estatales atributivas de
+competencias, que forman parte del bloque de constitucionalidad, así como las Leyes
+atributivas de competencia del artículo 150.1 CE, las Leyes de armonización del artículo
+150.3, y las Leyes Orgánicas a que se refiere el artículo 150.2 C.E. Por tanto, el Decreto-ley
+no puede regular objetos propios de aquéllas leyes que, conforme al artículo 28.1 LOTC
+hayan sido aprobadas, dentro del marco constitucional, para delimitar las competencias del
+Estado y de las diferentes Comunidades Autónomas o para regular o armonizar el ejercicio
+de las competencias de éstas. Más allá de ese "régimen constitucional" el campo normativo
+de los Decretos-leyes se corresponde con la competencia legislativa del Estado, no existe
+obstáculo constitucional alguno para que el Decreto-ley, en el ámbito de la competencia
+legislativa que corresponde al Estado pueda regular materias en las que una Comunidad
+Autónoma tenga competencias, pero en las que incida una competencia legislativa del
+Estado, siempre que esa regulación no tenga como fin atribuir competencias o delimitar
+positivamente la esfera de competencias de las Comunidades Autónomas. Ciertamente, el
+ejercicio de las competencias de un ente puede afectar en alguna medida a las del otro. Pero
+cuando la Constitución veda al Decreto-ley "afectar" al régimen de las Comunidades
+Autónomas, se refiere a una delimitación directa y positiva de las competencias mediante tal
+instrumento normativo, y no a cualquier regulación que indirectamente "incida" en las
+competencias autonómicas. De otro modo, se vaciarían prácticamente de contenido los
+ámbitos de regulación sobre los que el Decreto-ley puede proyectarse, puesto que es muy
+difícil encontrar un objeto normativo en el que no incida de uno u otro modo alguna
+competencia autonómica».
+Desde esta perspectiva se entiende que no hay afectación al régimen de las
+comunidades autónomas en la medida en que el real decreto-ley proyectado no afecta a la
+posición institucional de las comunidades autónomas ni delimita de forma directa y positiva
+las competencias que aquellas tienen atribuidas, y se dicta en el ámbito propio de las
+competencias exclusivas en materia de legislación laboral; bases del régimen jurídico de las
+Administraciones Públicas y del régimen estatutario de sus funcionarios; y bases y
+coordinación de la planificación general de la actividad económica, que las reglas 7.ª, 18.ª y
+
+– 1834 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+13.ª, respectivamente, del artículo 149.1 de la Constitución Española reservan al Estado, y
+sin perjuicio de las competencias autonómicas en la materia.
+En segundo lugar, en cuanto a la prohibición de afectación a los derechos, deberes y
+libertades de los ciudadanos regulados en el título I de la Constitución Española, una muy
+consolidada doctrina del Tribunal Constitucional la interpreta en los siguientes términos, que
+resume la STC 139/2016, de 31 de julio (FJ 6): «1.º) El artículo 86.1 CE impide que con el
+decreto-ley queden afectados los derechos, deberes y libertades de los ciudadanos
+regulados en el título I CE, pero este Tribunal ha rechazado una interpretación extensiva de
+dicho límite que supondría el vaciamiento de la figura del decreto-ley, haciéndolo «inservible
+para regular con mayor o menor incidencia cualquier aspecto concerniente a las materias
+incluidas en el título I de la Constitución». 2.º) La cláusula restrictiva debe ser entendida de
+modo que no se reduzca a la nada la figura del decreto-ley, de suerte que lo que se prohíbe
+constitucionalmente es que se regule un régimen general de estos derechos, deberes y
+libertades o que vaya en contra del contenido o elementos esenciales de algunos de tales
+derechos (STC 111/1983, de 2 de diciembre, FJ 8, confirmada por otras posteriores). 3.º) El
+Tribunal no debe fijarse únicamente en el modo en que se manifiesta el principio de reserva
+de ley en una determinada materia, sino más bien ha de examinar si ha existido "afectación"
+por el decreto-ley de un derecho, deber o libertad regulado en el título I CE, lo que exigirá
+tener en cuenta la configuración constitucional del derecho, deber o libertad afectado en
+cada caso e incluso su ubicación sistemática en el texto constitucional y la naturaleza y
+alcance de la concreta regulación de que se trate (…)» En el presente caso, varios aspectos
+de la regulación que se propone inciden en una materia, como es el acceso al empleo
+público, conectada al derecho fundamental establecido en el artículo 23.2 de la Constitución,
+que reconoce el derecho de los ciudadanos «a acceder en condiciones de igualdad a las
+funciones y cargos públicos, con los requisitos que señalen las leyes». Ahora bien, en
+aplicación de la doctrina constitucional antes expuesta, se considera que el objeto de la
+norma en su actual definición tiene a estos efectos un alcance limitado, en el sentido de que
+ni establece el régimen general de acceso a la función pública, ni supone una delimitación
+específica del núcleo del derecho fundamental al acceso en condiciones de igualdad a las
+funciones y cargos públicos, y por ello no se adentra en un ámbito material vedado al
+instrumento del real decreto-ley, sin perjuicio de que, en su configuración concreta, sus
+preceptos deban atenerse a las exigencias de igualdad en el acceso al empleo público que
+impone aquel derecho fundamental.
+Este real decreto-ley responde a los principios de buena regulación de necesidad,
+eficacia, proporcionalidad, seguridad jurídica, transparencia, y eficiencia, de conformidad con
+el artículo 129 de la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común
+de las Administraciones Públicas.
+A estos efectos, se pone de manifiesto el cumplimiento de los principios de necesidad y
+eficacia, dado el interés general en que se fundamentan las medidas que se establecen,
+siendo el real decreto-ley el instrumento más inmediato para garantizar su consecución. La
+norma es acorde con el principio de proporcionalidad, al contener la regulación
+imprescindible para la consecución de los objetivos previamente mencionados. Igualmente,
+se ajusta al principio de seguridad jurídica, siendo coherente con el resto del ordenamiento
+jurídico. En cuanto al principio de transparencia, la norma está exenta de los trámites de
+consulta pública, audiencia e información pública que no son aplicables a la tramitación y
+aprobación de decretos-leyes. Por último, en relación con el principio de eficiencia, este real
+decreto-ley no impone cargas administrativas para los ciudadanos.
+Este real decreto-ley se dicta al amparo del artículo 149.1.7.ª y 18.ª de la Constitución
+Española, que atribuyen al Estado la competencia exclusiva en materia de legislación
+laboral, sin perjuicio de su ejecución por los órganos de las comunidades autónomas; y en
+materia de bases del régimen jurídico de las Administraciones Públicas y del régimen
+estatutario de sus funcionarios.
+Asimismo, se dicta al amparo del artículo 149.1.13.ª que atribuye al Estado la
+competencia exclusiva sobre las bases y la coordinación de la planificación general de la
+actividad económica.
+En su virtud, en uso de la autorización contenida en el artículo 86 de la Constitución
+Española, a propuesta del Ministro de Política Territorial y Función Pública y de la Ministra de
+
+– 1835 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+Hacienda, y previa deliberación del Consejo de Ministros en su reunión del día 6 de julio de
+2021,
+DISPONGO:
+Artículo 1. Modificación del texto refundido de la Ley del Estatuto Básico del Empleado
+Público, aprobado por el Real Decreto Legislativo 5/2015, de 30 de octubre.
+Se modifica el texto refundido de la Ley del Estatuto Básico del Empleado Público,
+aprobado por el Real Decreto Legislativo 5/2015, de 30 de octubre, de la siguiente forma:
+Uno. Se da una nueva redacción al artículo 10, que queda redactado como sigue:
+«Artículo 10. Funcionarios interinos.
+1. Son funcionarios interinos los que, por razones expresamente justificadas de
+necesidad y urgencia, son nombrados como tales con carácter temporal para el
+desempeño de funciones propias de funcionarios de carrera, cuando se dé alguna de
+las siguientes circunstancias:
+a) La existencia de plazas vacantes, cuando no sea posible su cobertura por
+funcionarios de carrera, por un máximo de tres años, en los términos previstos en el
+apartado 4.
+b) La sustitución transitoria de los titulares, durante el tiempo estrictamente
+necesario.
+c) La ejecución de programas de carácter temporal, que no podrán tener una
+duración superior a tres años, ampliable hasta doce meses más por las leyes de
+Función Pública que se dicten en desarrollo de este Estatuto.
+d) El exceso o acumulación de tareas por plazo máximo de nueve meses, dentro
+de un periodo de dieciocho meses.
+2. Los procedimientos de selección del personal funcionario interino serán
+públicos, rigiéndose en todo caso por los principios de igualdad, mérito, capacidad y
+celeridad, y tendrán por finalidad la cobertura inmediata del puesto. El nombramiento
+derivado de estos procedimientos de selección en ningún caso dará lugar al
+reconocimiento de la condición de funcionario de carrera.
+3. En todo caso, la Administración formalizará de oficio la finalización de la
+relación de interinidad por cualquiera de las siguientes causas, además de por las
+previstas en el artículo 63, sin derecho a compensación alguna:
+a) Por la cobertura reglada del puesto por personal funcionario de carrera a través
+de cualquiera de los procedimientos legalmente establecidos.
+b) Por razones organizativas que den lugar a la supresión o a la amortización de
+los puestos asignados.
+c) Por la finalización del plazo autorizado expresamente recogido en su
+nombramiento.
+d) Por la finalización de la causa que dio lugar a su nombramiento.
+4. En el supuesto previsto en el apartado 1.a), las plazas vacantes desempeñadas
+por personal funcionario interino deberán ser objeto de cobertura mediante cualquiera
+de los mecanismos de provisión o movilidad previstos en la normativa de cada
+Administración Pública.
+No obstante, transcurridos tres años desde el nombramiento del personal
+funcionario interino se producirá el fin de la relación de interinidad, y la vacante solo
+podrá ser ocupada por personal funcionario de carrera, salvo que el correspondiente
+proceso selectivo quede desierto, en cuyo caso se podrá efectuar otro nombramiento
+de personal funcionario interino.
+Excepcionalmente, el personal funcionario interino podrá permanecer en la plaza
+que ocupe temporalmente, siempre que se haya publicado la correspondiente
+convocatoria dentro del plazo de los tres años, a contar desde la fecha del
+
+– 1836 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+nombramiento del funcionario interino. En este supuesto podrá permanecer hasta la
+resolución de la convocatoria, sin que su cese dé lugar a compensación económica.
+5. Al personal funcionario interino le será aplicable el régimen general del personal
+funcionario de carrera en cuanto sea adecuado a la naturaleza de su condición
+temporal y al carácter extraordinario y urgente de su nombramiento, salvo aquellos
+derechos inherentes a la condición de funcionario de carrera.»
+Dos. Se añade un nuevo apartado 3 al artículo 11, que queda redactado como sigue:
+«3. Los procedimientos de selección del personal laboral serán públicos,
+rigiéndose en todo caso por los principios de igualdad, mérito y capacidad. En el caso
+del personal laboral temporal se regirá igualmente por el principio de celeridad,
+teniendo por finalidad atender razones expresamente justificadas de necesidad y
+urgencia.»
+Tres. Se introduce una nueva disposición adicional decimoséptima, que queda redactada
+en los siguientes términos:
+«Disposición adicional decimoséptima.
+temporalidad en el empleo público.
+
+Medidas dirigidas al control de la
+
+1. Las Administraciones Públicas serán responsables del cumplimiento de las
+previsiones contenidas en la presente norma y, en especial, velarán por evitar
+cualquier tipo de irregularidad en la contratación laboral temporal y los nombramientos
+de personal funcionario interino.
+Asimismo, las Administraciones Públicas promoverán, en sus ámbitos respectivos,
+el desarrollo de criterios de actuación que permitan asegurar el cumplimiento de esta
+disposición, así como una actuación coordinada de los distintos órganos con
+competencia en materia de personal.
+2. Las actuaciones irregulares en la presente materia darán lugar a la exigencia de
+las responsabilidades que procedan de conformidad con la normativa vigente en cada
+una de las Administraciones Públicas.
+3. Todo acto, pacto, acuerdo o disposición reglamentaria, así como las medidas
+que se adopten en su cumplimiento o desarrollo, cuyo contenido directa o
+indirectamente suponga el incumplimiento por parte de la Administración de los plazos
+máximos de permanencia como personal temporal será nulo de pleno derecho.
+4. El incumplimiento del plazo máximo de permanencia dará lugar a una
+compensación económica para el personal funcionario interino afectado, que será
+equivalente a veinte días de sus retribuciones fijas por año de servicio, prorrateándose
+por meses los períodos de tiempo inferiores a un año, hasta un máximo de doce
+mensualidades. El derecho a esta compensación nacerá a partir de la fecha del cese
+efectivo y la cuantía estará referida exclusivamente al nombramiento del que traiga
+causa el incumplimiento. No habrá derecho a compensación en caso de que la
+finalización de la relación de servicio sea por causas disciplinarias ni por renuncia
+voluntaria.
+5. En el caso del personal laboral temporal, el incumplimiento de los plazos
+máximos de permanencia dará derecho a percibir la compensación económica
+prevista en este apartado, sin perjuicio de la indemnización que pudiera corresponder
+por vulneración de la normativa laboral específica.
+Dicha compensación consistirá, en su caso, en la diferencia entre el máximo de
+veinte días de su salario fijo por año de servicio, con un máximo de doce
+mensualidades, y la indemnización que le correspondiera percibir por la extinción de
+su contrato, prorrateándose por meses los períodos de tiempo inferiores a un año. El
+derecho a esta compensación nacerá a partir de la fecha del cese efectivo, y la
+cuantía estará referida exclusivamente al contrato del que traiga causa el
+incumplimiento. En caso de que la citada indemnización fuere reconocida en vía
+judicial, se procederá a la compensación de cantidades.
+No habrá derecho a la compensación descrita en caso de que la finalización de la
+relación de servicio sea por despido disciplinario declarado procedente o por renuncia
+voluntaria.»
+– 1837 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+Artículo 2. Procesos de estabilización de empleo temporal.
+1. Adicionalmente a lo establecido en los artículos 19.uno.6 de la Ley 3/2017, de 27 de
+junio, de Presupuestos Generales del Estado para el año 2017, y 19.uno.9 de la Ley 6/2018,
+de 3 de julio, de Presupuestos Generales del Estado para el año 2018, se autoriza una tasa
+adicional para la estabilización de empleo temporal que incluirá las plazas de naturaleza
+estructural que, estén o no dentro de las relaciones de puestos de trabajo, plantillas u otra
+forma de organización de recursos humanos que estén contempladas en las distintas
+Administraciones Públicas y estando dotadas presupuestariamente, hayan estado ocupadas
+de forma temporal e ininterrumpidamente al menos en los tres años anteriores a 31 de
+diciembre de 2020.
+2. Las ofertas de empleo que articulen los procesos de estabilización contemplados en el
+apartado 1, así como el nuevo proceso de estabilización, deberán aprobarse y publicarse en
+los respectivos diarios oficiales antes de 31 de diciembre de 2021 y serán coordinados por
+las Administraciones Públicas competentes.
+La publicación de las convocatorias de los procesos selectivos para la cobertura de las
+plazas incluidas en las ofertas de empleo público deberá producirse antes de 31 de
+diciembre de 2022.
+La resolución de estos procesos selectivos deberá finalizar antes de 31 de diciembre de
+2024.
+3. La tasa de cobertura temporal deberá situarse por debajo del ocho por ciento de las
+plazas estructurales.
+4. La articulación de estos procesos selectivos que, en todo caso, garantizará el
+cumplimiento de los principios de libre concurrencia, igualdad, mérito, capacidad y
+publicidad, podrá ser objeto de negociación en cada uno de los ámbitos territoriales de la
+Administración General del Estado, comunidades autónomas y entidades locales, pudiendo
+articularse medidas que posibiliten una coordinación entre las diferentes Administraciones
+Públicas en el desarrollo de los mismos en el seno de la Comisión de Coordinación del
+Empleo Público.
+Sin perjuicio de lo establecido en su caso en la normativa propia de función pública de
+cada Administración o la normativa específica, el sistema de selección será el de concursooposición, con una valoración en la fase de concurso de un cuarenta por ciento de la
+puntuación total, en la que se tendrá en cuenta mayoritariamente la experiencia en el cuerpo,
+escala, categoría o equivalente de que se trate en el marco de la negociación colectiva
+establecida en el artículo 37.1.c) del texto refundido de la Ley del Estatuto Básico del
+Empleado Público.
+En el supuesto de que en la normativa específica sectorial o de cada Administración así
+se hubiera previsto, los mecanismos de movilidad o de promoción interna previos de
+cobertura de plazas serán compatibles con los procesos de estabilización.
+5. De la resolución de estos procesos no podrá derivarse, en ningún caso, incremento de
+gasto ni de efectivos, debiendo ofertarse en estos procesos, necesariamente, plazas de
+naturaleza estructural que se encuentren desempeñadas por personal con vinculación
+temporal.
+6. Corresponderá una compensación económica, equivalente a veinte días de
+retribuciones fijas por año de servicio, prorrateándose por meses los periodos de tiempo
+inferiores a un año, hasta un máximo de doce mensualidades, para el personal funcionario
+interino o el personal laboral temporal que, estando en activo como tal, viera finalizada su
+relación con la Administración por la no superación del proceso selectivo de estabilización.
+En el caso del personal laboral temporal, dicha compensación consistirá en la diferencia
+entre el máximo de veinte días de su salario fijo por año de servicio, con un máximo de doce
+mensualidades, y la indemnización que le correspondiera percibir por la extinción de su
+contrato, prorrateándose por meses los períodos de tiempo inferiores a un año. En caso de
+que la citada indemnización fuere reconocida en vía judicial, se procederá a la
+compensación de cantidades.
+La no participación del candidato o candidata en el proceso selectivo de estabilización no
+dará derecho a compensación económica en ningún caso.
+7. Con el fin de permitir el seguimiento de la oferta, las Administraciones Públicas
+deberán certificar al Ministerio de Hacienda, a través de la Secretaría de Estado de
+– 1838 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+Presupuestos y Gastos, el número de plazas ocupadas de forma temporal existente en cada
+uno de los ámbitos afectados.
+Disposición adicional primera. Medidas para el ámbito local.
+1. Los municipios, excepto los de gran población previstos en el título X de la Ley 7/1985,
+de 2 de abril, reguladora de las Bases del Régimen Local, podrán encomendar la gestión
+material de la selección de su personal funcionario de carrera o laboral fijo a las diputaciones
+provinciales, cabildos, consejos insulares, entes supramunicipales u órganos equivalentes en
+las comunidades autónomas uniprovinciales.
+Los municipios podrán, también, encomendar en los mismos términos la selección del
+personal funcionario interino y personal laboral temporal.
+2. Finalizado el proceso selectivo, la autoridad competente de la entidad local nombrará
+o contratará, según proceda, a los candidatos que hayan superado el proceso selectivo.
+3. Los procesos de estabilización de empleo temporal en el ámbito local se regirán por lo
+dispuesto en el artículo 2. No serán de aplicación a estos procesos lo dispuesto en los
+artículos 8 y 9 del Real Decreto 896/1991, de 7 de junio, por el que se establecen las reglas
+básicas y los programas mínimos a que debe ajustarse el procedimiento de selección de los
+funcionarios de Administración Local.
+Disposición adicional segunda. Medidas de seguimiento de la temporalidad.
+El Ministerio de Política Territorial y Función Pública, en el marco de la cooperación en
+materia de administración pública, elaborará un informe anual de seguimiento de la situación
+de la temporalidad en el empleo público.
+Disposición adicional tercera. Medidas de seguimiento presupuestario.
+Con la finalidad de mantener una adecuada prestación de los servicios públicos, las
+Administraciones públicas podrán nombrar personal interino en las plazas vacantes por
+jubilación que se produzcan en el ejercicio presupuestario.
+Esas vacantes ocupadas con personal interino se incluirán obligatoriamente en la oferta
+de empleo público del ejercicio en que se haya nombrado dicho personal y si ello no fuera
+posible, en la oferta del año siguiente. Todo ello, en los términos previstos en la normativa
+presupuestaria.
+Disposición adicional cuarta. Medidas de agilización de los procesos selectivos.
+Las Administraciones Públicas deberán asegurar el cumplimiento del plazo establecido
+para la ejecución de los procesos de estabilización mediante la adopción de medidas
+apropiadas para un desarrollo ágil de los procesos selectivos, tales como la reducción de
+plazos, la digitalización de procesos o la acumulación de pruebas en un mismo ejercicio,
+entre otras.
+Las convocatorias de estabilización que se publiquen podrán prever para aquellas
+personas que no superen el proceso selectivo, su inclusión en bolsas de interinos
+específicas o su integración en bolsas ya existentes. En dichas bolsas se integrarán aquellos
+candidatos que, habiendo participado en el proceso selectivo correspondiente, y no habiendo
+superado éste, sí hayan obtenido la puntuación que la convocatoria considere suficiente.
+Disposición adicional quinta. Procesos de estabilización de empleo temporal de personal
+investigador.
+1. Sin perjuicio de lo previsto en la disposición transitoria primera, el sistema de concurso
+previsto en el artículo 26.4 de la Ley 14/2011, de 1 de junio, de la Ciencia, la Tecnología y la
+Innovación, será de aplicación a las plazas de los procesos de estabilización de empleo
+temporal previstos por el artículo 2.
+2. El sistema de concurso podrá ser también de aplicación a las plazas mencionadas en
+el apartado anterior si se encuentran afectadas por los procesos de estabilización previstos
+en el artículo 19.uno.9 de la Ley 6/2018, de 3 de julio, de Presupuestos Generales del
+Estado para el año 2018, siempre que las mismas estén incluidas en las correspondientes
+– 1839 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 49 Real Decreto-ley de medidas urgentes para la reducción de la temporalidad del empleo público
+ofertas de empleo público de estabilización y no hubieran sido convocadas o, habiendo sido
+convocadas y resueltas, hayan quedado sin cubrir y deban volver a convocarse.
+Disposición transitoria primera. Régimen jurídico de los procesos de estabilización de
+empleo temporal ya convocados.
+Los procesos selectivos para la cobertura de plazas incluidas en las ofertas de empleo
+público aprobadas en el marco de los procesos de estabilización de empleo temporal
+previstos en el artículo 19.uno.6 de la Ley 3/2017, de 27 de junio, de Presupuestos
+Generales del Estado para el año 2017, y 19.uno.9 de la Ley 6/2018, de 3 de julio, de
+Presupuestos Generales del Estado para el año 2018, cuya convocatoria hubiere sido
+publicada en los respectivos diarios oficiales con anterioridad a la fecha de entrada en vigor
+del presente real decreto-ley, seguirán ejecutándose con arreglo a las previsiones de las
+respectivas convocatorias.
+La resolución de estos procesos selectivos deberá finalizar antes del 31 de diciembre de
+2024.
+Disposición transitoria segunda. Efectos.
+Las previsiones contenidas en el artículo 1 de este real decreto-ley serán de aplicación
+únicamente respecto del personal temporal nombrado o contratado con posterioridad a su
+entrada en vigor.
+Disposición final primera. Títulos competenciales.
+Este real decreto-ley se dicta al amparo del artículo 149.1.7.ª y 18.ª de la Constitución
+Española, que atribuyen al Estado la competencia exclusiva en materia de legislación
+laboral, sin perjuicio de su ejecución por los órganos de las comunidades autónomas; y
+bases del régimen jurídico de las Administraciones Públicas y del régimen estatutario de sus
+funcionarios. Asimismo, se dicta al amparo del artículo 149.1.13.ª que establece la
+competencia del Estado en materia de bases y coordinación de la planificación general de la
+actividad económica.
+Disposición final segunda. Adaptación de la normativa del personal docente y del
+personal estatutario y equivalente de los servicios de salud.
+En el plazo de un año desde la entrada en vigor de este real decreto-ley se procederá a
+la adaptación de la normativa del personal docente y del personal estatutario y equivalente
+de los servicios de salud a lo dispuesto en el artículo 10, 11 y en la disposición adicional
+decimoséptima del texto refundido de la Ley del Estatuto Básico del Empleado Público, de
+acuerdo con las peculiaridades propias de su régimen jurídico.
+Transcurrido dicho plazo sin que se produzca la citada adaptación de la legislación
+específica serán de plena aplicación a este personal las previsiones contenidas en los
+citados preceptos del texto refundido de la Ley del Estatuto Básico del Empleado Público.
+Téngase en cuenta el mantenimiento de la vigencia de esta disposición por la disposición
+final 2 de la Ley 20/2021, de 28 de diciembre. Ref. BOE-A-2021-21651
+
+Disposición final tercera. Entrada en vigor.
+Este real decreto-ley entrará en vigor el día siguiente al de su publicación en el «Boletín
+Oficial del Estado».
+
+– 1840 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE
+LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50
+Real Decreto 462/2002, de 24 de mayo, sobre indemnizaciones por
+razón del servicio
+Ministerio de la Presidencia
+«BOE» núm. 129, de 30 de mayo de 2002
+Última modificación: 24 de diciembre de 2022
+Referencia: BOE-A-2002-10337
+
+Durante el largo tiempo transcurrido desde la aprobación de la normativa vigente sobre
+indemnizaciones por razón del servicio, regulada en el Real Decreto 236/1988, de 4 de
+marzo, se han ido poniendo de manifiesto muchos importantes aspectos de dicha materia
+que, por no estar suficientemente definidos o por no estar ni siquiera contemplados en él,
+han dado lugar a variadas y dispares interpretaciones de los centros gestores en su
+aplicación o, en otros casos, a reiteradas consultas a los Ministerios responsables de su
+elaboración en solicitud de criterios conformes con el espíritu de la norma para su correcta
+aplicación.
+El elevado número de modificaciones que ha sido preciso introducir ha determinado la
+necesidad no de simples correcciones a la redacción actual sino de un nuevo texto que
+sustituya al vigente, desde una perspectiva general del control y contención del gasto público
+a través de su sistemática justificación documental o de límites porcentuales más restrictivos,
+entre otras previsiones, y al mismo tiempo, por contraposición, necesaria en justicia, a través
+de nuevos preceptos que, aun suponiendo, por reconocer nuevos derechos, un aumento en
+los costes, se considera que responden a un mejor y más justo resarcimiento de los gastos
+realmente producidos.
+Por otra parte se ha estimado también necesario elevar hasta el rango de la norma que
+ahora se aprueba aquellos preceptos que hasta el momento, pese a la importancia
+sustancial de su contenido, se encontraban recogidos en normas de inferior nivel, como la
+Orden de 8 de noviembre de 1994, de desarrollo del Real Decreto que se deroga, sobre
+justificación y anticipos de las indemnizaciones por razón de servicio, o como las Órdenes
+ministeriales comunicadas de 20 de abril de 1998, sobre dichas indemnizaciones a personal
+con cometido especial de escolta; de 17 de mayo de 2001, sobre conductores de altos
+cargos, y de 15 de noviembre de 1984, sobre comisiones de servicio ordenadas en
+circunstancias excepcionales al personal de las Fuerzas y Cuerpos de Seguridad del Estado,
+al que se añade el del Centro Superior de Información de la Defensa.
+La redacción final de la presente norma se ha establecido con la participación activa de
+todos los órganos de la Administración a que afecta el Real Decreto hasta llegar a un texto
+ampliamente consensuado, informado favorablemente por la Comisión Superior de Personal,
+y que es el que se ha sometido a los definitivos informes y dictamen exigidos por la
+normativa vigente.
+
+– 1841 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+En su virtud, a propuesta de los Ministerios de Hacienda y de Administraciones Públicas,
+de acuerdo con el Consejo de Estado y previa deliberación del Consejo de Ministros en su
+reunión del día 24 de mayo de 2002,
+DISPONGO:
+CAPÍTULO I
+Principios generales y ámbito de aplicación
+Artículo 1. Principios generales.
+1. Darán origen a indemnización o compensación los supuestos siguientes, en las
+circunstancias, condiciones y límites contenidos en el presente Real Decreto:
+a) Comisiones de servicio con derecho a indemnización.
+b) Desplazamientos dentro del término municipal por razón de servicio.
+c) Traslados de residencia.
+d) Asistencias por concurrencia a Consejos de Administración u Órganos Colegiados,
+por participación en tribunales de oposiciones y concursos y por la colaboración en centros
+de formación y perfeccionamiento del personal de las Administraciones públicas.
+2. Toda concesión de indemnizaciones que no se ajuste en su cuantía o en los requisitos
+para su concesión a los preceptos de este Real Decreto se considerará nula, no pudiendo
+surtir efectos en las cajas pagadoras, pagadurías, habilitaciones u órganos funcionalmente
+análogos.
+Artículo 2. Ámbito de aplicación.
+1. El presente Real Decreto será de aplicación a:
+a) El personal, civil y militar, que presta servicios en la Administración General del Estado
+y los Organismos públicos vinculados o dependientes de ella.
+b) El personal al servicio de la Seguridad Social.
+c) El personal al servicio de los Organismos públicos previstos en las disposiciones
+adicionales novena y décima de la Ley 6/1997, de Organización y Funcionamiento de la
+Administración General del Estado.
+d) Los miembros de las Carreras Judicial y Fiscal y el personal al servicio de la
+Administración de Justicia, tal y como prevé su legislación específica.
+e) El personal al servicio de las Corporaciones locales, tal y como prevé su legislación
+específica.
+f) El personal al servicio de la Universidad Nacional de Educación a Distancia.
+2. En el ámbito de aplicación del presente Real Decreto se entiende incluido el personal
+determinado en el apartado anterior con prestación de servicios de carácter permanente,
+interino, temporal o en prácticas, excepto el de carácter laboral al que se aplicará, en su
+caso, lo previsto en el respectivo convenio colectivo o normativa específica, así como el
+personal no vinculado jurídicamente con la Administración cuando preste a ésta servicios
+que puedan dar origen a las indemnizaciones o compensaciones que en él se regulan.
+3. Los Expertos Nacionales en la Comisión de las Comunidades Europeas se regirán, a
+efectos de indemnizaciones, por lo establecido en la correspondiente Decisión de dicha
+Comisión, no resultándoles de aplicación lo regulado a ese respecto en el presente Real
+Decreto.
+
+– 1842 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+CAPÍTULO II
+Comisiones de servicio con derecho a indemnización
+Sección 1.ª Normas generales
+Artículo 3. Definición de las comisiones de servicio con derecho a indemnización.
+1. Son comisiones de servicio con derecho a indemnización los cometidos especiales
+que circunstancialmente se ordenen al personal comprendido en el artículo anterior y que
+deba desempeñar fuera del término municipal donde radique su residencia oficial,
+entendiéndose como tal el término municipal correspondiente a la oficina o dependencia en
+que se desarrollen las actividades del puesto de trabajo habitual, salvo que, de forma
+expresa y según la legislación vigente, se haya autorizado la residencia del personal en
+término municipal distinto al correspondiente a dicho puesto de trabajo y se haga constar en
+la orden o pasaporte en que se designe la comisión tal circunstancia.
+Dicha autorización no altera el concepto de residencia oficial por lo que, en ningún caso,
+podrá tener la consideración de comisión de servicio el desplazamiento habitual desde el
+lugar donde se esté autorizado a residir hasta el del centro de trabajo, aunque éstos se
+encuentren en términos municipales distintos.
+2. En las situaciones administrativas en las que el personal continúe percibiendo sus
+retribuciones de las Administraciones públicas y demás organismos establecidos en el
+artículo 2.1 anterior, no se considerarán comisiones de servicio con derecho a indemnización
+aquellos servicios que estén retribuidos o indemnizados por un importe igual o superior a la
+cuantía de la indemnización que resultaría por aplicación del presente Real Decreto,
+cualquiera que sea la Administración u organismo nacional o internacional, público o privado,
+que retribuya o indemnice el servicio.
+Las comisiones en las que el importe de dicha retribución o indemnización fuera inferior
+a la cuantía de la indemnización que por aplicación del presente Real Decreto corresponda
+serán resarcidas por la diferencia entre dicha indemnización y el importe mencionado.
+3. Tampoco darán lugar a indemnización aquellas comisiones que tengan lugar a
+iniciativa propia, salvo que se deriven de decisiones obligadas por la propia función de alto
+cargo, o haya renuncia expresa de dicha indemnización.
+Artículo 4. Designación de las comisiones de servicio.
+1. La designación de las comisiones de servicio con derecho a indemnización compete al
+Subsecretario de cada Departamento ministerial o a la autoridad superior del Organismo o
+Entidad correspondiente.
+No obstante lo anterior, la designación de dichas comisiones en el Ministerio de Defensa
+corresponderá además, dentro de sus respectivas competencias, a la autoridades
+siguientes:
+a) Jefe del Estado Mayor de la Defensa.
+b) Jefe del Estado Mayor del Ejército de Tierra.
+c) Jefe del Estado Mayor de la Armada.
+d) Jefe del Estado Mayor del Ejército del Aire.
+2. Cuando las comisiones de servicio no tengan lugar en el mismo ámbito orgánico en
+que se designa la comisión según el apartado 1 anterior, el titular del órgano, ajeno a dicho
+ámbito, para el que se vayan a desarrollar las mismas deberá formular la correspondiente
+propuesta de su designación, correspondiéndole también a este último las actuaciones
+previstas en la normativa vigente sobre el abono de anticipos y el abono posterior y la
+justificación de las indemnizaciones.
+3. En los pasaportes que expidan las autoridades militares y en las órdenes que se den
+al personal civil se hará constar que actúan en comisión de servicio y la circunstancia de si
+ésta será con derecho a dietas o, en su caso, indemnización de residencia eventual, y el
+viaje por cuenta del Estado, con expresión del lugar de destino de la comisión, y del lugar
+exacto y el día y hora del inicio de la comisión y de los previstos para la finalización de la
+
+– 1843 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+misma, debiendo entenderse como tales lugares de inicio y finalización los correspondientes
+a la residencia oficial según se define en el artículo 3.1 de este Real Decreto.
+No obstante, las circunstancias anteriores podrán ser modificadas posteriormente por la
+misma autoridad que haya designado la comisión de servicio correspondiente si se diera una
+situación no previsible inicialmente que así lo justificara.
+Artículo 5. Duración de las comisiones de servicio.
+1. Toda comisión con derecho a indemnización, salvo casos excepcionales, no durará
+más de un mes en territorio nacional y de tres en el extranjero.
+2. No obstante lo dispuesto en el apartado anterior, si antes de vencer el plazo marcado
+para el desempeño de una comisión resultase insuficiente para el total cumplimiento del
+servicio, el Jefe correspondiente podrá proponer razonadamente a la autoridad competente
+la concesión de prórroga por el tiempo estrictamente indispensable.
+Artículo 6. Comisiones con la consideración de residencia eventual.
+1. Las comisiones cuya duración se prevea, excepcionalmente, superior a la de los
+límites establecidos en el artículo anterior, así como las prórrogas que den lugar a un exceso
+sobre dichos límites, tendrán la consideración de residencia eventual desde el comienzo de
+la comisión inicial o de su prórroga, respectivamente.
+2. La duración de la residencia eventual no podrá exceder de un año, salvo que se
+prorrogue por el tiempo estrictamente indispensable por la autoridad que haya designado la
+comisión según lo previsto en el artículo 4.1 anterior. La duración de la prórroga no podrá en
+ningún caso exceder de un año.
+3. En el caso de que inicialmente se prevea que los cometidos especiales a realizar van
+a exigir un tiempo superior al de un año, se procederá a tramitar la creación del
+correspondiente puesto de trabajo en el Departamento, Organismo o Entidad de que se
+trate, de acuerdo con la normativa vigente.
+Artículo 7.
+Comisiones derivadas de la asistencia a cursos convocados por la
+Administración.
+1. La asistencia a los cursos de capacitación, especialización o ampliación de estudios y,
+en general, los de perfeccionamiento convocados por las Administraciones públicas, así
+como a la de los módulos o cursos de capacitación o formación para el ascenso de los
+miembros de las Fuerzas Armadas y Fuerzas y Cuerpos de Seguridad del Estado o a la de
+cursos selectivos para ingreso en Cuerpos o Escalas mediante la superación de pruebas de
+promoción interna, contando con autorización expresa y siempre que se lleven a efecto fuera
+del término municipal donde radique su residencia oficial y cualquiera que sea la duración de
+los mismos, podrá ser indemnizada, según su duración y el tipo de alojamiento, o como
+comisión de servicio o como comisión de servicio con la consideración de residencia
+eventual de acuerdo con la decisión que se adopte al respecto en la correspondiente Orden
+de designación.
+Cuando quienes estén realizando estos cursos vuelvan a pernoctar en su residencia
+oficial, no devengarán indemnización pero, si por razón del horario de los cursos tuvieran
+que almorzar en la localidad donde se imparten, tendrán derecho a percibir el 50 por 100 de
+los gastos de manutención y la indemnización que por gastos de viaje pudiera
+corresponderles según lo regulado en el presente Real Decreto.
+2. No obstante, tendrá siempre la consideración de indemnización por residencia
+eventual, con los límites y las condiciones fijadas en los apartados 1 y 2 del artículo 6 del
+presente Real Decreto, la asistencia a las pruebas selectivas previas al curso de promoción
+para el ascenso por antigüedad de los miembros de las Fuerzas y Cuerpos de Seguridad del
+Estado y a los cursos selectivos para ingreso en Cuerpos o Escalas por promoción interna.
+3. En cualquier caso, los días anteriores y posteriores al periodo de desarrollo de los
+cursos estrictamente indispensables para efectuar la ida y el regreso hasta y desde el centro
+de estudios, se indemnizarán, si procediera, de acuerdo con lo dispuesto con carácter
+general para las comisiones de servicio.
+
+– 1844 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+Artículo 8. Régimen de resarcimiento de los altos cargos e integrantes de delegaciones
+presididas por los mismos, e indemnizaciones de quienes actúan en otras delegaciones
+oficiales.
+1. Los miembros del Gobierno de la Nación, Secretarios de Estado, Jefes de Misión
+acreditados con carácter de residentes ante un Estado extranjero u Organismo internacional,
+Subsecretarios, Generales y Almirantes Jefes de Regiones y Zonas Militares, Marítimas y
+Aéreas y cargos asimilados a los anteriores con arreglo a la normativa aplicable cuando
+realicen alguna de las funciones que, según el presente Real Decreto, dan derecho a
+indemnización, serán resarcidos por la cuantía exacta de los gastos realizados que sean
+necesarios para el ejercicio de las citadas funciones, de acuerdo con la justificación
+documental de los mismos. Este régimen de resarcimiento podrá ser autorizado de forma
+expresa en cada ocasión por los Ministros en relación con el personal directivo bajo su
+dependencia funcional con rango de Directores generales o asimilados.
+No obstante, las comisiones de servicio reguladas en el párrafo anterior cuando sean
+desempeñadas por personal bajo la dependencia funcional del Ministro de la Presidencia se
+regirán por la regulación específica que se acuerde en la forma prevista en la disposición
+adicional sexta del presente Real Decreto.
+El personal a que se refieren los párrafos anteriores podrá optar libremente por acogerse
+al régimen de indemnización regulado con carácter general en las correspondientes normas
+del presente Real Decreto y según su clasificación en el anexo I del mismo, sin perjuicio de
+que la autoridad que ordene la comisión, en determinados supuestos de carácter
+extraordinario, pueda disponer que se aplique de forma obligada uno u otro régimen, sin
+posibilidad de opción.
+2. Quienes actúen en comisión de servicios formando parte de delegaciones oficiales
+presididas por los altos cargos referidos en el apartado anterior de este artículo, no
+percibirán ningún tipo de indemnización, siendo resarcidos por la cuantía exacta de los
+gastos realizados por ellos de acuerdo con la justificación documental de los mismos visada
+de conformidad por el propio alto cargo que presida la comisión, o por el comisionado con
+rango al menos de Subdirector general o equivalente a quien se encomiende tal función en
+el caso de comisiones presididas por miembros del Gobierno de la Nación, y dentro de los
+conceptos que se regulan en el presente Real Decreto.
+3. El personal que actúe en comisión de servicios formando parte de Delegaciones
+oficiales presididas por Directores generales, o por los titulares de los máximos órganos de
+la dirección de Organismos públicos con rango equivalente a aquéllos, no obstante lo
+dispuesto en el artículo 10 de este Real Decreto percibirá las indemnizaciones del grupo
+correspondiente a los referidos altos cargos, sin que, en ningún caso, les resulte aplicable el
+régimen de resarcimiento regulado en los apartados 1 y 2 de este artículo.
+Sección 2.ª Sección clases de indemnizaciones
+Artículo 9. Concepto de las distintas clases de indemnización.
+1. «Dieta» es la cantidad que se devenga diariamente para satisfacer los gastos que
+origina la estancia fuera de la residencia oficial en los casos previstos en el artículo 5 del
+presente Real Decreto. Si la comisión de servicio se desempeña por personal de las Fuerzas
+Armadas o de las Fuerzas y Cuerpos de Seguridad del Estado, formando unidad, dicho
+devengo recibirá el nombre de «plus».
+2. «Indemnización de residencia eventual» es la cantidad que se devenga diariamente
+para satisfacer los gastos que origina la estancia fuera de la residencia oficial en los casos
+previstos en los artículos 6 y 7 de este Real Decreto.
+3. «Gastos de Viaje» es la cantidad que se abona por la utilización de cualquier medio de
+transporte por razón de servicio.
+
+– 1845 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+Sección 3.ª Cuantía de las indemnizaciones
+Artículo 10. Indemnización por dietas de alojamiento y manutención.
+1. En las comisiones de servicio, salvo en el caso previsto en el artículo 14 de este Real
+Decreto, se percibirán las dietas a cuyo devengo se tenga derecho, de acuerdo con los
+grupos que se especifican en el anexo I y las cuantías que se establecen en los anexos II y
+III, según sean desempeñadas en territorio nacional o extranjero, respectivamente.
+2. Las cuantías fijadas en los anexos II y III comprenden los gastos de manutención
+correspondientes a la comida y la cena y los importes máximos que por gastos de
+alojamiento, desayuno y teléfono se pueden percibir día a día.
+No obstante, cuando la comisión de servicio de que se trate tenga una duración superior
+a cuatro días, la autoridad que ordena la comisión podrá autorizar que se indemnice,
+asimismo, por el importe exacto gastado justificado por el comisionado en concepto de
+gastos por lavado y/o planchado de ropa personal.
+Además, cualquiera que sea la duración de la comisión, se resarcirá al comisionado por
+el importe exacto de las llamadas de teléfono de carácter oficial, que resulten necesarias
+para el mejor cumplimiento del servicio, mediante la debida justificación documental de las
+mismas y con la aprobación de la autoridad que ordenó la comisión.
+3. De no aplicarse el sistema de concierto o contrato, el importe a percibir por gastos de
+alojamiento y asimilados a estos últimos según el primer párrafo del apartado 2 anterior será
+el realmente gastado y justificado documentalmente, sin que su cuantía total, con excepción
+de los importes autorizados en su caso de acuerdo con su segundo y tercer párrafos, pueda
+exceder de las señaladas en los anexos II y III de este Real Decreto.
+4. El personal que deba percibir las indemnizaciones por comisión de servicio sobre
+buques en navegación, en general, devengará dietas de manutención por el importe
+realmente gastado y justificado documentalmente dentro de los límites equivalentes a las
+cuantías fijadas en razón del grupo y el pabellón de los buques de navegación según los
+países del anexo III.
+De forma particular, al personal militar que participe en navegaciones en el extranjero le
+resultará de aplicación, a efectos de la percepción de las indemnizaciones reguladas en este
+Real Decreto, lo establecido en el artículo 18 del Reglamento aprobado por Real Decreto
+662/2001, de 22 de junio.
+5. Los centros que abonen las indemnizaciones citadas efectuarán las retenciones a
+efectos del Impuesto sobre la Renta de las Personas Físicas que procedan cuando se
+superen los límites cuantitativos o temporales a que se refiere la normativa sobre dicho
+impuesto.
+Artículo 11.
+dietas.
+
+Autorizaciones excepcionales para la modificación de las cuantías de las
+
+1. No obstante lo dispuesto en el artículo anterior, los Ministerios de Hacienda y de
+Administraciones Públicas, conjuntamente, podrán autorizar que, excepcionalmente, en
+determinadas épocas y ciudades del territorio nacional la cuantía de las dietas por
+alojamiento y, en su caso, manutención, pueda elevarse, para casos concretos y
+singularizados debidamente motivados, hasta el importe que resulte necesario para el
+adecuado resarcimiento de los gastos realmente producidos.
+Dichos Departamentos también podrán autorizar que al alojamiento correspondiente a
+los grupos 2 y 3 del anexo III para los países del extranjero de muy escasa oferta hotelera
+pueda aplicárseles la dieta del grupo inmediatamente superior.
+2. Asimismo, el Ministro de Hacienda procederá a actualizar los importes establecidos en
+el anexo III del presente Real Decreto para las dietas en el extranjero, en revisiones que
+deberán tener, al menos, carácter anual y, en todo caso, siempre que resultara necesario por
+la desviación de los importes reales respecto de las cuantías vigentes en ese momento o por
+oscilaciones significativas de los tipos de cambio. Cuando la actualización obedezca a
+cambios en la denominación o a la constitución de nuevos países, dicha modificación será
+aprobada por acuerdo del Consejo de Ministros. Las respectivas normas de actualización
+deberán ser publicadas, a propuesta del Ministerio de Hacienda, en el «Boletín Oficial del
+Estado».
+– 1846 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+Artículo 12. Criterios para el devengo y cálculo de las dietas.
+1. En las comisiones cuya duración sea igual o inferior a un día natural, en general no se
+percibirán indemnizaciones por gastos de alojamiento ni de manutención salvo cuando,
+teniendo la comisión una duración mínima de cinco horas, ésta se inicie antes de las catorce
+horas y finalice después de las dieciséis horas, supuesto en que se percibirá el 50 por 100
+del importe de la dieta por manutención.
+Cuando se trate de personal de vuelo que efectúe una comisión al servicio de altos
+cargos de la Administración, se podrá percibir, además, gastos de alojamiento
+correspondientes a un solo día.
+2. En las comisiones cuya duración sea igual o menor a veinticuatro horas, pero
+comprendan parte de dos días naturales, podrán percibirse indemnizaciones por gastos de
+alojamiento correspondiente a un solo día y los gastos de manutención en las mismas
+condiciones fijadas en el siguiente apartado para los días de salida y regreso.
+3. En las comisiones cuya duración sea superior a veinticuatro horas se tendrá en
+cuenta:
+a) En el día de salida se podrán percibir gastos de alojamiento pero no gastos de
+manutención, salvo que la hora fijada para iniciar la comisión sea anterior a las catorce
+horas, en que se percibirá el 100 por 100 de dichos gastos, porcentaje que se reducirá al 50
+por 100 cuando dicha hora de salida sea posterior a las catorce horas pero anterior a las
+veintidós horas.
+b) En el día de regreso no se podrán percibir gastos de alojamiento ni de manutención,
+salvo que la hora fijada para concluir la comisión sea posterior a las catorce horas, en cuyo
+caso se percibirá, con carácter general, únicamente el 50 por 100 de los gastos de
+manutención.
+c) En los días intermedios entre los de salida y regreso se percibirán dietas al 100 por
+100.
+4. En los casos excepcionales, dentro de los supuestos a que se refieren los apartados
+anteriores, en que la hora de regreso de la comisión de servicio sea posterior a las veintidós
+horas, y por ello obligue a realizar la cena fuera de la residencia habitual, se hará constar en
+la Orden de comisión, abonándose adicionalmente el importe, en un 50 por 100, de la
+correspondiente dieta de manutención, previa justificación con factura o recibo del
+correspondiente establecimiento.
+5. Las dietas fijadas para las comisiones que se desempeñen fuera del territorio nacional
+se devengarán, desde el día en que se pase la frontera o se salga del último puerto o
+aeropuerto nacionales y durante el recorrido y estancia en el extranjero, en las cuantías
+correspondientes a cada país en los que se desempeñe la comisión de servicio, dejándose
+de percibir el mismo día de la llegada a la frontera o primer puerto o aeropuerto nacionales,
+aunque si la distancia al lugar de la residencia oficial obligara a una continuación del viaje en
+territorio nacional serán indemnizables los correspondientes gastos por alojamiento, y
+manutención según los casos. Si durante el viaje se tuviera que pernoctar en otro país la
+cuantía de la indemnización, por lo que se refiere a dichos gastos, será la justificada dentro
+del máximo correspondiente al país en que se pernocta.
+Durante los recorridos por territorio nacional se abonarán las dietas que corresponden a
+este territorio de acuerdo con lo previsto en los apartados anteriores, aunque los porcentajes
+que se especifican en los mismos podrán aplicarse sobre la cuantía de los gastos de
+manutención en el extranjero cuando se justifique mediante la correspondiente factura o
+recibo que en el día de regreso se han realizado, excepcionalmente, fuera del territorio
+nacional.
+Asimismo, se podrán indemnizar los gastos de consignas de equipajes cuando el
+comisionado se vea obligado a permanecer «en tránsito» en alguna ciudad o en el propio
+aeropuerto o estación.
+6. Tratándose de personal destinado en el extranjero y que haya de desempeñar una
+comisión de servicio en el mismo o distinto país las dietas se percibirán de acuerdo con lo
+dispuesto en los apartados anteriores para el personal destinado en territorio nacional,
+aunque su cuantía será la que proceda según el país en que se desempeña la comisión de
+servicio.
+– 1847 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+Artículo 13. Comisiones de servicio en representación o por delegación de cargo con
+clasificación en un grupo superior.
+Sin perjuicio de lo establecido en el apartado 3 del artículo 8 del presente Real Decreto,
+ningún comisionado podrá percibir dietas o pluses de grupo superior al que le corresponda,
+aunque realice el servicio por delegación o en representación de una autoridad o funcionario
+clasificado en grupo superior.
+Artículo 14. Conciertos y contratos con Empresas de los gastos de alojamiento y viajes.
+Los gastos de alojamiento y los de viaje podrán concertarse o contratarse con carácter
+general por el Ministerio de Hacienda con empresas de servicios, así como directamente por
+los Departamentos con dichas empresas, previo informe favorable del Ministerio de
+Hacienda. En ambos supuestos, en el concierto o contrato de los gastos de alojamiento se
+determinará el precio por día y tipo de alojamiento, según grupos, siendo orientativas las
+cuantías que para tales gastos se establecen en el presente Real Decreto, aunque, en
+ningún caso, los precios que se concierten o contraten podrán ser superiores.
+Artículo 15. Cuantía de los pluses.
+Será de aplicación a los pluses las cuantías y condiciones establecidas con carácter
+general para las dietas en el presente Real Decreto, con las siguientes adecuaciones:
+1. El personal en comisión de servicio formando unidad, cuando utilice establecimientos
+del Estado, percibirá, por el concepto de plus, la cuantía que, con el límite del importe fijado
+en el anexo II para las dietas de manutención, determine la autoridad que autorice la
+comisión.
+2. Cuando el personal afectado tuviera que alojarse en establecimientos privados, se
+percibirán, en concepto de pluses, dietas por alojamiento y manutención en las cuantías
+establecidas con carácter general en este Real Decreto.
+3. Cuando los gastos de alojamiento o de manutención sean a expensas del Estado, no
+se percibirán los pluses correspondientes a dichos conceptos.
+Artículo 16. Cuantía de la indemnización por residencia eventual.
+1. La cuantía del importe por indemnización de residencia eventual será fijada por la
+misma autoridad que confiera la comisión dentro del límite máximo, sin que se necesite
+justificación documental, del 80 por 100 del importe de las dietas enteras que
+corresponderían con arreglo a lo dispuesto en los anexos II y III del presente Real Decreto,
+según se trate de comisiones de servicio en territorio nacional o extranjero, respectivamente.
+El porcentaje a aplicar, incluso aunque fuera el máximo, deberá figurar de forma expresa en
+la orden de estas comisiones de servicios con la consideración de residencia eventual.
+2. Cuando en las comisiones de servicio el personal en la situación de residencia
+eventual tuviera que desplazarse de la misma, además de la cuantía prevista en el apartado
+anterior, percibirá durante los días que dure dicho desplazamiento dietas exclusivamente por
+alojamiento y los correspondientes gastos de viaje, en las condiciones establecidas para las
+comisiones de servicio en general.
+Artículo 17. Indemnizaciones por gastos de viaje.
+1. Toda comisión de servicio dará derecho a viajar por cuenta del Estado desde el lugar
+del inicio hasta el destino a que se refiere el artículo 4.3, y su regreso, en el medio de
+transporte que se determine al autorizar la comisión, procurándose que el desplazamiento se
+efectúe por líneas regulares.
+Si al autorizar la comisión de servicio no se determinara expresamente el medio de
+transporte, el comisionado podrá emplear los medios regulares disponibles, de acuerdo con
+lo establecido en el presente Real Decreto y, en su caso, con las instrucciones impartidas
+por el Órgano Administrativo al que esté adscrito.
+2. Se indemnizará por el importe del billete o pasaje utilizado, dentro de las tarifas
+correspondientes a las clases que, para los distintos grupos comprendidos en el anexo I, se
+señalan a continuación:
+– 1848 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+a) Avión: clase turista o clase de cuantía inferior a la prevista para aquélla.
+b) Trenes de alta velocidad y velocidad alta: grupo primero, clase preferente; segundo y
+tercer grupos, clase turista.
+c) Trenes nocturnos: grupo primero, cama preferente; segundo y tercer grupos, cama
+turista o literas.
+d) Trenes convencionales y otros medios de transporte: grupos primero y segundo, clase
+primera o preferente; tercer grupo, clase segunda o turista.
+No obstante lo dispuesto en el párrafo anterior, en casos de urgencia cuando no hubiera
+billete o pasaje de la clase que corresponda, o por motivos de representación o duración de
+los viajes, la autoridad que ordene la comisión podrá autorizar una clase superior.
+3. En los casos en que se utilicen para el desplazamiento medios gratuitos del Estado no
+se tendrá derecho a ser indemnizado por este concepto.
+Artículo 18. Utilización de vehículos particulares y otros medios especiales de transporte.
+1. Cuando, excepcionalmente, así se determine en la orden de comisión se podrá utilizar
+en las comisiones de servicio, en los recorridos a que se refiere el apartado 1 del artículo
+anterior, vehículos particulares u otros medios especiales de transporte en los casos
+previstos en la normativa en cada momento vigente.
+2. En el supuesto de utilización de taxis o vehículos de alquiler con o sin conductor en
+destino, se podrá autorizar excepcionalmente en la orden de comisión que el importe a
+percibir por gastos de viaje sea el realmente gastado y justificado.
+3. Cuando en la orden de comisión se autorice su utilización, serán asimismo
+indemnizables como gastos de viaje, una vez justificados documentalmente, los gastos de
+desplazamiento en taxi entre las estaciones de ferrocarril, autobuses, puertos y aeropuertos
+y el lugar de destino de la comisión o el lugar de la residencia oficial, según se trate de ida o
+regreso, respectivamente, así como los correspondientes a gestiones o diligencias, en dicho
+lugar, específicamente relacionadas con el servicio de que se trate y siempre que los medios
+regulares de transporte resulten claramente inadecuados.
+En los supuestos de comisiones de servicio cuya duración sea igual o inferior a
+veinticuatro horas, a que se refieren los apartados 1 y 2 del artículo 12 anterior se podrá
+autorizar que, en lugar de los gastos de taxis a que se refiere el párrafo anterior, sea
+indemnizable el gasto producido por aparcamiento del vehículo particular en las estaciones
+de ferrocarril, autobuses, puertos o aeropuertos, que cuenten con justificación documental.
+También resultarán indemnizables, previa justificación documental, los gastos de peaje
+en autopistas en el caso de que, por las características del recorrido, lo considerara
+necesario el órgano que designa la comisión y lo hubiera así previsto en la correspondiente
+orden.
+Sección 4.ª Anticipos y justificaciones
+Artículo 19. Derecho de anticipo y justificación de la indemnización.
+1. El personal a quien se encomiende una comisión de servicio de las reguladas en el
+artículo 3 del presente Real Decreto tendrá derecho a percibir por adelantado el importe
+aproximado de las dietas, pluses, residencia eventual y gastos de viaje sin perjuicio de la
+devolución del anticipo, en la cuantía que proceda en su caso, una vez finalizada la comisión
+de servicios.
+2. Los anticipos a que se refiere el apartado anterior y su justificación, así como la de las
+comisiones y gastos de viaje, se efectuarán de acuerdo con la normativa en cada momento
+vigente.
+
+– 1849 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+CAPÍTULO III
+Desplazamientos dentro del término municipal por razón del servicio
+Artículo 20. Regulación general de los desplazamientos dentro del término municipal por
+razón del servicio.
+1. El personal incluido en el ámbito de aplicación del presente Real Decreto tiene
+derecho a ser resarcido de los gastos por los desplazamientos que, según conformidad
+expresa del Jefe de la unidad administrativa correspondiente, se vea obligado a efectuar por
+razón del servicio dentro del término municipal donde tenga su sede el centro de destino.
+2. Los desplazamientos a que se refiere el apartado anterior se efectuarán
+preferentemente en medios de transporte público colectivo realizado en vehículos
+autorizados para el cobro individual y de más de nueve plazas, salvo que el jefe de la unidad
+a que se refiere el apartado anterior de este artículo autorice otro medio de transporte,
+dentro de las disponibilidades presupuestarias asignadas a cada centro.
+3. En el caso de autorizarse el uso de vehículos particulares u otros medios especiales
+de transporte, la cuantía de las indemnizaciones será la establecida para tales supuestos en
+las comisiones de servicio con derecho a indemnización.
+Artículo 21.
+municipal.
+
+Pago de las indemnizaciones por desplazamientos dentro del término
+
+1. Las indemnizaciones a que se refiere el artículo anterior se reclamarán de las cajas
+pagadoras, pagadurías, o habilitaciones u órganos funcionalmente análogos,
+acompañándose en todos los casos de la correspondiente documentación justificativa.
+2. Con el fin de que el pago de estas indemnizaciones sea inmediato al de los gastos
+realizados, deberá preverse el pago con cargo al anticipo de caja fija o, en su caso, la
+existencia de fondos a justificar, en los órganos o unidades referidos en el apartado anterior,
+todo ello con sujeción a la normativa vigente.
+3. Lo dispuesto en este capítulo será de aplicación asimismo a los desplazamientos que
+por razón del servicio tengan que realizar los funcionarios de la Administración de Justicia
+dentro del partido judicial en que el correspondiente órgano ejerza su jurisdicción, sin
+perjuicio de la percepción de otras indemnizaciones cuando el desplazamiento haya tenido
+lugar efectivamente fuera del término municipal y se tenga derecho a las mismas conforme a
+las disposiciones generales de este Real Decreto.
+CAPÍTULO IV
+Traslados de residencia
+Sección 1.ª Normas generales comunes a todos los traslados de residencia
+Artículo 22. Normas generales.
+1. Todas las referencias a la familia contenidas en los artículos del presente Real Decreto
+que regulan los traslados de residencia se entenderán hechas a los familiares del personal
+que origine el derecho a las indemnizaciones siempre que convivan con él y a sus expensas
+y se justifique documentalmente que tales circunstancias existían en el momento del traslado
+de cada miembro de la unidad familiar.
+A los efectos previstos en el párrafo anterior se entenderá que conviven con dicho
+personal y viven a sus expensas el cónyuge y los hijos menores de veintiún años, en
+cualquier caso.
+Para otros familiares, incluidos los hijos de veintiún años o más, se deberá justificar
+documentalmente que conviven con el personal y a sus expensas en el momento del
+traslado. Se entenderá que viven a expensas del funcionario los familiares a que se refiere
+este párrafo que no perciban, en el periodo impositivo en el que se efectúe el traslado,
+ingresos por renta del trabajo, renta patrimonial o pensiones por un total superior al doble del
+salario mínimo interprofesional de los trabajadores.
+
+– 1850 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+2. En el caso de que dos cónyuges con derecho, en principio, a las indemnizaciones a
+que se refiere el presente artículo tuvieran que trasladar su residencia a la misma localidad,
+y su toma de posesión se realizara con una separación en el tiempo inferior a tres meses, los
+correspondientes gastos sólo se le podrán reconocer a uno de ellos. Si la toma de posesión
+de los cónyuges en sus respectivos puestos se realiza con una separación en el tiempo igual
+o superior a tres meses, ambos tendrán derecho a que se les indemnice por el importe
+correspondiente al traslado de mobiliario y enseres, pero sólo uno de ellos podrá percibir
+gastos de instalación y ser resarcido por los gastos de viaje de los familiares que convivan
+con ellos y a sus expensas.
+Asimismo, cuando los cónyuges sean destinados a la misma localidad procedentes de
+destinos en localidades distintas tendrán en todo caso, cualquiera que sea el tiempo de su
+incorporación, derecho a que se les indemnice por el importe correspondiente al traslado de
+mobiliario y enseres. Al igual que en el párrafo anterior, sólo uno podrá percibir gastos de
+instalación y cada uno será resarcido por los gastos de viaje de los familiares que convivían
+con él y a sus expensas en la anterior localidad de destino.
+3. La cuantía de la indemnización por dietas y gastos de viaje a que se refiere este
+artículo, tanto por lo que respecta al personal como a su familia, será la que proceda de
+acuerdo con el grupo que corresponda al personal que origine el derecho a la indemnización
+de acuerdo con la clasificación que se especifica en el anexo I de este Real Decreto. Todo
+ello en las condiciones y con los límites establecidos en el presente Real Decreto y, en su
+caso, en la restante normativa vigente para las comisiones de servicio.
+4. A los gastos de viaje regulados en los artículos relativos a estos traslados de
+residencia les resultará de aplicación lo dispuesto para las comisiones de servicio en los
+artículos 17 y 18 del presente Real Decreto.
+5. Las indemnizaciones por los gastos de transporte de mobiliario y enseres se otorgarán
+previa aprobación del presupuesto de los mismos de conformidad con la normativa vigente.
+6. El derecho a las indemnizaciones previstas en el presente artículo caducará al
+transcurrir un año desde la fecha en que aquél nazca, pudiendo concederse por las
+autoridades respectivas, a instancia de los interesados, prórrogas semestrales por un plazo
+no superior a otros dos años cuando existieran dificultades para ejercer alguno de los
+derechos que dan lugar a indemnización.
+7. El importe de los derechos reconocidos para los traslados de residencia podrá ser
+anticipado. Las condiciones y límites de estos anticipos, así como su justificación, se
+efectuará de acuerdo con la normativa vigente.
+Sección 2.ª Traslados en territorio nacional
+Artículo 23. Tipos de traslados e indemnización correspondiente.
+1. En caso de traslado forzoso que origine cambio del término municipal de residencia
+oficial dentro del territorio nacional, el personal tendrá derecho al abono de los gastos de
+viaje, incluidos los de su familia, al pago de los gastos de transporte de mobiliario y enseres
+y, en cualquier caso, a una indemnización equivalente a tres dietas por el titular y cada
+miembro de su familia que efectivamente se traslade.
+2. A los efectos expresados, tendrán la consideración de traslado forzoso los supuestos
+que a continuación se reseñan:
+a) Los señalados por las autoridades correspondientes, dentro de la normativa vigente,
+que tengan carácter de obligado cumplimiento de los interesados sin que preceda petición
+de los mismos, por lo que, a efectos de este señalamiento, en ningún caso se considerarán
+los traslados derivados del nombramiento o cese en el desempeño de los puestos por
+concurso o libre designación a que se refiere la normativa de Función Pública.
+b) Los originados por cambios de residencia oficial o supresión de las unidades,
+dependencias o centros en que presten servicio los interesados.
+c) Los traslados motivados por ascenso del personal de las Fuerzas Armadas y de las
+Fuerzas y Cuerpos de Seguridad del Estado o por cese obligado en un destino al
+cumplimiento del tiempo máximo de permanencia en él, así como los que sean debidos a
+destinos que el individuo se vea obligado a solicitar para cumplir las condiciones de mando,
+especialidad o diploma exigibles en virtud de la legislación vigente.
+– 1851 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+d) La jubilación del personal civil o el pase a la situación de reserva, segunda actividad,
+segunda reserva o retiro, para el personal de las Fuerzas Armadas y de las Fuerzas y
+Cuerpos de Seguridad del Estado, siempre que sea con carácter forzoso, por edad,
+imposibilidad física o falta de aptitud, hasta la población indicada por el interesado y por una
+sola vez.
+La percepción de la indemnización a que se refiere el párrafo anterior por traslado de
+residencia para el personal que pase a la reserva o segunda actividad anulará la que pudiera
+corresponderle al pasar a segunda reserva o retiro, salvo en aquellos casos en que, con
+posterioridad a haberla percibido, se le asigne al interesado un destino que diera lugar a
+traslado forzoso de residencia.
+e) Cuando se hubiera producido un destino indemnizado por aplicación de los supuestos
+a), b) y c) anteriores, será indemnizable el siguiente traslado que, con carácter voluntario, se
+produzca dentro del plazo de los cinco años siguientes, siempre que se hubiera permanecido
+en aquél al menos un año y suponga el retorno:
+1.º A la Península si el destino forzoso se produjo a una comunidad o ciudad autónoma
+extrapeninsulares.
+2.º A la misma Comunidad o Ciudad autónoma extrapeninsulares desde donde se
+produjo dicho destino forzoso.
+3.º A la misma provincia desde donde se produjo el destino forzoso si las capitales de
+ambas distan más de 1.000 kilómetros.
+3. Los traslados que obedezcan a sanción impuesta al funcionario no darán derecho a
+indemnización.
+4. En el caso de fallecimiento de personal en activo que preste servicio en España, su
+familia tendrá derecho, por una sola vez y hasta la población española que señale, al abono
+de los gastos de viaje, a una indemnización de tres dietas por cada miembro de la familia
+que efectivamente se traslade y a la indemnización por gastos de transporte de mobiliario y
+enseres. En el supuesto de que el cambio de domicilio fuera en la misma población, sólo se
+tendrá derecho al transporte de mobiliario y enseres.
+Sección 3.ª Traslados al extranjero
+Artículo 24. Otras normas generales sobre traslados al extranjero.
+1. El personal que sea destinado de España a algún puesto de la Administración
+española en el extranjero o, una vez destinado desde España, cambie de país o de
+población dentro del mismo país, por razón de nuevo destino, o regrese a España por la
+misma causa, o por cese definitivo o jubilación tendrá derecho al abono de sus gastos de
+viaje; y en los casos en que el destino se prevea por un periodo superior a dieciocho meses,
+tendrá derecho además al abono de los gastos de viaje de los miembros de su familia que
+efectivamente se trasladen y al transporte de mobiliario y enseres. No obstante, el
+Subsecretario del Departamento o la autoridad superior del Organismo o Entidad
+correspondiente podrá exceptuar de esta exigencia de tiempo mínimo cuando existan
+causas excepcionales que así lo justifiquen.
+2. En los supuestos contemplados en el apartado anterior, el personal percibirá además,
+por sí y por cada uno de los familiares con derecho a pasaje que le acompañen, en su caso,
+durante los días que dure el viaje de traslado, por medios terrestres, marítimos o aéreos y
+siguiendo ruta directa, los gastos por manutención que corresponderían en el país de
+destino, siempre que la manutención no estuviera incluida en el precio del billete o pasaje. A
+estos efectos, para el personal que realiza el traslado desde el extranjero por cese definitivo
+o jubilación se entenderá que España es el país de destino y se aplicarán las dietas
+correspondientes a territorio nacional.
+3. El personal destinado en el extranjero que cesase en el destino a petición propia antes
+de llevar dieciocho meses en él, salvo que obedezca a enfermedad o a razones familiares
+graves deberá reintegrar el importe de las indemnizaciones percibidas por los pasajes de su
+familia y por el traslado de mobiliario y enseres en virtud de lo previsto en el primer párrafo
+del apartado 1 de este mismo artículo, en su caso, sin que tampoco tenga derecho a que se
+
+– 1852 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+le abonen los pasajes de regreso de él ni los de su familia, ni el traslado a España de su
+mobiliario y enseres personales.
+Artículo 25. Gastos de instalación del personal destinado en el extranjero.
+1. El personal a que se refiere el apartado 1 del artículo 24 del presente Real Decreto,
+cuando sea destinado de España al extranjero por un periodo previsto como superior a
+dieciocho meses o, en dichas condiciones cambie en él de población por razón de nuevo
+destino, tendrá derecho, en concepto de gastos de instalación, a percibir para cada traslado
+y por una sola vez, una cantidad con los siguientes límites máximos calculados sobre los
+devengos totales anuales que le correspondan en su nuevo destino por retribuciones,
+excluidas las de carácter personal derivadas de la antigüedad, y por la indemnización
+regulada en el artículo 4 del Real Decreto 6/1995, de 13 de enero, aplicándose para el
+cálculo de ésta los módulos vigentes en el lugar de destino en el momento de la toma de
+posesión: 8 por 100 en el caso de que sean uno o dos los miembros de la unidad familiar
+que se trasladen, 10 por 100 para cuando sea tres o cuatro el número de dichos miembros, y
+12 por 100 cuando lo sean en mayor número a cuatro.
+2. Igualmente, tendrá derecho a percibir indemnización por gastos de instalación según
+los criterios fijados en el apartado anterior el personal que regrese a España desde un
+puesto de destino en el extranjero a un puesto del territorio nacional, si ha superado un
+periodo de permanencia en el extranjero de un mínimo de cuatro años, entendiéndose por tal
+el de tiempo efectivo en el destino, o al cumplir el tiempo máximo de permanencia
+continuada en un mismo destino previsto en la reglamentación de personal aplicable.
+3. Lo dispuesto en los apartados anteriores se aplicará siempre que no tuviera en el
+lugar de destino en el extranjero o en España, respectivamente, alojamiento oficial o
+residencia amueblada a expensas del Estado.
+Artículo 26. Normas particulares sobre traslados al extranjero.
+1. El personal al que se refiere el apartado 1 del artículo 24 del presente Real Decreto
+que, con destino en el extranjero por un periodo previsto superior a dieciocho meses,
+contraiga matrimonio fuera de la localidad de destino, tendrá derecho a que se le abonen los
+gastos de viaje de su cónyuge con motivo de su traslado a dicha localidad, incluidos en ellos
+100 kilos de carga aérea.
+2. En el caso del personal que, por considerar que las condiciones sanitarias del país
+extranjero de destino no son las adecuadas, se vea obligado a solicitar que el nacimiento de
+su hijo tenga lugar en otro país, el superior jerárquico a él, según el procedimiento que cada
+Departamento establezca, podrá autorizar el abono de los gastos de viaje de ida y regreso,
+así como los de alojamiento y manutención, si lo solicita expresamente, incluidos los de una
+carga aérea de, como máximo, 50 kilos, durante los días que resulten imprescindibles,
+correspondientes a los padres y al hijo recién nacido, con los límites fijados para las
+comisiones de servicio de los funcionarios del grupo al que pertenezca el funcionario y la
+justificación documental tanto de las dietas como de los gastos de viaje.
+3. El personal que esté o sea en el futuro destinado al extranjero, al que le resulte de
+aplicación lo dispuesto en el artículo 24.1 del presente Real Decreto, tendrá derecho al
+abono, una sola vez cada año, de los gastos de viaje de ida hasta el lugar de España que
+designe así como al de vuelta desde dicho lugar al de destino en el extranjero
+correspondientes al mismo y a su familia, con motivo de sus vacaciones.
+Dicho plazo se contará a partir del momento en que el personal haya tomado posesión
+del primer destino en el extranjero después del último ocupado en España, pudiendo
+computarse el año como cumplido antes de su vencimiento, en el caso de que así lo solicite,
+por causa justificada y sea autorizado por el órgano de personal de su destino.
+A efectos de cómputos de plazos sucesivos no se tendrá en cuenta la fecha en que,
+dentro del año natural que correspondiese, se hubieran disfrutado las últimas vacaciones.
+La concesión de las vacaciones quedará sujeta a las disposiciones legales y
+reglamentarias en la materia.
+4. El personal en activo tendrá derecho al traslado, hasta la población que señale, por
+cuenta del Estado del cadáver de cualquiera de los miembros de su familia.
+
+– 1853 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+En caso de fallecimiento de personal destinado en el extranjero, su familia tendrá
+derecho, por una sola vez, a las indemnizaciones fijadas en los apartados 1 y 2 del artículo
+24 de este Real Decreto hasta la población que señalen. Asimismo, tendrá derecho al
+traslado del cadáver por cuenta del Estado.
+CAPÍTULO V
+Asistencias
+Artículo 27. Normas generales sobre asistencias.
+1. Se entenderá por «asistencia» la indemnización reglamentaria que, de acuerdo con lo
+previsto en los artículos siguientes, proceda abonar por:
+a) Concurrencia a las reuniones de órganos colegiados de la Administración y de los
+organismos públicos y de consejos de administración de empresas con capital o control
+públicos.
+b) Participación en «tribunales de oposiciones y concursos encargados de la selección
+de personal o de pruebas cuya superación sea necesaria para el ejercicio de profesiones o
+para la realización de actividades».
+c) Colaboración con carácter no permanente ni habitual en institutos, escuelas o
+unidades de formación y perfeccionamiento del personal al servicio de las Administraciones
+públicas.
+2. Los Ministerios, Organismos, empresas y demás entidades que abonen las
+asistencias a que se refiere el presente artículo comunicarán semestralmente a los
+Ministerios de Hacienda y de Administraciones Públicas el detalle de las cantidades
+satisfechas por los conceptos a que se refiere el apartado anterior.
+3. Dichas cantidades en ningún caso podrán totalizar, para el conjunto de los tres tipos
+de asistencias, un importe por año natural superior al 50 por 100 de las retribuciones
+anuales, excluidas las de carácter personal derivadas de la antigüedad, que se perciban por
+el puesto de trabajo desempeñado.
+Las cantidades devengadas que superen los límites fijados para la percepción de
+asistencias en el párrafo anterior de este apartado y en los artículos 28.3, 32 y 33 del
+presente Real Decreto serán ingresadas directamente en el Tesoro Público por los centros
+pagadores a que se refiere el apartado anterior.
+4. Las percepciones correspondientes a las asistencias reguladas en este artículo serán
+compatibles con las dietas que puedan corresponder a los que para la asistencia o
+concurrencia se desplacen de su residencia oficial.
+5. Los centros pagadores efectuarán las retenciones a efectos del IRPF que
+correspondan según la normativa vigente en cada caso para dicho impuesto.
+Artículo 28. Asistencias por la concurrencia a reuniones de órganos colegiados de la
+Administración y de los organismos públicos y de consejos de administración de empresas
+con capital o control públicos.
+1. Las asistencias por la concurrencia, personal o por representación, a reuniones de
+órganos colegiados de la Administración y de los organismos públicos, cualquiera que sea la
+naturaleza y funciones de dichos órganos, se abonarán, excepcionalmente, en aquellos
+casos en que así se autorice por el Ministro de Hacienda y Administraciones Públicas. A tal
+efecto, este Ministerio, a iniciativa del Departamento interesado, fijará inicialmente las
+correspondientes cuantías máximas a percibir en concepto de asistencias que tendrán
+validez durante el ejercicio en curso y el siguiente. Para periodos bienales sucesivos el
+Ministerio de Hacienda y Administraciones Públicas autorizará, en su caso, a solicitud del
+propio órgano, a través del Departamento al que está adscrito o vinculado, la continuidad de
+las mismas una vez tenido en cuenta el cumplimiento de lo previsto sobre la comunicación
+periódica a que se refiere el apartado 2 del artículo anterior.
+2. Las empresas con capital o control públicos fijarán las compensaciones económicas
+por la asistencia a sus Consejos de Administración de acuerdo con los criterios generales
+establecidos en sus propios Estatutos o Reglamentos, dentro de las cuantías máximas
+– 1854 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+establecidas por el Ministerio de Hacienda con carácter general para cada grupo de
+empresas según la importancia de las mismas.
+3. En ningún caso se podrá percibir por las asistencias a que se refieren los dos
+apartados anteriores un importe anual superior al 40 por 100 de las retribuciones, excluidas
+las de carácter personal derivadas de la antigüedad, que correspondan, asimismo
+anualmente, por el puesto de trabajo principal.
+Artículo 29. Autorización de asistencias por la participación en tribunales y órganos de
+selección de personal.
+Se abonarán asistencias a los miembros de los tribunales de oposiciones y concursos
+encargados de la selección de personal o de las pruebas cuya superación sea necesaria
+para el ejercicio de profesiones o para la realización de actividades, siempre que dichos
+procesos de selección conlleven la realización de ejercicios escritos u orales, así como a los
+colaboradores técnicos, administrativos y de servicios de dichos órganos, en aquellos casos
+que expresamente lo autorice el Ministerio de Administraciones Públicas, previo informe del
+Ministerio de Hacienda.
+Artículo 30. Regulación de las asistencias de los miembros de tribunales y concursos.
+1. El Ministerio de Administraciones Públicas clasificará a los mencionados órganos a
+efectos de la percepción de asistencias de sus miembros en la correspondiente categoría de
+entre las siguientes, siendo las cuantías a percibir las que se señalan en el anexo IV de este
+Real Decreto:
+a) Categoría primera: acceso a Cuerpos o Escalas del grupo A o categorías de personal
+laboral asimilables.
+b) Categoría segunda: acceso a Cuerpos o Escalas de los grupos B y C o categorías de
+personal laboral asimilables.
+c) Categoría tercera: acceso a Cuerpos o Escalas de los grupos D y E o categorías de
+personal laboral asimilables.
+2. Las cuantías fijadas en el citado anexo IV se incrementarán en el 50 por 100 de su
+importe cuando las asistencias se devenguen por la concurrencia a sesiones que se
+celebren en sábados o en días festivos.
+3. En los supuestos excepcionales en que, con independencia del número de aspirantes,
+la complejidad y dificultad de las pruebas de selección así lo justifiquen, el Ministerio de
+Administraciones Públicas, previo informe del Ministerio de Hacienda, podrá autorizar un
+incremento de hasta el 50 por 100 sobre las cuantías a que se refieren los apartados 1 y 2
+anteriores, según los casos.
+4. Una vez conocido el número de aspirantes el Ministerio de Administraciones Públicas,
+previo informe del Ministerio de Hacienda, fijará para cada convocatoria el número máximo
+de asistencias que puedan devengarse teniendo en cuenta las sesiones previsibles según el
+número de aspirantes, el tiempo necesario para elaboración de cuestionarios, corrección de
+ejercicios escritos y otros factores de tipo objetivo.
+Dentro del límite máximo de asistencias fijado por el Ministerio de Administraciones
+Públicas, el Presidente de cada órgano determinará el número concreto de las que
+corresponda a cada miembro de acuerdo con las actas de las sesiones celebradas.
+5. Las asistencias se devengarán por cada sesión determinada con independencia de si
+ésta se extiende a más de un día, devengándose una única asistencia en el supuesto de que
+se celebre más de una sesión en el mismo día.
+6. El Ministerio de Administraciones Públicas, previo informe del Ministerio de Hacienda,
+aplicando criterios análogos a los expuestos en los apartados anteriores, clasificará a los
+restantes tribunales y órganos encargados de la selección de personal para su ingreso en la
+Administración como personal laboral o de pruebas cuya superación sea necesaria para el
+ejercicio de profesiones o para la realización de actividades.
+
+– 1855 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+Artículo 31. Fijación de las asistencias de los colaboradores de los tribunales y órganos de
+selección de personal.
+Los Ministerios de Administraciones Públicas y Hacienda regularán, dentro del régimen
+de resarcimiento previsto en la disposición adicional sexta del presente Real Decreto, el
+abono de asistencias a los colaboradores técnicos, administrativos y de servicios a que se
+refiere el artículo 29 de este Real Decreto.
+Artículo 32. Límites de los importes a percibir por las asistencias en tribunales y órganos de
+selección de personal.
+En ningún caso se podrá percibir por las asistencias a que se refieren los artículos 29
+a 31 anteriores un importe total por año natural superior al 20 por 100 de las retribuciones
+anuales, excluidas las de carácter personal derivadas de la antigüedad, que correspondan
+por el puesto de trabajo principal, cualquiera que sea el número de tribunales u órganos
+similares en los que se participe.
+Cuando las asistencias devengadas superen el límite anterior como consecuencia de la
+participación en más de un tribunal u órgano similar, el interesado lo pondrá en conocimiento
+de aquel en que se produzca tal exceso, quien comunicará dicha circunstancia al
+correspondiente centro pagador con el fin de que proceda a dar cumplimiento a lo dispuesto
+en el apartado 3 del artículo 27 de este Real Decreto.
+Artículo 33.
+Asistencias
+perfeccionamiento.
+
+por
+
+la
+
+colaboración
+
+en
+
+actividades
+
+de
+
+formación
+
+y
+
+1. Se podrán abonar asistencias por la colaboración, con carácter no permanente ni
+habitual, en las actividades a cargo de los institutos o centros, en general, de formación y
+perfeccionamiento de personal al servicio de las Administraciones públicas, en que se
+impartan ocasionalmente conferencias o cursos, así como en los congresos, ponencias,
+seminarios y actividades análogas incluidos en los programas de actuación de dichas
+instituciones, dentro de las disponibilidades presupuestarias para tales atenciones y siempre
+que el total de horas del conjunto de estas actividades no supere individualmente el máximo
+de setenta y cinco al año.
+2. Las remuneraciones a percibir se ajustarán a los baremos que, a tal fin, se aprueben
+por los citados institutos o centros, previo informe favorable del Ministerio de Hacienda que,
+asimismo, a efectos del cómputo del total máximo a que se refiere el apartado anterior, fijará
+las equivalencias horarias de las compensaciones económicas que no se correspondan con
+actividades desarrolladas por horas.
+A las cantidades fijadas en los citados baremos les resultará de aplicación lo dispuesto
+en el apartado 1 del artículo 28 del presente Real Decreto en lo que se refiere a las
+condiciones para su continuidad en años sucesivos siguientes al periodo inicial.
+3. En ningún caso se podrá percibir por el conjunto de las asistencias a las que se refiere
+el presente artículo, durante cada año natural, una cantidad superior al 25 por 100 de las
+retribuciones anuales, excluidas las de carácter personal derivadas de la antigüedad, que
+correspondan al colaborador por el puesto de trabajo principal.
+En caso de colaboración en más de un instituto o centro, corresponde al colaborador
+poner en conocimiento de los mismos su situación personal en relación con los límites
+horario y retributivo que se establecen.
+Disposición adicional primera. Carácter supletorio.
+El presente Real Decreto tiene carácter supletorio para todo el personal no incluido en su
+ámbito de aplicación.
+Disposición adicional segunda. Compatibilidad de las indemnizaciones en el ámbito de la
+Ley 12/1995, de 11 de mayo.
+Los altos cargos enumerados en el apartado 2 del artículo 1 de la Ley 12/1995, de 11 de
+mayo, de Incompatibilidades de los miembros del Gobierno de la Nación y de los altos
+cargos de la Administración General del Estado, podrán percibir por el ejercicio de las
+– 1856 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+actividades compatibles previstas en el artículo 3 de la misma las indemnizaciones reguladas
+en el presente Real Decreto.
+Los altos cargos a que se refiere el párrafo anterior podrán participar en las actividades a
+que se refiere el artículo 33 del presente Real Decreto, en las circunstancias, condiciones y
+límites fijados en el mismo. No obstante, en ningún caso los miembros del Gobierno y los
+Secretarios de Estado devengarán asistencias por dicha participación.
+Los Ministerios, Organismos, empresas y demás entidades que abonen asistencias por
+dicha participación comunicarán semestralmente al Ministerio de Hacienda el detalle de las
+cantidades satisfechas.
+Disposición adicional tercera. Cuantía de la indemnización prevista en el artículo 157 de
+la Ley 5/1985, de 19 de junio, del Régimen Electoral General.
+1. La cuantía de las indemnizaciones prevista en el artículo 157 de la Ley Orgánica
+5/1985, de 19 de junio, del Régimen Electoral General, para los Parlamentarios que
+reuniendo la condición de Profesores Universitarios colaboren en el seno de la Universidad
+en la que tiene reservada su plaza en actividades de docencia o investigación de carácter
+extraordinario, que no afecten a la dirección y control de los servicios, se fijará por la propia
+Universidad, sin que, en ningún caso, el importe mensual a percibir por esta indemnización
+pueda exceder del 25 por 100 de la retribución asimismo mensual que correspondería por el
+desempeño de la plaza que tuvieran reservada.
+2. Las cantidades devengadas y que, conforme al apartado anterior, no deban ser
+percibidas serán ingresadas directamente por la Universidad correspondiente en el Tesoro
+Público.
+Disposición adicional cuarta. Indemnización de los gastos por desplazamiento y por
+instalación de los altos cargos en distinto término municipal al familiar.
+1. Quienes hayan sido designados para el cargo de presidente del Tribunal
+Constitucional, Tribunal Supremo, Consejo de Estado o Tribunal de Cuentas; para el de
+Fiscal General del Estado; para el de miembro del Gobierno; o para el desempeño de cargos
+reservados al libre nombramiento del Gobierno o del Ministro competente previo acuerdo
+favorable del Consejo de Ministros, cuando dicha designación suponga traslado a un término
+municipal distinto al de su residencia familiar tendrán derecho a las siguientes
+indemnizaciones:
+a) Al abono de los gastos de viaje, incluidos los de su familia, a una indemnización de
+tres dietas por el titular y cada miembro de su familia que efectivamente se traslade y al pago
+de los gastos de transporte de mobiliario y enseres.
+b) A una indemnización, en concepto de gastos de instalación, con los siguientes límites
+máximos calculados sobre las retribuciones totales anuales correspondientes a dichos
+cargos, excluidas las de carácter personal derivadas de la antigüedad, a que tuvieran
+derecho cuando por su nombramiento o su cese instalen nuevo domicilio por no tener su
+residencia familiar en el mismo término municipal en donde radique la residencia oficial o por
+no haber mantenido dicha residencia familiar después de su nombramiento,
+respectivamente: 8 por 100 en el caso de que sean uno o dos los miembros de la unidad
+familiar que se trasladen, 10 por 100 para cuando sea tres o cuatro el número de dichos
+miembros, y 12 por 100 cuando lo sean en mayor número a cuatro.
+2. Lo dispuesto en el párrafo b) del apartado anterior no se aplicará cuando tuvieran en
+el lugar de destino alojamiento oficial o residencia a expensas del Estado, o continuasen
+manteniendo su residencia familiar en un término municipal distinto. En este caso tendrán
+derecho a ser resarcidos de los gastos de viaje que realice el interesado como consecuencia
+de dicha residencia, en la clase que corresponda, por la cuantía exacta de los mismos,
+previa justificación con el billete original.
+
+– 1857 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+Disposición adicional quinta.
+Indemnizaciones por gastos de los acompañantes
+cuidadores del personal con minusvalía.
+1. Los titulares de las Comisiones de servicio a que se refiere el presente Real Decreto
+que sufran minusvalía de tal naturaleza que les obligue necesariamente a contar con un
+acompañante cuidador de su persona, devengarán los gastos por manutención en cuantía
+doble a la establecida para el personal no minusválido, teniendo asimismo derecho a ser
+indemnizados del importe realmente gastado y justificado por alojamiento y gastos de viaje
+del citado acompañante, de acuerdo con las mismas condiciones y límites que correspondan
+al titular minusválido.
+2. A los efectos previstos en el apartado anterior se considerará justificada la necesidad
+de precisar acompañante si los minusválidos requieren la asistencia de otra persona para
+realizar los actos más esenciales de la vida, tales como vestirse, desplazarse, comer o
+análogos, previo informe que deberá emitir el equipo multiprofesional correspondiente.
+Disposición adicional sexta.
+presente Real Decreto.
+
+Régimen de resarcimiento en casos no previstos en el
+
+En los casos excepcionales no regulados por este Real Decreto de servicios que
+originen gastos que hayan de ser indemnizados de conformidad con lo dispuesto en el
+apartado 4 del artículo 23 de la Ley 30/1984, corresponderá a los Ministerios de Hacienda y
+de Administraciones Públicas la aprobación conjunta del correspondiente régimen de
+resarcimiento, a través de la Comisión Ejecutiva de la Comisión Interministerial de
+Retribuciones.
+Disposición adicional séptima.
+especial de escolta.
+
+Régimen de resarcimiento del personal con cometido
+
+1. Al personal que desempeñe cometidos especiales de escolta en los Servicios de
+Protección y Seguridad con motivo de los desplazamientos efectuados, dentro o fuera del
+término municipal de la residencia oficial, por SS.MM. los Reyes, S.A.R. el Príncipe de
+Asturias y SS.AA.RR. las Infantas, por el Presidente, Vicepresidentes o Ministros del
+Gobierno, u otros altos cargos o, en general, por personalidades que tengan asignado
+normativa o administrativamente personal de este tipo, se les aplicará el mismo régimen de
+resarcimiento o de indemnización, según lo establecido en los artículos 8.1 y 8.3,
+respectivamente, del presente Real Decreto, que corresponda a la personalidad para quien
+se desempeñe el cometido de escolta.
+2. Habida cuenta del específico carácter de dicho resarcimiento, el importe a percibir
+será el realmente gastado, una vez justificado documentalmente según factura expedida por
+los establecimientos que presten los correspondientes servicios, que deberá ser firmada de
+conformidad por el propio alto cargo, personalidad o jefe superior de la unidad al que esté
+adscrito el personal de referencia en cada caso acreditando, además, que los gastos se han
+realizado efectivamente como consecuencia de su labor de escolta.
+Disposición adicional octava.
+conductores de altos cargos.
+
+Indemnización, dentro del término municipal, de los
+
+1. El personal que desempeñe cometidos especiales como conductores al servicio de
+altos cargos con motivo de los desplazamientos de éstos, dentro del término municipal en el
+que radica su residencia oficial, tendrá derecho a percibir la correspondiente indemnización
+por gastos de manutención una vez justificados documentalmente con factura expedida por
+el establecimiento que preste los correspondientes servicios, que deberá ser firmada de
+conformidad por el propio alto cargo al que esté adscrito el personal de referencia en cada
+caso acreditando, además, que los gastos se han realizado como consecuencia del ejercicio
+de su labor de conductor.
+2. El importe de los gastos que hayan de ser indemnizados según dicho régimen de
+resarcimiento será, como máximo, el equivalente al 50 por 100 de la cuantía establecida
+como dieta de manutención del grupo de clasificación correspondiente, que,
+excepcionalmente, podrá elevarse al 100 por 100 cuando la prolongada duración de los
+desplazamientos exija efectuar almuerzo y cena.
+– 1858 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+3. De conformidad con lo dispuesto en la disposición final primera del presente Real
+Decreto, los correspondientes gastos serán sufragados por el Departamento ministerial,
+Entidad u Organismo en el que, en cada caso, se devenguen los servicios.
+Disposición adicional novena. Comisiones de servicio desde lugares no situados en el
+lugar de la residencia oficial.
+1. Sin perjuicio de la aplicación con carácter general de lo dispuesto en el artículo 3.1 del
+presente Real Decreto, excepcionalmente y contando con la conformidad del Subsecretario
+del Departamento, se podrán tener en cuenta, a efectos de su consideración como
+indemnizables, comisiones de servicio que, por causas de fuerza mayor y suficientemente
+justificadas no previstas inicialmente, deban iniciarse desde lugares no situados en el
+término municipal de la residencia oficial.
+Cuando los correspondientes servicios se desarrollen en el propio término municipal
+podrán dar lugar a gastos de viaje por desplazamientos, pero no a indemnizaciones por
+alojamiento ni por manutención.
+2. La conformidad del Subsecretario a que se refiere el apartado anterior podrá
+delegarse en el Director general de la unidad orgánica a que pertenezca el comisionado y,
+de forma particular, en los Jefes de Zona de la Guardia Civil y los Jefes Superiores de Policía
+según corresponda al personal que se designa.
+Disposición adicional décima.
+Indemnización de las comisiones de servicio con
+circunstancias excepcionales ordenadas al personal de las Fuerzas Armadas, Fuerzas y
+Cuerpos de Seguridad y del Centro Nacional de Inteligencia.
+En el ámbito de los servicios propios de las Fuerzas Armadas y Fuerzas y Cuerpos de
+Seguridad del Estado y del Centro Nacional de Inteligencia, cuando razones de seguridad
+personal de los comisionados o de reserva de la investigación así lo aconsejen, la autoridad
+que designe la comisión de servicios según lo previsto en el artículo 4.1, siempre que tenga
+rango administrativo al menos de Director general, podrá acordar motivadamente eximir a
+aquéllos de la obligación de aportar los justificantes de alojamiento previstos en el artículo
+10.3 del presente Real Decreto, indicando, en todo caso, la relación nominal de los
+perceptores, número del documento nacional de identidad, número del registro de personal,
+en su caso, y cuantía a abonar a cada uno de ellos.
+Disposición adicional undécima.
+extranjero.
+
+Personal contratado en localidades concretas del
+
+El personal contratado expresamente para prestar servicio en una localidad concreta del
+extranjero se regirá, a efectos del tipo de indemnizaciones que se regulan en este Real
+Decreto, por la legislación específica de carácter local que le resulte aplicable.
+Disposición adicional duodécima. Indemnización por alojamiento del personal de
+tripulaciones de vuelo que transporten a altos cargos.
+El personal que, desempeñando cometidos de tripulación de vuelo, intervenga en el
+transporte de altos cargos de la Administración será indemnizado en concepto de
+alojamiento por el importe de las dietas fijadas en el anexo II de este Real Decreto para el
+grupo superior de entre los correspondientes a dicho personal.
+Disposición derogatoria primera. Derogación con carácter general.
+Queda derogado el Real Decreto 236/1988, de 4 de marzo.
+Disposición derogatoria segunda. Continuidad de la vigencia de determinadas normas.
+Continuará teniendo vigencia la Orden de 31 de julio de 1985 («Boletín Oficial del
+Estado» de 3 de agosto) y, en general, la normativa de inferior rango dictada en desarrollo
+de la anterior regulación de las indemnizaciones por razón del servicio en lo que no se
+oponga al contenido del presente Real Decreto, así como, de forma específica, la Orden
+comunicada de los Ministros de Administraciones Públicas y de Economía y Hacienda, de 20
+– 1859 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+de abril de 1998, sobre aplicación del Real Decreto 236/1988, de 4 de marzo, a determinado
+personal.
+Disposición final primera.
+indemnizaciones.
+
+Créditos presupuestarios a que deben imputarse las
+
+Cada Ministerio, Entidad y Organismo sufragará las indemnizaciones y demás
+compensaciones que se devenguen en los servicios que de él dependan, cualquiera que sea
+el ramo de la Administración a que pertenezca el personal que haya de realizarlos, dentro de
+los créditos presupuestarios asignados al efecto, excepto las comisiones de servicio
+originadas por comparecencia a Juzgados y Tribunales en calidad de testigos y peritos, con
+motivo de sus actuaciones profesionales que se sufragarán, en todo caso, con el crédito
+presupuestario asignado al Ministerio u Organismo al que pertenezca el personal que los
+realiza. A estos últimos órganos citados corresponderá asimismo el anticipo y justificación de
+los gastos producidos por dicha causa.
+Disposición final segunda. Inclusión en los grupos del anexo I del personal no
+expresamente señalado en el mismo.
+Cuando se confiera una comisión de servicio a personal que no figure expresamente
+señalado en el anexo I de este Real Decreto se determinará en la Orden que la motiva el
+grupo en que deba considerarse incluido.
+Esta asimilación deberá ser autorizada por el Ministerio de Administraciones Públicas,
+previo informe del Ministerio de Hacienda.
+Disposición final tercera. Provisión de fondos para gastos derivados de la celebración de
+oposiciones y concursos.
+Con objeto de hacer frente a los gastos menores que se originen en cada oposición,
+concurso o prueba selectiva se proveerá al correspondiente tribunal, una vez constituido,
+antes del comienzo de las pruebas, de las oportunas cantidades que resulten precisas para
+hacer frente a tales gastos.
+Disposición final cuarta. Revisión periódica del importe de las indemnizaciones.
+El importe de las indemnizaciones establecidas en los anexos II y IV de este Real
+Decreto será revisado periódicamente mediante acuerdo del Consejo de Ministros que se
+publicará en el «Boletín Oficial del Estado».
+La cuantía establecida para indemnizar el uso de vehículo particular regulado en el
+artículo 18.1 del presente Real Decreto será revisada anualmente por el Ministerio de
+Hacienda, o siempre que resultara necesario por la acentuada desviación de los importes
+reales respecto de la vigente en cada momento.
+Disposición final quinta. Disposiciones complementarias de desarrollo del presente Real
+Decreto.
+Por los Ministerios de Hacienda y de Administraciones Públicas, en el ámbito de sus
+respectivas competencias, y a iniciativa del Ministerio de Justicia, cuando se trate de
+personal judicial o fiscal o al servicio de la Administración de Justicia, se dictarán cuantas
+disposiciones complementarias sean precisas, en su caso, para la aplicación de lo dispuesto
+en el presente Real Decreto.
+Disposición final sexta. Entrada en vigor.
+El presente Real Decreto entrará en vigor el día primero del mes siguiente al de su
+publicación en el «Boletín Oficial del Estado».
+
+– 1860 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+ANEXO I
+Clasificación de personal
+Grupo 1. Altos cargos incluidos en los artículos 25, 26 y 31.dos de la Ley 13/2000, de 28
+de diciembre, Oficiales Generales, Magistrados del Tribunal Supremo y Presidentes de los
+Tribunales Superiores de Justicia, Embajadores, Ministros Plenipotenciarios de primera
+clase, Rectores de Universidad, Subdirectores generales, y Subdirectores generales
+adjuntos, así como cualquier otro cargo asimilado a los anteriores.
+En el supuesto de los Subdirectores generales adjuntos, la asimilación será acordada, en
+su caso, conjuntamente por los Ministerios de Hacienda y de Administraciones Públicas.
+Grupo 2. Personal Militar de las Fuerzas Armadas y personal de los Cuerpos de la
+Guardia Civil y Nacional de Policía clasificados a efectos retributivos en los grupos A y B;
+Cuerpos únicos de las Carreras Judicial y Fiscal, Secretarios de la Administración de
+Justicia, Médicos Forenses, y Técnicos Facultativos; funcionarios de la Administración del
+Estado de Cuerpos o Escalas clasificados en los grupos A y B, así como cualquier otro
+personal asimilado a los anteriores.
+Grupo 3. Personal Militar de las Fuerzas Armadas y personal de los Cuerpos de la
+Guardia Civil y Nacional de Policía clasificados a efectos retributivos en los grupos C y D;
+Oficiales, Auxiliares y Agentes, y personal de sus mismos índices multiplicadores, al servicio
+de la Administración de Justicia; funcionarios de la Administración del Estado de Cuerpos o
+Escalas clasificados en los grupos C, D y E, así como cualquier otro personal asimilado a los
+anteriores.
+ANEXO II
+Dietas en territorio nacional
+Cuantías en euros
+Por alojamiento Por manutención Dieta entera
+Grupo 1
+102,56
+53,34
+155,90
+Grupo 2
+65,97
+37,40
+103,37
+Grupo 3
+48,92
+28,21
+77,13
+
+ANEXO III
+Dietas en el extranjero según grupos y países
+
+Alemania
+Grupo 1
+Grupo 2
+Grupo 3
+Andorra
+Grupo 1
+Grupo 2
+Grupo 3
+Angola
+Grupo 1
+Grupo 2
+Grupo 3
+Arabia Saudita
+Grupo 1
+Grupo 2
+Grupo 3
+Argelia
+Grupo 1
+Grupo 2
+Grupo 3
+Argentina
+Grupo 1
+
+Cuantías en euros
+Por alojamiento Por manutenc. Dieta entera
+155,66
+132,82
+117,20
+
+68,52
+59,50
+56,50
+
+224,18
+192,32
+173,69
+
+54,69
+46,88
+41,47
+
+44,47
+37,86
+34,86
+
+99,17
+84,74
+76,33
+
+158,67
+135,23
+119,00
+
+66,71
+59,50
+55,89
+
+225,38
+194,73
+174,89
+
+86,55
+73,92
+64,91
+
+60,70
+54,09
+50,49
+
+147,25
+128,02
+115,39
+
+119,00
+101,57
+89,55
+
+51,09
+44,47
+42,07
+
+170,09
+146,05
+131,62
+
+130,42
+
+64,91
+
+195,33
+
+– 1861 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+
+Grupo 2
+Grupo 3
+Australia
+Grupo 1
+Grupo 2
+Grupo 3
+Austria
+Grupo 1
+Grupo 2
+Grupo 3
+Bélgica
+Grupo 1
+Grupo 2
+Grupo 3
+Bolivia
+Grupo 1
+Grupo 2
+Grupo 3
+Bosnia-Herzegovina
+Grupo 1
+Grupo 2
+Grupo 3
+Brasil
+Grupo 1
+Grupo 2
+Grupo 3
+Bulgaria
+Grupo 1
+Grupo 2
+Grupo 3
+Camerún
+Grupo 1
+Grupo 2
+Grupo 3
+Canadá
+Grupo 1
+Grupo 2
+Grupo 3
+Chile
+Grupo 1
+Grupo 2
+Grupo 3
+China
+Grupo 1
+Grupo 2
+Grupo 3
+Colombia
+Grupo 1
+Grupo 2
+Grupo 3
+Corea
+Grupo 1
+Grupo 2
+Grupo 3
+Costa de Marfil
+Grupo 1
+Grupo 2
+Grupo 3
+Costa Rica
+Grupo 1
+Grupo 2
+Grupo 3
+Croacia
+Grupo 1
+Grupo 2
+Grupo 3
+Cuba
+Grupo 1
+
+Cuantías en euros
+Por alojamiento Por manutenc. Dieta entera
+111,19
+55,29
+166,48
+97,96
+50,49
+148,45
+94,96
+81,14
+71,52
+
+57,10
+51,09
+48,08
+
+152,06
+132,22
+119,60
+
+112,39
+95,56
+84,74
+
+66,11
+58,90
+55,29
+
+178,50
+154,46
+140,04
+
+174,29
+148,45
+131,02
+
+91,35
+82,94
+78,73
+
+265,65
+231,39
+209,75
+
+60,10
+51,09
+45,08
+
+42,67
+36,66
+33,66
+
+102,77
+87,75
+78,73
+
+85,34
+72,72
+64,31
+
+57,70
+49,88
+45,68
+
+143,04
+122,61
+109,99
+
+150,25
+128,02
+112,99
+
+91,35
+79,33
+74,53
+
+241,61
+207,35
+187,52
+
+62,51
+53,49
+46,88
+
+44,47
+37,86
+35,46
+
+106,98
+91,35
+82,34
+
+103,37
+88,35
+77,53
+
+55,29
+48,68
+45,68
+
+158,67
+137,03
+123,21
+
+110,59
+94,36
+82,94
+
+58,30
+51,69
+48,68
+
+168,88
+146,05
+131,62
+
+120,20
+102,17
+90,15
+
+57,70
+50,49
+46,88
+
+177,90
+152,66
+137,03
+
+84,14
+71,52
+63,11
+
+51,69
+46,28
+43,27
+
+135,83
+117,80
+106,38
+
+145,44
+123,81
+109,38
+
+90,15
+78,13
+73,32
+
+235,60
+201,94
+182,71
+
+120,20
+102,17
+90,15
+
+62,51
+55,29
+52,89
+
+182,71
+157,47
+143,04
+
+72,12
+61,30
+54,09
+
+55,89
+49,28
+46,28
+
+128,02
+110,59
+100,37
+
+76,93
+65,51
+57,70
+
+52,29
+44,47
+40,87
+
+129,22
+109,99
+98,57
+
+85,34
+72,72
+64,31
+
+57,70
+49,88
+45,68
+
+143,04
+122,61
+109,99
+
+66,11
+
+38,46
+
+104,58
+
+– 1862 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+
+Grupo 2
+Grupo 3
+Dinamarca
+Grupo 1
+Grupo 2
+Grupo 3
+R. Dominicana
+Grupo 1
+Grupo 2
+Grupo 3
+Ecuador
+Grupo 1
+Grupo 2
+Grupo 3
+Egipto
+Grupo 1
+Grupo 2
+Grupo 3
+El Salvador
+Grupo 1
+Grupo 2
+Grupo 3
+Emiratos Árabes
+Unidos
+Grupo 1
+Grupo 2
+Grupo 3
+Eslovaquia
+Grupo 1
+Grupo 2
+Grupo 3
+Estados Unidos
+Grupo 1
+Grupo 2
+Grupo 3
+Etiopía
+Grupo 1
+Grupo 2
+Grupo 3
+Filipinas
+Grupo 1
+Grupo 2
+Grupo 3
+Finlandia
+Grupo 1
+Grupo 2
+Grupo 3
+Francia
+Grupo 1
+Grupo 2
+Grupo 3
+Gabón
+Grupo 1
+Grupo 2
+Grupo 3
+Ghana
+Grupo 1
+Grupo 2
+Grupo 3
+Grecia
+Grupo 1
+Grupo 2
+Grupo 3
+Guatemala
+Grupo 1
+Grupo 2
+Grupo 3
+Guinea Ecuatorial
+
+Cuantías en euros
+Por alojamiento Por manutenc. Dieta entera
+56,50
+33,06
+89,55
+49,88
+29,45
+79,33
+144,24
+122,61
+108,18
+
+72,12
+64,91
+62,51
+
+216,36
+187,52
+170,69
+
+75,13
+64,31
+56,50
+
+42,07
+36,66
+34,26
+
+117,20
+100,97
+90,75
+
+75,73
+64,91
+57,10
+
+50,49
+43,27
+39,67
+
+126,21
+108,18
+96,76
+
+106,98
+91,35
+80,54
+
+44,47
+39,07
+36,66
+
+151,46
+130,42
+117,20
+
+77,53
+66,11
+58,30
+
+50,49
+43,27
+39,67
+
+128,02
+109,38
+97,96
+
+119,00
+101,57
+89,55
+
+63,71
+56,50
+52,89
+
+182,71
+158,07
+142,44
+
+88,95
+75,73
+66,71
+
+49,88
+43,27
+40,87
+
+138,83
+119,00
+107,58
+
+168,28
+143,04
+126,21
+
+77,53
+69,72
+66,11
+
+245,81
+212,76
+192,32
+
+140,04
+119,60
+105,18
+
+43,87
+37,86
+34,86
+
+183,91
+157,47
+140,04
+
+84,14
+71,52
+63,11
+
+45,08
+39,67
+36,66
+
+129,22
+111,19
+99,77
+
+134,63
+114,79
+100,97
+
+72,72
+65,51
+62,51
+
+207,35
+180,30
+163,48
+
+144,24
+122,61
+108,18
+
+72,72
+65,51
+61,90
+
+216,97
+188,12
+170,09
+
+117,80
+100,37
+88,35
+
+59,50
+52,89
+49,28
+
+177,30
+153,26
+137,63
+
+78,13
+66,71
+58,90
+
+42,67
+37,26
+34,26
+
+120,80
+103,98
+93,16
+
+81,14
+69,12
+61,30
+
+45,08
+39,07
+36,66
+
+126,21
+108,18
+97,96
+
+105,18
+89,55
+79,33
+
+49,28
+42,67
+39,67
+
+154,46
+132,22
+119,00
+
+– 1863 –
+
+NORMATIVA PARA INGRESO EN EL CUERPO GENERAL ADMINISTRATIVO DE LA ADMINISTRACIÓN DEL ESTADO
+
+§ 50 Indemnizaciones por razón del servicio
+
+Grupo 1
+Grupo 2
+Grupo 3
+Haití
+Grupo 1
+Grupo 2
+Grupo 3
+Honduras
+Grupo 1
+Grupo 2
+Grupo 3
+Hong Kong
+Grupo 1
+Grupo 2
+Grupo 3
+Hungría
+Grupo 1
+Grupo 2
+Grupo 3
+India
+Grupo 1
+Grupo 2
+Grupo 3
+Indonesia
+Grupo 1
+Grupo 2
+Grupo 3
+Irak
+Grupo 1
+Grupo 2
+Grupo 3
+Irán
+Grupo 1
+Grupo 2
+Grupo 3
+Irlanda
+Grupo 1
+Grupo 2
+Grupo 3
+Israel
+Grupo 1
+Grupo 2
+Grupo 3
+Italia
+Grupo 1
+Grupo 2
+Grupo 3
+Jamaica
+Grupo 1
+Grupo 2
+Grupo 3
+Japón
+Grupo 1
+Grupo 2
+Grupo 3
+Jordania
+Grupo 1
+Grupo 2
+Grupo 3
+Kenia
+Grupo 1
+Grupo 2
+Grupo 3
+Kuwait
+Grupo 1
+Grupo 2
+Grupo 3
+Líbano
+
+Cuantías en euros
+Por alojamiento Por manutenc. Dieta entera
+102,77
+56,50
+159,27
+87,75
+50,49
+138,23
+77,53
+47,48
+125,01
+52,89
+45,08
+39,67
+
+43,87
+37,86
+34,26
+
+96,76
+82,94
+73,92
+
+81,74
+69,72
+61,30
+
+49,28
+42,07
+38,46
+
+131,02
+111,79
+99,77
+
+142,44
+121,40
+106,98
+
+57,70
+51,69
+48,68
+
+200,14
+173,09
+155,66
+
+135,23
+115,39
+101,57
+
+52,89
+46,28
+42,67
+
+188,12
+161,67
+144,24
+
+117,20
+99,77
+88,35
+
+44,47
+38,46
+36,06
+
+161,67
+138,23
+124,41
+
+120,20
+102,17
+90,15
+
+48,68
+42,67
+39,67
+
+168,88
+144,84
+129,82
+
+77,53
+66,11
+58,30
+
+44,47
+39,07
+36,66
+
+122,01
+105,18
+94,96
+
+94,36
+80,54
+70,92
+
+51,69
+44,47
+40,87
+
+146,05
+125,01
+111,79
+
+109,38
+93,16
+82,34
+
+54,09
+48,08
+44,47
+
+163,48
+141,24
+126,81
+
+108,78
+92,56
+81,74
+
+63,71
+56,50
+52,29
+
+172,49
+149,05
+134,03
+
+153,86
+131,02
+115,39
+
+69,72
+63,11
+59,50
+
+223,58
+194,13
+174,89
+
+90,15
+76,93
+67,91
+
+51,69
+46,28
+43,87
+
+141,84
+123,21
+111,79
+
+187,52
+159,87
+140,64
+
+108,18
+96,76
+92,56
+
+295,70
+256,63
+233,19
+
+109,38
+93,16
+82,34
+
+48,68
+42,67
+39,67
+
+158,07
+135,83
+122,01
+
+96,76
+82,34
+72,72
+
+45,08
+39,67
+36,66
+
+141,84
+122,01
+109,38
+
+144,24
+122,61
+108,18
+
+50,49
+44,47
+41,47
+
+194,73
+167,08
+149,65
+
+– 1864 –
+
+

@@ -281,10 +281,12 @@ export default function AIChatWidget() {
     setSuggestionUsed(null) // Resetear después de usar
 
     // Añadir mensaje del usuario y placeholder para respuesta
+    // Incluimos questionId para filtrar historial por pregunta actual
+    const currentQId = currentQuestionContext?.id || null
     const newMessages = [
       ...messages,
-      { role: 'user', content: userMessage },
-      { role: 'assistant', content: '', sources: [], isStreaming: true }
+      { role: 'user', content: userMessage, questionId: currentQId },
+      { role: 'assistant', content: '', sources: [], isStreaming: true, questionId: currentQId }
     ]
     setMessages(newMessages)
     setIsLoading(true)
@@ -338,8 +340,25 @@ export default function AIChatWidget() {
         }
       }
 
-      // Limpiar historial de mensajes
-      const cleanHistory = messages.slice(-6).map(m => ({
+      // Limpiar historial de mensajes - SOLO incluir mensajes de la pregunta actual
+      // Esto evita que el AI se confunda con contexto de preguntas anteriores
+      // NOTA: Usamos currentQuestionContext?.id (no cleanQuestionContext) para ser consistentes
+      // con el questionId que se asigna a los mensajes en líneas 285-289
+      const currentQId = currentQuestionContext?.id || null
+      const relevantMessages = messages.filter(m => {
+        // Si no hay questionId en el mensaje, es un mensaje antiguo sin tracking
+        // Solo incluirlo si no tenemos contexto de pregunta actual
+        if (!m.questionId) return !currentQId
+        // Si hay questionId, solo incluir si coincide con la pregunta actual
+        return m.questionId === currentQId
+      })
+
+      // Log para depuración: mostrar cuántos mensajes se filtraron
+      if (messages.length > 0 && relevantMessages.length < messages.length) {
+        console.log(`🔒 [Chat] Filtrado historial: ${messages.length} → ${relevantMessages.length} mensajes (solo pregunta actual)`)
+      }
+
+      const cleanHistory = relevantMessages.slice(-6).map(m => ({
         role: String(m.role || 'user'),
         content: String(m.content || '')
       }))

@@ -1,0 +1,269 @@
+{
+  "metadata": {
+    "oposicion": "Cuerpo General Administrativo de la Administración del Estado",
+    "grupo": "C1",
+    "fuente": "Resolución de 18 de diciembre de 2025, Secretaría de Estado de Función Pública",
+    "boe": "BOE-A-2025-26262 del 22/12/2025",
+    "codigo_boe": "BOE-442",
+    "total_temas": 45,
+    "total_plazas": 2512,
+    "convocatoria": "2025",
+    "fecha_examen": "23/05/2026"
+  },
+  "estructura_examen": {
+    "ejercicio_unico": {
+      "tiempo_minutos": 100,
+      "primera_parte": {
+        "preguntas": 70,
+        "distribucion": {
+          "bloques_I_II_III_IV_V": 40,
+          "bloque_VI_ofimatica": 30
+        },
+        "preguntas_reserva": 5,
+        "puntuacion_maxima": 50,
+        "puntuacion_minima": 25
+      },
+      "segunda_parte": {
+        "tipo": "supuesto_practico",
+        "opciones": 2,
+        "preguntas": 20,
+        "preguntas_reserva": 5,
+        "bloques": "II, III, IV y V",
+        "puntuacion_maxima": 50,
+        "puntuacion_minima": 25
+      },
+      "penalizacion": "1/3 del valor por respuesta incorrecta",
+      "versiones_software": {
+        "windows": "Windows 11",
+        "office": "Microsoft 365 versión de escritorio"
+      }
+    }
+  },
+  "temas": [
+    {
+      "numero": 1,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "La Constitución Española de 1978: estructura y contenido. Derechos y deberes fundamentales. Su garantía y suspensión. El Tribunal Constitucional. El Defensor del Pueblo. Reforma de la Constitución."
+    },
+    {
+      "numero": 2,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "La Jefatura del Estado. La Corona: funciones constitucionales del Rey. Sucesión y regencia."
+    },
+    {
+      "numero": 3,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "Las Cortes Generales: composición, atribuciones y funcionamiento del Congreso de los Diputados y del Senado."
+    },
+    {
+      "numero": 4,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "El Poder Judicial. El Consejo General del Poder Judicial. El Tribunal Supremo. La organización judicial española."
+    },
+    {
+      "numero": 5,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "El Gobierno y la Administración. El Presidente del Gobierno. El Consejo de Ministros. Designación, causas de cese y responsabilidad del Gobierno. Las funciones del Gobierno. Relaciones entre el Gobierno y las Cortes Generales."
+    },
+    {
+      "numero": 6,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "El Gobierno Abierto: concepto y principios informadores. La Agenda 2030 y los Objetivos de Desarrollo Sostenible."
+    },
+    {
+      "numero": 7,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "La Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno."
+    },
+    {
+      "numero": 8,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "La Administración General del Estado. Órganos centrales. Órganos superiores y directivos. Órganos territoriales. La Administración del Estado en el Exterior."
+    },
+    {
+      "numero": 9,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "La Organización territorial del Estado: las Comunidades Autónomas. Constitución y distribución de competencias entre el Estado y las Comunidades Autónomas. Estatutos de Autonomía."
+    },
+    {
+      "numero": 10,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "La Administración local: entidades que la integran. La provincia, el municipio y la isla."
+    },
+    {
+      "numero": 11,
+      "bloque": "I. Organización del Estado y de la Administración pública",
+      "titulo": "La organización de la Unión Europea. El Consejo Europeo, el Consejo, el Parlamento Europeo, la Comisión Europea y el Tribunal de Justicia de la Unión Europea. Efectos de la integración europea sobre la organización del Estado español."
+    },
+    {
+      "numero": 12,
+      "bloque": "II. Organización de oficinas públicas",
+      "titulo": "Atención al público. Atención de personas con discapacidad. Los servicios de información administrativa. Información general y particular al ciudadano. Iniciativas. Reclamaciones. Quejas. Peticiones."
+    },
+    {
+      "numero": 13,
+      "bloque": "II. Organización de oficinas públicas",
+      "titulo": "Concepto de documento, registro y archivo. Funciones del registro y del archivo. Clases de archivo y criterios de ordenación."
+    },
+    {
+      "numero": 14,
+      "bloque": "II. Organización de oficinas públicas",
+      "titulo": "Administración electrónica y servicios al ciudadano. Análisis de principales páginas web de carácter público. Servicios telemáticos. Oficinas integradas de atención al ciudadano. Ventanilla única empresarial. El Punto de Acceso General de la Administración General del Estado."
+    },
+    {
+      "numero": 15,
+      "bloque": "II. Organización de oficinas públicas",
+      "titulo": "La protección de datos personales y su régimen Jurídico: principios, derechos, responsable y encargado del tratamiento, delegado y autoridades de protección de datos. Derechos digitales."
+    },
+    {
+      "numero": 16,
+      "bloque": "III. Derecho administrativo general",
+      "titulo": "Las fuentes del derecho administrativo. La jerarquía de las fuentes. La ley. Las disposiciones del Ejecutivo con fuerza de ley: decreto-ley y decreto legislativo. El reglamento: concepto, clases y límites. Otras fuentes del derecho administrativo."
+    },
+    {
+      "numero": 17,
+      "bloque": "III. Derecho administrativo general",
+      "titulo": "El acto administrativo: concepto, clases y elementos. Eficacia y validez de los actos administrativos. Su motivación y notificación."
+    },
+    {
+      "numero": 18,
+      "bloque": "III. Derecho administrativo general",
+      "titulo": "Las Leyes del Procedimiento Administrativo Común de las Administraciones Públicas y del Régimen Jurídico del Sector Público. Procedimiento administrativo común y su alcance: iniciación, ordenación, instrucción y terminación. La revisión de los actos en vía administrativa: revisión de oficio y recursos administrativos. El recurso contencioso-administrativo. Actividad administrativa impugnable. Las partes: capacidad, legitimación, representación y defensa."
+    },
+    {
+      "numero": 19,
+      "bloque": "III. Derecho administrativo general",
+      "titulo": "Los contratos del sector público: concepto y clases. Preparación, adjudicación, efectos, cumplimiento y extinción. La revisión de precios y otras alteraciones contractuales. Régimen de invalidez y recursos."
+    },
+    {
+      "numero": 20,
+      "bloque": "III. Derecho administrativo general",
+      "titulo": "Procedimientos y formas de la actividad administrativa. La actividad de limitación, arbitral, de servicio público y de fomento. Formas de gestión de los servicios públicos."
+    },
+    {
+      "numero": 21,
+      "bloque": "III. Derecho administrativo general",
+      "titulo": "La responsabilidad patrimonial de las Administraciones públicas. Concepto y clases. Requisitos generales. Efectos."
+    },
+    {
+      "numero": 22,
+      "bloque": "III. Derecho administrativo general",
+      "titulo": "Políticas de igualdad y contra la violencia de género. Políticas de igualdad de trato y no discriminación de las personas LGTBI. Discapacidad y dependencia: régimen jurídico."
+    },
+    {
+      "numero": 23,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "El personal al servicio de las Administraciones públicas: concepto y clases. El texto refundido del Estatuto Básico del Empleado Público y demás normativa de aplicación. Las competencias en materia de personal. El Registro Central de Personal."
+    },
+    {
+      "numero": 24,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "Selección de personal. Los procesos selectivos en la Administración pública y su conexión con la Oferta de Empleo Público. Principios constitucionales. Acceso al empleo público y provisión de puestos de trabajo de las personas con discapacidad."
+    },
+    {
+      "numero": 25,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "El personal funcionario al servicio de las Administraciones públicas: funcionarios de carrera y funcionarios interinos. La selección de los funcionarios."
+    },
+    {
+      "numero": 26,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "Adquisición y pérdida de la condición de funcionario. Situaciones administrativas de los funcionarios. Supuestos y efectos de cada una de ellas."
+    },
+    {
+      "numero": 27,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "Provisión de puestos de trabajo en la función pública. Los deberes y derechos de los funcionarios. La carrera administrativa. Promoción interna."
+    },
+    {
+      "numero": 28,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "Las incompatibilidades. Régimen disciplinario: faltas, sanciones y procedimiento."
+    },
+    {
+      "numero": 29,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "El régimen de la Seguridad Social de los funcionarios. La MUFACE y las clases pasivas."
+    },
+    {
+      "numero": 30,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "El personal laboral al servicio de las Administraciones públicas. Selección. Derechos, deberes e incompatibilidades. El IV Convenio único para el personal laboral de la Administración General del Estado: ámbito de aplicación y sistema de clasificación."
+    },
+    {
+      "numero": 31,
+      "bloque": "IV. Gestión de personal",
+      "titulo": "El régimen de la Seguridad Social del personal laboral. La acción protectora. Tipos y características de las prestaciones."
+    },
+    {
+      "numero": 32,
+      "bloque": "V. Gestión financiera",
+      "titulo": "El presupuesto: concepto. Los principios presupuestarios. El ciclo presupuestario. El presupuesto por programas: concepto y fases. Terminología y desarrollo del proceso presupuestario."
+    },
+    {
+      "numero": 33,
+      "bloque": "V. Gestión financiera",
+      "titulo": "El presupuesto del Estado en España: concepto y estructura. Los créditos presupuestarios: clasificación. Gastos plurianuales. Las modificaciones presupuestarias: créditos extraordinarios y suplementos de crédito. Ampliaciones de crédito. Generaciones de crédito. Transferencias de crédito. Incorporaciones de crédito. Anticipos de tesorería."
+    },
+    {
+      "numero": 34,
+      "bloque": "V. Gestión financiera",
+      "titulo": "El procedimiento administrativo de ejecución del presupuesto de gasto. Órganos competentes. Fases del procedimiento y sus documentos contables. Compromisos de gasto para ejercicios posteriores. La ordenación del pago: concepto y competencia. Realización del pago: modos y perceptores. Control del gasto público. Clases. Especial referencia al control de legalidad. El Tribunal de Cuentas."
+    },
+    {
+      "numero": 35,
+      "bloque": "V. Gestión financiera",
+      "titulo": "Las retribuciones e indemnizaciones de los funcionarios públicos y del personal laboral al servicio de la Administración pública. Nóminas: estructura y normas de confección. Altas y bajas: su justificación. Retribuciones básicas: sueldos, trienios, pagas extraordinarias. Retribuciones complementarias y otras remuneraciones. Devengo y liquidación de derechos económicos. El pago de las retribuciones del personal en activo. Formas de pago."
+    },
+    {
+      "numero": 36,
+      "bloque": "V. Gestión financiera",
+      "titulo": "Gastos para la compra de bienes y servicios. Gastos de inversión. Gastos de transferencias: corrientes y de capital. Pagos: concepto y tipos. Pagos por obligaciones presupuestarias. Anticipos de caja fija. Pagos «a justificar». Justificación de libramientos."
+    },
+    {
+      "numero": 37,
+      "bloque": "V. Gestión financiera",
+      "titulo": "Gestión económica y financiera de los contratos del sector público. Gestión económica y financiera de subvenciones."
+    },
+    {
+      "numero": 38,
+      "bloque": "VI. Informática básica y ofimática",
+      "titulo": "Informática básica: conceptos fundamentales sobre el hardware y el software. Sistemas de almacenamiento de datos. Sistemas operativos. Nociones básicas de seguridad informática."
+    },
+    {
+      "numero": 39,
+      "bloque": "VI. Informática básica y ofimática",
+      "titulo": "Introducción al sistema operativo: el entorno Windows. Fundamentos. Trabajo en el entorno gráfico de Windows: ventanas, iconos, menús contextuales, cuadros de diálogo. El escritorio y sus elementos. El menú inicio. Copilot."
+    },
+    {
+      "numero": 40,
+      "bloque": "VI. Informática básica y ofimática",
+      "titulo": "El explorador de Windows. Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas «Este equipo» y «Acceso rápido». Accesorios. Herramientas del sistema."
+    },
+    {
+      "numero": 41,
+      "bloque": "VI. Informática básica y ofimática",
+      "titulo": "Procesadores de texto: Word 365. Principales funciones y utilidades. Creación y estructuración del documento. Gestión, grabación, recuperación e impresión de ficheros. Personalización del entorno de trabajo."
+    },
+    {
+      "numero": 42,
+      "bloque": "VI. Informática básica y ofimática",
+      "titulo": "Hojas de cálculo: Excel 365. Principales funciones y utilidades. Libros, hojas y celdas. Configuración. Introducción y edición de datos. Fórmulas y funciones. Gráficos. Gestión de datos. Personalización del entorno de trabajo."
+    },
+    {
+      "numero": 43,
+      "bloque": "VI. Informática básica y ofimática",
+      "titulo": "Bases de datos: Access 365. Principales funciones y utilidades. Tablas. Consultas. Formularios. Informes. Relaciones. Importación, vinculación y exportación de datos."
+    },
+    {
+      "numero": 44,
+      "bloque": "VI. Informática básica y ofimática",
+      "titulo": "Correo electrónico: Outlook 365. Conceptos elementales y funcionamiento. El entorno de trabajo. Enviar, recibir, responder y reenviar mensajes. Creación de mensajes. Reglas de mensaje. Libreta de direcciones."
+    },
+    {
+      "numero": 45,
+      "bloque": "VI. Informática básica y ofimática",
+      "titulo": "La Red Internet: origen, evolución y estado actual. Conceptos elementales sobre protocolos y servicios en Internet. Funcionalidades básicas de los navegadores web."
+    }
+  ]
+}

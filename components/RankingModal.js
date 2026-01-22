@@ -153,6 +153,12 @@ export default function RankingModal({ isOpen, onClose }) {
         .select('id, display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url')
         .in('id', userIds)
 
+      // Obtener avatares automáticos desde user_avatar_settings
+      const { data: avatarSettings } = await supabase
+        .from('user_avatar_settings')
+        .select('user_id, mode, current_emoji, current_profile')
+        .in('user_id', userIds)
+
       // Función para obtener ciudad del usuario desde public_user_profiles
       const getUserCity = (userId) => {
         const userProfile = customProfiles?.find(p => p.id === userId)
@@ -161,6 +167,17 @@ export default function RankingModal({ isOpen, onClose }) {
 
       // Función para obtener avatar del usuario
       const getUserAvatar = (userId) => {
+        // 1. Primero verificar si tiene avatar automático asignado
+        const autoAvatar = avatarSettings?.find(a => a.user_id === userId)
+        if (autoAvatar?.current_emoji) {
+          return {
+            type: 'automatic',
+            emoji: autoAvatar.current_emoji,
+            profile: autoAvatar.current_profile
+          }
+        }
+
+        // 2. Verificar perfil público (avatar manual)
         const userProfile = customProfiles?.find(p => p.id === userId)
 
         if (!userProfile) {
@@ -423,6 +440,12 @@ export default function RankingModal({ isOpen, onClose }) {
         .select('id, display_name, ciudad, avatar_type, avatar_emoji, avatar_color, avatar_url, created_at')
         .in('id', userIds)
 
+      // Obtener avatares automáticos desde user_avatar_settings
+      const { data: avatarSettings } = await supabase
+        .from('user_avatar_settings')
+        .select('user_id, mode, current_emoji, current_profile')
+        .in('user_id', userIds)
+
       // Función para verificar si es principiante (< 30 días en Vence)
       const isNovato = (userId) => {
         const profile = customProfiles?.find(p => p.id === userId)
@@ -440,6 +463,17 @@ export default function RankingModal({ isOpen, onClose }) {
 
       // Función para obtener avatar del usuario
       const getUserAvatar = (userId) => {
+        // 1. Primero verificar si tiene avatar automático asignado
+        const autoAvatar = avatarSettings?.find(a => a.user_id === userId)
+        if (autoAvatar?.current_emoji) {
+          return {
+            type: 'automatic',
+            emoji: autoAvatar.current_emoji,
+            profile: autoAvatar.current_profile
+          }
+        }
+
+        // 2. Verificar perfil público (avatar manual)
         const userProfile = customProfiles?.find(p => p.id === userId)
 
         if (!userProfile) {
@@ -586,6 +620,14 @@ export default function RankingModal({ isOpen, onClose }) {
       return (
         <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
           {initial}
+        </div>
+      )
+    }
+
+    if (avatar.type === 'automatic') {
+      return (
+        <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-lg">
+          {avatar.emoji}
         </div>
       )
     }

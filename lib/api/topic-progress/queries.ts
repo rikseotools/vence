@@ -42,7 +42,7 @@ export async function getWeakArticlesForUser(
 ): Promise<GetWeakArticlesResponse> {
   const {
     userId,
-    minAttempts = 2,
+    minAttempts = 1,
     maxSuccessRate = 60,
     maxPerTopic = 5,
     positionType,
@@ -87,7 +87,17 @@ export async function getWeakArticlesForUser(
 
     console.log(`🎯 [DRIZZLE/weak-articles] Built article->topic mapping with ${Object.keys(articleToTopic).length} entries`)
 
+    // Debug: buscar si hay entries de Reglamento del Congreso (law_id d7addcab...)
+    const rcEntries = Object.entries(articleToTopic).filter(([k]) => k.startsWith('d7addcab'))
+    if (rcEntries.length > 0) {
+      console.log(`🔍 [DEBUG] Reglamento del Congreso entries in mapping: ${rcEntries.map(([k, v]) => `${k}->T${v}`).join(', ')}`)
+    } else {
+      console.log(`🔍 [DEBUG] NO Reglamento del Congreso entries found in articleToTopic mapping!`)
+    }
+
     // Paso 2: Obtener preguntas débiles del usuario con info de artículo
+    // success_rate está en escala 0-1, convertir maxSuccessRate de porcentaje a decimal
+    const maxSuccessRateDecimal = maxSuccessRate / 100
     const weakQuestions = await db
       .select({
         successRate: userQuestionHistory.successRate,
@@ -103,12 +113,19 @@ export async function getWeakArticlesForUser(
       .where(
         and(
           eq(userQuestionHistory.userId, userId),
-          lt(userQuestionHistory.successRate, String(maxSuccessRate)),
+          lt(userQuestionHistory.successRate, String(maxSuccessRateDecimal)),
           gte(userQuestionHistory.totalAttempts, minAttempts)
         )
       )
 
     console.log(`🎯 [DRIZZLE/weak-articles] Found ${weakQuestions.length} weak questions`)
+
+    // Debug: mostrar todas las preguntas débiles encontradas
+    weakQuestions.forEach(q => {
+      const key = `${q.lawId}_${q.articleNumber}`
+      const topicNum = articleToTopic[key]
+      console.log(`🔍 [DEBUG] Weak question: ${q.lawName}:${q.articleNumber} (rate=${q.successRate}, attempts=${q.totalAttempts}) -> key=${key} -> topic=${topicNum || 'NO MAPPING'}`)
+    })
 
     if (weakQuestions.length === 0) {
       return {
@@ -144,7 +161,8 @@ export async function getWeakArticlesForUser(
 
       weakByTopic[topicNum][artKey].failedCount++
       weakByTopic[topicNum][artKey].totalAttempts += Number(q.totalAttempts) || 0
-      const rate = parseFloat(q.successRate || '0')
+      // success_rate está en escala 0-1, convertir a 0-100
+      const rate = parseFloat(q.successRate || '0') * 100
       weakByTopic[topicNum][artKey].rates.push(rate)
     })
 
@@ -172,7 +190,11 @@ export async function getWeakArticlesForUser(
         .slice(0, maxPerTopic)
     })
 
-    console.log(`🎯 [DRIZZLE/weak-articles] Returning weak articles for ${Object.keys(result).length} topics`)
+    console.log(`🎯 [DRIZZLE/weak-articles] Returning weak articles for ${Object.keys(result).length} topics: [${Object.keys(result).join(', ')}]`)
+    // Debug: mostrar artículos por tema
+    Object.entries(result).forEach(([topic, articles]) => {
+      console.log(`🎯 [DRIZZLE/weak-articles] Topic ${topic}: ${articles.length} articles - ${articles.map(a => a.lawName + ':' + a.articleNumber).join(', ')}`)
+    })
 
     return {
       success: true,

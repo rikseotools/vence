@@ -551,4 +551,549 @@ SET discarded = true,
 WHERE question_id = 'QUESTION_ID';
 ```
 
-> **IMPORTANTE**: Siempre que revises una pregunta en reparaciones, marca `verified_at` y `verification_status = 'ok'`. Esto asegura que las preguntas revisadas por humanos no vuelvan a aparecer como pendientes.
+> **IMPORTANTE**: Siempre que revises una pregunta en reparaciones, marca `verified_at` y `verification_status = 'ok'`. Esto asegura que las preguntas revisadas por humanos no vuelvan a aparecer como pendientes. 
+
+## ⚠️ CRÍTICO: Sistema de Centinelas - Prevención de Reimportación de Preguntas Incorrectas
+
+### ¿Qué es un centinela?
+
+Un **centinela** es una copia desactivada de una pregunta INCORRECTA que guardamos en la base de datos para evitar que esa misma versión incorrecta se reimporte en el futuro.
+
+Cuando corriges una pregunta (enunciado, opciones o respuesta), creas dos versiones:
+1. **Pregunta corregida** (is_active = true) → Los usuarios la ven
+2. **Centinela** (is_active = false) → Copia de la versión incorrecta que actúa como detector
+
+### ¿Para qué sirve?
+
+El sistema de detección de duplicados compara el `content_hash` de las preguntas nuevas con TODAS las preguntas de la base de datos (activas e inactivas).
+
+Si en el futuro:
+- Se importan preguntas de un nuevo banco
+- Se actualiza contenido desde fuentes externas
+- Se añaden preguntas de exámenes oficiales
+
+Y alguna de esas preguntas coincide EXACTAMENTE con una versión incorrecta que ya corregiste, el centinela la detectará y evitará que se añada de nuevo.
+
+**Sin centinela**: La versión incorrecta podría reimportarse y sobrescribir tu corrección.
+**Con centinela**: El sistema detecta el duplicado y lo rechaza automáticamente.
+
+---
+
+## ¿Cuándo crear centinela?
+
+### ✅ SÍ crear centinela cuando corrijas:
+
+- El **enunciado** de la pregunta (question_text)
+- Las **opciones** (option_a, option_b, option_c, option_d)
+
+
+**Motivo**: Estos cambios modifican el `content_hash` de la pregunta. Necesitas el centinela para detectar si esa versión incorrecta intenta reimportarse.
+
+### ❌ NO crear centinela cuando corrijas:
+
+- Solo la **explicación** (explanation)
+- Cuando cambia solo la respuesta correcta,  la opcion correcta
+- Campos de **metadatos** (difficulty, tags, exam_source, verified_at, etc.)
+
+**Motivo**: Estos cambios NO afectan al `content_hash` (content_hash = hash(enunciado + opciones). La pregunta sigue siendo la misma, solo mejoras información adicional o cambias la respuesta correcta
+
+---
+
+## Procedimiento CON centinela (pregunta/opciones/respuesta)
+
+Usa este procedimiento cuando corrijas el enunciado, las opciones o la respuesta correcta.
+
+### PASO 1: Crear copia centinela de la versión INCORRECTA
+
+```sql
+-- Insertar copia exacta de la pregunta INCORRECTA original
+-- ⚠️ NO incluir content_hash para evitar error de duplicado
+INSERT INTO questions (
+    question_text,
+    option_a,
+    option_b,
+    option_c,
+    option_d,
+    correct_option,
+    explanation,
+    primary_article_id,
+    difficulty,
+    question_type,
+    tags,
+    is_active,
+    is_official_exam,
+    exam_source,
+    exam_date,
+    exam_entity,
+    exam_position,
+    official_difficulty_level,
+    created_at,
+    updated_at
+)
+SELECT 
+    question_text,
+    option_a,
+    option_b,
+    option_c,
+    option_d,
+    correct_option,
+    explanation,
+    primary_article_id,
+    difficulty,
+    question_type,
+    tags,
+    false,  -- ⚠️ IMPORTANTE: Desactivada (centinela)
+    is_official_exam,
+    exam_source,
+    exam_date,
+    exam_entity,
+    exam_position,
+    official_difficulty_level,
+    NOW(),
+    NOW()
+FROM questions
+WHERE id = 'QUESTION_ID_INCORRECTA';
+```
+
+**Puntos clave:**
+- `is_active = false` → El centinela NUNCA se muestra a los usuarios
+- NO copiar `content_hash` → Evita error de clave duplicada en este momento
+- Copiar todos los demás campos para mantener contexto
+
+### PASO 2: Corregir la pregunta original
+
+```sql
+-- Ahora SÍ corregir la pregunta original
+UPDATE questions
+SET 
+    question_text = 'Texto corregido...',    -- Si cambias enunciado
+    option_c = 'Opción corregida...',        -- Si cambias opciones
+    correct_option = 3,                       -- Si cambias respuesta (0=A, 1=B, 2=C, 3=D)
+    explanation = 'Explicación actualizada...', -- Opcionalmente
+    verified_at = NOW(),
+    verification_status = 'ok',
+    updated_at = NOW()
+WHERE id = 'QUESTION_ID_INCORRECTA';
+```
+
+**Puntos clave:**
+- Corriges la pregunta ORIGINAL (mantiene su ID)
+- Los usuarios ven inmediatamente la versión corregida
+- Marcas como verificada para que no aparezca en pendientes
+
+### PASO 3: Cerrar la impugnación
+
+```sql
+UPDATE question_disputes
+SET 
+    status = 'resolved',
+    admin_response = '¡Gracias! Hemos corregido la pregunta...',
+    resolved_at = NOW(),
+    is_read = false
+WHERE id = 'DISPUTE_ID';
+```
+
+### Resultado final:
+
+| ID | Pregunta | Opciones | Respuesta | is_active | Uso |
+|----|----------|----------|-----------|-----------|-----|
+| Original | CORREGIDA | CORREGIDAS | CORRECTA | true | Los usuarios la ven |
+| Nueva (centinela) | INCORRECTA | INCORRECTAS | INCORRECTA | false | Detecta duplicados |
+
+---
+
+## Procedimiento SIN centinela (solo explicación/metadatos)
+
+Usa este procedimiento cuando solo mejores la explicación o actualices metadatos.
+
+### PASO 1: Mejorar directamente
+
+```sql
+-- Solo mejorar la explicación (sin centinela)
+UPDATE questions
+SET 
+    explanation = 'Explicación mejorada y más clara...',
+    verified_at = NOW(),
+    verification_status = 'ok',
+    updated_at = NOW()
+WHERE id = 'QUESTION_ID';
+```
+
+### PASO 2: Cerrar la impugnación
+
+```sql
+UPDATE question_disputes
+SET 
+    status = 'resolved',
+    admin_response = '¡Gracias! Hemos mejorado la explicación...',
+    resolved_at = NOW(),
+    is_read = false
+WHERE id = 'DISPUTE_ID';
+```
+
+**Mucho más simple**: Un solo UPDATE, sin necesidad de crear copia.
+
+---
+
+## Ejemplos completos
+
+### Ejemplo 1: CON centinela (cambio de respuesta correcta)
+
+**Impugnación**: Correo electrónico - Usuario reporta que la respuesta correcta es D, no B
+
+```sql
+-- PASO 1: Crear centinela (copia de versión con respuesta B incorrecta)
+INSERT INTO questions (
+    question_text, option_a, option_b, option_c, option_d,
+    correct_option, explanation, primary_article_id,
+    difficulty, question_type, tags, is_active,
+    is_official_exam, exam_source, exam_date, exam_entity,
+    exam_position, official_difficulty_level,
+    created_at, updated_at
+)
+SELECT 
+    question_text, option_a, option_b, option_c, option_d,
+    correct_option, explanation, primary_article_id,
+    difficulty, question_type, tags, false,  -- Desactivada
+    is_official_exam, exam_source, exam_date, exam_entity,
+    exam_position, official_difficulty_level,
+    NOW(), NOW()
+FROM questions
+WHERE id = 'a825413d-4903-4c15-bbc4-58b0d62ea61e';
+
+-- PASO 2: Corregir respuesta de B a D
+UPDATE questions
+SET 
+    correct_option = 3,  -- D = 3 (0=A, 1=B, 2=C, 3=D)
+    explanation = 'Los tres elementos mínimos obligatorios son: Destinatario, Sender/Remitente y Mensaje. El Asunto NO es obligatorio...',
+    verified_at = NOW(),
+    verification_status = 'ok',
+    updated_at = NOW()
+WHERE id = 'a825413d-4903-4c15-bbc4-58b0d62ea61e';
+
+-- PASO 3: Cerrar impugnación
+UPDATE question_disputes
+SET 
+    status = 'resolved',
+    admin_response = '¡Muchísimas gracias! Tenías toda la razón. Hemos corregido la respuesta de B a D...',
+    resolved_at = NOW(),
+    is_read = false
+WHERE id = 'abe951da-a573-4c5f-8caa-011be6e2b6a8';
+```
+
+**Resultado:**
+- Pregunta original: Respuesta D (correcta), activa → usuarios la ven
+- Centinela: Respuesta B (incorrecta), desactivada → evita reimportación
+
+---
+
+### Ejemplo 2: CON centinela (reformulación completa de pregunta)
+
+**Impugnación**: CE Art. 82 - Pregunta confusa, hay que reformularla completamente
+
+```sql
+-- PASO 1: Crear centinela (copia de pregunta confusa)
+INSERT INTO questions (
+    question_text, option_a, option_b, option_c, option_d,
+    correct_option, explanation, primary_article_id,
+    difficulty, question_type, tags, is_active,
+    is_official_exam, exam_source, exam_date, exam_entity,
+    exam_position, official_difficulty_level,
+    created_at, updated_at
+)
+SELECT 
+    question_text, option_a, option_b, option_c, option_d,
+    correct_option, explanation, primary_article_id,
+    difficulty, question_type, tags, false,
+    is_official_exam, exam_source, exam_date, exam_entity,
+    exam_position, official_difficulty_level,
+    NOW(), NOW()
+FROM questions
+WHERE id = 'd7d74778-70bf-41b8-b6a5-b21bc3bdd8ab';
+
+-- PASO 2: Reformular pregunta completamente
+UPDATE questions
+SET 
+    question_text = 'Conforme al artículo 82 de la Constitución Española, ¿sobre qué materias NO pueden las Cortes Generales delegar en el Gobierno la potestad legislativa?',
+    option_a = 'Materias reservadas a Ley Orgánica.',
+    option_b = 'Materias de ley ordinaria.',
+    option_c = 'Materias de competencia autonómica.',
+    option_d = 'Las Cortes pueden delegar sobre todas las materias.',
+    explanation = 'La respuesta correcta es A). Según el artículo 82.1 CE, las Cortes Generales podrán delegar sobre materias determinadas NO INCLUIDAS EN EL ARTÍCULO ANTERIOR...',
+    verified_at = NOW(),
+    verification_status = 'ok',
+    updated_at = NOW()
+WHERE id = 'd7d74778-70bf-41b8-b6a5-b21bc3bdd8ab';
+
+-- PASO 3: Cerrar impugnación
+UPDATE question_disputes
+SET 
+    status = 'resolved',
+    admin_response = '¡Hola Nila! Tenías toda la razón - la pregunta estaba muy confusa. La hemos reformulado completamente...',
+    resolved_at = NOW(),
+    is_read = false
+WHERE id = 'f7eb49bc-95a0-42ee-bb3e-1e7a3036ffa8';
+```
+
+**Resultado:**
+- Pregunta original: Reformulada y clara, activa → usuarios la ven
+- Centinela: Versión confusa, desactivada → evita reimportación
+
+---
+
+### Ejemplo 3: SIN centinela (mejora de explicación)
+
+**Impugnación**: CE Art. 168 - La explicación no se corresponde / no ayuda
+
+```sql
+-- PASO 1: Mejorar explicación directamente (sin centinela)
+UPDATE questions
+SET 
+    explanation = 'La respuesta correcta es D). El artículo 168 CE establece que el referéndum es OBLIGATORIO cuando la reforma afecte a:
+- Título Preliminar (arts. 1-9)
+- Capítulo segundo, Sección primera del Título I (arts. 14-29)
+- Título II (arts. 56-65)
+
+El Art. 11.2 está en el Capítulo I del Título I, por tanto NO requiere Art. 168...',
+    verified_at = NOW(),
+    verification_status = 'ok',
+    updated_at = NOW()
+WHERE id = 'f3522871-cda6-4e74-a99e-5051235111bb';
+
+-- PASO 2: Cerrar impugnación
+UPDATE question_disputes
+SET 
+    status = 'resolved',
+    admin_response = '¡Hola Cristina! Tienes toda la razón - la explicación anterior no era buena. La hemos mejorado completamente...',
+    resolved_at = NOW(),
+    is_read = false
+WHERE id = '922fa500-b623-4e76-af1f-dcbe49751cc3';
+```
+
+**Resultado:**
+- Pregunta: Misma pregunta, explicación mejorada, activa → usuarios la ven
+- NO hay centinela: La pregunta no cambió, solo mejoró su explicación
+
+---
+
+## Resumen visual
+
+### Tabla de decisión:
+
+| Qué corriges | ¿Centinela? | Motivo | Ejemplo |
+|-------------|-------------|--------|---------|
+| Enunciado (question_text) | ✅ SÍ | Cambia content_hash | "¿pueden delegar?" → "¿sobre qué NO pueden?" |
+| Opciones (option_a/b/c/d) | ✅ SÍ | Cambia content_hash | Cambiar texto de una opción |
+| Respuesta (correct_option) | ✅ SÍ | Cambia content_hash | Cambiar de B a D |
+| Explicación (explanation) | ❌ NO | NO cambia content_hash | Mejorar redacción explicativa |
+| Metadatos (tags, difficulty) | ❌ NO | NO cambia content_hash | Ajustar dificultad, añadir tags |
+
+### Flujo de trabajo:
+
+```
+┌─────────────────────────────┐
+│   Usuario reporta error     │
+└──────────┬──────────────────┘
+           │
+           ▼
+┌─────────────────────────────┐
+│  Verificar con artículo     │
+│  oficial del BOE            │
+└──────────┬──────────────────┘
+           │
+           ▼
+    ¿Qué hay que corregir?
+           │
+    ┌──────┴──────┐
+    │             │
+    ▼             ▼
+┌─────────┐   ┌──────────┐
+│Pregunta │   │  Solo    │
+│Opciones │   │explicac. │
+│Respuesta│   │          │
+└────┬────┘   └────┬─────┘
+     │             │
+     ▼             ▼
+┌─────────┐   ┌──────────┐
+│ SÍ      │   │ NO       │
+│centinela│   │centinela │
+└────┬────┘   └────┬─────┘
+     │             │
+     ▼             ▼
+┌─────────────────────────────┐
+│  1. INSERT copia (false)    │
+│  2. UPDATE original         │
+│  3. Cerrar impugnación      │
+└─────────────────────────────┘
+     │
+     ▼
+┌─────────────────────────────┐
+│  1. UPDATE original         │
+│  2. Cerrar impugnación      │
+└─────────────────────────────┘
+```
+
+---
+
+## Advertencias importantes
+
+### ⚠️ SIEMPRE crear centinela ANTES de corregir
+
+```sql
+-- ❌ MAL: Corregir primero
+UPDATE questions SET correct_option = 3 WHERE id = 'xxx';  -- Perdiste la versión incorrecta
+INSERT INTO questions SELECT ... WHERE id = 'xxx';         -- Ya está corregida, no sirve
+
+-- ✅ BIEN: Centinela primero
+INSERT INTO questions SELECT ..., false, ... WHERE id = 'xxx';  -- Guardas versión incorrecta
+UPDATE questions SET correct_option = 3 WHERE id = 'xxx';       -- Ahora corriges
+```
+
+### ⚠️ NO incluir content_hash en el INSERT del centinela
+
+```sql
+-- ❌ MAL: Incluir content_hash
+INSERT INTO questions (..., content_hash, ...)
+SELECT ..., content_hash, ...  -- ERROR: duplicate key
+
+-- ✅ BIEN: NO incluir content_hash
+INSERT INTO questions (..., created_at, updated_at)  -- Sin content_hash
+SELECT ..., NOW(), NOW()  -- Se autogenerará uno nuevo al INSERT
+```
+
+### ⚠️ Verificar que is_active = false en centinela
+
+```sql
+-- Siempre verificar después de crear centinela
+SELECT id, question_text, is_active 
+FROM questions 
+WHERE primary_article_id = 'xxx'
+ORDER BY created_at DESC 
+LIMIT 2;
+
+-- Deberías ver:
+-- ID1 (antiguo): is_active = true  (pregunta corregida que ven usuarios)
+-- ID2 (nuevo):   is_active = false (centinela que no se muestra)
+```
+
+---
+
+## Preguntas frecuentes
+
+**P: ¿Los centinelas ocupan mucho espacio en la base de datos?**
+R: No. Son solo registros inactivos. El beneficio de prevenir reimportaciones incorrectas supera ampliamente el costo de almacenamiento.
+
+**P: ¿Puedo eliminar centinelas antiguos?**
+R: NO se recomienda. Aunque sean antiguos, siguen protegiendo contra reimportaciones. Solo elimínalos si estás 100% seguro de que esa fuente nunca volverá a importarse.
+
+**P: ¿Qué pasa si olvido crear el centinela?**
+R: La pregunta quedará corregida, pero si en el futuro se importa la versión incorrecta, podría sobrescribir tu corrección. Intenta siempre crear el centinela cuando corresponda.
+
+**P: ¿Cómo sé si una pregunta tiene centinela?**
+R: Busca preguntas inactivas con contenido muy similar:
+```sql
+SELECT id, question_text, is_active, created_at
+FROM questions
+WHERE primary_article_id = 'ARTICLE_ID'
+ORDER BY created_at DESC;
+```
+
+**P: ¿El centinela afecta a los usuarios?**
+R: NO. Los centinelas tienen `is_active = false`, por lo que NUNCA se muestran a los usuarios. Solo existen en la base de datos como detectores de duplicados.
+
+---
+
+## Regla de oro
+
+> ⚠️ **REGLA SIMPLE**: 
+> - ¿Cambias pregunta, opciones? → **SÍ centinela** (ANTES de corregir)
+> - ¿Solo mejoras explicación o metadatos? → **NO centinela** (corrección directa)
+
+-------------
+
+En las explicaciones o mensaje al usuario, no usar asteriscos **. Queda feo
+
+# Manual - Impugnaciones de Psicotécnicos
+
+## Ver Impugnaciones Pendientes
+```sql
+SELECT 
+    pqd.id as dispute_id,
+    pqd.question_id,
+    pqd.description,
+    COALESCE(up.nickname, up.full_name, split_part(au.email, '@', 1), 'Usuario') as nombre_usuario,
+    pq.question_text,
+    pq.correct_option,
+    ps.display_name as section_name
+FROM psychometric_question_disputes pqd
+JOIN psychometric_questions pq ON pqd.question_id = pq.id
+LEFT JOIN auth.users au ON pqd.user_id = au.id
+LEFT JOIN user_profiles up ON pqd.user_id = up.id
+LEFT JOIN psychometric_sections ps ON pq.section_id = ps.id
+WHERE pqd.status = 'pending'
+ORDER BY pqd.created_at DESC;
+```
+
+## Consultar Pregunta Completa
+```sql
+SELECT id, question_text, content_data, option_a, option_b, option_c, option_d, 
+       correct_option, explanation
+FROM psychometric_questions
+WHERE id = 'QUESTION_ID';
+```
+
+**IMPORTANTE**: `content_data` contiene:
+- `original_text`: Frase a analizar (ortografía)
+- `error_count`: Número esperado de errores
+- `pattern_type`: Tipo de patrón (series)
+
+## Corregir Pregunta
+
+### Cambiar respuesta + content_data + explicación:
+```sql
+UPDATE psychometric_questions
+SET 
+    correct_option = X,  -- 0=A, 1=B, 2=C, 3=D
+    content_data = jsonb_set(content_data, '{error_count}', 'VALOR'),
+    explanation = 'NUEVA EXPLICACIÓN',
+    is_verified = true,
+    updated_at = NOW()
+WHERE id = 'QUESTION_ID';
+```
+
+### Solo mejorar explicación:
+```sql
+UPDATE psychometric_questions
+SET 
+    explanation = 'NUEVA EXPLICACIÓN',
+    is_verified = true,
+    updated_at = NOW()
+WHERE id = 'QUESTION_ID';
+```
+
+## Cerrar Impugnación
+
+```sql
+UPDATE psychometric_question_disputes
+SET 
+    status = 'resolved',
+    admin_response = 'Hola [NOMBRE]! ...mensaje...',
+    resolved_at = NOW(),
+    is_read = false
+WHERE id = 'DISPUTE_ID';
+```
+
+## Diferencias con Preguntas Normales
+
+| Aspecto | Normales | Psicotécnicos |
+|---------|----------|---------------|
+| Tabla preguntas | `questions` | `psychometric_questions` |
+| Tabla impugnaciones | `question_disputes` | `psychometric_question_disputes` |
+| Campo extra | - | `content_data` (jsonb) |
+| **Centinelas** | ✅ Sí | ❌ **NO** |
+| Verificación | `verified_at`, `verification_status` | `is_verified` |
+
+## REGLA DE ORO
+
+> ⚠️ **NO se usan centinelas** en psicotécnicos (no hay sistema de importación masiva)
+

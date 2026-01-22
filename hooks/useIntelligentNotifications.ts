@@ -1047,9 +1047,13 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
           )
 
           if (!acc[validatedShortName]) {
+            // Intentar obtener nombre completo: 1) LAW_INFO, 2) article.law_name original, 3) validatedShortName
+            const lawInfo = getLawInfo(validatedShortName)
+            const fullName = lawInfo?.name ?? article.law_name ?? validatedShortName
+
             acc[validatedShortName] = {
               law_short_name: validatedShortName,
-              law_full_name: getLawInfo(validatedShortName).name,
+              law_full_name: fullName,
               articles: []
             }
           }
@@ -1129,7 +1133,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
               
               // 🆕 DATOS ESPECÍFICOS CON SISTEMA CENTRALIZADO
               law_short_name: finalShortName,  // ✅ GARANTIZADO válido
-              law_full_name: lawInfo.name,     // ✅ Del sistema centralizado
+              law_full_name: lawInfo?.name ?? law_full_name ?? finalShortName,  // ✅ Con fallbacks
               article: articlesAfterCooldown.length === 1 
                 ? `${finalShortName} - Art. ${worstArticle.article_number}` 
                 : `${finalShortName} - ${articlesAfterCooldown.length} artículos`,

@@ -1,0 +1,37 @@
+name: Weekly Avatar Rotation
+
+on:
+  schedule:
+    # Ejecutar domingos a las 4:00 AM UTC (5:00-6:00 AM España)
+    # Así los usuarios empiezan el lunes con su nuevo avatar
+    - cron: '0 4 * * 0'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  rotate-avatars:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Rotate User Avatars
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://www.vence.es/api/cron/avatar-rotation)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+
+          if [ "$http_code" -ne 200 ]; then
+            echo "❌ Avatar rotation failed with status $http_code"
+            exit 1
+          fi
+
+          echo "✅ Avatar rotation completed successfully"
+
+      - name: Log completion
+        run: echo "🔄 Rotación de avatares completada - $(date)"

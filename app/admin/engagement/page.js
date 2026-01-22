@@ -15,6 +15,7 @@ export default function EngagementPage() {
   const [showRetentionModal, setShowRetentionModal] = useState(false)
   const [showEngagementModal, setShowEngagementModal] = useState(false)
   const [showHabitModal, setShowHabitModal] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => {
     async function fetchEngagementStats() {
@@ -698,7 +699,9 @@ export default function EngagementPage() {
           habitFormationHistory,
           retentionRateHistory
         })
-        
+
+        setLastUpdated(new Date())
+
       } catch (err) {
         console.error('Error fetching engagement stats:', err)
         setError(err.message)
@@ -737,9 +740,16 @@ export default function EngagementPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           📊 Engagement & Retención
         </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Análisis profundo del compromiso y participación de usuarios en Vence
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-gray-600 dark:text-gray-400">
+            Análisis profundo del compromiso y participación de usuarios en Vence
+          </p>
+          {lastUpdated && (
+            <p className="text-xs text-gray-500 dark:text-gray-500">
+              Actualizado: {lastUpdated.toLocaleTimeString('es-ES')}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Métricas principales específicas para apps pequeñas */}

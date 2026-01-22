@@ -1,0 +1,357 @@
+{
+  "metadata": {
+    "fuente": "Código BOE-442 - INAP",
+    "documento": "Normativa para ingreso en el Cuerpo General Administrativo de la Administración del Estado",
+    "fecha_actualizacion": "30/12/2025",
+    "total_leyes": 67
+  },
+  "bloques": {
+    "I. Organización del Estado y de la Administración pública": [
+      "Constitución Española . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley Orgánica 2/1979, de 3 de octubre, del Tribunal Constitucional . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley Orgánica 3/1981, de 6 de abril, del Defensor del Pueblo . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley Orgánica 6/1985, de 1 de julio, del Poder Judicial . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley 50/1997, de 27 de noviembre, del Gobierno . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley 37/2007, de 16 de noviembre, sobre reutilización de la información del sector público . . . . . .",
+      "Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno ",
+      "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público. [Inclusión parcial] . . . . . . .",
+      "Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local . . . . . . . . . . . . . . . . . . . .",
+      "Ley 2/2014, de 25 de marzo, de la Acción y del Servicio Exterior del Estado. [Inclusión parcial] . . ."
+    ],
+    "II. Organización de oficinas públicas": [
+      "Real Decreto 208/1996, de 9 de febrero, por el que se regulan los servicios de información administrativa y atención al ciudadano . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 951/2005, de 29 de julio, por el que se establece el marco general para la mejora de la calidad en la Administración General del Estado . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 366/2007, de 16 de marzo, por el que se establecen las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración",
+      "Real Decreto 1494/2007, de 12 de noviembre, por el que se aprueba el Reglamento sobre las condiciones básicas para el acceso de las personas con discapacidad a las tecnologías, productos",
+      "Real Decreto 4/2010, de 8 de enero, por el que se regula el Esquema Nacional de Interoperabilidad en el ámbito de la Administración Electrónica . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 1708/2011, de 18 de noviembre, por el que se establece el Sistema Español de Archivos y se regula el Sistema de Archivos de la Administración General del Estado y de sus",
+      "Real Decreto 311/2022, de 3 de mayo, por el que se regula el Esquema Nacional de Seguridad . .",
+      "Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Orden HAP/1949/2014, de 13 de octubre, por la que se regula el Punto de Acceso General de la Administración General del Estado y se crea su sede electrónica . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Orden PCM/1382/2021, de 9 de diciembre, por la que se regula el Registro Electrónico General en el ámbito de la Administración General del Estado . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+    ],
+    "III. Derecho administrativo general": [
+      "Real Decreto de 24 de julio de 1889 por el que se publica el Código Civil. [Inclusión parcial] . . . . .",
+      "Constitución Española. [Inclusión parcial] . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público. [Inclusión parcial] . . . . . . .",
+      "Ley 29/1998, de 13 de julio, reguladora de la Jurisdicción Contencioso-administrativa . . . . . . . . . .",
+      "Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público, por la que se transponen al ordenamiento jurídico español las Directivas del Parlamento Europeo y del Consejo 2014/23/UE y",
+      "Ley 38/2003, de 17 de noviembre, General de Subvenciones . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres . . . . . . . .",
+      "Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley 15/2022, de 12 de julio, integral para la igualdad de trato y la no discriminación. [Inclusión parcial] . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley 4/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garantía de los derechos de las personas LGTBI . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 1026/2024, de 8 de octubre, por el que se desarrolla el conjunto planificado de las medidas para la igualdad y no discriminación de las personas LGTBI en las empresas . . . . . . . . .",
+      "Real Decreto Legislativo 1/2013, de 29 de noviembre, por el que se aprueba el Texto Refundido de la Ley General de derechos de las personas con discapacidad y de su inclusión social . . . . . . . . .",
+      "Ley 39/2006, de 14 de diciembre, de Promoción de la Autonomía Personal y Atención a las personas en situación de dependencia . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley 3/2024, de 30 de octubre, para mejorar la calidad de vida de personas con Esclerosis Lateral Amiotrófica y otras enfermedades o procesos de alta complejidad y curso irreversible. [Inclusión"
+    ],
+    "IV. Gestión de personal": [
+      "Orden HFP/688/2017, de 20 de julio, por la que se establecen las bases comunes que regirán los procesos selectivos para el ingreso o el acceso en cuerpos o escalas de la Administración General",
+      "Resolución de 7 de mayo de 2014, de la Secretaría de Estado de Administraciones Públicas, por la que se establece el procedimiento de aprobación y gestión de listas de candidatos a personal",
+      "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. [Inclusión parcial] . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Ley 30/1984, de 2 de agosto, de medidas para la reforma de la Función Pública . . . . . . . . . . . . .",
+      "Real Decreto 1405/1986, de 6 de junio, por el que se aprueban el Reglamento del Registro Central de Personal y las normas de coordinación con los de las restantes Administraciones Públicas . . .",
+      "Real Decreto 364/1995, de 10 de marzo, por el que se aprueba el Reglamento General de Ingreso del Personal al servicio de la Administración general del Estado y de Provisión de Puestos de",
+      "Real Decreto 365/1995, de 10 de marzo, por el que se aprueba el Reglamento de Situaciones Administrativas de los Funcionarios Civiles de la Administración General del Estado . . . . . . . . . .",
+      "Ley 53/1984, de 26 de diciembre, de Incompatibilidades del personal al servicio de las Administraciones Públicas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 598/1985, de 30 de abril, sobre incompatibilidades del personal al servicio de la Administración del Estado, de la Seguridad Social y de los Entes, Organismos y Empresas",
+      "Real Decreto 2271/2004, de 3 de diciembre, por el que se regula el acceso al empleo público y la provisión de puestos de trabajo de las personas con discapacidad . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 366/2007, de 16 de marzo, por el que se establecen las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración",
+      "Real Decreto-ley 14/2021, de 6 de julio, de medidas urgentes para la reducción de la temporalidad en el empleo público . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 462/2002, de 24 de mayo, sobre indemnizaciones por razón del servicio . . . . . . . . .",
+      "Real Decreto 33/1986, de 10 de enero, por el que se aprueba el Reglamento de Régimen Disciplinario de los Funcionarios de la Administración del Estado . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto Legislativo 4/2000, de 23 de junio, por el que se aprueba el texto refundido de la Ley sobre Seguridad Social de los Funcionarios Civiles del Estado . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 375/2003, de 28 de marzo, por el que se aprueba el Reglamento General del Mutualismo Administrativo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Orden PRE/1744/2010, de 30 de junio, por la que se regula el procedimiento de reconocimiento, control y seguimiento de las situaciones de incapacidad temporal, riesgo durante el embarazo y",
+      "Resolución de 13 de mayo de 2019, de la Dirección General de Trabajo, por la que se registra y publica el IV Convenio colectivo único para el personal laboral de la Administración General del",
+      "Ley 20/2021, de 28 de diciembre, de medidas urgentes para la reducción de la temporalidad en el empleo público . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Resolución de 9 de mayo de 2022, de la Secretaría de Estado de Función Pública, por la que se dictan instrucciones de gestión relativas a la renuncia a la condición de personal funcionario de",
+      "Real Decreto-ley 6/2023, de 19 de diciembre, por el que se aprueban medidas urgentes para la ejecución del Plan de Recuperación, Transformación y Resiliencia en materia de servicio público de",
+      "Orden PJC/804/2025, de 23 de julio, por la que se establecen criterios generales para la adaptación de medios y tiempos y la realización de otros ajustes razonables en los procesos"
+    ],
+    "V. Gestión financiera": [
+      "Ley 47/2003, de 26 de noviembre, General Presupuestaria. [Inclusión parcial] . . . . . . . . . . . . . . .",
+      "Ley Orgánica 2/2012, de 27 de abril, de Estabilidad Presupuestaria y Sostenibilidad Financiera . .",
+      "Ley Orgánica 2/1982, de 12 de mayo, del Tribunal de Cuentas . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. [Inclusión parcial] . . . . . . . . . . . . . . . . . . . . . . . .",
+      "Orden de 30 de julio de 1992 sobre instrucciones para la confección de nóminas . . . . . . . . . . . . .",
+      "Real Decreto 640/1987, de 8 de mayo, sobre pagos librados «a justificar» . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 725/1989, de 16 de junio, sobre anticipos de Caja fija . . . . . . . . . . . . . . . . . . . . . . .",
+      "Real Decreto 887/2006, de 21 de julio, por el que se aprueba el Reglamento de la Ley 38/2003, de 17 de noviembre, General de Subvenciones . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ."
+    ],
+    "VI. Informática básica y ofimática": []
+  },
+  "todas_las_leyes": [
+    {
+      "nombre_completo": "I. INTRODUCCIÓN . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": null
+    },
+    {
+      "nombre_completo": "Constitución Española . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley Orgánica 2/1979, de 3 de octubre, del Tribunal Constitucional . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley Orgánica 3/1981, de 6 de abril, del Defensor del Pueblo . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley Orgánica 6/1985, de 1 de julio, del Poder Judicial . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley 50/1997, de 27 de noviembre, del Gobierno . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley 37/2007, de 16 de noviembre, sobre reutilización de la información del sector público . . . . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno ",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público. [Inclusión parcial] . . . . . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley 7/1985, de 2 de abril, Reguladora de las Bases del Régimen Local . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Ley 2/2014, de 25 de marzo, de la Acción y del Servicio Exterior del Estado. [Inclusión parcial] . . .",
+      "bloque": "I. Organización del Estado y de la Administración pública"
+    },
+    {
+      "nombre_completo": "Real Decreto 208/1996, de 9 de febrero, por el que se regulan los servicios de información administrativa y atención al ciudadano . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Real Decreto 951/2005, de 29 de julio, por el que se establece el marco general para la mejora de la calidad en la Administración General del Estado . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Real Decreto 366/2007, de 16 de marzo, por el que se establecen las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Real Decreto 1494/2007, de 12 de noviembre, por el que se aprueba el Reglamento sobre las condiciones básicas para el acceso de las personas con discapacidad a las tecnologías, productos",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Real Decreto 4/2010, de 8 de enero, por el que se regula el Esquema Nacional de Interoperabilidad en el ámbito de la Administración Electrónica . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Real Decreto 1708/2011, de 18 de noviembre, por el que se establece el Sistema Español de Archivos y se regula el Sistema de Archivos de la Administración General del Estado y de sus",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Real Decreto 311/2022, de 3 de mayo, por el que se regula el Esquema Nacional de Seguridad . .",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Orden HAP/1949/2014, de 13 de octubre, por la que se regula el Punto de Acceso General de la Administración General del Estado y se crea su sede electrónica . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Orden PCM/1382/2021, de 9 de diciembre, por la que se regula el Registro Electrónico General en el ámbito de la Administración General del Estado . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "II. Organización de oficinas públicas"
+    },
+    {
+      "nombre_completo": "Real Decreto de 24 de julio de 1889 por el que se publica el Código Civil. [Inclusión parcial] . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Constitución Española. [Inclusión parcial] . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público. [Inclusión parcial] . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 29/1998, de 13 de julio, reguladora de la Jurisdicción Contencioso-administrativa . . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 9/2017, de 8 de noviembre, de Contratos del Sector Público, por la que se transponen al ordenamiento jurídico español las Directivas del Parlamento Europeo y del Consejo 2014/23/UE y",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 38/2003, de 17 de noviembre, General de Subvenciones . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley Orgánica 1/2004, de 28 de diciembre, de Medidas de Protección Integral contra la Violencia de Género . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 15/2022, de 12 de julio, integral para la igualdad de trato y la no discriminación. [Inclusión parcial] . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 4/2023, de 28 de febrero, para la igualdad real y efectiva de las personas trans y para la garantía de los derechos de las personas LGTBI . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Real Decreto 1026/2024, de 8 de octubre, por el que se desarrolla el conjunto planificado de las medidas para la igualdad y no discriminación de las personas LGTBI en las empresas . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Real Decreto Legislativo 1/2013, de 29 de noviembre, por el que se aprueba el Texto Refundido de la Ley General de derechos de las personas con discapacidad y de su inclusión social . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 39/2006, de 14 de diciembre, de Promoción de la Autonomía Personal y Atención a las personas en situación de dependencia . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Ley 3/2024, de 30 de octubre, para mejorar la calidad de vida de personas con Esclerosis Lateral Amiotrófica y otras enfermedades o procesos de alta complejidad y curso irreversible. [Inclusión",
+      "bloque": "III. Derecho administrativo general"
+    },
+    {
+      "nombre_completo": "Orden HFP/688/2017, de 20 de julio, por la que se establecen las bases comunes que regirán los procesos selectivos para el ingreso o el acceso en cuerpos o escalas de la Administración General",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Resolución de 7 de mayo de 2014, de la Secretaría de Estado de Administraciones Públicas, por la que se establece el procedimiento de aprobación y gestión de listas de candidatos a personal",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. [Inclusión parcial] . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Ley 30/1984, de 2 de agosto, de medidas para la reforma de la Función Pública . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 1405/1986, de 6 de junio, por el que se aprueban el Reglamento del Registro Central de Personal y las normas de coordinación con los de las restantes Administraciones Públicas . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 364/1995, de 10 de marzo, por el que se aprueba el Reglamento General de Ingreso del Personal al servicio de la Administración general del Estado y de Provisión de Puestos de",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 365/1995, de 10 de marzo, por el que se aprueba el Reglamento de Situaciones Administrativas de los Funcionarios Civiles de la Administración General del Estado . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Ley 53/1984, de 26 de diciembre, de Incompatibilidades del personal al servicio de las Administraciones Públicas . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 598/1985, de 30 de abril, sobre incompatibilidades del personal al servicio de la Administración del Estado, de la Seguridad Social y de los Entes, Organismos y Empresas",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 2271/2004, de 3 de diciembre, por el que se regula el acceso al empleo público y la provisión de puestos de trabajo de las personas con discapacidad . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 366/2007, de 16 de marzo, por el que se establecen las condiciones de accesibilidad y no discriminación de las personas con discapacidad en sus relaciones con la Administración",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto-ley 14/2021, de 6 de julio, de medidas urgentes para la reducción de la temporalidad en el empleo público . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 462/2002, de 24 de mayo, sobre indemnizaciones por razón del servicio . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 33/1986, de 10 de enero, por el que se aprueba el Reglamento de Régimen Disciplinario de los Funcionarios de la Administración del Estado . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto Legislativo 4/2000, de 23 de junio, por el que se aprueba el texto refundido de la Ley sobre Seguridad Social de los Funcionarios Civiles del Estado . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto 375/2003, de 28 de marzo, por el que se aprueba el Reglamento General del Mutualismo Administrativo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Orden PRE/1744/2010, de 30 de junio, por la que se regula el procedimiento de reconocimiento, control y seguimiento de las situaciones de incapacidad temporal, riesgo durante el embarazo y",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Resolución de 13 de mayo de 2019, de la Dirección General de Trabajo, por la que se registra y publica el IV Convenio colectivo único para el personal laboral de la Administración General del",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Ley 20/2021, de 28 de diciembre, de medidas urgentes para la reducción de la temporalidad en el empleo público . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Resolución de 9 de mayo de 2022, de la Secretaría de Estado de Función Pública, por la que se dictan instrucciones de gestión relativas a la renuncia a la condición de personal funcionario de",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Real Decreto-ley 6/2023, de 19 de diciembre, por el que se aprueban medidas urgentes para la ejecución del Plan de Recuperación, Transformación y Resiliencia en materia de servicio público de",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Orden PJC/804/2025, de 23 de julio, por la que se establecen criterios generales para la adaptación de medios y tiempos y la realización de otros ajustes razonables en los procesos",
+      "bloque": "IV. Gestión de personal"
+    },
+    {
+      "nombre_completo": "Ley 47/2003, de 26 de noviembre, General Presupuestaria. [Inclusión parcial] . . . . . . . . . . . . . . .",
+      "bloque": "V. Gestión financiera"
+    },
+    {
+      "nombre_completo": "Ley Orgánica 2/2012, de 27 de abril, de Estabilidad Presupuestaria y Sostenibilidad Financiera . .",
+      "bloque": "V. Gestión financiera"
+    },
+    {
+      "nombre_completo": "Ley Orgánica 2/1982, de 12 de mayo, del Tribunal de Cuentas . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "V. Gestión financiera"
+    },
+    {
+      "nombre_completo": "Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público. [Inclusión parcial] . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "V. Gestión financiera"
+    },
+    {
+      "nombre_completo": "Orden de 30 de julio de 1992 sobre instrucciones para la confección de nóminas . . . . . . . . . . . . .",
+      "bloque": "V. Gestión financiera"
+    },
+    {
+      "nombre_completo": "Real Decreto 640/1987, de 8 de mayo, sobre pagos librados «a justificar» . . . . . . . . . . . . . . . . . .",
+      "bloque": "V. Gestión financiera"
+    },
+    {
+      "nombre_completo": "Real Decreto 725/1989, de 16 de junio, sobre anticipos de Caja fija . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "V. Gestión financiera"
+    },
+    {
+      "nombre_completo": "Real Decreto 887/2006, de 21 de julio, por el que se aprueba el Reglamento de la Ley 38/2003, de 17 de noviembre, General de Subvenciones . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .",
+      "bloque": "V. Gestión financiera"
+    }
+  ]
+}
