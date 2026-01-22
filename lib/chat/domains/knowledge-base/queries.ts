@@ -220,6 +220,11 @@ const CATEGORY_PATTERNS: Record<KBCategory, RegExp[]> = {
     /d[oó]nde\s+(est[aá]|encuentro|veo)/i,
     /qu[eé]\s+(puedo|hay|tiene)/i,
     /funcionalidad|caracter[ií]stica/i,
+    // Temarios
+    /temario(s)?\s+(gratis|gratuito|free)/i,
+    /hay\s+temario/i,
+    /d[oó]nde.*temario/i,
+    /tienen\s+temario/i,
   ],
   faq: [
     /problema|error|no\s+(funciona|puedo|me\s+deja)/i,
@@ -294,6 +299,10 @@ export function isPlatformQuery(message: string): boolean {
     /reembolso/i,
     /garant[ií]a.*devoluci[oó]n/i,
     /dar(me)?\s+de\s+baja/i,
+    // Temarios
+    /temario(s)?/i,
+    /contenido\s+(gratis|gratuito)/i,
+    /qu[eé]\s+ofrece/i,
   ]
 
   return platformIndicators.some(p => p.test(message))
@@ -336,6 +345,9 @@ export function extractPlatformKeywords(message: string): string[] {
     'cancelar', 'cancelación', 'cancelo',
     'devolver', 'devolución', 'reembolso',
     'garantía', 'baja',
+    // Temarios y contenido
+    'temarios', 'contenido', 'estudiar', 'legislación',
+    'ofrece', 'incluye',
   ]
 
   const msgLower = message.toLowerCase()
