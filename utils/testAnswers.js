@@ -10,6 +10,10 @@ let cachedUser = null
 let userCacheTime = 0
 const USER_CACHE_TTL = 60000 // 1 minuto
 
+// 🆕 CACHE DE PERFIL DE USUARIO (para obtener oposición)
+let cachedUserProfile = null
+let userProfileCacheTime = 0
+
 async function getCachedUser() {
   const now = Date.now()
   if (cachedUser && (now - userCacheTime) < USER_CACHE_TTL) {
@@ -22,6 +26,65 @@ async function getCachedUser() {
     userCacheTime = now
   }
   return user
+}
+
+// 🆕 OBTENER PERFIL CON CACHE (para oposición objetivo)
+async function getCachedUserProfile(userId) {
+  const now = Date.now()
+  if (cachedUserProfile && cachedUserProfile.id === userId && (now - userProfileCacheTime) < USER_CACHE_TTL) {
+    return cachedUserProfile
+  }
+
+  const { data: profile, error } = await supabase
+    .from('user_profiles')
+    .select('id, target_oposicion')
+    .eq('id', userId)
+    .single()
+
+  if (!error && profile) {
+    cachedUserProfile = profile
+    userProfileCacheTime = now
+  }
+  return profile
+}
+
+// 🆕 RESOLVER TEMA VIA API CENTRALIZADA (lib/api/tema-resolver)
+async function resolveTemaViaAPI(questionData, oposicionId) {
+  try {
+    const params = new URLSearchParams()
+
+    // Añadir parámetros disponibles
+    if (questionData?.id) {
+      params.set('questionId', questionData.id)
+    }
+    if (questionData?.article?.id) {
+      params.set('articleId', questionData.article.id)
+    }
+    if (questionData?.article?.number) {
+      params.set('articleNumber', questionData.article.number)
+    }
+    if (questionData?.article?.law_id) {
+      params.set('lawId', questionData.article.law_id)
+    }
+    if (questionData?.article?.law_short_name) {
+      params.set('lawShortName', questionData.article.law_short_name)
+    }
+    params.set('oposicionId', oposicionId || 'auxiliar_administrativo_estado')
+
+    const response = await fetch(`/api/tema-resolver?${params.toString()}`)
+    const result = await response.json()
+
+    if (result.success && result.temaNumber) {
+      console.log('🎯 [TemaResolver API] Tema resuelto:', result.temaNumber, 'via', result.resolvedVia)
+      return result.temaNumber
+    }
+
+    console.log('⚠️ [TemaResolver API] No se pudo resolver tema:', result.reason || result.error)
+    return null
+  } catch (error) {
+    console.warn('⚠️ [TemaResolver API] Error:', error.message)
+    return null
+  }
 }
 
 // 🔧 FUNCIÓN PARA GENERAR question_id CONSISTENTE
@@ -88,7 +151,25 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
     }
 
     // 🎯 CALCULAR TEMA ANTES DE USAR
-    const calculatedTema = parseInt(questionData?.tema || tema) || 0
+    let calculatedTema = parseInt(questionData?.tema || tema) || 0
+
+    // 🆕 Si el tema es 0, intentar resolverlo via API centralizada
+    if (calculatedTema === 0 && questionData) {
+      try {
+        const user = await getCachedUser()
+        if (user) {
+          const profile = await getCachedUserProfile(user.id)
+          const oposicionId = profile?.target_oposicion || 'auxiliar_administrativo_estado'
+          const foundTema = await resolveTemaViaAPI(questionData, oposicionId)
+          if (foundTema) {
+            calculatedTema = foundTema
+            console.log('🎯 [TemaFix] Tema asignado automáticamente:', calculatedTema)
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ [TemaFix] Error resolviendo tema:', error.message)
+      }
+    }
 
     const hesitationTime = firstInteractionTime ?
       Math.max(0, firstInteractionTime - questionStartTime) : 0
