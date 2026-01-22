@@ -128,6 +128,10 @@ export default function TopicReviewTab() {
   // Menú desplegable para elegir modo de verificación
   const [verifyMenuOpen, setVerifyMenuOpen] = useState(null) // topicId del menú abierto
 
+  // Estado de verificación directa de BLOQUE en navegador
+  const [verifyingBlockDirect, setVerifyingBlockDirect] = useState({}) // { blockId: { current, total } }
+  const [blockMenuOpen, setBlockMenuOpen] = useState(null) // blockId del menú abierto
+
   // Cargar oposiciones disponibles
   useEffect(() => {
     loadPositions()
@@ -457,12 +461,135 @@ export default function TopicReviewTab() {
 
   // Cerrar menú al hacer clic fuera
   useEffect(() => {
-    const handleClickOutside = () => setVerifyMenuOpen(null)
-    if (verifyMenuOpen) {
+    const handleClickOutside = () => {
+      setVerifyMenuOpen(null)
+      setBlockMenuOpen(null)
+    }
+    if (verifyMenuOpen || blockMenuOpen) {
       document.addEventListener('click', handleClickOutside)
       return () => document.removeEventListener('click', handleClickOutside)
     }
-  }, [verifyMenuOpen])
+  }, [verifyMenuOpen, blockMenuOpen])
+
+  // Toggle menú de verificación de BLOQUE
+  const toggleBlockMenu = (blockId, e) => {
+    e.stopPropagation()
+    setBlockMenuOpen(prev => prev === blockId ? null : blockId)
+  }
+
+  // Verificación directa de BLOQUE en navegador
+  const verifyBlockDirect = async (blockId, topics, mode = 'pending') => {
+    setBlockMenuOpen(null)
+    if (!selectedProvider || !selectedModel) {
+      setError('Selecciona un proveedor y modelo de IA')
+      return
+    }
+
+    try {
+      setError(null)
+
+      // Recolectar todas las preguntas de todos los temas del bloque
+      let allQuestions = []
+
+      for (const topic of topics) {
+        const detailResponse = await fetch(`/api/topic-review?topic_id=${topic.id}`)
+        const detailData = await detailResponse.json()
+
+        if (detailData.success && detailData.questions) {
+          let questionsToAdd = detailData.questions
+
+          // Filtrar según el modo
+          if (mode === 'pending') {
+            questionsToAdd = questionsToAdd.filter(q =>
+              !q.topic_review_status || q.topic_review_status === 'pending'
+            )
+          } else if (mode === 'problems') {
+            questionsToAdd = questionsToAdd.filter(q =>
+              q.topic_review_status && !['pending', 'perfect', 'tech_perfect'].includes(q.topic_review_status)
+            )
+          }
+          // mode === 'all' → no filtrar
+
+          allQuestions = [...allQuestions, ...questionsToAdd]
+        }
+      }
+
+      if (allQuestions.length === 0) {
+        setError(`No hay preguntas ${mode === 'pending' ? 'pendientes' : mode === 'problems' ? 'con problemas' : ''} en este bloque`)
+        return
+      }
+
+      // Iniciar verificación
+      setVerifyingBlockDirect(prev => ({ ...prev, [blockId]: { current: 0, total: allQuestions.length } }))
+
+      // Verificar en lotes de 5
+      const BATCH_SIZE = 5
+      let processed = 0
+
+      for (let i = 0; i < allQuestions.length; i += BATCH_SIZE) {
+        const batch = allQuestions.slice(i, i + BATCH_SIZE)
+        const batchIds = batch.map(q => q.id)
+
+        const verifyResponse = await fetch('/api/topic-review/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            questionIds: batchIds,
+            provider: selectedProvider,
+            model: selectedModel,
+            isPsychometric: selectedPosition === 'psicotecnicos'
+          })
+        })
+
+        const verifyResult = await verifyResponse.json()
+
+        // Detectar error de billing/créditos
+        if (!verifyResult.success) {
+          if (verifyResult.errorType === 'billing') {
+            const providerName = verifyResult.provider === 'anthropic' ? 'Claude (Anthropic)' :
+                                verifyResult.provider === 'openai' ? 'ChatGPT (OpenAI)' :
+                                verifyResult.provider === 'google' ? 'Gemini (Google)' : verifyResult.provider
+
+            setError(`❌ ${providerName} no tiene créditos. ${processed}/${allQuestions.length} verificadas antes del error.`)
+
+            setVerifyingBlockDirect(prev => {
+              const newState = { ...prev }
+              delete newState[blockId]
+              return newState
+            })
+
+            await loadTopics()
+            return
+          } else {
+            console.error('Error verificando batch:', verifyResult.error)
+          }
+        }
+
+        processed += batch.length
+        setVerifyingBlockDirect(prev => ({
+          ...prev,
+          [blockId]: { current: processed, total: allQuestions.length }
+        }))
+      }
+
+      // Finalizar
+      setVerifyingBlockDirect(prev => {
+        const newState = { ...prev }
+        delete newState[blockId]
+        return newState
+      })
+
+      await loadTopics()
+
+    } catch (err) {
+      setError('Error verificando bloque: ' + err.message)
+      setVerifyingBlockDirect(prev => {
+        const newState = { ...prev }
+        delete newState[blockId]
+        return newState
+      })
+    }
+  }
 
   // Obtener estado de verificación de un tema
   const getTopicQueueStatus = (topicId) => {
@@ -699,8 +826,22 @@ export default function TopicReviewTab() {
           acc.total += topic.stats?.total_questions || 0
           acc.pending += topic.stats?.pending || 0
           acc.perfect += (topic.stats?.perfect || 0) + (topic.stats?.tech_perfect || 0)
+          // Problemas: todo lo que no es perfect ni pending
+          acc.problems += (topic.stats?.bad_explanation || 0) +
+                         (topic.stats?.bad_answer || 0) +
+                         (topic.stats?.bad_answer_and_explanation || 0) +
+                         (topic.stats?.wrong_article || 0) +
+                         (topic.stats?.wrong_article_bad_explanation || 0) +
+                         (topic.stats?.wrong_article_bad_answer || 0) +
+                         (topic.stats?.all_wrong || 0) +
+                         (topic.stats?.tech_bad_explanation || 0) +
+                         (topic.stats?.tech_bad_answer || 0) +
+                         (topic.stats?.tech_bad_answer_and_explanation || 0)
           return acc
-        }, { total: 0, pending: 0, perfect: 0 })
+        }, { total: 0, pending: 0, perfect: 0, problems: 0 })
+
+        // Estado de verificación del bloque
+        const blockDirectStatus = verifyingBlockDirect[block.id]
 
         return (
           <div key={block.id} className="mb-4">
@@ -732,6 +873,86 @@ export default function TopicReviewTab() {
                     ⏳ {blockStats.pending}
                   </span>
                 )}
+                {blockStats.problems > 0 && (
+                  <span className="text-orange-500 dark:text-orange-400">
+                    ⚠️ {blockStats.problems}
+                  </span>
+                )}
+
+                {/* Botón verificar bloque */}
+                {(() => {
+                  // Si está verificándose
+                  if (blockDirectStatus) {
+                    return (
+                      <div
+                        className="px-2 py-1 bg-blue-600 text-white text-xs rounded flex items-center gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Spinner size="sm" />
+                        <span>{blockDirectStatus.current}/{blockDirectStatus.total}</span>
+                      </div>
+                    )
+                  }
+
+                  // Si hay preguntas y hay IA configurada
+                  if (blockStats.total > 0 && aiConfigs.length > 0) {
+                    return (
+                      <div className="relative" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => toggleBlockMenu(block.id, e)}
+                          className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded flex items-center gap-1"
+                          title="Reverificar preguntas del bloque"
+                        >
+                          🤖 Verificar
+                          <span className="ml-1">▼</span>
+                        </button>
+
+                        {/* Menú desplegable */}
+                        {blockMenuOpen === block.id && (
+                          <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-50 min-w-[200px]">
+                            {blockStats.pending > 0 && (
+                              <button
+                                onClick={() => verifyBlockDirect(block.id, filteredTopics, 'pending')}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-t-lg flex items-center gap-2"
+                              >
+                                <span>⏳</span>
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white">Pendientes ({blockStats.pending})</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Sin verificar aún</div>
+                                </div>
+                              </button>
+                            )}
+                            {blockStats.problems > 0 && (
+                              <button
+                                onClick={() => verifyBlockDirect(block.id, filteredTopics, 'problems')}
+                                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${blockStats.pending > 0 ? 'border-t border-gray-100 dark:border-gray-700' : 'rounded-t-lg'}`}
+                              >
+                                <span>⚠️</span>
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white">Con problemas ({blockStats.problems})</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Reverificar errores</div>
+                                </div>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => verifyBlockDirect(block.id, filteredTopics, 'all')}
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-b-lg flex items-center gap-2 border-t border-gray-100 dark:border-gray-700"
+                            >
+                              <span>🔄</span>
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white">Todas ({blockStats.total})</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Reverificar todo el bloque</div>
+                              </div>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  }
+
+                  return null
+                })()}
+
                 <span className="text-xl text-gray-400">{isExpanded ? '▼' : '▶'}</span>
               </div>
             </div>
