@@ -693,17 +693,19 @@ export default function AIChatWidget() {
 
   return (
     <>
-      {/* Panel de chat */}
+      {/* Panel de chat - Mobile: centrado, Desktop: esquina derecha más arriba */}
       <div
-        className={`fixed bottom-4 right-4 z-50 w-[380px] max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl transition-all duration-200 ${
-          isOpen
+        className={`fixed z-50 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl transition-all duration-200
+          bottom-2 left-2 right-2
+          sm:bottom-20 sm:left-auto sm:right-4 sm:w-[380px]
+          ${isOpen
             ? 'opacity-100 scale-100 visible'
             : 'opacity-0 scale-95 invisible pointer-events-none'
         }`}
         style={{
-          height: '500px',
-          maxHeight: 'min(500px, calc(100vh - 180px))',
-          transformOrigin: 'top right'
+          height: 'min(600px, calc(100dvh - 120px))',
+          maxHeight: 'calc(100dvh - 120px)',
+          transformOrigin: 'bottom right'
         }}
       >
         {/* Header */}
