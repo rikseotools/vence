@@ -275,8 +275,9 @@ export default function NotificationBell() {
           const realDisputeId = notification.disputeId || notification.id.replace('dispute-', '')
           await disputeNotifications.markAsRead(realDisputeId, notification.isPsychometric)
 
-          // Generar URL y navegar
-          const actionUrl = generateActionUrl(notification, action.type)
+          // Generar URL y navegar - SIEMPRE usar 'view_dispute' independientemente de NOTIFICATION_TYPES
+          // Fix: action.type podía ser 'view_corrected_question' que no era manejado en generateActionUrl
+          const actionUrl = generateActionUrl(notification, 'view_dispute')
           console.log('🔗 Navigating to dispute URL:', actionUrl)
           setTimeout(() => {
             window.location.href = actionUrl
