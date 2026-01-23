@@ -226,6 +226,51 @@ Recuerda que si tienes dudas sobre cualquier tema, también puedes consultar nue
 ¡Mucho ánimo con tu preparación! 💪
 ```
 
+## Impugnaciones Auto-Detectadas por IA
+
+Las impugnaciones con `dispute_type = 'ai_detected_error'` son generadas automáticamente por el chat de IA cuando detecta un posible error.
+
+### Características:
+- El usuario NO las creó manualmente
+- La descripción contiene `[AUTO-DETECTADO POR IA]`
+- Pueden ser falsos positivos (la IA se equivocó)
+
+### Procedimiento:
+1. Revisar si la pregunta realmente tiene un error
+2. Si es **falso positivo** (pregunta correcta): cerrar SIN notificar al usuario
+3. Si hay **error real**: corregir y cerrar normalmente
+
+### Cerrar SIN notificar al usuario:
+
+Al cerrar, usar `is_read: true` para que el usuario NO reciba notificación:
+
+```sql
+UPDATE question_disputes
+SET
+    status = 'resolved',
+    admin_response = 'Revisado. La pregunta y respuesta son correctas.',
+    resolved_at = NOW(),
+    is_read = true  -- NO notifica al usuario
+WHERE id = 'DISPUTE_ID';
+```
+
+### Con Supabase JS:
+```javascript
+await supabase
+  .from('question_disputes')
+  .update({
+    status: 'resolved',
+    admin_response: 'Revisado. La pregunta y respuesta son correctas.',
+    resolved_at: new Date().toISOString(),
+    is_read: true  // NO notifica al usuario
+  })
+  .eq('id', disputeId);
+```
+
+> **IMPORTANTE**: Solo usar `is_read: true` para impugnaciones auto-detectadas por IA que son falsos positivos. Las impugnaciones creadas por usuarios SIEMPRE deben notificarse (`is_read: false` o no incluir el campo).
+
+---
+
 ## Ejemplo Real de Caso Resuelto
 
 ### Impugnación recibida:
