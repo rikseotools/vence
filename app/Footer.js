@@ -75,7 +75,7 @@ export default function FooterES() {
               Vence España es una plataforma educativa independiente. Todos los contenidos son de carácter informativo y educativo.
             </p>
             <p className="text-xs text-gray-400 text-center mt-2">
-              Con <span className="text-red-500">❤️</span> para Vania. ¡Recupérate pronto!
+              © Vence
             </p>
           </div>
         </div>
