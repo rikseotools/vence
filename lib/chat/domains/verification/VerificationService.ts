@@ -310,36 +310,71 @@ export async function verifyAnswer(
   // 4. Detectar si hay error
   const errorResult = detectErrorInResponse(response)
 
-  // 5. Crear disputa automática si se detectó error
+  // 5. Determinar si es error de VINCULACIÓN (interno) vs error de CONTENIDO (visible al usuario)
+  // Error de vinculación: el artículo vinculado es de una ley diferente a la mencionada en la pregunta
+  // En ese caso, creamos impugnación pero NO mostramos error al usuario (lo confunde)
+  const isLinkingError = errorResult.hasError && linkedArticle && effectiveLawName &&
+    linkedArticle.lawShortName !== effectiveLawName &&
+    !linkedArticle.lawShortName.includes(effectiveLawName) &&
+    !effectiveLawName.includes(linkedArticle.lawShortName)
+
+  if (isLinkingError) {
+    logger.info('🔗 Linking error detected (internal only)', {
+      domain: 'verification',
+      linkedLaw: linkedArticle?.lawShortName,
+      questionLaw: effectiveLawName,
+    })
+  }
+
+  // 6. Crear disputa automática si se detectó error (tanto de vinculación como de contenido)
   let disputeCreated = false
   let disputeResult: DisputeResult | undefined
 
   if (errorResult.hasError && input.questionId) {
+    // Añadir contexto de si es error de vinculación para revisión interna
+    const disputeContext = isLinkingError
+      ? `[ERROR DE VINCULACIÓN - Artículo vinculado: ${linkedArticle?.lawShortName} Art. ${linkedArticle?.articleNumber}, Ley en pregunta: ${effectiveLawName}]\n\n`
+      : ''
+
     disputeResult = await createAutoDispute(
       input.questionId,
-      response,
+      disputeContext + response,
       input.userId
     )
     disputeCreated = disputeResult.success && !disputeResult.alreadyExists
   }
 
-  // 6. Construir respuesta final
+  // 7. Construir respuesta final
+  // Si es error de vinculación, NO mostrar el mensaje de error al usuario
   let finalResponse = response
-  if (disputeCreated) {
+  if (isLinkingError) {
+    // Limpiar el mensaje de error de la respuesta - el usuario no debería verlo
+    finalResponse = finalResponse
+      .replace(/⚠️\s*\*?\*?Posible error detectado\*?\*?/gi, '')
+      .replace(/⚠️\s*\*?\*?POSIBLE ERROR\*?\*?/gi, '')
+      .replace(/⚠️\s*\*?\*?Posible error\*?\*?/gi, '')
+    // NO añadir mensaje de impugnación - es interno
+    logger.info('🔗 Hiding linking error from user response', { domain: 'verification' })
+  } else if (disputeCreated) {
     finalResponse += generateDisputeConfirmationMessage(true)
   }
+
+  // Para el usuario, solo reportamos error si NO es de vinculación
+  const userVisibleError = errorResult.hasError && !isLinkingError
 
   logger.info('Verification completed', {
     domain: 'verification',
     errorDetected: errorResult.hasError,
+    isLinkingError,
+    userVisibleError,
     disputeCreated,
     processingTime: Date.now() - startTime,
   })
 
   return {
     response: finalResponse,
-    errorDetected: errorResult.hasError,
-    errorDetails: errorResult.hasError ? errorResult : undefined,
+    errorDetected: userVisibleError, // Solo true si es error de contenido (visible al usuario)
+    errorDetails: userVisibleError ? errorResult : undefined,
     disputeCreated,
     disputeResult,
     sources,
