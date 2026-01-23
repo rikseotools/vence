@@ -421,10 +421,10 @@ export function AuthProvider({ children, initialUser = null }) {
     if (typeof window === 'undefined') return
     
     const handleAuthSync = (event) => {
-      const { session, source } = event.detail
-      
-      console.log(`🔄 AuthContext: Sincronización desde ${source}`)
-      
+      const { session, source, isIOSSafari } = event.detail
+
+      console.log(`🔄 AuthContext: Sincronización desde ${source}${isIOSSafari ? ' (iOS Safari)' : ''}`)
+
       if (session && session.user) {
         // Hay sesión nueva
         if (!user || user.id !== session.user.id) {
@@ -433,7 +433,17 @@ export function AuthProvider({ children, initialUser = null }) {
           loadUserProfile(session.user.id)
         }
       } else {
-        // No hay sesión
+        // No hay sesión según el evento
+        // 🐛 FIX iOS Safari ONLY: No limpiar sesión en visibility_change si ya tenemos usuario
+        // Safari iOS puede devolver sesión vacía por errores temporales de localStorage
+        if (source === 'visibility_change' && user && isIOSSafari) {
+          console.log('⚠️ [iOS Safari] Ignorando sesión vacía desde visibility_change')
+          // El fix en lib/supabase.js ya verificó con getUser() antes de llegar aquí
+          // Si llegó aquí con session null, probablemente es un error real, pero mejor mantener
+          // la sesión y dejar que el usuario la cierre manualmente si hay problema real
+          return
+        }
+
         if (user) {
           console.log('👋 Limpiando usuario desde sync')
           setUser(null)
