@@ -9,6 +9,7 @@ import { DOMAIN_PRIORITIES } from '../../core/types'
 import {
   searchArticles,
   formatArticlesForContext,
+  wantsLiteralContent,
   generateSearchSuggestions,
   detectMentionedLaws,
   isGenericLawQuery,
@@ -245,11 +246,16 @@ Puedo ayudarte con:
     const openai = await getOpenAI()
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
-    // Construir contexto de artículos
-    const articlesContext = formatArticlesForContext(searchResult.articles)
+    // Detectar si el usuario quiere el texto literal/completo
+    const wantsFullContent = wantsLiteralContent(context.currentMessage)
+
+    // Construir contexto de artículos (completo si pide literal)
+    const articlesContext = formatArticlesForContext(searchResult.articles, {
+      fullContent: wantsFullContent,
+    })
 
     // System prompt específico para búsqueda
-    const systemPrompt = this.buildSystemPrompt(context, searchResult)
+    const systemPrompt = this.buildSystemPrompt(context, searchResult, wantsFullContent)
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },
@@ -293,18 +299,28 @@ ${articlesContext}`
    */
   private buildSystemPrompt(
     context: ChatContext,
-    searchResult: Awaited<ReturnType<typeof searchArticles>>
+    searchResult: Awaited<ReturnType<typeof searchArticles>>,
+    wantsFullContent: boolean = false
   ): string {
-    let prompt = `Eres un asistente experto en derecho administrativo español, especializado en oposiciones.
-
-Tu objetivo es responder preguntas sobre legislación de forma precisa y útil. SIEMPRE debes dar una respuesta al usuario.
-
-## Directrices:
+    // Instrucciones base o instrucciones para contenido literal
+    const responseGuidelines = wantsFullContent
+      ? `## Directrices para texto literal:
+1. **PROPORCIONA EL TEXTO COMPLETO**: El usuario ha pedido el artículo literal/completo. Copia el contenido íntegro del artículo tal como aparece.
+2. **No resumas ni parafrasees**: Transcribe el texto exacto del artículo sin modificaciones.
+3. **Cita la fuente**: Indica claramente de qué ley y artículo se trata.
+4. **Formato**: Mantén la estructura original del artículo (apartados, números, letras).`
+      : `## Directrices:
 1. **SIEMPRE responde**: Nunca digas "no encontré información". Si los artículos proporcionados no cubren la pregunta, usa tu conocimiento experto sobre la materia.
 2. **Prioriza artículos**: Si hay artículos relevantes, cita la fuente (ej: "Según el Art. 21 de la Ley 39/2015...")
 3. **Conocimiento general**: Si no hay artículos específicos, responde con tu conocimiento de derecho español, indicando que es información general.
 4. **Sé conciso**: Responde de forma directa sin rodeos
-5. **Formato**: Usa markdown para estructurar la respuesta (negritas, listas, etc.)
+5. **Formato**: Usa markdown para estructurar la respuesta (negritas, listas, etc.)`
+
+    let prompt = `Eres un asistente experto en derecho administrativo español, especializado en oposiciones.
+
+Tu objetivo es responder preguntas sobre legislación de forma precisa y útil. SIEMPRE debes dar una respuesta al usuario.
+
+${responseGuidelines}
 
 ## Información de búsqueda:
 - Método de búsqueda: ${searchResult.searchMethod}

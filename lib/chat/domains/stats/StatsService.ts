@@ -66,8 +66,8 @@ export function isUserStatsQuery(message: string): boolean {
 
   const patterns = [
     /mi[s]?\s*(progreso|estad[ií]stica|resultado|fallo|error|acierto|rendimiento|punto.*d[eé]bil|[aá]rea.*d[eé]bil)/i,
-    /qu[eé].*(he\s*fallado|fallo\s*m[aá]s|me\s*cuesta)/i,
-    /d[oó]nde\s*(fallo|tengo.*problema)/i,
+    /qu[eé].*(he\s*fallado|fallos?\s*m[aá]s|me\s*cuesta)/i, // fallo/fallos más
+    /d[oó]?nde\s*(fallo|tengo.*problema)/i, // donde/dónde
     /c[oó]mo\s*voy/i, // Detecta "cómo voy" con o sin contexto adicional
     /en\s*qu[eé]\s*debo\s*(mejorar|estudiar|repasar)/i,
     /qu[eé]\s*(art[ií]culos?|temas?|leyes?|partes?)\s*(deber[ií]a|tengo\s*que|necesito)\s*repasar/i,
@@ -76,6 +76,10 @@ export function isUserStatsQuery(message: string): boolean {
     /test\s*(de\s*)?(mis\s*)?(fallo|error|repaso)/i,
     /practicar\s*(mis\s*)?(fallo|error)/i,
     /(fallo|error)s?\s*(de\s*)?(esta\s*semana|este\s*mes|hoy|ayer|[uú]ltimos?\s*\d+\s*d[ií]as?|desde\s*siempre|hist[oó]rico)/i,
+    // Nuevos patrones más flexibles para preguntas sobre fallos
+    /en\s*qu[eé]\s*(art[ií]culos?|temas?)\s*fallos?\s*m[aá]s/i, // "en que articulos fallo/fallos mas"
+    /(art[ií]culos?|temas?)\s*(que|donde|en\s*los?\s*que)\s*fallos?\s*m[aá]s/i, // "articulos que fallo mas"
+    /fallos?\s*m[aá]s/i, // Patrón general: cualquier mención de "fallo/fallos más"
   ]
 
   return patterns.some(p => p.test(msgLower))

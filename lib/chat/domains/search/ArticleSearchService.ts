@@ -369,20 +369,60 @@ async function searchByKeywords(
 // ============================================
 
 /**
- * Formatea artículos para incluir en el contexto de OpenAI
+ * Detecta si el usuario pide el texto literal/completo de un artículo
  */
-export function formatArticlesForContext(articles: ArticleMatch[]): string {
+export function wantsLiteralContent(message: string): boolean {
+  const msgLower = message.toLowerCase()
+  const patterns = [
+    /art[ií]culo\s*(literal|completo|[ií]ntegro|exacto|textual)/i,
+    /texto\s*(literal|completo|[ií]ntegro|exacto)/i,
+    /(dame|dime|mu[eé]strame|pon)\s*(el\s*)?(art[ií]culo|texto)\s*(literal|completo|entero)?/i,
+    /qu[eé]\s*(dice|pone)\s*(exactamente|literalmente)/i,
+    /lo\s*que\s*pone\s*(el\s*)?art[ií]culo/i,
+    /redacci[oó]n\s*(literal|exacta|completa)/i,
+    /contenido\s*(completo|[ií]ntegro|literal)/i,
+    /transcri(be|pci[oó]n)/i,
+  ]
+  return patterns.some(p => p.test(msgLower))
+}
+
+interface FormatOptions {
+  fullContent?: boolean
+  maxContentLength?: number
+}
+
+/**
+ * Formatea artículos para incluir en el contexto de OpenAI
+ * @param articles - Lista de artículos encontrados
+ * @param options - Opciones de formateo
+ *   - fullContent: true para incluir contenido completo sin truncar
+ *   - maxContentLength: longitud máxima del contenido (default: 500)
+ */
+export function formatArticlesForContext(
+  articles: ArticleMatch[],
+  options?: FormatOptions
+): string {
   if (articles.length === 0) {
     return 'No se encontraron artículos relevantes.'
   }
+
+  const fullContent = options?.fullContent ?? false
+  const maxLength = options?.maxContentLength ?? 500
 
   return articles
     .map((art, i) => {
       const header = `[${i + 1}] ${art.lawShortName} - Art. ${art.articleNumber}`
       const title = art.title ? `\n${art.title}` : ''
-      const content = art.content
-        ? `\n${art.content.substring(0, 500)}${art.content.length > 500 ? '...' : ''}`
-        : ''
+      let content = ''
+      if (art.content) {
+        if (fullContent) {
+          // Contenido completo sin truncar
+          content = `\n${art.content}`
+        } else {
+          // Truncar a maxLength caracteres
+          content = `\n${art.content.substring(0, maxLength)}${art.content.length > maxLength ? '...' : ''}`
+        }
+      }
       return `${header}${title}${content}`
     })
     .join('\n\n---\n\n')

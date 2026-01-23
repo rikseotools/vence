@@ -8,6 +8,7 @@ export { SearchDomain, getSearchDomain } from './SearchDomain'
 export {
   searchArticles,
   formatArticlesForContext,
+  wantsLiteralContent,
   generateSearchSuggestions,
   detectMentionedLaws,
   isGenericLawQuery,
