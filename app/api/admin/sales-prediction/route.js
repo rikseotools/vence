@@ -47,7 +47,7 @@ async function saveDailyPredictions(supabase, predictions) {
   try {
     const today = new Date().toISOString().slice(0, 10)
 
-    // Preparar datos para insertar
+    // Preparar datos para insertar (by_historic eliminado por impreciso)
     const records = [
       {
         prediction_date: today,
@@ -62,13 +62,6 @@ async function saveDailyPredictions(supabase, predictions) {
         predicted_sales_per_month: predictions.byActiveUsers.salesPerMonth,
         predicted_revenue_per_month: predictions.byActiveUsers.revenuePerMonth,
         prediction_inputs: predictions.byActiveUsers.inputs
-      },
-      {
-        prediction_date: today,
-        method_name: 'by_historic',
-        predicted_sales_per_month: predictions.byHistoric.salesPerMonth,
-        predicted_revenue_per_month: predictions.byHistoric.revenuePerMonth,
-        prediction_inputs: predictions.byHistoric.inputs
       },
       {
         prediction_date: today,
@@ -244,18 +237,23 @@ export async function GET() {
 
     if (paymentsError) throw paymentsError
 
-    // 2b. Obtener refunds de cancellation_feedback
-    const { data: refunds, error: refundsError } = await supabase
+    // 2b. Obtener TODAS las cancelaciones (con o sin refund) para calcular churn real
+    const { data: cancellations, error: cancellationsError } = await supabase
       .from('cancellation_feedback')
       .select('user_id, created_at, refund_amount_cents')
-      .not('stripe_refund_id', 'is', null)
 
-    if (refundsError) {
-      console.warn('Error obteniendo refunds (tabla puede no existir):', refundsError.message)
+    if (cancellationsError) {
+      console.warn('Error obteniendo cancelaciones (tabla puede no existir):', cancellationsError.message)
     }
 
-    // Set de usuarios que han sido reembolsados
-    const refundedUserIds = new Set((refunds || []).map(r => r.user_id).filter(Boolean))
+    // Separar cancelaciones con y sin refund
+    const refunds = (cancellations || []).filter(c => (c.refund_amount_cents || 0) > 0)
+    const allCancellations = cancellations || []
+
+    // Set de usuarios que han cancelado (para churn)
+    const cancelledUserIds = new Set(allCancellations.map(c => c.user_id).filter(Boolean))
+    // Set de usuarios que han sido reembolsados (para cálculo de conversión neta)
+    const refundedUserIds = new Set(refunds.map(r => r.user_id).filter(Boolean))
 
     // Calcular ticket medio
     const paymentAmounts = payments.map(p => p.event_data?.amount || 0).filter(a => a > 0)
@@ -517,14 +515,11 @@ export async function GET() {
     // Fórmula: Usuarios FREE activos × Tasa conversión semanal
     const method2_salesPerMonth = weeklyActiveFree.length * weeklyConversionRate * 4 // 4 semanas
 
-    // MÉTODO 3: Por histórico (tendencia real)
-    // Fórmula: 30 / Días promedio entre pagos
-    const method3_salesPerMonth = avgDaysBetweenPayments
-      ? 30 / avgDaysBetweenPayments
-      : 0
+    // MÉTODO 3: Por histórico - ELIMINADO (error ±109%, muy impreciso)
+    // Se mantiene solo para tracking histórico pero no se usa en proyecciones
 
-    // Proyección combinada PONDERADA por precisión histórica
-    // Los métodos con menor error tienen mayor peso
+    // Proyección combinada de 2 métodos (registros + activos)
+    // El método "por histórico" fue eliminado por tener error promedio de ±109%
     let combinedSalesPerMonth = 0
     let totalWeight = 0
 
@@ -536,17 +531,14 @@ export async function GET() {
       combinedSalesPerMonth += method2_salesPerMonth * methodWeights.by_active_users
       totalWeight += methodWeights.by_active_users
     }
-    if (method3_salesPerMonth > 0 && isFinite(method3_salesPerMonth)) {
-      combinedSalesPerMonth += method3_salesPerMonth * methodWeights.by_historic
-      totalWeight += methodWeights.by_historic
-    }
+    // by_historic eliminado del cálculo combinado
 
     // Normalizar si no todos los métodos tienen datos
     if (totalWeight > 0 && totalWeight < 1) {
       combinedSalesPerMonth = combinedSalesPerMonth / totalWeight
     }
 
-    const validMethods = [method1_salesPerMonth, method2_salesPerMonth, method3_salesPerMonth].filter(m => m > 0 && isFinite(m))
+    const validMethods = [method1_salesPerMonth, method2_salesPerMonth].filter(m => m > 0 && isFinite(m))
 
     // Usar proyección combinada ponderada para todas las estimaciones
     const expectedSalesPerMonth = combinedSalesPerMonth > 0 ? combinedSalesPerMonth : method1_salesPerMonth
@@ -572,26 +564,44 @@ export async function GET() {
       mrrPerNewSub = (MRR_SEMESTER + MRR_MONTHLY) / 2  // 14.92€
     }
 
-    // Proyección de MRR (asumiendo 0% churn por ahora)
+    // Calcular churn rate basado en TODAS las cancelaciones (con o sin refund)
+    const totalRefundAmount = (refunds || []).reduce((sum, r) => sum + (r.refund_amount_cents || 0), 0) / 100
+    const totalCancellations = cancelledUserIds.size  // Todas las cancelaciones
+    const totalRefundsCount = refundedUserIds.size    // Solo las que tuvieron refund
+    const cancelingSubscriptions = (subscriptions || []).filter(s => s.cancel_at_period_end)
+
+    // Churn mensual: cancelaciones totales / pagadores únicos brutos
+    // Si no hay datos suficientes, usar 5% mensual (típico B2C SaaS)
+    const churnMonthly = uniquePayingUsersGross > 5
+      ? Math.max(0.05, totalCancellations / uniquePayingUsersGross) // Mínimo 5%
+      : 0.05 // Default 5% si pocos datos
+
+    // Proyección de MRR CON CHURN
+    // Fórmula: MRR futuro = MRR actual × (1 - churn)^meses + nuevos subs acumulados
     const newSubsIn6Months = expectedSalesPerMonth * 6
     const newSubsIn12Months = expectedSalesPerMonth * 12
 
-    const mrr6Months = mrr + (newSubsIn6Months * mrrPerNewSub)
-    const mrr12Months = mrr + (newSubsIn12Months * mrrPerNewSub)
+    // MRR después de churn (el MRR actual se reduce por churn)
+    const mrrAfterChurn6 = mrr * Math.pow(1 - churnMonthly, 6)
+    const mrrAfterChurn12 = mrr * Math.pow(1 - churnMonthly, 12)
+
+    // MRR de nuevos subs (también sufren churn, promediado)
+    const avgChurnFactor6 = Math.pow(1 - churnMonthly, 3)  // Promedio 6 meses
+    const avgChurnFactor12 = Math.pow(1 - churnMonthly, 6) // Promedio 12 meses
+
+    const mrr6Months = mrrAfterChurn6 + (newSubsIn6Months * mrrPerNewSub * avgChurnFactor6)
+    const mrr12Months = mrrAfterChurn12 + (newSubsIn12Months * mrrPerNewSub * avgChurnFactor12)
 
     // ARR proyectado
     const arr = mrr * 12
     const arr6Months = mrr6Months * 12
     const arr12Months = mrr12Months * 12
 
-    // Facturación total (para referencia)
-    const billing6Months = renewalProjection.slice(0, 6).reduce((acc, m) => acc + m.revenue, 0) +
-                           (expectedSalesPerMonth * avgTicket * 6)
-    const billing12Months = renewalProjection.reduce((acc, m) => acc + m.revenue, 0) +
-                            (expectedSalesPerMonth * avgTicket * 12)
-
-    // Churn info
-    const cancelingSubscriptions = (subscriptions || []).filter(s => s.cancel_at_period_end)
+    // Facturación total (para referencia) - también con churn
+    const billing6Months = renewalProjection.slice(0, 6).reduce((acc, m) => acc + m.revenue, 0) * avgChurnFactor6 +
+                           (expectedSalesPerMonth * avgTicket * 6 * avgChurnFactor6)
+    const billing12Months = renewalProjection.reduce((acc, m) => acc + m.revenue, 0) * avgChurnFactor12 +
+                            (expectedSalesPerMonth * avgTicket * 12 * avgChurnFactor12)
 
     const responseData = {
       // Tasa de conversion global NETA (usuarios únicos netos / total registros)
@@ -708,22 +718,11 @@ export async function GET() {
           weight: Math.round(methodWeights.by_active_users * 100),  // Peso en %
           bestFor: 'Proyección a corto plazo (próximas semanas)'
         },
-        // Método 3: Por histórico (tendencia real)
-        byHistoric: {
-          name: 'Por histórico',
-          description: '30 / Días promedio entre pagos',
-          salesPerMonth: Math.round(method3_salesPerMonth * 100) / 100,
-          revenuePerMonth: Math.round(method3_salesPerMonth * avgTicket * 100) / 100,
-          inputs: {
-            avgDaysBetweenPayments: avgDaysBetweenPayments ? Math.round(avgDaysBetweenPayments * 10) / 10 : null
-          },
-          weight: Math.round(methodWeights.by_historic * 100),  // Peso en %
-          bestFor: 'Basado en tendencia real de pagos'
-        },
-        // Promedio PONDERADO de los 3 métodos
+        // Método "Por histórico" eliminado - tenía error promedio de ±109%
+        // Promedio PONDERADO de los 2 métodos
         combined: {
-          name: 'Combinado Ponderado',
-          description: 'Promedio ponderado por precisión histórica',
+          name: 'Combinado',
+          description: 'Promedio ponderado de registros + activos',
           salesPerMonth: Math.round(combinedSalesPerMonth * 100) / 100,
           revenuePerMonth: Math.round(combinedSalesPerMonth * avgTicket * 100) / 100,
           methodsUsed: validMethods.length,
@@ -752,11 +751,11 @@ export async function GET() {
           : `Con ${payments.length} ventas, las predicciones son estadisticamente fiables.`
       },
 
-      // MRR y proyecciones
+      // MRR y proyecciones (CON CHURN)
       mrr: {
         current: Math.round(mrr * 100) / 100,  // MRR actual
-        in6Months: Math.round(mrr6Months * 100) / 100,  // MRR proyectado 6 meses
-        in12Months: Math.round(mrr12Months * 100) / 100, // MRR proyectado 12 meses
+        in6Months: Math.round(mrr6Months * 100) / 100,  // MRR proyectado 6 meses (con churn)
+        in12Months: Math.round(mrr12Months * 100) / 100, // MRR proyectado 12 meses (con churn)
         arr: Math.round(arr * 100) / 100,       // ARR actual
         arrIn6Months: Math.round(arr6Months * 100) / 100,
         arrIn12Months: Math.round(arr12Months * 100) / 100,
@@ -764,6 +763,18 @@ export async function GET() {
         cancelingSubscriptions: cancelingSubscriptions.length,
         mrrPerNewSub: Math.round(mrrPerNewSub * 100) / 100,
         newSubsPerMonth: Math.round(expectedSalesPerMonth * 100) / 100,
+        // Churn y refunds
+        churn: {
+          monthlyRate: Math.round(churnMonthly * 1000) / 10, // % mensual aplicado
+          calculatedRate: uniquePayingUsersGross > 0
+            ? Math.round((totalCancellations / uniquePayingUsersGross) * 1000) / 10 // % real calculado
+            : 0,
+          payingUsers: uniquePayingUsersGross, // usuarios pagadores brutos (base para churn)
+          totalCancellations: totalCancellations, // todas las cancelaciones
+          totalRefunds: totalRefundsCount, // solo las que tuvieron refund
+          refundAmount: Math.round(totalRefundAmount * 100) / 100, // € devueltos
+          isMinimum: uniquePayingUsersGross > 5 && (totalCancellations / uniquePayingUsersGross) < 0.05 // si se aplicó mínimo 5%
+        },
         byPlan: {
           semester: semesterCount,
           monthly: monthlyCount,
@@ -772,11 +783,12 @@ export async function GET() {
         },
         // Explicación de las fórmulas
         explanation: {
-          mrrCurrent: `Suma del MRR de ${activeSubscriptions.length} suscripciones activas (semestrales aportan 9.83€/mes, mensuales 20€/mes)`,
-          mrrPerNewSub: `(${totalSubs > 0 ? Math.round((semesterCount / totalSubs) * 100) : 50}% × 9.83€) + (${totalSubs > 0 ? Math.round((monthlyCount / totalSubs) * 100) : 50}% × 20€) = ${Math.round(mrrPerNewSub * 100) / 100}€`,
-          newSubsSource: 'Proyección combinada ponderada de los 3 métodos',
-          projection6m: `MRR actual (${Math.round(mrr * 100) / 100}€) + (${Math.round(expectedSalesPerMonth * 100) / 100} nuevas/mes × 6 meses × ${Math.round(mrrPerNewSub * 100) / 100}€)`,
-          churnNote: 'Asume 0% churn (sin cancelaciones)'
+          mrrCurrent: `Suma del MRR de ${activeSubscriptions.length} suscripciones activas`,
+          churnApplied: uniquePayingUsersGross > 5 && (totalCancellations / uniquePayingUsersGross) < 0.05
+            ? `Churn real ${Math.round((totalCancellations / uniquePayingUsersGross) * 100)}% → aplicado mínimo 5%`
+            : `Churn real ${Math.round((totalCancellations / uniquePayingUsersGross) * 100)}% aplicado a proyecciones`,
+          projection6m: `MRR × (1-churn)^6 + nuevas subs ajustadas por churn`,
+          cancellationsNote: `${totalCancellations} cancelaciones de ${uniquePayingUsersGross} pagadores (${totalRefundsCount} con refund: ${Math.round(totalRefundAmount)}€)`
         }
       },
 
@@ -799,8 +811,8 @@ export async function GET() {
         verificationDays: VERIFICATION_DAYS,  // Cada cuántos días se verifica
         methodWeights: {
           by_registrations: Math.round(methodWeights.by_registrations * 100),
-          by_active_users: Math.round(methodWeights.by_active_users * 100),
-          by_historic: Math.round(methodWeights.by_historic * 100)
+          by_active_users: Math.round(methodWeights.by_active_users * 100)
+          // by_historic eliminado (error ±109%)
         }
       } : null
     }
@@ -808,6 +820,7 @@ export async function GET() {
     const response = NextResponse.json(responseData)
 
     // Guardar predicciones del día para tracking (en background, no bloquea respuesta)
+    // byHistoric eliminado del tracking (error ±109%)
     const predictionsToTrack = {
       byRegistrations: {
         salesPerMonth: Math.round(method1_salesPerMonth * 100) / 100,
@@ -823,13 +836,6 @@ export async function GET() {
         inputs: {
           activeFreeUsers: weeklyActiveFree.length,
           weeklyConversionRate: Math.round(weeklyConversionRate * 10000) / 100
-        }
-      },
-      byHistoric: {
-        salesPerMonth: Math.round(method3_salesPerMonth * 100) / 100,
-        revenuePerMonth: Math.round(method3_salesPerMonth * avgTicket * 100) / 100,
-        inputs: {
-          avgDaysBetweenPayments: avgDaysBetweenPayments ? Math.round(avgDaysBetweenPayments * 10) / 10 : null
         }
       },
       combined: {

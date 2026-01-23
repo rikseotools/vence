@@ -1356,10 +1356,10 @@ export default function ConversionesPage() {
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-700">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
                     <span>🔮</span>
-                    3 Métodos de Proyección de Ventas
+                    Métodos de Proyección de Ventas
                   </h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     {/* Método 1: Por registros */}
                     <div className="border border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
                       <div className="flex items-center justify-between mb-2">
@@ -1424,36 +1424,7 @@ export default function ConversionesPage() {
                       </div>
                     </div>
 
-                    {/* Método 3: Por histórico */}
-                    <div className="border border-amber-200 dark:border-amber-800 rounded-lg p-4 bg-amber-50 dark:bg-amber-900/20">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">📈</span>
-                          <span className="font-bold text-amber-700 dark:text-amber-300">
-                            {predictionData.projectionMethods.byHistoric.name}
-                          </span>
-                        </div>
-                        {predictionData.projectionMethods.byHistoric.weight !== undefined && (
-                          <span className="text-xs bg-amber-200 dark:bg-amber-800 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium">
-                            Peso: {predictionData.projectionMethods.byHistoric.weight}%
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
-                        {predictionData.projectionMethods.byHistoric.salesPerMonth.toFixed(1)}
-                        <span className="text-lg font-normal text-gray-500 dark:text-gray-400"> ventas/mes</span>
-                      </div>
-                      <div className="text-lg font-semibold text-green-600 dark:text-green-400">
-                        {predictionData.projectionMethods.byHistoric.revenuePerMonth.toFixed(0)}€/mes
-                      </div>
-                      <div className="mt-3 text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                        <div className="font-medium">{predictionData.projectionMethods.byHistoric.description}</div>
-                        <div>• {predictionData.projectionMethods.byHistoric.inputs.avgDaysBetweenPayments || '?'} días entre pagos</div>
-                      </div>
-                      <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 font-medium">
-                        ✓ {predictionData.projectionMethods.byHistoric.bestFor}
-                      </div>
-                    </div>
+                    {/* Método "Por histórico" eliminado - tenía error ±109% */}
                   </div>
 
                   {/* Proyección combinada */}
@@ -1488,6 +1459,9 @@ export default function ConversionesPage() {
                         <div className="text-3xl font-bold">
                           {predictionData.projectionMethods.combined.revenuePerMonth.toFixed(0)}€/mes
                         </div>
+                        <div className="text-xs opacity-75 mt-1">
+                          Ticket medio: {predictionData.revenue?.avgTicket?.toFixed(2) || 0}€
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1507,8 +1481,10 @@ export default function ConversionesPage() {
                       <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                         📈 Precisión Histórica de Predicciones
                       </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {predictionData.predictionAccuracy.byMethod.map((method) => (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {predictionData.predictionAccuracy.byMethod
+                          .filter(m => m.method_name !== 'by_historic') // Eliminado por impreciso (±109%)
+                          .map((method) => (
                           <div
                             key={method.method_name}
                             className={`rounded-lg p-3 ${
@@ -1521,8 +1497,7 @@ export default function ConversionesPage() {
                           >
                             <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                               {method.method_name === 'by_registrations' ? 'Por registros' :
-                               method.method_name === 'by_active_users' ? 'Por activos' :
-                               method.method_name === 'by_historic' ? 'Por histórico' : 'Combinado'}
+                               method.method_name === 'by_active_users' ? 'Por activos' : 'Combinado'}
                             </div>
                             <div className={`text-xl font-bold ${
                               method.avg_absolute_error <= 20 ? 'text-green-600 dark:text-green-400' :
@@ -1743,7 +1718,7 @@ export default function ConversionesPage() {
                   </h3>
 
                   {/* MRR Cards */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                     <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200 dark:border-emerald-800">
                       <div className="text-3xl font-bold text-emerald-600">{predictionData.mrr.current.toFixed(2)}€</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">MRR (mensual)</div>
@@ -1760,28 +1735,45 @@ export default function ConversionesPage() {
                       <div className="text-3xl font-bold text-gray-600 dark:text-gray-300">{predictionData.mrr.cancelingSubscriptions}</div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">Cancelando</div>
                     </div>
+                    <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                      <div className="text-3xl font-bold text-red-600">{predictionData.mrr.churn?.calculatedRate || 0}%</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">Churn real</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {predictionData.mrr.churn?.totalCancellations || 0} de {predictionData.mrr.churn?.payingUsers || 0} pagadores
+                      </div>
+                      {predictionData.mrr.churn?.totalRefunds > 0 && (
+                        <div className="text-xs text-red-400 mt-1">
+                          ({predictionData.mrr.churn.totalRefunds} con refund: {predictionData.mrr.churn.refundAmount}€)
+                        </div>
+                      )}
+                      {predictionData.mrr.churn?.isMinimum && (
+                        <div className="text-xs text-amber-600 mt-1">
+                          Aplicado mín. 5%
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Proyección MRR */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div className="p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg text-white">
-                      <div className="text-sm opacity-90 mb-1">MRR en 6 meses</div>
-                      <div className="text-3xl font-bold">{predictionData.mrr.in6Months?.toFixed(0) || 0}€/mes</div>
+                      <div className="text-sm opacity-90 mb-1">MRR en 6 meses <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded">con churn {predictionData.mrr.churn?.monthlyRate || 5}%</span></div>
+                      <div className="text-3xl font-bold">{(predictionData.mrr.in6Months || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€/mes</div>
                       <div className="text-xs opacity-75 mt-1">
-                        {predictionData.mrr.current}€ actual + {((predictionData.mrr.in6Months || 0) - predictionData.mrr.current).toFixed(0)}€ nuevas subs
+                        Churn real: {predictionData.mrr.churn?.calculatedRate || 0}%{predictionData.mrr.churn?.isMinimum ? ' → aplicado mín. 5%' : ''}
                       </div>
                       <div className="text-xs opacity-60 mt-1">
-                        ARR: {predictionData.mrr.arrIn6Months?.toFixed(0) || 0}€/año
+                        ARR: {(predictionData.mrr.arrIn6Months || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€/año
                       </div>
                     </div>
                     <div className="p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg text-white">
-                      <div className="text-sm opacity-90 mb-1">MRR en 12 meses</div>
-                      <div className="text-3xl font-bold">{predictionData.mrr.in12Months?.toFixed(0) || 0}€/mes</div>
+                      <div className="text-sm opacity-90 mb-1">MRR en 12 meses <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded">con churn {predictionData.mrr.churn?.monthlyRate || 5}%</span></div>
+                      <div className="text-3xl font-bold">{(predictionData.mrr.in12Months || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€/mes</div>
                       <div className="text-xs opacity-75 mt-1">
-                        {predictionData.mrr.current}€ actual + {((predictionData.mrr.in12Months || 0) - predictionData.mrr.current).toFixed(0)}€ nuevas subs
+                        Churn real: {predictionData.mrr.churn?.calculatedRate || 0}%{predictionData.mrr.churn?.isMinimum ? ' → aplicado mín. 5%' : ''}
                       </div>
                       <div className="text-xs opacity-60 mt-1">
-                        ARR: {predictionData.mrr.arrIn12Months?.toFixed(0) || 0}€/año
+                        ARR: {(predictionData.mrr.arrIn12Months || 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}€/año
                       </div>
                     </div>
                   </div>
@@ -1831,9 +1823,14 @@ export default function ConversionesPage() {
                     <div>
                       <strong>Proyección 6m:</strong> {predictionData.mrr.explanation?.projection6m || 'N/A'}
                     </div>
-                    <div className="text-amber-600 dark:text-amber-400">
-                      ⚠️ {predictionData.mrr.explanation?.churnNote || 'Asume 0% churn'}
+                    <div className="text-green-600 dark:text-green-400">
+                      ✅ {predictionData.mrr.explanation?.churnApplied || `Churn mensual ${predictionData.mrr.churn?.monthlyRate || 5}% aplicado a proyecciones`}
                     </div>
+                    {predictionData.mrr.churn?.totalCancellations > 0 && (
+                      <div className="text-red-500 dark:text-red-400">
+                        📊 {predictionData.mrr.explanation?.cancellationsNote || `${predictionData.mrr.churn.totalCancellations} cancelaciones de ${predictionData.mrr.churn.payingUsers} pagadores`}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
