@@ -1,5 +1,8 @@
 // lib/api/avatar-settings/profiles.ts - Lógica de cálculo de perfiles de avatar
-import { createClient } from '@supabase/supabase-js'
+// Refactorizado para usar Drizzle ORM en lugar de Supabase JS client
+import { getDb } from '@/db/client'
+import { tests, testQuestions, userStreaks, userAvatarSettings } from '@/db/schema'
+import { eq, and, gte, lt, sql } from 'drizzle-orm'
 import { getAllAvatarProfiles, getAvatarProfileById } from './queries'
 import type {
   CalculateProfileRequest,
@@ -16,29 +19,13 @@ export interface BulkUserMetrics {
   matchedConditions: string[]
 }
 
-// Cliente de Supabase con service role
-function getSupabaseAdmin() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  })
-}
-
 // ============================================
 // OBTENER MÉTRICAS DE ESTUDIO DEL USUARIO
+// Usa Drizzle con JOINs para evitar límite de IDs
 // ============================================
 
 export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
-  const supabase = getSupabaseAdmin()
+  const db = getDb()
 
   // Fechas para los cálculos
   const now = new Date()
@@ -60,56 +47,46 @@ export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
     studiedNight: false
   }
 
+  // Siempre intentar obtener el streak primero (query simple y rápida)
+  let currentStreak = 0
   try {
-    // 1. Obtener IDs de tests del usuario
-    const { data: userTests, error: testsError } = await supabase
-      .from('tests')
-      .select('id')
-      .eq('user_id', userId)
+    const streakResult = await db
+      .select({ currentStreak: userStreaks.currentStreak })
+      .from(userStreaks)
+      .where(eq(userStreaks.userId, userId))
+      .limit(1)
 
-    if (testsError || !userTests || userTests.length === 0) {
-      console.log('🦊 [AvatarProfiles] No se encontraron tests para usuario:', userId)
-      return defaultMetrics
-    }
+    currentStreak = streakResult[0]?.currentStreak ?? 0
+  } catch (error) {
+    console.error('🦊 [AvatarProfiles] Error obteniendo streak:', error)
+  }
 
-    const userTestIds = userTests.map(t => t.id)
+  try {
+    // Query con JOIN: obtener respuestas de esta semana
+    // Esto evita el problema del límite de IDs en .in()
+    const thisWeekAnswers = await db
+      .select({
+        id: testQuestions.id,
+        isCorrect: testQuestions.isCorrect,
+        difficulty: testQuestions.difficulty,
+        createdAt: testQuestions.createdAt,
+      })
+      .from(testQuestions)
+      .innerJoin(tests, eq(testQuestions.testId, tests.id))
+      .where(and(
+        eq(tests.userId, userId),
+        gte(testQuestions.createdAt, oneWeekAgo.toISOString())
+      ))
 
-    // 2. Obtener respuestas de esta semana filtradas por tests del usuario
-    const { data: userAnswers, error: answersError } = await supabase
-      .from('test_questions')
-      .select(`
-        id,
-        is_correct,
-        difficulty,
-        created_at,
-        test_id
-      `)
-      .in('test_id', userTestIds)
-      .gte('created_at', oneWeekAgo.toISOString())
-      .order('created_at', { ascending: false })
-
-    if (answersError) {
-      console.error('🦊 [AvatarProfiles] Error obteniendo respuestas:', answersError)
-      return defaultMetrics
-    }
-
-    if (userAnswers.length === 0) {
+    if (thisWeekAnswers.length === 0) {
       console.log('🦊 [AvatarProfiles] Sin actividad esta semana para usuario:', userId)
-
-      // Aún así obtener el streak
-      const { data: streakData } = await supabase
-        .from('user_streaks')
-        .select('current_streak')
-        .eq('user_id', userId)
-        .single()
-
       return {
         ...defaultMetrics,
-        currentStreak: streakData?.current_streak || 0
+        currentStreak
       }
     }
 
-    // 2. Calcular porcentajes de horario
+    // Calcular porcentajes de horario
     let nightSessions = 0
     let morningSessions = 0
     let afternoonSessions = 0
@@ -119,8 +96,8 @@ export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
     let hardCorrect = 0
     let hardTotal = 0
 
-    for (const answer of userAnswers) {
-      const answerDate = new Date(answer.created_at)
+    for (const answer of thisWeekAnswers) {
+      const answerDate = new Date(answer.createdAt!)
       const hour = answerDate.getHours()
       const dayKey = answerDate.toISOString().split('T')[0]
 
@@ -139,43 +116,41 @@ export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
       }
 
       // Contar aciertos
-      if (answer.is_correct) {
+      if (answer.isCorrect) {
         totalCorrect++
       }
 
       // Temas difíciles
       if (answer.difficulty === 'hard' || answer.difficulty === 'extreme') {
         hardTotal++
-        if (answer.is_correct) {
+        if (answer.isCorrect) {
           hardCorrect++
         }
       }
     }
 
-    const totalAnswers = userAnswers.length
+    const totalAnswers = thisWeekAnswers.length
 
-    // 3. Calcular accuracy de semana anterior para mejora
-    const { data: lastWeekAnswers } = await supabase
-      .from('test_questions')
-      .select('id, is_correct')
-      .in('test_id', userTestIds)
-      .gte('created_at', twoWeeksAgo.toISOString())
-      .lt('created_at', oneWeekAgo.toISOString())
+    // Query con JOIN: obtener respuestas de semana anterior para mejora
+    const lastWeekAnswers = await db
+      .select({
+        isCorrect: testQuestions.isCorrect,
+      })
+      .from(testQuestions)
+      .innerJoin(tests, eq(testQuestions.testId, tests.id))
+      .where(and(
+        eq(tests.userId, userId),
+        gte(testQuestions.createdAt, twoWeeksAgo.toISOString()),
+        lt(testQuestions.createdAt, oneWeekAgo.toISOString())
+      ))
 
-    const lastWeekAccuracy = (lastWeekAnswers && lastWeekAnswers.length > 0)
-      ? (lastWeekAnswers.filter(a => a.is_correct).length / lastWeekAnswers.length) * 100
+    const lastWeekAccuracy = lastWeekAnswers.length > 0
+      ? (lastWeekAnswers.filter(a => a.isCorrect).length / lastWeekAnswers.length) * 100
       : 0
 
     const thisWeekAccuracy = totalAnswers > 0 ? (totalCorrect / totalAnswers) * 100 : 0
 
-    // 4. Obtener streak actual
-    const { data: streakData } = await supabase
-      .from('user_streaks')
-      .select('current_streak')
-      .eq('user_id', userId)
-      .single()
-
-    // 5. Calcular patrones de estudio
+    // Calcular patrones de estudio
     const hasStudiedMorning = morningSessions > 0
     const hasStudiedAfternoon = afternoonSessions > 0
     const hasStudiedNight = nightSessions > 0
@@ -188,7 +163,7 @@ export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
       hardTopicsAccuracy: hardTotal > 0 ? (hardCorrect / hardTotal) * 100 : 0,
       weeklyQuestionsCount: totalAnswers,
       daysStudiedThisWeek: daysWithActivity.size,
-      currentStreak: streakData?.current_streak || 0,
+      currentStreak,
       studiedMorning: hasStudiedMorning,
       studiedAfternoon: hasStudiedAfternoon,
       studiedNight: hasStudiedNight
@@ -206,7 +181,11 @@ export async function getStudyMetrics(userId: string): Promise<StudyMetrics> {
 
   } catch (error) {
     console.error('❌ [AvatarProfiles] Error calculando métricas:', error)
-    return defaultMetrics
+    // Incluso si falla, devolver el streak que ya obtuvimos
+    return {
+      ...defaultMetrics,
+      currentStreak
+    }
   }
 }
 
@@ -395,25 +374,26 @@ export async function previewUserProfile(userId: string): Promise<{
   wouldChange: boolean
 }> {
   try {
+    const db = getDb()
+
     // Obtener métricas y calcular perfil sugerido
     const metrics = await getStudyMetrics(userId)
     const { profileId, matchedConditions } = determineProfile(metrics)
     const suggestedProfile = await getAvatarProfileById(profileId)
 
-    // Obtener configuración actual del usuario
-    const supabase = getSupabaseAdmin()
-    const { data: currentSettings } = await supabase
-      .from('user_avatar_settings')
-      .select('current_profile')
-      .eq('user_id', userId)
-      .single()
+    // Obtener configuración actual del usuario con Drizzle
+    const currentSettings = await db
+      .select({ currentProfile: userAvatarSettings.currentProfile })
+      .from(userAvatarSettings)
+      .where(eq(userAvatarSettings.userId, userId))
+      .limit(1)
 
     let currentProfile: AvatarProfile | null = null
-    if (currentSettings?.current_profile) {
-      currentProfile = await getAvatarProfileById(currentSettings.current_profile)
+    if (currentSettings[0]?.currentProfile) {
+      currentProfile = await getAvatarProfileById(currentSettings[0].currentProfile)
     }
 
-    const wouldChange = currentSettings?.current_profile !== profileId
+    const wouldChange = currentSettings[0]?.currentProfile !== profileId
 
     return {
       currentProfile,
@@ -430,31 +410,32 @@ export async function previewUserProfile(userId: string): Promise<{
 
 // ============================================
 // CÁLCULO BULK DE MÉTRICAS (OPTIMIZADO)
-// Una sola query SQL para todos los usuarios
+// Usa una sola query SQL agregada para todos los usuarios
 // ============================================
 
-interface RawUserMetrics {
-  user_id: string
-  weekly_questions: number
-  weekly_correct: number
-  last_week_questions: number
-  last_week_correct: number
-  hard_questions: number
-  hard_correct: number
-  night_sessions: number
-  morning_sessions: number
-  afternoon_sessions: number
-  days_studied: number
-  current_streak: number
-  studied_morning: boolean
-  studied_afternoon: boolean
-  studied_night: boolean
+// Tipos para las métricas agregadas
+interface WeekMetricsRow {
+  userId: string | null
+  totalQuestions: number
+  correctQuestions: number
+  hardQuestions: number
+  hardCorrect: number
+  nightSessions: number
+  morningSessions: number
+  afternoonSessions: number
+  daysStudied: number
+}
+
+interface LastWeekMetricsRow {
+  userId: string | null
+  totalQuestions: number
+  correctQuestions: number
 }
 
 export async function calculateBulkUserProfiles(userIds: string[]): Promise<BulkUserMetrics[]> {
   if (userIds.length === 0) return []
 
-  const supabase = getSupabaseAdmin()
+  const db = getDb()
   const now = new Date()
   const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
   const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
@@ -462,74 +443,101 @@ export async function calculateBulkUserProfiles(userIds: string[]): Promise<Bulk
   console.log(`🚀 [AvatarProfiles] Calculando métricas bulk para ${userIds.length} usuarios`)
 
   try {
-    // Query SQL optimizada que calcula todas las métricas en una sola consulta
-    const { data: metricsData, error } = await supabase.rpc('calculate_avatar_metrics_bulk', {
-      p_user_ids: userIds,
-      p_one_week_ago: oneWeekAgo.toISOString(),
-      p_two_weeks_ago: twoWeeksAgo.toISOString()
-    })
+    // Obtener streaks de todos los usuarios de una vez
+    const streaksData = await db
+      .select({
+        userId: userStreaks.userId,
+        currentStreak: userStreaks.currentStreak
+      })
+      .from(userStreaks)
+      .where(sql`${userStreaks.userId} = ANY(${userIds})`)
 
-    if (error) {
-      console.error('❌ [AvatarProfiles] Error en RPC bulk:', error)
-      // Fallback: usar método tradicional pero en paralelo
-      return calculateBulkUserProfilesFallback(userIds)
-    }
+    const streaksMap = new Map(streaksData.map(s => [s.userId, s.currentStreak ?? 0]))
 
-    // Procesar resultados y determinar perfiles
+    // Query agregada para métricas de esta semana
+    const thisWeekMetrics: WeekMetricsRow[] = await db
+      .select({
+        userId: tests.userId,
+        totalQuestions: sql<number>`count(*)::int`,
+        correctQuestions: sql<number>`sum(case when ${testQuestions.isCorrect} then 1 else 0 end)::int`,
+        hardQuestions: sql<number>`sum(case when ${testQuestions.difficulty} in ('hard', 'extreme') then 1 else 0 end)::int`,
+        hardCorrect: sql<number>`sum(case when ${testQuestions.difficulty} in ('hard', 'extreme') and ${testQuestions.isCorrect} then 1 else 0 end)::int`,
+        nightSessions: sql<number>`sum(case when extract(hour from ${testQuestions.createdAt}::timestamp) >= 21 or extract(hour from ${testQuestions.createdAt}::timestamp) < 6 or extract(hour from ${testQuestions.createdAt}::timestamp) >= 18 then 1 else 0 end)::int`,
+        morningSessions: sql<number>`sum(case when extract(hour from ${testQuestions.createdAt}::timestamp) >= 6 and extract(hour from ${testQuestions.createdAt}::timestamp) < 12 then 1 else 0 end)::int`,
+        afternoonSessions: sql<number>`sum(case when extract(hour from ${testQuestions.createdAt}::timestamp) >= 12 and extract(hour from ${testQuestions.createdAt}::timestamp) < 18 then 1 else 0 end)::int`,
+        daysStudied: sql<number>`count(distinct date(${testQuestions.createdAt}))::int`,
+      })
+      .from(testQuestions)
+      .innerJoin(tests, eq(testQuestions.testId, tests.id))
+      .where(and(
+        sql`${tests.userId} = ANY(${userIds})`,
+        gte(testQuestions.createdAt, oneWeekAgo.toISOString())
+      ))
+      .groupBy(tests.userId)
+
+    // Query agregada para métricas de semana anterior
+    const lastWeekMetrics: LastWeekMetricsRow[] = await db
+      .select({
+        userId: tests.userId,
+        totalQuestions: sql<number>`count(*)::int`,
+        correctQuestions: sql<number>`sum(case when ${testQuestions.isCorrect} then 1 else 0 end)::int`,
+      })
+      .from(testQuestions)
+      .innerJoin(tests, eq(testQuestions.testId, tests.id))
+      .where(and(
+        sql`${tests.userId} = ANY(${userIds})`,
+        gte(testQuestions.createdAt, twoWeeksAgo.toISOString()),
+        lt(testQuestions.createdAt, oneWeekAgo.toISOString())
+      ))
+      .groupBy(tests.userId)
+
+    const thisWeekMap = new Map(thisWeekMetrics.map(m => [m.userId, m]))
+    const lastWeekMap = new Map(lastWeekMetrics.map(m => [m.userId, m]))
+
+    // Procesar resultados
     const results: BulkUserMetrics[] = []
 
-    for (const raw of (metricsData as RawUserMetrics[] || [])) {
-      const totalAnswers = raw.weekly_questions || 0
+    for (const userId of userIds) {
+      const thisWeek = thisWeekMap.get(userId)
+      const lastWeek = lastWeekMap.get(userId)
+      const streak = streaksMap.get(userId) ?? 0
+
+      const totalAnswers = thisWeek?.totalQuestions ?? 0
+      const totalCorrect = thisWeek?.correctQuestions ?? 0
+      const hardTotal = thisWeek?.hardQuestions ?? 0
+      const hardCorrectCount = thisWeek?.hardCorrect ?? 0
+      const nightSessions = thisWeek?.nightSessions ?? 0
+      const morningSessions = thisWeek?.morningSessions ?? 0
+      const afternoonSessions = thisWeek?.afternoonSessions ?? 0
+
+      const thisWeekAccuracy = totalAnswers > 0 ? (totalCorrect / totalAnswers) * 100 : 0
+      const lastWeekTotal = lastWeek?.totalQuestions ?? 0
+      const lastWeekAccuracy = lastWeekTotal > 0
+        ? ((lastWeek?.correctQuestions ?? 0) / lastWeekTotal) * 100
+        : 0
+
       const metrics: StudyMetrics = {
-        nightHoursPercentage: totalAnswers > 0 ? (raw.night_sessions / totalAnswers) * 100 : 0,
-        morningHoursPercentage: totalAnswers > 0 ? (raw.morning_sessions / totalAnswers) * 100 : 0,
-        weeklyAccuracy: totalAnswers > 0 ? (raw.weekly_correct / totalAnswers) * 100 : 0,
-        accuracyImprovement: raw.last_week_questions > 0
-          ? ((raw.weekly_correct / Math.max(raw.weekly_questions, 1)) * 100) -
-            ((raw.last_week_correct / raw.last_week_questions) * 100)
-          : 0,
-        hardTopicsAccuracy: raw.hard_questions > 0 ? (raw.hard_correct / raw.hard_questions) * 100 : 0,
+        nightHoursPercentage: totalAnswers > 0 ? (nightSessions / totalAnswers) * 100 : 0,
+        morningHoursPercentage: totalAnswers > 0 ? (morningSessions / totalAnswers) * 100 : 0,
+        weeklyAccuracy: thisWeekAccuracy,
+        accuracyImprovement: lastWeekAccuracy > 0 ? thisWeekAccuracy - lastWeekAccuracy : 0,
+        hardTopicsAccuracy: hardTotal > 0 ? (hardCorrectCount / hardTotal) * 100 : 0,
         weeklyQuestionsCount: totalAnswers,
-        daysStudiedThisWeek: raw.days_studied || 0,
-        currentStreak: raw.current_streak || 0,
-        studiedMorning: raw.studied_morning || false,
-        studiedAfternoon: raw.studied_afternoon || false,
-        studiedNight: raw.studied_night || false
+        daysStudiedThisWeek: thisWeek?.daysStudied ?? 0,
+        currentStreak: streak,
+        studiedMorning: morningSessions > 0,
+        studiedAfternoon: afternoonSessions > 0,
+        studiedNight: nightSessions > 0
       }
 
       const { profileId, matchedConditions } = determineProfile(metrics)
 
       results.push({
-        userId: raw.user_id,
+        userId,
         metrics,
         profileId,
         matchedConditions
       })
-    }
-
-    // Añadir usuarios sin actividad (koala por defecto)
-    const processedUserIds = new Set(results.map(r => r.userId))
-    for (const userId of userIds) {
-      if (!processedUserIds.has(userId)) {
-        results.push({
-          userId,
-          metrics: {
-            nightHoursPercentage: 0,
-            morningHoursPercentage: 0,
-            weeklyAccuracy: 0,
-            accuracyImprovement: 0,
-            hardTopicsAccuracy: 0,
-            weeklyQuestionsCount: 0,
-            daysStudiedThisWeek: 0,
-            currentStreak: 0,
-            studiedMorning: false,
-            studiedAfternoon: false,
-            studiedNight: false
-          },
-          profileId: 'relaxed_koala',
-          matchedConditions: ['Sin actividad esta semana']
-        })
-      }
     }
 
     console.log(`✅ [AvatarProfiles] Métricas bulk calculadas: ${results.length} usuarios`)
@@ -537,6 +545,7 @@ export async function calculateBulkUserProfiles(userIds: string[]): Promise<Bulk
 
   } catch (error) {
     console.error('❌ [AvatarProfiles] Error en calculateBulkUserProfiles:', error)
+    // Fallback: procesar uno por uno
     return calculateBulkUserProfilesFallback(userIds)
   }
 }
