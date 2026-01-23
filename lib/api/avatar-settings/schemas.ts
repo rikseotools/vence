@@ -10,9 +10,10 @@ export const avatarModeOptions = ['manual', 'automatic'] as const
 export type AvatarMode = typeof avatarModeOptions[number]
 
 export const avatarProfileIds = [
+  'unicorn',        // Unicornio Legendario - accuracy >90% Y >150 preguntas/semana
   'night_owl',      // Búho Nocturno - estudia de noche
   'early_bird',     // Gallo Madrugador - estudia temprano
-  'champion',       // León Campeón - accuracy >85%
+  'champion',       // León Campeón - accuracy >85% Y >150 preguntas/semana
   'consistent',     // Tortuga Constante - streak >14 días
   'speed_eagle',    // Águila Veloz - >100 preguntas/semana
   'worker_ant',     // Hormiga Trabajadora - estudia todos los días

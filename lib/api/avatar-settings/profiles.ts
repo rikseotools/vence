@@ -204,12 +204,21 @@ export function determineProfile(metrics: StudyMetrics): { profileId: string; ma
 
   // Evaluamos todas las condiciones y guardamos las que se cumplen
 
-  // 🦁 León Campeón - Accuracy >85%
-  if (metrics.weeklyAccuracy > 85 && metrics.weeklyQuestionsCount >= 20) {
+  // 🦄 Unicornio Legendario - Accuracy >90% Y >150 preguntas/semana
+  if (metrics.weeklyAccuracy > 90 && metrics.weeklyQuestionsCount > 150) {
+    matches.push({
+      profileId: 'unicorn',
+      priority: 95,
+      condition: `Élite: ${metrics.weeklyAccuracy.toFixed(1)}% accuracy con ${metrics.weeklyQuestionsCount} preguntas`
+    })
+  }
+
+  // 🦁 León Campeón - Accuracy >85% Y >150 preguntas/semana
+  if (metrics.weeklyAccuracy > 85 && metrics.weeklyQuestionsCount > 150) {
     matches.push({
       profileId: 'champion',
       priority: 90,
-      condition: `Accuracy ${metrics.weeklyAccuracy.toFixed(1)}% > 85%`
+      condition: `Accuracy ${metrics.weeklyAccuracy.toFixed(1)}% > 85% con ${metrics.weeklyQuestionsCount} preguntas`
     })
   }
 
