@@ -44,6 +44,7 @@ export {
   detectLawsFromText,
   extractArticleNumbers,
   findArticleInLaw,
+  hasQuestionsForArticle,
 } from './queries'
 
 // Schemas

@@ -687,6 +687,16 @@ export function extractArticleNumbers(text: string): string[] {
     }
   }
 
+  // Patrón 3: número seguido de "ley" o "de la ley" (ej: "131 ley 39", "131 de la ley")
+  // Solo números de 1-3 dígitos para evitar falsos positivos con años (39/2015)
+  const numberBeforeLawPattern = /\b(\d{1,3})\s+(?:de\s+)?(?:la\s+)?ley\b/gi
+  while ((match = numberBeforeLawPattern.exec(text)) !== null) {
+    const num = match[1].trim()
+    if (!articles.includes(num)) {
+      articles.push(num)
+    }
+  }
+
   return [...new Set(articles)]
 }
 
@@ -1000,4 +1010,32 @@ export function formatHotArticlesResponse(
   response += `💡 *Datos de exámenes oficiales anteriores.*`
 
   return response
+}
+
+// ============================================
+// VERIFICACIÓN DE PREGUNTAS POR ARTÍCULO
+// ============================================
+
+/**
+ * Verifica si existe al menos una pregunta para un artículo específico
+ */
+export async function hasQuestionsForArticle(articleId: string): Promise<boolean> {
+  try {
+    const { count, error } = await supabase
+      .from('questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('primary_article_id', articleId)
+      .eq('is_active', true)
+      .limit(1)
+
+    if (error) {
+      logger.error('Error checking questions for article', error, { domain: 'search' })
+      return false
+    }
+
+    return (count ?? 0) > 0
+  } catch (e) {
+    logger.error('Exception checking questions for article', e, { domain: 'search' })
+    return false
+  }
 }

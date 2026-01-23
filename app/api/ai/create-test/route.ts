@@ -9,7 +9,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-type TestType = 'failed_questions' | 'law' | 'topic' | 'essential_articles' | 'custom'
+type TestType = 'failed_questions' | 'law' | 'topic' | 'essential_articles' | 'custom' | 'article'
 
 interface CreateTestRequest {
   type: TestType
@@ -26,6 +26,9 @@ interface CreateTestRequest {
   topicId?: string
   // Para custom
   questionIds?: string[]
+  // Para article
+  articleNumber?: string
+  lawShortName?: string
 }
 
 export async function POST(request: NextRequest) {
@@ -119,6 +122,20 @@ export async function POST(request: NextRequest) {
         testParams = {
           n: questionIds.length.toString(),
           custom_question_ids: JSON.stringify(questionIds),
+          from_chat: 'true'
+        }
+        break
+
+      case 'article':
+        const articleResult = await getArticleQuestions(body)
+        if (!articleResult.success) {
+          return NextResponse.json(articleResult)
+        }
+        questionIds = articleResult.questionIds!
+        message = articleResult.message!
+        testParams = {
+          n: questionIds.length.toString(),
+          article_question_ids: JSON.stringify(questionIds),
           from_chat: 'true'
         }
         break
@@ -490,5 +507,106 @@ async function getEssentialArticlesQuestions(options: CreateTestRequest) {
     success: true,
     questionIds,
     message: `Test con ${questionIds.length} preguntas de artículos imprescindibles`
+  }
+}
+
+// Obtener preguntas de un artículo específico
+async function getArticleQuestions(options: CreateTestRequest) {
+  const { numQuestions = 10, articleNumber, lawShortName, lawSlug } = options
+
+  console.log('🎯 [getArticleQuestions] Options:', { articleNumber, lawShortName, lawSlug })
+
+  if (!articleNumber) {
+    return {
+      success: false,
+      error: 'No se especificó el número de artículo'
+    }
+  }
+
+  // Buscar la ley por short_name o slug
+  let lawId: string | null = null
+
+  if (lawShortName) {
+    const { data: law } = await supabase
+      .from('laws')
+      .select('id, short_name')
+      .eq('short_name', lawShortName)
+      .single()
+
+    if (law) {
+      lawId = law.id
+    }
+  }
+
+  if (!lawId && lawSlug) {
+    const { data: law } = await supabase
+      .from('laws')
+      .select('id, short_name')
+      .eq('slug', lawSlug)
+      .single()
+
+    if (law) {
+      lawId = law.id
+    }
+  }
+
+  if (!lawId) {
+    return {
+      success: false,
+      error: 'Ley no encontrada'
+    }
+  }
+
+  // Buscar el artículo
+  const { data: article } = await supabase
+    .from('articles')
+    .select('id, article_number, title')
+    .eq('law_id', lawId)
+    .eq('article_number', articleNumber)
+    .single()
+
+  if (!article) {
+    return {
+      success: false,
+      error: `Artículo ${articleNumber} no encontrado en esta ley`
+    }
+  }
+
+  console.log('🎯 [getArticleQuestions] Found article:', article.id, article.article_number)
+
+  // Obtener preguntas de este artículo
+  const { data: articleQuestions, error } = await supabase
+    .from('questions')
+    .select('id')
+    .eq('primary_article_id', article.id)
+    .eq('is_active', true)
+    .limit(numQuestions * 2)
+
+  if (error) {
+    console.error('🎯 [getArticleQuestions] Error:', error)
+    return {
+      success: false,
+      error: 'Error al obtener preguntas del artículo'
+    }
+  }
+
+  if (!articleQuestions || articleQuestions.length === 0) {
+    return {
+      success: true,
+      questionIds: [],
+      message: `No hay preguntas disponibles para el artículo ${articleNumber}`
+    }
+  }
+
+  // Randomizar y limitar
+  const shuffled = articleQuestions.sort(() => Math.random() - 0.5)
+  const questionIds = shuffled.slice(0, numQuestions).map(q => q.id)
+
+  console.log('🎯 [getArticleQuestions] Returning', questionIds.length, 'questions')
+
+  return {
+    success: true,
+    questionIds,
+    message: `Test con ${questionIds.length} preguntas del Art. ${articleNumber}`
   }
 }

@@ -10,6 +10,8 @@ import {
   getOposicionLawIds,
   extractSearchTerms,
   findLawByName,
+  extractArticleNumbers,
+  findArticleInLaw,
 } from './queries'
 import {
   detectQueryPattern,
@@ -190,7 +192,37 @@ async function searchByContextLaw(
     return { articles: [], searchMethod: 'fallback', mentionedLaws: [] }
   }
 
-  // Extraer términos de búsqueda del mensaje
+  // Primero: intentar buscar artículos específicos mencionados (ej: "art 131")
+  const articleNumbers = extractArticleNumbers(message)
+  if (articleNumbers.length > 0) {
+    logger.info(`🔎 searchByContextLaw - detected article numbers: ${articleNumbers.join(', ')}`, { domain: 'search' })
+
+    const specificArticles: ArticleMatch[] = []
+    for (const artNum of articleNumbers) {
+      const found = await findArticleInLaw(law.shortName, artNum)
+      if (found) {
+        specificArticles.push({
+          id: found.id,
+          articleNumber: found.articleNumber,
+          title: found.title,
+          content: found.content,
+          lawShortName: found.lawShortName,
+          lawName: found.lawName,
+        })
+      }
+    }
+
+    if (specificArticles.length > 0) {
+      logger.info(`🔎 searchByContextLaw - found ${specificArticles.length} specific articles by number`, { domain: 'search' })
+      return {
+        articles: specificArticles,
+        searchMethod: 'direct',
+        mentionedLaws: [law.shortName],
+      }
+    }
+  }
+
+  // Si no hay artículos específicos o no se encontraron, buscar por términos
   const searchTerms = extractSearchTerms(message)
 
   // Buscar directamente en la ley
@@ -370,20 +402,26 @@ async function searchByKeywords(
 
 /**
  * Detecta si el usuario pide el texto literal/completo de un artículo
+ * Cuando el usuario pide un artículo específico por número, asumimos que quiere el texto completo
  */
 export function wantsLiteralContent(message: string): boolean {
-  const msgLower = message.toLowerCase()
   const patterns = [
+    // Peticiones explícitas de contenido literal
     /art[ií]culo\s*(literal|completo|[ií]ntegro|exacto|textual)/i,
     /texto\s*(literal|completo|[ií]ntegro|exacto)/i,
-    /(dame|dime|mu[eé]strame|pon)\s*(el\s*)?(art[ií]culo|texto)\s*(literal|completo|entero)?/i,
     /qu[eé]\s*(dice|pone)\s*(exactamente|literalmente)/i,
     /lo\s*que\s*pone\s*(el\s*)?art[ií]culo/i,
     /redacci[oó]n\s*(literal|exacta|completa)/i,
     /contenido\s*(completo|[ií]ntegro|literal)/i,
     /transcri(be|pci[oó]n)/i,
+    // Peticiones directas de artículo específico (dame el art X, dime el artículo Y)
+    /(dame|dime|mu[eé]strame|pon(me)?)\s*(el\s*)?(art[ií]culo|art\.?)\s*\d+/i,
+    // "art(ículo) + número + ley/código" - ej: "art 131 ley 39", "artículo 21 de la ley 39/2015"
+    /\b(art[ií]culo|art\.?)\s*\d+[^\d]*(ley|ce\b|constituci[oó]n|estatuto|reglamento|lpac|lrjsp|ebep|trebep|lo\s*\d)/i,
+    // "número + ley" sin "art" - ej: "131 ley 39", "168 CE", "21 de la ley 39/2015"
+    /\b\d{1,3}\s+(?:de\s+)?(?:la\s+)?(?:ley|ce\b|constituci[oó]n)/i,
   ]
-  return patterns.some(p => p.test(msgLower))
+  return patterns.some(p => p.test(message))
 }
 
 interface FormatOptions {

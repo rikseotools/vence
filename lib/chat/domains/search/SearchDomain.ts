@@ -15,7 +15,7 @@ import {
   isGenericLawQuery,
 } from './ArticleSearchService'
 import { detectQueryPattern } from './PatternMatcher'
-import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse } from './queries'
+import { detectLawsFromText, getHotArticlesByOposicion, formatHotArticlesResponse, hasQuestionsForArticle, extractArticleNumbers } from './queries'
 
 // ============================================
 // DOMINIO DE BÚSQUEDA
@@ -248,14 +248,36 @@ Puedo ayudarte con:
 
     // Detectar si el usuario quiere el texto literal/completo
     const wantsFullContent = wantsLiteralContent(context.currentMessage)
+    logger.info(`🔎 wantsFullContent: ${wantsFullContent} for message: "${context.currentMessage}"`, { domain: 'search' })
+
+    // Verificar si encontramos el artículo específico que pidió el usuario
+    let foundRequestedArticle = true
+    if (wantsFullContent) {
+      const requestedNumbers = extractArticleNumbers(context.currentMessage)
+      if (requestedNumbers.length > 0) {
+        const foundNumbers = searchResult.articles.map(a => a.articleNumber)
+        foundRequestedArticle = requestedNumbers.some(num => foundNumbers.includes(num))
+        logger.info(`🔎 Requested articles: ${requestedNumbers.join(', ')}, Found: ${foundNumbers.join(', ')}, Match: ${foundRequestedArticle}`, { domain: 'search' })
+      }
+    }
+
+    // Verificar si el artículo tiene preguntas disponibles (solo si pide contenido literal)
+    let hasTestQuestions = false
+    if (wantsFullContent && foundRequestedArticle && searchResult.articles.length > 0) {
+      const firstArticle = searchResult.articles[0]
+      if (firstArticle.id) {
+        hasTestQuestions = await hasQuestionsForArticle(firstArticle.id)
+        logger.info(`🔎 hasTestQuestions: ${hasTestQuestions} for article ${firstArticle.articleNumber}`, { domain: 'search' })
+      }
+    }
 
     // Construir contexto de artículos (completo si pide literal)
     const articlesContext = formatArticlesForContext(searchResult.articles, {
-      fullContent: wantsFullContent,
+      fullContent: wantsFullContent && foundRequestedArticle,
     })
 
     // System prompt específico para búsqueda
-    const systemPrompt = this.buildSystemPrompt(context, searchResult, wantsFullContent)
+    const systemPrompt = this.buildSystemPrompt(context, searchResult, wantsFullContent, hasTestQuestions, foundRequestedArticle)
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },
@@ -300,21 +322,46 @@ ${articlesContext}`
   private buildSystemPrompt(
     context: ChatContext,
     searchResult: Awaited<ReturnType<typeof searchArticles>>,
-    wantsFullContent: boolean = false
+    wantsFullContent: boolean = false,
+    hasTestQuestions: boolean = false,
+    foundRequestedArticle: boolean = true
   ): string {
+    // Generar enlace al test si hay artículos específicos Y hay preguntas disponibles
+    let testSuggestion = ''
+    if (wantsFullContent && foundRequestedArticle && hasTestQuestions && searchResult.articles.length > 0) {
+      const firstArticle = searchResult.articles[0]
+      const testLink = `/test/articulo?law=${encodeURIComponent(firstArticle.lawShortName)}&article=${encodeURIComponent(firstArticle.articleNumber)}`
+      const articleInfo = `Art. ${firstArticle.articleNumber} de ${firstArticle.lawShortName}`
+      testSuggestion = `
+5. **Sugerencia final**: Al terminar de mostrar el artículo, añade esta línea exacta al final:
+   "🎯 **¿Quieres practicar?** 👉 [Hacer test de ${articleInfo}](${testLink})"`
+    }
+
     // Instrucciones base o instrucciones para contenido literal
-    const responseGuidelines = wantsFullContent
-      ? `## Directrices para texto literal:
+    let responseGuidelines: string
+    if (wantsFullContent && !foundRequestedArticle) {
+      // Usuario pidió un artículo específico pero NO lo encontramos
+      responseGuidelines = `## Directrices - ARTÍCULO NO ENCONTRADO:
+1. **SÉ HONESTO**: El usuario pidió un artículo específico pero NO lo encontré en mi base de datos.
+2. **NO INVENTES**: NO te inventes el contenido del artículo. Nunca alucines texto legal.
+3. **INFORMA**: Dile al usuario que no encontraste ese artículo específico y pregúntale si puede verificar el número o la ley.
+4. **SUGIERE**: Ofrece buscar artículos relacionados o ayudar de otra forma.
+
+IMPORTANTE: Responde algo como: "No he encontrado el artículo [número] en [ley] en mi base de datos. ¿Podrías verificar el número del artículo o la ley? Puedo ayudarte a buscar artículos relacionados."`
+    } else if (wantsFullContent) {
+      responseGuidelines = `## Directrices para texto literal:
 1. **PROPORCIONA EL TEXTO COMPLETO**: El usuario ha pedido el artículo literal/completo. Copia el contenido íntegro del artículo tal como aparece.
 2. **No resumas ni parafrasees**: Transcribe el texto exacto del artículo sin modificaciones.
 3. **Cita la fuente**: Indica claramente de qué ley y artículo se trata.
-4. **Formato**: Mantén la estructura original del artículo (apartados, números, letras).`
-      : `## Directrices:
+4. **Formato**: Mantén la estructura original del artículo (apartados, números, letras).${testSuggestion}`
+    } else {
+      responseGuidelines = `## Directrices:
 1. **SIEMPRE responde**: Nunca digas "no encontré información". Si los artículos proporcionados no cubren la pregunta, usa tu conocimiento experto sobre la materia.
 2. **Prioriza artículos**: Si hay artículos relevantes, cita la fuente (ej: "Según el Art. 21 de la Ley 39/2015...")
 3. **Conocimiento general**: Si no hay artículos específicos, responde con tu conocimiento de derecho español, indicando que es información general.
 4. **Sé conciso**: Responde de forma directa sin rodeos
 5. **Formato**: Usa markdown para estructurar la respuesta (negritas, listas, etc.)`
+    }
 
     let prompt = `Eres un asistente experto en derecho administrativo español, especializado en oposiciones.
 

@@ -312,6 +312,12 @@ export function isGenericLawQuery(
 
   const msgLower = message.toLowerCase().trim()
 
+  // Si contiene un número de artículo, NO es genérica (quiere un artículo específico)
+  // Patrones: "art 131", "artículo 21", "131 ley", "131 de la ley"
+  const hasArticleNumber = /\b(?:art[ií]culo|art\.?)\s*\d+/i.test(message) ||
+                           /\b\d{1,3}\s+(?:de\s+)?(?:la\s+)?ley\b/i.test(message)
+  if (hasArticleNumber) return false
+
   // Si el mensaje es corto, probablemente es genérico
   if (message.length < 18) return true
 
