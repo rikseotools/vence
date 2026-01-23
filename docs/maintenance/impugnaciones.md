@@ -1058,6 +1058,69 @@ R: NO. Los centinelas tienen `is_active = false`, por lo que NUNCA se muestran a
 
 En las explicaciones o mensaje al usuario, no usar asteriscos **. Queda feo
 
+---
+
+## Resolución con Claude Code (Mensajes Personalizados)
+
+Cuando uses Claude Code para resolver impugnaciones, sigue este flujo:
+
+### Proceso obligatorio:
+
+1. **Analizar la impugnación** - Consultar pregunta, artículo y datos del usuario
+2. **Redactar mensaje personalizado** - Incluir:
+   - Saludo con nombre del usuario
+   - Explicación clara citando el artículo
+   - Despedida: "Cualquier consulta no dudes en contactar. Equipo de Vence"
+3. **MOSTRAR el mensaje** - Claude debe mostrar cómo quedará el mensaje ANTES de enviarlo
+4. **Esperar confirmación** - Solo enviar cuando el usuario apruebe el texto
+5. **Enviar** - Actualizar `question_disputes` con el mensaje aprobado
+
+### Ejemplo de flujo:
+
+```
+Usuario: "analiza la primera impugnación"
+Claude: [analiza pregunta y artículo]
+
+Usuario: "prepara el mensaje de cierre"
+Claude: "Aquí está el mensaje propuesto:
+
+---
+Hola [Nombre],
+
+[Explicación personalizada citando el artículo]
+
+Cualquier consulta no dudes en contactar.
+
+Equipo de Vence
+---
+
+¿Lo enviamos?"
+
+Usuario: "sí, envíalo"
+Claude: [actualiza la BD con el mensaje]
+```
+
+### Campos a actualizar:
+
+```javascript
+await supabase
+  .from('question_disputes')
+  .update({
+    status: 'resolved',
+    admin_response: textoAprobado,
+    resolved_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  })
+  .eq('question_id', questionId)
+  .eq('status', 'pending');
+```
+
+### Regla de oro:
+
+> ⚠️ **NUNCA enviar un mensaje sin mostrarlo primero al administrador para su aprobación**
+
+---
+
 # Manual - Impugnaciones de Psicotécnicos
 
 ## Ver Impugnaciones Pendientes
