@@ -61,7 +61,9 @@ export async function GET(request: Request) {
       dau7Result,
       activeFromRegResult,
       paidPeriodResult,
-      paid7DaysResult
+      paid7DaysResult,
+      refundsPeriodResult,
+      refunds7DaysResult
     ] = await Promise.all([
       // 1. Registros del periodo
       supabase
@@ -118,6 +120,20 @@ export async function GET(request: Request) {
         .from('conversion_events')
         .select('id', { count: 'exact', head: true })
         .eq('event_type', 'payment_completed')
+        .gte('created_at', sevenDaysAgoISO),
+
+      // 10. Refunds del período (de cancellation_feedback con stripe_refund_id)
+      supabase
+        .from('cancellation_feedback')
+        .select('id, refund_amount_cents', { count: 'exact' })
+        .not('stripe_refund_id', 'is', null)
+        .gte('created_at', daysAgoISO),
+
+      // 11. Refunds últimos 7 días (fijo)
+      supabase
+        .from('cancellation_feedback')
+        .select('id, refund_amount_cents', { count: 'exact' })
+        .not('stripe_refund_id', 'is', null)
         .gte('created_at', sevenDaysAgoISO)
     ])
 
@@ -127,6 +143,20 @@ export async function GET(request: Request) {
     const events = eventsResult.data || []
     const paidInPeriod = (paidPeriodResult as any).count || 0
     const paidIn7Days = (paid7DaysResult as any).count || 0
+
+    // Refunds
+    const refundsInPeriod = (refundsPeriodResult as any).count || 0
+    const refundsIn7Days = (refunds7DaysResult as any).count || 0
+    const refundsPeriodData = refundsPeriodResult.data || []
+    const refunds7DaysData = refunds7DaysResult.data || []
+
+    // Calcular monto total de refunds
+    const refundAmountPeriod = refundsPeriodData.reduce((sum: number, r: any) => sum + (r.refund_amount_cents || 0), 0)
+    const refundAmount7Days = refunds7DaysData.reduce((sum: number, r: any) => sum + (r.refund_amount_cents || 0), 0)
+
+    // Pagos netos (brutos - refunds)
+    const paidNetInPeriod = Math.max(0, paidInPeriod - refundsInPeriod)
+    const paidNetIn7Days = Math.max(0, paidIn7Days - refundsIn7Days)
 
     // Calcular DAU únicos
     const dauPeriodUserIds = [...new Set((dauPeriodResult.data || []).map(t => t.user_id))]
@@ -198,9 +228,9 @@ export async function GET(request: Request) {
     const monetizationRate = dauTotal > 0 ? (dauPremium / dauTotal) * 100 : 0
     const monetizationRate7Days = dau7Days > 0 ? (dau7DaysPremium / dau7Days) * 100 : 0
 
-    // Tasa de conversión DAU Free → Pago
-    const freeToPayRate = dauFree > 0 ? (paidInPeriod / dauFree) * 100 : 0
-    const freeToPayRate7Days = dau7DaysFree > 0 ? (paidIn7Days / dau7DaysFree) * 100 : 0
+    // Tasa de conversión DAU Free → Pago (usando pagos NETOS)
+    const freeToPayRate = dauFree > 0 ? (paidNetInPeriod / dauFree) * 100 : 0
+    const freeToPayRate7Days = dau7DaysFree > 0 ? (paidNetIn7Days / dau7DaysFree) * 100 : 0
 
     return NextResponse.json({
       registrations: {
@@ -217,14 +247,20 @@ export async function GET(request: Request) {
         dauFree,
         dauPremium,
         monetizationRate: Math.round(monetizationRate * 10) / 10,
-        paidInPeriod,
+        paidInPeriod,        // Pagos brutos
+        refundsInPeriod,     // Refunds
+        paidNetInPeriod,     // Pagos netos (brutos - refunds)
+        refundAmountPeriod,  // Monto devuelto en centavos
         freeToPayRate: Math.round(freeToPayRate * 10) / 10,
         // Referencia fija 7 días
         dau7Days,
         dau7DaysFree,
         dau7DaysPremium,
         monetizationRate7Days: Math.round(monetizationRate7Days * 10) / 10,
-        paidIn7Days,
+        paidIn7Days,         // Pagos brutos 7 días
+        refundsIn7Days,      // Refunds 7 días
+        paidNetIn7Days,      // Pagos netos 7 días
+        refundAmount7Days,   // Monto devuelto 7 días en centavos
         freeToPayRate7Days: Math.round(freeToPayRate7Days * 10) / 10
       },
       events,

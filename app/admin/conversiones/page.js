@@ -18,9 +18,9 @@ export default function ConversionesPage() {
   const [registrationStats, setRegistrationStats] = useState({ total: 0, totalAllTime: 0, bySource: {}, activeUsers: 0, activationRate: 0 })
   const [activeUserMetrics, setActiveUserMetrics] = useState({
     dauTotal: 0, dauFree: 0, dauPremium: 0, monetizationRate: 0,
-    paidInPeriod: 0, freeToPayRate: 0,
+    paidInPeriod: 0, refundsInPeriod: 0, paidNetInPeriod: 0, refundAmountPeriod: 0, freeToPayRate: 0,
     dau7Days: 0, dau7DaysFree: 0, dau7DaysPremium: 0, monetizationRate7Days: 0,
-    paidIn7Days: 0, freeToPayRate7Days: 0
+    paidIn7Days: 0, refundsIn7Days: 0, paidNetIn7Days: 0, refundAmount7Days: 0, freeToPayRate7Days: 0
   })
   const [timeAnalysis, setTimeAnalysis] = useState([])
   const [recentEvents, setRecentEvents] = useState([])
@@ -830,26 +830,48 @@ export default function ConversionesPage() {
               <div className="text-sm text-gray-600 dark:text-gray-400">Visitaron Premium</div>
             </div>
             <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-              <div className="text-3xl font-bold text-emerald-600">{totals.paidInPeriod || 0}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Pagos en Periodo</div>
+              <div className="text-3xl font-bold text-emerald-600">
+                {activeUserMetrics.paidNetInPeriod || totals.paidInPeriod || 0}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Pagos Netos</div>
+              {activeUserMetrics.refundsInPeriod > 0 && (
+                <div className="text-xs text-red-500 mt-1">
+                  ({activeUserMetrics.paidInPeriod} pagos - {activeUserMetrics.refundsInPeriod} refunds)
+                </div>
+              )}
               {totals.paid > 0 && totals.paid !== totals.paidInPeriod && (
                 <div className="text-xs text-gray-500 mt-1">({totals.paid} total historico)</div>
               )}
             </div>
+            {/* Refunds si hay */}
+            {activeUserMetrics.refundsInPeriod > 0 && (
+              <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <div className="text-3xl font-bold text-red-600">{activeUserMetrics.refundsInPeriod}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Refunds</div>
+                {activeUserMetrics.refundAmountPeriod > 0 && (
+                  <div className="text-xs text-red-500 mt-1">
+                    -{(activeUserMetrics.refundAmountPeriod / 100).toFixed(2)}€
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {totals.registrations > 0 && (
             <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Tasa del período */}
+              {/* Tasa del período (NETA) */}
               <div className="text-center p-4 bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg text-white">
                 <div className="text-3xl font-bold">
-                  {totals.paidInPeriod > 0
-                    ? ((totals.paidInPeriod / totals.registrations) * 100).toFixed(2)
+                  {(activeUserMetrics.paidNetInPeriod || totals.paidInPeriod) > 0
+                    ? (((activeUserMetrics.paidNetInPeriod || totals.paidInPeriod) / totals.registrations) * 100).toFixed(2)
                     : '0.00'}%
                 </div>
-                <div className="text-sm opacity-90">Conversion ultimos {dateRange} dias</div>
+                <div className="text-sm opacity-90">Conversion neta ultimos {dateRange} dias</div>
                 <div className="text-xs opacity-75 mt-1">
-                  {totals.paidInPeriod} pagos / {totals.registrations} registros
+                  {activeUserMetrics.paidNetInPeriod || totals.paidInPeriod} pagos netos / {totals.registrations} registros
+                  {activeUserMetrics.refundsInPeriod > 0 && (
+                    <span className="ml-1">({activeUserMetrics.refundsInPeriod} refunds)</span>
+                  )}
                 </div>
               </div>
               {/* Tasa histórica */}

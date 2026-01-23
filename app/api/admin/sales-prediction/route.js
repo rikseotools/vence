@@ -244,6 +244,19 @@ export async function GET() {
 
     if (paymentsError) throw paymentsError
 
+    // 2b. Obtener refunds de cancellation_feedback
+    const { data: refunds, error: refundsError } = await supabase
+      .from('cancellation_feedback')
+      .select('user_id, created_at, refund_amount_cents')
+      .not('stripe_refund_id', 'is', null)
+
+    if (refundsError) {
+      console.warn('Error obteniendo refunds (tabla puede no existir):', refundsError.message)
+    }
+
+    // Set de usuarios que han sido reembolsados
+    const refundedUserIds = new Set((refunds || []).map(r => r.user_id).filter(Boolean))
+
     // Calcular ticket medio
     const paymentAmounts = payments.map(p => p.event_data?.amount || 0).filter(a => a > 0)
     const totalRevenue = paymentAmounts.reduce((a, b) => a + b, 0)
@@ -251,12 +264,17 @@ export async function GET() {
 
     const now = new Date()
 
-    // 3. Calcular tasa de conversion REAL (usuarios únicos que han pagado)
+    // 3. Calcular tasa de conversion REAL NETA (usuarios únicos que han pagado - refunds)
     const payingUserIds = new Set(payments.map(p => p.user_id))
     const totalUsers = users.length
-    const uniquePayingUsers = payingUserIds.size  // Usuarios únicos, no pagos totales
+    const uniquePayingUsersGross = payingUserIds.size  // Usuarios únicos brutos
 
-    // Tasa de conversion real (usuarios únicos / total usuarios)
+    // Usuarios netos = pagadores - reembolsados
+    const netPayingUserIds = new Set([...payingUserIds].filter(id => !refundedUserIds.has(id)))
+    const uniquePayingUsers = netPayingUserIds.size  // Usuarios únicos NETOS
+    const totalRefunds = refundedUserIds.size
+
+    // Tasa de conversion real NETA (usuarios únicos netos / total usuarios)
     const conversionRate = totalUsers > 0 ? uniquePayingUsers / totalUsers : 0
 
     // Intervalo de confianza Wilson para la tasa
@@ -290,10 +308,21 @@ export async function GET() {
     const weeklyPayments = payments.filter(p => new Date(p.created_at) >= new Date(sevenDaysAgoISO))
     const monthlyPayments = payments.filter(p => new Date(p.created_at) >= new Date(thirtyDaysAgoISO))
 
-    const weeklyPayingUsers = new Set(weeklyPayments.map(p => p.user_id))
-    const monthlyPayingUsers = new Set(monthlyPayments.map(p => p.user_id))
+    // Pagadores NETOS (excluyendo refunds)
+    const weeklyPayingUsersGross = new Set(weeklyPayments.map(p => p.user_id))
+    const monthlyPayingUsersGross = new Set(monthlyPayments.map(p => p.user_id))
 
-    // Conversión alternativa: pagadores de la semana / activos de la semana
+    // Filtrar refunds del período
+    const weeklyRefunds = (refunds || []).filter(r => new Date(r.created_at) >= new Date(sevenDaysAgoISO))
+    const monthlyRefunds = (refunds || []).filter(r => new Date(r.created_at) >= new Date(thirtyDaysAgoISO))
+    const weeklyRefundedIds = new Set(weeklyRefunds.map(r => r.user_id).filter(Boolean))
+    const monthlyRefundedIds = new Set(monthlyRefunds.map(r => r.user_id).filter(Boolean))
+
+    // Usuarios netos = pagadores - reembolsados del período
+    const weeklyPayingUsers = new Set([...weeklyPayingUsersGross].filter(id => !weeklyRefundedIds.has(id)))
+    const monthlyPayingUsers = new Set([...monthlyPayingUsersGross].filter(id => !monthlyRefundedIds.has(id)))
+
+    // Conversión alternativa NETA: pagadores netos de la semana / activos de la semana
     const weeklyConversionRate = weeklyActiveCount > 0
       ? weeklyPayingUsers.size / weeklyActiveCount
       : 0
@@ -565,12 +594,14 @@ export async function GET() {
     const cancelingSubscriptions = (subscriptions || []).filter(s => s.cancel_at_period_end)
 
     const responseData = {
-      // Tasa de conversion global (usuarios únicos / total registros)
+      // Tasa de conversion global NETA (usuarios únicos netos / total registros)
       conversion: {
         totalUsers,
-        uniquePayingUsers,
+        uniquePayingUsers,        // NETO (ya descontados refunds)
+        uniquePayingUsersGross,   // Bruto (sin descontar)
+        totalRefunds,             // Total usuarios reembolsados
         totalPayments: payments.length,  // Para referencia: pagos totales incluyendo renovaciones
-        rate: conversionRate,
+        rate: conversionRate,     // Tasa NETA
         confidenceInterval: {
           lower: conversionCI.lower,
           upper: conversionCI.upper,
