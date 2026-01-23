@@ -32,6 +32,7 @@ export const avatarProfileSchema = z.object({
   id: z.string(),
   emoji: z.string(),
   nameEs: z.string(),
+  nameEsF: z.string().nullable().optional(), // Nombre femenino (null si es neutro)
   descriptionEs: z.string(),
   color: z.string(),
   priority: z.number()

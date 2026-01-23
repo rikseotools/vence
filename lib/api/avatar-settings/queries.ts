@@ -36,7 +36,7 @@ export async function getAllAvatarProfiles(): Promise<AvatarProfile[]> {
 
     const { data, error } = await supabase
       .from('avatar_profiles')
-      .select('id, emoji, name_es, description_es, color, priority')
+      .select('id, emoji, name_es, name_es_f, description_es, color, priority')
       .order('priority', { ascending: false })
 
     if (error) {
@@ -48,6 +48,7 @@ export async function getAllAvatarProfiles(): Promise<AvatarProfile[]> {
       id: p.id,
       emoji: p.emoji,
       nameEs: p.name_es,
+      nameEsF: p.name_es_f,
       descriptionEs: p.description_es,
       color: p.color,
       priority: p.priority
@@ -68,7 +69,7 @@ export async function getAvatarProfileById(profileId: string): Promise<AvatarPro
 
     const { data, error } = await supabase
       .from('avatar_profiles')
-      .select('id, emoji, name_es, description_es, color, priority')
+      .select('id, emoji, name_es, name_es_f, description_es, color, priority')
       .eq('id', profileId)
       .single()
 
@@ -80,6 +81,7 @@ export async function getAvatarProfileById(profileId: string): Promise<AvatarPro
       id: data.id,
       emoji: data.emoji,
       nameEs: data.name_es,
+      nameEsF: data.name_es_f,
       descriptionEs: data.description_es,
       color: data.color,
       priority: data.priority

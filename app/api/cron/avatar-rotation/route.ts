@@ -89,6 +89,19 @@ export async function POST(request: NextRequest) {
       (currentSettings || []).map(s => [s.user_id, s])
     )
 
+    // 3.5. Obtener género de todos los usuarios para nombre femenino/masculino
+    const { data: userGenders } = await supabase
+      .from('user_profiles')
+      .select('id, gender')
+      .in('id', userIds)
+
+    const genderMap = new Map<string, boolean>(
+      (userGenders || []).map(u => [
+        u.id,
+        u.gender === 'female' || u.gender === 'mujer'
+      ])
+    )
+
     // 4. Calcular perfiles en bulk (batches paralelos de 20)
     const bulkResults = await calculateBulkUserProfiles(userIds)
 
@@ -134,11 +147,15 @@ export async function POST(request: NextRequest) {
         continue
       }
 
+      // Usar nombre femenino si el usuario es mujer y existe versión femenina
+      const isFemale = genderMap.get(result.userId) || false
+      const profileName = (isFemale && profile.nameEsF) ? profile.nameEsF : profile.nameEs
+
       updates.push({
         userId: result.userId,
         profileId: result.profileId,
         emoji: profile.emoji,
-        name: profile.nameEs,
+        name: profileName,
         previousProfile,
         previousEmoji: current?.current_emoji || null
       })
