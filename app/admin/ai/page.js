@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
 
 const Spinner = ({ size = 'sm' }) => {
   const sizeClasses = { sm: 'w-4 h-4', md: 'w-6 h-6', lg: 'w-8 h-8' }
@@ -1048,7 +1049,7 @@ export default function AdminAIPage() {
                     </div>
                   ) : (
                     <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
-                      <p className="whitespace-pre-wrap">{selectedLog.full_response || selectedLog.response_preview}</p>
+                      <ReactMarkdown>{selectedLog.full_response || selectedLog.response_preview}</ReactMarkdown>
                     </div>
                   )}
                 </div>

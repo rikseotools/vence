@@ -180,6 +180,7 @@ const CHAT_LAW_ALIASES: Record<string, string[]> = {
   'LO 3/2007': ['ley de igualdad', 'igualdad efectiva'],
   'LO 5/1985': ['régimen electoral'],
   'LO 3/1981': ['defensor del pueblo'],
+  'Reglamento UE 2016/679': ['rgpd', 'protección de datos personales', 'reglamento general de protección de datos', 'gdpr'],
 }
 
 /**
@@ -252,6 +253,8 @@ export function extractSpecificLawMentions(message: string): string[] {
     /(?:real\s+decreto\s+legislativo|r\.?d\.?l\.?)\s*(\d+)\/(\d{4})/gi,
     // Real Decreto-ley: "RDL 5/2015" (otro formato)
     /(?:real\s+decreto[- ]ley)\s*(\d+)\/(\d{4})/gi,
+    // Reglamento UE: "Reglamento (UE) 2016/679", "Reglamento UE 2016/679"
+    /(?:reglamento\s*\(?ue\)?)\s*(\d{4})\/(\d+)/gi,
   ]
 
   for (const pattern of patterns) {
@@ -272,6 +275,15 @@ export function extractSpecificLawMentions(message: string): string[] {
         prefix = 'RDL'
       } else if (fullMatch.includes('real decreto') || /r\.?d\.?\s/i.test(fullMatch)) {
         prefix = 'RD'
+      } else if (fullMatch.includes('reglamento') && fullMatch.includes('ue')) {
+        // Reglamento UE: el formato es año/número, no número/año
+        // Ejemplo: "Reglamento (UE) 2016/679" → num=2016, year=679
+        // Pero realmente queremos "Reglamento UE 2016/679"
+        const lawRef = `Reglamento UE ${num}/${year}`
+        if (!mentions.includes(lawRef)) {
+          mentions.push(lawRef)
+        }
+        continue
       }
 
       if (prefix) {
