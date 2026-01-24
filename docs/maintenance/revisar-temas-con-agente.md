@@ -169,27 +169,186 @@ El agente determina uno de estos 12 estados:
 
 ## 4. Cómo Usar el Agente
 
-### Comando básico:
+### Opción 1: Revisión individual (pocos temas)
 ```
 Verifica las preguntas del tema 204 de administrativo C1
 ```
 
-### Con opciones:
+### Opción 2: Revisión masiva con agentes paralelos (RECOMENDADO)
+
+Para revisar muchas preguntas de forma eficiente, el agente orquestador puede:
+1. Extraer todas las preguntas con errores de un bloque/oposición
+2. Lanzar múltiples agentes en paralelo para revisarlas
+3. Consolidar resultados y actualizar la base de datos
+
+**Comando recomendado:**
 ```
-Verifica las primeras 10 preguntas del tema T12 de auxiliar C2
-Verifica las preguntas pendientes del tema 204
-Verifica todas las preguntas del bloque II de administrativo
+Revisa todas las preguntas con errores del bloque II de administrativo C1
 ```
 
-### El agente hará:
-1. Buscar las preguntas del topic
-2. Para cada pregunta:
-   - Leer el artículo vinculado
-   - Analizar si articleOk, answerOk, explanationOk
-   - Determinar el estado (perfect, bad_answer, etc.)
-   - Guardar en `ai_verification_results`
-   - Actualizar `questions.topic_review_status`
-3. Reportar resumen
+El orquestador:
+1. **Extrae las preguntas** con `topic_review_status` en estados de error
+2. **Agrupa en lotes** de 8-12 preguntas por agente
+3. **Lanza 4 agentes en paralelo** usando Task tool
+4. **Cada agente analiza** comparando pregunta vs artículo
+5. **Determina** si es falso positivo o necesita corrección
+6. **Consolida resultados** y actualiza la BD
+
+### Ejemplo de flujo de revisión masiva:
+
+```
+Usuario: "Revisa las 57 preguntas con errores del bloque II administrativo C1"
+
+Orquestador:
+1. Ejecuta script para extraer preguntas con error_questions.json
+2. Lanza 4 agentes paralelos:
+   - Agente 1: preguntas 1-15
+   - Agente 2: preguntas 16-30
+   - Agente 3: preguntas 31-45
+   - Agente 4: preguntas 46-57
+3. Cada agente devuelve:
+   - FALSO_POSITIVO: pregunta está bien, actualizar a "perfect"
+   - NECESITA_CORRECCIÓN: con la corrección específica
+4. Orquestador actualiza BD con los resultados
+5. Reporta resumen: "54 falsos positivos, 2 corregidas, 1 explicación actualizada"
+```
+
+### Estados de error a revisar:
+```javascript
+const errorStates = [
+  'bad_answer', 'bad_explanation', 'bad_answer_and_explanation',
+  'wrong_article', 'wrong_article_bad_explanation', 'wrong_article_bad_answer', 'all_wrong',
+  'tech_bad_answer', 'tech_bad_explanation', 'tech_bad_answer_and_explanation'
+];
+```
+
+### Script para extraer preguntas con errores:
+```javascript
+// get_error_questions.cjs
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '.env.local' });
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+async function main() {
+  const errorStates = [
+    'bad_answer', 'bad_explanation', 'bad_answer_and_explanation',
+    'wrong_article', 'wrong_article_bad_explanation', 'wrong_article_bad_answer', 'all_wrong',
+    'tech_bad_answer', 'tech_bad_explanation', 'tech_bad_answer_and_explanation'
+  ];
+
+  // Obtener topics del bloque deseado
+  const { data: topics } = await supabase
+    .from('topics')
+    .select('id, topic_number, title')
+    .eq('position_type', 'administrativo')
+    .gte('topic_number', 201)
+    .lte('topic_number', 204);
+
+  const allQuestions = [];
+
+  for (const topic of topics || []) {
+    // Obtener scope del tema
+    const { data: scope } = await supabase
+      .from('topic_scope')
+      .select('law_id, article_numbers')
+      .eq('topic_id', topic.id);
+
+    // Obtener article IDs
+    let articleIds = [];
+    for (const s of scope || []) {
+      const { data: arts } = await supabase
+        .from('articles')
+        .select('id')
+        .eq('law_id', s.law_id)
+        .in('article_number', s.article_numbers || []);
+      articleIds.push(...(arts?.map(a => a.id) || []));
+    }
+
+    if (articleIds.length === 0) continue;
+
+    // Obtener preguntas con errores
+    const { data: questions } = await supabase
+      .from('questions')
+      .select(`
+        id, question_text, option_a, option_b, option_c, option_d,
+        correct_option, explanation, topic_review_status, primary_article_id,
+        articles!inner(id, article_number, title, content, law_id,
+          laws!inner(id, short_name, name))
+      `)
+      .eq('is_active', true)
+      .in('primary_article_id', articleIds)
+      .in('topic_review_status', errorStates);
+
+    for (const q of questions || []) {
+      allQuestions.push({
+        id: q.id,
+        topic_number: topic.topic_number,
+        question_text: q.question_text,
+        option_a: q.option_a, option_b: q.option_b,
+        option_c: q.option_c, option_d: q.option_d,
+        correct_option: q.correct_option,
+        correct_letter: ['A', 'B', 'C', 'D'][q.correct_option],
+        explanation: q.explanation,
+        topic_review_status: q.topic_review_status,
+        article_content: q.articles?.content,
+        law_short_name: q.articles?.laws?.short_name
+      });
+    }
+  }
+
+  require('fs').writeFileSync('error_questions.json', JSON.stringify(allQuestions, null, 2));
+  console.log('Total preguntas con errores:', allQuestions.length);
+}
+
+main().catch(console.error);
+```
+
+### Prompt para cada agente paralelo:
+```
+Revisa las siguientes preguntas y determina si son FALSOS POSITIVOS o necesitan CORRECCIÓN.
+
+Para cada pregunta:
+1. Lee el artículo vinculado
+2. Compara con la respuesta marcada
+3. Determina: FALSO_POSITIVO (está bien) o NECESITA_CORRECCIÓN
+
+PREGUNTAS A REVISAR:
+[lista de preguntas con contexto del artículo]
+
+Responde con formato:
+PREGUNTA [ID]: [FALSO_POSITIVO / NECESITA_CORRECCIÓN]
+- Motivo: [explicación]
+- Si corrección: nueva respuesta correcta (A/B/C/D) y por qué
+```
+
+### Actualización masiva de resultados:
+```javascript
+// Falsos positivos - actualizar a perfect
+await supabase
+  .from('questions')
+  .update({
+    topic_review_status: 'perfect',
+    verified_at: new Date().toISOString(),
+    verification_status: 'ok'
+  })
+  .in('id', falsosPositivosIds);
+
+// Correcciones - actualizar respuesta
+await supabase
+  .from('questions')
+  .update({
+    correct_option: nuevoValor, // 0=A, 1=B, 2=C, 3=D
+    topic_review_status: 'perfect',
+    verified_at: new Date().toISOString(),
+    verification_status: 'ok',
+    explanation: nuevaExplicacion
+  })
+  .eq('id', questionId);
+```
 
 ## 5. Tablas Actualizadas
 
@@ -351,7 +510,13 @@ Sí, usa los tokens de Claude Code (Max), no la API de Anthropic.
 Sí: "Verifica solo las preguntas pendientes del tema 204"
 
 **¿Puedo verificar en paralelo?**
-El agente puede lanzar múltiples verificaciones en background.
+Sí, el método recomendado es usar el orquestador que lanza 4 agentes en paralelo con Task tool. Ejemplo: "Revisa las 57 preguntas con errores del bloque II"
+
+**¿Cuántas preguntas puede revisar cada agente?**
+Cada agente paralelo puede revisar 10-15 preguntas de forma óptima. El orquestador distribuye automáticamente.
+
+**¿Qué es un falso positivo?**
+Una pregunta marcada con error por la IA de verificación inicial, pero que al revisarla manualmente está correcta. El orquestador las detecta y las actualiza a "perfect".
 
 **¿Qué pasa si una pregunta no tiene artículo?**
 Se marca como error y se reporta. Hay que vincularla primero.
@@ -361,3 +526,60 @@ Se desactiva la pregunta (`is_active: false`) ya que sin la imagen no se puede v
 
 **¿Los resultados son iguales que los de la web?**
 Sí, se guardan en las mismas tablas con el mismo formato.
+
+**¿Cómo pido una revisión masiva?**
+```
+Revisa todas las preguntas con errores del bloque II de administrativo C1
+```
+El orquestador extraerá las preguntas, lanzará agentes paralelos, y actualizará la BD.
+
+**¿Cuánto tarda una revisión masiva?**
+Depende del número de preguntas. 57 preguntas con 4 agentes paralelos tarda aproximadamente 2-3 minutos.
+
+**¿Puedo ver el progreso?**
+Sí, el orquestador reporta el progreso: "Procesadas 19/57", y al final da un resumen completo.
+
+## 12. Ejemplo Real: Revisión del Bloque II Administrativo C1
+
+**Fecha:** Enero 2026
+**Solicitud:** "Revisa todas las preguntas con errores del bloque II de administrativo C1"
+
+### Proceso ejecutado:
+
+1. **Extracción de preguntas:**
+   - Ejecuté script `get_error_questions.cjs`
+   - Resultado: 57 preguntas con errores
+   - Distribución: T201 (41), T202 (5), T203 (4), T204 (7)
+
+2. **Revisión con agentes paralelos:**
+   - Lote 1: preguntas 1-19 (primer batch)
+   - Lote 2: preguntas 20-28 (Agente 1)
+   - Lote 3: preguntas 29-37 (Agente 2)
+   - Lote 4: preguntas 38-46 (Agente 3)
+   - Lote 5: preguntas 47-57 (Agente 4)
+
+3. **Resultados:**
+
+| Categoría | Cantidad | Detalle |
+|-----------|----------|---------|
+| **Falsos positivos** | 54 | Actualizadas a `perfect` |
+| **Respuestas corregidas** | 2 | Preguntas 5 y 36 |
+| **Explicaciones corregidas** | 1 | Pregunta 55 |
+
+### Correcciones específicas:
+
+**Pregunta 5** (CE Art. 55.2 - Suspensión derechos terrorismo):
+- Error: Respuesta D (tiempo máximo detención preventiva)
+- Corrección: Respuesta C (derecho a ser informado de razones)
+- Motivo: El art. 55.2 CE permite suspender el plazo de 72h, no el tiempo máximo de detención preventiva
+
+**Pregunta 36** (CE Art. 9.3 - Retroactividad):
+- Error: Respuesta D (retroactividad no se permite nunca)
+- Corrección: Respuesta C (cuando sea beneficiosa)
+- Motivo: La CE solo prohíbe retroactividad de normas desfavorables; la retroactividad favorable SÍ se permite
+
+**Pregunta 55** (LO 3/2018 Art. 4 - Exactitud datos):
+- Error: Explicación confusa sobre "materia clasificada"
+- Corrección: Explicación actualizada para clarificar que "materia clasificada" no está en las excepciones del art. 4.2
+
+### Tiempo total: ~5 minutos para 57 preguntas

@@ -98,6 +98,33 @@ const formatPositionName = (position) => {
   return names[position] || position.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
+// Formatear tiempo relativo "hace X días"
+const formatTimeAgo = (dateString) => {
+  if (!dateString) return null
+
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now - date
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) {
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    if (diffHours === 0) {
+      const diffMinutes = Math.floor(diffMs / (1000 * 60))
+      return diffMinutes <= 1 ? 'hace 1 min' : `hace ${diffMinutes} min`
+    }
+    return diffHours === 1 ? 'hace 1 hora' : `hace ${diffHours} horas`
+  }
+  if (diffDays === 1) return 'hace 1 día'
+  if (diffDays < 7) return `hace ${diffDays} días`
+  if (diffDays < 30) {
+    const weeks = Math.floor(diffDays / 7)
+    return weeks === 1 ? 'hace 1 semana' : `hace ${weeks} semanas`
+  }
+  const months = Math.floor(diffDays / 30)
+  return months === 1 ? 'hace 1 mes' : `hace ${months} meses`
+}
+
 export default function TopicReviewTab() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('topics') // 'topics' | 'embeddings'
@@ -1011,6 +1038,12 @@ export default function TopicReviewTab() {
                         {topic.stats?.pending > 0 && (
                           <span className="text-gray-500 dark:text-gray-400">
                             ⏳ {topic.stats.pending}
+                          </span>
+                        )}
+                        {/* Indicador de última verificación */}
+                        {topic.stats?.last_verified_at && (
+                          <span className="text-gray-400 dark:text-gray-500 italic" title={new Date(topic.stats.last_verified_at).toLocaleString('es-ES')}>
+                            🕐 {formatTimeAgo(topic.stats.last_verified_at)}
                           </span>
                         )}
                       </div>
