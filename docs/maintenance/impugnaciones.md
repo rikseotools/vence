@@ -12,8 +12,8 @@ SELECT
     qd.description,
     qd.created_at,
     qd.is_read,
-    -- Datos del usuario
-    COALESCE(up.nickname, up.full_name, split_part(au.email, '@', 1), 'Usuario') as nombre_usuario,
+    -- Datos del usuario (SIEMPRE usar full_name primero, nickname es solo un apodo)
+    COALESCE(up.full_name, up.nickname, split_part(au.email, '@', 1), 'Usuario') as nombre_usuario,
     au.email as email_usuario,
     -- Datos de la pregunta
     q.question_text,
@@ -1075,6 +1075,28 @@ Cuando uses Claude Code para resolver impugnaciones, sigue este flujo:
 4. **Esperar confirmación** - Solo enviar cuando el usuario apruebe el texto
 5. **Enviar** - Actualizar `question_disputes` con el mensaje aprobado
 
+### ⚠️ CRÍTICO: Usar nombre real, NO nickname
+
+En `user_profiles` existen dos campos:
+- `full_name`: Nombre real del usuario (ej: "Eduardo Tejido")
+- `nickname`: Apodo o alias (ej: "CASTELLANO")
+
+**SIEMPRE usar `full_name` para dirigirse al usuario.** El nickname es solo un apodo interno.
+
+```sql
+-- ✅ CORRECTO: full_name primero
+SELECT COALESCE(up.full_name, up.nickname, 'Usuario') as nombre
+FROM user_profiles up WHERE up.id = 'USER_ID';
+
+-- ❌ INCORRECTO: nickname primero
+SELECT COALESCE(up.nickname, up.full_name, 'Usuario') as nombre
+FROM user_profiles up WHERE up.id = 'USER_ID';
+```
+
+Si el usuario se llama "Eduardo Tejido" pero tiene nickname "CASTELLANO":
+- ✅ "Hola Eduardo..."
+- ❌ "Hola CASTELLANO..."
+
 ### Ejemplo de flujo:
 
 ```
@@ -1129,7 +1151,7 @@ SELECT
     pqd.id as dispute_id,
     pqd.question_id,
     pqd.description,
-    COALESCE(up.nickname, up.full_name, split_part(au.email, '@', 1), 'Usuario') as nombre_usuario,
+    COALESCE(up.full_name, up.nickname, split_part(au.email, '@', 1), 'Usuario') as nombre_usuario,
     pq.question_text,
     pq.correct_option,
     ps.display_name as section_name
