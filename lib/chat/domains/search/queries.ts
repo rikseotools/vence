@@ -708,6 +708,7 @@ export async function findArticleInLaw(
   articleNumber: string
 ): Promise<{
   id: string
+  lawId: string
   articleNumber: string
   title: string | null
   content: string | null
@@ -773,6 +774,7 @@ export async function findArticleInLaw(
 
     return {
       id: articleFuzzy.id,
+      lawId: effectiveLaw.id,
       articleNumber: articleFuzzy.article_number,
       title: articleFuzzy.title,
       content: articleFuzzy.content,
@@ -785,6 +787,7 @@ export async function findArticleInLaw(
 
   return {
     id: article.id,
+    lawId: effectiveLaw.id,
     articleNumber: article.article_number,
     title: article.title,
     content: article.content,

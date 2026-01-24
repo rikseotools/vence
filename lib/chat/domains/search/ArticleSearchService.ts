@@ -203,9 +203,10 @@ async function searchByContextLaw(
       if (found) {
         specificArticles.push({
           id: found.id,
+          lawId: found.lawId,
           articleNumber: found.articleNumber,
           title: found.title,
-          content: found.content,
+          content: found.content ?? '',
           lawShortName: found.lawShortName,
           lawName: found.lawName,
         })
