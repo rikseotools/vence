@@ -100,16 +100,9 @@ export default function ChartQuestion({
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
-      {/* Número de pregunta */}
-      <div className="mb-4">
-        <span className="text-sm font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-          02. 
-        </span>
-      </div>
-
       {/* Pregunta */}
       <div className="mb-6 sm:mb-6 mb-3">
-        <h2 className="text-xl font-bold text-gray-900 mb-3">
+        <h2 className="text-xl font-semibold text-gray-900 mb-3">
           {question.question_text}
         </h2>
         
