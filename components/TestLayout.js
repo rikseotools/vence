@@ -121,10 +121,8 @@ function formatExamSource(examSource, userOposicionSlug) {
         return examSource
       } else {
         // El usuario está en otra oposición - mostrar genérico
-        // Extraer solo el año si existe
-        const yearMatch = examSource.match(/20\d{2}/)
-        const year = yearMatch ? yearMatch[0] : ''
-        return `Examen oficial${year ? ` ${year}` : ''}`
+        // No incluir año aquí - se muestra por separado desde exam_date
+        return 'Examen oficial'
       }
     }
   }
