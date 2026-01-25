@@ -518,6 +518,7 @@ export async function initOfficialExam(
     }
 
     // Create test session
+    // totalQuestions = all questions (including unanswered, which count as failed)
     const [testSession] = await db.insert(tests).values({
       userId,
       title: `Examen Oficial ${examDate} - ${oposicion}`,

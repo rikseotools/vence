@@ -1989,6 +1989,7 @@ export const getActionIcon = (actionType) => {
     'detailed_analysis': '🔬',
     'view_achievements': '🏆',
     'view_disputes': '📋',
+    'view_dispute': '📋',
     'view_corrected_question': '✅',
     'view_details': '📋',
     'view_changelog': '🆕',
