@@ -2117,24 +2117,26 @@ export default function AdminFeedbackPage() {
 
                     {/* Área de mensajes */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-100 dark:bg-gray-900">
-                      {/* Solicitud original (primer mensaje) */}
-                      <div className="flex justify-start">
-                        <div className="max-w-[80%] bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                            📋 Solicitud original
-                          </div>
-                          <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                            {selectedFeedback.message}
-                          </p>
-                          <div className="text-xs text-gray-400 mt-1 text-right">
-                            {new Date(selectedFeedback.created_at).toLocaleTimeString('es-ES', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              timeZone: 'Europe/Madrid'
-                            })}
+                      {/* Solicitud original (primer mensaje) - ocultar si es conversación iniciada por soporte */}
+                      {!selectedFeedback.message?.startsWith('[Conversación iniciada') && (
+                        <div className="flex justify-start">
+                          <div className="max-w-[80%] bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                              📋 Solicitud original
+                            </div>
+                            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                              {selectedFeedback.message}
+                            </p>
+                            <div className="text-xs text-gray-400 mt-1 text-right">
+                              {new Date(selectedFeedback.created_at).toLocaleTimeString('es-ES', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZone: 'Europe/Madrid'
+                              })}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Mensajes del chat */}
                       {inlineChatMessages.map((msg) => (
@@ -2277,16 +2279,18 @@ export default function AdminFeedbackPage() {
 
               {/* Contenido */}
               <div className="p-4 sm:p-6">
-                
-                {/* Solicitud original */}
-                <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    📋 Solicitud de soporte:
+
+                {/* Solicitud original - ocultar si es conversación iniciada por soporte */}
+                {!selectedFeedback.message?.startsWith('[Conversación iniciada') && (
+                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      📋 Solicitud de soporte:
+                    </div>
+                    <div className="text-sm sm:text-base text-gray-800 dark:text-gray-200">
+                      {renderMessageWithImages(selectedFeedback.message)}
+                    </div>
                   </div>
-                  <div className="text-sm sm:text-base text-gray-800 dark:text-gray-200">
-                    {renderMessageWithImages(selectedFeedback.message)}
-                  </div>
-                </div>
+                )}
 
                 {/* Textarea de respuesta */}
                 <div className="mb-4 sm:mb-6">
@@ -2544,15 +2548,17 @@ export default function AdminFeedbackPage() {
                 </div>
               </div>
 
-              {/* Solicitud original */}
-              <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600 flex-shrink-0">
-                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  📋 Solicitud de soporte:
+              {/* Solicitud original - ocultar si es conversación iniciada por soporte */}
+              {!feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message?.startsWith('[Conversación iniciada') && (
+                <div className="p-2 sm:p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600 flex-shrink-0">
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    📋 Solicitud de soporte:
+                  </div>
+                  <div className="text-xs text-gray-800 dark:text-gray-200 line-clamp-3">
+                    {renderMessageWithImages(feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message)}
+                  </div>
                 </div>
-                <div className="text-xs text-gray-800 dark:text-gray-200 line-clamp-3">
-                  {renderMessageWithImages(feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message)}
-                </div>
-              </div>
+              )}
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 sm:space-y-3 bg-gray-25 min-h-0">
