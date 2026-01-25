@@ -317,7 +317,7 @@ export default function DynamicTestAi({
                     <h5 className="font-bold text-blue-800 dark:text-blue-300 mb-2">
                       Explicación de IA:
                     </h5>
-                    <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed">
+                    <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed whitespace-pre-line">
                       {mistake.questionData.explanation}
                     </p>
                   </div>
@@ -579,7 +579,7 @@ export default function DynamicTestAi({
                       IA
                     </span>
                   </div>
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
                     {currentQ.explanation}
                   </p>
                   {/* Botón para abrir IA */}

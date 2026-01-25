@@ -2021,7 +2021,7 @@ export default function TestLayout({
                           </button>
                         </div>
 
-                        <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed">
+                        <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed whitespace-pre-line">
                           {currentQ.explanation}
                         </p>
 

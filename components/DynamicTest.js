@@ -300,7 +300,7 @@ export default function DynamicTest({ titulo, dificultad }) {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <h5 className="font-bold text-blue-800 mb-2">Explicación de IA:</h5>
-              <p className="text-blue-700 text-sm leading-relaxed">
+              <p className="text-blue-700 text-sm leading-relaxed whitespace-pre-line">
                 {mistake.questionData.explanation}
               </p>
             </div>
@@ -517,7 +517,7 @@ export default function DynamicTest({ titulo, dificultad }) {
                           </span>
                         </div>
                       </div>
-                      <p className="text-gray-700 leading-relaxed mb-4">
+                      <p className="text-gray-700 leading-relaxed mb-4 whitespace-pre-line">
                         {currentQ.explanation}
                       </p>
                       {/* Botón para abrir IA */}
