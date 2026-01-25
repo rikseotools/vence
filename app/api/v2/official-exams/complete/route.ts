@@ -16,6 +16,21 @@ const supabaseAdmin = createClient(
  * Complete an existing official exam session (created by /init).
  * Updates the test record and test_questions with validation results.
  *
+ * IMPORTANT - Scoring vs Learning History:
+ *
+ * 1. EXAM SCORE (shown to user):
+ *    - Correct answers: add points
+ *    - Incorrect answers: subtract points (typically 1/3)
+ *    - Unanswered (blank): neither add nor subtract
+ *    - This follows official Spanish "oposiciones" scoring rules
+ *
+ * 2. LEARNING HISTORY (internal tracking):
+ *    - Correct answers: saved as successes
+ *    - Incorrect answers: saved as failures
+ *    - Unanswered (blank): saved as FAILURES
+ *    - This allows users to review questions they didn't know
+ *    - Blank questions appear in "repaso de fallos" for study
+ *
  * Request body:
  * - testId: string (UUID) - The test session created by /init
  * - results: array of { questionOrder, isCorrect, correctAnswer, userAnswer }
@@ -24,7 +39,9 @@ const supabaseAdmin = createClient(
  * Returns:
  * - success: boolean
  * - testId: string
- * - score: number (percentage)
+ * - score: number (percentage of answered questions)
+ * - correctCount: number
+ * - answeredCount: number
  * - error: string (if failed)
  */
 export async function POST(request: NextRequest) {
@@ -137,12 +154,13 @@ export async function POST(request: NextRequest) {
     const score = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0
 
     // 6. Update test record
+    // totalQuestions = all questions (unanswered count as failed attempts)
     await db
       .update(tests)
       .set({
         isCompleted: true,
         completedAt: new Date().toISOString(),
-        totalQuestions: answeredCount, // Only count answered questions
+        totalQuestions: results.length, // All questions, including unanswered
         score: correctCount.toString(),
         totalTimeSeconds: totalTimeSeconds || 0,
       })
@@ -241,7 +259,85 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`✅ [API/v2/official-exams/complete] History updated: ${legislativeAnswers.length} leg, ${psychometricAnswers.length} psy`)
+    // 8. Register UNANSWERED questions as FAILED in user history
+    // This helps users identify questions they need to study
+    const unansweredLegislative = savedQuestions.filter(
+      q => q.questionId && (!q.userAnswer || q.userAnswer.trim() === '')
+    )
+
+    for (const answer of unansweredLegislative) {
+      const existing = await db
+        .select({ id: userQuestionHistory.id, totalAttempts: userQuestionHistory.totalAttempts, correctAttempts: userQuestionHistory.correctAttempts })
+        .from(userQuestionHistory)
+        .where(
+          and(
+            eq(userQuestionHistory.userId, user.id),
+            eq(userQuestionHistory.questionId, answer.questionId!)
+          )
+        )
+        .limit(1)
+
+      if (existing.length > 0) {
+        const newTotal = existing[0].totalAttempts + 1
+        // Unanswered = incorrect, so correctAttempts stays the same
+        await db
+          .update(userQuestionHistory)
+          .set({
+            totalAttempts: newTotal,
+            successRate: (existing[0].correctAttempts / newTotal).toFixed(2),
+            lastAttemptAt: new Date().toISOString(),
+          })
+          .where(eq(userQuestionHistory.id, existing[0].id))
+      } else {
+        await db.insert(userQuestionHistory).values({
+          userId: user.id,
+          questionId: answer.questionId!,
+          totalAttempts: 1,
+          correctAttempts: 0, // Unanswered = failed
+          successRate: '0.00',
+          firstAttemptAt: new Date().toISOString(),
+          lastAttemptAt: new Date().toISOString(),
+        })
+      }
+    }
+
+    const unansweredPsychometric = savedQuestions.filter(
+      q => q.psychometricQuestionId && (!q.userAnswer || q.userAnswer.trim() === '')
+    )
+
+    for (const answer of unansweredPsychometric) {
+      const existing = await db
+        .select({ id: psychometricUserQuestionHistory.id, attempts: psychometricUserQuestionHistory.attempts, correctAttempts: psychometricUserQuestionHistory.correctAttempts })
+        .from(psychometricUserQuestionHistory)
+        .where(
+          and(
+            eq(psychometricUserQuestionHistory.userId, user.id),
+            eq(psychometricUserQuestionHistory.questionId, answer.psychometricQuestionId!)
+          )
+        )
+        .limit(1)
+
+      if (existing.length > 0) {
+        await db
+          .update(psychometricUserQuestionHistory)
+          .set({
+            attempts: existing[0].attempts + 1,
+            // correctAttempts stays the same (unanswered = failed)
+            lastAttemptAt: new Date().toISOString(),
+          })
+          .where(eq(psychometricUserQuestionHistory.id, existing[0].id))
+      } else {
+        await db.insert(psychometricUserQuestionHistory).values({
+          userId: user.id,
+          questionId: answer.psychometricQuestionId!,
+          attempts: 1,
+          correctAttempts: 0, // Unanswered = failed
+          lastAttemptAt: new Date().toISOString(),
+        })
+      }
+    }
+
+    console.log(`✅ [API/v2/official-exams/complete] History updated: ${legislativeAnswers.length} leg answered, ${psychometricAnswers.length} psy answered, ${unansweredLegislative.length} leg unanswered (as failed), ${unansweredPsychometric.length} psy unanswered (as failed)`)
 
     return NextResponse.json({
       success: true,

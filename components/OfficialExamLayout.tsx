@@ -286,7 +286,7 @@ export default function OfficialExamLayout({
   // Initialize exam session via API
   async function initializeExamSession(): Promise<void> {
     try {
-      console.log('🎯 [OfficialExam] Initializing new exam session')
+      console.log('🎯 [OfficialExam] Initializing exam session')
 
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData?.session?.access_token
@@ -295,6 +295,34 @@ export default function OfficialExamLayout({
         console.error('❌ [OfficialExam] No auth token available')
         return
       }
+
+      const examDate = metadata?.examDate || config?.examDate || new Date().toISOString().split('T')[0]
+
+      // Check if there's already a pending test for this exam
+      try {
+        const pendingResponse = await fetch(`/api/v2/official-exams/pending`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const pendingResult = await pendingResponse.json()
+
+        if (pendingResult.success && pendingResult.exams?.length > 0) {
+          // Find a pending exam with the same date
+          const existingExam = pendingResult.exams.find(
+            (e: { examDate: string; oposicion: string }) =>
+              e.examDate === examDate && e.oposicion === oposicion
+          )
+          if (existingExam) {
+            console.log(`🔄 [OfficialExam] Found existing pending exam: ${existingExam.id}`)
+            setCurrentTestSession({ id: existingExam.id })
+            return
+          }
+        }
+      } catch (pendingError) {
+        console.warn('⚠️ [OfficialExam] Could not check pending exams:', pendingError)
+      }
+
+      // No existing pending exam, create new one
+      console.log('🆕 [OfficialExam] Creating new exam session')
 
       // Prepare questions data for init API
       const questionsForInit = questions.map((q, index) => ({
@@ -316,8 +344,8 @@ export default function OfficialExamLayout({
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          examDate: metadata?.examDate || config?.examDate || new Date().toISOString().split('T')[0],
-          oposicion: oposicion,
+          examDate,
+          oposicion,
           questions: questionsForInit,
           metadata: {
             legislativeCount: metadata?.legislativeCount || 0,
