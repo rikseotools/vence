@@ -94,7 +94,15 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
     ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
     : 0
 
-  const resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+  // Generar URL correcta según tipo de examen
+  let resumeUrl
+  if (exam.title?.toLowerCase().includes('examen oficial')) {
+    resumeUrl = `/auxiliar-administrativo-estado/test/examen-oficial?resume=${exam.id}`
+  } else if (exam.title?.toLowerCase().includes('aleatorio') || exam.temaNumber === 0 || exam.temaNumber === null) {
+    resumeUrl = `/test/aleatorio-examen?resume=${exam.id}`
+  } else {
+    resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+  }
 
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm animate-in slide-in-from-bottom-4">
@@ -162,7 +170,15 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
           {expanded && pendingExams.length > 1 && (
             <div className="mt-3 space-y-2 border-t border-amber-200 pt-3">
               {pendingExams.slice(1).map(e => {
-                const url = `/auxiliar-administrativo-estado/test/tema/${e.temaNumber || 1}/test-examen?resume=${e.id}`
+                // Generar URL correcta según tipo de examen
+                let url
+                if (e.title?.toLowerCase().includes('examen oficial')) {
+                  url = `/auxiliar-administrativo-estado/test/examen-oficial?resume=${e.id}`
+                } else if (e.title?.toLowerCase().includes('aleatorio') || e.temaNumber === 0 || e.temaNumber === null) {
+                  url = `/test/aleatorio-examen?resume=${e.id}`
+                } else {
+                  url = `/auxiliar-administrativo-estado/test/tema/${e.temaNumber || 1}/test-examen?resume=${e.id}`
+                }
                 const progress = e.totalQuestions > 0
                   ? Math.round((e.answeredQuestions / e.totalQuestions) * 100)
                   : 0

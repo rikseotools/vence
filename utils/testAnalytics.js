@@ -199,7 +199,11 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     }
     
     console.log('✅ Test completado con análisis completo')
-    
+
+    // 🆕 REGISTRAR EN USER_QUESTION_HISTORY (para estadísticas de artículos débiles)
+    // Incluye preguntas no contestadas como falladas
+    await registerQuestionsInHistory(userSession?.user_id, allAnswers, questions)
+
     // 🔥 ACTUALIZAR USER_PROGRESS - REPARADO CON MÉTODO DIRECTO
     await updateUserProgressDirect(userSession?.user_id, sessionId, finalScore, allAnswers.length)
     
@@ -318,6 +322,95 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
 
   } catch (error) {
     console.error('❌ Error en updateUserProgressDirect:', error)
+  }
+}
+
+// 🆕 FUNCIÓN: Registrar preguntas en user_question_history
+// Registra TODAS las preguntas, incluyendo las no contestadas como falladas
+export const registerQuestionsInHistory = async (userId, allAnswers, questions) => {
+  if (!userId) {
+    console.log('ℹ️ Saltando registro en history - no hay userId')
+    return
+  }
+
+  try {
+    console.log(`📊 [History] Registrando ${allAnswers.length} preguntas en user_question_history...`)
+
+    let answeredCount = 0
+    let unansweredCount = 0
+    let updatedCount = 0
+    let createdCount = 0
+
+    for (const answer of allAnswers) {
+      const questionId = answer.questionData?.id
+      if (!questionId) continue
+
+      // Determinar si fue contestada o no
+      const wasAnswered = answer.selectedAnswer !== -1 && answer.selectedAnswer !== null
+      const isCorrect = wasAnswered ? answer.isCorrect : false // No contestada = fallada
+
+      if (wasAnswered) {
+        answeredCount++
+      } else {
+        unansweredCount++
+      }
+
+      // Buscar registro existente
+      const { data: existing, error: fetchError } = await supabase
+        .from('user_question_history')
+        .select('id, total_attempts, correct_attempts')
+        .eq('user_id', userId)
+        .eq('question_id', questionId)
+        .single()
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 = no rows returned (esperado si no existe)
+        console.error(`❌ Error buscando history para ${questionId}:`, fetchError)
+        continue
+      }
+
+      if (existing) {
+        // Actualizar registro existente
+        const newTotal = existing.total_attempts + 1
+        const newCorrect = isCorrect ? existing.correct_attempts + 1 : existing.correct_attempts
+        const successRate = newTotal > 0 ? (newCorrect / newTotal).toFixed(2) : '0.00'
+
+        const { error: updateError } = await supabase
+          .from('user_question_history')
+          .update({
+            total_attempts: newTotal,
+            correct_attempts: newCorrect,
+            success_rate: successRate,
+            last_attempt_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+
+        if (!updateError) updatedCount++
+      } else {
+        // Crear nuevo registro
+        const { error: insertError } = await supabase
+          .from('user_question_history')
+          .insert({
+            user_id: userId,
+            question_id: questionId,
+            total_attempts: 1,
+            correct_attempts: isCorrect ? 1 : 0,
+            success_rate: isCorrect ? '1.00' : '0.00',
+            first_attempt_at: new Date().toISOString(),
+            last_attempt_at: new Date().toISOString(),
+          })
+
+        if (!insertError) createdCount++
+      }
+    }
+
+    console.log(`✅ [History] Registradas ${allAnswers.length} preguntas:`)
+    console.log(`   - Contestadas: ${answeredCount}`)
+    console.log(`   - No contestadas (registradas como falladas): ${unansweredCount}`)
+    console.log(`   - Actualizadas: ${updatedCount}, Creadas: ${createdCount}`)
+
+  } catch (error) {
+    console.error('❌ Error en registerQuestionsInHistory:', error)
   }
 }
 

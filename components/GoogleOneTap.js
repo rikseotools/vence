@@ -6,6 +6,13 @@ import { getSupabaseClient } from '@/lib/supabase'
 // Google Client ID
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
+// Detectar iOS (Safari y Chrome iOS tienen problemas con FedCM/One Tap)
+function isIOSDevice() {
+  if (typeof window === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasPrompted, setHasPrompted] = useState(false)
@@ -81,6 +88,12 @@ export default function GoogleOneTap({ onSuccess, onError, disabled = false }) {
   // Cargar script de Google
   useEffect(() => {
     if (disabled || !GOOGLE_CLIENT_ID) return
+
+    // Desactivar en iOS - FedCM causa "Maximum call stack" en Safari/Chrome iOS
+    if (isIOSDevice()) {
+      console.log('📱 iOS detectado - Google One Tap desactivado (incompatibilidad FedCM)')
+      return
+    }
 
     // Verificar si ya hay usuario logueado
     const checkUser = async () => {

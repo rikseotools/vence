@@ -857,7 +857,15 @@ export default function HeaderES() {
                 const progress = exam.totalQuestions > 0
                   ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
                   : 0
-                const resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+                // Generar URL correcta según tipo de examen
+                let resumeUrl
+                if (exam.title?.toLowerCase().includes('examen oficial')) {
+                  resumeUrl = `/auxiliar-administrativo-estado/test/examen-oficial?resume=${exam.id}`
+                } else if (exam.title?.toLowerCase().includes('aleatorio') || exam.temaNumber === 0 || exam.temaNumber === null) {
+                  resumeUrl = `/test/aleatorio-examen?resume=${exam.id}`
+                } else {
+                  resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+                }
 
                 return (
                   <Link

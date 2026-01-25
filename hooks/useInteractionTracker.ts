@@ -52,6 +52,51 @@ const QUEUE_KEY = 'vence_tracking_queue'
 // HELPERS
 // ============================================
 
+/**
+ * Serializa un objeto de forma segura, eliminando referencias circulares
+ * y elementos DOM que no pueden ser serializados
+ */
+function safeStringify(obj: unknown): string {
+  const seen = new WeakSet()
+
+  return JSON.stringify(obj, (key, value) => {
+    // Ignorar propiedades internas de React
+    if (key.startsWith('__react') || key.startsWith('_react')) {
+      return undefined
+    }
+
+    // Manejar elementos DOM
+    if (value instanceof HTMLElement) {
+      return `[HTMLElement: ${value.tagName}${value.id ? '#' + value.id : ''}]`
+    }
+
+    // Manejar Window
+    if (typeof window !== 'undefined' && value === window) {
+      return '[Window]'
+    }
+
+    // Manejar Document
+    if (typeof document !== 'undefined' && value === document) {
+      return '[Document]'
+    }
+
+    // Manejar eventos del navegador
+    if (value instanceof Event) {
+      return `[Event: ${value.type}]`
+    }
+
+    // Detectar referencias circulares en objetos
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular]'
+      }
+      seen.add(value)
+    }
+
+    return value
+  })
+}
+
 function getSessionId(): string {
   if (typeof window === 'undefined') return ''
 
@@ -96,7 +141,7 @@ function saveQueueToStorage(queue: QueuedEvent[]): void {
   if (typeof window === 'undefined') return
 
   try {
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue))
+    localStorage.setItem(QUEUE_KEY, safeStringify(queue))
   } catch {
     // Storage full or unavailable
   }
@@ -131,7 +176,7 @@ async function flushQueue(forceAll = false): Promise<void> {
     const response = await fetch('/api/interactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ events: eventsToSend }),
+      body: safeStringify({ events: eventsToSend }),
       // No bloquear navegación
       keepalive: true
     })
@@ -202,7 +247,8 @@ export function useInteractionTracker() {
     const handleBeforeUnload = () => {
       if (globalQueue.length > 0) {
         // Usar sendBeacon para envío garantizado
-        const data = JSON.stringify({ events: globalQueue })
+        // Usar safeStringify para evitar errores de referencias circulares
+        const data = safeStringify({ events: globalQueue })
         navigator.sendBeacon('/api/interactions', data)
         globalQueue = []
         clearQueueFromStorage()
