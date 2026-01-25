@@ -567,6 +567,8 @@ export default function OfficialExamLayout({
 
             if (completeResult.success) {
               console.log(`✅ Examen completado via /complete: ${completeResult.correctCount}/${completeResult.answeredCount} (${completeResult.score}%)`)
+              // Notificar a UserAvatar para refrescar stats
+              window.dispatchEvent(new Event('exam-completed'))
             } else {
               console.error('❌ Error completando examen:', completeResult.error)
             }
@@ -617,6 +619,8 @@ export default function OfficialExamLayout({
               const legCount = questions.filter(q => q.questionType === 'legislative').length
               const psyCount = questions.filter(q => q.questionType === 'psychometric').length
               console.log(`✅ Examen guardado via API v2: ${apiResult.questionsSaved} preguntas (${legCount} legislativas, ${psyCount} psicotécnicas)`)
+              // Notificar a UserAvatar para refrescar stats
+              window.dispatchEvent(new Event('exam-completed'))
             } else {
               console.error('❌ Error guardando via API v2:', apiResult.error)
             }

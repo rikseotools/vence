@@ -68,6 +68,20 @@ export default function UserAvatar() {
     }
   }, [user, authLoading, supabase]) // Context dependencies
 
+  // Escuchar evento de examen completado para refrescar stats
+  useEffect(() => {
+    const handleExamCompleted = () => {
+      if (user?.id) {
+        console.log('🔄 UserAvatar: Refrescando stats después de examen completado')
+        loadUserStats(user.id)
+        loadPendingExams() // También refrescar exámenes pendientes
+      }
+    }
+
+    window.addEventListener('exam-completed', handleExamCompleted)
+    return () => window.removeEventListener('exam-completed', handleExamCompleted)
+  }, [user?.id])
+
   // Verificar si es admin
   useEffect(() => {
     async function checkAdminStatus() {
