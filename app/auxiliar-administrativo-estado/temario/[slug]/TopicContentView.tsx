@@ -489,12 +489,41 @@ function ArticleCard({ article, weakInfo, lawShortName, lawName }: ArticleCardPr
 
   const formatContent = (content: string | null) => {
     if (!content) return null
-    const lines = content.split(/(?=\d+\.\s)|(?=[a-z]\)\s)/g)
-    return lines.map((line, index) => (
-      <p key={index} className="mb-2 last:mb-0">
-        {line.trim()}
-      </p>
-    ))
+
+    // 1. Dividir por párrafos (doble salto de línea)
+    const paragraphs = content.split(/\n\n+/)
+
+    return paragraphs.map((paragraph, pIndex) => {
+      const trimmed = paragraph.trim()
+      if (!trimmed) return null
+
+      // 2. Detectar si es una lista (empieza con "1. " o "- " o "a) ")
+      const isNumberedList = /^\d+\.\s/.test(trimmed)
+      const isBulletList = /^[-•]\s/.test(trimmed)
+      const isLetterList = /^[a-z]\)\s/.test(trimmed)
+
+      if (isNumberedList || isBulletList || isLetterList) {
+        // Dividir por saltos de línea simples para items de lista
+        const items = trimmed.split(/\n/).filter(item => item.trim())
+        return (
+          <ul key={pIndex} className="mb-3 last:mb-0 list-none space-y-1">
+            {items.map((item, iIndex) => (
+              <li key={iIndex} className="pl-0">
+                {item.trim()}
+              </li>
+            ))}
+          </ul>
+        )
+      }
+
+      // 3. Párrafo normal - reemplazar saltos simples por espacios
+      const text = trimmed.replace(/\n/g, ' ')
+      return (
+        <p key={pIndex} className="mb-3 last:mb-0">
+          {text}
+        </p>
+      )
+    }).filter(Boolean)
   }
 
   // Determinar nivel de urgencia según porcentaje de aciertos
