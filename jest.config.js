@@ -1,7 +1,7 @@
 // jest.config.js
 export default {
   testEnvironment: 'jsdom', // Cambiado para soportar React Testing Library
-  testMatch: ['**/__tests__/**/*.test.js'],
+  testMatch: ['**/__tests__/**/*.test.{js,ts,tsx}'],
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', {
       presets: [

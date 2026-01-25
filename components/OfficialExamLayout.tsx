@@ -1,8 +1,14 @@
-// components/OfficialExamLayout.js - Examen Oficial (legislativo + psicotecnico)
+// components/OfficialExamLayout.tsx - Examen Oficial (legislativo + psicotecnico)
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
+
+// Type for useAuth context (AuthContext is JS, so we type it manually)
+interface AuthContextValue {
+  user: { id: string; email?: string } | null
+  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
+}
 import ArticleModal from './ArticleModal'
 import QuestionDispute from './QuestionDisputeFixed'
 import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
@@ -19,22 +25,113 @@ import SequenceNumericQuestion from './SequenceNumericQuestion'
 import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 
+// =====================================================
+// TYPES
+// =====================================================
+
+type QuestionType = 'legislative' | 'psychometric'
+
+type PsychometricSubtype =
+  | 'pie_chart'
+  | 'bar_chart'
+  | 'line_chart'
+  | 'data_tables'
+  | 'mixed_chart'
+  | 'error_detection'
+  | 'word_analysis'
+  | 'sequence_numeric'
+  | 'sequence_letter'
+  | 'sequence_alphanumeric'
+  | 'synonym'
+  | 'antonym'
+  | 'text_question'
+  | 'calculation'
+  | 'percentage'
+  | 'equation'
+
+interface OfficialExamQuestion {
+  id: string
+  question: string
+  questionText?: string
+  options: string[]
+  questionType: QuestionType
+  questionSubtype?: PsychometricSubtype
+  questionNumber?: number
+  isReserva?: boolean
+  articleNumber?: string | null
+  lawName?: string | null
+  explanation?: string | null
+  difficulty?: string
+  contentData?: Record<string, unknown> | null
+}
+
+interface ExamMetadata {
+  examDate?: string
+  legislativeCount?: number
+  psychometricCount?: number
+  reservaCount?: number
+}
+
+interface ExamConfig {
+  examDate?: string
+  backUrl?: string
+  backText?: string
+}
+
+interface OfficialExamLayoutProps {
+  questions: OfficialExamQuestion[]
+  metadata?: ExamMetadata
+  oposicion: string
+  config?: ExamConfig
+}
+
+interface ValidationResult {
+  isCorrect: boolean
+  correctAnswer: string
+  correctIndex?: number
+  explanation?: string | null
+  userAnswer?: string | null
+  questionType: QuestionType
+}
+
+interface ValidatedResults {
+  results: (ValidationResult | null)[]
+  summary: {
+    totalCorrect: number
+    totalIncorrect: number
+    totalUnanswered: number
+    percentage: number
+  }
+}
+
+interface MotivationalMessage {
+  emoji: string
+  message: string
+  color: string
+  bgColor: string
+  borderColor: string
+}
+
+// =====================================================
+// HELPERS
+// =====================================================
+
 // Helper para convertir indice de respuesta a letra (0='A', 1='B', etc.)
-function answerToLetter(index) {
+function answerToLetter(index: number | null | undefined): string {
   if (index === null || index === undefined) return '?'
   const letters = ['A', 'B', 'C', 'D']
   return letters[index] || '?'
 }
 
 // Helper para convertir letra a indice
-function letterToIndex(letter) {
+function letterToIndex(letter: string | null | undefined): number | null {
   if (!letter) return null
-  const map = { 'a': 0, 'b': 1, 'c': 2, 'd': 3 }
+  const map: Record<string, number> = { 'a': 0, 'b': 1, 'c': 2, 'd': 3 }
   return map[letter.toLowerCase()] ?? null
 }
 
 // Funcion para obtener mensaje motivacional segun puntuacion
-function getMotivationalMessage(notaSobre10, userName) {
+function getMotivationalMessage(notaSobre10: string, userName: string): MotivationalMessage {
   const nota = parseFloat(notaSobre10)
   const nombre = userName || 'alli'
 
@@ -98,7 +195,7 @@ function getMotivationalMessage(notaSobre10, userName) {
 }
 
 // Formatear tiempo
-function formatElapsedTime(seconds) {
+function formatElapsedTime(seconds: number): string {
   const hours = Math.floor(seconds / 3600)
   const mins = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
@@ -109,31 +206,34 @@ function formatElapsedTime(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+// =====================================================
+// COMPONENT
+// =====================================================
+
 export default function OfficialExamLayout({
   questions,
   metadata,
   oposicion,
   config
-}) {
-  const { user, supabase } = useAuth()
+}: OfficialExamLayoutProps) {
+  const { user, supabase } = useAuth() as AuthContextValue
 
   // Estados del examen
-  const [userAnswers, setUserAnswers] = useState({})
+  const [userAnswers, setUserAnswers] = useState<Record<number, string>>({})
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [score, setScore] = useState(0)
   const [startTime] = useState(Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
-  const [saveStatus, setSaveStatus] = useState(null)
 
   // Resultados validados por API
-  const [validatedResults, setValidatedResults] = useState(null)
+  const [validatedResults, setValidatedResults] = useState<ValidatedResults | null>(null)
 
   // Modal de articulo
   const [modalOpen, setModalOpen] = useState(false)
-  const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
-  const [selectedQuestionForModal, setSelectedQuestionForModal] = useState(null)
-  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(null)
+  const [selectedArticle, setSelectedArticle] = useState<{ number: string | null; lawSlug: string | null }>({ number: null, lawSlug: null })
+  const [selectedQuestionForModal, setSelectedQuestionForModal] = useState<OfficialExamQuestion | null>(null)
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number | null>(null)
 
   // Cronometro
   useEffect(() => {
@@ -147,7 +247,7 @@ export default function OfficialExamLayout({
   }, [isSubmitted, startTime])
 
   // Manejar seleccion de respuesta
-  function handleAnswerSelect(questionIndex, option) {
+  function handleAnswerSelect(questionIndex: number, option: number | string): void {
     if (isSubmitted) return
 
     // Option puede ser un indice (0-3) o una letra ('a'-'d')
@@ -162,27 +262,27 @@ export default function OfficialExamLayout({
   }
 
   // Corregir examen
-  async function handleSubmitExam() {
+  async function handleSubmitExam(): Promise<void> {
     console.log('🎯 [OfficialExam] Iniciando correccion de examen oficial')
     setIsSaving(true)
 
     try {
       // Separar preguntas por tipo
-      const legislativeQuestions = []
-      const psychometricQuestions = []
+      const legislativeQuestions: { questionId: string; userAnswer: string | null; index: number }[] = []
+      const psychometricQuestions: { questionId: string; userAnswer: number | null; index: number }[] = []
 
       questions.forEach((q, index) => {
-        const answer = userAnswers[index] // ya es letra: 'a', 'b', 'c', 'd'
+        const answer = userAnswers[index]
         if (q.questionType === 'legislative') {
           legislativeQuestions.push({
             questionId: q.id,
-            userAnswer: answer || null, // Enviar letra para API /api/exam/validate
+            userAnswer: answer || null,
             index
           })
         } else {
           psychometricQuestions.push({
             questionId: q.id,
-            userAnswer: answer ? letterToIndex(answer) : null, // Enviar índice para API /api/answer/psychometric
+            userAnswer: answer ? letterToIndex(answer) : null,
             index
           })
         }
@@ -191,7 +291,7 @@ export default function OfficialExamLayout({
       console.log(`📊 Legislative: ${legislativeQuestions.length}, Psychometric: ${psychometricQuestions.length}`)
 
       // Inicializar resultados
-      const allResults = new Array(questions.length).fill(null)
+      const allResults: (ValidationResult | null)[] = new Array(questions.length).fill(null)
       let totalCorrect = 0
 
       // Validar preguntas legislativas via /api/exam/validate
@@ -211,7 +311,7 @@ export default function OfficialExamLayout({
         const legResult = await legResponse.json()
 
         if (legResult.success) {
-          legResult.results.forEach((result, i) => {
+          legResult.results.forEach((result: ValidationResult, i: number) => {
             const originalIndex = legislativeQuestions[i].index
             allResults[originalIndex] = {
               ...result,
@@ -354,16 +454,21 @@ export default function OfficialExamLayout({
   }
 
   // Abrir modal de articulo
-  function openArticleModal(articleNumber, lawName, question = null, questionIndex = null) {
+  function openArticleModal(
+    articleNumber: string | null | undefined,
+    lawName: string | null | undefined,
+    question: OfficialExamQuestion | null = null,
+    questionIndex: number | null = null
+  ): void {
     const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
-    setSelectedArticle({ number: articleNumber, lawSlug })
+    setSelectedArticle({ number: articleNumber || null, lawSlug })
     setSelectedQuestionForModal(question)
     setSelectedQuestionIndex(questionIndex)
     setModalOpen(true)
   }
 
   // Cerrar modal
-  function closeArticleModal() {
+  function closeArticleModal(): void {
     setModalOpen(false)
     setSelectedArticle({ number: null, lawSlug: null })
     setSelectedQuestionForModal(null)
@@ -371,16 +476,16 @@ export default function OfficialExamLayout({
   }
 
   // Renderizar pregunta legislativa
-  function renderLegislativeQuestion(question, index) {
+  function renderLegislativeQuestion(question: OfficialExamQuestion, index: number): React.ReactElement {
     const selectedOption = userAnswers[index]
     const validatedResult = validatedResults?.results?.[index]
     const correctOptionLetter = validatedResult?.correctAnswer || null
     const isCorrect = validatedResult?.isCorrect ?? false
-    const showFeedback = isSubmitted && validatedResult
+    const showFeedback = !!(isSubmitted && validatedResult)
 
     return (
       <div className="space-y-3">
-        {['a', 'b', 'c', 'd'].map((option, optIndex) => {
+        {(['a', 'b', 'c', 'd'] as const).map((option, optIndex) => {
           const optionText = question.options[optIndex]
           const isSelected = selectedOption === option
           const isCorrectOption = option === correctOptionLetter
@@ -450,11 +555,11 @@ export default function OfficialExamLayout({
   }
 
   // Renderizar pregunta psicotecnica
-  function renderPsychometricQuestion(question, index) {
+  function renderPsychometricQuestion(question: OfficialExamQuestion, index: number): React.ReactElement {
     const selectedOption = userAnswers[index]
     const selectedIndex = selectedOption ? letterToIndex(selectedOption) : null
     const validatedResult = validatedResults?.results?.[index]
-    const showFeedback = isSubmitted && validatedResult
+    const showFeedback = !!(isSubmitted && validatedResult)
     const verifiedCorrectAnswer = validatedResult?.correctIndex ?? null
     const verifiedExplanation = validatedResult?.explanation || question.explanation
 
@@ -471,7 +576,7 @@ export default function OfficialExamLayout({
         explanation: question.explanation,
         question_subtype: question.questionSubtype
       },
-      onAnswer: (optIndex) => handleAnswerSelect(index, optIndex),
+      onAnswer: (optIndex: number) => handleAnswerSelect(index, optIndex),
       selectedAnswer: selectedIndex,
       showResult: showFeedback,
       isAnswering: false,
@@ -511,10 +616,17 @@ export default function OfficialExamLayout({
   }
 
   // Renderizar pregunta psicotecnica de texto
-  function renderTextPsychometricQuestion(question, index, selectedIndex, showFeedback, verifiedCorrectAnswer, verifiedExplanation) {
+  function renderTextPsychometricQuestion(
+    question: OfficialExamQuestion,
+    index: number,
+    selectedIndex: number | null,
+    showFeedback: boolean,
+    verifiedCorrectAnswer: number | null,
+    verifiedExplanation: string | null | undefined
+  ): React.ReactElement {
     return (
       <div className="space-y-3">
-        {['A', 'B', 'C', 'D'].map((letter, optIndex) => {
+        {(['A', 'B', 'C', 'D'] as const).map((letter, optIndex) => {
           const optionText = question.options[optIndex]
           const isSelected = selectedIndex === optIndex
           const isCorrectOption = showFeedback && verifiedCorrectAnswer !== null
@@ -577,7 +689,7 @@ export default function OfficialExamLayout({
   const puntosBrutos = correctCount - (incorrectCount / 3)
   const notaSobre10 = isSubmitted
     ? Math.max(0, (puntosBrutos / totalQuestions) * 10).toFixed(2)
-    : 0
+    : '0'
 
   // Loading state
   if (!questions || questions.length === 0) {
@@ -609,11 +721,11 @@ export default function OfficialExamLayout({
             </p>
             <p className="text-sm text-gray-600 mt-1">
               {totalQuestions} preguntas
-              {metadata?.legislativeCount > 0 && metadata?.psychometricCount > 0 && (
+              {metadata?.legislativeCount && metadata.legislativeCount > 0 && metadata?.psychometricCount && metadata.psychometricCount > 0 && (
                 <> ({metadata.legislativeCount} legislativas, {metadata.psychometricCount} psicotecnicas)</>
               )}
             </p>
-            {metadata?.reservaCount > 0 && (
+            {metadata?.reservaCount && metadata.reservaCount > 0 && (
               <p className="text-xs text-gray-500 mt-1">
                 <span>📋 {metadata.reservaCount} reservas</span>
               </p>
@@ -651,7 +763,10 @@ export default function OfficialExamLayout({
 
           {/* Resultado despues de corregir */}
           {isSubmitted && (() => {
-            const motivationalData = getMotivationalMessage(notaSobre10, user?.user_metadata?.full_name || user?.email?.split('@')[0])
+            const userName = (user as { user_metadata?: { full_name?: string }; email?: string })?.user_metadata?.full_name
+              || (user as { email?: string })?.email?.split('@')[0]
+              || ''
+            const motivationalData = getMotivationalMessage(notaSobre10, userName)
             return (
               <div className="relative">
                 {/* Nota destacada */}
@@ -744,7 +859,7 @@ export default function OfficialExamLayout({
             const selectedOption = userAnswers[index]
             const validatedResult = validatedResults?.results?.[index]
             const isCorrect = validatedResult?.isCorrect ?? false
-            const showFeedback = isSubmitted && validatedResult
+            const showFeedback = !!(isSubmitted && validatedResult)
             const isPsychometric = question.questionType === 'psychometric'
 
             return (
