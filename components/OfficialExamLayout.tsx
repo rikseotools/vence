@@ -919,12 +919,14 @@ export default function OfficialExamLayout({
                   )}
                 </div>
 
-                {/* Texto de la pregunta */}
-                <div className="mb-6">
-                  <p className="text-lg text-gray-900 leading-relaxed">
-                    {question.question}
-                  </p>
-                </div>
+                {/* Texto de la pregunta (solo para legislativas, las psicotecnicas lo muestran internamente) */}
+                {!isPsychometric && (
+                  <div className="mb-6">
+                    <p className="text-lg text-gray-900 leading-relaxed">
+                      {question.question}
+                    </p>
+                  </div>
+                )}
 
                 {/* Opciones de respuesta segun tipo */}
                 {isPsychometric
