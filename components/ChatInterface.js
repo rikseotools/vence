@@ -503,11 +503,11 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
           </button>
         </div>
 
-        {/* Feedback original */}
-        {feedbackData && (
+        {/* Feedback original - ocultar si es conversación iniciada por soporte */}
+        {feedbackData && !feedbackData.message?.startsWith('[Conversación iniciada') && (
           <div className="p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
             <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Feedback original:
+              Tu consulta:
             </div>
             <p className="text-sm text-gray-800 dark:text-gray-200">{feedbackData.message}</p>
           </div>
@@ -548,9 +548,8 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        {conversation?.status !== 'closed' && (
-          <form onSubmit={sendMessage} className="p-4 border-t dark:border-gray-700">
+        {/* Input - siempre visible, incluso en cerradas para permitir reabrir */}
+        <form onSubmit={sendMessage} className="p-4 border-t dark:border-gray-700">
             <div className="space-y-3">
               {/* Vista previa de imágenes subidas */}
               {uploadedImages.length > 0 && (
@@ -678,12 +677,12 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
               </div>
             </div>
           </form>
-        )}
 
+        {/* Aviso de conversación cerrada - pero puede reabrir escribiendo */}
         {conversation?.status === 'closed' && (
-          <div className="p-4 bg-green-50 dark:bg-green-900/20 border-t border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-700 dark:text-green-400 text-center">
-              ✅ Esta conversación ha sido cerrada. ¡Gracias por contactarnos!
+          <div className="px-4 pb-2 -mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+              ✅ Conversación cerrada. Escribe un mensaje si necesitas reabrir.
             </p>
           </div>
         )}

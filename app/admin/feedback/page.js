@@ -2016,7 +2016,9 @@ export default function AdminFeedbackPage() {
                           </span>
                         </div>
                         <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
-                          {feedback.message}
+                          {feedback.message?.startsWith('[Conversación iniciada')
+                            ? (conversation?.feedback_messages?.find(m => m.is_admin)?.message?.substring(0, 80) || feedback.message) + '...'
+                            : feedback.message}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`text-xs ${STATUS_CONFIG[feedback.status]?.color} px-1.5 py-0.5 rounded`}>
