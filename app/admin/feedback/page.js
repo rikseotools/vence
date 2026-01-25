@@ -1676,7 +1676,20 @@ export default function AdminFeedbackPage() {
               )}
               {/* Botón Nueva Conversación */}
               <button
-                onClick={() => setShowNewConversationModal(true)}
+                onClick={() => {
+                  // Si hay usuario seleccionado, pre-establecerlo
+                  if (selectedUser) {
+                    setNewConvUser({
+                      id: selectedUser.id,
+                      email: selectedUser.email,
+                      full_name: selectedUser.name,
+                      plan_type: selectedUser.planType,
+                      target_oposicion: selectedUser.targetOposicion
+                    })
+                    setNewConvEmail(selectedUser.email || '')
+                  }
+                  setShowNewConversationModal(true)
+                }}
                 className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-600 transition-colors"
                 title="Iniciar conversación con un usuario"
               >
