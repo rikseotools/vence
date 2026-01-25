@@ -1,9 +1,29 @@
-// components/ExamLayout.js - MODO EXAMEN (todas las preguntas a la vez)
+// components/ExamLayout.tsx - MODO EXAMEN (todas las preguntas a la vez)
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
+
+// Type for useAuth context (AuthContext is JS, so we type it manually)
+interface AuthContextValue {
+  user: {
+    id: string
+    email?: string
+    user_metadata?: {
+      full_name?: string
+      name?: string
+      avatar_url?: string
+    }
+  } | null
+  userProfile: {
+    username?: string
+    avatar_url?: string
+    current_streak_days?: number
+  } | null
+  loading: boolean
+  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
+}
 import ArticleModal from './ArticleModal'
 import QuestionDispute from './QuestionDisputeFixed'
 import MotivationalMessage from './MotivationalMessage'
@@ -15,24 +35,124 @@ import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 
 // Imports modularizados
 import {
-  getDeviceInfo,
-  createUserSession,
   createDetailedTestSession,
   updateTestScore
 } from '../utils/testSession.js'
-import {
-  saveDetailedAnswer,
-  calculateConfidence,
-  createDetailedAnswer
-} from '../utils/testAnswers.js'
 import {
   completeDetailedTest,
   formatTime
 } from '../utils/testAnalytics.js'
 
-// 🆕 API para guardar respuestas en tiempo real (permite reanudar exámenes)
-// 🔒 SEGURIDAD: NO enviamos correctAnswer - solo guardamos la respuesta del usuario
-async function saveAnswerToAPI(testId, question, questionIndex, selectedOption) {
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+
+/** Estructura de un artículo de ley asociado a una pregunta */
+interface QuestionArticle {
+  id?: string
+  article_number?: string
+  laws?: {
+    short_name?: string
+  }
+}
+
+/** Estructura de una pregunta del examen */
+interface ExamQuestion {
+  id: string
+  question_text: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  correct_option?: number // 🔒 Solo disponible en servidor, no se usa en cliente
+  explanation?: string
+  difficulty?: string
+  tema_number?: number
+  primary_article_id?: string
+  articles?: QuestionArticle
+}
+
+/** Configuración del examen */
+interface ExamConfig {
+  title?: string
+  description?: string
+  timeLimit?: number
+  [key: string]: unknown
+}
+
+/** Props del componente ExamLayout */
+interface ExamLayoutProps {
+  tema: number | string
+  testNumber?: number
+  config?: ExamConfig
+  questions: ExamQuestion[]
+  children?: React.ReactNode
+  /** ID del test para reanudar (si existe) */
+  resumeTestId?: string | null
+  /** Respuestas guardadas previamente para reanudar */
+  initialAnswers?: Record<number, string> | null
+}
+
+/** Respuestas del usuario indexadas por número de pregunta */
+type UserAnswers = Record<number, string>
+
+/** Resultado validado de una pregunta individual (de la API) */
+interface ValidatedQuestionResult {
+  questionId: string
+  userAnswer: string | null
+  correctAnswer: string
+  correctIndex: number
+  isCorrect: boolean
+  explanation?: string
+}
+
+/** Respuesta completa de la API /api/exam/validate */
+interface ValidatedResults {
+  success: boolean
+  results: ValidatedQuestionResult[]
+  summary: {
+    totalQuestions: number
+    totalAnswered: number
+    totalCorrect: number
+    percentage: number
+  }
+}
+
+/** Sesión de test */
+interface TestSession {
+  id: string
+  [key: string]: unknown
+}
+
+/** Datos del mensaje motivacional */
+interface MotivationalData {
+  emoji: string
+  message: string
+  color: string
+  bgColor: string
+  borderColor: string
+}
+
+/** Artículo seleccionado para el modal */
+interface SelectedArticle {
+  number: string | null
+  lawSlug: string | null
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * 🆕 API para guardar respuestas en tiempo real (permite reanudar exámenes)
+ * 🔒 SEGURIDAD: NO enviamos correctAnswer - solo guardamos la respuesta del usuario
+ */
+async function saveAnswerToAPI(
+  testId: string,
+  question: ExamQuestion,
+  questionIndex: number,
+  selectedOption: string
+): Promise<boolean> {
   try {
     const response = await fetch('/api/exam/answer', {
       method: 'POST',
@@ -73,8 +193,10 @@ async function saveAnswerToAPI(testId, question, questionIndex, selectedOption) 
   }
 }
 
-// 🆕 API para cargar respuestas guardadas (para reanudar exámenes)
-async function loadSavedAnswers(testId) {
+/**
+ * 🆕 API para cargar respuestas guardadas (para reanudar exámenes)
+ */
+async function loadSavedAnswers(testId: string): Promise<UserAnswers | null> {
   try {
     const response = await fetch(`/api/exam/progress?testId=${testId}`)
 
@@ -93,7 +215,7 @@ async function loadSavedAnswers(testId) {
   }
 }
 
-// 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar botón "Ver artículo"
+/** 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar botón "Ver artículo" */
 const NON_LEGAL_CONTENT = [
   'Informática Básica',
   'Portal de Internet',
@@ -107,15 +229,15 @@ const NON_LEGAL_CONTENT = [
   'Administración electrónica y servicios al ciudadano (CSL)',
 ]
 
-// 🔍 FUNCIÓN: Verificar si es contenido legal (artículo de ley real)
-function isLegalArticle(lawShortName) {
+/** 🔍 FUNCIÓN: Verificar si es contenido legal (artículo de ley real) */
+function isLegalArticle(lawShortName: string | undefined): boolean {
   if (!lawShortName) return false
   return !NON_LEGAL_CONTENT.includes(lawShortName)
 }
 
-/// 🎉 FUNCIÓN: Obtener mensaje motivacional según puntuación
-function getMotivationalMessage(notaSobre10, userName) {
-  const nota = parseFloat(notaSobre10)
+/** 🎉 FUNCIÓN: Obtener mensaje motivacional según puntuación */
+function getMotivationalMessage(notaSobre10: string | number, userName: string | null): MotivationalData {
+  const nota = typeof notaSobre10 === 'string' ? parseFloat(notaSobre10) : notaSobre10
   const nombre = userName || 'allí'
 
   if (nota === 10) {
@@ -177,12 +299,28 @@ function getMotivationalMessage(notaSobre10, userName) {
   }
 }
 
-// Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
-function answerToLetter(index) {
+/** Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.) */
+function answerToLetter(index: number | null | undefined): string {
   if (index === null || index === undefined) return '?'
   const letters = ['A', 'B', 'C', 'D']
   return letters[index] || '?'
 }
+
+/** Formatear tiempo para el cronómetro */
+function formatElapsedTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const mins = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 export default function ExamLayout({
   tema,
@@ -190,11 +328,10 @@ export default function ExamLayout({
   config,
   questions,
   children,
-  // 🆕 Props para reanudar examen
   resumeTestId = null,
   initialAnswers = null
-}) {
-  const { user, userProfile, loading: authLoading, supabase } = useAuth()
+}: ExamLayoutProps) {
+  const { user, userProfile, loading: authLoading, supabase } = useAuth() as AuthContextValue
   const {
     hasLimit,
     isLimitReached,
@@ -210,60 +347,53 @@ export default function ExamLayout({
   } = useDailyQuestionLimit()
 
   // Estados del examen
-  // 🆕 Inicializar con respuestas guardadas si estamos reanudando
-  const [userAnswers, setUserAnswers] = useState(initialAnswers || {})
+  const [userAnswers, setUserAnswers] = useState<UserAnswers>(initialAnswers || {})
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [score, setScore] = useState(0)
   const [startTime] = useState(Date.now())
-  const [elapsedTime, setElapsedTime] = useState(0) // Tiempo transcurrido en segundos
-  const [isResuming] = useState(!!resumeTestId) // 🆕 Flag para saber si reanudamos
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const [isResuming] = useState(!!resumeTestId)
 
   // 🔒 Estados para límite de preguntas (usuarios FREE)
-  const [effectiveQuestions, setEffectiveQuestions] = useState(questions || [])
+  const [effectiveQuestions, setEffectiveQuestions] = useState<ExamQuestion[]>(questions || [])
   const [wasLimited, setWasLimited] = useState(false)
   const [originalCount, setOriginalCount] = useState(questions?.length || 0)
 
   // Estados de sesión
-  const [currentTestSession, setCurrentTestSession] = useState(null)
-  const [saveStatus, setSaveStatus] = useState(null)
+  const [currentTestSession, setCurrentTestSession] = useState<TestSession | null>(null)
+  const [saveStatus, setSaveStatus] = useState<'success' | 'error' | null>(null)
 
   // Control de guardado
   const [isSaving, setIsSaving] = useState(false)
 
   // 🔒 SEGURIDAD: Estado para respuestas validadas por API
-  // Las respuestas correctas SOLO vienen de la API después de enviar el examen
-  const [validatedResults, setValidatedResults] = useState(null)
+  const [validatedResults, setValidatedResults] = useState<ValidatedResults | null>(null)
 
   // Estados del modal de artículo
   const [modalOpen, setModalOpen] = useState(false)
-  const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
-  const [selectedQuestionForModal, setSelectedQuestionForModal] = useState(null) // 🎨 Para resaltado inteligente
-  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState(null) // 🔒 Índice para validatedResults
+  const [selectedArticle, setSelectedArticle] = useState<SelectedArticle>({ number: null, lawSlug: null })
+  const [selectedQuestionForModal, setSelectedQuestionForModal] = useState<ExamQuestion | null>(null)
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number | null>(null)
 
   // 📤 Estado para compartir resultado
   const [showSharePrompt, setShowSharePrompt] = useState(false)
 
   // 📤 Estado para compartir pregunta individual
-  const [shareQuestionData, setShareQuestionData] = useState(null)
+  const [shareQuestionData, setShareQuestionData] = useState<ExamQuestion | null>(null)
 
   // Hook para obtener la URL actual
   const pathname = usePathname()
 
   // Refs para tracking
   const pageLoadTime = useRef(Date.now())
-  const sessionCreationRef = useRef(false) // ✅ Cambiar a boolean simple
-  const currentTestSessionRef = useRef(null) // ✅ Ref para mantener el test ID
+  const sessionCreationRef = useRef(false)
+  const currentTestSessionRef = useRef<TestSession | null>(null)
 
   // 🔒 LIMITAR PREGUNTAS para usuarios FREE según su límite diario
-  // ⚠️ IMPORTANTE: NO recalcular después de enviar el examen (isSubmitted)
   useEffect(() => {
     if (limitLoading || !questions?.length) return
-
-    // 🔒 FIX: Una vez enviado el examen, NO recalcular las preguntas
-    // Esto evita que al actualizar el límite diario se modifique effectiveQuestions
     if (isSubmitted) return
 
-    // Si el usuario no tiene límite (premium, admin, etc.), usar todas las preguntas
     if (!hasLimit) {
       setEffectiveQuestions(questions)
       setWasLimited(false)
@@ -271,7 +401,6 @@ export default function ExamLayout({
       return
     }
 
-    // Si ya llegó al límite, no puede hacer el examen
     if (isLimitReached || questionsRemaining <= 0) {
       setEffectiveQuestions([])
       setWasLimited(true)
@@ -279,11 +408,10 @@ export default function ExamLayout({
       return
     }
 
-    // Limitar las preguntas a las que le quedan disponibles
     const maxQuestions = Math.min(questions.length, questionsRemaining)
 
     if (maxQuestions < questions.length) {
-      console.log(`🔒 Limitando examen de ${questions.length} a ${maxQuestions} preguntas (quedan ${questionsRemaining} del límite diario)`)
+      console.log(`🔒 Limitando examen de ${questions.length} a ${maxQuestions} preguntas`)
       setEffectiveQuestions(questions.slice(0, maxQuestions))
       setWasLimited(true)
       setOriginalCount(questions.length)
@@ -296,7 +424,7 @@ export default function ExamLayout({
 
   // ✅ CRONÓMETRO: Actualizar cada segundo
   useEffect(() => {
-    if (isSubmitted) return // No actualizar si ya terminó
+    if (isSubmitted) return
 
     const interval = setInterval(() => {
       setElapsedTime(Math.floor((Date.now() - startTime) / 1000))
@@ -309,7 +437,6 @@ export default function ExamLayout({
   useEffect(() => {
     if (authLoading || !questions?.length) return
 
-    // ✅ Control anti-duplicados mejorado (para React Strict Mode)
     if (sessionCreationRef.current) {
       console.log('⏭️ Sesión de examen ya iniciada, omitiendo (Strict Mode)')
       return
@@ -317,7 +444,6 @@ export default function ExamLayout({
 
     sessionCreationRef.current = true
 
-    // 🆕 Si reanudamos, usar el testId existente en vez de crear uno nuevo
     if (resumeTestId) {
       console.log('🔄 Reanudando examen existente:', resumeTestId)
       setCurrentTestSession({ id: resumeTestId })
@@ -325,12 +451,10 @@ export default function ExamLayout({
     } else {
       initializeExamSession()
     }
-
-    // No limpiar el flag en cleanup para evitar doble creación
   }, [authLoading, questions?.length, tema, resumeTestId])
 
   // ✅ FUNCIÓN: Inicializar sesión de examen
-  async function initializeExamSession() {
+  async function initializeExamSession(): Promise<void> {
     try {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.log('🎯 INICIANDO SESIÓN DE EXAMEN')
@@ -343,7 +467,6 @@ export default function ExamLayout({
       console.log('   - Test Type: exam')
       console.log('')
 
-      // Crear test_session con tipo 'exam' (sin user_session para simplificar)
       const testSessionData = await createDetailedTestSession(
         user?.id || null,
         tema,
@@ -352,34 +475,24 @@ export default function ExamLayout({
         config,
         startTime,
         pageLoadTime.current,
-        null, // Sin userSession para simplificar
-        'exam' // 🆕 Pasar test_type como 'exam'
+        null,
+        'exam'
       )
 
       console.log('')
       console.log('📦 Resultado de createDetailedTestSession:')
       console.log('   - testSessionData:', testSessionData)
       console.log('   - testSessionData?.id:', testSessionData?.id)
-      console.log('   - typeof:', typeof testSessionData)
-      console.log('   - is null?:', testSessionData === null)
-      console.log('   - is undefined?:', testSessionData === undefined)
       console.log('')
 
       if (testSessionData === null || testSessionData === undefined) {
         console.error('❌ CRITICAL: createDetailedTestSession devolvió null/undefined')
-        console.error('   Esto causará que NO se guarden las preguntas')
       } else if (!testSessionData.id) {
         console.error('❌ CRITICAL: testSessionData no tiene ID')
-        console.error('   Full object:', JSON.stringify(testSessionData, null, 2))
       } else {
         console.log('✅ Test session creada con ID:', testSessionData.id)
-        // ✅ Guardar en ref para persistencia
         currentTestSessionRef.current = testSessionData
 
-        // 🆕 Guardar TODAS las preguntas del examen para poder reanudar después
-        // ⚠️ FIX: Usar 'questions' prop directamente en lugar de 'effectiveQuestions' state
-        // porque effectiveQuestions puede estar vacío si limitLoading es true todavía
-        // (el state inicial es [] y el useEffect que lo actualiza depende de limitLoading)
         if (questions?.length > 0) {
           console.log('💾 Guardando todas las preguntas del examen...', questions.length, 'preguntas')
           try {
@@ -388,7 +501,7 @@ export default function ExamLayout({
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 testId: testSessionData.id,
-                questions: questions, // Usar prop directamente
+                questions: questions,
                 userId: user?.id
               })
             })
@@ -401,8 +514,6 @@ export default function ExamLayout({
           } catch (initError) {
             console.error('❌ Error en init de preguntas:', initError)
           }
-        } else {
-          console.error('❌ CRITICAL: No hay preguntas para guardar en init')
         }
       }
 
@@ -410,32 +521,22 @@ export default function ExamLayout({
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
 
     } catch (error) {
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
       console.error('❌ EXCEPCIÓN EN initializeExamSession:', error)
-      console.error('   Message:', error.message)
-      console.error('   Stack:', error.stack)
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     }
   }
 
-  // ✅ FUNCIÓN: Manejar selección de respuesta (guarda en API para permitir reanudar)
-  // 🔒 SEGURIDAD: NO calculamos ni enviamos correctAnswer - solo la respuesta del usuario
-  async function handleAnswerSelect(questionIndex, option) {
-    if (isSubmitted) return // No permitir cambios después de corregir
+  // ✅ FUNCIÓN: Manejar selección de respuesta
+  async function handleAnswerSelect(questionIndex: number, option: string): Promise<void> {
+    if (isSubmitted) return
 
-    // Actualizar estado local inmediatamente para UX responsiva
     setUserAnswers(prev => ({
       ...prev,
       [questionIndex]: option
     }))
 
-    // 🆕 Guardar en API en background (permite reanudar el examen)
-    // 🔒 SEGURIDAD: NO enviamos la respuesta correcta - se validará al enviar el examen
     const testId = currentTestSession?.id || currentTestSessionRef.current?.id
     if (testId && effectiveQuestions[questionIndex]) {
       const question = effectiveQuestions[questionIndex]
-
-      // Guardar sin bloquear la UI (sin enviar correctAnswer)
       saveAnswerToAPI(testId, question, questionIndex, option)
         .then(success => {
           if (success) {
@@ -445,10 +546,10 @@ export default function ExamLayout({
     }
   }
 
-  // 📤 FUNCIÓN: Compartir pregunta individual directo a redes (con tracking)
-  const handleQuickShareQuestion = async (platform, question) => {
+  // 📤 FUNCIÓN: Compartir pregunta individual directo a redes
+  const handleQuickShareQuestion = async (platform: string, question: ExamQuestion): Promise<void> => {
     if (!question) return
-    const questionText = question.question_text || question.text || 'Pregunta de oposiciones'
+    const questionText = question.question_text || ''
     const shortQuestion = questionText.length > 100 ? questionText.substring(0, 100) + '...' : questionText
     const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=question_share`
     const url = `https://www.vence.es?${utmParams}`
@@ -470,7 +571,6 @@ export default function ExamLayout({
         break
     }
 
-    // 📊 Tracking: guardar share de pregunta en base de datos
     if (user && shareUrl) {
       try {
         await supabase.from('share_events').insert({
@@ -495,8 +595,8 @@ export default function ExamLayout({
     }
   }
 
-  // 📤 FUNCIÓN: Compartir resultado directo a redes (con tracking)
-  const handleQuickShareResult = async (platform) => {
+  // 📤 FUNCIÓN: Compartir resultado directo a redes
+  const handleQuickShareResult = async (platform: string): Promise<void> => {
     const nota = isSubmitted ? Math.max(0, ((correctCount - (incorrectCount / 3)) / totalQuestions) * 10).toFixed(2) : '0'
     const utmParams = `utm_source=${platform}&utm_medium=social&utm_campaign=exam_share&utm_content=score_${nota}`
     const url = `https://www.vence.es?${utmParams}`
@@ -518,7 +618,6 @@ export default function ExamLayout({
         break
     }
 
-    // 📊 Tracking: guardar share en base de datos
     if (user && shareUrl) {
       try {
         await supabase.from('share_events').insert({
@@ -546,8 +645,7 @@ export default function ExamLayout({
   }
 
   // ✅ FUNCIÓN: Corregir examen (VALIDACIÓN SEGURA VIA API)
-  async function handleSubmitExam() {
-    // 🔒 Verificar límite diario para usuarios FREE
+  async function handleSubmitExam(): Promise<void> {
     if (hasLimit && isLimitReached) {
       setShowUpgradeModal(true)
       return
@@ -560,16 +658,13 @@ export default function ExamLayout({
     const endTime = Date.now()
     const totalTimeSeconds = Math.round((endTime - startTime) / 1000)
 
-    console.log(`⏱️  Tiempo total: ${totalTimeSeconds} segundos (${Math.round(totalTimeSeconds / 60)} min)`)
+    console.log(`⏱️  Tiempo total: ${totalTimeSeconds} segundos`)
     console.log(`📝 Total preguntas: ${effectiveQuestions.length}`)
     console.log(`📋 Test Session ID: ${currentTestSession?.id || 'NO DISPONIBLE'}`)
-    console.log('')
 
-    // 🔒 VALIDACIÓN SEGURA: Enviar respuestas a la API para validación
     setIsSaving(true)
 
     try {
-      // Preparar respuestas para la API
       const answersForApi = effectiveQuestions.map((question, index) => ({
         questionId: question.id,
         userAnswer: userAnswers[index] || null
@@ -583,65 +678,45 @@ export default function ExamLayout({
         body: JSON.stringify({ answers: answersForApi })
       })
 
-      const apiResult = await response.json()
+      const apiResult: ValidatedResults = await response.json()
 
       if (!apiResult.success) {
-        console.error('❌ Error validando examen:', apiResult.error)
-        // Fallback: mostrar error pero permitir continuar
+        console.error('❌ Error validando examen:', apiResult)
         setIsSubmitted(true)
         setIsSaving(false)
         return
       }
 
-      // 🔒 Guardar resultados validados por API
       setValidatedResults(apiResult)
 
       const correctCount = apiResult.summary.totalCorrect
 
-      // Log de resultados
       for (let i = 0; i < apiResult.results.length; i++) {
         const result = apiResult.results[i]
         const icon = result.isCorrect ? '✅' : result.userAnswer ? '❌' : '⚪'
         const userAns = result.userAnswer ? result.userAnswer.toUpperCase() : 'SIN RESPUESTA'
         const correctAns = result.correctAnswer.toUpperCase()
-
-        console.log(`${icon} Pregunta ${i + 1}: Usuario=${userAns} | Correcta=${correctAns} | ${result.isCorrect ? 'CORRECTA' : 'INCORRECTA'}`)
+        console.log(`${icon} Pregunta ${i + 1}: Usuario=${userAns} | Correcta=${correctAns}`)
       }
 
-      console.log('')
-      console.log(`📊 RESULTADO VALIDADO POR API: ${correctCount}/${effectiveQuestions.length} correctas (${apiResult.summary.percentage}%)`)
-      console.log('')
+      console.log(`📊 RESULTADO: ${correctCount}/${effectiveQuestions.length} correctas`)
 
-      // ✅ MOSTRAR RESULTADOS
       setScore(correctCount)
       setIsSubmitted(true)
       window.scrollTo({ top: 0, behavior: 'smooth' })
 
-      console.log(`🚀 MOSTRANDO RESULTADOS AL USUARIO`)
-      console.log(`💾 Iniciando guardado en segundo plano...`)
-      console.log('')
-
-      // 🔄 GUARDAR EN SEGUNDO PLANO (async, no bloqueante)
       saveExamInBackground(correctCount, totalTimeSeconds, apiResult).then(async () => {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-      console.log('✅ GUARDADO EN SEGUNDO PLANO COMPLETADO')
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.log('✅ GUARDADO EN SEGUNDO PLANO COMPLETADO')
 
-      // 📊 Registrar preguntas en contador diario (solo usuarios FREE)
-      if (hasLimit) {
-        const answeredCount = Object.keys(userAnswers).length
-        console.log(`📊 Registrando ${answeredCount} preguntas en límite diario...`)
-        for (let i = 0; i < answeredCount; i++) {
-          await recordAnswer()
+        if (hasLimit) {
+          const answeredCount = Object.keys(userAnswers).length
+          for (let i = 0; i < answeredCount; i++) {
+            await recordAnswer()
+          }
+          refreshStatus()
         }
-        // 🔄 Forzar refresh del estado para que el próximo test vea el límite actualizado
-        console.log('🔄 Actualizando estado del límite diario...')
-        refreshStatus()
-      }
       }).catch(err => {
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-        console.error('❌ ERROR EN GUARDADO EN SEGUNDO PLANO:', err)
-        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        console.error('❌ ERROR EN GUARDADO:', err)
       })
 
     } catch (error) {
@@ -651,29 +726,50 @@ export default function ExamLayout({
   }
 
   // 🔄 FUNCIÓN AUXILIAR: Guardar en segundo plano
-  async function saveExamInBackground(correctCount, totalTimeSeconds, apiResult) {
-    console.log('💾 ═══════════════════════════════════════════')
+  async function saveExamInBackground(
+    correctCount: number,
+    totalTimeSeconds: number,
+    apiResult: ValidatedResults
+  ): Promise<void> {
     console.log('💾 INICIANDO GUARDADO EN SEGUNDO PLANO')
-    console.log('💾 ═══════════════════════════════════════════')
 
     try {
       const timePerQuestion = Math.round(totalTimeSeconds / effectiveQuestions.length)
-      console.log(`⏱️  Tiempo por pregunta (promedio): ${timePerQuestion}s`)
-      console.log(`📋 Test Session ID: ${currentTestSession?.id}`)
-      console.log('')
 
-      const allAnswers = [] // Array para completeDetailedTest
+      interface AnswerData {
+        questionIndex: number
+        selectedAnswer: number
+        correctAnswer: number
+        isCorrect: boolean
+        timeSpent: number
+        confidence: string
+        questionData: {
+          id: string
+          question: string
+          options: string[]
+          correctAnswer: number
+          explanation?: string
+          article: {
+            id?: string
+            number?: string
+            law_short_name?: string
+          }
+          metadata: {
+            id: string
+            difficulty?: string
+            question_type: string
+          }
+          tema: number | string
+        }
+      }
 
-      // 🚀 Las preguntas ya están guardadas via API de examen (init + answer)
-      // Solo preparamos los datos para completeDetailedTest
-      console.log('📋 Preparando datos para análisis (respuestas ya guardadas via API)...')
+      const allAnswers: AnswerData[] = []
 
       for (let i = 0; i < effectiveQuestions.length; i++) {
         const question = effectiveQuestions[i]
         const selectedOption = userAnswers[i]
-        const answerIndex = selectedOption ? selectedOption.charCodeAt(0) - 97 : null
+        const answerIndex = selectedOption ? selectedOption.charCodeAt(0) - 97 : -1
 
-        // 🔒 SEGURIDAD: Usar respuesta correcta de API validada, no de question.correct_option
         const apiResultForQuestion = apiResult?.results?.[i]
         const correctIndex = apiResultForQuestion?.correctIndex ?? 0
         const isCorrect = apiResultForQuestion?.isCorrect ?? false
@@ -697,9 +793,9 @@ export default function ExamLayout({
           tema: tema
         }
 
-        const answerData = {
+        const answerData: AnswerData = {
           questionIndex: i,
-          selectedAnswer: answerIndex !== null ? answerIndex : -1,
+          selectedAnswer: answerIndex,
           correctAnswer: correctIndex,
           isCorrect: isCorrect,
           timeSpent: timePerQuestion,
@@ -707,25 +803,17 @@ export default function ExamLayout({
           questionData: questionData
         }
 
-        // Agregar al array para completeDetailedTest
         allAnswers.push(answerData)
       }
 
       console.log(`✅ ${allAnswers.length} respuestas preparadas para análisis`)
-      console.log('')
 
-      // Actualizar score del test (guardar porcentaje, no número absoluto)
       if (currentTestSession?.id) {
-        console.log(`🔢 Actualizando score del test...`)
-        console.log(`   Test ID: ${currentTestSession.id}`)
-        console.log(`   Score: ${correctCount}/${effectiveQuestions.length}`)
-
         const scorePercentage = Math.round((correctCount / effectiveQuestions.length) * 100)
         await updateTestScore(currentTestSession.id, scorePercentage)
-        console.log(`✅ Score actualizado en BD: ${scorePercentage}%`)
+        console.log(`✅ Score actualizado: ${scorePercentage}%`)
       }
 
-      // 🎯 Completar test con análisis completo
       if (currentTestSession?.id) {
         console.log(`🏁 Marcando test como completado...`)
 
@@ -735,8 +823,8 @@ export default function ExamLayout({
           allAnswers,
           effectiveQuestions,
           startTime,
-          [], // interactionEvents - no los tenemos en modo examen
-          { user_id: user?.id } // Usar user.id del AuthContext
+          [],
+          { user_id: user?.id }
         )
 
         if (result.success) {
@@ -747,56 +835,38 @@ export default function ExamLayout({
       }
 
       setSaveStatus('success')
-      console.log('')
-      console.log(`💾 ═══════════════════════════════════════════`)
-      console.log(`💾 FINALIZACIÓN COMPLETADA`)
-      console.log(`💾 Score final: ${correctCount}/${effectiveQuestions.length} (${Math.round((correctCount / effectiveQuestions.length) * 100)}%)`)
-      console.log(`💾 ═══════════════════════════════════════════`)
+      console.log(`💾 Score final: ${correctCount}/${effectiveQuestions.length}`)
 
-      // 🔄 Notificar al Header para actualizar contador de exámenes pendientes
       window.dispatchEvent(new CustomEvent('examCompleted'))
 
     } catch (error) {
-      console.error('')
-      console.error('💾 ═══════════════════════════════════════════')
       console.error('❌ ERROR CRÍTICO EN GUARDADO:', error)
-      console.error('💾 ═══════════════════════════════════════════')
       setSaveStatus('error')
-      // No mostramos alert porque el usuario ya está viendo sus resultados
     } finally {
       setIsSaving(false)
     }
   }
 
   // ✅ FUNCIÓN: Abrir modal de artículo
-  // 🔒 SEGURIDAD: questionIndex se usa para obtener correctAnswer de validatedResults
-  function openArticleModal(articleNumber, lawName, question = null, questionIndex = null) {
-    // Convertir nombre de ley a slug (espacios a guiones, barras a guiones)
+  function openArticleModal(
+    articleNumber: string | undefined,
+    lawName: string | undefined,
+    question: ExamQuestion | null = null,
+    questionIndex: number | null = null
+  ): void {
     const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
-    setSelectedArticle({ number: articleNumber, lawSlug })
-    setSelectedQuestionForModal(question) // 🎨 Guardar pregunta para resaltado
-    setSelectedQuestionIndex(questionIndex) // 🔒 Guardar índice para validatedResults
+    setSelectedArticle({ number: articleNumber || null, lawSlug })
+    setSelectedQuestionForModal(question)
+    setSelectedQuestionIndex(questionIndex)
     setModalOpen(true)
   }
 
   // ✅ FUNCIÓN: Cerrar modal de artículo
-  function closeArticleModal() {
+  function closeArticleModal(): void {
     setModalOpen(false)
     setSelectedArticle({ number: null, lawSlug: null })
-    setSelectedQuestionForModal(null) // 🎨 Limpiar pregunta
-    setSelectedQuestionIndex(null) // 🔒 Limpiar índice
-  }
-
-  // ✅ FUNCIÓN: Formatear tiempo para el cronómetro
-  function formatElapsedTime(seconds) {
-    const hours = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-
-    if (hours > 0) {
-      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-    }
-    return `${mins}:${secs.toString().padStart(2, '0')}`
+    setSelectedQuestionForModal(null)
+    setSelectedQuestionIndex(null)
   }
 
   // ✅ LOADING STATE
@@ -811,7 +881,7 @@ export default function ExamLayout({
     )
   }
 
-  // 🔒 Si el usuario llegó al límite y no tiene preguntas disponibles
+  // 🔒 Si el usuario llegó al límite
   if (hasLimit && effectiveQuestions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -821,19 +891,13 @@ export default function ExamLayout({
           <p className="text-gray-600 mb-4">
             Has respondido {dailyLimit} preguntas hoy. El límite se reinicia a medianoche.
           </p>
-          <p className="text-sm text-gray-500 mb-4">
-            ¿Quieres estudiar sin límites?
-          </p>
           <button
             onClick={() => setShowUpgradeModal(true)}
-            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold py-3 px-6 rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all"
+            className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold py-3 px-6 rounded-lg"
           >
             ⭐ Hazte Premium
           </button>
-          <Link
-            href="/auxiliar-administrativo-estado"
-            className="block mt-3 text-blue-600 hover:underline text-sm"
-          >
+          <Link href="/auxiliar-administrativo-estado" className="block mt-3 text-blue-600 hover:underline text-sm">
             ← Volver al menú
           </Link>
         </div>
@@ -845,16 +909,14 @@ export default function ExamLayout({
   const answeredCount = Object.keys(userAnswers).length
   const accuracy = isSubmitted && totalQuestions > 0 ? (score / totalQuestions * 100).toFixed(1) : 0
 
-  // 🎯 Calcular desglose de resultados
   const correctCount = score
   const incorrectCount = answeredCount - score
   const blankCount = totalQuestions - answeredCount
 
-  // 📊 Calcular nota sobre 10 (cada 3 fallos restan 1 correcta)
   const puntosBrutos = correctCount - (incorrectCount / 3)
   const notaSobre10 = isSubmitted
     ? Math.max(0, (puntosBrutos / totalQuestions) * 10).toFixed(2)
-    : 0
+    : '0'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -862,31 +924,24 @@ export default function ExamLayout({
 
         {/* ✅ HEADER DEL EXAMEN */}
         <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6">
-          {/* Título */}
           <div className="mb-4">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">📝 Modo Examen</h1>
             <p className="text-sm text-gray-600">Tema {tema} - {totalQuestions} preguntas</p>
           </div>
 
-          {/* 🔒 Banner de límite (si se redujo el número de preguntas) - SOLO antes de corregir */}
           {wasLimited && totalQuestions > 0 && !isSubmitted && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
-                <span className="font-medium">⚠️ Examen reducido:</span> Solo puedes hacer {totalQuestions} preguntas hoy (de {originalCount} originales).
+                <span className="font-medium">⚠️ Examen reducido:</span> Solo puedes hacer {totalQuestions} preguntas hoy.
                 {' '}
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="text-amber-700 underline hover:text-amber-900 font-medium"
-                >
-                  Hazte Premium para estudiar sin límites
+                <button onClick={() => setShowUpgradeModal(true)} className="text-amber-700 underline font-medium">
+                  Hazte Premium
                 </button>
               </p>
             </div>
           )}
 
-          {/* Grid de métricas: Cronómetro + Respondidas (responsive) */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            {/* ⏱️ CRONÓMETRO */}
             <div className="text-center px-3 py-3 bg-purple-50 border border-purple-200 rounded-lg">
               <div className="text-xs text-purple-600 font-medium mb-1">⏱️ Tiempo</div>
               <div className="text-xl sm:text-2xl font-bold text-purple-700 font-mono">
@@ -894,7 +949,6 @@ export default function ExamLayout({
               </div>
             </div>
 
-            {/* 📝 RESPONDIDAS */}
             <div className="text-center px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="text-xs text-blue-600 font-medium mb-1">📝 Respondidas</div>
               <div className="text-xl sm:text-2xl font-bold text-blue-700">
@@ -903,7 +957,6 @@ export default function ExamLayout({
             </div>
           </div>
 
-          {/* Barra de progreso */}
           {!isSubmitted && (
             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
               <div
@@ -913,13 +966,15 @@ export default function ExamLayout({
             </div>
           )}
 
-          {/* Resultado después de corregir */}
           {isSubmitted && (() => {
-            const motivationalData = getMotivationalMessage(notaSobre10, user?.user_metadata?.full_name || user?.email?.split('@')[0])
+            const motivationalData = getMotivationalMessage(
+              notaSobre10,
+              user?.user_metadata?.full_name || user?.email?.split('@')[0] || null
+            )
             const showConfetti = parseFloat(notaSobre10) >= 9
+
             return (
               <div className="relative">
-                {/* 🎉 CONFETTI PARA 9-10 */}
                 {showConfetti && (
                   <div className="absolute inset-0 pointer-events-none overflow-hidden">
                     <div className="confetti-container">
@@ -938,56 +993,42 @@ export default function ExamLayout({
                   </div>
                 )}
 
-                {/* Nota destacada sobre 10 con mensaje motivacional */}
                 <div className={`relative bg-gradient-to-r ${motivationalData.bgColor} border-2 ${motivationalData.borderColor} rounded-xl p-6 mb-6`}>
                   <div className="text-center mb-4">
-                    {/* Mensaje motivacional personalizado */}
-                    <div className="text-6xl mb-3 animate-bounce">
-                      {motivationalData.emoji}
-                    </div>
+                    <div className="text-6xl mb-3 animate-bounce">{motivationalData.emoji}</div>
                     <div className={`text-3xl sm:text-4xl font-bold ${motivationalData.color} mb-4`}>
                       {motivationalData.message}
                     </div>
+                    <div className={`text-6xl font-bold ${motivationalData.color} mb-2`}>{notaSobre10}</div>
+                    <div className="text-xl text-gray-700 font-medium">sobre 10</div>
+                    <div className="text-sm text-gray-500 mt-2">(Cada 3 fallos restan 1 correcta)</div>
 
-                    {/* Nota numérica */}
-                    <div className={`text-6xl font-bold ${motivationalData.color} mb-2`}>
-                      {notaSobre10}
-                    </div>
-                    <div className="text-xl text-gray-700 font-medium">
-                      sobre 10
-                    </div>
-                    <div className="text-sm text-gray-500 mt-2">
-                      (Cada 3 fallos restan 1 correcta)
-                    </div>
-
-                    {/* 📤 BOTÓN COMPARTIR + ICONOS DIRECTOS - Debajo de la puntuación */}
                     <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                       <button
                         onClick={() => setShowSharePrompt(true)}
-                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg"
+                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white rounded-lg"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
                         </svg>
                         <span className="text-sm font-medium">Compartir</span>
                       </button>
-                      {/* Iconos directos de redes sociales */}
-                      <button onClick={() => handleQuickShareResult('whatsapp')} className="p-2 rounded-full hover:bg-green-50 transition-colors" title="WhatsApp">
+                      <button onClick={() => handleQuickShareResult('whatsapp')} className="p-2 rounded-full hover:bg-green-50" title="WhatsApp">
                         <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#25D366">
                           <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleQuickShareResult('telegram')} className="p-2 rounded-full hover:bg-cyan-50 transition-colors" title="Telegram">
+                      <button onClick={() => handleQuickShareResult('telegram')} className="p-2 rounded-full hover:bg-cyan-50" title="Telegram">
                         <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#0088cc">
                           <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleQuickShareResult('facebook')} className="p-2 rounded-full hover:bg-blue-50 transition-colors" title="Facebook">
+                      <button onClick={() => handleQuickShareResult('facebook')} className="p-2 rounded-full hover:bg-blue-50" title="Facebook">
                         <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#1877F2">
                           <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                         </svg>
                       </button>
-                      <button onClick={() => handleQuickShareResult('twitter')} className="p-2 rounded-full hover:bg-gray-100 transition-colors" title="X">
+                      <button onClick={() => handleQuickShareResult('twitter')} className="p-2 rounded-full hover:bg-gray-100" title="X">
                         <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                         </svg>
@@ -995,96 +1036,70 @@ export default function ExamLayout({
                     </div>
                   </div>
 
-                {/* ⏱️ TIEMPO EMPLEADO */}
-                <div className="bg-white rounded-lg p-4 border border-blue-200">
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-purple-600 font-medium">⏱️ Tiempo empleado:</span>
-                    <span className="text-2xl font-bold text-purple-700 font-mono">
-                      {formatElapsedTime(elapsedTime)}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500 text-center mt-2">
-                    Promedio: {Math.round(elapsedTime / totalQuestions)}s por pregunta
-                  </div>
-                </div>
-              </div>
-
-              {/* Desglose de resultados */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {/* Correctas */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-1">
-                    {correctCount}
-                  </div>
-                  <div className="text-sm text-green-700 font-medium">
-                    ✅ Correctas
-                  </div>
-                </div>
-
-                {/* Incorrectas */}
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                  <div className="text-3xl font-bold text-red-600 mb-1">
-                    {incorrectCount}
-                  </div>
-                  <div className="text-sm text-red-700 font-medium">
-                    ❌ Incorrectas
-                  </div>
-                  {incorrectCount > 0 && (
-                    <div className="text-xs text-red-600 mt-1">
-                      (-{(incorrectCount / 3).toFixed(2)} pts)
+                  <div className="bg-white rounded-lg p-4 border border-blue-200">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-purple-600 font-medium">⏱️ Tiempo empleado:</span>
+                      <span className="text-2xl font-bold text-purple-700 font-mono">
+                        {formatElapsedTime(elapsedTime)}
+                      </span>
                     </div>
-                  )}
-                </div>
-
-                {/* En blanco */}
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                  <div className="text-3xl font-bold text-gray-600 mb-1">
-                    {blankCount}
-                  </div>
-                  <div className="text-sm text-gray-700 font-medium">
-                    ⚪ En blanco
+                    <div className="text-xs text-gray-500 text-center mt-2">
+                      Promedio: {Math.round(elapsedTime / totalQuestions)}s por pregunta
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Indicador de guardado */}
-              {isSaving && (
-                <div className="mb-4 flex items-center justify-center gap-2 text-sm text-gray-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span>Guardando resultados...</span>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-green-600 mb-1">{correctCount}</div>
+                    <div className="text-sm text-green-700 font-medium">✅ Correctas</div>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-red-600 mb-1">{incorrectCount}</div>
+                    <div className="text-sm text-red-700 font-medium">❌ Incorrectas</div>
+                    {incorrectCount > 0 && (
+                      <div className="text-xs text-red-600 mt-1">(-{(incorrectCount / 3).toFixed(2)} pts)</div>
+                    )}
+                  </div>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                    <div className="text-3xl font-bold text-gray-600 mb-1">{blankCount}</div>
+                    <div className="text-sm text-gray-700 font-medium">⚪ En blanco</div>
+                  </div>
                 </div>
-              )}
-              {!isSaving && saveStatus === 'success' && (
-                <div className="mb-4 text-sm text-green-600 font-medium text-center">
-                  ✓ Resultados guardados
+
+                {isSaving && (
+                  <div className="mb-4 flex items-center justify-center gap-2 text-sm text-gray-600">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>Guardando resultados...</span>
+                  </div>
+                )}
+                {!isSaving && saveStatus === 'success' && (
+                  <div className="mb-4 text-sm text-green-600 font-medium text-center">✓ Resultados guardados</div>
+                )}
+
+                <div className="mb-6">
+                  <MotivationalMessage
+                    category="exam_result"
+                    context={{
+                      nombre: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Estudiante',
+                      accuracy: parseFloat(notaSobre10) * 10,
+                      nota: notaSobre10,
+                      racha: userProfile?.current_streak_days || 0,
+                      preguntas: totalQuestions
+                    }}
+                    hideShareButton={true}
+                  />
                 </div>
-              )}
 
-              {/* Mensaje Motivacional Personalizado */}
-              <div className="mb-6">
-                <MotivationalMessage
-                  category="exam_result"
-                  context={{
-                    nombre: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Estudiante',
-                    accuracy: parseFloat(notaSobre10) * 10,
-                    nota: notaSobre10,
-                    racha: userProfile?.current_streak_days || 0,
-                    preguntas: totalQuestions
-                  }}
-                  hideShareButton={true}
-                />
+                <div className="text-center">
+                  <Link
+                    href={tema && tema !== 0 ? `/auxiliar-administrativo-estado/test/tema/${tema}` : '/auxiliar-administrativo-estado/test'}
+                    className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    ← Volver a tests
+                  </Link>
+                </div>
               </div>
-
-              {/* Botón volver */}
-              <div className="text-center">
-                <Link
-                  href={tema && tema !== 0 ? `/auxiliar-administrativo-estado/test/tema/${tema}` : '/auxiliar-administrativo-estado/test'}
-                  className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  ← Volver a tests
-                </Link>
-              </div>
-            </div>
             )
           })()}
         </div>
@@ -1093,8 +1108,6 @@ export default function ExamLayout({
         <div className="space-y-6">
           {effectiveQuestions.map((question, index) => {
             const selectedOption = userAnswers[index]
-
-            // 🔒 SEGURIDAD: Usar respuestas validadas por API (solo disponibles después de enviar)
             const validatedResult = validatedResults?.results?.[index]
             const correctOptionLetter = validatedResult?.correctAnswer || null
             const isCorrect = validatedResult?.isCorrect ?? false
@@ -1115,7 +1128,6 @@ export default function ExamLayout({
                       : 'border-gray-200'
                 }`}
               >
-                {/* Número de pregunta */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-sm font-semibold text-gray-600">
                     Pregunta {index + 1} de {totalQuestions}
@@ -1127,17 +1139,13 @@ export default function ExamLayout({
                   )}
                 </div>
 
-                {/* Texto de la pregunta */}
                 <div className="mb-6">
-                  <p className="text-lg text-gray-900 leading-relaxed">
-                    {question.question_text}
-                  </p>
+                  <p className="text-lg text-gray-900 leading-relaxed">{question.question_text}</p>
                 </div>
 
-                {/* Opciones de respuesta */}
                 <div className="space-y-3">
-                  {['a', 'b', 'c', 'd'].map(option => {
-                    const optionKey = `option_${option}`
+                  {(['a', 'b', 'c', 'd'] as const).map(option => {
+                    const optionKey = `option_${option}` as keyof ExamQuestion
                     const isSelected = selectedOption === option
                     const isCorrectOption = option === correctOptionLetter
 
@@ -1165,7 +1173,6 @@ export default function ExamLayout({
                         }`}
                       >
                         <div className="flex items-start">
-                          {/* Radio button visual */}
                           <div className="flex items-center mr-3">
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                               showFeedback
@@ -1189,12 +1196,8 @@ export default function ExamLayout({
                               )}
                             </div>
                           </div>
-                          <span className="font-bold text-gray-700 mr-3">
-                            {option.toUpperCase()})
-                          </span>
-                          <span className="text-gray-900 flex-1">
-                            {question[optionKey]}
-                          </span>
+                          <span className="font-bold text-gray-700 mr-3">{option.toUpperCase()})</span>
+                          <span className="text-gray-900 flex-1">{question[optionKey] as string}</span>
                           {showFeedback && isCorrectOption && (
                             <span className="ml-2 text-green-600 font-bold">✓</span>
                           )}
@@ -1204,27 +1207,24 @@ export default function ExamLayout({
                   })}
                 </div>
 
-                {/* Explicación (solo después de corregir) */}
                 {showFeedback && question.explanation && (
                   <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="font-semibold text-blue-900 mb-3 text-base">📖 Explicación:</div>
                     <p className="text-blue-800 text-base leading-loose whitespace-pre-line">
                       {question.explanation}
                     </p>
-                    {/* Botón para abrir IA */}
                     <button
                       onClick={() => {
-                        const questionText = question?.question_text || ''
                         const correctAnswer = validatedResults?.results?.[index]?.correctIndex
                         const correctLetter = answerToLetter(correctAnswer)
                         window.dispatchEvent(new CustomEvent('openAIChat', {
                           detail: {
-                            message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${questionText.substring(0, 100)}..."`,
+                            message: `Explícame por qué la respuesta correcta es "${correctLetter}" en la pregunta: "${question.question_text.substring(0, 100)}..."`,
                             suggestion: 'explicar_respuesta'
                           }
                         }))
                       }}
-                      className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                      className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
                     >
                       <span>✨</span>
                       <span>No lo tengo claro</span>
@@ -1232,37 +1232,28 @@ export default function ExamLayout({
                   </div>
                 )}
 
-                {/* Información del artículo (solo después de corregir y si es contenido legal) */}
                 {showFeedback && question.articles && isLegalArticle(question.articles.laws?.short_name) && (
                   <button
                     onClick={() => openArticleModal(
-                      question.articles.article_number,
-                      question.articles.laws?.short_name || 'Ley',
-                      question, // 🎨 Pasar pregunta completa para resaltado inteligente
-                      index // 🔒 Pasar índice para obtener correctAnswer de validatedResults
+                      question.articles?.article_number,
+                      question.articles?.laws?.short_name || 'Ley',
+                      question,
+                      index
                     )}
-                    className="mt-4 text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors flex items-center gap-1"
+                    className="mt-4 text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
                   >
                     Ver 📚 {question.articles.laws?.short_name || 'Ley'} - Artículo {question.articles.article_number}
                     <span className="text-xs">▸</span>
                   </button>
                 )}
 
-                {/* Botones de acción (solo después de corregir) */}
                 {showFeedback && (
                   <div className="flex flex-wrap gap-2 items-center mt-4">
-                    <QuestionDispute
-                      questionId={question.id}
-                      user={user}
-                      supabase={supabase}
-                    />
-
-                    {/* Botón compartir pregunta + iconos directos */}
+                    <QuestionDispute questionId={question.id} user={user} supabase={supabase} />
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setShareQuestionData(question)}
-                        className="flex items-center gap-1 px-2 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Compartir esta pregunta"
+                        className="flex items-center gap-1 px-2 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
@@ -1289,24 +1280,22 @@ export default function ExamLayout({
           })}
         </div>
 
-        {/* ✅ BOTÓN FINAL (si no está corregido) */}
         {!isSubmitted && (
           <div className="mt-8 mb-8">
             <button
               onClick={handleSubmitExam}
-              className="w-full py-4 rounded-lg font-bold text-white text-lg transition-colors shadow-lg bg-green-600 hover:bg-green-700"
+              className="w-full py-4 rounded-lg font-bold text-white text-lg shadow-lg bg-green-600 hover:bg-green-700"
             >
               ✅ Corregir Examen ({answeredCount}/{totalQuestions} respondidas)
             </button>
           </div>
         )}
 
-        {/* ✅ BOTÓN VOLVER A TESTS (al final de todo) */}
         {isSubmitted && (
           <div className="mt-8 mb-8 text-center">
             <Link
               href={tema && tema !== 0 ? `/auxiliar-administrativo-estado/test/tema/${tema}` : '/auxiliar-administrativo-estado/test'}
-              className="inline-block px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md"
+              className="inline-block px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold shadow-md"
             >
               {tema && tema !== 0 ? `← Volver al tema ${tema}` : '← Volver a tests'}
             </Link>
@@ -1314,15 +1303,12 @@ export default function ExamLayout({
         )}
       </div>
 
-      {/* ✅ MODAL DE ARTÍCULO CON RESALTADO INTELIGENTE */}
       <ArticleModal
         isOpen={modalOpen}
         onClose={closeArticleModal}
         articleNumber={selectedArticle.number}
         lawSlug={selectedArticle.lawSlug}
-        // 🎨 Pasar datos de la pregunta para resaltado inteligente
         questionText={selectedQuestionForModal?.question_text}
-        // 🔒 SEGURIDAD: correctAnswer viene de validatedResults (API), no de question.correct_option
         correctAnswer={selectedQuestionIndex !== null ? validatedResults?.results?.[selectedQuestionIndex]?.correctIndex : null}
         options={selectedQuestionForModal ? [
           selectedQuestionForModal.option_a,
@@ -1332,7 +1318,6 @@ export default function ExamLayout({
         ] : null}
       />
 
-      {/* 📤 Prompt inteligente para compartir */}
       {showSharePrompt && isSubmitted && (
         <SharePrompt
           score={notaSobre10}
@@ -1341,18 +1326,14 @@ export default function ExamLayout({
         />
       )}
 
-      {/* 📤 Modal para compartir pregunta individual */}
       <ShareQuestion
         question={shareQuestionData}
-        lawName={config?.title || tema || ''}
         isOpen={!!shareQuestionData}
         onClose={() => setShareQuestionData(null)}
       />
 
-      {/* Banner de limite diario (solo usuarios FREE) */}
       {hasLimit && <DailyLimitBanner />}
 
-      {/* Modal de upgrade cuando se alcanza el limite */}
       <UpgradeLimitModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}

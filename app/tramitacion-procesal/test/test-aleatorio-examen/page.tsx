@@ -322,7 +322,6 @@ function TestAleatorioExamenContent() {
     .join(', ')
 
   return (
-    // @ts-expect-error - ExamLayout is a JS component without proper types
     <ExamLayout
       tema={0}
       testNumber={1}
