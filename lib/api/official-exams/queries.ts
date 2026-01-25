@@ -297,20 +297,25 @@ export async function saveOfficialExamResults(
     console.log(`💾 [OfficialExams] Saving results for user ${userId}: ${results.length} questions`)
     console.log(`💾 [OfficialExams] DB connection active: ${!!db}`)
 
-    // Calculate statistics
-    const totalCorrect = results.filter(r => r.isCorrect).length
-    const totalIncorrect = results.length - totalCorrect
-    const score = String(Math.round((totalCorrect / results.length) * 100))
-    const legCount = results.filter(r => r.questionType === 'legislative').length
-    const psyCount = results.filter(r => r.questionType === 'psychometric').length
+    // IMPORTANT: Only count answered questions for stats (not 'sin_respuesta')
+    const answeredResults = results.filter(r => r.userAnswer && r.userAnswer !== 'sin_respuesta')
+
+    // Calculate statistics based on ANSWERED questions only
+    const totalCorrect = answeredResults.filter(r => r.isCorrect).length
+    const totalIncorrect = answeredResults.length - totalCorrect
+    const score = answeredResults.length > 0
+      ? String(Math.round((totalCorrect / answeredResults.length) * 100))
+      : '0'
+    const legCount = answeredResults.filter(r => r.questionType === 'legislative').length
+    const psyCount = answeredResults.filter(r => r.questionType === 'psychometric').length
 
     // 1. Create test session
-    console.log(`💾 [OfficialExams] Insert values: score=${score}, totalQuestions=${results.length}, totalTimeSeconds=${totalTimeSeconds}`)
+    console.log(`💾 [OfficialExams] Insert values: score=${score}, answeredQuestions=${answeredResults.length}/${results.length}, totalTimeSeconds=${totalTimeSeconds}`)
     const [testSession] = await db.insert(tests).values({
       userId,
       title: `Examen Oficial ${examDate} - ${oposicion}`,
       testType: 'official_exam',
-      totalQuestions: results.length,
+      totalQuestions: answeredResults.length, // Only count answered questions
       score,
       isCompleted: true,
       completedAt: new Date().toISOString(),
@@ -333,8 +338,8 @@ export async function saveOfficialExamResults(
 
     console.log(`✅ [OfficialExams] Test session created: ${testSession.id}`)
 
-    // 2. Insert individual question results
-    const testQuestionsData = results.map((result, index) => {
+    // 2. Insert individual question results (ONLY answered questions)
+    const testQuestionsData = answeredResults.map((result, index) => {
       const isLegislative = result.questionType === 'legislative'
       return {
         testId: testSession.id,
@@ -342,7 +347,7 @@ export async function saveOfficialExamResults(
         psychometricQuestionId: isLegislative ? null : result.questionId,
         questionOrder: index + 1,
         questionText: result.questionText,
-        userAnswer: result.userAnswer || 'sin_respuesta',
+        userAnswer: result.userAnswer,
         correctAnswer: result.correctAnswer || 'unknown',
         isCorrect: result.isCorrect,
         timeSpentSeconds: 0,
@@ -358,7 +363,8 @@ export async function saveOfficialExamResults(
     console.log(`✅ [OfficialExams] ${testQuestionsData.length} questions saved (${legCount} legislative, ${psyCount} psychometric)`)
 
     // 3. Update psychometric history for statistics
-    const psychometricResults = results.filter(r => r.questionType === 'psychometric')
+    // Note: answeredResults already excludes 'sin_respuesta' questions
+    const psychometricResults = answeredResults.filter(r => r.questionType === 'psychometric')
     if (psychometricResults.length > 0) {
       for (const result of psychometricResults) {
         // Check if history exists

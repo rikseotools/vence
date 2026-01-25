@@ -72,14 +72,19 @@ export async function POST(request: NextRequest) {
     // 3. Save results using Supabase Admin client (bypasses RLS)
     const { examDate, oposicion, results, totalTimeSeconds, metadata } = parseResult.data
 
-    // Calculate statistics
-    const totalCorrect = results.filter(r => r.isCorrect).length
-    const totalIncorrect = results.length - totalCorrect
-    const score = Math.round((totalCorrect / results.length) * 100)
-    const legCount = results.filter(r => r.questionType === 'legislative').length
-    const psyCount = results.filter(r => r.questionType === 'psychometric').length
+    // IMPORTANT: Only count answered questions for stats (not 'sin_respuesta')
+    const answeredResults = results.filter(r => r.userAnswer && r.userAnswer !== 'sin_respuesta')
 
-    console.log(`💾 [API/v2/save] Creating test: score=${score}, total=${results.length}, time=${totalTimeSeconds}s`)
+    // Calculate statistics based on ANSWERED questions only
+    const totalCorrect = answeredResults.filter(r => r.isCorrect).length
+    const totalIncorrect = answeredResults.length - totalCorrect
+    const score = answeredResults.length > 0
+      ? Math.round((totalCorrect / answeredResults.length) * 100)
+      : 0
+    const legCount = answeredResults.filter(r => r.questionType === 'legislative').length
+    const psyCount = answeredResults.filter(r => r.questionType === 'psychometric').length
+
+    console.log(`💾 [API/v2/save] Creating test: score=${score}, answered=${answeredResults.length}/${results.length}, time=${totalTimeSeconds}s`)
 
     // 3a. Insert test session
     // Nota: test_type usa 'exam' porque el CHECK constraint solo permite 'practice'|'exam'
@@ -90,7 +95,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         title: `Examen Oficial ${examDate} - ${oposicion}`,
         test_type: 'exam',
-        total_questions: results.length,
+        total_questions: answeredResults.length, // Only count answered questions
         score: score.toString(),
         is_completed: true,
         completed_at: new Date().toISOString(),
@@ -119,8 +124,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`✅ [API/v2/save] Test session created: ${testSession.id}`)
 
-    // 3b. Insert individual question results
-    const testQuestionsData = results.map((result, index) => {
+    // 3b. Insert individual question results (ONLY answered questions)
+    const testQuestionsData = answeredResults.map((result, index) => {
       const isLegislative = result.questionType === 'legislative'
       return {
         test_id: testSession.id,
@@ -128,7 +133,7 @@ export async function POST(request: NextRequest) {
         psychometric_question_id: isLegislative ? null : result.questionId,
         question_order: index + 1,
         question_text: result.questionText,
-        user_answer: result.userAnswer || 'sin_respuesta',
+        user_answer: result.userAnswer,
         correct_answer: result.correctAnswer || 'unknown',
         is_correct: result.isCorrect,
         time_spent_seconds: 0,
@@ -149,10 +154,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 3c. Update user_question_history for legislative questions (needed for stats)
-    // IMPORTANT: Only update history for questions that were actually answered (not 'sin_respuesta')
-    const legislativeResults = results.filter(
-      r => r.questionType === 'legislative' && r.userAnswer && r.userAnswer !== 'sin_respuesta'
-    )
+    // Note: answeredResults already excludes 'sin_respuesta' questions
+    const legislativeResults = answeredResults.filter(r => r.questionType === 'legislative')
     if (legislativeResults.length > 0) {
       for (const result of legislativeResults) {
         // Check if history exists
@@ -197,10 +200,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 3d. Update psychometric history
-    // IMPORTANT: Only update history for questions that were actually answered (not 'sin_respuesta')
-    const psychometricResults = results.filter(
-      r => r.questionType === 'psychometric' && r.userAnswer && r.userAnswer !== 'sin_respuesta'
-    )
+    // Note: answeredResults already excludes 'sin_respuesta' questions
+    const psychometricResults = answeredResults.filter(r => r.questionType === 'psychometric')
     if (psychometricResults.length > 0) {
       for (const result of psychometricResults) {
         // Check if history exists
