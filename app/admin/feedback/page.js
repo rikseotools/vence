@@ -881,12 +881,26 @@ export default function AdminFeedbackPage() {
       userData.totalConversations++
 
       // Contar pendientes para el admin:
-      // - Conversación en waiting_admin (usuario esperando respuesta)
-      // - Feedback pending SIN conversación (ticket nuevo sin responder)
+      // - Conversación donde el último mensaje es del USUARIO (necesita respuesta)
+      // - Feedback pending/in_progress SIN conversación (ticket nuevo sin responder)
       const conversation = conversationsMap[feedback.id]
-      const isPendingForAdmin =
-        conversation?.status === 'waiting_admin' ||
-        (feedback.status === 'pending' && !conversation)
+      let isPendingForAdmin = false
+
+      if (conversation && conversation.status !== 'closed') {
+        // Verificar si el último mensaje es del usuario
+        const messages = conversation.feedback_messages || []
+        if (messages.length > 0) {
+          const sorted = [...messages].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          const lastMsg = sorted[0]
+          // Si el último mensaje NO es del admin, necesita respuesta
+          if (lastMsg && lastMsg.is_admin === false) {
+            isPendingForAdmin = true
+          }
+        }
+      } else if (!conversation && (feedback.status === 'pending' || feedback.status === 'in_progress')) {
+        // Feedback sin conversación
+        isPendingForAdmin = true
+      }
 
       if (isPendingForAdmin) {
         userData.pendingConversations++
@@ -981,7 +995,8 @@ export default function AdminFeedbackPage() {
         .from('feedback_conversations')
         .select(`
           *,
-          feedback:user_feedback(*)
+          feedback:user_feedback(*),
+          feedback_messages(id, is_admin, created_at)
         `)
         .order('last_message_at', { ascending: false })
 
@@ -1806,7 +1821,7 @@ export default function AdminFeedbackPage() {
                       <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                         {userData.pendingConversations > 0 && (
                           <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full animate-pulse">
-                            {userData.pendingConversations} pendiente{userData.pendingConversations > 1 ? 's' : ''}
+                            {userData.pendingConversations} por responder
                           </span>
                         )}
                         <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2.5 py-1 rounded-full">
@@ -1859,7 +1874,7 @@ export default function AdminFeedbackPage() {
                     </span>
                     {selectedUser.pendingConversations > 0 && (
                       <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded">
-                        {selectedUser.pendingConversations} pendiente{selectedUser.pendingConversations > 1 ? 's' : ''}
+                        {selectedUser.pendingConversations} por responder
                       </span>
                     )}
                     {selectedUser.hasRefund && (
@@ -2002,15 +2017,62 @@ export default function AdminFeedbackPage() {
                             {STATUS_CONFIG[selectedFeedback.status]?.label}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-500">
-                          {new Date(selectedFeedback.created_at).toLocaleDateString('es-ES', {
-                            day: 'numeric',
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            timeZone: 'Europe/Madrid'
-                          })}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {/* Botón cerrar conversación */}
+                          {selectedFeedback.status !== 'resolved' && selectedFeedback.status !== 'dismissed' && (
+                            <button
+                              onClick={async () => {
+                                if (!confirm('¿Cerrar esta conversación? El usuario podrá reabrirla si responde.')) return
+                                try {
+                                  const supabaseAdmin = createClient(
+                                    process.env.NEXT_PUBLIC_SUPABASE_URL,
+                                    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+                                  )
+                                  // Cerrar conversación si existe
+                                  const conv = conversations[selectedFeedback.id]
+                                  if (conv) {
+                                    const { error: convError } = await supabaseAdmin
+                                      .from('feedback_conversations')
+                                      .update({ status: 'closed', last_message_at: new Date().toISOString() })
+                                      .eq('id', conv.id)
+                                    if (convError) {
+                                      console.error('Error cerrando conversación:', convError)
+                                    } else {
+                                      console.log('✅ Conversación cerrada:', conv.id)
+                                    }
+                                  } else {
+                                    console.log('⚠️ No se encontró conversación para feedback:', selectedFeedback.id)
+                                  }
+                                  // Marcar feedback como resuelto
+                                  await supabaseAdmin
+                                    .from('user_feedback')
+                                    .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+                                    .eq('id', selectedFeedback.id)
+                                  console.log('✅ Conversación cerrada')
+                                  setSelectedFeedback(null)
+                                  loadConversations()
+                                  loadFeedbacks()
+                                } catch (error) {
+                                  console.error('Error cerrando conversación:', error)
+                                  alert('Error al cerrar la conversación')
+                                }
+                              }}
+                              className="text-xs px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 rounded transition-colors"
+                              title="Cerrar conversación (el usuario puede reabrirla)"
+                            >
+                              ✅ Cerrar
+                            </button>
+                          )}
+                          <span className="text-xs text-gray-500">
+                            {new Date(selectedFeedback.created_at).toLocaleDateString('es-ES', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Europe/Madrid'
+                            })}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -2385,17 +2447,61 @@ export default function AdminFeedbackPage() {
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5 truncate">
                     Estado: {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando tu respuesta' :
                              selectedConversation.status === 'waiting_user' ? '💬 Esperando usuario' :
+                             selectedConversation.status === 'closed' ? '✅ Cerrada' :
                              selectedConversation.status}
                   </p>
                 </div>
-                <button
-                  onClick={() => setSelectedConversation(null)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 sm:p-2 rounded-lg transition-colors flex-shrink-0 ml-2"
-                >
-                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                  {/* Botón cerrar conversación */}
+                  {selectedConversation.status !== 'closed' && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm('¿Cerrar esta conversación? El usuario podrá reabrirla si responde.')) return
+                        try {
+                          const supabaseAdmin = createClient(
+                            process.env.NEXT_PUBLIC_SUPABASE_URL,
+                            process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
+                          )
+                          // Cerrar conversación
+                          const { error: convError } = await supabaseAdmin
+                            .from('feedback_conversations')
+                            .update({ status: 'closed', last_message_at: new Date().toISOString() })
+                            .eq('id', selectedConversation.id)
+                          if (convError) {
+                            console.error('Error cerrando conversación:', convError)
+                          } else {
+                            console.log('✅ Conversación cerrada:', selectedConversation.id)
+                          }
+                          // Marcar feedback como resuelto
+                          await supabaseAdmin
+                            .from('user_feedback')
+                            .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+                            .eq('id', selectedConversation.feedback_id)
+                          console.log('✅ Conversación cerrada')
+                          setSelectedConversation(null)
+                          loadConversations()
+                          loadFeedbacks()
+                        } catch (error) {
+                          console.error('Error cerrando conversación:', error)
+                          alert('Error al cerrar la conversación')
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 rounded-lg transition-colors"
+                      title="Cerrar conversación (el usuario puede reabrirla)"
+                    >
+                      ✅ Cerrar
+                    </button>
+                  )}
+                  {/* Botón X */}
+                  <button
+                    onClick={() => setSelectedConversation(null)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 sm:p-2 rounded-lg transition-colors"
+                  >
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* Solicitud original */}
