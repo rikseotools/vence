@@ -67,8 +67,12 @@ export default function TestsAuxiliarAdministrativoEstado() {
   const [showStatsInfo, setShowStatsInfo] = useState(false)
   const [expandedBlocks, setExpandedBlocks] = useState({
     bloque1: true,
-    bloque2: false
+    bloque2: false,
+    examenesOficiales: false
   })
+  const [availableExams, setAvailableExams] = useState([])
+  const [examsLoading, setExamsLoading] = useState(false)
+  const [examStats, setExamStats] = useState({}) // Stats por examDate
 
   // Cargar estadísticas usando la nueva API V2 con derivación dinámica por oposición
   const loadUserThemeStats = useCallback(async (userId) => {
@@ -108,12 +112,42 @@ export default function TestsAuxiliarAdministrativoEstado() {
     }
   }, [user?.id, loading, loadUserThemeStats])
 
+  // Cargar exámenes oficiales disponibles y estadísticas del usuario
+  const loadAvailableExams = useCallback(async () => {
+    if (availableExams.length > 0) return // Ya cargados
+    setExamsLoading(true)
+    try {
+      const response = await fetch('/api/v2/official-exams/list?oposicion=auxiliar-administrativo-estado')
+      const data = await response.json()
+      if (data.success && data.exams) {
+        setAvailableExams(data.exams)
+
+        // Si hay usuario, cargar sus estadísticas de exámenes oficiales
+        if (user?.id) {
+          const statsResponse = await fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=auxiliar-administrativo-estado`)
+          const statsData = await statsResponse.json()
+          if (statsData.success && statsData.stats) {
+            setExamStats(statsData.stats)
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Error cargando exámenes oficiales:', error)
+    } finally {
+      setExamsLoading(false)
+    }
+  }, [availableExams.length, user?.id])
+
   // Alternar expansión de bloques
   const toggleBlock = (blockId) => {
     setExpandedBlocks(prev => ({
       ...prev,
       [blockId]: !prev[blockId]
     }))
+    // Cargar exámenes cuando se expande la sección
+    if (blockId === 'examenesOficiales' && !expandedBlocks.examenesOficiales) {
+      loadAvailableExams()
+    }
   }
 
   // Procesar temas con estadísticas y colores
@@ -239,6 +273,76 @@ export default function TestsAuxiliarAdministrativoEstado() {
                   </div>
                 </div>
               </Link>
+
+              {/* EXÁMENES OFICIALES */}
+              <div id="examenes-oficiales" className="bg-white rounded-lg shadow-lg overflow-hidden scroll-mt-20">
+                <button
+                  onClick={() => toggleBlock('examenesOficiales')}
+                  className="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white py-4 px-6 text-left font-bold text-lg transition-all duration-300 hover:from-amber-700 hover:to-orange-700 focus:outline-none focus:ring-4 focus:ring-amber-300"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="mr-3 text-xl">📋</span>
+                      <span>Exámenes Oficiales</span>
+                    </div>
+                    <span className={`text-2xl transition-transform duration-300 ${expandedBlocks.examenesOficiales ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </div>
+                </button>
+
+                {expandedBlocks.examenesOficiales && (
+                  <div className="p-4 space-y-3 bg-gray-50">
+                    {examsLoading ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-2"></div>
+                        <p className="text-gray-600 text-sm">Cargando exámenes...</p>
+                      </div>
+                    ) : availableExams.filter(e => e.examDate === '2024-07-09').length > 0 ? (
+                      availableExams.filter(e => e.examDate === '2024-07-09').map((exam) => {
+                        const stats = examStats[exam.examDate]
+                        const color = stats ? getAccuracyColor(stats.accuracy) : 'gray'
+                        return (
+                          <Link
+                            key={`${exam.examDate}-${exam.examSource}`}
+                            href={`/auxiliar-administrativo-estado/test/examen-oficial?fecha=${exam.examDate}`}
+                            className={`block ${COLOR_CLASSES[color]} text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <span className="mr-3 text-lg">🗓️</span>
+                                <div>
+                                  <div className="font-bold">
+                                    Convocatoria {new Date(exam.examDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                  </div>
+                                  <div className="text-sm text-white/80">
+                                    Primera parte
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {stats ? (
+                                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                    {stats.accuracy}% ({stats.correct}/{stats.total})
+                                  </span>
+                                ) : (
+                                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                                    Empezar
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        )
+                      })
+                    ) : (
+                      <div className="text-center py-4 text-gray-600">
+                        <p>No hay exámenes oficiales disponibles todavía.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {/* BLOQUE I */}
               <div id="bloque-i" className="bg-white rounded-lg shadow-lg overflow-hidden scroll-mt-20">

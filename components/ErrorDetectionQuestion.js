@@ -21,12 +21,18 @@ export default function ErrorDetectionQuestion({
 
   const generateTextComponent = () => {
     const contentData = question.content_data
-    
+
     if (!contentData) return
 
     const originalText = contentData.original_text || ''
     const errorCount = contentData.error_count || 0
     const errors = contentData.errors_found || []
+
+    // Si no hay texto original que mostrar, no renderizar la caja
+    if (!originalText.trim()) {
+      setTextComponent(null)
+      return
+    }
 
     setTextComponent(
       <div className="w-full space-y-6">

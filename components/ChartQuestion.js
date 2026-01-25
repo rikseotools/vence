@@ -121,10 +121,12 @@ export default function ChartQuestion({
         )}
       </div>
 
-      {/* Gráfico - Componente específico */}
-      <div className="mb-4 -mx-6 -my-2 sm:-mt-2 -mt-8">
-        {chartComponent}
-      </div>
+      {/* Gráfico - Componente específico (solo si existe) */}
+      {chartComponent && (
+        <div className="mb-4 -mx-6 -my-2 sm:-mt-2 -mt-8">
+          {chartComponent}
+        </div>
+      )}
 
       {/* Opciones de respuesta */}
       <div className="space-y-3 mb-6">
