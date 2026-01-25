@@ -1778,7 +1778,31 @@ export default function AdminFeedbackPage() {
                 {usersWithConversations.map((userData, index) => (
                   <button
                     key={userData.id || userData.email || index}
-                    onClick={() => setSelectedUser(userData)}
+                    onClick={() => {
+                      setSelectedUser(userData)
+                      // Auto-seleccionar la primera conversación pendiente
+                      if (userData.feedbacks?.length > 0) {
+                        // Buscar el primer feedback con conversación pendiente (último mensaje del usuario)
+                        const pendingFeedback = userData.feedbacks.find(fb => {
+                          const conv = conversations[fb.id]
+                          if (conv && conv.status !== 'closed') {
+                            const messages = conv.feedback_messages || []
+                            if (messages.length > 0) {
+                              const sorted = [...messages].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                              return sorted[0]?.is_admin === false
+                            }
+                          }
+                          // También considerar feedbacks sin conversación
+                          return !conv && (fb.status === 'pending' || fb.status === 'in_progress')
+                        })
+                        if (pendingFeedback) {
+                          setSelectedFeedback(pendingFeedback)
+                        } else if (userData.feedbacks.length === 1) {
+                          // Si solo hay una conversación, seleccionarla
+                          setSelectedFeedback(userData.feedbacks[0])
+                        }
+                      }
+                    }}
                     className="w-full text-left bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all p-4 sm:p-5 border-l-4 border-transparent hover:border-blue-500"
                   >
                     <div className="flex items-center justify-between">
