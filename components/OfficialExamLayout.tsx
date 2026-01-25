@@ -324,11 +324,11 @@ export default function OfficialExamLayout({
         }
       }
 
-      // Validar preguntas psicotecnicas una por una via /api/answer/psychometric
+      // Validar preguntas psicotecnicas EN PARALELO via /api/answer/psychometric
       if (psychometricQuestions.length > 0) {
-        console.log('🔒 Validando preguntas psicotecnicas...')
+        console.log('🔒 Validando preguntas psicotecnicas en paralelo...')
 
-        for (const pq of psychometricQuestions) {
+        const psyPromises = psychometricQuestions.map(async (pq) => {
           try {
             const psyResponse = await fetch('/api/answer/psychometric', {
               method: 'POST',
@@ -342,20 +342,33 @@ export default function OfficialExamLayout({
             const psyResult = await psyResponse.json()
 
             if (psyResult.success) {
-              allResults[pq.index] = {
-                isCorrect: psyResult.isCorrect,
-                correctAnswer: answerToLetter(psyResult.correctAnswer).toLowerCase(),
-                correctIndex: psyResult.correctAnswer,
-                explanation: psyResult.explanation,
-                userAnswer: pq.userAnswer !== null ? answerToLetter(pq.userAnswer).toLowerCase() : null,
-                questionType: 'psychometric'
+              return {
+                index: pq.index,
+                result: {
+                  isCorrect: psyResult.isCorrect,
+                  correctAnswer: answerToLetter(psyResult.correctAnswer).toLowerCase(),
+                  correctIndex: psyResult.correctAnswer,
+                  explanation: psyResult.explanation,
+                  userAnswer: pq.userAnswer !== null ? answerToLetter(pq.userAnswer).toLowerCase() : null,
+                  questionType: 'psychometric' as const
+                }
               }
-              if (psyResult.isCorrect) totalCorrect++
             }
+            return null
           } catch (err) {
             console.error('❌ Error validando psicotecnica:', pq.questionId, err)
+            return null
           }
-        }
+        })
+
+        const psyResults = await Promise.all(psyPromises)
+
+        psyResults.forEach(item => {
+          if (item) {
+            allResults[item.index] = item.result
+            if (item.result.isCorrect) totalCorrect++
+          }
+        })
       }
 
       // Calcular estadisticas
