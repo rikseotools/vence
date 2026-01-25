@@ -1362,6 +1362,9 @@ export const psychometricQuestions = pgTable("psychometric_questions", {
 	globalDifficulty: numeric("global_difficulty"),
 	difficultySampleSize: integer("difficulty_sample_size").default(0),
 	lastDifficultyUpdate: timestamp("last_difficulty_update", { withTimezone: true, mode: 'string' }),
+	isOfficialExam: boolean("is_official_exam").default(false),
+	examSource: text("exam_source"),
+	examDate: date("exam_date"),
 }, (table) => [
 	index("idx_psychometric_questions_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),
 	index("idx_psychometric_questions_category").using("btree", table.categoryId.asc().nullsLast().op("uuid_ops")),
