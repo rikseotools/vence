@@ -14,7 +14,7 @@ import { z } from 'zod/v3'
 
 const validatePsychometricRequestSchema = z.object({
   questionId: z.string().uuid('ID de pregunta inválido'),
-  userAnswer: z.number().int().min(0).max(3) // 0=A, 1=B, 2=C, 3=D
+  userAnswer: z.number().int().min(0).max(3).nullable() // 0=A, 1=B, 2=C, 3=D, null=sin respuesta
 })
 
 type ValidatePsychometricRequest = z.infer<typeof validatePsychometricRequestSchema>
@@ -61,13 +61,15 @@ async function validatePsychometricAnswer(
       }
     }
 
-    const isCorrect = params.userAnswer === question.correctOption
+    // Si userAnswer es null, la respuesta es incorrecta (pregunta sin responder)
+    const isCorrect = params.userAnswer !== null && params.userAnswer === question.correctOption
 
     console.log('✅ [API/answer/psychometric] Respuesta validada:', {
       questionId: params.questionId,
       userAnswer: params.userAnswer,
       correctAnswer: question.correctOption,
-      isCorrect
+      isCorrect,
+      wasUnanswered: params.userAnswer === null
     })
 
     return {

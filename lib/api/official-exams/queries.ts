@@ -295,6 +295,7 @@ export async function saveOfficialExamResults(
     const db = getDb()
 
     console.log(`💾 [OfficialExams] Saving results for user ${userId}: ${results.length} questions`)
+    console.log(`💾 [OfficialExams] DB connection active: ${!!db}`)
 
     // Calculate statistics
     const totalCorrect = results.filter(r => r.isCorrect).length
@@ -304,6 +305,7 @@ export async function saveOfficialExamResults(
     const psyCount = results.filter(r => r.questionType === 'psychometric').length
 
     // 1. Create test session
+    console.log(`💾 [OfficialExams] Insert values: score=${score}, totalQuestions=${results.length}, totalTimeSeconds=${totalTimeSeconds}`)
     const [testSession] = await db.insert(tests).values({
       userId,
       title: `Examen Oficial ${examDate} - ${oposicion}`,
@@ -404,9 +406,40 @@ export async function saveOfficialExamResults(
     }
   } catch (error) {
     console.error('❌ [OfficialExams] Error saving results:', error)
+
+    // Log completo del error para debugging
+    console.error('❌ [OfficialExams] Error full object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+
+    // Capturar detalles adicionales del error de PostgreSQL
+    const errorDetails = error as {
+      message?: string
+      code?: string
+      detail?: string
+      hint?: string
+      constraint?: string
+      cause?: { code?: string; detail?: string; message?: string }
+      severity?: string
+      routine?: string
+    }
+
+    // Intentar obtener error de causa (PostgreSQL subyacente)
+    const pgCause = errorDetails.cause
+
+    const fullError = [
+      errorDetails.message,
+      errorDetails.code && `Code: ${errorDetails.code}`,
+      errorDetails.severity && `Severity: ${errorDetails.severity}`,
+      errorDetails.detail && `Detail: ${errorDetails.detail}`,
+      errorDetails.hint && `Hint: ${errorDetails.hint}`,
+      errorDetails.constraint && `Constraint: ${errorDetails.constraint}`,
+      errorDetails.routine && `Routine: ${errorDetails.routine}`,
+      pgCause?.code && `PG Code: ${pgCause.code}`,
+      pgCause?.detail && `PG Detail: ${pgCause.detail}`,
+    ].filter(Boolean).join(' | ')
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
+      error: fullError || 'Error desconocido',
     }
   }
 }
