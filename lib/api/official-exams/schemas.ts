@@ -133,11 +133,180 @@ export const saveOfficialExamResultsResponseSchema = z.object({
 
 export type SaveOfficialExamResultsResponse = z.infer<typeof saveOfficialExamResultsResponseSchema>
 
-// Validators
+// =====================================================
+// INIT EXAM SESSION SCHEMAS
+// =====================================================
+
+// Question item for init (with questionType to identify table)
+export const initOfficialExamQuestionSchema = z.object({
+  id: z.string().uuid(),
+  questionType: z.enum(['legislative', 'psychometric']),
+  questionOrder: z.number().int().min(1),
+  questionText: z.string(),
+  questionSubtype: z.string().nullable().optional(),
+  contentData: z.record(z.string(), z.unknown()).nullable().optional(),
+  // Article info (legislative only)
+  articleNumber: z.string().nullable().optional(),
+  lawName: z.string().nullable().optional(),
+  difficulty: z.string().nullable().optional(),
+})
+
+export type InitOfficialExamQuestion = z.infer<typeof initOfficialExamQuestionSchema>
+
+export const initOfficialExamRequestSchema = z.object({
+  examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
+  oposicion: z.enum([
+    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.TRAMITACION_PROCESAL,
+    OposicionType.AUXILIO_JUDICIAL,
+  ]),
+  questions: z.array(initOfficialExamQuestionSchema).min(1, 'Debe haber al menos una pregunta'),
+  metadata: z.object({
+    legislativeCount: z.number().int().min(0).optional(),
+    psychometricCount: z.number().int().min(0).optional(),
+    reservaCount: z.number().int().min(0).optional(),
+  }).optional(),
+})
+
+export type InitOfficialExamRequest = z.infer<typeof initOfficialExamRequestSchema>
+
+export const initOfficialExamResponseSchema = z.object({
+  success: z.boolean(),
+  testId: z.string().uuid().optional(),
+  savedCount: z.number().optional(),
+  error: z.string().optional(),
+})
+
+export type InitOfficialExamResponse = z.infer<typeof initOfficialExamResponseSchema>
+
+// =====================================================
+// SAVE INDIVIDUAL ANSWER SCHEMAS
+// =====================================================
+
+export const saveOfficialExamAnswerRequestSchema = z.object({
+  testId: z.string().uuid(),
+  questionOrder: z.number().int().min(1),
+  userAnswer: z.enum(['a', 'b', 'c', 'd']),
+})
+
+export type SaveOfficialExamAnswerRequest = z.infer<typeof saveOfficialExamAnswerRequestSchema>
+
+export const saveOfficialExamAnswerResponseSchema = z.object({
+  success: z.boolean(),
+  answerId: z.string().uuid().optional(),
+  error: z.string().optional(),
+})
+
+export type SaveOfficialExamAnswerResponse = z.infer<typeof saveOfficialExamAnswerResponseSchema>
+
+// =====================================================
+// RESUME EXAM SCHEMAS
+// =====================================================
+
+export const resumeOfficialExamRequestSchema = z.object({
+  testId: z.string().uuid(),
+})
+
+export type ResumeOfficialExamRequest = z.infer<typeof resumeOfficialExamRequestSchema>
+
+// Question with saved answer for resume (NO correct_option for security)
+export const resumedOfficialExamQuestionSchema = z.object({
+  id: z.string().uuid(),
+  questionOrder: z.number(),
+  questionText: z.string(),
+  optionA: z.string(),
+  optionB: z.string(),
+  optionC: z.string(),
+  optionD: z.string(),
+  explanation: z.string().nullable(),
+  difficulty: z.string().nullable(),
+  questionType: z.enum(['legislative', 'psychometric']),
+  questionSubtype: z.string().nullable(),
+  contentData: z.record(z.string(), z.unknown()).nullable(),
+  isReserva: z.boolean(),
+  articleNumber: z.string().nullable(),
+  lawName: z.string().nullable(),
+  // User's saved answer (null if not answered)
+  savedAnswer: z.string().nullable(),
+})
+
+export type ResumedOfficialExamQuestion = z.infer<typeof resumedOfficialExamQuestionSchema>
+
+export const resumeOfficialExamResponseSchema = z.object({
+  success: z.boolean(),
+  testId: z.string().uuid().optional(),
+  questions: z.array(resumedOfficialExamQuestionSchema).optional(),
+  savedAnswers: z.record(z.string(), z.string()).optional(), // { "0": "a", "3": "c", ... }
+  metadata: z.object({
+    examDate: z.string(),
+    oposicion: z.string(),
+    totalQuestions: z.number(),
+    answeredCount: z.number(),
+    legislativeCount: z.number(),
+    psychometricCount: z.number(),
+    reservaCount: z.number(),
+    createdAt: z.string(),
+  }).optional(),
+  error: z.string().optional(),
+})
+
+export type ResumeOfficialExamResponse = z.infer<typeof resumeOfficialExamResponseSchema>
+
+// =====================================================
+// PENDING EXAMS SCHEMAS
+// =====================================================
+
+export const getPendingOfficialExamsRequestSchema = z.object({
+  limit: z.number().int().min(1).max(50).default(10),
+})
+
+export type GetPendingOfficialExamsRequest = z.infer<typeof getPendingOfficialExamsRequestSchema>
+
+export const pendingOfficialExamSchema = z.object({
+  id: z.string().uuid(),
+  examDate: z.string(),
+  oposicion: z.string(),
+  totalQuestions: z.number(),
+  answeredCount: z.number(),
+  progress: z.number(), // Percentage 0-100
+  createdAt: z.string(),
+})
+
+export type PendingOfficialExam = z.infer<typeof pendingOfficialExamSchema>
+
+export const getPendingOfficialExamsResponseSchema = z.object({
+  success: z.boolean(),
+  exams: z.array(pendingOfficialExamSchema).optional(),
+  total: z.number().optional(),
+  error: z.string().optional(),
+})
+
+export type GetPendingOfficialExamsResponse = z.infer<typeof getPendingOfficialExamsResponseSchema>
+
+// =====================================================
+// VALIDATORS
+// =====================================================
+
 export function safeParseGetOfficialExamQuestions(data: unknown) {
   return getOfficialExamQuestionsRequestSchema.safeParse(data)
 }
 
 export function safeParseSaveOfficialExamResults(data: unknown) {
   return saveOfficialExamResultsRequestSchema.safeParse(data)
+}
+
+export function safeParseInitOfficialExam(data: unknown) {
+  return initOfficialExamRequestSchema.safeParse(data)
+}
+
+export function safeParseSaveOfficialExamAnswer(data: unknown) {
+  return saveOfficialExamAnswerRequestSchema.safeParse(data)
+}
+
+export function safeParseResumeOfficialExam(data: unknown) {
+  return resumeOfficialExamRequestSchema.safeParse(data)
+}
+
+export function safeParseGetPendingOfficialExams(data: unknown) {
+  return getPendingOfficialExamsRequestSchema.safeParse(data)
 }

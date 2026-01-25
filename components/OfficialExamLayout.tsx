@@ -83,6 +83,9 @@ interface OfficialExamLayoutProps {
   metadata?: ExamMetadata
   oposicion: string
   config?: ExamConfig
+  // Props for resume functionality
+  resumeTestId?: string
+  initialAnswers?: Record<number, string>
 }
 
 interface ValidationResult {
@@ -214,17 +217,27 @@ export default function OfficialExamLayout({
   questions,
   metadata,
   oposicion,
-  config
+  config,
+  // Resume props
+  resumeTestId,
+  initialAnswers
 }: OfficialExamLayoutProps) {
   const { user, supabase } = useAuth() as AuthContextValue
 
   // Estados del examen
-  const [userAnswers, setUserAnswers] = useState<Record<number, string>>({})
+  // Initialize with saved answers if resuming
+  const [userAnswers, setUserAnswers] = useState<Record<number, string>>(initialAnswers || {})
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [score, setScore] = useState(0)
   const [startTime] = useState(Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Session state for resume functionality
+  const [currentTestSession, setCurrentTestSession] = useState<{ id: string } | null>(
+    resumeTestId ? { id: resumeTestId } : null
+  )
+  const sessionCreationRef = React.useRef(false)
 
   // Resultados validados por API
   const [validatedResults, setValidatedResults] = useState<ValidatedResults | null>(null)
@@ -246,7 +259,88 @@ export default function OfficialExamLayout({
     return () => clearInterval(interval)
   }, [isSubmitted, startTime])
 
-  // Manejar seleccion de respuesta
+  // Initialize exam session (for resume functionality)
+  useEffect(() => {
+    if (!user || !questions?.length) return
+
+    // Prevent double initialization (React Strict Mode)
+    if (sessionCreationRef.current) {
+      console.log('⏭️ [OfficialExam] Session already initialized, skipping')
+      return
+    }
+
+    sessionCreationRef.current = true
+
+    // If resuming, we already have the testId
+    if (resumeTestId) {
+      console.log('🔄 [OfficialExam] Resuming existing exam:', resumeTestId)
+      setCurrentTestSession({ id: resumeTestId })
+      return
+    }
+
+    // Initialize new exam session
+    initializeExamSession()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, questions?.length, resumeTestId])
+
+  // Initialize exam session via API
+  async function initializeExamSession(): Promise<void> {
+    try {
+      console.log('🎯 [OfficialExam] Initializing new exam session')
+
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData?.session?.access_token
+
+      if (!token) {
+        console.error('❌ [OfficialExam] No auth token available')
+        return
+      }
+
+      // Prepare questions data for init API
+      const questionsForInit = questions.map((q, index) => ({
+        id: q.id,
+        questionType: q.questionType,
+        questionOrder: index + 1,
+        questionText: q.question,
+        questionSubtype: q.questionSubtype || null,
+        contentData: q.contentData || null,
+        articleNumber: q.articleNumber || null,
+        lawName: q.lawName || null,
+        difficulty: q.difficulty || null,
+      }))
+
+      const response = await fetch('/api/v2/official-exams/init', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          examDate: metadata?.examDate || config?.examDate || new Date().toISOString().split('T')[0],
+          oposicion: oposicion,
+          questions: questionsForInit,
+          metadata: {
+            legislativeCount: metadata?.legislativeCount || 0,
+            psychometricCount: metadata?.psychometricCount || 0,
+            reservaCount: metadata?.reservaCount || 0,
+          }
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log(`✅ [OfficialExam] Session created: ${result.testId}, ${result.savedCount} questions`)
+        setCurrentTestSession({ id: result.testId })
+      } else {
+        console.error('❌ [OfficialExam] Init failed:', result.error)
+      }
+    } catch (error) {
+      console.error('❌ [OfficialExam] Init error:', error)
+    }
+  }
+
+  // Manejar seleccion de respuesta (with auto-save for resume)
   function handleAnswerSelect(questionIndex: number, option: number | string): void {
     if (isSubmitted) return
 
@@ -255,10 +349,41 @@ export default function OfficialExamLayout({
       ? ['a', 'b', 'c', 'd'][option]
       : option.toLowerCase()
 
+    // Update local state immediately for responsive UI
     setUserAnswers(prev => ({
       ...prev,
       [questionIndex]: normalizedOption
     }))
+
+    // Auto-save to API for resume functionality (fire-and-forget)
+    if (currentTestSession?.id) {
+      saveAnswerToApi(currentTestSession.id, questionIndex, normalizedOption)
+    }
+  }
+
+  // Save answer to API (non-blocking)
+  async function saveAnswerToApi(testId: string, questionIndex: number, answer: string): Promise<void> {
+    try {
+      const response = await fetch('/api/v2/official-exams/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          testId,
+          questionOrder: questionIndex + 1, // 1-indexed
+          userAnswer: answer,
+        })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        console.log(`💾 [OfficialExam] Answer ${questionIndex + 1} saved`)
+      } else {
+        console.error(`❌ [OfficialExam] Error saving answer ${questionIndex + 1}:`, result.error)
+      }
+    } catch (error) {
+      console.error(`❌ [OfficialExam] Error saving answer ${questionIndex + 1}:`, error)
+    }
   }
 
   // Corregir examen
