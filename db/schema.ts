@@ -652,6 +652,7 @@ export const testQuestions = pgTable("test_questions", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	testId: uuid("test_id"),
 	questionId: uuid("question_id"),
+	psychometricQuestionId: uuid("psychometric_question_id"),
 	articleId: uuid("article_id"),
 	questionOrder: integer("question_order").notNull(),
 	questionText: text("question_text").notNull(),

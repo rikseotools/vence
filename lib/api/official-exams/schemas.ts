@@ -85,7 +85,59 @@ export const getAvailableExamsResponseSchema = z.object({
 
 export type GetAvailableExamsResponse = z.infer<typeof getAvailableExamsResponseSchema>
 
+// =====================================================
+// SAVE RESULTS SCHEMAS
+// =====================================================
+
+// Individual question result schema
+export const questionResultSchema = z.object({
+  questionId: z.string().uuid(),
+  questionType: z.enum(['legislative', 'psychometric']),
+  userAnswer: z.string(),
+  correctAnswer: z.string(),
+  isCorrect: z.boolean(),
+  questionText: z.string(),
+  articleNumber: z.string().nullable().optional(),
+  lawName: z.string().nullable().optional(),
+  difficulty: z.string().default('medium'),
+})
+
+export type QuestionResult = z.infer<typeof questionResultSchema>
+
+// Save results request schema
+export const saveOfficialExamResultsRequestSchema = z.object({
+  examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
+  oposicion: z.enum([
+    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.TRAMITACION_PROCESAL,
+    OposicionType.AUXILIO_JUDICIAL,
+  ]),
+  results: z.array(questionResultSchema).min(1, 'Debe haber al menos un resultado'),
+  totalTimeSeconds: z.number().int().min(0),
+  metadata: z.object({
+    legislativeCount: z.number().int().min(0),
+    psychometricCount: z.number().int().min(0),
+    reservaCount: z.number().int().min(0).optional(),
+  }).optional(),
+})
+
+export type SaveOfficialExamResultsRequest = z.infer<typeof saveOfficialExamResultsRequestSchema>
+
+// Save results response schema
+export const saveOfficialExamResultsResponseSchema = z.object({
+  success: z.boolean(),
+  testId: z.string().uuid().optional(),
+  questionsSaved: z.number().optional(),
+  error: z.string().optional(),
+})
+
+export type SaveOfficialExamResultsResponse = z.infer<typeof saveOfficialExamResultsResponseSchema>
+
 // Validators
 export function safeParseGetOfficialExamQuestions(data: unknown) {
   return getOfficialExamQuestionsRequestSchema.safeParse(data)
+}
+
+export function safeParseSaveOfficialExamResults(data: unknown) {
+  return saveOfficialExamResultsRequestSchema.safeParse(data)
 }

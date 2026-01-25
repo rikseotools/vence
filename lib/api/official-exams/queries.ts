@@ -1,11 +1,13 @@
 import { getDb } from '@/db/client'
-import { questions, psychometricQuestions, articles, laws } from '@/db/schema'
+import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory } from '@/db/schema'
 import { eq, and, like, sql } from 'drizzle-orm'
 import type {
   GetOfficialExamQuestionsRequest,
   GetOfficialExamQuestionsResponse,
   OfficialExamQuestion,
   GetAvailableExamsResponse,
+  SaveOfficialExamResultsRequest,
+  SaveOfficialExamResultsResponse,
 } from './schemas'
 
 // Map oposicion slug to exam_source pattern
@@ -272,6 +274,136 @@ export async function getAvailableOfficialExams(
     }
   } catch (error) {
     console.error('❌ [OfficialExams] Error fetching available exams:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+/**
+ * Save official exam results
+ * Creates a test session and saves individual question results
+ */
+export async function saveOfficialExamResults(
+  params: SaveOfficialExamResultsRequest,
+  userId: string
+): Promise<SaveOfficialExamResultsResponse> {
+  const { examDate, oposicion, results, totalTimeSeconds, metadata } = params
+
+  try {
+    const db = getDb()
+
+    console.log(`💾 [OfficialExams] Saving results for user ${userId}: ${results.length} questions`)
+
+    // Calculate statistics
+    const totalCorrect = results.filter(r => r.isCorrect).length
+    const totalIncorrect = results.length - totalCorrect
+    const score = String(Math.round((totalCorrect / results.length) * 100))
+    const legCount = results.filter(r => r.questionType === 'legislative').length
+    const psyCount = results.filter(r => r.questionType === 'psychometric').length
+
+    // 1. Create test session
+    const [testSession] = await db.insert(tests).values({
+      userId,
+      title: `Examen Oficial ${examDate} - ${oposicion}`,
+      testType: 'official_exam',
+      totalQuestions: results.length,
+      score,
+      isCompleted: true,
+      completedAt: new Date().toISOString(),
+      totalTimeSeconds,
+      detailedAnalytics: {
+        isOfficialExam: true,
+        examDate,
+        oposicion,
+        legislativeCount: metadata?.legislativeCount ?? legCount,
+        psychometricCount: metadata?.psychometricCount ?? psyCount,
+        reservaCount: metadata?.reservaCount ?? 0,
+        correctCount: totalCorrect,
+        incorrectCount: totalIncorrect,
+      },
+    }).returning({ id: tests.id })
+
+    if (!testSession?.id) {
+      throw new Error('No se pudo crear la sesión de test')
+    }
+
+    console.log(`✅ [OfficialExams] Test session created: ${testSession.id}`)
+
+    // 2. Insert individual question results
+    const testQuestionsData = results.map((result, index) => {
+      const isLegislative = result.questionType === 'legislative'
+      return {
+        testId: testSession.id,
+        questionId: isLegislative ? result.questionId : null,
+        psychometricQuestionId: isLegislative ? null : result.questionId,
+        questionOrder: index + 1,
+        questionText: result.questionText,
+        userAnswer: result.userAnswer || 'sin_respuesta',
+        correctAnswer: result.correctAnswer || 'unknown',
+        isCorrect: result.isCorrect,
+        timeSpentSeconds: 0,
+        articleNumber: isLegislative ? (result.articleNumber ?? null) : null,
+        lawName: isLegislative ? (result.lawName ?? null) : null,
+        difficulty: result.difficulty,
+        questionType: result.questionType,
+      }
+    })
+
+    await db.insert(testQuestions).values(testQuestionsData)
+
+    console.log(`✅ [OfficialExams] ${testQuestionsData.length} questions saved (${legCount} legislative, ${psyCount} psychometric)`)
+
+    // 3. Update psychometric history for statistics
+    const psychometricResults = results.filter(r => r.questionType === 'psychometric')
+    if (psychometricResults.length > 0) {
+      for (const result of psychometricResults) {
+        // Check if history exists
+        const existing = await db
+          .select()
+          .from(psychometricUserQuestionHistory)
+          .where(
+            and(
+              eq(psychometricUserQuestionHistory.userId, userId),
+              eq(psychometricUserQuestionHistory.questionId, result.questionId)
+            )
+          )
+          .limit(1)
+
+        if (existing.length > 0) {
+          // Update existing
+          await db
+            .update(psychometricUserQuestionHistory)
+            .set({
+              attempts: sql`${psychometricUserQuestionHistory.attempts} + 1`,
+              correctAttempts: result.isCorrect
+                ? sql`${psychometricUserQuestionHistory.correctAttempts} + 1`
+                : psychometricUserQuestionHistory.correctAttempts,
+              lastAttemptAt: new Date().toISOString(),
+            })
+            .where(eq(psychometricUserQuestionHistory.id, existing[0].id))
+        } else {
+          // Insert new
+          await db.insert(psychometricUserQuestionHistory).values({
+            userId,
+            questionId: result.questionId,
+            attempts: 1,
+            correctAttempts: result.isCorrect ? 1 : 0,
+            lastAttemptAt: new Date().toISOString(),
+          })
+        }
+      }
+      console.log(`✅ [OfficialExams] ${psychometricResults.length} psychometric history records updated`)
+    }
+
+    return {
+      success: true,
+      testId: testSession.id,
+      questionsSaved: testQuestionsData.length,
+    }
+  } catch (error) {
+    console.error('❌ [OfficialExams] Error saving results:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
