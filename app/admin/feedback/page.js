@@ -2074,6 +2074,7 @@ export default function AdminFeedbackPage() {
                                     .eq('id', selectedFeedback.id)
                                   console.log('✅ Conversación cerrada')
                                   setSelectedFeedback(null)
+                                  setSelectedUser(null) // Volver a la lista de usuarios
                                   loadConversations()
                                   loadFeedbacks()
                                 } catch (error) {
@@ -2503,6 +2504,7 @@ export default function AdminFeedbackPage() {
                             .eq('id', selectedConversation.feedback_id)
                           console.log('✅ Conversación cerrada')
                           setSelectedConversation(null)
+                          setSelectedUser(null) // Volver a la lista de usuarios
                           loadConversations()
                           loadFeedbacks()
                         } catch (error) {
