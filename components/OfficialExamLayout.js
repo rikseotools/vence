@@ -280,127 +280,66 @@ export default function OfficialExamLayout({
       console.log(`✅ Examen corregido: ${totalCorrect}/${questions.length} (${percentage}%)`)
 
       // Guardar sesion de test para estadisticas (solo usuarios logueados)
+      // Usa API v2 con validación Zod y Drizzle ORM
       if (user && supabase) {
         try {
           const totalTimeSeconds = Math.round((Date.now() - startTime) / 1000)
           const examDateFormatted = metadata?.examDate || config?.examDate || ''
 
-          // 1. Insertar en tests y obtener el ID
-          const { data: testData, error: sessionError } = await supabase
-            .from('tests')
-            .insert({
-              user_id: user.id,
-              title: `Examen Oficial - ${examDateFormatted}`,
-              test_type: 'exam',
-              total_questions: questions.length,
-              score: percentage,
-              is_completed: true,
-              started_at: new Date(startTime).toISOString(),
-              completed_at: new Date().toISOString(),
-              total_time_seconds: totalTimeSeconds,
-              detailed_analytics: {
-                isOfficialExam: true,
-                examDate: examDateFormatted,
-                oposicion: oposicion,
+          // Obtener token de autenticación
+          const { data: sessionData } = await supabase.auth.getSession()
+          const token = sessionData?.session?.access_token
+
+          if (!token) {
+            console.error('❌ No se pudo obtener token de autenticación')
+            return
+          }
+
+          // Preparar datos para la API v2
+          const resultsForApi = questions.map((q, index) => {
+            const result = allResults[index]
+            const answer = userAnswers[index] || null
+            return {
+              questionId: q.id,
+              questionType: q.questionType || 'legislative',
+              userAnswer: answer || 'sin_respuesta',
+              correctAnswer: result?.correctAnswer || 'unknown',
+              isCorrect: result?.isCorrect || false,
+              questionText: q.questionText || q.question || 'Pregunta sin texto',
+              articleNumber: q.articleNumber || null,
+              lawName: q.lawName || null,
+              difficulty: q.difficulty || 'medium'
+            }
+          })
+
+          // Llamar a API v2
+          const response = await fetch('/api/v2/official-exams/save-results', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              examDate: examDateFormatted,
+              oposicion: oposicion,
+              results: resultsForApi,
+              totalTimeSeconds,
+              metadata: {
                 legislativeCount: metadata?.legislativeCount || 0,
                 psychometricCount: metadata?.psychometricCount || 0,
-                reservaCount: metadata?.reservaCount || 0,
-                correctCount: totalCorrect,
-                incorrectCount: incorrectCount
+                reservaCount: metadata?.reservaCount || 0
               }
             })
-            .select('id')
-            .single()
+          })
 
-          if (sessionError) {
-            console.error('❌ Error guardando sesion:', sessionError)
+          const apiResult = await response.json()
+
+          if (apiResult.success) {
+            const legCount = questions.filter(q => q.questionType === 'legislative').length
+            const psyCount = questions.filter(q => q.questionType === 'psychometric').length
+            console.log(`✅ Examen guardado via API v2: ${apiResult.questionsSaved} preguntas (${legCount} legislativas, ${psyCount} psicotécnicas)`)
           } else {
-            console.log('✅ Sesion de examen oficial guardada con ID:', testData.id)
-
-            // 2. Insertar respuestas individuales en test_questions para estadisticas
-            // Guardamos TODAS las preguntas:
-            // - Legislativas: question_id apunta a tabla 'questions'
-            // - Psicotécnicas: psychometric_question_id apunta a 'psychometric_questions'
-            const testQuestionsData = questions.map((q, index) => {
-              const result = allResults[index]
-              const answer = userAnswers[index] || null
-              const isLegislative = q.questionType === 'legislative'
-
-              return {
-                test_id: testData.id,
-                question_id: isLegislative ? q.id : null,
-                psychometric_question_id: isLegislative ? null : q.id,
-                question_order: index + 1,
-                question_text: q.questionText || q.question || 'Pregunta sin texto',
-                user_answer: answer || 'sin_respuesta',
-                correct_answer: result?.correctAnswer || 'unknown',
-                is_correct: result?.isCorrect || false,
-                time_spent_seconds: 0,
-                article_number: isLegislative ? (q.articleNumber || null) : null,
-                law_name: isLegislative ? (q.lawName || null) : null,
-                tema_number: null,
-                difficulty: q.difficulty || 'medium',
-                question_type: q.questionType || 'legislative'
-              }
-            })
-
-            const { error: questionsError } = await supabase
-              .from('test_questions')
-              .insert(testQuestionsData)
-
-            if (questionsError) {
-              console.error('❌ Error guardando preguntas:', questionsError.message, questionsError.code, questionsError.details)
-            } else {
-              const legCount = questions.filter(q => q.questionType === 'legislative').length
-              const psyCount = questions.filter(q => q.questionType === 'psychometric').length
-              console.log(`✅ ${testQuestionsData.length} preguntas guardadas (${legCount} legislativas, ${psyCount} psicotécnicas)`)
-
-              // 3. Actualizar historial de psicotécnicas para estadísticas específicas
-              const psychometricQuestions = questions.filter(q => q.questionType === 'psychometric')
-              if (psychometricQuestions.length > 0 && user?.id) {
-                let updatedCount = 0
-                for (const q of psychometricQuestions) {
-                  const qIndex = questions.findIndex(orig => orig.id === q.id)
-                  const result = allResults[qIndex]
-
-                  // Verificar si ya existe el registro
-                  const { data: existing } = await supabase
-                    .from('psychometric_user_question_history')
-                    .select('id, attempts, correct_attempts')
-                    .eq('user_id', user.id)
-                    .eq('question_id', q.id)
-                    .single()
-
-                  if (existing) {
-                    // Actualizar registro existente
-                    await supabase
-                      .from('psychometric_user_question_history')
-                      .update({
-                        attempts: existing.attempts + 1,
-                        correct_attempts: existing.correct_attempts + (result?.isCorrect ? 1 : 0),
-                        last_attempt_at: new Date().toISOString(),
-                        last_was_correct: result?.isCorrect || false
-                      })
-                      .eq('id', existing.id)
-                    updatedCount++
-                  } else {
-                    // Crear nuevo registro
-                    await supabase
-                      .from('psychometric_user_question_history')
-                      .insert({
-                        user_id: user.id,
-                        question_id: q.id,
-                        attempts: 1,
-                        correct_attempts: result?.isCorrect ? 1 : 0,
-                        last_attempt_at: new Date().toISOString(),
-                        last_was_correct: result?.isCorrect || false
-                      })
-                    updatedCount++
-                  }
-                }
-                console.log(`✅ ${updatedCount} preguntas psicotécnicas actualizadas en historial`)
-              }
-            }
+            console.error('❌ Error guardando via API v2:', apiResult.error)
           }
         } catch (saveError) {
           console.error('❌ Error guardando sesion:', saveError)
