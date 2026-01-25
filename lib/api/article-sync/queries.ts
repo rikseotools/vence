@@ -1,4 +1,4 @@
-// lib/api/article-sync/queries.ts - Queries tipadas para sincronización de artículos BOE
+// lib/api/article-sync/queries.ts - Queries tipadas para sincronización de artículos BOE y EUR-Lex
 import { getDb } from '@/db/client'
 import { articles, laws } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
@@ -7,6 +7,11 @@ import {
   extractArticlesFromBOE,
   normalizeArticleNumber
 } from '@/lib/boe-extractor'
+import {
+  isEurLexUrl,
+  extractArticlesFromEurLex,
+  type ExtractedArticle
+} from '@/lib/eurlex-extractor'
 import {
   type SyncArticlesRequest,
   type SyncArticlesResponse,
@@ -108,10 +113,13 @@ export async function syncArticlesFromBoe(
       return { success: false, error: 'La ley no tiene URL del BOE configurada' }
     }
 
-    // 2. Descargar HTML del BOE
-    console.log(`📥 [ArticleSync] Sincronizando ${law.shortName} desde BOE: ${law.boeUrl}`)
+    // 2. Detectar tipo de fuente (BOE o EUR-Lex)
+    const isEurLex = isEurLexUrl(law.boeUrl)
+    const sourceName = isEurLex ? 'EUR-Lex' : 'BOE'
 
-    const boeResponse = await fetch(law.boeUrl, {
+    console.log(`📥 [ArticleSync] Sincronizando ${law.shortName} desde ${sourceName}: ${law.boeUrl}`)
+
+    const response = await fetch(law.boeUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0)',
         'Accept': 'text/html',
@@ -119,15 +127,20 @@ export async function syncArticlesFromBoe(
       }
     })
 
-    if (!boeResponse.ok) {
-      return { success: false, error: `Error descargando BOE: ${boeResponse.status}` }
+    if (!response.ok) {
+      return { success: false, error: `Error descargando ${sourceName}: ${response.status}` }
     }
 
-    const boeHtml = await boeResponse.text()
+    const html = await response.text()
 
-    // 3. Extraer artículos del BOE (usando extractor centralizado)
-    const boeArticles = extractArticlesFromBOE(boeHtml)
-    console.log(`📄 [ArticleSync] Artículos encontrados en BOE: ${boeArticles.length}`)
+    // 3. Extraer artículos usando el extractor apropiado
+    let boeArticles: ExtractedArticle[]
+    if (isEurLex) {
+      boeArticles = extractArticlesFromEurLex(html)
+    } else {
+      boeArticles = extractArticlesFromBOE(html)
+    }
+    console.log(`📄 [ArticleSync] Artículos encontrados en ${sourceName}: ${boeArticles.length}`)
 
     // Si no hay artículos, verificar si es doc.php (sin texto consolidado)
     if (boeArticles.length === 0) {

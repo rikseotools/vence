@@ -5,6 +5,10 @@ import {
   normalizeText,
   compareContent
 } from '@/lib/boe-extractor'
+import {
+  isEurLexUrl,
+  extractArticlesFromEurLex
+} from '@/lib/eurlex-extractor'
 import { isStructureArticle } from '@/lib/api/article-sync'
 
 const supabase = createClient(
@@ -53,9 +57,12 @@ export async function GET(request) {
       }, { status: 400 })
     }
 
-    // 2. Descargar HTML del BOE
-    console.log(`📥 Descargando BOE: ${law.boe_url}`)
-    const boeResponse = await fetch(law.boe_url, {
+    // 2. Detectar tipo de fuente (BOE o EUR-Lex)
+    const isEurLex = isEurLexUrl(law.boe_url)
+    const sourceName = isEurLex ? 'EUR-Lex' : 'BOE'
+
+    console.log(`📥 Descargando ${sourceName}: ${law.boe_url}`)
+    const response = await fetch(law.boe_url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; VenceBot/1.0)',
         'Accept': 'text/html',
@@ -63,25 +70,27 @@ export async function GET(request) {
       }
     })
 
-    if (!boeResponse.ok) {
+    if (!response.ok) {
       return Response.json({
         success: false,
-        error: `Error descargando BOE: ${boeResponse.status}`
+        error: `Error descargando ${sourceName}: ${response.status}`
       }, { status: 500 })
     }
 
-    const boeHtml = await boeResponse.text()
+    const html = await response.text()
 
-    // 3. Extraer artículos del BOE (con contenido)
-    const boeArticles = extractArticlesFromBOE(boeHtml)
-    console.log(`📄 Artículos encontrados en BOE: ${boeArticles.length}`)
+    // 3. Extraer artículos usando el extractor apropiado
+    const boeArticles = isEurLex
+      ? extractArticlesFromEurLex(html)
+      : extractArticlesFromBOE(html)
+    console.log(`📄 Artículos encontrados en ${sourceName}: ${boeArticles.length}`)
 
     if (boeArticles.length === 0) {
       const isDocPhp = law.boe_url.includes('doc.php')
       const now = new Date().toISOString()
 
-      // Si es doc.php (sin texto consolidado), es normal que no haya artículos
-      if (isDocPhp) {
+      // Si es doc.php (sin texto consolidado) y no es EUR-Lex, es normal que no haya artículos
+      if (isDocPhp && !isEurLex) {
         const summaryToSave = {
           boe_count: 0,
           db_count: 0,
@@ -137,17 +146,17 @@ export async function GET(request) {
         })
       }
 
-      // Si es act.php pero no encontró artículos, es un error
+      // Si no encontró artículos, es un error
       return Response.json({
         success: false,
-        error: `No se pudieron extraer artículos del BOE para "${law.short_name}". Puede que la estructura HTML haya cambiado.`,
+        error: `No se pudieron extraer artículos de ${sourceName} para "${law.short_name}". Puede que la estructura HTML haya cambiado.`,
         law: {
           id: law.id,
           short_name: law.short_name,
           name: law.name,
           boe_url: law.boe_url
         },
-        htmlPreview: boeHtml.substring(0, 1000)
+        htmlPreview: html.substring(0, 1000)
       }, { status: 500 })
     }
 
