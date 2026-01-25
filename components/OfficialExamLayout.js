@@ -285,7 +285,8 @@ export default function OfficialExamLayout({
           const totalTimeSeconds = Math.round((Date.now() - startTime) / 1000)
           const examDateFormatted = metadata?.examDate || config?.examDate || ''
 
-          const { error: sessionError } = await supabase
+          // 1. Insertar en tests y obtener el ID
+          const { data: testData, error: sessionError } = await supabase
             .from('tests')
             .insert({
               user_id: user.id,
@@ -308,11 +309,46 @@ export default function OfficialExamLayout({
                 incorrectCount: incorrectCount
               }
             })
+            .select('id')
+            .single()
 
           if (sessionError) {
             console.error('❌ Error guardando sesion:', sessionError)
           } else {
-            console.log('✅ Sesion de examen oficial guardada')
+            console.log('✅ Sesion de examen oficial guardada con ID:', testData.id)
+
+            // 2. Insertar respuestas individuales en test_questions para estadisticas
+            const testQuestionsData = questions.map((q, index) => {
+              const result = allResults[index]
+              const answer = userAnswers[index] || null
+
+              return {
+                test_id: testData.id,
+                question_id: q.id,
+                question_order: index + 1,
+                question_text: q.question || q.questionText,
+                user_answer: answer || 'sin_respuesta',
+                correct_answer: result?.correctAnswer || 'unknown',
+                is_correct: result?.isCorrect || false,
+                time_spent_seconds: 0, // No tracking individual time in exam mode
+                article_number: q.articleNumber || null,
+                law_name: q.lawName || null,
+                tema_number: null,
+                difficulty: q.difficulty || 'medium',
+                question_type: q.questionType || 'legislative',
+                created_at: new Date().toISOString()
+              }
+            })
+
+            const { error: questionsError } = await supabase
+              .from('test_questions')
+              .insert(testQuestionsData)
+
+            if (questionsError) {
+              console.error('❌ Error guardando preguntas:', questionsError)
+            } else {
+              console.log(`✅ ${testQuestionsData.length} preguntas guardadas en test_questions`)
+            }
           }
         } catch (saveError) {
           console.error('❌ Error guardando sesion:', saveError)
