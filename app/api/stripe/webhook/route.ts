@@ -363,15 +363,58 @@ async function handleCheckoutSessionCompleted(
 
       if (existingUser) {
         console.log('📧 Actualizando usuario existente por email:', customer.email)
-        await supabase
+
+        // Verificar estado ANTES del update
+        const { data: beforeData } = await supabase
+          .from('user_profiles')
+          .select('plan_type, stripe_customer_id')
+          .eq('id', existingUser.id)
+          .single()
+        console.log('📊 ANTES del update (CASO 2):', beforeData)
+
+        const { data: updateData, error: updateError } = await supabase
           .from('user_profiles')
           .update({
             plan_type: 'premium',
             stripe_customer_id: session.customer as string
           })
           .eq('id', existingUser.id)
+          .select()
 
-        console.log(`✅ User ${existingUser.id} ahora es PREMIUM (encontrado por email)`)
+        if (updateError) {
+          console.error('❌ Error actualizando usuario a premium (CASO 2):', updateError)
+        } else {
+          console.log(`✅ User ${existingUser.id} ahora es PREMIUM (encontrado por email)`, updateData)
+        }
+
+        // Verificar estado DESPUÉS del update
+        const { data: afterData } = await supabase
+          .from('user_profiles')
+          .select('plan_type, stripe_customer_id')
+          .eq('id', existingUser.id)
+          .single()
+        console.log('📊 DESPUÉS del update (CASO 2):', afterData)
+
+        if (afterData?.plan_type !== 'premium') {
+          console.error('🚨 ALERTA CRÍTICA: El plan_type NO se actualizó a premium (CASO 2)!')
+          // Intentar una vez más
+          console.log('🔄 Reintentando actualización...')
+          const { error: retryError } = await supabase
+            .from('user_profiles')
+            .update({ plan_type: 'premium' })
+            .eq('id', existingUser.id)
+
+          if (retryError) {
+            console.error('❌ Error en reintento:', retryError)
+          } else {
+            const { data: finalData } = await supabase
+              .from('user_profiles')
+              .select('plan_type')
+              .eq('id', existingUser.id)
+              .single()
+            console.log('📊 Después del reintento:', finalData)
+          }
+        }
 
         if (session.subscription) {
           try {
