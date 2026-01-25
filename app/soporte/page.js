@@ -940,17 +940,21 @@ function SoporteContent() {
                         </div>
                       </div>
 
-                      {/* Mensaje */}
-                      <p className="text-gray-800 dark:text-gray-200 mb-3">
-                        {feedback.message}
-                      </p>
+                      {/* Mensaje - ocultar si es conversación iniciada por soporte */}
+                      {!feedback.message?.startsWith('[Conversación iniciada') && (
+                        <p className="text-gray-800 dark:text-gray-200 mb-3">
+                          {feedback.message}
+                        </p>
+                      )}
 
                       {/* Chat conversation indicator */}
                       {conversations[feedback.id] && (
                         <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
                           <div className="flex items-center justify-between">
                             <div className="text-sm font-medium text-green-800 dark:text-green-300">
-                              💬 "{feedback.message.substring(0, 50)}{feedback.message.length > 50 ? '...' : ''}"
+                              💬 {feedback.message?.startsWith('[Conversación iniciada')
+                                ? 'Conversación con soporte'
+                                : `"${feedback.message.substring(0, 50)}${feedback.message.length > 50 ? '...' : ''}"`}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className={`px-2 py-1 rounded text-xs font-medium ${
@@ -1405,15 +1409,17 @@ function SoporteContent() {
                 </button>
               </div>
 
-              {/* Feedback original */}
-              <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
-                <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Original:
+              {/* Feedback original - ocultar si es conversación iniciada por soporte */}
+              {!feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message?.startsWith('[Conversación iniciada') && (
+                <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+                  <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tu consulta:
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-800 dark:text-gray-200">
+                    {renderMessageWithImages(feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message)}
+                  </div>
                 </div>
-                <div className="text-xs sm:text-sm text-gray-800 dark:text-gray-200">
-                  {renderMessageWithImages(feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message)}
-                </div>
-              </div>
+              )}
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gray-25">
