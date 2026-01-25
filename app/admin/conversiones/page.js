@@ -1445,7 +1445,7 @@ export default function ConversionesPage() {
                         <div className="text-sm opacity-90 mb-1">Próxima venta estimada</div>
                         <div className="text-3xl font-bold">
                           {predictionData.projectionMethods.combined.salesPerMonth > 0
-                            ? `~${Math.ceil(30 / predictionData.projectionMethods.combined.salesPerMonth)} días`
+                            ? `~${Math.round(30 / predictionData.projectionMethods.combined.salesPerMonth)} días`
                             : '-'}
                         </div>
                         {predictionData.current?.daysSinceLastPayment !== null && (

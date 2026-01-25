@@ -114,9 +114,9 @@ async function getPredictionAccuracy(supabase) {
   }
 }
 
-// Verificar predicciones de hace 3 días (comparar con realidad)
-// Prorrateamos: si predijo 10 ventas/mes, en 3 días esperamos 10 * (3/30) = 1 venta
-const VERIFICATION_DAYS = 3
+// Verificar predicciones de hace 7 días (comparar con realidad)
+// Prorrateamos: si predijo 10 ventas/mes, en 7 días esperamos 10 * (7/30) = 2.33 ventas
+const VERIFICATION_DAYS = 7
 
 async function verifyPastPredictions(supabase) {
   try {
@@ -143,15 +143,15 @@ async function verifyPastPredictions(supabase) {
 
     if (predictions && predictions.length > 0) {
       for (const pred of predictions) {
-        // Prorratear la predicción mensual a 7 días
-        const expectedSalesIn7Days = pred.predicted_sales_per_month * (VERIFICATION_DAYS / 30)
+        // Prorratear la predicción mensual al período de verificación
+        const expectedSalesInPeriod = pred.predicted_sales_per_month * (VERIFICATION_DAYS / 30)
 
         let errorPercent = null
         let absoluteError = null
 
-        if (expectedSalesIn7Days > 0) {
+        if (expectedSalesInPeriod > 0) {
           // Comparar ventas reales vs esperadas (prorrateadas)
-          errorPercent = ((actualSales - expectedSalesIn7Days) / expectedSalesIn7Days) * 100
+          errorPercent = ((actualSales - expectedSalesInPeriod) / expectedSalesInPeriod) * 100
           absoluteError = Math.abs(errorPercent)
         }
 
