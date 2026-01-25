@@ -518,7 +518,6 @@ export default function OfficialExamLayout({
       console.log(`✅ Examen corregido: ${totalCorrect}/${questions.length} (${percentage}%)`)
 
       // Guardar sesion de test para estadisticas (solo usuarios logueados)
-      // Usa API v2 con validación Zod y Drizzle ORM
       if (user && supabase) {
         try {
           const totalTimeSeconds = Math.round((Date.now() - startTime) / 1000)
@@ -533,51 +532,94 @@ export default function OfficialExamLayout({
             return
           }
 
-          // Preparar datos para la API v2
-          const resultsForApi = questions.map((q, index) => {
-            const result = allResults[index]
-            const answer = userAnswers[index] || null
-            return {
-              questionId: q.id,
-              questionType: q.questionType || 'legislative',
-              userAnswer: answer || 'sin_respuesta',
-              correctAnswer: result?.correctAnswer || 'unknown',
-              isCorrect: result?.isCorrect || false,
-              questionText: q.questionText || q.question || 'Pregunta sin texto',
-              articleNumber: q.articleNumber || null,
-              lawName: q.lawName || null,
-              difficulty: q.difficulty || 'medium'
-            }
-          })
+          // Si hay una sesión existente (creada por init para resume), usar /complete
+          // Si no hay sesión, usar /save-results (flujo antiguo)
+          if (currentTestSession?.id) {
+            console.log('🔄 [OfficialExam] Completando sesión existente:', currentTestSession.id)
 
-          // Llamar a API v2
-          const response = await fetch('/api/v2/official-exams/save-results', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-              examDate: examDateFormatted,
-              oposicion: oposicion,
-              results: resultsForApi,
-              totalTimeSeconds,
-              metadata: {
-                legislativeCount: metadata?.legislativeCount || 0,
-                psychometricCount: metadata?.psychometricCount || 0,
-                reservaCount: metadata?.reservaCount || 0
+            // Preparar resultados para /complete
+            const resultsForComplete = questions.map((q, index) => {
+              const result = allResults[index]
+              const answer = userAnswers[index] || ''
+              return {
+                questionOrder: index + 1,
+                isCorrect: result?.isCorrect || false,
+                correctAnswer: result?.correctAnswer || '',
+                userAnswer: answer,
+                questionType: q.questionType || 'legislative',
               }
             })
-          })
 
-          const apiResult = await response.json()
+            const completeResponse = await fetch('/api/v2/official-exams/complete', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                testId: currentTestSession.id,
+                results: resultsForComplete,
+                totalTimeSeconds,
+              })
+            })
 
-          if (apiResult.success) {
-            const legCount = questions.filter(q => q.questionType === 'legislative').length
-            const psyCount = questions.filter(q => q.questionType === 'psychometric').length
-            console.log(`✅ Examen guardado via API v2: ${apiResult.questionsSaved} preguntas (${legCount} legislativas, ${psyCount} psicotécnicas)`)
+            const completeResult = await completeResponse.json()
+
+            if (completeResult.success) {
+              console.log(`✅ Examen completado via /complete: ${completeResult.correctCount}/${completeResult.answeredCount} (${completeResult.score}%)`)
+            } else {
+              console.error('❌ Error completando examen:', completeResult.error)
+            }
           } else {
-            console.error('❌ Error guardando via API v2:', apiResult.error)
+            // Flujo antiguo: crear nuevo test via /save-results
+            console.log('📝 [OfficialExam] Creando nueva sesión via save-results')
+
+            // Preparar datos para la API v2
+            const resultsForApi = questions.map((q, index) => {
+              const result = allResults[index]
+              const answer = userAnswers[index] || null
+              return {
+                questionId: q.id,
+                questionType: q.questionType || 'legislative',
+                userAnswer: answer || 'sin_respuesta',
+                correctAnswer: result?.correctAnswer || 'unknown',
+                isCorrect: result?.isCorrect || false,
+                questionText: q.questionText || q.question || 'Pregunta sin texto',
+                articleNumber: q.articleNumber || null,
+                lawName: q.lawName || null,
+                difficulty: q.difficulty || 'medium'
+              }
+            })
+
+            // Llamar a API v2
+            const response = await fetch('/api/v2/official-exams/save-results', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                examDate: examDateFormatted,
+                oposicion: oposicion,
+                results: resultsForApi,
+                totalTimeSeconds,
+                metadata: {
+                  legislativeCount: metadata?.legislativeCount || 0,
+                  psychometricCount: metadata?.psychometricCount || 0,
+                  reservaCount: metadata?.reservaCount || 0
+                }
+              })
+            })
+
+            const apiResult = await response.json()
+
+            if (apiResult.success) {
+              const legCount = questions.filter(q => q.questionType === 'legislative').length
+              const psyCount = questions.filter(q => q.questionType === 'psychometric').length
+              console.log(`✅ Examen guardado via API v2: ${apiResult.questionsSaved} preguntas (${legCount} legislativas, ${psyCount} psicotécnicas)`)
+            } else {
+              console.error('❌ Error guardando via API v2:', apiResult.error)
+            }
           }
         } catch (saveError) {
           console.error('❌ Error guardando sesion:', saveError)
