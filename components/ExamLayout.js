@@ -225,7 +225,6 @@ export default function ExamLayout({
 
   // Estados de sesión
   const [currentTestSession, setCurrentTestSession] = useState(null)
-  const [userSession, setUserSession] = useState(null)
   const [saveStatus, setSaveStatus] = useState(null)
 
   // Control de guardado
@@ -737,7 +736,7 @@ export default function ExamLayout({
           effectiveQuestions,
           startTime,
           [], // interactionEvents - no los tenemos en modo examen
-          userSession
+          { user_id: user?.id } // Usar user.id del AuthContext
         )
 
         if (result.success) {
