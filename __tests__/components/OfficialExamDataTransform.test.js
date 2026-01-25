@@ -2,40 +2,44 @@
  * Tests para la transformación de datos de OfficialExamLayout
  * Previene bugs como:
  * - Campos null en test_questions (NOT NULL constraints)
- * - FK errors por mezclar preguntas legislativas y psicotécnicas
- *   (el trigger en test_questions usa FK a tabla 'questions', no 'psychometric_questions')
+ * - Referencias incorrectas entre tablas (legislativas vs psicotécnicas)
+ *
+ * ARQUITECTURA:
+ * - Preguntas legislativas: question_id -> tabla 'questions'
+ * - Preguntas psicotécnicas: psychometric_question_id -> tabla 'psychometric_questions'
+ * - Ambos tipos se guardan en test_questions para estadísticas unificadas
  */
 
 describe('OfficialExamLayout - Transformación de datos para test_questions', () => {
-  // Simular la función de transformación del componente (solo legislativas)
+  // Simular la función de transformación del componente (TODAS las preguntas)
   const transformQuestionForSave = (q, index, result, userAnswer, testId) => {
+    const isLegislative = q.questionType === 'legislative'
+
     return {
       test_id: testId,
-      question_id: q.id,
+      question_id: isLegislative ? q.id : null,
+      psychometric_question_id: isLegislative ? null : q.id,
       question_order: index + 1,
       question_text: q.questionText || q.question || 'Pregunta sin texto',
       user_answer: userAnswer || 'sin_respuesta',
       correct_answer: result?.correctAnswer || 'unknown',
       is_correct: result?.isCorrect || false,
       time_spent_seconds: 0,
-      article_number: q.articleNumber || null,
-      law_name: q.lawName || null,
+      article_number: isLegislative ? (q.articleNumber || null) : null,
+      law_name: isLegislative ? (q.lawName || null) : null,
       tema_number: null,
       difficulty: q.difficulty || 'medium',
-      question_type: 'legislative'
+      question_type: q.questionType || 'legislative'
     }
   }
 
-  // Simular el filtrado que hace el componente
-  const filterAndTransformQuestions = (questions, allResults, userAnswers, testId) => {
-    return questions
-      .filter(q => q.questionType === 'legislative')
-      .map((q, idx) => {
-        const originalIndex = questions.findIndex(orig => orig.id === q.id)
-        const result = allResults[originalIndex]
-        const answer = userAnswers[originalIndex] || null
-        return transformQuestionForSave(q, originalIndex, result, answer, testId)
-      })
+  // Simular la transformación que hace el componente (TODAS las preguntas)
+  const transformAllQuestions = (questions, allResults, userAnswers, testId) => {
+    return questions.map((q, index) => {
+      const result = allResults[index]
+      const answer = userAnswers[index] || null
+      return transformQuestionForSave(q, index, result, answer, testId)
+    })
   }
 
   describe('Campos requeridos (NOT NULL en BD)', () => {
@@ -108,22 +112,22 @@ describe('OfficialExamLayout - Transformación de datos para test_questions', ()
   })
 
   describe('Campos opcionales (pueden ser null)', () => {
-    it('article_number puede ser null', () => {
-      const question = { id: '1', questionText: 'Test' }
+    it('article_number puede ser null para legislativas', () => {
+      const question = { id: '1', questionText: 'Test', questionType: 'legislative' }
       const result = transformQuestionForSave(question, 0, null, null, 'test-id')
       expect(result.article_number).toBeNull()
 
-      const questionWithArticle = { id: '1', questionText: 'Test', articleNumber: '15' }
+      const questionWithArticle = { id: '1', questionText: 'Test', questionType: 'legislative', articleNumber: '15' }
       const resultWithArticle = transformQuestionForSave(questionWithArticle, 0, null, null, 'test-id')
       expect(resultWithArticle.article_number).toBe('15')
     })
 
-    it('law_name puede ser null', () => {
-      const question = { id: '1', questionText: 'Test' }
+    it('law_name puede ser null para legislativas', () => {
+      const question = { id: '1', questionText: 'Test', questionType: 'legislative' }
       const result = transformQuestionForSave(question, 0, null, null, 'test-id')
       expect(result.law_name).toBeNull()
 
-      const questionWithLaw = { id: '1', questionText: 'Test', lawName: 'Constitución' }
+      const questionWithLaw = { id: '1', questionText: 'Test', questionType: 'legislative', lawName: 'Constitución' }
       const resultWithLaw = transformQuestionForSave(questionWithLaw, 0, null, null, 'test-id')
       expect(resultWithLaw.law_name).toBe('Constitución')
     })
@@ -140,17 +144,19 @@ describe('OfficialExamLayout - Transformación de datos para test_questions', ()
       expect(resultWithDifficulty.difficulty).toBe('hard')
     })
 
-    it('question_type siempre debe ser "legislative" (solo guardamos legislativas)', () => {
-      // Después del fix del bug FK, solo guardamos preguntas legislativas
+    it('question_type debe reflejar el tipo real de la pregunta', () => {
+      // Guardamos TODAS las preguntas, cada una con su tipo real
       const question = { id: '1', questionText: 'Test' }
       const result = transformQuestionForSave(question, 0, null, null, 'test-id')
-      expect(result.question_type).toBe('legislative')
+      expect(result.question_type).toBe('legislative') // Default si no se especifica
 
-      // Aunque la pregunta sea psicotécnica, si llega a transformarse (no debería), sería legislative
-      // Pero en la práctica, filterAndTransformQuestions las filtra antes
       const questionPsychometric = { id: '1', questionText: 'Test', questionType: 'psychometric' }
       const resultPsychometric = transformQuestionForSave(questionPsychometric, 0, null, null, 'test-id')
-      expect(resultPsychometric.question_type).toBe('legislative')
+      expect(resultPsychometric.question_type).toBe('psychometric')
+
+      const questionLegislative = { id: '1', questionText: 'Test', questionType: 'legislative' }
+      const resultLegislative = transformQuestionForSave(questionLegislative, 0, null, null, 'test-id')
+      expect(resultLegislative.question_type).toBe('legislative')
     })
 
     it('time_spent_seconds debe ser 0', () => {
@@ -189,10 +195,9 @@ describe('OfficialExamLayout - Transformación de datos para test_questions', ()
       expect(result.question_type).toBe('legislative')
     })
 
-    it('preguntas psicotécnicas se filtran (no se guardan en test_questions)', () => {
-      // NOTA: Desde el fix del bug FK, las preguntas psicotécnicas se FILTRAN
-      // y NO se guardan en test_questions porque el trigger tiene FK a 'questions'
-      // y las psicotécnicas están en 'psychometric_questions'
+    it('preguntas psicotécnicas SE GUARDAN con psychometric_question_id', () => {
+      // ARQUITECTURA: Las psicotécnicas se guardan con psychometric_question_id
+      // para mantener referencia a su tabla correcta
       const questions = [
         {
           id: 'uuid-2',
@@ -204,10 +209,13 @@ describe('OfficialExamLayout - Transformación de datos para test_questions', ()
       const allResults = [{ isCorrect: false, correctAnswer: 'c' }]
       const userAnswers = { 0: 'b' }
 
-      const filtered = filterAndTransformQuestions(questions, allResults, userAnswers, 'test-123')
+      const transformed = transformAllQuestions(questions, allResults, userAnswers, 'test-123')
 
-      // Las psicotécnicas se filtran - no hay nada que guardar
-      expect(filtered.length).toBe(0)
+      // Las psicotécnicas SÍ se guardan
+      expect(transformed.length).toBe(1)
+      expect(transformed[0].psychometric_question_id).toBe('uuid-2')
+      expect(transformed[0].question_id).toBeNull()
+      expect(transformed[0].question_type).toBe('psychometric')
     })
 
     it('debe manejar pregunta sin respuesta (en blanco)', () => {
@@ -225,17 +233,16 @@ describe('OfficialExamLayout - Transformación de datos para test_questions', ()
     })
   })
 
-  describe('Filtrado de preguntas psicotécnicas (BUG PREVENTION)', () => {
+  describe('Guardado de TODAS las preguntas (legislativas y psicotécnicas)', () => {
     /**
-     * BUG DETECTADO: El trigger law_question_difficulty_update_trigger en test_questions
-     * intenta insertar en law_question_first_attempts que tiene FK a tabla 'questions'.
-     * Si insertamos preguntas psicotécnicas (que están en 'psychometric_questions'),
-     * el FK falla porque el question_id no existe en la tabla 'questions'.
-     *
-     * SOLUCIÓN: Solo insertar preguntas legislativas en test_questions.
+     * ARQUITECTURA PROFESIONAL:
+     * - Todas las preguntas se guardan en test_questions para estadísticas unificadas
+     * - Legislativas: question_id apunta a tabla 'questions'
+     * - Psicotécnicas: psychometric_question_id apunta a tabla 'psychometric_questions'
+     * - El trigger detecta qué tipo es y procesa solo legislativas para dificultad
      */
 
-    it('debe filtrar preguntas psicotécnicas y solo guardar legislativas', () => {
+    it('debe guardar TODAS las preguntas (legislativas y psicotécnicas)', () => {
       const questions = [
         { id: 'leg-1', questionText: 'Pregunta legislativa 1', questionType: 'legislative' },
         { id: 'psy-1', questionText: 'Pregunta psicotécnica 1', questionType: 'psychometric' },
@@ -250,35 +257,48 @@ describe('OfficialExamLayout - Transformación de datos para test_questions', ()
       ]
       const userAnswers = { 0: 'a', 1: 'a', 2: 'c', 3: 'a' }
 
-      const filtered = filterAndTransformQuestions(questions, allResults, userAnswers, 'test-123')
+      const transformed = transformAllQuestions(questions, allResults, userAnswers, 'test-123')
 
-      // Solo debe haber 2 preguntas (las legislativas)
-      expect(filtered.length).toBe(2)
+      // Debe haber 4 preguntas (TODAS)
+      expect(transformed.length).toBe(4)
 
-      // Todas deben ser legislativas
-      filtered.forEach(q => {
-        expect(q.question_type).toBe('legislative')
-      })
+      // Verificar que cada tipo tiene la referencia correcta
+      const legislative = transformed.filter(q => q.question_type === 'legislative')
+      const psychometric = transformed.filter(q => q.question_type === 'psychometric')
 
-      // Verificar que los IDs son de preguntas legislativas
-      expect(filtered[0].question_id).toBe('leg-1')
-      expect(filtered[1].question_id).toBe('leg-2')
+      expect(legislative.length).toBe(2)
+      expect(psychometric.length).toBe(2)
     })
 
-    it('NO debe incluir preguntas psicotécnicas (causarían FK error)', () => {
+    it('legislativas deben tener question_id, NO psychometric_question_id', () => {
       const questions = [
-        { id: 'psy-1', questionText: 'Solo psicotécnica', questionType: 'psychometric' },
+        { id: 'leg-1', questionText: 'Legislativa', questionType: 'legislative' },
       ]
       const allResults = [{ isCorrect: true, correctAnswer: 'a' }]
       const userAnswers = { 0: 'a' }
 
-      const filtered = filterAndTransformQuestions(questions, allResults, userAnswers, 'test-123')
+      const transformed = transformAllQuestions(questions, allResults, userAnswers, 'test-123')
 
-      // No debe haber ninguna pregunta
-      expect(filtered.length).toBe(0)
+      expect(transformed[0].question_id).toBe('leg-1')
+      expect(transformed[0].psychometric_question_id).toBeNull()
+      expect(transformed[0].question_type).toBe('legislative')
     })
 
-    it('debe mantener el orden correcto (question_order basado en índice original)', () => {
+    it('psicotécnicas deben tener psychometric_question_id, NO question_id', () => {
+      const questions = [
+        { id: 'psy-1', questionText: 'Psicotécnica', questionType: 'psychometric' },
+      ]
+      const allResults = [{ isCorrect: true, correctAnswer: 'a' }]
+      const userAnswers = { 0: 'a' }
+
+      const transformed = transformAllQuestions(questions, allResults, userAnswers, 'test-123')
+
+      expect(transformed[0].question_id).toBeNull()
+      expect(transformed[0].psychometric_question_id).toBe('psy-1')
+      expect(transformed[0].question_type).toBe('psychometric')
+    })
+
+    it('debe mantener el orden correcto para todas las preguntas', () => {
       const questions = [
         { id: 'psy-1', questionText: 'Psico 1', questionType: 'psychometric' },
         { id: 'leg-1', questionText: 'Legislativa 1', questionType: 'legislative' },
@@ -288,29 +308,47 @@ describe('OfficialExamLayout - Transformación de datos para test_questions', ()
       const allResults = Array(4).fill({ isCorrect: true, correctAnswer: 'a' })
       const userAnswers = { 0: 'a', 1: 'a', 2: 'a', 3: 'a' }
 
-      const filtered = filterAndTransformQuestions(questions, allResults, userAnswers, 'test-123')
+      const transformed = transformAllQuestions(questions, allResults, userAnswers, 'test-123')
 
-      // Verificar que question_order refleja la posición ORIGINAL en el examen
-      expect(filtered[0].question_order).toBe(2) // leg-1 estaba en índice 1 -> order 2
-      expect(filtered[1].question_order).toBe(4) // leg-2 estaba en índice 3 -> order 4
+      // Verificar que question_order es secuencial (1, 2, 3, 4)
+      expect(transformed[0].question_order).toBe(1)
+      expect(transformed[1].question_order).toBe(2)
+      expect(transformed[2].question_order).toBe(3)
+      expect(transformed[3].question_order).toBe(4)
     })
 
-    it('todos los question_id deben ser válidos (no null) para evitar trigger error', () => {
+    it('exactamente una de las dos columnas de referencia debe tener valor', () => {
       const questions = [
-        { id: 'valid-uuid-1', questionText: 'Test', questionType: 'legislative' },
-        { id: 'valid-uuid-2', questionText: 'Test', questionType: 'legislative' },
+        { id: 'leg-1', questionText: 'Test', questionType: 'legislative' },
+        { id: 'psy-1', questionText: 'Test', questionType: 'psychometric' },
       ]
       const allResults = Array(2).fill({ isCorrect: true, correctAnswer: 'a' })
       const userAnswers = { 0: 'a', 1: 'a' }
 
-      const filtered = filterAndTransformQuestions(questions, allResults, userAnswers, 'test-123')
+      const transformed = transformAllQuestions(questions, allResults, userAnswers, 'test-123')
 
-      filtered.forEach(q => {
-        expect(q.question_id).not.toBeNull()
-        expect(q.question_id).toBeDefined()
-        expect(typeof q.question_id).toBe('string')
-        expect(q.question_id.length).toBeGreaterThan(0)
+      transformed.forEach(q => {
+        // Exactamente una debe ser no-null
+        const hasQuestionId = q.question_id !== null
+        const hasPsychometricId = q.psychometric_question_id !== null
+
+        expect(hasQuestionId || hasPsychometricId).toBe(true) // Al menos una
+        expect(hasQuestionId && hasPsychometricId).toBe(false) // No ambas
       })
+    })
+
+    it('psicotécnicas no deben tener article_number ni law_name', () => {
+      const questions = [
+        { id: 'psy-1', questionText: 'Test', questionType: 'psychometric', articleNumber: '15', lawName: 'CE' },
+      ]
+      const allResults = [{ isCorrect: true, correctAnswer: 'a' }]
+      const userAnswers = { 0: 'a' }
+
+      const transformed = transformAllQuestions(questions, allResults, userAnswers, 'test-123')
+
+      // Aunque la pregunta tenga esos campos, se ignoran para psicotécnicas
+      expect(transformed[0].article_number).toBeNull()
+      expect(transformed[0].law_name).toBeNull()
     })
   })
 })

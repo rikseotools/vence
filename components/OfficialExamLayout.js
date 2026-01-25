@@ -318,33 +318,31 @@ export default function OfficialExamLayout({
             console.log('✅ Sesion de examen oficial guardada con ID:', testData.id)
 
             // 2. Insertar respuestas individuales en test_questions para estadisticas
-            // NOTA: Solo insertamos preguntas legislativas porque el trigger en test_questions
-            // intenta insertar en law_question_first_attempts con FK a tabla 'questions'.
-            // Las psicotécnicas están en otra tabla y causarían FK error.
-            // TODO: Crear migración para manejar psicotécnicas en el trigger
-            const testQuestionsData = questions
-              .filter(q => q.questionType === 'legislative')
-              .map((q, index) => {
-                const originalIndex = questions.findIndex(orig => orig.id === q.id)
-                const result = allResults[originalIndex]
-                const answer = userAnswers[originalIndex] || null
+            // Guardamos TODAS las preguntas:
+            // - Legislativas: question_id apunta a tabla 'questions'
+            // - Psicotécnicas: psychometric_question_id apunta a 'psychometric_questions'
+            const testQuestionsData = questions.map((q, index) => {
+              const result = allResults[index]
+              const answer = userAnswers[index] || null
+              const isLegislative = q.questionType === 'legislative'
 
-                return {
-                  test_id: testData.id,
-                  question_id: q.id,
-                  question_order: originalIndex + 1,
-                  question_text: q.questionText || q.question || 'Pregunta sin texto',
-                  user_answer: answer || 'sin_respuesta',
-                  correct_answer: result?.correctAnswer || 'unknown',
-                  is_correct: result?.isCorrect || false,
-                  time_spent_seconds: 0,
-                  article_number: q.articleNumber || null,
-                  law_name: q.lawName || null,
-                  tema_number: null,
-                  difficulty: q.difficulty || 'medium',
-                  question_type: 'legislative'
-                }
-              })
+              return {
+                test_id: testData.id,
+                question_id: isLegislative ? q.id : null,
+                psychometric_question_id: isLegislative ? null : q.id,
+                question_order: index + 1,
+                question_text: q.questionText || q.question || 'Pregunta sin texto',
+                user_answer: answer || 'sin_respuesta',
+                correct_answer: result?.correctAnswer || 'unknown',
+                is_correct: result?.isCorrect || false,
+                time_spent_seconds: 0,
+                article_number: isLegislative ? (q.articleNumber || null) : null,
+                law_name: isLegislative ? (q.lawName || null) : null,
+                tema_number: null,
+                difficulty: q.difficulty || 'medium',
+                question_type: q.questionType || 'legislative'
+              }
+            })
 
             const { error: questionsError } = await supabase
               .from('test_questions')
@@ -353,7 +351,55 @@ export default function OfficialExamLayout({
             if (questionsError) {
               console.error('❌ Error guardando preguntas:', questionsError)
             } else {
-              console.log(`✅ ${testQuestionsData.length} preguntas guardadas en test_questions`)
+              const legCount = questions.filter(q => q.questionType === 'legislative').length
+              const psyCount = questions.filter(q => q.questionType === 'psychometric').length
+              console.log(`✅ ${testQuestionsData.length} preguntas guardadas (${legCount} legislativas, ${psyCount} psicotécnicas)`)
+
+              // 3. Actualizar historial de psicotécnicas para estadísticas específicas
+              const psychometricQuestions = questions.filter(q => q.questionType === 'psychometric')
+              if (psychometricQuestions.length > 0 && user?.id) {
+                let updatedCount = 0
+                for (const q of psychometricQuestions) {
+                  const qIndex = questions.findIndex(orig => orig.id === q.id)
+                  const result = allResults[qIndex]
+
+                  // Verificar si ya existe el registro
+                  const { data: existing } = await supabase
+                    .from('psychometric_user_question_history')
+                    .select('id, attempts, correct_attempts')
+                    .eq('user_id', user.id)
+                    .eq('question_id', q.id)
+                    .single()
+
+                  if (existing) {
+                    // Actualizar registro existente
+                    await supabase
+                      .from('psychometric_user_question_history')
+                      .update({
+                        attempts: existing.attempts + 1,
+                        correct_attempts: existing.correct_attempts + (result?.isCorrect ? 1 : 0),
+                        last_attempt_at: new Date().toISOString(),
+                        last_was_correct: result?.isCorrect || false
+                      })
+                      .eq('id', existing.id)
+                    updatedCount++
+                  } else {
+                    // Crear nuevo registro
+                    await supabase
+                      .from('psychometric_user_question_history')
+                      .insert({
+                        user_id: user.id,
+                        question_id: q.id,
+                        attempts: 1,
+                        correct_attempts: result?.isCorrect ? 1 : 0,
+                        last_attempt_at: new Date().toISOString(),
+                        last_was_correct: result?.isCorrect || false
+                      })
+                    updatedCount++
+                  }
+                }
+                console.log(`✅ ${updatedCount} preguntas psicotécnicas actualizadas en historial`)
+              }
             }
           }
         } catch (saveError) {
