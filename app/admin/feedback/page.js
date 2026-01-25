@@ -508,15 +508,16 @@ export default function AdminFeedbackPage() {
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
       )
 
-      // 1. Crear feedback inicial
+      // 1. Crear feedback inicial (usar resumen del mensaje como identificador)
+      const messagePreview = newConvMessage.trim().substring(0, 100) + (newConvMessage.length > 100 ? '...' : '')
       const { data: feedback, error: feedbackError } = await supabaseAdmin
         .from('user_feedback')
         .insert({
           user_id: newConvUser.id,
           email: newConvUser.email,
           type: 'other',
-          message: '[Conversación iniciada por soporte]',
-          url: 'https://vencetumiedo.com/',
+          message: messagePreview,
+          url: 'https://vence.es/',
           status: 'in_progress',
           priority: 'high',
           wants_response: true
