@@ -402,12 +402,14 @@ export default function ChatInterface({ conversationId, onClose, feedbackData })
       if (error) throw error
 
       // Actualizar estado de conversación y resetear vista del admin para que vea la alerta
+      // También limpiar closed_at para indicar que se ha reabierto
       await supabase
         .from('feedback_conversations')
         .update({
           status: 'waiting_admin',
           last_message_at: new Date().toISOString(),
-          admin_viewed_at: null  // Reset para que aparezca alerta de nuevo mensaje
+          admin_viewed_at: null,  // Reset para que aparezca alerta de nuevo mensaje
+          closed_at: null  // Limpiar fecha de cierre al reabrir
         })
         .eq('id', conversationId)
 

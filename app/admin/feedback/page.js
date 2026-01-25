@@ -2071,9 +2071,10 @@ export default function AdminFeedbackPage() {
                                   // Cerrar conversación si existe
                                   const conv = conversations[selectedFeedback.id]
                                   if (conv) {
+                                    const closeTime = new Date().toISOString()
                                     const { error: convError } = await supabaseAdmin
                                       .from('feedback_conversations')
-                                      .update({ status: 'closed', last_message_at: new Date().toISOString() })
+                                      .update({ status: 'closed', last_message_at: closeTime, closed_at: closeTime })
                                       .eq('id', conv.id)
                                     if (convError) {
                                       console.error('Error cerrando conversación:', convError)
@@ -2454,6 +2455,11 @@ export default function AdminFeedbackPage() {
                           <div className="flex items-center justify-between gap-1.5 mb-1">
                             <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[conv.status] || statusColors['closed']}`}>
                               {statusLabels[conv.status] || '•'}
+                              {conv.status === 'closed' && conv.closed_at && (
+                                <span className="ml-1 opacity-75">
+                                  {new Date(conv.closed_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                </span>
+                              )}
                             </span>
                             <span className="text-xs text-gray-400">
                               {new Date(conv.last_message_at || conv.created_at).toLocaleDateString('es-ES', {
@@ -2492,7 +2498,7 @@ export default function AdminFeedbackPage() {
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5 truncate">
                     Estado: {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando tu respuesta' :
                              selectedConversation.status === 'waiting_user' ? '💬 Esperando usuario' :
-                             selectedConversation.status === 'closed' ? '✅ Cerrada' :
+                             selectedConversation.status === 'closed' ? `✅ Cerrada${selectedConversation.closed_at ? ` el ${new Date(selectedConversation.closed_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}` :
                              selectedConversation.status}
                   </p>
                 </div>
@@ -2508,9 +2514,10 @@ export default function AdminFeedbackPage() {
                             process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
                           )
                           // Cerrar conversación
+                          const closeTime = new Date().toISOString()
                           const { error: convError } = await supabaseAdmin
                             .from('feedback_conversations')
-                            .update({ status: 'closed', last_message_at: new Date().toISOString() })
+                            .update({ status: 'closed', last_message_at: closeTime, closed_at: closeTime })
                             .eq('id', selectedConversation.id)
                           if (convError) {
                             console.error('Error cerrando conversación:', convError)
@@ -2520,7 +2527,7 @@ export default function AdminFeedbackPage() {
                           // Marcar feedback como resuelto
                           await supabaseAdmin
                             .from('user_feedback')
-                            .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+                            .update({ status: 'resolved', resolved_at: closeTime })
                             .eq('id', selectedConversation.feedback_id)
                           console.log('✅ Conversación cerrada')
                           setSelectedConversation(null)
@@ -2735,18 +2742,19 @@ export default function AdminFeedbackPage() {
                     onClick={() => {
                       if (confirm('¿Cerrar este chat de soporte?')) {
                         // Cerrar conversación
+                        const closeTime = new Date().toISOString()
                         supabase
                           .from('feedback_conversations')
-                          .update({ status: 'closed' })
+                          .update({ status: 'closed', closed_at: closeTime, last_message_at: closeTime })
                           .eq('id', selectedConversation.id)
                           .then(() => {
                             console.log('💬 Conversación cerrada')
                             // Marcar feedback como resuelto
                             return supabase
                               .from('user_feedback')
-                              .update({ 
+                              .update({
                                 status: 'resolved',
-                                resolved_at: new Date().toISOString()
+                                resolved_at: closeTime
                               })
                               .eq('id', selectedConversation.feedback_id)
                           })
