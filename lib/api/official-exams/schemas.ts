@@ -38,7 +38,7 @@ export const officialExamQuestionSchema = z.object({
   examSource: z.string().nullable(),
   isReserva: z.boolean(),
   // For psychometric questions with tables/content
-  contentData: z.record(z.unknown()).nullable(),
+  contentData: z.record(z.string(), z.unknown()).nullable(),
   timeLimitSeconds: z.number().nullable(),
   // Article info for legislative questions
   articleNumber: z.string().nullable(),
