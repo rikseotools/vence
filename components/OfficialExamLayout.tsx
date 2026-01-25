@@ -919,14 +919,22 @@ export default function OfficialExamLayout({
                   )}
                 </div>
 
-                {/* Texto de la pregunta (solo para legislativas, las psicotecnicas lo muestran internamente) */}
-                {!isPsychometric && (
-                  <div className="mb-6">
-                    <p className="text-lg text-gray-900 leading-relaxed">
-                      {question.question}
-                    </p>
-                  </div>
-                )}
+                {/* Texto de la pregunta */}
+                {/* Ocultar solo para psicotecnicas con componentes visuales (charts, tables, sequences) que ya muestran el texto */}
+                {(() => {
+                  const visualSubtypes = ['pie_chart', 'bar_chart', 'line_chart', 'data_tables', 'mixed_chart', 'error_detection', 'word_analysis', 'sequence_numeric', 'sequence_letter', 'sequence_alphanumeric']
+                  const hasVisualComponent = isPsychometric && visualSubtypes.includes(question.questionSubtype || '')
+
+                  if (hasVisualComponent) return null
+
+                  return (
+                    <div className="mb-6">
+                      <p className="text-lg text-gray-900 leading-relaxed">
+                        {question.question}
+                      </p>
+                    </div>
+                  )
+                })()}
 
                 {/* Opciones de respuesta segun tipo */}
                 {isPsychometric
