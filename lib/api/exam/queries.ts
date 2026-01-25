@@ -183,8 +183,26 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
         isCorrect,
       }
     } else {
-      // Solo insertar si tenemos correctAnswer (para nuevas preguntas)
+      // Si no tenemos correctAnswer, intentar obtenerlo de la BD
+      // Esto maneja la condición de carrera donde el usuario responde antes de que /api/exam/init complete
+      if (!correctAnswer && params.questionId) {
+        console.log(`🔍 [saveAnswer] Pregunta no existe en test_questions, obteniendo correctAnswer de BD para ${params.questionId}`)
+        const questionResult = await db
+          .select({ correctOption: questions.correctOption })
+          .from(questions)
+          .where(eq(questions.id, params.questionId))
+          .limit(1)
+
+        if (questionResult[0]?.correctOption != null) {
+          const optionMap: Record<number, string> = { 0: 'a', 1: 'b', 2: 'c', 3: 'd' }
+          correctAnswer = optionMap[questionResult[0].correctOption]
+          console.log(`✅ [saveAnswer] correctAnswer obtenido de BD: ${correctAnswer}`)
+        }
+      }
+
+      // Si aún no tenemos correctAnswer, no podemos continuar
       if (!correctAnswer) {
+        console.error(`❌ [saveAnswer] No se pudo obtener correctAnswer para questionId=${params.questionId}`)
         return {
           success: false,
           error: 'correctAnswer es requerido para nuevas preguntas',
@@ -193,7 +211,7 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
 
       const isCorrect = params.userAnswer.toLowerCase() === correctAnswer.toLowerCase()
 
-      // Insertar nueva respuesta
+      // Insertar o actualizar respuesta (UPSERT para manejar race conditions con /api/exam/init)
       const result = await db
         .insert(testQuestions)
         .values({
@@ -207,10 +225,19 @@ export async function saveAnswer(params: SaveAnswerParams): Promise<SaveAnswerRe
           articleId: params.articleId,
           articleNumber: params.articleNumber,
           lawName: params.lawName,
-          temaNumber: temaNumber, // Usar el resuelto
+          temaNumber: temaNumber,
           difficulty: params.difficulty,
           timeSpentSeconds: params.timeSpentSeconds ?? 0,
           confidenceLevel: params.confidenceLevel,
+        })
+        .onConflictDoUpdate({
+          target: [testQuestions.testId, testQuestions.questionOrder],
+          set: {
+            userAnswer: params.userAnswer,
+            isCorrect,
+            timeSpentSeconds: params.timeSpentSeconds ?? 0,
+            confidenceLevel: params.confidenceLevel,
+          },
         })
         .returning({ id: testQuestions.id })
 
