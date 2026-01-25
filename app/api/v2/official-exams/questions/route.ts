@@ -56,11 +56,11 @@ export async function GET(request: NextRequest) {
     })
 
     if (!parseResult.success) {
-      console.log('❌ [API/v2/official-exams/questions] Validation failed:', parseResult.error.errors)
+      console.log('❌ [API/v2/official-exams/questions] Validation failed:', parseResult.error.issues)
       return NextResponse.json({
         success: false,
         error: 'Parámetros inválidos',
-        details: parseResult.error.errors.map(e => ({
+        details: parseResult.error.issues.map(e => ({
           field: e.path.join('.'),
           message: e.message,
         })),
