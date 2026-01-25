@@ -349,7 +349,7 @@ export default function OfficialExamLayout({
               .insert(testQuestionsData)
 
             if (questionsError) {
-              console.error('❌ Error guardando preguntas:', questionsError)
+              console.error('❌ Error guardando preguntas:', questionsError.message, questionsError.code, questionsError.details)
             } else {
               const legCount = questions.filter(q => q.questionType === 'legislative').length
               const psyCount = questions.filter(q => q.questionType === 'psychometric').length
