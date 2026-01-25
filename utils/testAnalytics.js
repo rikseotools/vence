@@ -207,8 +207,8 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     // 🔥 ACTUALIZAR USER_PROGRESS - REPARADO CON MÉTODO DIRECTO
     await updateUserProgressDirect(userSession?.user_id, sessionId, finalScore, allAnswers.length)
     
-    // Actualizar sesión de usuario
-    if (userSession) {
+    // Actualizar sesión de usuario (solo si tenemos el ID de la sesión)
+    if (userSession?.id) {
       await supabase
         .from('user_sessions')
         .update({
@@ -245,23 +245,57 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
     // 1. Obtener el tema del test desde la tabla tests
     const { data: testData, error: testError } = await supabase
       .from('tests')
-      .select('topic_id, test_type')
+      .select('tema_number, test_type')
       .eq('id', sessionId)
       .single()
 
-    if (testError || !testData?.topic_id) {
-      console.log('ℹ️ No se puede actualizar user_progress - no hay topic_id en el test')
+    if (testError || !testData?.tema_number) {
+      console.log('ℹ️ No se puede actualizar user_progress - no hay tema_number en el test')
       return
     }
 
-    console.log('📊 Test encontrado:', { topic_id: testData.topic_id, test_type: testData.test_type })
+    console.log('📊 Test encontrado:', { tema_number: testData.tema_number, test_type: testData.test_type })
+
+    // 1.5 Obtener topic_id desde la tabla topics usando tema_number
+    // Intentar con varios position_type posibles (mapeo URL -> DB)
+    const positionTypesToTry = [
+      'auxiliar_administrativo',      // DB usa este
+      'auxiliar_administrativo_estado', // URL usa este
+      'administrativo',
+      'tramitacion_procesal',
+      'auxilio_judicial'
+    ]
+
+    let topicData = null
+    for (const posType of positionTypesToTry) {
+      const { data, error } = await supabase
+        .from('topics')
+        .select('id')
+        .eq('topic_number', testData.tema_number)
+        .eq('position_type', posType)
+        .single()
+
+      if (!error && data?.id) {
+        topicData = data
+        console.log('📊 Topic encontrado con position_type:', posType)
+        break
+      }
+    }
+
+    if (!topicData?.id) {
+      console.log('ℹ️ No se puede actualizar user_progress - no se encontró topic_id para tema_number:', testData.tema_number)
+      return
+    }
+
+    const topicId = topicData.id
+    console.log('📊 Topic encontrado:', { topic_id: topicId, tema_number: testData.tema_number })
 
     // 2. Verificar si ya existe registro de user_progress para este usuario y tema
     const { data: existingProgress, error: checkError } = await supabase
       .from('user_progress')
       .select('*')
       .eq('user_id', userId)
-      .eq('topic_id', testData.topic_id)
+      .eq('topic_id', topicId)
       .single()
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -289,7 +323,7 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
           needs_review: newAccuracy < 70
         })
         .eq('user_id', userId)
-        .eq('topic_id', testData.topic_id)
+        .eq('topic_id', topicId)
 
       if (updateError) {
         console.error('❌ Error actualizando user_progress:', updateError)
@@ -303,7 +337,7 @@ export const updateUserProgressDirect = async (userId, sessionId, correctAnswers
         .from('user_progress')
         .insert({
           user_id: userId,
-          topic_id: testData.topic_id,
+          topic_id: topicId,
           total_attempts: totalQuestions,
           correct_attempts: correctAnswers,
           accuracy_percentage: accuracy,
