@@ -326,17 +326,16 @@ export default function OfficialExamLayout({
                 test_id: testData.id,
                 question_id: q.id,
                 question_order: index + 1,
-                question_text: q.question || q.questionText,
+                question_text: q.questionText || q.question || 'Pregunta sin texto',
                 user_answer: answer || 'sin_respuesta',
                 correct_answer: result?.correctAnswer || 'unknown',
                 is_correct: result?.isCorrect || false,
-                time_spent_seconds: 0, // No tracking individual time in exam mode
+                time_spent_seconds: 0,
                 article_number: q.articleNumber || null,
                 law_name: q.lawName || null,
                 tema_number: null,
                 difficulty: q.difficulty || 'medium',
-                question_type: q.questionType || 'legislative',
-                created_at: new Date().toISOString()
+                question_type: q.questionType || 'legislative'
               }
             })
 
