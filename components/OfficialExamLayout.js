@@ -318,26 +318,33 @@ export default function OfficialExamLayout({
             console.log('✅ Sesion de examen oficial guardada con ID:', testData.id)
 
             // 2. Insertar respuestas individuales en test_questions para estadisticas
-            const testQuestionsData = questions.map((q, index) => {
-              const result = allResults[index]
-              const answer = userAnswers[index] || null
+            // NOTA: Solo insertamos preguntas legislativas porque el trigger en test_questions
+            // intenta insertar en law_question_first_attempts con FK a tabla 'questions'.
+            // Las psicotécnicas están en otra tabla y causarían FK error.
+            // TODO: Crear migración para manejar psicotécnicas en el trigger
+            const testQuestionsData = questions
+              .filter(q => q.questionType === 'legislative')
+              .map((q, index) => {
+                const originalIndex = questions.findIndex(orig => orig.id === q.id)
+                const result = allResults[originalIndex]
+                const answer = userAnswers[originalIndex] || null
 
-              return {
-                test_id: testData.id,
-                question_id: q.id,
-                question_order: index + 1,
-                question_text: q.questionText || q.question || 'Pregunta sin texto',
-                user_answer: answer || 'sin_respuesta',
-                correct_answer: result?.correctAnswer || 'unknown',
-                is_correct: result?.isCorrect || false,
-                time_spent_seconds: 0,
-                article_number: q.articleNumber || null,
-                law_name: q.lawName || null,
-                tema_number: null,
-                difficulty: q.difficulty || 'medium',
-                question_type: q.questionType || 'legislative'
-              }
-            })
+                return {
+                  test_id: testData.id,
+                  question_id: q.id,
+                  question_order: originalIndex + 1,
+                  question_text: q.questionText || q.question || 'Pregunta sin texto',
+                  user_answer: answer || 'sin_respuesta',
+                  correct_answer: result?.correctAnswer || 'unknown',
+                  is_correct: result?.isCorrect || false,
+                  time_spent_seconds: 0,
+                  article_number: q.articleNumber || null,
+                  law_name: q.lawName || null,
+                  tema_number: null,
+                  difficulty: q.difficulty || 'medium',
+                  question_type: 'legislative'
+                }
+              })
 
             const { error: questionsError } = await supabase
               .from('test_questions')
