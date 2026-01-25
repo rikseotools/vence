@@ -997,7 +997,7 @@ export default function AdminFeedbackPage() {
         .select(`
           *,
           feedback:user_feedback(*),
-          feedback_messages(id, is_admin, created_at)
+          feedback_messages(id, is_admin, created_at, message)
         `)
         .order('last_message_at', { ascending: false })
 
