@@ -133,6 +133,29 @@ function letterToIndex(letter: string | null | undefined): number | null {
   return map[letter.toLowerCase()] ?? null
 }
 
+// Helper para formatear markdown basico a HTML
+function formatMarkdown(text: string): string {
+  return text
+    // Escapar HTML primero
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // Negrita: **texto** o __texto__
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    // Cursiva: *texto* o _texto_
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/_(.+?)_/g, '<em>$1</em>')
+    // Citas: > texto
+    .replace(/^>\s*(.+)$/gm, '<blockquote class="border-l-4 border-blue-300 pl-3 my-2 italic text-blue-700">$1</blockquote>')
+    // Listas con guion: - item
+    .replace(/^-\s+(.+)$/gm, '<li class="ml-4">$1</li>')
+    // Listas numeradas: 1. item
+    .replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
+    // Saltos de linea
+    .replace(/\n/g, '<br/>')
+}
+
 // Funcion para obtener mensaje motivacional segun puntuacion
 function getMotivationalMessage(notaSobre10: string, userName: string): MotivationalMessage {
   const nota = parseFloat(notaSobre10)
@@ -933,11 +956,11 @@ export default function OfficialExamLayout({
             </p>
             <p className="text-sm text-gray-600 mt-1">
               {totalQuestions} preguntas
-              {metadata?.legislativeCount && metadata.legislativeCount > 0 && metadata?.psychometricCount && metadata.psychometricCount > 0 && (
+              {metadata?.legislativeCount != null && metadata.legislativeCount > 0 && metadata?.psychometricCount != null && metadata.psychometricCount > 0 && (
                 <> ({metadata.legislativeCount} legislativas, {metadata.psychometricCount} psicotecnicas)</>
               )}
             </p>
-            {metadata?.reservaCount && metadata.reservaCount > 0 && (
+            {metadata?.reservaCount != null && metadata.reservaCount > 0 && (
               <p className="text-xs text-gray-500 mt-1">
                 <span>📋 {metadata.reservaCount} reservas</span>
               </p>
@@ -1135,9 +1158,12 @@ export default function OfficialExamLayout({
                 {showFeedback && !isPsychometric && question.explanation && (
                   <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="font-semibold text-blue-900 mb-3 text-base">📖 Explicacion:</div>
-                    <p className="text-blue-800 text-base leading-loose whitespace-pre-line">
-                      {validatedResult?.explanation || question.explanation}
-                    </p>
+                    <div
+                      className="text-blue-800 text-base leading-relaxed"
+                      dangerouslySetInnerHTML={{
+                        __html: formatMarkdown(validatedResult?.explanation || question.explanation || '')
+                      }}
+                    />
                   </div>
                 )}
 

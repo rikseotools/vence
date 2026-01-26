@@ -299,42 +299,73 @@ export default function TestsAuxiliarAdministrativoEstado() {
                         <p className="text-gray-600 text-sm">Cargando exámenes...</p>
                       </div>
                     ) : availableExams.filter(e => e.examDate === '2024-07-09').length > 0 ? (
-                      availableExams.filter(e => e.examDate === '2024-07-09').map((exam) => {
-                        const stats = examStats[exam.examDate]
-                        const color = stats ? getAccuracyColor(stats.accuracy) : 'gray'
-                        return (
-                          <Link
-                            key={`${exam.examDate}-${exam.examSource}`}
-                            href={`/auxiliar-administrativo-estado/test/examen-oficial?fecha=${exam.examDate}`}
-                            className={`block ${COLOR_CLASSES[color]} text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <span className="mr-3 text-lg">🗓️</span>
-                                <div>
-                                  <div className="font-bold">
-                                    Convocatoria {new Date(exam.examDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                  </div>
-                                  <div className="text-sm text-white/80">
-                                    Primera parte
-                                  </div>
+                      <>
+                        {/* Título de la convocatoria */}
+                        <div className="text-center mb-3">
+                          <h3 className="text-lg font-bold text-gray-800">
+                            Convocatoria 9 de julio de 2024
+                          </h3>
+                          <p className="text-sm text-gray-600">OEP 2023-2024</p>
+                        </div>
+
+                        {/* Primera parte */}
+                        <Link
+                          href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2024-07-09&parte=primera"
+                          className={`block ${COLOR_CLASSES[examStats['2024-07-09-primera'] ? getAccuracyColor(examStats['2024-07-09-primera'].accuracy) : 'gray']} text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <span className="mr-3 text-lg">📘</span>
+                              <div>
+                                <div className="font-bold">Primera parte</div>
+                                <div className="text-sm text-white/80">
+                                  Bloque I: Organización del Estado (64 preguntas)
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                {stats ? (
-                                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
-                                    {stats.accuracy}% ({stats.correct}/{stats.total})
-                                  </span>
-                                ) : (
-                                  <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-                                    Empezar
-                                  </span>
-                                )}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {examStats['2024-07-09-primera'] ? (
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                  {examStats['2024-07-09-primera'].accuracy}% ({examStats['2024-07-09-primera'].correct}/{examStats['2024-07-09-primera'].total})
+                                </span>
+                              ) : (
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                                  Empezar
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+
+                        {/* Segunda parte */}
+                        <Link
+                          href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2024-07-09&parte=segunda"
+                          className={`block ${COLOR_CLASSES[examStats['2024-07-09-segunda'] ? getAccuracyColor(examStats['2024-07-09-segunda'].accuracy) : 'gray']} text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                              <span className="mr-3 text-lg">📗</span>
+                              <div>
+                                <div className="font-bold">Segunda parte</div>
+                                <div className="text-sm text-white/80">
+                                  Bloque II: Actividad Administrativa y Ofimática (50 preguntas)
+                                </div>
                               </div>
                             </div>
-                          </Link>
-                        )
-                      })
+                            <div className="flex items-center space-x-2">
+                              {examStats['2024-07-09-segunda'] ? (
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                  {examStats['2024-07-09-segunda'].accuracy}% ({examStats['2024-07-09-segunda'].correct}/{examStats['2024-07-09-segunda'].total})
+                                </span>
+                              ) : (
+                                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                                  Empezar
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      </>
                     ) : (
                       <div className="text-center py-4 text-gray-600">
                         <p>No hay exámenes oficiales disponibles todavía.</p>
