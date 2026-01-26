@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
+import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
+import DailyLimitBanner from './DailyLimitBanner'
+import UpgradeLimitModal from './UpgradeLimitModal'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -247,6 +250,18 @@ export default function OfficialExamLayout({
 }: OfficialExamLayoutProps) {
   const { user, supabase } = useAuth() as AuthContextValue
 
+  // Limite diario de preguntas (FREE = 25/dia)
+  const {
+    hasLimit,
+    isLimitReached,
+    questionsRemaining,
+    questionsToday,
+    dailyLimit,
+    showUpgradeModal,
+    setShowUpgradeModal,
+    recordAnswer
+  } = useDailyQuestionLimit()
+
   // Estados del examen
   // Initialize with saved answers if resuming
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>(initialAnswers || {})
@@ -395,16 +410,30 @@ export default function OfficialExamLayout({
   function handleAnswerSelect(questionIndex: number, option: number | string): void {
     if (isSubmitted) return
 
+    // Verificar limite diario para usuarios FREE
+    if (hasLimit && isLimitReached) {
+      setShowUpgradeModal(true)
+      return
+    }
+
     // Option puede ser un indice (0-3) o una letra ('a'-'d')
     const normalizedOption = typeof option === 'number'
       ? ['a', 'b', 'c', 'd'][option]
       : option.toLowerCase()
+
+    // Verificar si es una respuesta NUEVA (no un cambio)
+    const isNewAnswer = !(questionIndex in userAnswers)
 
     // Update local state immediately for responsive UI
     setUserAnswers(prev => ({
       ...prev,
       [questionIndex]: normalizedOption
     }))
+
+    // Registrar respuesta para el limite diario (solo respuestas nuevas)
+    if (isNewAnswer && hasLimit) {
+      recordAnswer()
+    }
 
     // Auto-save to API for resume functionality (fire-and-forget)
     if (currentTestSession?.id) {
@@ -967,6 +996,55 @@ export default function OfficialExamLayout({
             )}
           </div>
 
+          {/* Aviso de limite diario para usuarios FREE */}
+          {hasLimit && !isSubmitted && (
+            <div className={`mb-4 p-4 rounded-lg border ${
+              questionsRemaining < totalQuestions
+                ? questionsRemaining === 0
+                  ? 'bg-red-50 border-red-300'
+                  : 'bg-amber-50 border-amber-300'
+                : 'bg-blue-50 border-blue-300'
+            }`}>
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">
+                  {questionsRemaining === 0 ? '🚫' : questionsRemaining < totalQuestions ? '⚠️' : 'ℹ️'}
+                </span>
+                <div>
+                  <p className={`font-semibold ${
+                    questionsRemaining === 0
+                      ? 'text-red-800'
+                      : questionsRemaining < totalQuestions
+                        ? 'text-amber-800'
+                        : 'text-blue-800'
+                  }`}>
+                    {questionsRemaining === 0
+                      ? 'Has alcanzado el límite diario de preguntas'
+                      : questionsRemaining < totalQuestions
+                        ? `Solo puedes responder ${questionsRemaining} preguntas más hoy`
+                        : `Te quedan ${questionsRemaining} preguntas hoy`
+                    }
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {questionsRemaining === 0
+                      ? 'Hazte Premium para continuar practicando sin límites.'
+                      : questionsRemaining < totalQuestions
+                        ? `Este examen tiene ${totalQuestions} preguntas. Con el plan gratuito tienes ${dailyLimit} preguntas diarias.`
+                        : `Plan gratuito: ${dailyLimit} preguntas/día. Hazte Premium para practicar sin límites.`
+                    }
+                  </p>
+                  {questionsRemaining < totalQuestions && (
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="mt-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-semibold text-sm hover:from-amber-600 hover:to-orange-600 transition-all"
+                    >
+                      ⭐ Hazte Premium
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Grid de metricas: Cronometro + Respondidas */}
           <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Cronometro */}
@@ -1248,6 +1326,15 @@ export default function OfficialExamLayout({
         questionText={selectedQuestionForModal?.question}
         correctAnswer={selectedQuestionIndex !== null ? validatedResults?.results?.[selectedQuestionIndex]?.correctIndex : null}
         options={selectedQuestionForModal?.options || null}
+      />
+
+      {/* Banner de limite diario (solo usuarios FREE) */}
+      {hasLimit && <DailyLimitBanner />}
+
+      {/* Modal de upgrade cuando se alcanza el limite */}
+      <UpgradeLimitModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
       />
     </div>
   )
