@@ -114,6 +114,13 @@ export default function ChartQuestion({
         </div>
       )}
 
+      {/* Texto de la pregunta */}
+      {question.question_text && (
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          {question.question_text}
+        </h3>
+      )}
+
       {/* Opciones de respuesta */}
       <div className="space-y-3 mb-6">
         {options.map((option, index) => {
