@@ -166,8 +166,8 @@ export default function UpgradeLimitModal({
     return `${minutes} minutos`
   }
 
-  // Handler para clic en upgrade
-  const handleUpgrade = async () => {
+  // Handler para clic en upgrade con plan específico
+  const handleUpgradeWithPlan = async (plan) => {
     // Trackear clic
     if (supabase && impressionId) {
       try {
@@ -180,8 +180,14 @@ export default function UpgradeLimitModal({
       }
     }
 
-    router.push('/premium')
+    // Redirigir a premium con el plan seleccionado
+    router.push(`/premium?plan=${plan}`)
     onClose()
+  }
+
+  // Handler para clic en botón principal (usa plan por defecto: semester)
+  const handleUpgrade = async () => {
+    await handleUpgradeWithPlan('semester')
   }
 
   // Handler para dismiss
@@ -276,19 +282,27 @@ export default function UpgradeLimitModal({
             </ul>
           </div>
 
-          {/* Precios - más compactos */}
+          {/* Precios - clic directo a checkout */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-2 sm:mb-4">
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 sm:p-3 text-center border-2 border-blue-200 dark:border-blue-800">
+            <button
+              type="button"
+              onClick={() => handleUpgradeWithPlan('monthly')}
+              className="rounded-lg p-2 sm:p-3 text-center border-2 transition-all cursor-pointer bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-500 hover:bg-blue-100 hover:scale-105"
+            >
               <div className="text-lg sm:text-2xl font-bold text-blue-600 dark:text-blue-400">20€</div>
               <div className="text-[10px] sm:text-xs text-blue-600/70 dark:text-blue-400/70">al mes</div>
-            </div>
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 sm:p-3 text-center border-2 border-green-500 relative">
+            </button>
+            <button
+              type="button"
+              onClick={() => handleUpgradeWithPlan('semester')}
+              className="rounded-lg p-2 sm:p-3 text-center border-2 relative transition-all cursor-pointer bg-green-50 dark:bg-green-900/20 border-green-500 hover:bg-green-100 hover:scale-105"
+            >
               <div className="absolute -top-1.5 sm:-top-2 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[9px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap">
                 -50%
               </div>
               <div className="text-lg sm:text-2xl font-bold text-green-600 dark:text-green-400">59€</div>
               <div className="text-[10px] sm:text-xs text-green-600/70 dark:text-green-400/70">6 meses</div>
-            </div>
+            </button>
           </div>
 
           {/* Botones */}

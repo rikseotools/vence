@@ -13,6 +13,14 @@ function PremiumPageContent() {
   const searchParams = useSearchParams()
   const hasTrackedPageView = useRef(false)
 
+  // Preseleccionar plan desde URL (ej: /premium?plan=monthly)
+  useEffect(() => {
+    const planParam = searchParams.get('plan')
+    if (planParam === 'monthly' || planParam === 'semester') {
+      setSelectedPlan(planParam)
+    }
+  }, [searchParams])
+
   // Trackear vista de pagina premium
   useEffect(() => {
     if (user && supabase && !hasTrackedPageView.current && !authLoading) {
@@ -160,6 +168,26 @@ function PremiumPageContent() {
         <div className="max-w-2xl mx-auto">
           <div className="grid md:grid-cols-2 gap-6 mb-8">
 
+            {/* Plan Mensual */}
+            <div
+              onClick={() => setSelectedPlan('monthly')}
+              className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all ${
+                selectedPlan === 'monthly'
+                  ? 'border-amber-500 ring-2 ring-amber-200'
+                  : 'border-gray-200 hover:border-amber-300'
+              }`}
+            >
+              <div className="text-center">
+                <div className="h-6 mb-4"></div> {/* Spacer para alinear */}
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Mensual</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-1">20€</div>
+                <div className="text-gray-500 text-sm mb-4">al mes</div>
+                <div className="text-gray-400 text-sm">
+                  Flexibilidad total
+                </div>
+              </div>
+            </div>
+
             {/* Plan Semestral */}
             <div
               onClick={() => setSelectedPlan('semester')}
@@ -180,26 +208,6 @@ function PremiumPageContent() {
                 <div className="text-gray-500 text-sm mb-4">cada 6 meses</div>
                 <div className="text-green-600 text-sm font-medium">
                   Ahorras 122€ al año
-                </div>
-              </div>
-            </div>
-
-            {/* Plan Mensual */}
-            <div
-              onClick={() => setSelectedPlan('monthly')}
-              className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all ${
-                selectedPlan === 'monthly'
-                  ? 'border-amber-500 ring-2 ring-amber-200'
-                  : 'border-gray-200 hover:border-amber-300'
-              }`}
-            >
-              <div className="text-center">
-                <div className="h-6 mb-4"></div> {/* Spacer para alinear */}
-                <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Mensual</h3>
-                <div className="text-4xl font-bold text-gray-900 mb-1">20€</div>
-                <div className="text-gray-500 text-sm mb-4">al mes</div>
-                <div className="text-gray-400 text-sm">
-                  Flexibilidad total
                 </div>
               </div>
             </div>
