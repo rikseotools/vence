@@ -336,6 +336,11 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                           </div>
                         </Link>
+                        <div className="text-xs text-gray-600 px-6 -mt-1">
+                          <span className="text-amber-600 font-medium">📊 Nota de corte 2024:</span>
+                          <span className="ml-1">26,56/50 pts =</span>
+                          <span className="text-gray-700 ml-1 font-semibold">5,31/10</span>
+                        </div>
 
                         {/* Segunda parte */}
                         <Link
@@ -365,6 +370,11 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             </div>
                           </div>
                         </Link>
+                        <div className="text-xs text-gray-600 px-6 -mt-1">
+                          <span className="text-amber-600 font-medium">📊 Nota de corte 2024:</span>
+                          <span className="ml-1">25/50 pts =</span>
+                          <span className="text-gray-700 ml-1 font-semibold">5,0/10</span>
+                        </div>
                       </>
                     ) : (
                       <div className="text-center py-4 text-gray-600">
