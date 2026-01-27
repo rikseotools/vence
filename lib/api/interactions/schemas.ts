@@ -44,17 +44,30 @@ export const trackInteractionRequestSchema = z.object({
   // Métricas
   responseTimeMs: z.number().int().min(0).optional().nullable(),
 
-  // Dispositivo
-  deviceInfo: z.object({
-    platform: z.string().optional(),
-    userAgent: z.string().optional(),
-    screenWidth: z.number().optional(),
-    screenHeight: z.number().optional(),
-    language: z.string().optional(),
-    timezone: z.string().optional(),
-    isStandalone: z.boolean().optional(),
-    isMobile: z.boolean().optional()
-  }).optional().default({})
+  // Dispositivo - acepta objeto o string (para compatibilidad con datos de localStorage/sendBeacon)
+  deviceInfo: z.preprocess(
+    (val) => {
+      // Si es string, intentar parsearlo como JSON
+      if (typeof val === 'string') {
+        try {
+          return JSON.parse(val)
+        } catch {
+          return {} // Si falla el parseo, devolver objeto vacío
+        }
+      }
+      return val
+    },
+    z.object({
+      platform: z.string().optional(),
+      userAgent: z.string().optional(),
+      screenWidth: z.number().optional(),
+      screenHeight: z.number().optional(),
+      language: z.string().optional(),
+      timezone: z.string().optional(),
+      isStandalone: z.boolean().optional(),
+      isMobile: z.boolean().optional()
+    }).optional().default({})
+  )
 })
 
 export type TrackInteractionRequest = z.infer<typeof trackInteractionRequestSchema>
