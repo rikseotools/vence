@@ -1,6 +1,6 @@
 // hooks/useAdminNotifications.js - Hook para detectar elementos pendientes en admin
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 export function useAdminNotifications() {
@@ -10,20 +10,43 @@ export function useAdminNotifications() {
     impugnaciones: 0,
     loading: true
   })
+  const originalTitle = useRef(null)
+
+  // Efecto para actualizar el título del tab
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    // Guardar título original solo una vez
+    if (originalTitle.current === null) {
+      originalTitle.current = document.title || 'Vence Admin'
+    }
+
+    const totalPending = notifications.feedback + notifications.impugnaciones
+
+    if (totalPending > 0) {
+      document.title = `(${totalPending}) ${originalTitle.current}`
+    } else if (!notifications.loading) {
+      document.title = originalTitle.current
+    }
+
+    return () => {
+      // Restaurar título al desmontar
+      if (originalTitle.current) {
+        document.title = originalTitle.current
+      }
+    }
+  }, [notifications.feedback, notifications.impugnaciones, notifications.loading])
 
   useEffect(() => {
     if (supabase) {
       loadPendingCounts()
-      
+
       // Recargar menos frecuentemente para evitar problemas de conexión
       const hasAnyPending = notifications.feedback > 0 || notifications.impugnaciones > 0
       const intervalTime = hasAnyPending ? 30000 : 60000 // 30s si hay pendientes, 60s si no
-      
+
       const interval = setInterval(loadPendingCounts, intervalTime)
-      
-      // ✅ FIX: Eliminado listener de localStorage obsoleto
-      // Ahora se usa el sistema de BD directamente
-      
+
       return () => {
         clearInterval(interval)
       }
@@ -37,55 +60,87 @@ export function useAdminNotifications() {
     }
 
     try {
-      // Debug: console.log('🔔 Cargando notificaciones admin...')
-
       // Usar Promise.allSettled para manejar errores independientemente
       const results = await Promise.allSettled([
-        // Contar conversaciones de feedback NO VISTAS directamente (FIX BUG)
+        // 1. Obtener conversaciones NO cerradas con sus mensajes para ver cuál necesita respuesta
         Promise.race([
           supabase
             .from('feedback_conversations')
-            .select('id')
-            .eq('status', 'waiting_admin')
-            .is('admin_viewed_at', null), // Solo las NO vistas
-          new Promise((_, reject) => 
+            .select('id, status, feedback_messages(id, is_admin, created_at)')
+            .neq('status', 'closed'),
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 10000)
           )
         ]),
-        // Contar impugnaciones pendientes con timeout
+        // 2. Contar feedbacks pending/in_progress sin conversación
+        Promise.race([
+          supabase
+            .from('user_feedback')
+            .select('id, feedback_conversations(id)')
+            .in('status', ['pending', 'in_progress']),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 10000)
+          )
+        ]),
+        // 3. Contar impugnaciones pendientes
         Promise.race([
           supabase
             .from('question_disputes')
             .select('id', { count: 'exact', head: true })
             .eq('status', 'pending'),
-          new Promise((_, reject) => 
+          new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 10000)
           )
         ])
       ])
 
-      const [feedbackResult, impugnacionesResult] = results
+      const [conversationsResult, feedbacksResult, impugnacionesResult] = results
 
       let pendingFeedback = 0
       let pendingImpugnaciones = 0
 
-      // Procesar conversaciones de feedback (✅ FIX: ahora usa BD en lugar de localStorage)
-      if (feedbackResult.status === 'fulfilled') {
-        const unviewedConversations = feedbackResult.value.data || []
-        pendingFeedback = unviewedConversations.length
-        // Solo loguear si hay cambios significativos (más de 0)
-        if (pendingFeedback > 0) {
-          console.log(`🔔 Admin: ${pendingFeedback} conversaciones pendientes`)
-        }
+      // Contar conversaciones donde el último mensaje es del USUARIO (necesita respuesta del admin)
+      // También contar conversaciones sin mensajes (vacías) que no estén cerradas
+      if (conversationsResult.status === 'fulfilled') {
+        const conversations = conversationsResult.value.data || []
+        conversations.forEach(conv => {
+          const msgs = conv.feedback_messages || []
+
+          // Conversación vacía no cerrada = necesita atención del admin
+          if (msgs.length === 0) {
+            pendingFeedback++
+            return
+          }
+
+          // Ordenar por fecha descendente para obtener el último
+          const sorted = msgs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          const lastMsg = sorted[0]
+          // Si el último mensaje NO es del admin, necesita respuesta
+          if (lastMsg && lastMsg.is_admin === false) {
+            pendingFeedback++
+          }
+        })
       } else {
-        console.warn('Error cargando feedback pendiente:', feedbackResult.reason?.message)
-        pendingFeedback = 0
+        console.warn('Error cargando conversaciones:', conversationsResult.reason?.message)
+      }
+
+      // Contar feedbacks sin conversación
+      if (feedbacksResult.status === 'fulfilled') {
+        const feedbacks = feedbacksResult.value.data || []
+        feedbacks.forEach(fb => {
+          const hasConversation = fb.feedback_conversations && fb.feedback_conversations.length > 0
+          if (!hasConversation) {
+            pendingFeedback++
+          }
+        })
+      } else {
+        console.warn('Error cargando feedbacks:', feedbacksResult.reason?.message)
       }
 
       if (impugnacionesResult.status === 'fulfilled') {
         pendingImpugnaciones = impugnacionesResult.value.count || 0
       } else {
-        console.warn('Error cargando impugnaciones pendientes:', impugnacionesResult.reason?.message)
+        console.warn('Error cargando impugnaciones:', impugnacionesResult.reason?.message)
       }
 
       setNotifications({
@@ -93,8 +148,6 @@ export function useAdminNotifications() {
         impugnaciones: pendingImpugnaciones,
         loading: false
       })
-
-      // Debug: console.log('✅ Notificaciones admin actualizadas')
 
     } catch (error) {
       console.error('❌ Error cargando notificaciones admin:', error)

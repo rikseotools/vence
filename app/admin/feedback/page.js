@@ -890,7 +890,10 @@ export default function AdminFeedbackPage() {
       if (conversation && conversation.status !== 'closed') {
         // Verificar si el último mensaje es del usuario
         const messages = conversation.feedback_messages || []
-        if (messages.length > 0) {
+        if (messages.length === 0) {
+          // Conversación vacía = necesita atención del admin
+          isPendingForAdmin = true
+        } else {
           const sorted = [...messages].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
           const lastMsg = sorted[0]
           // Si el último mensaje NO es del admin, necesita respuesta
