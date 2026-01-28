@@ -201,8 +201,11 @@ export const completeDetailedTest = async (sessionId, finalScore, allAnswers, qu
     console.log('✅ Test completado con análisis completo')
 
     // 🆕 REGISTRAR EN USER_QUESTION_HISTORY (para estadísticas de artículos débiles)
-    // Incluye preguntas no contestadas como falladas
-    await registerQuestionsInHistory(userSession?.user_id, allAnswers, questions)
+    // ⚠️ DESACTIVADO 2026-01-28: El trigger 'trigger_update_user_question_history' ya maneja esto
+    // automáticamente en cada INSERT/UPDATE de test_questions. Tener ambos activos causaba
+    // que se duplicaran los intentos (total_attempts +1 extra por cada test completado).
+    // Ver: database/migrations/fix_user_question_history_trigger.sql
+    // await registerQuestionsInHistory(userSession?.user_id, allAnswers, questions)
 
     // 🔥 ACTUALIZAR USER_PROGRESS - REPARADO CON MÉTODO DIRECTO
     await updateUserProgressDirect(userSession?.user_id, sessionId, finalScore, allAnswers.length)
