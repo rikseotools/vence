@@ -303,6 +303,12 @@ export function isPlatformQuery(message: string): boolean {
     /temario(s)?/i,
     /contenido\s+(gratis|gratuito)/i,
     /qu[eé]\s+ofrece/i,
+    // Test Multi-Ley
+    /multi[- ]?ley/i,
+    /(varias|diferentes|m[uú]ltiples|distintas)\s+leyes/i,
+    /combinar\s+(leyes|normativa)/i,
+    /mezclar\s+(leyes|preguntas)/i,
+    /test\s+de\s+.*leyes/i,
   ]
 
   return platformIndicators.some(p => p.test(message))
@@ -348,6 +354,9 @@ export function extractPlatformKeywords(message: string): string[] {
     // Temarios y contenido
     'temarios', 'contenido', 'estudiar', 'legislación',
     'ofrece', 'incluye',
+    // Multi-Ley
+    'multi-ley', 'multiley', 'varias', 'diferentes', 'múltiples',
+    'combinar', 'mezclar', 'configurador',
   ]
 
   const msgLower = message.toLowerCase()

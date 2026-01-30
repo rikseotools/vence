@@ -227,6 +227,24 @@ export function getPredefinedResponse(message: string): string | null {
 💡 Cuando estés resolviendo preguntas, ¡pídeme ayuda! Puedo explicarte la lógica de cada ejercicio.`
   }
 
+  // Test Multi-Ley (varias leyes, diferentes leyes, combinar leyes)
+  if (/multi[- ]?ley|(varias|diferentes|m[uú]ltiples|distintas)\s+leyes|combinar\s+(leyes|normativa)|mezclar\s+(leyes|preguntas)|test\s+de\s+.*leyes/i.test(msgLower)) {
+    return `📚 **¡Sí! En Vence puedes hacer tests combinando varias leyes**
+
+👉 **[Ir al Configurador Multi-Ley](/test/configurar)**
+
+**Características:**
+- ✅ Selecciona las leyes que quieras (CE, LPAC, LRJSP, TREBEP...)
+- ✅ Buscador para encontrar leyes rápidamente
+- ✅ Las preguntas se reparten equitativamente entre las leyes
+- ✅ Guarda tus combinaciones favoritas para reutilizarlas
+- ✅ Configura número de preguntas, dificultad y más
+
+**Ejemplo:** Si seleccionas CE + LPAC + LRJSP y pides 30 preguntas, saldrán 10 de cada ley.
+
+💡 ¡Ideal para repasar varias leyes relacionadas o simular exámenes reales!`
+  }
+
   return null
 }
 
