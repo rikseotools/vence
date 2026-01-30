@@ -46,7 +46,8 @@ const TestConfigurator = ({
   
   // 🆕 Estados para filtro de leyes
   const [selectedLaws, setSelectedLaws] = useState(new Set());
-  const [showLawsFilter, setShowLawsFilter] = useState(false);
+  const [showLawsFilter, setShowLawsFilter] = useState(!tema && lawsData?.length > 1);
+  const [lawSearchQuery, setLawSearchQuery] = useState('');
   
   // 🆕 Estados para filtro de artículos
   const [selectedArticlesByLaw, setSelectedArticlesByLaw] = useState(new Map());
@@ -644,7 +645,12 @@ const TestConfigurator = ({
       lawsInitializedRef.current = true;
       const initialSelectedLaws = new Set(lawsData.map(law => law.law_short_name));
       setSelectedLaws(initialSelectedLaws);
-      
+
+      // 📖 Mostrar filtro desplegado por defecto cuando hay múltiples leyes y no hay tema
+      if (!tema && lawsData.length > 1) {
+        setShowLawsFilter(true);
+      }
+
       // 🔄 Para LawTestConfigurator, cargar artículos y secciones automáticamente
       if (lawsData.length === 1) {
         const law = lawsData[0];
@@ -1348,24 +1354,38 @@ const TestConfigurator = ({
                     </div>
                   )}
                   {lawsData.length > 1 && (
-                    <div className="flex gap-2 mb-3">
-                      <button
-                        onClick={selectAllLaws}
-                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                      >
-                        Seleccionar todas
-                      </button>
-                      <button
-                        onClick={deselectAllLaws}
-                        className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
-                      >
-                        Deseleccionar todas
-                      </button>
+                    <div className="space-y-2 mb-3">
+                      <input
+                        type="text"
+                        placeholder="🔍 Buscar ley..."
+                        value={lawSearchQuery}
+                        onChange={(e) => setLawSearchQuery(e.target.value)}
+                        className="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={selectAllLaws}
+                          className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                        >
+                          Seleccionar todas
+                        </button>
+                        <button
+                          onClick={deselectAllLaws}
+                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
+                        >
+                          Deseleccionar todas
+                        </button>
+                      </div>
                     </div>
                   )}
-                  
-                  <div className="grid grid-cols-1 gap-2">
-                    {lawsData.map((law) => {
+
+                  <div className="grid grid-cols-1 gap-2 max-h-80 overflow-y-auto">
+                    {lawsData.filter(law => {
+                      if (!lawSearchQuery.trim()) return true;
+                      const query = lawSearchQuery.toLowerCase();
+                      return law.law_short_name?.toLowerCase().includes(query) ||
+                             law.display_name?.toLowerCase().includes(query);
+                    }).map((law) => {
                       const isSelected = selectedLaws.has(law.law_short_name);
                       const sectionsForLaw = availableSectionsByLaw.get(law.law_short_name) || [];
                       const hasSections = sectionsForLaw.length > 0;

@@ -1,6 +1,5 @@
 // lib/api/test-favorites/schemas.ts - Schemas de validacion para favoritos de test
-// Usar zod/v3 para compatibilidad con Zod 4
-import { z } from 'zod/v3'
+import { z } from 'zod'
 
 // ============================================
 // TIPOS BASE
