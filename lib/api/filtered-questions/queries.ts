@@ -195,6 +195,105 @@ function selectProportionally<T extends { sourceTopic: number | null }>(
 }
 
 // ============================================
+// HELPER: Selección equitativa por ley
+// ============================================
+function selectEquitativeByLaw<T extends { lawShortName: string }>(
+  questions: T[],
+  selectedLaws: string[],
+  numQuestions: number
+): T[] {
+  if (selectedLaws.length <= 1) {
+    return questions.sort(() => Math.random() - 0.5).slice(0, numQuestions)
+  }
+
+  // Agrupar preguntas por ley
+  const byLaw = new Map<string, T[]>()
+  for (const law of selectedLaws) {
+    byLaw.set(law, [])
+  }
+
+  for (const q of questions) {
+    if (q.lawShortName && byLaw.has(q.lawShortName)) {
+      byLaw.get(q.lawShortName)!.push(q)
+    }
+  }
+
+  // Calcular asignación base por ley
+  const questionsPerLaw = Math.floor(numQuestions / selectedLaws.length)
+  const remainder = numQuestions % selectedLaws.length
+
+  const selected: T[] = []
+  const lawAllocations: { law: string; count: number; available: number }[] = []
+
+  // Mezclar preguntas de cada ley y calcular disponibles
+  for (const law of selectedLaws) {
+    const lawQuestions = byLaw.get(law) || []
+    // Shuffle
+    for (let i = lawQuestions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[lawQuestions[i], lawQuestions[j]] = [lawQuestions[j], lawQuestions[i]]
+    }
+    lawAllocations.push({
+      law,
+      count: Math.min(questionsPerLaw, lawQuestions.length),
+      available: lawQuestions.length
+    })
+  }
+
+  // Distribuir el resto a leyes con preguntas extra
+  let extraNeeded = remainder
+  for (const allocation of lawAllocations) {
+    if (extraNeeded <= 0) break
+    if (allocation.available > allocation.count) {
+      allocation.count++
+      extraNeeded--
+    }
+  }
+
+  // Si alguna ley no tiene suficientes, redistribuir a otras
+  let deficit = 0
+  for (const allocation of lawAllocations) {
+    if (allocation.available < allocation.count) {
+      deficit += allocation.count - allocation.available
+      allocation.count = allocation.available
+    }
+  }
+
+  // Repartir déficit entre leyes con excedente
+  while (deficit > 0) {
+    let distributed = false
+    for (const allocation of lawAllocations) {
+      if (deficit <= 0) break
+      if (allocation.available > allocation.count) {
+        allocation.count++
+        deficit--
+        distributed = true
+      }
+    }
+    if (!distributed) break // No hay más preguntas disponibles
+  }
+
+  // Seleccionar de cada ley
+  for (const allocation of lawAllocations) {
+    const lawQuestions = byLaw.get(allocation.law) || []
+    selected.push(...lawQuestions.slice(0, allocation.count))
+  }
+
+  // Mezcla final para no agrupar por ley
+  for (let i = selected.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[selected[i], selected[j]] = [selected[j], selected[i]]
+  }
+
+  console.log(`📊 Selección equitativa por ley: ${selected.length} preguntas de ${selectedLaws.length} leyes`)
+  lawAllocations.forEach(a => {
+    console.log(`  - ${a.law}: ${a.count} preguntas (${a.available} disponibles)`)
+  })
+
+  return selected
+}
+
+// ============================================
 // HELPER: Aplicar filtro de secciones a artículos
 // ============================================
 function applyArticleSectionFilter(
@@ -644,10 +743,13 @@ export async function getFilteredQuestions(
       console.log(`👁️ ${neverSeenIds.length} preguntas nunca vistas priorizadas`)
     }
 
-    // 7️⃣ Selección final: proporcional, priorizada, o aleatoria
+    // 7️⃣ Selección final: equitativa por ley, proporcional por tema, priorizada, o aleatoria
     let finalQuestions: typeof sortedQuestions
 
-    if (proportionalByTopic && topicsToQuery.length > 1) {
+    if (isLawOnlyMode && selectedLaws && selectedLaws.length > 1) {
+      // 📖 Distribución equitativa entre leyes (modo multi-ley)
+      finalQuestions = selectEquitativeByLaw(sortedQuestions, selectedLaws, numQuestions)
+    } else if (proportionalByTopic && topicsToQuery.length > 1) {
       // Distribución proporcional entre temas
       finalQuestions = selectProportionally(sortedQuestions, topicsToQuery, numQuestions)
     } else if (prioritizeNeverSeen && userId) {
