@@ -233,12 +233,12 @@ const TestConfigurator = ({
 
   // officialQuestionsCount ahora se pasa como prop, no se carga aquí
 
-  // 💾 EFECTO: Cargar favoritos guardados del usuario
+  // 💾 EFECTO: Cargar favoritos guardados del usuario (solo en páginas de leyes, no en temas)
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && !tema) {
       loadUserFavorites();
     }
-  }, [currentUser]);
+  }, [currentUser, tema]);
 
   // 💾 Función para cargar favoritos del usuario
   const loadUserFavorites = async () => {
@@ -290,6 +290,8 @@ const TestConfigurator = ({
         positionType: positionType
       };
 
+      console.log('💾 [Favorites] Enviando datos:', JSON.stringify(favoriteData, null, 2));
+
       const response = await fetch('/api/profile/test-favorites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -305,7 +307,14 @@ const TestConfigurator = ({
         setShowSaveFavoriteModal(false);
         console.log('✅ [Favorites] Favorito guardado:', result.data.name);
       } else {
-        setFavoriteError(result.error || 'Error al guardar el favorito');
+        console.error('❌ [Favorites] Error de validación:', result);
+        // Mostrar detalles de validación si existen
+        if (result.details && Array.isArray(result.details)) {
+          const detailMsg = result.details.map(d => d.message || d.path?.join('.')).join(', ');
+          setFavoriteError(detailMsg || result.error || 'Error al guardar');
+        } else {
+          setFavoriteError(result.error || 'Error al guardar el favorito');
+        }
       }
     } catch (error) {
       console.error('❌ [Favorites] Error guardando favorito:', error);
@@ -1434,8 +1443,8 @@ const TestConfigurator = ({
                     ✓ {selectedLaws.size} de {lawsData.length} leyes seleccionadas
                   </div>
 
-                  {/* 💾 Botones de Favoritos - Solo para usuarios autenticados */}
-                  {currentUser && (
+                  {/* 💾 Botones de Favoritos - Solo en páginas de leyes (no en temas) */}
+                  {currentUser && !tema && (
                     <div className="flex gap-2 mt-3 pt-3 border-t border-blue-200">
                       <button
                         onClick={() => {

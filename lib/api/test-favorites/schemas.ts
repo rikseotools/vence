@@ -49,10 +49,10 @@ export type GetUserFavoritesResponse = z.infer<typeof getUserFavoritesResponseSc
 export const createFavoriteRequestSchema = z.object({
   userId: z.string().uuid(),
   name: z.string().min(1, 'El nombre es obligatorio').max(100, 'El nombre es demasiado largo'),
-  description: z.string().max(500).optional(),
+  description: z.string().max(500).nullable().optional(),
   selectedLaws: z.array(z.string()).min(1, 'Debes seleccionar al menos una ley'),
   selectedArticlesByLaw: z.record(z.string(), z.array(z.string().or(z.number()))).optional().default({}),
-  positionType: z.string().optional()
+  positionType: z.string().nullable().optional()
 })
 
 export type CreateFavoriteRequest = z.infer<typeof createFavoriteRequestSchema>
