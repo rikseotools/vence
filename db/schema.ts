@@ -1084,6 +1084,30 @@ export const emailPreferences = pgTable("email_preferences", {
 	pgPolicy("Users can manage their own email preferences", { as: "permissive", for: "all", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 ]);
 
+export const userTestFavorites = pgTable("user_test_favorites", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	name: text().notNull(),
+	description: text(),
+	selectedLaws: jsonb("selected_laws").notNull().$type<string[]>().default([]),
+	selectedArticlesByLaw: jsonb("selected_articles_by_law").notNull().$type<Record<string, string[]>>().default({}),
+	positionType: text("position_type"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("user_test_favorites_user_id_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "user_test_favorites_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("user_test_favorites_user_name_unique").on(table.userId, table.name),
+	pgPolicy("Users can view own favorites", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can insert own favorites", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can update own favorites", { as: "permissive", for: "update", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can delete own favorites", { as: "permissive", for: "delete", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+]);
+
 export const emailUnsubscribeTokens = pgTable("email_unsubscribe_tokens", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	userId: uuid("user_id").notNull(),

@@ -60,6 +60,16 @@ const TestConfigurator = ({
   const [selectedSectionFilters, setSelectedSectionFilters] = useState([]); // 🔄 Array para selección múltiple
   const [availableSectionsByLaw, setAvailableSectionsByLaw] = useState(new Map());
 
+  // 💾 Estados para favoritos (configuraciones guardadas)
+  const [savedFavorites, setSavedFavorites] = useState([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
+  const [showSaveFavoriteModal, setShowSaveFavoriteModal] = useState(false);
+  const [showLoadFavoriteModal, setShowLoadFavoriteModal] = useState(false);
+  const [favoriteName, setFavoriteName] = useState('');
+  const [favoriteDescription, setFavoriteDescription] = useState('');
+  const [savingFavorite, setSavingFavorite] = useState(false);
+  const [favoriteError, setFavoriteError] = useState('');
+
 
   // officialQuestionsCount viene como prop, ya no necesitamos loading state
 
@@ -222,6 +232,139 @@ const TestConfigurator = ({
   };
 
   // officialQuestionsCount ahora se pasa como prop, no se carga aquí
+
+  // 💾 EFECTO: Cargar favoritos guardados del usuario
+  useEffect(() => {
+    if (currentUser) {
+      loadUserFavorites();
+    }
+  }, [currentUser]);
+
+  // 💾 Función para cargar favoritos del usuario
+  const loadUserFavorites = async () => {
+    if (!currentUser) return;
+
+    setLoadingFavorites(true);
+    try {
+      const response = await fetch(`/api/profile/test-favorites?userId=${currentUser.id}`);
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setSavedFavorites(result.data);
+        console.log('💾 [Favorites] Cargados:', result.data.length, 'favoritos');
+      }
+    } catch (error) {
+      console.error('❌ [Favorites] Error cargando favoritos:', error);
+    } finally {
+      setLoadingFavorites(false);
+    }
+  };
+
+  // 💾 Función para guardar configuración actual como favorito
+  const saveCurrentAsFavorite = async () => {
+    if (!favoriteName.trim()) {
+      setFavoriteError('El nombre es obligatorio');
+      return;
+    }
+
+    if (selectedLaws.size === 0) {
+      setFavoriteError('Debes tener al menos una ley seleccionada');
+      return;
+    }
+
+    setSavingFavorite(true);
+    setFavoriteError('');
+
+    try {
+      const favoriteData = {
+        userId: currentUser.id,
+        name: favoriteName.trim(),
+        description: favoriteDescription.trim() || null,
+        selectedLaws: Array.from(selectedLaws),
+        selectedArticlesByLaw: Object.fromEntries(
+          Array.from(selectedArticlesByLaw.entries()).map(([lawId, articlesSet]) => [
+            lawId,
+            Array.from(articlesSet)
+          ])
+        ),
+        positionType: positionType
+      };
+
+      const response = await fetch('/api/profile/test-favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(favoriteData)
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setSavedFavorites(prev => [result.data, ...prev]);
+        setFavoriteName('');
+        setFavoriteDescription('');
+        setShowSaveFavoriteModal(false);
+        console.log('✅ [Favorites] Favorito guardado:', result.data.name);
+      } else {
+        setFavoriteError(result.error || 'Error al guardar el favorito');
+      }
+    } catch (error) {
+      console.error('❌ [Favorites] Error guardando favorito:', error);
+      setFavoriteError('Error de conexión');
+    } finally {
+      setSavingFavorite(false);
+    }
+  };
+
+  // 💾 Función para cargar un favorito guardado
+  const loadFavorite = (favorite) => {
+    console.log('📂 [Favorites] Cargando favorito:', favorite.name);
+
+    // Cargar leyes seleccionadas
+    setSelectedLaws(new Set(favorite.selectedLaws || []));
+
+    // Cargar artículos seleccionados por ley
+    const articlesMap = new Map();
+    if (favorite.selectedArticlesByLaw) {
+      Object.entries(favorite.selectedArticlesByLaw).forEach(([lawId, articles]) => {
+        articlesMap.set(lawId, new Set(articles.map(a => typeof a === 'string' ? parseInt(a, 10) : a)));
+      });
+    }
+    setSelectedArticlesByLaw(articlesMap);
+
+    // Limpiar filtros de secciones (no se guardan en favoritos por ahora)
+    setSelectedSectionFilters([]);
+
+    // Cerrar modal
+    setShowLoadFavoriteModal(false);
+
+    console.log('✅ [Favorites] Favorito cargado:', {
+      laws: favorite.selectedLaws?.length || 0,
+      articlesEntries: Object.keys(favorite.selectedArticlesByLaw || {}).length
+    });
+  };
+
+  // 💾 Función para eliminar un favorito
+  const deleteFavoriteHandler = async (favoriteId, favoriteNameToDelete) => {
+    if (!confirm(`¿Eliminar el favorito "${favoriteNameToDelete}"?`)) return;
+
+    try {
+      const response = await fetch(`/api/profile/test-favorites?id=${favoriteId}&userId=${currentUser.id}`, {
+        method: 'DELETE'
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSavedFavorites(prev => prev.filter(p => p.id !== favoriteId));
+        console.log('🗑️ [Favorites] Favorito eliminado:', favoriteNameToDelete);
+      } else {
+        alert(result.error || 'Error al eliminar el favorito');
+      }
+    } catch (error) {
+      console.error('❌ [Favorites] Error eliminando favorito:', error);
+      alert('Error de conexión');
+    }
+  };
 
   // 🔧 EFECTO: Inicializar selectedLaws cuando preselectedLaw está presente
   useEffect(() => {
@@ -1290,6 +1433,43 @@ const TestConfigurator = ({
                   <div className="text-xs text-blue-700 mt-2">
                     ✓ {selectedLaws.size} de {lawsData.length} leyes seleccionadas
                   </div>
+
+                  {/* 💾 Botones de Favoritos - Solo para usuarios autenticados */}
+                  {currentUser && (
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-blue-200">
+                      <button
+                        onClick={() => {
+                          setFavoriteName('');
+                          setFavoriteDescription('');
+                          setFavoriteError('');
+                          setShowSaveFavoriteModal(true);
+                        }}
+                        disabled={selectedLaws.size === 0}
+                        className={`text-xs px-3 py-1.5 rounded flex items-center gap-1 transition-colors ${
+                          selectedLaws.size === 0
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                      >
+                        <span>💾</span>
+                        <span>Guardar selección</span>
+                      </button>
+                      {savedFavorites.length > 0 && (
+                        <button
+                          onClick={() => setShowLoadFavoriteModal(true)}
+                          className="text-xs bg-amber-100 text-amber-700 px-3 py-1.5 rounded hover:bg-amber-200 flex items-center gap-1"
+                        >
+                          <span>📂</span>
+                          <span>Cargar ({savedFavorites.length})</span>
+                        </button>
+                      )}
+                      {loadingFavorites && (
+                        <span className="text-xs text-gray-500 flex items-center">
+                          <span className="animate-spin mr-1">⏳</span> Cargando...
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2521,6 +2701,198 @@ const TestConfigurator = ({
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 💾 Modal de Guardar Favorito */}
+      {showSaveFavoriteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">💾</span>
+                <div>
+                  <h3 className="text-lg font-bold">Guardar configuración</h3>
+                  <p className="text-green-100 text-sm">Guarda tu selección para reutilizarla</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSaveFavoriteModal(false)}
+                className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+              >
+                <span className="text-white font-bold">×</span>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {/* Nombre */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={favoriteName}
+                  onChange={(e) => setFavoriteName(e.target.value)}
+                  placeholder="Ej: CE Títulos I y II"
+                  maxLength={100}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Descripción (opcional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Descripción <span className="text-gray-400">(opcional)</span>
+                </label>
+                <textarea
+                  value={favoriteDescription}
+                  onChange={(e) => setFavoriteDescription(e.target.value)}
+                  placeholder="Ej: Para repasar derechos fundamentales..."
+                  maxLength={500}
+                  rows={2}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                />
+              </div>
+
+              {/* Resumen de lo que se va a guardar */}
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="font-medium text-green-800 mb-2 text-sm">Se guardará:</h4>
+                <ul className="text-xs text-green-700 space-y-1">
+                  <li>✓ {selectedLaws.size} ley{selectedLaws.size !== 1 ? 'es' : ''} seleccionada{selectedLaws.size !== 1 ? 's' : ''}</li>
+                  {Array.from(selectedArticlesByLaw.values()).some(s => s.size > 0) && (
+                    <li>✓ Filtro de artículos específicos</li>
+                  )}
+                </ul>
+              </div>
+
+              {/* Error */}
+              {favoriteError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  ❌ {favoriteError}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 rounded-b-xl flex justify-end gap-3">
+              <button
+                onClick={() => setShowSaveFavoriteModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveCurrentAsFavorite}
+                disabled={savingFavorite || !favoriteName.trim()}
+                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                  savingFavorite || !favoriteName.trim()
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                {savingFavorite ? (
+                  <span className="flex items-center gap-2">
+                    <span className="animate-spin">⏳</span> Guardando...
+                  </span>
+                ) : (
+                  '💾 Guardar'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📂 Modal de Cargar Favorito */}
+      {showLoadFavoriteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[80vh] shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <span className="text-2xl">📂</span>
+                <div>
+                  <h3 className="text-lg font-bold">Cargar configuración</h3>
+                  <p className="text-amber-100 text-sm">{savedFavorites.length} configuración{savedFavorites.length !== 1 ? 'es' : ''} guardada{savedFavorites.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowLoadFavoriteModal(false)}
+                className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+              >
+                <span className="text-white font-bold">×</span>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 overflow-y-auto max-h-[50vh]">
+              {savedFavorites.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <span className="text-4xl block mb-2">📭</span>
+                  <p>No tienes configuraciones guardadas</p>
+                  <p className="text-sm mt-1">Usa "Guardar selección" para crear una</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {savedFavorites.map((favorite) => (
+                    <div
+                      key={favorite.id}
+                      className="p-4 bg-white border border-gray-200 rounded-lg hover:border-amber-300 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-gray-800 truncate">{favorite.name}</h4>
+                          {favorite.description && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{favorite.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                              {(favorite.selectedLaws || []).length} ley{(favorite.selectedLaws || []).length !== 1 ? 'es' : ''}
+                            </span>
+                            {Object.keys(favorite.selectedArticlesByLaw || {}).length > 0 && (
+                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                                Con filtro de artículos
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-2">
+                            Guardado: {new Date(favorite.createdAt).toLocaleDateString('es-ES')}
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2 ml-4">
+                          <button
+                            onClick={() => loadFavorite(favorite)}
+                            className="px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors"
+                          >
+                            Cargar
+                          </button>
+                          <button
+                            onClick={() => deleteFavoriteHandler(favorite.id, favorite.name)}
+                            className="px-4 py-2 bg-red-100 text-red-600 text-sm font-medium rounded-lg hover:bg-red-200 transition-colors"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => setShowLoadFavoriteModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>
