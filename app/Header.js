@@ -212,7 +212,7 @@ export default function HeaderES() {
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
         { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-        { href: '/test/configurar', label: 'Multi-Ley', icon: '📖' },
+        { href: '/test/configurar', label: 'Multi-Ley', icon: '⚙️' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
       ]
@@ -226,7 +226,7 @@ export default function HeaderES() {
         { href: `${basePath}/test`, label: 'Test', icon: '🎯' },
         { href: `${basePath}/temario`, label: 'Temario', icon: '📚' },
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-        { href: '/test/configurar', label: 'Multi-Ley', icon: '📖' },
+        { href: '/test/configurar', label: 'Multi-Ley', icon: '⚙️' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
       ]
@@ -236,7 +236,7 @@ export default function HeaderES() {
         { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
         { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
         { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-        { href: '/test/configurar', label: 'Multi-Ley', icon: '📖' },
+        { href: '/test/configurar', label: 'Multi-Ley', icon: '⚙️' },
         { href: '/psicotecnicos/test', label: 'Psicotécnicos', icon: '🧩' },
         { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
       ]
@@ -249,7 +249,7 @@ export default function HeaderES() {
       { href: '/auxiliar-administrativo-estado/test', label: 'Test', icon: '🎯' },
       { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
       { href: '/leyes', label: 'Leyes', icon: '⚖️' },
-      { href: '/test/configurar', label: 'Multi-Ley', icon: '📖' },
+      { href: '/test/configurar', label: 'Multi-Ley', icon: '⚙️' },
       { href: '/psicotecnicos', label: 'Psicotécnicos', icon: '🧩' },
       { href: '/oposiciones', label: 'Oposiciones', icon: '📋' }
     ]
@@ -454,13 +454,17 @@ export default function HeaderES() {
                   <span>IA</span>
                 </button>
 
-                {/* 📖 Multi-Ley - Móvil */}
+                {/* 🎯 Multi-Ley - Móvil (diana azul) */}
                 <Link
                   href="/test/configurar"
-                  className="text-xl"
+                  className="flex items-center"
                   title="Test Multi-Ley"
                 >
-                  📖
+                  <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="6" />
+                    <circle cx="12" cy="12" r="2" fill="currentColor" />
+                  </svg>
                 </Link>
 
                 {/* 📝 Exámenes pendientes - Móvil */}
