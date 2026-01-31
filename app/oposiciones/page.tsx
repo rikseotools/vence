@@ -61,14 +61,16 @@ async function getConvocatorias(searchParams: SearchParams) {
 
   // Si se filtra por plazo abierto, usar query directa
   if (searchParams.plazoAbierto === '1') {
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date();
+    const hoyStr = hoy.toISOString().split('T')[0];
 
+    // Obtener convocatorias recientes (últimos 30 días) para filtrar por plazo
     let query = supabase
       .from('convocatorias_boe')
-      .select('*', { count: 'exact' })
+      .select('*')
       .eq('is_active', true)
       .eq('tipo', 'convocatoria')
-      .gte('fecha_limite_inscripcion', hoy);
+      .gte('boe_fecha', new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
     // Aplicar filtros adicionales
     if (searchParams.categoria) query = query.eq('categoria', searchParams.categoria);
@@ -77,27 +79,49 @@ async function getConvocatorias(searchParams: SearchParams) {
     if (searchParams.provincia) query = query.ilike('provincia', searchParams.provincia);
     if (searchParams.q) query = query.or(`titulo_limpio.ilike.%${searchParams.q}%,resumen.ilike.%${searchParams.q}%`);
 
-    // Ordenar
-    if (searchParams.orden === 'plazas') {
-      query = query.order('num_plazas', { ascending: false, nullsFirst: false });
-    } else if (searchParams.orden === 'antiguos') {
-      query = query.order('boe_fecha', { ascending: true });
-    } else {
-      query = query.order('fecha_limite_inscripcion', { ascending: true }); // Próximos a cerrar primero
-    }
-
-    query = query.range(offset, offset + limit - 1);
-
-    const { data, count, error } = await query;
+    const { data: allData, error } = await query;
 
     if (error) {
       console.error('Error fetching convocatorias plazo abierto:', error);
       return { convocatorias: [], total: 0 };
     }
 
+    // Filtrar las que tienen plazo abierto
+    // Usar plazo_inscripcion_dias de la BD (extraído del BOE), o 20 días por defecto
+    const PLAZO_DEFAULT = 20;
+
+    const conPlazoAbierto = (allData || []).filter(conv => {
+      // Si tiene fecha_limite_inscripcion calculada, usar esa
+      if (conv.fecha_limite_inscripcion) {
+        return conv.fecha_limite_inscripcion >= hoyStr;
+      }
+      // Si no, calcular: boe_fecha + plazo_inscripcion_dias (o 20 por defecto)
+      if (conv.boe_fecha) {
+        const boeFecha = new Date(conv.boe_fecha);
+        const plazoDias = conv.plazo_inscripcion_dias || PLAZO_DEFAULT;
+        const fechaLimite = new Date(boeFecha.getTime() + plazoDias * 24 * 60 * 60 * 1000);
+        return fechaLimite >= hoy;
+      }
+      return false;
+    });
+
+    // Ordenar
+    conPlazoAbierto.sort((a, b) => {
+      if (searchParams.orden === 'plazas') {
+        return (b.num_plazas || 0) - (a.num_plazas || 0);
+      } else if (searchParams.orden === 'antiguos') {
+        return new Date(a.boe_fecha).getTime() - new Date(b.boe_fecha).getTime();
+      }
+      // Por defecto: más recientes primero
+      return new Date(b.boe_fecha).getTime() - new Date(a.boe_fecha).getTime();
+    });
+
+    // Paginar
+    const paginado = conPlazoAbierto.slice(offset, offset + limit);
+
     return {
-      convocatorias: data || [],
-      total: count || 0
+      convocatorias: paginado,
+      total: conPlazoAbierto.length
     };
   }
 

@@ -39,10 +39,15 @@ export interface PlazasExtraidas {
 export function detectarTipo(titulo: string): TipoConvocatoria {
   const t = titulo.toLowerCase();
 
-  // 1. Corrección de errores (más específico, comprobar primero)
+  // 1. Corrección de errores y modificaciones (más específico, comprobar primero)
   if (
     t.includes('corrección de errores') ||
-    t.includes('correccion de errores')
+    t.includes('correccion de errores') ||
+    t.includes('se corrigen errores') ||
+    t.includes('corrigiendo errores') ||
+    t.includes('se modifica la') ||
+    t.includes('se modifican') ||
+    t.includes('modificación de la')
   ) {
     return 'correccion';
   }
@@ -216,7 +221,12 @@ export function detectarCategoriaDeContenido(contenido: string): Categoria | nul
     t.includes('grupo a1') ||
     t.includes('clase superior') ||
     t.includes('técnico superior') ||
-    t.includes('tecnico superior')
+    t.includes('tecnico superior') ||
+    t.includes('cuerpo de ingenieros') ||
+    t.includes('cuerpo superior') ||
+    t.includes('cuerpo facultativo') ||
+    t.includes('ingeniero de') ||
+    t.includes('arquitecto de')
   ) {
     return 'A1';
   }
@@ -232,19 +242,31 @@ export function detectarCategoriaDeContenido(contenido: string): Categoria | nul
   }
 
   // Patrones por titulación requerida
-  if (t.includes('graduado escolar') || t.includes('eso') || t.includes('educación secundaria obligatoria')) {
-    return 'C2';
-  }
-  if (t.includes('bachiller') || t.includes('técnico superior')) {
-    return 'C1';
+  // IMPORTANTE: Detectar A1 primero (más específico) antes que C2
+  if (
+    t.includes('licenciatura') ||
+    t.includes('título de grado') ||
+    t.includes('ingeniería superior') ||
+    t.includes('grado en derecho') ||
+    t.includes('grado en ingeniería') ||
+    t.includes('grado en arquitectura') ||
+    t.includes('grado en medicina') ||
+    t.includes('título de ingeniero') ||
+    t.includes('título de arquitecto') ||
+    (t.includes('licenciatura o grado') && t.includes('derecho'))
+  ) {
+    return 'A1';
   }
   if (t.includes('diplomatura') || t.includes('grado universitario')) {
     return 'A2';
   }
-  if (t.includes('licenciatura') || t.includes('título de grado') || t.includes('ingeniería superior')) {
-    return 'A1';
+  if (t.includes('bachiller') && !t.includes('grado') && !t.includes('licenciatura')) {
+    return 'C1';
   }
-
+  // C2 - usar regex para evitar falsos positivos con "eso" dentro de otras palabras
+  if (t.includes('graduado escolar') || /\beso\b/.test(t) || t.includes('educación secundaria obligatoria')) {
+    return 'C2';
+  }
   return null;
 }
 
@@ -586,59 +608,71 @@ export function extraerDatosDelTexto(texto: string): DatosExtraidos {
 
 /**
  * Extrae el plazo de inscripción en días
+ * IMPORTANTE: Buscar específicamente el plazo de PRESENTACIÓN DE SOLICITUDES,
+ * no otros plazos como subsanación, alegaciones, etc.
  */
 function extraerPlazo(texto: string): number | null {
-  // Patrón 1: "plazo de X días hábiles/naturales"
-  const match1 = texto.match(/plazo\s+(?:de\s+)?(\w+)\s+d[ií]as\s*(?:h[aá]biles|naturales)?/i);
-  if (match1) {
-    const numText = spanishTextToNumber(match1[1]);
-    const num = numText ? parseInt(String(numText)) : parseInt(match1[1]);
-    if (num && !isNaN(num)) return num;
+  // Helper para extraer número (texto o dígito)
+  const extraerNumero = (str: string): number | null => {
+    const numText = spanishTextToNumber(str);
+    if (numText) return parseInt(String(numText));
+    const num = parseInt(str);
+    return !isNaN(num) ? num : null;
+  };
+
+  // PRIORIDAD 1: Buscar específicamente "plazo de presentación de solicitudes será de X días"
+  // Este es el patrón más confiable para el plazo de inscripción
+  const matchPresentacion = texto.match(
+    /plazo\s+(?:de\s+)?presentaci[oó]n\s+(?:de\s+)?(?:las?\s+)?(?:solicitudes?|instancias?)\s+(?:ser[aá]|es)\s+(?:de\s+)?(\w+)\s+d[ií]as\s*(?:h[aá]biles|naturales)?/i
+  );
+  if (matchPresentacion) {
+    const num = extraerNumero(matchPresentacion[1]);
+    if (num && num >= 5 && num <= 60) return num;
   }
 
-  // Patrón 2: "X días hábiles" (número)
-  const match2 = texto.match(/(\d+)\s+d[ií]as\s*(?:h[aá]biles|naturales)/i);
-  if (match2) {
-    return parseInt(match2[1]);
+  // PRIORIDAD 2: "presentación de solicitudes... X días naturales/hábiles"
+  const matchPresentacion2 = texto.match(
+    /presentaci[oó]n\s+(?:de\s+)?(?:las?\s+)?(?:solicitudes?|instancias?).{0,80}?(\w+)\s+d[ií]as\s*(?:h[aá]biles|naturales)/i
+  );
+  if (matchPresentacion2) {
+    const num = extraerNumero(matchPresentacion2[1]);
+    if (num && num >= 5 && num <= 60) return num;
   }
 
-  // Patrón 3: "veinte/quince/treinta días" (texto común)
-  const match3 = texto.match(/(veinte|veintiuno|veintidós|veintitrés|veinticuatro|veinticinco|quince|treinta|diez|cinco)\s+d[ií]as/i);
-  if (match3) {
-    const num = spanishTextToNumber(match3[1]);
-    if (num) return parseInt(String(num));
+  // PRIORIDAD 3: "X días naturales a contar desde" (común en BOE)
+  const matchDesde = texto.match(
+    /(\w+)\s+d[ií]as\s*(?:h[aá]biles|naturales)\s*(?:,?\s*)?(?:a\s+contar|contados?|desde)/i
+  );
+  if (matchDesde) {
+    const num = extraerNumero(matchDesde[1]);
+    if (num && num >= 5 && num <= 60) return num;
   }
 
-  // Patrón 4: "el plazo será de X días"
-  const match4 = texto.match(/plazo\s+ser[aá]\s+(?:de\s+)?(\w+)\s+d[ií]as/i);
-  if (match4) {
-    const numText = spanishTextToNumber(match4[1]);
-    const num = numText ? parseInt(String(numText)) : parseInt(match4[1]);
-    if (num && !isNaN(num)) return num;
+  // PRIORIDAD 4: "el plazo será de X días" (sin mencionar presentación explícitamente)
+  const matchPlazoDias = texto.match(
+    /(?:el\s+)?plazo\s+(?:de\s+inscripci[oó]n\s+)?ser[aá]\s+(?:de\s+)?(\w+)\s+d[ií]as\s*(?:h[aá]biles|naturales)?/i
+  );
+  if (matchPlazoDias) {
+    const num = extraerNumero(matchPlazoDias[1]);
+    if (num && num >= 5 && num <= 60) return num;
   }
 
-  // Patrón 5: "presentación de solicitudes... X días"
-  const match5 = texto.match(/presentaci[oó]n\s+de\s+(?:solicitudes?|instancias?).{0,50}(\d+)\s+d[ií]as/i);
-  if (match5) {
-    return parseInt(match5[1]);
-  }
-
-  // Patrón 6: "un mes" = 30 días (aproximado)
-  if (texto.match(/plazo\s+(?:de\s+)?un\s+mes/i)) {
+  // PRIORIDAD 5: "un mes" para presentación = 30 días
+  if (texto.match(/plazo\s+(?:de\s+)?(?:presentaci[oó]n.{0,30})?un\s+mes/i)) {
     return 30;
   }
 
-  // Patrón 7: "X días naturales/hábiles a partir de"
-  const match7 = texto.match(/(\d+)\s+d[ií]as\s*(?:h[aá]biles|naturales)?\s*(?:a\s+partir|desde|contados?)/i);
-  if (match7) {
-    return parseInt(match7[1]);
+  // PRIORIDAD 6: Buscar "veinte días naturales" o similar cerca de "publicación" o "BOE"
+  const matchPublicacion = texto.match(
+    /(\w+)\s+d[ií]as\s*(?:h[aá]biles|naturales).{0,50}(?:publicaci[oó]n|boe|bolet[ií]n)/i
+  );
+  if (matchPublicacion) {
+    const num = extraerNumero(matchPublicacion[1]);
+    if (num && num >= 5 && num <= 60) return num;
   }
 
-  // Patrón 8: "plazo... finalizará... X días"
-  const match8 = texto.match(/plazo.{0,30}finalizar[aá].{0,30}(\d+)\s+d[ií]as/i);
-  if (match8) {
-    return parseInt(match8[1]);
-  }
+  // NO usar patrones genéricos como "plazo de X días" porque pueden
+  // capturar plazos de subsanación, alegaciones, recursos, etc.
 
   return null;
 }
