@@ -11,7 +11,8 @@ export default function ErrorDetectionQuestion({
   attemptCount = 0,
   // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
-  verifiedExplanation = null
+  verifiedExplanation = null,
+  hideAIChat = false
 }) {
   const [textComponent, setTextComponent] = useState('')
 
@@ -95,6 +96,7 @@ export default function ErrorDetectionQuestion({
       attemptCount={attemptCount}
       verifiedCorrectAnswer={verifiedCorrectAnswer}
       verifiedExplanation={verifiedExplanation}
+      hideAIChat={hideAIChat}
     />
   )
 }

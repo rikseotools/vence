@@ -3,6 +3,14 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 
+// Helper para formatear markdown básico a HTML
+function formatMarkdown(text) {
+  if (!text) return ''
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // **negrita**
+    .replace(/\n/g, '<br>') // saltos de línea
+}
+
 export default function ChartQuestion({
   question,
   onAnswer,
@@ -14,7 +22,8 @@ export default function ChartQuestion({
   attemptCount = 0, // Número de intentos previos de esta pregunta
   // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
-  verifiedExplanation = null
+  verifiedExplanation = null,
+  hideAIChat = false // Ocultar botón de IA (ej: en exámenes oficiales)
 }) {
   const { user } = useAuth()
 
@@ -187,8 +196,8 @@ export default function ChartQuestion({
         </div>
       )}
 
-      {/* Mensaje motivador (solo cuando se falla) */}
-      {showResult && motivationalMessage && (
+      {/* Mensaje motivador (solo en práctica, no en exámenes oficiales) */}
+      {showResult && motivationalMessage && !hideAIChat && (
         <div className="mt-6 mb-4">
           <div className={`p-4 rounded-lg border-l-4 ${
             motivationalMessage.color === 'green' ? 'bg-green-50 border-green-500' :
@@ -229,22 +238,44 @@ export default function ChartQuestion({
               }`}>
                 {selectedAnswer === effectiveCorrectAnswer ? '✓' : '✗'}
               </div>
-              <h4 className="font-bold text-blue-900 text-lg">
-                {question.psychometric_sections?.psychometric_categories?.display_name?.toUpperCase()}: {question.psychometric_sections?.display_name?.toUpperCase()}
-              </h4>
-              {/* Botón para abrir IA - siempre visible */}
-              <button
+              {/* Solo mostrar categoría si existe psychometric_sections */}
+              {question.psychometric_sections?.psychometric_categories?.display_name && (
+                <h4 className="font-bold text-blue-900 text-lg">
+                  {question.psychometric_sections.psychometric_categories.display_name.toUpperCase()}: {question.psychometric_sections.display_name?.toUpperCase()}
+                </h4>
+              )}
+              {/* Botón para abrir IA - oculto en exámenes oficiales */}
+              {!hideAIChat && <button
                   onClick={() => {
                     // Determinar el tipo de pregunta para el mensaje
                     const isErrorDetection = question.content_data?.chart_type === 'error_detection' || question.question_subtype === 'error_detection'
-                    const questionType = isErrorDetection ? 'ortografía' : 'gráficos'
+                    const isDataTable = question.question_subtype === 'data_tables' || question.content_data?.table_data
+                    const questionType = isErrorDetection ? 'ortografía' : isDataTable ? 'tablas' : 'gráficos'
+
                     // Para error_detection, incluir la frase original
-                    const originalText = isErrorDetection && question.content_data?.original_text
-                      ? `\n\nFrase a analizar: "${question.content_data.original_text}"`
-                      : ''
+                    let additionalContext = ''
+                    if (isErrorDetection && question.content_data?.original_text) {
+                      additionalContext = `\n\nFrase a analizar: "${question.content_data.original_text}"`
+                    }
+
+                    // Para tablas, incluir los datos de la tabla
+                    if (isDataTable && question.content_data?.table_data) {
+                      const td = question.content_data.table_data
+                      const tableName = question.content_data.table_name || td.title || 'Tabla de datos'
+                      let tableText = `\n\n📊 ${tableName}:\n`
+                      if (td.headers && td.rows) {
+                        tableText += td.headers.join(' | ') + '\n'
+                        tableText += td.headers.map(() => '---').join(' | ') + '\n'
+                        td.rows.forEach(row => {
+                          tableText += row.join(' | ') + '\n'
+                        })
+                      }
+                      additionalContext = tableText
+                    }
+
                     window.dispatchEvent(new CustomEvent('openAIChat', {
                       detail: {
-                        message: `Explícame paso a paso cómo resolver esta pregunta de ${questionType}: "${question.question_text}"${originalText}\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
+                        message: `Explícame paso a paso cómo resolver esta pregunta de ${questionType}: "${question.question_text}"${additionalContext}\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
                         suggestion: 'explicar_psico'
                       }
                     }))
@@ -256,26 +287,31 @@ export default function ChartQuestion({
                     <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
                   </svg>
                   <span>¿Necesitas ayuda?</span>
-                </button>
+                </button>}
             </div>
             
 
-            <h4 className="font-bold text-blue-900 mb-3 flex items-center">
-              <span className="bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
-              {question.content_data?.chart_type === 'error_detection' ? 'EXPLICACIÓN:' : 'ANÁLISIS PASO A PASO:'}
-            </h4>
-            
             {/* Secciones específicas de explicación o explicación estándar */}
             <div className="space-y-4">
-              {explanationSections || (
-                question.explanation && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                    <div 
-                      className="text-blue-700 whitespace-pre-line"
-                      dangerouslySetInnerHTML={{ __html: question.explanation.replace(/\n/g, '<br>') }}
-                    />
-                  </div>
-                )
+              {explanationSections ? (
+                // Si hay explanationSections, mostrarlas directamente (ya tienen sus propios títulos)
+                explanationSections
+              ) : (
+                // Fallback: mostrar header + explanation
+                <>
+                  <h4 className="font-bold text-blue-900 mb-3 flex items-center">
+                    <span className="bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
+                    {question.content_data?.chart_type === 'error_detection' ? 'EXPLICACIÓN:' : 'ANÁLISIS PASO A PASO:'}
+                  </h4>
+                  {question.explanation && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                      <div
+                        className="text-blue-700"
+                        dangerouslySetInnerHTML={{ __html: formatMarkdown(question.explanation) }}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

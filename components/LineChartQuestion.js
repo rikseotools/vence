@@ -11,7 +11,8 @@ export default function LineChartQuestion({
   attemptCount = 0,
   // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
-  verifiedExplanation = null
+  verifiedExplanation = null,
+  hideAIChat = false
 }) {
   const [chartSvg, setChartSvg] = useState('')
   // Dark mode desactivado para psicotécnicos
@@ -346,6 +347,7 @@ export default function LineChartQuestion({
       attemptCount={attemptCount}
       verifiedCorrectAnswer={verifiedCorrectAnswer}
       verifiedExplanation={verifiedExplanation}
+      hideAIChat={hideAIChat}
     />
   )
 }

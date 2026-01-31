@@ -12,7 +12,8 @@ export default function PieChartQuestion({
   attemptCount = 0,
   // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
-  verifiedExplanation = null
+  verifiedExplanation = null,
+  hideAIChat = false
 }) {
   const { user } = useAuth()
   const [chartSvg, setChartSvg] = useState('')
@@ -325,6 +326,7 @@ export default function PieChartQuestion({
       attemptCount={attemptCount}
       verifiedCorrectAnswer={verifiedCorrectAnswer}
       verifiedExplanation={verifiedExplanation}
+      hideAIChat={hideAIChat}
     />
   )
 }

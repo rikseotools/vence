@@ -847,7 +847,8 @@ export default function OfficialExamLayout({
       attemptCount: 0,
       verifiedCorrectAnswer: verifiedCorrectAnswer,
       verifiedExplanation: verifiedExplanation,
-      disabled: isSubmitted
+      disabled: isSubmitted,
+      hideAIChat: true // Ocultar IA en exámenes oficiales - puede dar respuestas incorrectas
     }
 
     // Renderizar segun subtipo
@@ -933,8 +934,8 @@ export default function OfficialExamLayout({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
             <h4 className="font-semibold text-blue-800 mb-2">📝 Explicacion:</h4>
             <div
-              className="text-blue-700 whitespace-pre-line"
-              dangerouslySetInnerHTML={{ __html: verifiedExplanation.replace(/\n/g, '<br>') }}
+              className="text-blue-700"
+              dangerouslySetInnerHTML={{ __html: formatMarkdown(verifiedExplanation) }}
             />
           </div>
         )}
@@ -1219,12 +1220,15 @@ export default function OfficialExamLayout({
                   )}
                 </div>
 
-                {/* Texto de la pregunta */}
-                <div className="mb-6">
-                  <p className="text-lg text-gray-900 leading-relaxed">
-                    {question.question}
-                  </p>
-                </div>
+                {/* Texto de la pregunta - Solo para legislativas y psicotecnicas sin componente especializado */}
+                {/* Los tipos con componente (pie_chart, bar_chart, data_tables, etc.) muestran el texto internamente */}
+                {(!isPsychometric || !['pie_chart', 'bar_chart', 'line_chart', 'data_tables', 'mixed_chart', 'error_detection', 'word_analysis', 'sequence_numeric', 'sequence_letter', 'sequence_alphanumeric'].includes(question.questionSubtype || '')) && (
+                  <div className="mb-6">
+                    <p className="text-lg text-gray-900 leading-relaxed">
+                      {question.question}
+                    </p>
+                  </div>
+                )}
 
                 {/* Opciones de respuesta segun tipo */}
                 {isPsychometric

@@ -11,7 +11,8 @@ export default function BarChartQuestion({
   attemptCount = 0,
   // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
-  verifiedExplanation = null
+  verifiedExplanation = null,
+  hideAIChat = false
 }) {
   const [chartSvg, setChartSvg] = useState('')
   const [scale, setScale] = useState(1)
@@ -473,6 +474,7 @@ export default function BarChartQuestion({
       attemptCount={attemptCount}
       verifiedCorrectAnswer={verifiedCorrectAnswer}
       verifiedExplanation={verifiedExplanation}
+      hideAIChat={hideAIChat}
     />
   )
 }
