@@ -43,9 +43,36 @@ const CONFIRMATION_PATTERNS = [
   /confirmo\s+que\s+es\s+correcta/i,
 ]
 
+// Patrones para detectar preguntas que piden la opción INCORRECTA/FALSA
+const NEGATIVE_QUESTION_PATTERNS = [
+  /señale.*incorrecta/i,
+  /opción.*incorrecta/i,
+  /respuesta.*incorrecta/i,
+  /cuál.*NO\s+es/i,
+  /NO\s+corresponde/i,
+  /NO\s+es\s+un[oa]?\b/i,
+  /señale.*falsa/i,
+  /indique.*falsa/i,
+  /\bEXCEPTO\b/i,
+  /NO\s+está/i,
+  /NO\s+son/i,
+  /NO\s+puede/i,
+  /NO\s+podrá/i,
+  /NO\s+tendrá/i,
+  /cuál.*es.*falsa/i,
+]
+
 // ============================================
 // FUNCIONES PRINCIPALES
 // ============================================
+
+/**
+ * Detecta si una pregunta pide identificar la opción INCORRECTA/FALSA
+ * En estas preguntas, la respuesta correcta ES una afirmación falsa
+ */
+export function isNegativeQuestion(questionText: string): boolean {
+  return NEGATIVE_QUESTION_PATTERNS.some(p => p.test(questionText))
+}
 
 /**
  * Detecta si una respuesta de la IA indica un posible error
@@ -202,9 +229,24 @@ export function generateVerificationContext(
   const correctText = question.options[question.markedCorrect] || 'No disponible'
   const letters = ['A', 'B', 'C', 'D']
   const otherOptions = letters.filter(l => l !== correctLetter)
+  const isNegative = isNegativeQuestion(question.questionText)
+
+  // Instrucción especial para preguntas negativas (piden la opción incorrecta/falsa)
+  const negativeQuestionWarning = isNegative ? `
+🔴 ATENCIÓN - PREGUNTA NEGATIVA:
+Esta pregunta pide identificar la opción INCORRECTA o FALSA.
+La respuesta ${correctLetter}) "${correctText}" es la respuesta correcta PORQUE es una afirmación FALSA.
+
+IMPORTANTE:
+- NO digas "posible error" porque la opción ${correctLetter} sea falsa - ESO ES LO QUE SE BUSCA
+- Explica POR QUÉ la opción ${correctLetter} es FALSA según el artículo
+- Confirma que las otras opciones (${otherOptions.join(', ')}) son VERDADERAS
+- Tu respuesta debe empezar confirmando que ${correctLetter} es la correcta porque es la falsa
+
+` : ''
 
   return `
-📋 PROCESO DE ANÁLISIS:
+${negativeQuestionWarning}📋 PROCESO DE ANÁLISIS:
 
 RESPUESTA MARCADA COMO CORRECTA EN BD: ${correctLetter}) ${correctText}
 

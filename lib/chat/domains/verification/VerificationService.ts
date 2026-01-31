@@ -647,11 +647,17 @@ Usa formato rico para que sea fácil de leer:
 3. **Consejo práctico** - Si aplica, da un tip para recordarlo
 4. **Por qué las otras opciones son incorrectas** (brevemente, opcional)
 
-## ⚠️ SI DETECTAS UN ERROR
-Si la respuesta marcada como correcta parece incorrecta:
-- Empieza con "⚠️ **Posible error detectado**"
-- Explica cuál debería ser la respuesta correcta y por qué
-- Sé claro pero respetuoso
+## 🔒 CONFIANZA EN LA BASE DE DATOS
+La respuesta marcada en nuestra base de datos ha sido verificada por expertos.
+Tu rol es EXPLICAR por qué es correcta, NO cuestionarla.
+
+⚠️ SOLO indica "Posible error" si cumples TODAS estas condiciones:
+1. Hay una contradicción LITERAL e INDISCUTIBLE con la documentación
+2. Puedes citar el texto EXACTO que lo contradice
+3. Cualquier experto estaría de acuerdo en que es un error
+4. NO es una pregunta negativa (que pide la opción incorrecta/falsa)
+
+En caso de duda, SIEMPRE asume que la BD es correcta y explica lo mejor posible.
 
 ## 🎨 EJEMPLO DE FORMATO
 ✅ **La respuesta correcta es la C**
@@ -667,7 +673,8 @@ Si la respuesta marcada como correcta parece incorrecta:
 - Usa lenguaje cercano y motivador
 - NO menciones "artículos" ni "legislación" - esto es contenido TÉCNICO de informática
 - NO incluyas sección de "Fuentes" al final
-- Enfócate en explicar el concepto técnico de forma práctica`
+- Enfócate en explicar el concepto técnico de forma práctica
+- NUNCA digas "posible error" a menos que estés 100% seguro`
   }
 
   // Prompt estándar para preguntas de DERECHO
@@ -690,11 +697,24 @@ Usa formato rico para que sea fácil de leer:
 3. **Explicación didáctica** - Explica el concepto de forma sencilla
 4. **Por qué las otras opciones son incorrectas** (brevemente, opcional)
 
-## ⚠️ SI DETECTAS UN ERROR
-Si la respuesta marcada como correcta NO coincide con la legislación:
-- Empieza con "⚠️ **Posible error detectado**"
-- Explica qué dice la ley realmente
-- Sé claro pero respetuoso
+## 🔒 CONFIANZA EN LA BASE DE DATOS
+La respuesta marcada en nuestra base de datos ha sido verificada por expertos legales.
+Tu rol es EXPLICAR por qué es correcta, NO cuestionarla.
+
+⚠️ SOLO indica "Posible error" si cumples TODAS estas condiciones:
+1. El artículo dice LITERALMENTE lo contrario (no es interpretación)
+2. Puedes citar el texto EXACTO del artículo que lo contradice
+3. La contradicción es INDISCUTIBLE (cualquier jurista estaría de acuerdo)
+4. NO es una pregunta negativa (que pide la opción incorrecta/falsa)
+
+En caso de duda, SIEMPRE asume que la BD es correcta y explica lo mejor posible.
+El 99.9% de las preguntas están verificadas - los errores son extremadamente raros.
+
+## 📖 LECTURA PRECISA DEL TEXTO LEGAL
+- Lee EXACTAMENTE lo que dice el artículo, palabra por palabra
+- "Diputado al Congreso" NO es lo mismo que "Senador"
+- "Diputado al Congreso" NO es lo mismo que "miembro de las Cortes Generales"
+- Si el artículo menciona X, NO asumas que también aplica a Y
 
 ## 🎨 EJEMPLO DE FORMATO
 ✅ **La respuesta correcta es la B**
@@ -710,7 +730,8 @@ Si la respuesta marcada como correcta NO coincide con la legislación:
 - Sé conciso pero completo
 - Usa lenguaje cercano y motivador
 - NO incluyas sección de "Fuentes" al final (ya se muestran aparte)
-- Si no tienes el artículo exacto, usa tu conocimiento pero acláralo`
+- Si no tienes el artículo exacto, usa tu conocimiento pero acláralo
+- NUNCA digas "posible error" a menos que estés 100% seguro`
 }
 
 // ============================================

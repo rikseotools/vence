@@ -21,18 +21,59 @@ supabase
 
 **Resultado:** Lista de impugnaciones con ID, tipo y descripción.
 
-## 2. Analizar una Impugnación
+## 2. Analizar una Impugnación a Fondo
 
 ```
-analiza la impugnación [número] - qué pregunta es y qué artículo tiene vinculado
+analiza la impugnación [número] a fondo
 ```
 
-Claude obtendrá:
+Claude debe obtener y verificar **todos** estos elementos:
+
+### 2.1 Datos de la pregunta
 - Texto completo de la pregunta
 - Opciones A, B, C, D
-- Respuesta marcada como correcta
-- Explicación actual
-- Artículos vinculados (si hay)
+- Respuesta marcada como correcta (índice 0-3)
+- Explicación didáctica actual
+
+### 2.2 Artículo vinculado
+- `primary_article_id` → Artículo principal
+- Ley a la que pertenece (short_name)
+- Contenido completo del artículo
+- **Nota:** Solo se puede vincular UN artículo principal
+
+### 2.3 Verificación de cada opción
+Crear una tabla analizando cada opción:
+
+| Opción | Fundamento Legal | ¿Correcta? |
+|--------|------------------|------------|
+| A | Art. X dice... | ✅/❌ |
+| B | Art. Y dice... | ✅/❌ |
+| C | Art. Z dice... | ✅/❌ |
+| D | ... | ✅/❌ |
+
+### 2.4 Preguntas clave a responder
+1. **¿La respuesta marcada es correcta?** - Verificar contra el artículo
+2. **¿El artículo vinculado es el correcto?** - ¿Responde la pregunta?
+3. **¿La explicación es didáctica?** - ¿Explica POR QUÉ cada opción es correcta/incorrecta?
+4. **¿La explicación solo transcribe?** - Si solo copia el artículo sin explicar, hay que mejorarla
+
+### 2.5 Verificación AI existente
+Consultar `ai_verification_results`:
+- `answer_ok`: ¿La respuesta es correcta?
+- `explanation_ok`: ¿La explicación es correcta?
+- `article_ok`: ¿El artículo vinculado es correcto?
+- `ai_model`: Qué modelo verificó
+- `explanation`: Análisis del modelo
+
+### 2.6 Diagnóstico final
+Crear tabla resumen:
+
+| Aspecto | Estado | Acción |
+|---------|--------|--------|
+| Respuesta correcta | ✅/❌ | Corregir si es necesario |
+| Explicación | ✅/⚠️/❌ | Mejorar si no es didáctica |
+| Artículo vinculado | ✅/❌ | Cambiar si es incorrecto |
+| Impugnación | Válida/Falso positivo | Resolver/Rechazar |
 
 ## 3. Buscar el Artículo Correcto
 
@@ -118,22 +159,26 @@ corrige la pregunta pero no cierres la impugnación
 
 Claude actualizará:
 
-### 4.1 Explicación (tabla `questions`)
+### 5.1 Explicación (tabla `questions`)
 ```javascript
 supabase
   .from('questions')
-  .update({ explanation: nuevaExplicacion })
+  .update({
+    explanation: nuevaExplicacion,
+    verification_status: 'verified',
+    verified_at: new Date().toISOString()
+  })
   .eq('id', questionId);
 ```
 
-### 4.2 Vincular artículo (tabla `question_articles`)
+### 5.2 Vincular artículo (tabla `question_articles`)
 ```javascript
 supabase
   .from('question_articles')
   .insert({ question_id: questionId, article_id: articleId });
 ```
 
-### 4.3 Actualizar verificación AI (tabla `ai_verification_results`)
+### 5.3 Actualizar verificación AI (tabla `ai_verification_results`)
 ```javascript
 supabase
   .from('ai_verification_results')
@@ -269,13 +314,12 @@ await supabase
 9. Usuario aprueba mensaje → Claude cierra la impugnación
 ```
 
-## 10. Ejemplo Real
+## 10. Ejemplo Real #1: Impugnación Válida (Corregir)
 
 **Impugnación:** "La explicación no se corresponde con la pregunta"
 
 **Diagnóstico realizado:**
 - `verified_at`: null (nunca verificada correctamente)
-- `topic_id`: null (sin asignar a tema)
 - AI verification existía pero con artículo incorrecto
 - Modelo usado: Haiku (poco preciso para legal)
 - AI concluyó erróneamente que respuesta C era correcta
@@ -307,18 +351,117 @@ Se ha corregido la explicación con el artículo correcto
 Gracias por el reporte. Mucho ánimo con la oposición!
 ```
 
+---
+
+## 10.1 Ejemplo Real #2: Falso Positivo (Rechazar)
+
+**Impugnación auto-detectada:** "La respuesta B es incorrecta según Art. 67.1 CE"
+
+**Pregunta:** "El cargo de Senador es compatible con el cargo de:"
+- A) Diputado de las Cortes Generales
+- B) Miembro de una Asamblea de CCAA ← Marcada correcta
+- C) Miembro de una Junta Electoral
+- D) Con ninguno de los anteriores
+
+**Análisis de cada opción:**
+
+| Opción | Fundamento Legal | ¿Correcta? |
+|--------|------------------|------------|
+| A | Art. 67.1: "Nadie podrá ser miembro de las dos Cámaras simultáneamente" | ❌ |
+| B | Art. 67.1: prohíbe acumular Asamblea CCAA con **Diputado**, NO con Senador | ✅ |
+| C | Art. 70.1.f: miembros de Juntas Electorales son inelegibles | ❌ |
+| D | Falso, B sí es compatible | ❌ |
+
+**Diagnóstico:**
+- La IA auto-detectora leyó mal el Art. 67.1 CE
+- El artículo dice "Diputado al Congreso", no "Senador"
+- Verificación Opus 4.5 confirmó: "B correcta"
+- La pregunta ES CORRECTA
+
+**Problema de la explicación:**
+- Solo transcribía los artículos sin explicar didácticamente
+- No explicaba POR QUÉ cada opción era correcta/incorrecta
+
+**Acciones:**
+1. Rechazar impugnación (la pregunta es correcta)
+2. Mejorar explicación didáctica (opcional pero recomendado)
+
+**Explicación mejorada:**
+```
+La respuesta correcta es B) Miembro de una Asamblea de CCAA.
+
+Según el artículo 67.1 CE: "Nadie podrá ser miembro de las dos
+Cámaras simultáneamente, ni acumular el acta de una Asamblea de
+Comunidad Autónoma con la de Diputado al Congreso."
+
+A) INCORRECTA - Art. 67.1 prohíbe ser de ambas Cámaras.
+B) CORRECTA - La prohibición solo afecta a Diputados, no Senadores.
+C) INCORRECTA - Art. 70.1.f hace inelegibles a miembros de Juntas Electorales.
+D) INCORRECTA - B sí es compatible.
+
+La clave: el art. 67.1 dice "Diputado al Congreso", no "Senador".
+```
+
+**Mensaje de rechazo:**
+```
+Esta impugnación fue generada automáticamente por IA, pero tras
+revisión manual se confirma que la pregunta es CORRECTA.
+
+El Art. 67.1 CE prohíbe acumular Asamblea de CCAA con "Diputado
+al Congreso", pero NO menciona a los Senadores. Por tanto, un
+Senador SÍ puede ser miembro de una Asamblea de CCAA.
+
+Se ha mejorado la explicación didáctica de la pregunta.
+```
+
 ## 11. Obtener Nombre del Usuario
 
-Para personalizar el mensaje:
+Para personalizar el mensaje, hay dos opciones:
 
+### Opción 1: Desde `user_profiles` (recomendada)
+```javascript
+const { data: profile } = await supabase
+  .from('user_profiles')
+  .select('full_name, email')
+  .eq('id', userId)
+  .single();
+
+const nombre = profile?.full_name?.split(' ')[0] || 'Usuario';
+```
+
+### Opción 2: Desde `auth.users` (requiere service role)
 ```javascript
 const { data: { user } } = await supabase.auth.admin.getUserById(userId);
 const nombre = user.user_metadata?.name || user.user_metadata?.full_name || 'Usuario';
 ```
 
-**Nota:** Requiere `SUPABASE_SERVICE_ROLE_KEY` para acceder a `auth.admin`.
+**Nota:** La opción 2 requiere `SUPABASE_SERVICE_ROLE_KEY` para acceder a `auth.admin`.
 
-## 12. Consejos
+## 12. Rechazar una Impugnación
+
+A veces el usuario está equivocado y la pregunta es correcta. En ese caso:
+
+```
+rechaza la impugnación explicando por qué la pregunta es correcta
+```
+
+Claude actualizará:
+```javascript
+supabase
+  .from('question_disputes')
+  .update({
+    status: 'rejected',
+    admin_response: 'Hola [Nombre],\n\nHemos revisado tu impugnación...\n\n[Explicación de por qué la pregunta es correcta]\n\nGracias por tu interés en mejorar la plataforma.',
+    resolved_at: new Date().toISOString()
+  })
+  .eq('id', disputeId);
+```
+
+**Importante:** Siempre explicar con detalle por qué se rechaza, citando el artículo relevante.
+
+---
+
+## 13. Consejos
 
 - **CRÍTICO: Siempre pedir aprobación explícita** del mensaje antes de cerrar la impugnación. Mostrar el texto y esperar "sí" o "ok" del usuario.
 - **CRÍTICO: Siempre obtener el nombre del usuario** antes de proponer el mensaje. Usar la consulta de la sección 11 para obtenerlo.
@@ -326,4 +469,105 @@ const nombre = user.user_metadata?.name || user.user_metadata?.full_name || 'Usu
 - **No cerrar** la impugnación hasta aprobar el mensaje
 - **Personalizar** el mensaje con el nombre del usuario (nunca "Hola," genérico)
 - **Actualizar** `ai_verification_results` para que la verificación quede correcta
+- **Actualizar** `verification_status` y `verified_at` en la pregunta
 - Si la pregunta **no tiene topic_id**, considerar asignarla al tema correcto
+
+---
+
+## 14. Gestión de Feedbacks (Chat de Soporte)
+
+Los feedbacks de usuarios usan un sistema de **3 tablas** diferente a las impugnaciones:
+
+### 14.1 Tablas del Sistema de Feedback
+
+| Tabla | Uso |
+|-------|-----|
+| `user_feedback` | Feedback inicial del usuario (mensaje, status) |
+| `feedback_conversations` | Conversación asociada (puede haber varias por feedback) |
+| `feedback_messages` | Mensajes individuales de la conversación |
+
+### 14.2 Ver Feedbacks Pendientes
+
+```javascript
+// Feedbacks que necesitan respuesta
+const { data: feedbacks } = await supabase
+  .from('user_feedback')
+  .select('id, message, status, user_id, created_at')
+  .in('status', ['pending', 'in_progress'])
+  .order('created_at', { ascending: true });
+```
+
+### 14.3 Responder a un Feedback
+
+**IMPORTANTE:** Para que el mensaje aparezca en el UI, hay que insertarlo en `feedback_messages`, NO en `user_feedback.admin_response`.
+
+```javascript
+// 1. Buscar la conversación del feedback
+const { data: conv } = await supabase
+  .from('feedback_conversations')
+  .select('id')
+  .eq('feedback_id', feedbackId)
+  .single();
+
+// 2. Obtener un sender_id de admin válido
+const { data: adminMsg } = await supabase
+  .from('feedback_messages')
+  .select('sender_id')
+  .eq('is_admin', true)
+  .limit(1)
+  .single();
+
+// 3. Insertar el mensaje
+await supabase
+  .from('feedback_messages')
+  .insert({
+    conversation_id: conv.id,
+    sender_id: adminMsg.sender_id,
+    is_admin: true,
+    message: 'Hola [Nombre],\n\n[Tu respuesta]\n\nEquipo de Vence'
+  });
+```
+
+### 14.4 Cerrar un Feedback
+
+**⚠️ CUIDADO:** Al actualizar el status, se actualiza `updated_at` del feedback, lo que cambia el orden en el UI.
+
+```javascript
+// 1. Cerrar la conversación
+await supabase
+  .from('feedback_conversations')
+  .update({ status: 'closed' })
+  .eq('feedback_id', feedbackId);
+
+// 2. Cerrar el feedback
+await supabase
+  .from('user_feedback')
+  .update({ status: 'resolved' })
+  .eq('id', feedbackId);
+```
+
+### 14.5 Corregir Fechas (si se alteraron)
+
+Si el `updated_at` se actualizó y las conversaciones aparecen desordenadas:
+
+```javascript
+// Restaurar updated_at al valor original (created_at)
+await supabase
+  .from('user_feedback')
+  .update({ updated_at: originalCreatedAt })
+  .eq('id', feedbackId);
+```
+
+### 14.6 Estados de Conversación
+
+| Estado | Significado |
+|--------|-------------|
+| `open` | Conversación activa |
+| `waiting_user` | Admin respondió, esperando usuario |
+| `closed` | Conversación cerrada |
+
+### 14.7 El UI muestra "X por responder" cuando:
+
+- La conversación NO está cerrada (`status != 'closed'`)
+- Y el último mensaje NO es del admin (`is_admin = false`)
+- O la conversación está vacía (sin mensajes)
