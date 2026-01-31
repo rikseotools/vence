@@ -46,6 +46,7 @@ interface SearchParams {
   q?: string;
   orden?: string;
   page?: string;
+  plazoAbierto?: string;
 }
 
 async function getConvocatorias(searchParams: SearchParams) {
@@ -57,6 +58,48 @@ async function getConvocatorias(searchParams: SearchParams) {
   const page = parseInt(searchParams.page || '1');
   const limit = 20;
   const offset = (page - 1) * limit;
+
+  // Si se filtra por plazo abierto, usar query directa
+  if (searchParams.plazoAbierto === '1') {
+    const hoy = new Date().toISOString().split('T')[0];
+
+    let query = supabase
+      .from('convocatorias_boe')
+      .select('*', { count: 'exact' })
+      .eq('is_active', true)
+      .eq('tipo', 'convocatoria')
+      .gte('fecha_limite_inscripcion', hoy);
+
+    // Aplicar filtros adicionales
+    if (searchParams.categoria) query = query.eq('categoria', searchParams.categoria);
+    if (searchParams.ambito) query = query.eq('ambito', searchParams.ambito);
+    if (searchParams.ccaa) query = query.eq('comunidad_autonoma', searchParams.ccaa);
+    if (searchParams.provincia) query = query.ilike('provincia', searchParams.provincia);
+    if (searchParams.q) query = query.or(`titulo_limpio.ilike.%${searchParams.q}%,resumen.ilike.%${searchParams.q}%`);
+
+    // Ordenar
+    if (searchParams.orden === 'plazas') {
+      query = query.order('num_plazas', { ascending: false, nullsFirst: false });
+    } else if (searchParams.orden === 'antiguos') {
+      query = query.order('boe_fecha', { ascending: true });
+    } else {
+      query = query.order('fecha_limite_inscripcion', { ascending: true }); // Próximos a cerrar primero
+    }
+
+    query = query.range(offset, offset + limit - 1);
+
+    const { data, count, error } = await query;
+
+    if (error) {
+      console.error('Error fetching convocatorias plazo abierto:', error);
+      return { convocatorias: [], total: 0 };
+    }
+
+    return {
+      convocatorias: data || [],
+      total: count || 0
+    };
+  }
 
   // Usar función RPC agrupada que incluye publicaciones relacionadas
   // p_tipo se omite porque ahora solo mostramos convocatorias

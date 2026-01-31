@@ -18,6 +18,7 @@ interface Props {
     provincia?: string;
     orden?: string;
     q?: string;
+    plazoAbierto?: string;
   };
   total: number;
 }
@@ -147,7 +148,8 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
     currentFilters.ambito,
     currentFilters.ccaa,
     currentFilters.provincia,
-    currentFilters.q
+    currentFilters.q,
+    currentFilters.plazoAbierto
   ].filter(Boolean).length;
 
   const hasFilters = activeFiltersCount > 0;
@@ -216,8 +218,30 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
           </div>
         </div>
 
-        {/* Filtros principales: Grupo y Ámbito */}
+        {/* Filtros principales: Plazo abierto, Grupo y Ámbito */}
         <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:overflow-visible scrollbar-hide">
+          {/* Botón destacado: Plazo abierto */}
+          <Link
+            href={buildUrl('plazoAbierto', currentFilters.plazoAbierto === '1' ? null : '1')}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+              currentFilters.plazoAbierto === '1'
+                ? 'bg-green-600 text-white shadow-sm'
+                : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800/50 border border-green-300 dark:border-green-700'
+            }`}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Plazo abierto
+            {currentFilters.plazoAbierto === '1' && (
+              <svg className="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+          </Link>
+
+          <span className="text-gray-300 dark:text-gray-600 mx-1 shrink-0">|</span>
+
           <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide shrink-0">
             Grupo:
           </span>
@@ -225,13 +249,18 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
             <Link
               key={cat.value}
               href={buildUrl('categoria', currentFilters.categoria === cat.value ? null : cat.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1 ${
                 currentFilters.categoria === cat.value
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               {cat.label}
+              {currentFilters.categoria === cat.value && (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
             </Link>
           ))}
 
@@ -245,13 +274,18 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
             <Link
               key={amb.value}
               href={buildUrl('ambito', currentFilters.ambito === amb.value ? null : amb.value)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap shrink-0 flex items-center gap-1 ${
                 currentFilters.ambito === amb.value
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               {amb.label}
+              {currentFilters.ambito === amb.value && (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
             </Link>
           ))}
         </div>
@@ -370,6 +404,17 @@ export default function FiltrosHorizontales({ currentFilters, total }: Props) {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors border border-blue-200 dark:border-blue-700"
               >
                 "{currentFilters.q}"
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Link>
+            )}
+            {currentFilters.plazoAbierto === '1' && (
+              <Link
+                href={buildUrl('plazoAbierto', null)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-full text-sm font-medium hover:bg-green-200 dark:hover:bg-green-800/50 transition-colors border border-green-200 dark:border-green-700"
+              >
+                Plazo abierto
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
