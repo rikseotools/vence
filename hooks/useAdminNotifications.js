@@ -82,7 +82,7 @@ export function useAdminNotifications() {
             setTimeout(() => reject(new Error('Timeout')), 10000)
           )
         ]),
-        // 3. Contar impugnaciones pendientes
+        // 3. Contar impugnaciones pendientes (normales)
         Promise.race([
           supabase
             .from('question_disputes')
@@ -91,10 +91,20 @@ export function useAdminNotifications() {
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 10000)
           )
+        ]),
+        // 4. Contar impugnaciones psicotécnicas pendientes
+        Promise.race([
+          supabase
+            .from('psychometric_question_disputes')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 10000)
+          )
         ])
       ])
 
-      const [conversationsResult, feedbacksResult, impugnacionesResult] = results
+      const [conversationsResult, feedbacksResult, impugnacionesResult, psychoImpugnacionesResult] = results
 
       let pendingFeedback = 0
       let pendingImpugnaciones = 0
@@ -138,9 +148,15 @@ export function useAdminNotifications() {
       }
 
       if (impugnacionesResult.status === 'fulfilled') {
-        pendingImpugnaciones = impugnacionesResult.value.count || 0
+        pendingImpugnaciones += impugnacionesResult.value.count || 0
       } else {
         console.warn('Error cargando impugnaciones:', impugnacionesResult.reason?.message)
+      }
+
+      if (psychoImpugnacionesResult.status === 'fulfilled') {
+        pendingImpugnaciones += psychoImpugnacionesResult.value.count || 0
+      } else {
+        console.warn('Error cargando impugnaciones psicotécnicas:', psychoImpugnacionesResult.reason?.message)
       }
 
       setNotifications({
