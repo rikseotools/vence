@@ -41,6 +41,18 @@ const nextConfig = {
   async redirects() {
     // Redirecciones mínimas necesarias (rutas que NO existen)
     const testRedirects = [
+      // 🔄 Redirect de /convocatorias/* a /oposiciones/ (migración SEO - 702 URLs afectadas)
+      // Las páginas de convocatorias individuales fueron eliminadas el 13/01/2026
+      {
+        source: '/convocatorias',
+        destination: '/oposiciones',
+        permanent: true, // 301 para transferir autoridad SEO
+      },
+      {
+        source: '/convocatorias/:path*',
+        destination: '/oposiciones',
+        permanent: true, // 301 para transferir autoridad SEO
+      },
       // ⚠️ Esta ruta nunca existió en administrativo-estado, redirigir a la nueva
       {
         source: '/administrativo-estado/test/test-aleatorio-examen',
