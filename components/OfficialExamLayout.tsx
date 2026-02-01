@@ -1274,6 +1274,53 @@ export default function OfficialExamLayout({
                   </button>
                 )}
 
+                {/* Boton Explicar con IA (solo despues de corregir) */}
+                {showFeedback && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => {
+                        // Build context with tables data for psychometric questions
+                        let tablesContext = ''
+                        if (isPsychometric && question.contentData?.tables) {
+                          const tables = question.contentData.tables as Array<{
+                            title?: string
+                            headers: string[]
+                            rows: string[][]
+                          }>
+                          if (Array.isArray(tables)) {
+                            tablesContext = '\n\n📊 DATOS DE LAS TABLAS:\n'
+                            tables.forEach((table, i) => {
+                              tablesContext += `\n${table.title || `Tabla ${i + 1}`}:\n`
+                              tablesContext += table.headers.join(' | ') + '\n'
+                              tablesContext += table.headers.map(() => '---').join(' | ') + '\n'
+                              table.rows.forEach(row => {
+                                tablesContext += row.join(' | ') + '\n'
+                              })
+                            })
+                          }
+                        }
+
+                        const correctLetter = ['A', 'B', 'C', 'D'][validatedResult?.correctIndex ?? -1] || '?'
+                        const questionType = isPsychometric ? 'psicotécnica' : 'legislativa'
+
+                        window.dispatchEvent(new CustomEvent('openAIChat', {
+                          detail: {
+                            message: `Explícame paso a paso cómo resolver esta pregunta ${questionType}: "${question.question}"${tablesContext}\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`,
+                            suggestion: isPsychometric ? 'explicar_psico' : 'explicar_respuesta'
+                          }
+                        }))
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
+                        <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
+                      </svg>
+                      <span>Explicar con IA</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Botones de accion (solo despues de corregir) */}
                 {showFeedback && (
                   <div className="flex flex-wrap gap-2 items-center mt-4">

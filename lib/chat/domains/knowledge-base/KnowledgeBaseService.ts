@@ -210,8 +210,11 @@ export function generateKBSuggestions(category: KBCategory | null): string[] {
 export function getPredefinedResponse(message: string): string | null {
   const msgLower = message.toLowerCase()
 
-  // Psicotécnicos
-  if (/psicot[eé]c?n?i?c?o?s?|series\s+num[eé]ricas|series\s+alfab[eé]ticas|domin[oó]s|matrices|razonamiento\s+l[oó]gico/i.test(msgLower)) {
+  // Psicotécnicos - pero NO cuando piden explicación de una pregunta específica
+  // Si el usuario está pidiendo que expliquemos una pregunta, no devolver respuesta predefinida
+  const isAskingForExplanation = /expl[ií]c(a|ame|ar)|resolver\s+(esta|la)\s+pregunta|c[oó]mo\s+se\s+resuelve|paso\s+a\s+paso|ayud(a|ame)\s+con\s+(esta|la)/i.test(msgLower)
+
+  if (!isAskingForExplanation && /psicot[eé]c?n?i?c?o?s?|series\s+num[eé]ricas|series\s+alfab[eé]ticas|domin[oó]s|matrices|razonamiento\s+l[oó]gico/i.test(msgLower)) {
     return `📊 **¡Genial! Vamos a practicar psicotécnicos**
 
 👉 **[Empezar a practicar psicotécnicos](/psicotecnicos/test)**
