@@ -65,6 +65,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     { key: 'administrativo', label: '👨‍💼 Administrativo del Estado', path: `/administrativo-estado${currentSection}`, oposicionId: 'administrativo_estado' },
     { key: 'tramitacion-procesal', label: '⚖️ Tramitación Procesal', path: `/tramitacion-procesal${currentSection}`, oposicionId: 'tramitacion_procesal' },
     { key: 'leyes', label: '📚 Leyes', path: '/leyes', oposicionId: null },
+    { key: 'por-leyes', label: '📖 Test Por Leyes', path: '/test/por-leyes', oposicionId: null },
     { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos', oposicionId: null },
     { key: 'teoria', label: '📖 Teoría', path: '/teoria', oposicionId: null }
   ]
@@ -120,6 +121,10 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const isInTests = pathname.includes('/test')
   const isPsicotecnicos = pathname.includes('/psicotecnicos')
   const isInTemario = pathname.includes('/temario')
+  const isPorLeyes = pathname === '/test/por-leyes' || pathname === '/test/multi-ley'
+
+  // Tests independientes bajo /test/ que no pertenecen a ninguna oposición
+  const isStandaloneTest = pathname.startsWith('/test/') && !isAuxiliarAdmin && !isAdministrativo && !isTramitacionProcesal
 
   // Detectar si estamos en página de información (página principal de oposición)
   const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal')
@@ -267,44 +272,52 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       <div className="container mx-auto px-4">
         <ol className="flex items-center space-x-2 text-sm">
           {/* Breadcrumb para Oposición */}
-          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isLeyes || isTeoria || isPsicotecnicos) && (
+          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Texto clickeable para ir a la página principal (solo si no estamos ya ahí) */}
-                {((isAuxiliarAdmin && pathname !== '/auxiliar-administrativo-estado') ||
-                  (isAdministrativo && pathname !== '/administrativo-estado') ||
-                  (isTramitacionProcesal && pathname !== '/tramitacion-procesal') ||
-                  (isLeyes && pathname !== '/leyes') ||
-                  (isTeoria && pathname !== '/teoria') ||
-                  (isPsicotecnicos && pathname !== '/psicotecnicos')) ? (
-                  <Link
-                    href={
-                      isAuxiliarAdmin ? '/auxiliar-administrativo-estado' :
-                      isAdministrativo ? '/administrativo-estado' :
-                      isTramitacionProcesal ? '/tramitacion-procesal' :
-                      isLeyes ? '/leyes' :
-                      isTeoria ? '/teoria' :
-                      isPsicotecnicos ? '/psicotecnicos' : '#'
-                    }
-                    className="text-blue-600 hover:text-blue-800 transition-colors"
-                  >
-                    {isAuxiliarAdmin && '👤 Auxiliar Administrativo Estado'}
-                    {isAdministrativo && '👨‍💼 Administrativo del Estado'}
-                    {isTramitacionProcesal && '⚖️ Tramitación Procesal'}
-                    {isLeyes && '📚 Leyes'}
-                    {isTeoria && '📖 Teoría'}
-                    {isPsicotecnicos && '🧩 Psicotécnicos'}
-                  </Link>
-                ) : (
-                  <span className="text-gray-700 font-semibold">
-                    {isAuxiliarAdmin && '👤 Auxiliar Administrativo Estado'}
-                    {isAdministrativo && '👨‍💼 Administrativo del Estado'}
-                    {isTramitacionProcesal && '⚖️ Tramitación Procesal'}
-                    {isLeyes && '📚 Leyes'}
-                    {isTeoria && '📖 Teoría'}
-                    {isPsicotecnicos && '🧩 Psicotécnicos'}
-                  </span>
-                )}
+                {(() => {
+                  // Determinar si mostrar link (no estamos en la página principal)
+                  const showAsLink =
+                    (isAuxiliarAdmin && pathname !== '/auxiliar-administrativo-estado') ||
+                    (isAdministrativo && pathname !== '/administrativo-estado') ||
+                    (isTramitacionProcesal && pathname !== '/tramitacion-procesal') ||
+                    (isLeyes && pathname !== '/leyes') ||
+                    (isTeoria && pathname !== '/teoria') ||
+                    (isPsicotecnicos && pathname !== '/psicotecnicos') ||
+                    (isStandaloneTest && !isPorLeyes) || // Siempre link en tests standalone (menos por-leyes cuando estamos en él)
+                    (isPorLeyes && pathname !== '/test/por-leyes')
+
+                  // Determinar href
+                  const linkHref =
+                    isAuxiliarAdmin ? '/auxiliar-administrativo-estado' :
+                    isAdministrativo ? '/administrativo-estado' :
+                    isTramitacionProcesal ? '/tramitacion-procesal' :
+                    isLeyes ? '/leyes' :
+                    isTeoria ? '/teoria' :
+                    isPsicotecnicos ? '/psicotecnicos' :
+                    isPorLeyes ? '/test/por-leyes' :
+                    isStandaloneTest ? '/test/por-leyes' : '#'
+
+                  // Determinar texto
+                  const labelText =
+                    isAuxiliarAdmin ? '👤 Auxiliar Administrativo Estado' :
+                    isAdministrativo ? '👨‍💼 Administrativo del Estado' :
+                    isTramitacionProcesal ? '⚖️ Tramitación Procesal' :
+                    isLeyes ? '📚 Leyes' :
+                    isTeoria ? '📖 Teoría' :
+                    isPsicotecnicos ? '🧩 Psicotécnicos' :
+                    isStandaloneTest ? '🎯 Tests' : ''
+
+                  if (showAsLink) {
+                    return (
+                      <Link href={linkHref} className="text-blue-600 hover:text-blue-800 transition-colors">
+                        {labelText}
+                      </Link>
+                    )
+                  }
+                  return <span className="text-gray-700 font-semibold">{labelText}</span>
+                })()}
                 
                 {/* Flecha para dropdown */}
                 <button
@@ -353,13 +366,37 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
             </li>
           )}
 
+          {/* Separador para tests standalone (excepto por-leyes que es raíz) */}
+          {isStandaloneTest && pathname !== '/test/por-leyes' && (
+            <span className="text-gray-400 mx-2">/</span>
+          )}
+
+          {/* Breadcrumb segundo nivel para tests standalone */}
+          {isStandaloneTest && pathname !== '/test/por-leyes' && (
+            <li className="flex items-center">
+              <span className="text-gray-700 font-semibold">
+                {pathname === '/test/multi-ley' && '🎯 Test Multi-Ley'}
+                {pathname === '/test/rapido' && '⚡ Test Rápido'}
+                {pathname === '/test/personalizado' && '⚙️ Test Personalizado'}
+                {pathname === '/test/repaso-fallos' && '🔄 Repaso de Fallos'}
+                {pathname === '/test/repaso-fallos-v2' && '🔄 Repaso de Fallos'}
+                {pathname === '/test/aleatorio-examen' && '📝 Test Aleatorio Examen'}
+                {pathname === '/test/articulo' && '📄 Test por Artículo'}
+                {pathname === '/test/desde-chat' && '💬 Test desde Chat'}
+                {pathname === '/test/explorar' && '🔍 Explorar Tests'}
+                {pathname === '/test/mantener-racha' && '🔥 Mantener Racha'}
+                {!pathname.match(/\/(multi-ley|rapido|personalizado|repaso-fallos(-v2)?|aleatorio-examen|articulo|desde-chat|explorar|mantener-racha)$/) && '🎯 Test'}
+              </span>
+            </li>
+          )}
+
           {/* Separador */}
           {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
             <span className="text-gray-400 mx-2">/</span>
           )}
 
           {/* Breadcrumb para Sección (Tests/Temario/Información) - NO duplicar Psicotécnicos ya que está en el nivel superior */}
-          {(isInTests || isInTemario || isInInfo) && (
+          {(isInTests || isInTemario || isInInfo) && !isStandaloneTest && (
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Si estamos en una página específica dentro de la sección, hacer clickeable para volver al índice */}
