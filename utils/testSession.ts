@@ -150,7 +150,7 @@ const createTestSessionSchema = z.object({
   ),
   questions: z.array(questionSchema).min(1, 'Debe haber al menos una pregunta'),
   config: z.object({
-    timeLimit: z.number().optional(),
+    timeLimit: z.number().nullable().optional(),
   }).passthrough().optional().default({}),
   startTime: z.number(),
   pageLoadTime: z.number(),
@@ -411,19 +411,7 @@ export async function createDetailedTestSession(
     // Validar con Zod
     const validation = createTestSessionSchema.safeParse(params)
     if (!validation.success) {
-      const flattened = validation.error.flatten()
-      console.error('❌ Validación fallida:')
-      console.error('   - formErrors:', flattened.formErrors)
-      console.error('   - fieldErrors:', JSON.stringify(flattened.fieldErrors, null, 2))
-      console.error('   Params claves:', {
-        userId: params.userId,
-        tema: params.tema,
-        testNumber: params.testNumber,
-        questionsCount: params.questions?.length,
-        startTime: params.startTime,
-        pageLoadTime: params.pageLoadTime,
-        testType: params.testType,
-      })
+      console.error('❌ [Zod] Validación fallida:', validation.error.issues)
       return null
     }
 
