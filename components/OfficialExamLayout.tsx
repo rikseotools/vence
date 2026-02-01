@@ -278,6 +278,10 @@ export default function OfficialExamLayout({
     resumeTestId ? { id: resumeTestId } : null
   )
   const sessionCreationRef = React.useRef(false)
+  // 🔴 FIX: Use ref to avoid race condition when user answers before state updates
+  const currentTestSessionRef = React.useRef<{ id: string } | null>(
+    resumeTestId ? { id: resumeTestId } : null
+  )
 
   // Resultados validados por API
   const [validatedResults, setValidatedResults] = useState<ValidatedResults | null>(null)
@@ -314,6 +318,7 @@ export default function OfficialExamLayout({
     // If resuming, we already have the testId
     if (resumeTestId) {
       console.log('🔄 [OfficialExam] Resuming existing exam:', resumeTestId)
+      currentTestSessionRef.current = { id: resumeTestId }
       setCurrentTestSession({ id: resumeTestId })
       return
     }
@@ -353,6 +358,7 @@ export default function OfficialExamLayout({
           )
           if (existingExam) {
             console.log(`🔄 [OfficialExam] Found existing pending exam: ${existingExam.id}`)
+            currentTestSessionRef.current = { id: existingExam.id }
             setCurrentTestSession({ id: existingExam.id })
             return
           }
@@ -400,6 +406,8 @@ export default function OfficialExamLayout({
 
       if (result.success) {
         console.log(`✅ [OfficialExam] Session created: ${result.testId}, ${result.savedCount} questions`)
+        // 🔴 FIX: Update ref FIRST (synchronous) to avoid race condition
+        currentTestSessionRef.current = { id: result.testId }
         setCurrentTestSession({ id: result.testId })
       } else {
         console.error('❌ [OfficialExam] Init failed:', result.error)
@@ -439,8 +447,10 @@ export default function OfficialExamLayout({
     }
 
     // Auto-save to API for resume functionality (fire-and-forget)
-    if (currentTestSession?.id) {
-      saveAnswerToApi(currentTestSession.id, questionIndex, normalizedOption)
+    // 🔴 FIX: Use ref as fallback to avoid race condition when user answers before state updates
+    const testId = currentTestSession?.id || currentTestSessionRef.current?.id
+    if (testId) {
+      saveAnswerToApi(testId, questionIndex, normalizedOption)
     }
   }
 
