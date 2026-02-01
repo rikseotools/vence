@@ -109,6 +109,8 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'iv-plan-gobierno-abierto': 'IV Plan de Gobierno Abierto',
   'iii-plan-gobierno-abierto': 'III Plan Gobierno Abierto',
   'i-plan-gobierno-abierto': 'I Plan Gobierno Abierto',
+  'v-plan-gobierno-abierto': 'V Plan Gobierno Abierto 2025-2029',
+  'v-plan-gobierno-abierto-2025-2029': 'V Plan Gobierno Abierto 2025-2029',
   'ley-4-2023': 'Ley 4/2023',
   'ley-47-2003': 'Ley 47/2003',
   'lo-2-2012': 'LO 2/2012',
@@ -118,6 +120,8 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'lo-2-1979': 'LOTC',
   'lotc': 'LOTC',
   'ley-organica-tribunal-constitucional': 'LOTC',
+  'lo-6-1984': 'LO 6/1984',
+  'habeas-corpus': 'LO 6/1984',
   'lo-6-1985': 'LO 6/1985',
   'lopj': 'LO 6/1985',
   'ley-organica-poder-judicial': 'LO 6/1985',
@@ -446,6 +450,13 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'orden-hap-1949-2014': 'Orden HAP/1949/2014',
   'orden-hfp-266-2023': 'Orden HFP/266/2023',
 
+  // Resoluciones
+  'resolucion-sefp-7-mayo-2024': 'Resolución SEFP 7 mayo 2024 (Intervalos niveles)',
+  'resolucion-sefp-7-mayo-2024-intervalos-niveles': 'Resolución SEFP 7 mayo 2024 (Intervalos niveles)',
+  'resoluci-n-sefp-7-mayo-2024-intervalos-niveles': 'Resolución SEFP 7 mayo 2024 (Intervalos niveles)',  // Encoding roto
+  'res-20-01-2014-dgp': 'Res. 20/01/2014 DGP',
+  'resolucion-20-01-2014-dgp': 'Res. 20/01/2014 DGP',
+
   // Leyes faltantes
   'ley-10-2014': 'Ley 10/2014',
   'ley-11-2015': 'Ley 11/2015',
@@ -555,6 +566,7 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'CCom': 'codigo-comercio',
 
   // LO formato oficial
+  'LO 6/1984': 'lo-6-1984',
   'LO 6/1985': 'lo-6-1985',
   'LO 3/1981': 'lo-3-1981',
   'LO 2/1979': 'lo-2-1979',
@@ -646,6 +658,7 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'II Plan Gobierno Abierto': 'ii-plan-gobierno-abierto',
   'III Plan Gobierno Abierto': 'iii-plan-gobierno-abierto',
   'IV Plan Gobierno Abierto': 'iv-plan-gobierno-abierto',
+  'V Plan Gobierno Abierto 2025-2029': 'v-plan-gobierno-abierto-2025-2029',
 
   // Estrategias y Agendas
   'EDS 2030': 'eds-2030',
@@ -668,6 +681,10 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'Orden HAP/1949/2014': 'orden-hap-1949-2014',
   'Orden HFP/266/2023': 'orden-hfp-266-2023',
   'Orden PCM/1382/2021': 'orden-pcm-1382-2021',
+
+  // Resoluciones
+  'Resolución SEFP 7 mayo 2024 (Intervalos niveles)': 'resolucion-sefp-7-mayo-2024-intervalos-niveles',
+  'Res. 20/01/2014 DGP': 'res-20-01-2014-dgp',
 
   // Leyes faltantes
   'Ley 10/2014': 'ley-10-2014',
@@ -740,6 +757,10 @@ const LAW_INFO: LawInfoMapping = {
   'LO 3/2018': { name: 'Ley Orgánica 3/2018 de Protección de Datos', description: 'Protección de Datos Personales y garantía de los derechos digitales' },
   'Ley 9/2017': { name: 'Ley 9/2017 de Contratos del Sector Público', description: 'Contratación del sector público' },
   'LO 5/1995': { name: 'Ley Orgánica 5/1995 del Tribunal del Jurado', description: 'Regulación del Tribunal del Jurado' },
+  'LO 6/1984': { name: 'Ley Orgánica 6/1984 reguladora del Habeas Corpus', description: 'Procedimiento de Habeas Corpus' },
+  'V Plan Gobierno Abierto 2025-2029': { name: 'V Plan de Gobierno Abierto 2025-2029', description: 'Quinto Plan de Acción de Gobierno Abierto de España' },
+  'Resolución SEFP 7 mayo 2024 (Intervalos niveles)': { name: 'Resolución SEFP 7 mayo 2024', description: 'Intervalos de niveles de puestos de trabajo' },
+  'Res. 20/01/2014 DGP': { name: 'Resolución 20/01/2014 DGP', description: 'Indemnizaciones por razón del servicio' },
 }
 
 // ============================================
