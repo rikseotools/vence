@@ -40,34 +40,34 @@ export default function ExamActionsDropdown({
   }
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2 ml-1 sm:ml-2">
+    <div className="flex flex-wrap items-center justify-end gap-1 ml-1">
       {/* Repetir examen */}
       <button
         onClick={(e) => handleAction(e, 'repeat')}
-        className="px-1.5 sm:px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
         title="Repetir examen"
       >
-        <span>🔄</span>
+        <span className="text-xs">🔄</span>
         <span>Repetir</span>
       </button>
 
       {/* Repasar fallos */}
       <button
         onClick={(e) => handleAction(e, 'repeat-failed')}
-        className="px-1.5 sm:px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
         title="Repasar fallos"
       >
-        <span>🎯</span>
+        <span className="text-xs">🎯</span>
         <span>Repasar</span>
       </button>
 
       {/* Ver fallos */}
       <button
         onClick={(e) => handleAction(e, 'view-failures')}
-        className="px-1.5 sm:px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
         title="Ver fallos"
       >
-        <span>👁️</span>
+        <span className="text-xs">👁️</span>
         <span>Ver</span>
       </button>
     </div>
