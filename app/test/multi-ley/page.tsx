@@ -261,7 +261,7 @@ function MultiLeyTestContent() {
           <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
-              href="/test/configurar"
+              href="/test/por-leyes"
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Volver al configurador
@@ -292,7 +292,7 @@ function MultiLeyTestContent() {
             Intenta ampliar tu selección de leyes o artículos.
           </p>
           <Link
-            href="/test/configurar"
+            href="/test/por-leyes"
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-block"
           >
             Volver al configurador
@@ -320,7 +320,7 @@ function MultiLeyTestContent() {
     numQuestions: questions.length,
     customNavigationLinks: {
       backToTests: {
-        href: '/test/configurar',
+        href: '/test/por-leyes',
         label: '⚙️ Volver al configurador',
         isPrimary: true
       },

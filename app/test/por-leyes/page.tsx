@@ -1,4 +1,4 @@
-// app/test/configurar/page.tsx - Página de configuración de test multi-ley con favoritos
+// app/test/por-leyes/page.tsx - Test multi-ley con selección de leyes y artículos favoritos
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
@@ -228,6 +228,46 @@ function TestConfiguradorContent() {
               </span>
             )}
           </p>
+        </div>
+
+        {/* Caso de uso */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-5">
+            <div className="flex items-start gap-4">
+              <div className="text-3xl flex-shrink-0">📖</div>
+              <div>
+                <h3 className="font-bold text-amber-800 dark:text-amber-200 mb-2">
+                  Ideal para estudio por leyes
+                </h3>
+                <p className="text-amber-700 dark:text-amber-300 text-sm mb-3">
+                  Si prefieres estudiar por <strong>leyes concretas</strong> en lugar de por temas del temario,
+                  este configurador es para ti. Puedes:
+                </p>
+                <ul className="text-amber-700 dark:text-amber-300 text-sm space-y-1.5 mb-3">
+                  <li className="flex items-center gap-2">
+                    <span className="text-amber-500">•</span>
+                    <span>Seleccionar <strong>varias leyes</strong> a la vez (ej: CE + Ley 39/2015 + Ley 40/2015)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-amber-500">•</span>
+                    <span>Elegir <strong>artículos específicos</strong> de cada ley que quieras repasar</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-amber-500">•</span>
+                    <span>Filtrar por <strong>títulos o capítulos</strong> de cada ley</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-amber-500">•</span>
+                    <span><strong>Guardar combinaciones favoritas</strong> para no tener que configurar cada vez</span>
+                  </li>
+                </ul>
+                <p className="text-amber-600 dark:text-amber-400 text-xs">
+                  Ejemplo: Guarda "Mis artículos clave de procedimiento" con los artículos 53-55 de la Ley 39/2015
+                  y los artículos 1-10 de la CE, y accede a ellos con un clic.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Estadísticas */}

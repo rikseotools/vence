@@ -231,7 +231,7 @@ export function getPredefinedResponse(message: string): string | null {
   if (/multi[- ]?ley|(varias|diferentes|m[uú]ltiples|distintas)\s+leyes|combinar\s+(leyes|normativa)|mezclar\s+(leyes|preguntas)|test\s+de\s+.*leyes/i.test(msgLower)) {
     return `📚 **¡Sí! En Vence puedes hacer tests combinando varias leyes**
 
-👉 **[Ir al Configurador Multi-Ley](/test/configurar)**
+👉 **[Ir al Configurador Multi-Ley](/test/por-leyes)**
 
 **Características:**
 - ✅ Selecciona las leyes que quieras (CE, LPAC, LRJSP, TREBEP...)
