@@ -312,3 +312,56 @@ export function safeParseResumeOfficialExam(data: unknown) {
 export function safeParseGetPendingOfficialExams(data: unknown) {
   return getPendingOfficialExamsRequestSchema.safeParse(data)
 }
+
+// =====================================================
+// FAILED QUESTIONS SCHEMAS (for review/retry)
+// =====================================================
+
+export const getOfficialExamFailedQuestionsRequestSchema = z.object({
+  userId: z.string().uuid(),
+  examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
+  parte: z.enum(['primera', 'segunda']).optional(),
+  oposicion: z.enum([
+    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.TRAMITACION_PROCESAL,
+    OposicionType.AUXILIO_JUDICIAL,
+  ]),
+})
+
+export type GetOfficialExamFailedQuestionsRequest = z.infer<typeof getOfficialExamFailedQuestionsRequestSchema>
+
+export const officialExamFailedQuestionSchema = z.object({
+  id: z.string().uuid(),
+  questionText: z.string(),
+  optionA: z.string(),
+  optionB: z.string(),
+  optionC: z.string(),
+  optionD: z.string(),
+  userAnswer: z.string(),
+  correctAnswer: z.string(),
+  explanation: z.string().nullable(),
+  questionType: z.enum(['legislative', 'psychometric']),
+  questionSubtype: z.string().nullable(),
+  contentData: z.record(z.string(), z.unknown()).nullable(),
+  articleNumber: z.string().nullable(),
+  lawName: z.string().nullable(),
+  difficulty: z.string().nullable(),
+})
+
+export type OfficialExamFailedQuestion = z.infer<typeof officialExamFailedQuestionSchema>
+
+export const getOfficialExamFailedQuestionsResponseSchema = z.object({
+  success: z.boolean(),
+  questions: z.array(officialExamFailedQuestionSchema).optional(),
+  totalFailed: z.number().optional(),
+  examDate: z.string().optional(),
+  parte: z.string().nullable().optional(),
+  oposicion: z.string().optional(),
+  error: z.string().optional(),
+})
+
+export type GetOfficialExamFailedQuestionsResponse = z.infer<typeof getOfficialExamFailedQuestionsResponseSchema>
+
+export function safeParseGetOfficialExamFailedQuestions(data: unknown) {
+  return getOfficialExamFailedQuestionsRequestSchema.safeParse(data)
+}

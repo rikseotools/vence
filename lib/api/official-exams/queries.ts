@@ -14,6 +14,9 @@ import type {
   SaveOfficialExamAnswerResponse,
   ResumeOfficialExamResponse,
   GetPendingOfficialExamsResponse,
+  GetOfficialExamFailedQuestionsRequest,
+  GetOfficialExamFailedQuestionsResponse,
+  OfficialExamFailedQuestion,
 } from './schemas'
 
 // Map oposicion slug to exam_source pattern
@@ -1026,6 +1029,248 @@ export async function getPendingOfficialExams(
     }
   } catch (error) {
     console.error('❌ [getPendingOfficialExams] Error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+// =====================================================
+// GET FAILED QUESTIONS FROM COMPLETED OFFICIAL EXAM
+// =====================================================
+
+/**
+ * Get failed questions from a completed official exam
+ * Returns full question data for both viewing failures and retrying
+ */
+export async function getOfficialExamFailedQuestions(
+  params: GetOfficialExamFailedQuestionsRequest
+): Promise<GetOfficialExamFailedQuestionsResponse> {
+  const { userId, examDate, parte, oposicion } = params
+
+  try {
+    const db = getDb()
+
+    console.log(`🔍 [getOfficialExamFailedQuestions] Looking for failed questions: ${examDate} ${parte || 'all'} - ${oposicion}`)
+
+    // Find completed test matching the exam criteria
+    // The test title follows pattern: "Examen Oficial {examDate} ({parte} parte) - {oposicion}"
+    // or without parte: "Examen Oficial {examDate} - {oposicion}"
+    const testResults = await db
+      .select({
+        id: tests.id,
+        detailedAnalytics: tests.detailedAnalytics,
+      })
+      .from(tests)
+      .where(
+        and(
+          eq(tests.userId, userId),
+          eq(tests.isCompleted, true),
+          sql`${tests.detailedAnalytics}->>'isOfficialExam' = 'true'`,
+          sql`${tests.detailedAnalytics}->>'examDate' = ${examDate}`,
+          sql`${tests.detailedAnalytics}->>'oposicion' = ${oposicion}`,
+          // If parte is specified, filter by it
+          parte
+            ? sql`${tests.detailedAnalytics}->>'parte' = ${parte}`
+            : sql`true`
+        )
+      )
+      .orderBy(desc(tests.completedAt))
+      .limit(1)
+
+    if (testResults.length === 0) {
+      console.log(`⚠️ [getOfficialExamFailedQuestions] No completed exam found`)
+      return {
+        success: false,
+        error: 'No se encontró ningún examen completado con esos criterios',
+      }
+    }
+
+    const testId = testResults[0].id
+    console.log(`✅ [getOfficialExamFailedQuestions] Found test: ${testId}`)
+
+    // Get failed questions from test_questions
+    const failedQuestionsResult = await db
+      .select({
+        questionId: testQuestions.questionId,
+        psychometricQuestionId: testQuestions.psychometricQuestionId,
+        userAnswer: testQuestions.userAnswer,
+        correctAnswer: testQuestions.correctAnswer,
+        questionType: testQuestions.questionType,
+      })
+      .from(testQuestions)
+      .where(
+        and(
+          eq(testQuestions.testId, testId),
+          eq(testQuestions.isCorrect, false),
+          // Exclude unanswered questions
+          sql`${testQuestions.userAnswer} IS NOT NULL AND ${testQuestions.userAnswer} != '' AND ${testQuestions.userAnswer} != 'sin_respuesta'`
+        )
+      )
+
+    console.log(`✅ [getOfficialExamFailedQuestions] Found ${failedQuestionsResult.length} failed questions`)
+
+    if (failedQuestionsResult.length === 0) {
+      return {
+        success: true,
+        questions: [],
+        totalFailed: 0,
+        examDate,
+        parte: parte || null,
+        oposicion,
+      }
+    }
+
+    // Separate question IDs by type
+    const legislativeIds = failedQuestionsResult
+      .filter(q => q.questionId)
+      .map(q => q.questionId!)
+    const psychometricIds = failedQuestionsResult
+      .filter(q => q.psychometricQuestionId)
+      .map(q => q.psychometricQuestionId!)
+
+    // Fetch full legislative question data
+    const legislativeQuestionsMap = new Map<string, {
+      id: string
+      questionText: string
+      optionA: string
+      optionB: string
+      optionC: string
+      optionD: string
+      explanation: string | null
+      difficulty: string | null
+      articleNumber: string | null
+      lawName: string | null
+    }>()
+
+    if (legislativeIds.length > 0) {
+      const legResults = await db
+        .select({
+          id: questions.id,
+          questionText: questions.questionText,
+          optionA: questions.optionA,
+          optionB: questions.optionB,
+          optionC: questions.optionC,
+          optionD: questions.optionD,
+          explanation: questions.explanation,
+          difficulty: questions.difficulty,
+          articleNumber: articles.articleNumber,
+          lawName: laws.shortName,
+        })
+        .from(questions)
+        .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .leftJoin(laws, eq(articles.lawId, laws.id))
+        .where(inArray(questions.id, legislativeIds))
+
+      for (const q of legResults) {
+        legislativeQuestionsMap.set(q.id, q)
+      }
+    }
+
+    // Fetch full psychometric question data
+    const psychometricQuestionsMap = new Map<string, {
+      id: string
+      questionText: string
+      optionA: string | null
+      optionB: string | null
+      optionC: string | null
+      optionD: string | null
+      explanation: string | null
+      difficulty: string | null
+      questionSubtype: string | null
+      contentData: Record<string, unknown> | null
+    }>()
+
+    if (psychometricIds.length > 0) {
+      const psyResults = await db
+        .select({
+          id: psychometricQuestions.id,
+          questionText: psychometricQuestions.questionText,
+          optionA: psychometricQuestions.optionA,
+          optionB: psychometricQuestions.optionB,
+          optionC: psychometricQuestions.optionC,
+          optionD: psychometricQuestions.optionD,
+          explanation: psychometricQuestions.explanation,
+          difficulty: psychometricQuestions.difficulty,
+          questionSubtype: psychometricQuestions.questionSubtype,
+          contentData: psychometricQuestions.contentData,
+        })
+        .from(psychometricQuestions)
+        .where(inArray(psychometricQuestions.id, psychometricIds))
+
+      for (const q of psyResults) {
+        psychometricQuestionsMap.set(q.id, {
+          ...q,
+          contentData: q.contentData as Record<string, unknown> | null,
+        })
+      }
+    }
+
+    // Build response with full question data
+    const failedQuestions: OfficialExamFailedQuestion[] = []
+
+    for (const fq of failedQuestionsResult) {
+      const isLegislative = !!fq.questionId
+      const qId = fq.questionId || fq.psychometricQuestionId!
+
+      if (isLegislative) {
+        const legQ = legislativeQuestionsMap.get(qId)
+        if (legQ) {
+          failedQuestions.push({
+            id: legQ.id,
+            questionText: legQ.questionText,
+            optionA: legQ.optionA,
+            optionB: legQ.optionB,
+            optionC: legQ.optionC,
+            optionD: legQ.optionD,
+            userAnswer: fq.userAnswer,
+            correctAnswer: fq.correctAnswer,
+            explanation: legQ.explanation,
+            questionType: 'legislative',
+            questionSubtype: null,
+            contentData: null,
+            articleNumber: legQ.articleNumber,
+            lawName: legQ.lawName,
+            difficulty: legQ.difficulty,
+          })
+        }
+      } else {
+        const psyQ = psychometricQuestionsMap.get(qId)
+        if (psyQ) {
+          failedQuestions.push({
+            id: psyQ.id,
+            questionText: psyQ.questionText,
+            optionA: psyQ.optionA || '',
+            optionB: psyQ.optionB || '',
+            optionC: psyQ.optionC || '',
+            optionD: psyQ.optionD || '',
+            userAnswer: fq.userAnswer,
+            correctAnswer: fq.correctAnswer,
+            explanation: psyQ.explanation,
+            questionType: 'psychometric',
+            questionSubtype: psyQ.questionSubtype,
+            contentData: psyQ.contentData,
+            articleNumber: null,
+            lawName: null,
+            difficulty: psyQ.difficulty,
+          })
+        }
+      }
+    }
+
+    console.log(`✅ [getOfficialExamFailedQuestions] Returning ${failedQuestions.length} failed questions with full data`)
+
+    return {
+      success: true,
+      questions: failedQuestions,
+      totalFailed: failedQuestions.length,
+      examDate,
+      parte: parte || null,
+      oposicion,
+    }
+  } catch (error) {
+    console.error('❌ [getOfficialExamFailedQuestions] Error:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
