@@ -354,8 +354,8 @@ export async function createDetailedTestSession(
     // Normalizar parámetros (soportar ambas formas de llamada)
     let params: CreateTestSessionParams
 
-    if (typeof paramsOrUserId === 'string') {
-      // Llamada legacy con parámetros separados
+    if (typeof paramsOrUserId === 'string' && paramsOrUserId) {
+      // Llamada legacy con parámetros separados (userId es string válido)
       const parsedTema = typeof tema === 'string' ? parseInt(tema, 10) || 0 : (tema ?? 0)
       const parsedTestNumber = typeof testNumber === 'string' ? parseInt(testNumber, 10) || 1 : (testNumber ?? 1)
       params = {
@@ -368,15 +368,20 @@ export async function createDetailedTestSession(
         pageLoadTime: pageLoadTime ?? Date.now(),
         testType: testType,
       }
-    } else {
+    } else if (paramsOrUserId && typeof paramsOrUserId === 'object') {
       // Llamada nueva con objeto
       params = paramsOrUserId
+    } else {
+      // userId es null/undefined - retornar temprano
+      console.error('❌ createDetailedTestSession: userId es requerido')
+      return null
     }
 
     // Validar con Zod
     const validation = createTestSessionSchema.safeParse(params)
     if (!validation.success) {
       console.error('❌ Validación fallida:', validation.error.flatten())
+      console.error('   Params recibidos:', JSON.stringify(params, null, 2).substring(0, 500))
       return null
     }
 
