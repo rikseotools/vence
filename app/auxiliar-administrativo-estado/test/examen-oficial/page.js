@@ -52,12 +52,12 @@ function OfficialExamContent() {
       }
 
       try {
-        console.log('🎯 [OfficialExam] Loading exam:', examDate, oposicion, 'parte:', parte)
+        console.log('🎯 [OfficialExam] Loading exam:', examDate, oposicion, parte ? `(${parte} parte)` : '')
 
         const parteParam = parte ? `&parte=${parte}` : ''
-        const apiUrl = `/api/v2/official-exams/questions?examDate=${examDate}&oposicion=${oposicion}&includeReservas=true${parteParam}`
-        console.log('🔍 [OfficialExam] Fetching URL:', apiUrl)
-        const response = await fetch(apiUrl)
+        const response = await fetch(
+          `/api/v2/official-exams/questions?examDate=${examDate}&oposicion=${oposicion}&includeReservas=true${parteParam}`
+        )
         const data = await response.json()
 
         if (!data.success) {

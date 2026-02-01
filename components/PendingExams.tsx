@@ -1,16 +1,33 @@
-// components/PendingExams.js - Notificación de exámenes pendientes (dismissable)
+// components/PendingExams.tsx - Notificación de exámenes pendientes (dismissable)
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 
-export default function PendingExams({ temaNumber = null, limit = 5 }) {
-  const { user } = useAuth()
-  const [pendingExams, setPendingExams] = useState([])
+interface PendingExam {
+  id: string
+  title: string | null
+  temaNumber: number | null
+  totalQuestions: number
+  answeredQuestions: number
+}
+
+interface PendingExamsProps {
+  temaNumber?: number | null
+  limit?: number
+}
+
+interface AuthContextValue {
+  user: { id: string } | null
+}
+
+export default function PendingExams({ temaNumber = null, limit = 5 }: PendingExamsProps) {
+  const { user } = useAuth() as AuthContextValue
+  const [pendingExams, setPendingExams] = useState<PendingExam[]>([])
   const [loading, setLoading] = useState(true)
   const [dismissed, setDismissed] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const [discarding, setDiscarding] = useState(null) // ID del examen que se está descartando
+  const [discarding, setDiscarding] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.id) {
@@ -18,11 +35,12 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
       return
     }
 
-    // Siempre cargar exámenes primero para verificar si hay nuevos
     loadPendingExams()
   }, [user?.id, temaNumber])
 
   async function loadPendingExams() {
+    if (!user?.id) return
+
     try {
       setLoading(true)
 
@@ -41,13 +59,13 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
       }
 
       // Filtrar por tema si se especifica
-      let exams = data.exams || []
+      let exams: PendingExam[] = data.exams || []
       if (temaNumber) {
         exams = exams.filter(e => e.temaNumber === temaNumber)
       }
 
       // Verificar si estos exámenes fueron cerrados antes
-      const dismissedIds = JSON.parse(localStorage.getItem('pendingExamsDismissedIds') || '[]')
+      const dismissedIds: string[] = JSON.parse(localStorage.getItem('pendingExamsDismissedIds') || '[]')
       const currentIds = exams.map(e => e.id)
 
       // Si hay exámenes nuevos que no fueron cerrados, mostrar banner
@@ -86,7 +104,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
   }
 
   // Descartar examen permanentemente (no se puede recuperar)
-  async function handleDiscardExam(examId) {
+  async function handleDiscardExam(examId: string) {
     if (!user?.id || !examId) return
 
     const confirmed = window.confirm(
@@ -121,6 +139,17 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
     }
   }
 
+  // Genera la URL de reanudación según el tipo de examen
+  function getResumeUrl(exam: PendingExam): string {
+    if (exam.title?.toLowerCase().includes('examen oficial')) {
+      return `/auxiliar-administrativo-estado/test/examen-oficial?resume=${exam.id}`
+    }
+    if (exam.title?.toLowerCase().includes('aleatorio') || exam.temaNumber === 0 || exam.temaNumber === null) {
+      return `/test/aleatorio-examen?resume=${exam.id}`
+    }
+    return `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
+  }
+
   // No mostrar si: no hay usuario, cargando, cerrado, o no hay exámenes
   if (!user?.id || loading || dismissed || pendingExams.length === 0) {
     return null
@@ -131,15 +160,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
     ? Math.round((exam.answeredQuestions / exam.totalQuestions) * 100)
     : 0
 
-  // Generar URL correcta según tipo de examen
-  let resumeUrl
-  if (exam.title?.toLowerCase().includes('examen oficial')) {
-    resumeUrl = `/auxiliar-administrativo-estado/test/examen-oficial?resume=${exam.id}`
-  } else if (exam.title?.toLowerCase().includes('aleatorio') || exam.temaNumber === 0 || exam.temaNumber === null) {
-    resumeUrl = `/test/aleatorio-examen?resume=${exam.id}`
-  } else {
-    resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
-  }
+  const resumeUrl = getResumeUrl(exam)
 
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm animate-in slide-in-from-bottom-4">
@@ -226,15 +247,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
           {expanded && pendingExams.length > 1 && (
             <div className="mt-3 space-y-2 border-t border-amber-200 pt-3">
               {pendingExams.slice(1).map(e => {
-                // Generar URL correcta según tipo de examen
-                let url
-                if (e.title?.toLowerCase().includes('examen oficial')) {
-                  url = `/auxiliar-administrativo-estado/test/examen-oficial?resume=${e.id}`
-                } else if (e.title?.toLowerCase().includes('aleatorio') || e.temaNumber === 0 || e.temaNumber === null) {
-                  url = `/test/aleatorio-examen?resume=${e.id}`
-                } else {
-                  url = `/auxiliar-administrativo-estado/test/tema/${e.temaNumber || 1}/test-examen?resume=${e.id}`
-                }
+                const url = getResumeUrl(e)
                 const progress = e.totalQuestions > 0
                   ? Math.round((e.answeredQuestions / e.totalQuestions) * 100)
                   : 0

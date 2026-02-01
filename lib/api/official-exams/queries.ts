@@ -55,8 +55,7 @@ export async function getOfficialExamQuestions(
       }
     }
 
-    console.log(`🎯 [OfficialExams] Fetching exam: ${examDate} - ${oposicion}`)
-    console.log(`🔍 [OfficialExams] Params received: parte=${parte} (type: ${typeof parte}), includeReservas=${includeReservas}`)
+    console.log(`🎯 [OfficialExams] Fetching exam: ${examDate} - ${oposicion}${parte ? ` (${parte} parte)` : ''}`)
 
     // Query 1: Legislative questions from `questions` table
     const legislativeQuestions = await db
@@ -164,9 +163,7 @@ export async function getOfficialExamQuestions(
 
     // Filter by parte if specified
     // Las preguntas tienen " - Primera parte" o " - Segunda parte" en exam_source
-    console.log(`🔍 [OfficialExams] About to filter, parte="${parte}", total before=${allQuestions.length}`)
     if (parte) {
-      const beforeFilter = allQuestions.length
       allQuestions = allQuestions.filter(q => {
         const questionParte = getExamPart(q.examSource)
         // Si la pregunta tiene parte marcada, filtrar por ella
@@ -180,9 +177,7 @@ export async function getOfficialExamQuestions(
         // Si no tiene parte marcada, incluir en ambas (no debería pasar)
         return true
       })
-      console.log(`✅ [OfficialExams] Filtered from ${beforeFilter} to ${allQuestions.length} questions for parte="${parte}"`)
-    } else {
-      console.log(`⚠️ [OfficialExams] No parte filter applied - parte is falsy: "${parte}"`)
+      console.log(`🔍 [OfficialExams] Filtered to ${parte} parte: ${allQuestions.length} questions`)
     }
 
     // Sort: non-reserva first, then reserva

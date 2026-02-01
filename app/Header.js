@@ -31,6 +31,7 @@ export default function HeaderES() {
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
   const [pendingExams, setPendingExams] = useState([])
   const [showPendingExamsDropdown, setShowPendingExamsDropdown] = useState(false)
+  const [discardingExamId, setDiscardingExamId] = useState(null)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
 
@@ -163,6 +164,41 @@ export default function HeaderES() {
     window.addEventListener('examCompleted', handleExamCompleted)
     return () => window.removeEventListener('examCompleted', handleExamCompleted)
   }, [user, authLoading])
+
+  // Descartar examen permanentemente
+  async function handleDiscardExam(examId, e) {
+    e?.preventDefault()
+    e?.stopPropagation()
+
+    if (!user?.id || !examId) return
+
+    const confirmed = window.confirm(
+      '¿Descartar este examen?\n\nEsto eliminará el examen de tu lista de pendientes. No podrás retomarlo.'
+    )
+    if (!confirmed) return
+
+    try {
+      setDiscardingExamId(examId)
+      const response = await fetch('/api/exam/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: examId, userId: user.id })
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        setPendingExams(prev => prev.filter(e => e.id !== examId))
+      } else {
+        console.error('Error descartando examen:', result.error)
+        alert('Error al descartar el examen')
+      }
+    } catch (err) {
+      console.error('Error descartando examen:', err)
+      alert('Error al descartar el examen')
+    } finally {
+      setDiscardingExamId(null)
+    }
+  }
 
   // 🆕 VERIFICAR CONVERSACIONES DE FEEDBACK PENDIENTES (Sistema BD)
   useEffect(() => {
@@ -881,30 +917,53 @@ export default function HeaderES() {
                 }
 
                 return (
-                  <Link
+                  <div
                     key={exam.id}
-                    href={resumeUrl}
-                    onClick={() => setShowPendingExamsDropdown(false)}
-                    className="block p-3 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg border border-amber-200 dark:border-amber-700 transition-colors"
+                    className="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700"
                   >
-                    <div className="font-medium text-gray-800 dark:text-gray-200 truncate">
-                      {exam.title || `Tema ${exam.temaNumber}`}
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={resumeUrl}
+                        onClick={() => setShowPendingExamsDropdown(false)}
+                        className="flex-1 hover:opacity-80 transition-opacity"
+                      >
+                        <div className="font-medium text-gray-800 dark:text-gray-200 truncate">
+                          {exam.title || `Tema ${exam.temaNumber}`}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="flex-1 bg-amber-200 dark:bg-amber-800 rounded-full h-2">
+                            <div
+                              className="bg-amber-500 h-2 rounded-full transition-all"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                            {exam.answeredQuestions}/{exam.totalQuestions}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                          Click para continuar →
+                        </div>
+                      </Link>
+                      <button
+                        onClick={(e) => handleDiscardExam(exam.id, e)}
+                        disabled={discardingExamId === exam.id}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
+                        title="Descartar examen"
+                      >
+                        {discardingExamId === exam.id ? (
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="flex-1 bg-amber-200 dark:bg-amber-800 rounded-full h-2">
-                        <div
-                          className="bg-amber-500 h-2 rounded-full transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                        {exam.answeredQuestions}/{exam.totalQuestions}
-                      </span>
-                    </div>
-                    <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                      Click para continuar →
-                    </div>
-                  </Link>
+                  </div>
                 )
               })}
             </div>

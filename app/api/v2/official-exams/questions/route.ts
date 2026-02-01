@@ -51,9 +51,6 @@ export async function GET(request: NextRequest) {
     const parte = searchParams.get('parte')
     const includeReservas = searchParams.get('includeReservas') !== 'false'
 
-    console.log(`🔍 [API] Raw params: examDate=${examDate}, oposicion=${oposicion}, parte=${parte}, includeReservas=${includeReservas}`)
-    console.log(`🔍 [API] Full URL: ${request.url}`)
-
     // Validate request
     const parseResult = safeParseGetOfficialExamQuestions({
       examDate,
@@ -61,8 +58,6 @@ export async function GET(request: NextRequest) {
       parte: parte || undefined,
       includeReservas,
     })
-
-    console.log(`🔍 [API] Zod validation success=${parseResult.success}, data.parte=${parseResult.success ? parseResult.data.parte : 'N/A'}`)
 
     if (!parseResult.success) {
       console.log('❌ [API/v2/official-exams/questions] Validation failed:', parseResult.error.issues)
