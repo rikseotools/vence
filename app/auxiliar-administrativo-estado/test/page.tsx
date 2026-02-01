@@ -8,6 +8,11 @@ import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
 // ============== TYPES ==============
 
+interface AuthContextValue {
+  user: { id: string } | null
+  loading: boolean
+}
+
 interface Theme {
   id: number
   title: string
@@ -155,7 +160,7 @@ function ThemeLink({ theme, stats, onInfoClick }: ThemeLinkProps) {
 // ============== MAIN COMPONENT ==============
 
 export default function TestsAuxiliarAdministrativoEstado() {
-  const { user, loading } = useAuth()
+  const { user, loading } = useAuth() as AuthContextValue
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>({})
   const [statsLoading, setStatsLoading] = useState(false)
   const [sortBy, setSortBy] = useState<SortOption>('tema')
