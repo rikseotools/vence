@@ -19,6 +19,12 @@ function indexToLetter(index: number): string {
   return String.fromCharCode(65 + index) // A, B, C, D
 }
 
+// Helper to parse basic markdown (bold with **text**)
+function parseMarkdown(text: string): string {
+  // Convert **text** to <strong>text</strong>
+  return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+}
+
 interface FailedQuestionCardProps {
   question: OfficialExamFailedQuestion
   index: number
@@ -127,7 +133,10 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
 
           {showExplanation && (
             <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800 whitespace-pre-line">{question.explanation}</p>
+              <p
+                className="text-sm text-blue-800 whitespace-pre-line"
+                dangerouslySetInnerHTML={{ __html: parseMarkdown(question.explanation) }}
+              />
             </div>
           )}
         </div>
