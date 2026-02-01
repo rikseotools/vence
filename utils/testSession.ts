@@ -76,8 +76,26 @@ export interface TestSession {
 /** Tipos de test válidos */
 export type TestType = 'practice' | 'exam'
 
-/** Estructura de una pregunta (lo que espera createDetailedTestSession) */
+/** Estructura de una pregunta (lo que espera createDetailedTestSession)
+ * Soporta estructura plana (ExamLayout) y anidada (legacy)
+ */
 export interface QuestionInput {
+  // Campo id puede estar en raíz
+  id?: string
+  // Campos de estructura plana (ExamLayout)
+  question_text?: string
+  option_a?: string
+  option_b?: string
+  option_c?: string
+  option_d?: string
+  difficulty?: string
+  // Campos adicionales comunes
+  tema_number?: number
+  primary_article_id?: string
+  explanation?: string
+  correct_option?: number
+  articles?: unknown
+  // Estructura anidada (legacy)
   metadata?: {
     id?: string
     difficulty?: string
@@ -87,7 +105,6 @@ export interface QuestionInput {
     number?: string
     law_short_name?: string
   }
-  id?: string
 }
 
 /** Configuración del test */
@@ -102,24 +119,36 @@ export interface TestConfig {
 
 const testTypeSchema = z.enum(['practice', 'exam'])
 
+// Schema flexible para preguntas - acepta estructura plana (ExamLayout) o anidada (legacy)
+const questionSchema = z.object({
+  // Campo id puede estar en raíz o en metadata
+  id: z.string().optional(),
+  // Campos de estructura plana (ExamLayout)
+  question_text: z.string().optional(),
+  option_a: z.string().optional(),
+  option_b: z.string().optional(),
+  option_c: z.string().optional(),
+  option_d: z.string().optional(),
+  difficulty: z.string().optional(),
+  // Estructura anidada (legacy)
+  metadata: z.object({
+    id: z.string().optional(),
+    difficulty: z.string().optional(),
+  }).optional(),
+  article: z.object({
+    id: z.string().optional(),
+    number: z.string().optional(),
+    law_short_name: z.string().optional(),
+  }).optional(),
+}).passthrough() // Permitir campos adicionales
+
 const createTestSessionSchema = z.object({
   userId: z.string().uuid('userId debe ser un UUID válido'),
   tema: z.number().int('tema debe ser un entero').min(0, 'tema no puede ser negativo'),
   testNumber: z.union([z.number(), z.string()]).transform(val =>
     typeof val === 'string' ? parseInt(val, 10) || 1 : val
   ),
-  questions: z.array(z.object({
-    metadata: z.object({
-      id: z.string().optional(),
-      difficulty: z.string().optional(),
-    }).optional(),
-    article: z.object({
-      id: z.string().optional(),
-      number: z.string().optional(),
-      law_short_name: z.string().optional(),
-    }).optional(),
-    id: z.string().optional(),
-  })).min(1, 'Debe haber al menos una pregunta'),
+  questions: z.array(questionSchema).min(1, 'Debe haber al menos una pregunta'),
   config: z.object({
     timeLimit: z.number().optional(),
   }).passthrough().optional().default({}),
@@ -358,11 +387,13 @@ export async function createDetailedTestSession(
       // Llamada legacy con parámetros separados (userId es string válido)
       const parsedTema = typeof tema === 'string' ? parseInt(tema, 10) || 0 : (tema ?? 0)
       const parsedTestNumber = typeof testNumber === 'string' ? parseInt(testNumber, 10) || 1 : (testNumber ?? 1)
+      // Type assertion necesaria porque QuestionInput no tiene index signature
+      // pero el schema Zod usa .passthrough() para aceptar campos adicionales en runtime
       params = {
         userId: paramsOrUserId,
         tema: parsedTema,
         testNumber: parsedTestNumber,
-        questions: questions ?? [],
+        questions: (questions ?? []) as CreateTestSessionParams['questions'],
         config: config ?? {},
         startTime: startTime ?? Date.now(),
         pageLoadTime: pageLoadTime ?? Date.now(),
@@ -434,12 +465,12 @@ export async function createDetailedTestSession(
     // Crear título seguro
     const safeTitle = `Test Tema ${validatedParams.tema} - ${validatedParams.testNumber}`.substring(0, 100)
 
-    // Preparar metadata de preguntas
+    // Preparar metadata de preguntas (soporta estructura plana y anidada)
     const questionsMetadata = {
-      question_ids: validatedParams.questions.map(q => q.metadata?.id || q.id || `temp_${Date.now()}_${Math.random()}`),
+      question_ids: validatedParams.questions.map(q => q.id || q.metadata?.id || `temp_${Date.now()}_${Math.random()}`),
       article_ids: validatedParams.questions.map(q => q.article?.id || null),
       article_numbers: validatedParams.questions.map(q => q.article?.number || 'unknown'),
-      difficulties: validatedParams.questions.map(q => q.metadata?.difficulty || 'medium'),
+      difficulties: validatedParams.questions.map(q => q.difficulty || q.metadata?.difficulty || 'medium'),
       laws: validatedParams.questions.map(q => q.article?.law_short_name || 'unknown'),
       total_questions: validatedParams.questions.length,
       estimated_duration: validatedParams.questions.length * 60,
