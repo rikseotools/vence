@@ -32,6 +32,7 @@ export default function HeaderES() {
   const [pendingExams, setPendingExams] = useState([])
   const [showPendingExamsDropdown, setShowPendingExamsDropdown] = useState(false)
   const [discardingExamId, setDiscardingExamId] = useState(null)
+  const [confirmingDiscardId, setConfirmingDiscardId] = useState(null)
   const { hasNewMedals, newMedalsCount, markMedalsAsViewed } = useNewMedalsBadge()
   const pathname = usePathname()
 
@@ -165,20 +166,20 @@ export default function HeaderES() {
     return () => window.removeEventListener('examCompleted', handleExamCompleted)
   }, [user, authLoading])
 
-  // Descartar examen permanentemente
-  async function handleDiscardExam(examId, e) {
+  // Mostrar confirmación inline para descartar
+  function handleDiscardExam(examId, e) {
     e?.preventDefault()
     e?.stopPropagation()
+    setConfirmingDiscardId(examId)
+  }
 
+  // Descartar examen permanentemente (después de confirmar)
+  async function confirmDiscardExam(examId) {
     if (!user?.id || !examId) return
-
-    const confirmed = window.confirm(
-      '¿Descartar este examen?\n\nEsto eliminará el examen de tu lista de pendientes. No podrás retomarlo.'
-    )
-    if (!confirmed) return
 
     try {
       setDiscardingExamId(examId)
+      setConfirmingDiscardId(null)
       const response = await fetch('/api/exam/discard', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -190,11 +191,9 @@ export default function HeaderES() {
         setPendingExams(prev => prev.filter(e => e.id !== examId))
       } else {
         console.error('Error descartando examen:', result.error)
-        alert('Error al descartar el examen')
       }
     } catch (err) {
       console.error('Error descartando examen:', err)
-      alert('Error al descartar el examen')
     } finally {
       setDiscardingExamId(null)
     }
@@ -916,53 +915,80 @@ export default function HeaderES() {
                   resumeUrl = `/auxiliar-administrativo-estado/test/tema/${exam.temaNumber || 1}/test-examen?resume=${exam.id}`
                 }
 
+                const isConfirming = confirmingDiscardId === exam.id
+                const isDiscarding = discardingExamId === exam.id
+
                 return (
                   <div
                     key={exam.id}
-                    className="p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700"
+                    className="p-2.5 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-700 overflow-hidden"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <Link
-                        href={resumeUrl}
-                        onClick={() => setShowPendingExamsDropdown(false)}
-                        className="flex-1 hover:opacity-80 transition-opacity"
-                      >
-                        <div className="font-medium text-gray-800 dark:text-gray-200 truncate">
-                          {exam.title || `Tema ${exam.temaNumber}`}
+                    {isConfirming ? (
+                      // Confirmación inline
+                      <div className="text-center py-1">
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                          ¿Descartar este examen?
+                        </p>
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            onClick={() => setConfirmingDiscardId(null)}
+                            className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => confirmDiscardExam(exam.id)}
+                            className="px-3 py-1 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
+                          >
+                            Sí, descartar
+                          </button>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <div className="flex-1 bg-amber-200 dark:bg-amber-800 rounded-full h-2">
-                            <div
-                              className="bg-amber-500 h-2 rounded-full transition-all"
-                              style={{ width: `${progress}%` }}
-                            />
+                      </div>
+                    ) : (
+                      // Contenido normal
+                      <div className="flex items-start gap-2">
+                        <Link
+                          href={resumeUrl}
+                          onClick={() => setShowPendingExamsDropdown(false)}
+                          className="flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                        >
+                          <div className="font-medium text-gray-800 dark:text-gray-200 truncate text-sm">
+                            {exam.title || `Tema ${exam.temaNumber}`}
                           </div>
-                          <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
-                            {exam.answeredQuestions}/{exam.totalQuestions}
-                          </span>
-                        </div>
-                        <div className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                          Click para continuar →
-                        </div>
-                      </Link>
-                      <button
-                        onClick={(e) => handleDiscardExam(exam.id, e)}
-                        disabled={discardingExamId === exam.id}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
-                        title="Descartar examen"
-                      >
-                        {discardingExamId === exam.id ? (
-                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                          </svg>
-                        ) : (
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className="flex-1 bg-amber-200 dark:bg-amber-800 rounded-full h-1.5">
+                              <div
+                                className="bg-amber-500 h-1.5 rounded-full transition-all"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium text-amber-700 dark:text-amber-300 whitespace-nowrap">
+                              {exam.answeredQuestions}/{exam.totalQuestions}
+                            </span>
+                          </div>
+                          <div className="mt-1.5 text-xs text-amber-600 dark:text-amber-400">
+                            Click para continuar →
+                          </div>
+                        </Link>
+                        <button
+                          onClick={(e) => handleDiscardExam(exam.id, e)}
+                          disabled={isDiscarding}
+                          className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
+                          title="Descartar examen"
+                        >
+                          {isDiscarding ? (
+                            <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                          ) : (
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               })}

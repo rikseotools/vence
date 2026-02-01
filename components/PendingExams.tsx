@@ -28,6 +28,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
   const [dismissed, setDismissed] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [discarding, setDiscarding] = useState<string | null>(null)
+  const [confirmingDiscard, setConfirmingDiscard] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user?.id) {
@@ -103,18 +104,23 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
     setDismissed(true)
   }
 
+  // Mostrar confirmación inline
+  function handleDiscardExam(examId: string) {
+    setConfirmingDiscard(examId)
+  }
+
+  // Cancelar descarte
+  function cancelDiscard() {
+    setConfirmingDiscard(null)
+  }
+
   // Descartar examen permanentemente (no se puede recuperar)
-  async function handleDiscardExam(examId: string) {
+  async function confirmDiscardExam(examId: string) {
     if (!user?.id || !examId) return
-
-    const confirmed = window.confirm(
-      '¿Descartar este examen?\n\nEsto eliminará el examen de tu lista de pendientes. No podrás retomarlo.'
-    )
-
-    if (!confirmed) return
 
     try {
       setDiscarding(examId)
+      setConfirmingDiscard(null)
 
       const response = await fetch('/api/exam/discard', {
         method: 'POST',
@@ -129,11 +135,9 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
         setPendingExams(prev => prev.filter(e => e.id !== examId))
       } else {
         console.error('Error descartando examen:', result.error)
-        alert('Error al descartar el examen')
       }
     } catch (err) {
       console.error('Error descartando examen:', err)
-      alert('Error al descartar el examen')
     } finally {
       setDiscarding(null)
     }
@@ -186,53 +190,79 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
 
         {/* Contenido */}
         <div className="p-4">
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-gray-800 truncate">
-                {exam.title || `Tema ${exam.temaNumber}`}
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-gray-500">
-                  {exam.answeredQuestions}/{exam.totalQuestions}
-                </span>
-                <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                  <div
-                    className="bg-amber-500 h-1.5 rounded-full"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <span className="text-xs font-medium text-amber-600">
-                  {progressPercent}%
-                </span>
+          {confirmingDiscard === exam.id ? (
+            /* Confirmación inline */
+            <div className="text-center py-2">
+              <p className="text-sm text-gray-700 mb-3">
+                ¿Descartar este examen?
+              </p>
+              <div className="flex gap-2 justify-center">
+                <button
+                  onClick={cancelDiscard}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => confirmDiscardExam(exam.id)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+                >
+                  Sí, descartar
+                </button>
               </div>
             </div>
-          </div>
+          ) : (
+            /* Contenido normal */
+            <>
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-800 truncate">
+                    {exam.title || `Tema ${exam.temaNumber}`}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-500">
+                      {exam.answeredQuestions}/{exam.totalQuestions}
+                    </span>
+                    <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                      <div
+                        className="bg-amber-500 h-1.5 rounded-full"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-amber-600">
+                      {progressPercent}%
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-          <div className="flex gap-2">
-            <Link
-              href={resumeUrl}
-              className="flex-1 text-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Continuar
-            </Link>
-            <button
-              onClick={() => handleDiscardExam(exam.id)}
-              disabled={discarding === exam.id}
-              className="px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 text-sm rounded-lg transition-colors disabled:opacity-50"
-              title="Descartar examen"
-            >
-              {discarding === exam.id ? (
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              )}
-            </button>
-          </div>
+              <div className="flex gap-2">
+                <Link
+                  href={resumeUrl}
+                  className="flex-1 text-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Continuar
+                </Link>
+                <button
+                  onClick={() => handleDiscardExam(exam.id)}
+                  disabled={discarding === exam.id}
+                  className="px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 text-sm rounded-lg transition-colors disabled:opacity-50"
+                  title="Descartar examen"
+                >
+                  {discarding === exam.id ? (
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
 
           {pendingExams.length > 1 && (
             <button
@@ -253,35 +283,59 @@ export default function PendingExams({ temaNumber = null, limit = 5 }: PendingEx
                   : 0
 
                 return (
-                  <div key={e.id} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-amber-200">
-                    <Link
-                      href={url}
-                      className="flex-1 hover:text-amber-600 transition-colors"
-                    >
-                      <div className="text-xs font-medium text-gray-700 truncate">
-                        {e.title || `Tema ${e.temaNumber}`}
+                  <div key={e.id} className="p-2 bg-white rounded-lg border border-amber-200">
+                    {confirmingDiscard === e.id ? (
+                      /* Confirmación inline */
+                      <div className="text-center py-1">
+                        <p className="text-xs text-gray-700 mb-2">¿Descartar?</p>
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            onClick={cancelDiscard}
+                            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                          >
+                            No
+                          </button>
+                          <button
+                            onClick={() => confirmDiscardExam(e.id)}
+                            className="px-2 py-1 text-xs font-medium text-white bg-red-500 hover:bg-red-600 rounded transition-colors"
+                          >
+                            Sí
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {e.answeredQuestions}/{e.totalQuestions} ({progress}%)
+                    ) : (
+                      /* Contenido normal */
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={url}
+                          className="flex-1 min-w-0 hover:text-amber-600 transition-colors"
+                        >
+                          <div className="text-xs font-medium text-gray-700 truncate">
+                            {e.title || `Tema ${e.temaNumber}`}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {e.answeredQuestions}/{e.totalQuestions} ({progress}%)
+                          </div>
+                        </Link>
+                        <button
+                          onClick={() => handleDiscardExam(e.id)}
+                          disabled={discarding === e.id}
+                          className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                          title="Descartar"
+                        >
+                          {discarding === e.id ? (
+                            <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </button>
                       </div>
-                    </Link>
-                    <button
-                      onClick={() => handleDiscardExam(e.id)}
-                      disabled={discarding === e.id}
-                      className="p-1 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
-                      title="Descartar"
-                    >
-                      {discarding === e.id ? (
-                        <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                    </button>
+                    )}
                   </div>
                 )
               })}
