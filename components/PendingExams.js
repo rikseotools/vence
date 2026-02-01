@@ -10,6 +10,7 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
   const [loading, setLoading] = useState(true)
   const [dismissed, setDismissed] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [discarding, setDiscarding] = useState(null) // ID del examen que se está descartando
 
   useEffect(() => {
     if (!user?.id) {
@@ -84,6 +85,42 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
     setDismissed(true)
   }
 
+  // Descartar examen permanentemente (no se puede recuperar)
+  async function handleDiscardExam(examId) {
+    if (!user?.id || !examId) return
+
+    const confirmed = window.confirm(
+      '¿Descartar este examen?\n\nEsto eliminará el examen de tu lista de pendientes. No podrás retomarlo.'
+    )
+
+    if (!confirmed) return
+
+    try {
+      setDiscarding(examId)
+
+      const response = await fetch('/api/exam/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: examId, userId: user.id })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Eliminar de la lista local
+        setPendingExams(prev => prev.filter(e => e.id !== examId))
+      } else {
+        console.error('Error descartando examen:', result.error)
+        alert('Error al descartar el examen')
+      }
+    } catch (err) {
+      console.error('Error descartando examen:', err)
+      alert('Error al descartar el examen')
+    } finally {
+      setDiscarding(null)
+    }
+  }
+
   // No mostrar si: no hay usuario, cargando, cerrado, o no hay exámenes
   if (!user?.id || loading || dismissed || pendingExams.length === 0) {
     return null
@@ -150,12 +187,31 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
             </div>
           </div>
 
-          <Link
-            href={resumeUrl}
-            className="block w-full text-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Continuar examen
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href={resumeUrl}
+              className="flex-1 text-center px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              Continuar
+            </Link>
+            <button
+              onClick={() => handleDiscardExam(exam.id)}
+              disabled={discarding === exam.id}
+              className="px-3 py-2 text-gray-500 hover:text-red-600 hover:bg-red-50 text-sm rounded-lg transition-colors disabled:opacity-50"
+              title="Descartar examen"
+            >
+              {discarding === exam.id ? (
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              )}
+            </button>
+          </div>
 
           {pendingExams.length > 1 && (
             <button
@@ -184,18 +240,36 @@ export default function PendingExams({ temaNumber = null, limit = 5 }) {
                   : 0
 
                 return (
-                  <Link
-                    key={e.id}
-                    href={url}
-                    className="block p-2 bg-white rounded-lg border border-amber-200 hover:border-amber-400 transition-colors"
-                  >
-                    <div className="text-xs font-medium text-gray-700 truncate">
-                      {e.title || `Tema ${e.temaNumber}`}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {e.answeredQuestions}/{e.totalQuestions} ({progress}%)
-                    </div>
-                  </Link>
+                  <div key={e.id} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-amber-200">
+                    <Link
+                      href={url}
+                      className="flex-1 hover:text-amber-600 transition-colors"
+                    >
+                      <div className="text-xs font-medium text-gray-700 truncate">
+                        {e.title || `Tema ${e.temaNumber}`}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {e.answeredQuestions}/{e.totalQuestions} ({progress}%)
+                      </div>
+                    </Link>
+                    <button
+                      onClick={() => handleDiscardExam(e.id)}
+                      disabled={discarding === e.id}
+                      className="p-1 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                      title="Descartar"
+                    >
+                      {discarding === e.id ? (
+                        <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 )
               })}
             </div>

@@ -370,6 +370,11 @@ export async function getPendingExams(
   try {
     const db = getDb()
 
+    // 🔴 FIX: Calcular fecha límite (7 días atrás)
+    // Exámenes más antiguos se consideran "abandonados" y no se muestran
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
     // Construir condiciones
     // FIX: También verificar completed_at IS NULL para evitar mostrar tests
     // que ya finalizaron pero tienen is_completed=false (finalizados incompletos)
@@ -377,6 +382,8 @@ export async function getPendingExams(
       eq(tests.userId, userId),
       eq(tests.isCompleted, false),
       isNull(tests.completedAt),
+      // 🔴 FIX: Solo mostrar exámenes de los últimos 7 días
+      sql`${tests.createdAt} > ${sevenDaysAgo.toISOString()}`,
     ]
 
     if (testType) {

@@ -672,10 +672,15 @@ export default function ExamLayout({
 
       console.log('🔒 Enviando respuestas a API /api/exam/validate...')
 
+      // 🔴 FIX: Incluir testId para que la API marque el test como completado
+      const testId = currentTestSession?.id || currentTestSessionRef.current?.id
       const response = await fetch('/api/exam/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: answersForApi })
+        body: JSON.stringify({
+          testId, // 🔴 FIX: El test se marca como completado en la API
+          answers: answersForApi
+        })
       })
 
       const apiResult: ValidatedResults = await response.json()

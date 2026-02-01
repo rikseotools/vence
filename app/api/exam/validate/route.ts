@@ -1,11 +1,12 @@
 // app/api/exam/validate/route.ts
 // API para validar todas las respuestas de un examen de forma segura
 // La respuesta correcta SOLO se revela después de que el usuario envía sus respuestas
+// 🔴 FIX: Ahora también marca el test como completado para evitar "exámenes fantasma"
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/db/client'
-import { questions } from '@/db/schema'
-import { inArray } from 'drizzle-orm'
+import { questions, tests } from '@/db/schema'
+import { inArray, eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
 // ============================================
@@ -18,16 +19,43 @@ const examAnswerSchema = z.object({
 })
 
 const validateExamRequestSchema = z.object({
+  testId: z.string().uuid('ID de test inválido').optional(), // 🔴 FIX: Ahora acepta testId para marcar como completado
   answers: z.array(examAnswerSchema).min(1, 'Debe haber al menos una respuesta')
 })
 
 type ExamAnswer = z.infer<typeof examAnswerSchema>
 
 // ============================================
+// FUNCIÓN PARA MARCAR TEST COMO COMPLETADO
+// ============================================
+
+async function markTestAsCompleted(testId: string, score: number, totalQuestions: number) {
+  try {
+    const db = getDb()
+
+    await db
+      .update(tests)
+      .set({
+        isCompleted: true,
+        completedAt: new Date().toISOString(),
+        score: score.toString(),
+        totalQuestions: totalQuestions
+      })
+      .where(eq(tests.id, testId))
+
+    console.log('✅ [API/exam/validate] Test marcado como completado:', testId)
+    return true
+  } catch (error) {
+    console.error('❌ [API/exam/validate] Error marcando test como completado:', error)
+    return false
+  }
+}
+
+// ============================================
 // FUNCIÓN DE VALIDACIÓN
 // ============================================
 
-async function validateExamAnswers(answers: ExamAnswer[]) {
+async function validateExamAnswers(answers: ExamAnswer[], testId?: string) {
   try {
     const db = getDb()
 
@@ -122,8 +150,18 @@ async function validateExamAnswers(answers: ExamAnswer[]) {
       totalQuestions,
       totalAnswered,
       totalCorrect,
-      percentage
+      percentage,
+      testId: testId || 'no proporcionado'
     })
+
+    // 🔴 FIX: Marcar test como completado ANTES de devolver la respuesta
+    // Esto evita el bug de "exámenes fantasma" cuando el usuario navega fuera
+    if (testId) {
+      const completed = await markTestAsCompleted(testId, totalCorrect, totalQuestions)
+      if (!completed) {
+        console.warn('⚠️ [API/exam/validate] No se pudo marcar el test como completado, pero continuamos')
+      }
+    }
 
     return {
       success: true,
@@ -169,8 +207,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validar examen
-    const result = await validateExamAnswers(validation.data.answers)
+    // Validar examen y marcar como completado si se proporcionó testId
+    const result = await validateExamAnswers(validation.data.answers, validation.data.testId)
 
     if (!result.success) {
       return NextResponse.json(
