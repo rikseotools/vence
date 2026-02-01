@@ -1,4 +1,4 @@
-// app/auxiliar-administrativo-estado/test/page.js - Optimizada con API Layer Drizzle + Zod
+// app/auxiliar-administrativo-estado/test/page.tsx - Migrado a TypeScript
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
@@ -6,8 +6,50 @@ import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-// Datos estáticos de los temas por bloque
-const BLOQUE1_THEMES = [
+// ============== TYPES ==============
+
+interface Theme {
+  id: number
+  title: string
+  href: string
+  displayNumber?: number
+}
+
+interface ThemeWithStats extends Theme {
+  color: ColorKey
+  accuracy: number
+}
+
+interface ThemeStats {
+  total: number
+  correct: number
+  accuracy: number
+  lastStudy: Date | null
+  lastStudyFormatted?: string
+}
+
+interface ExamInfo {
+  examDate: string
+  examSource: string
+  oposicion: string
+  totalQuestions: number
+  partes: string[]
+}
+
+interface ExamStat {
+  accuracy: number
+  correct: number
+  total: number
+  lastAttempt: string
+}
+
+type ColorKey = 'green' | 'emerald' | 'yellow' | 'orange' | 'red' | 'gray'
+
+type SortOption = 'tema' | 'accuracy_asc' | 'accuracy_desc' | 'last_study_new' | 'last_study_old'
+
+// ============== CONSTANTS ==============
+
+const BLOQUE1_THEMES: Theme[] = [
   { id: 1, title: 'La Constitución Española de 1978', href: '/auxiliar-administrativo-estado/test/tema/1' },
   { id: 2, title: 'El Tribunal Constitucional. La Corona', href: '/auxiliar-administrativo-estado/test/tema/2' },
   { id: 3, title: 'Las Cortes Generales', href: '/auxiliar-administrativo-estado/test/tema/3' },
@@ -26,7 +68,7 @@ const BLOQUE1_THEMES = [
   { id: 16, title: 'Políticas de Igualdad y contra la Violencia de Género', href: '/auxiliar-administrativo-estado/test/tema/16' }
 ]
 
-const BLOQUE2_THEMES = [
+const BLOQUE2_THEMES: Theme[] = [
   { id: 101, title: 'Atención al público', href: '/auxiliar-administrativo-estado/test/tema/101', displayNumber: 1 },
   { id: 102, title: 'Los servicios de información administrativa', href: '/auxiliar-administrativo-estado/test/tema/102', displayNumber: 2 },
   { id: 103, title: 'Concepto de documento, registro y archivo', href: '/auxiliar-administrativo-estado/test/tema/103', displayNumber: 3 },
@@ -41,16 +83,7 @@ const BLOQUE2_THEMES = [
   { id: 112, title: 'La Red Internet', href: '/auxiliar-administrativo-estado/test/tema/112', displayNumber: 12 }
 ]
 
-// Helpers de colores
-const getAccuracyColor = (accuracy) => {
-  if (accuracy >= 90) return 'green'
-  if (accuracy >= 75) return 'emerald'
-  if (accuracy >= 60) return 'yellow'
-  if (accuracy >= 40) return 'orange'
-  return 'red'
-}
-
-const COLOR_CLASSES = {
+const COLOR_CLASSES: Record<ColorKey, string> = {
   green: 'bg-green-600 hover:bg-green-700 focus:ring-green-300',
   emerald: 'bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-300',
   yellow: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-300',
@@ -59,41 +92,102 @@ const COLOR_CLASSES = {
   gray: 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-300'
 }
 
+// ============== HELPERS ==============
+
+function getAccuracyColor(accuracy: number): ColorKey {
+  if (accuracy >= 90) return 'green'
+  if (accuracy >= 75) return 'emerald'
+  if (accuracy >= 60) return 'yellow'
+  if (accuracy >= 40) return 'orange'
+  return 'red'
+}
+
+// ============== COMPONENTS ==============
+
+interface ThemeLinkProps {
+  theme: ThemeWithStats
+  stats: ThemeStats | undefined
+  onInfoClick: () => void
+}
+
+function ThemeLink({ theme, stats, onInfoClick }: ThemeLinkProps) {
+  return (
+    <Link
+      href={theme.href}
+      className={`block ${COLOR_CLASSES[theme.color] || COLOR_CLASSES.gray} text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 group`}
+    >
+      <div className="flex items-center justify-between">
+        <span>Tema {theme.displayNumber || theme.id}: {theme.title}</span>
+        <div className="flex items-center space-x-3">
+          {stats ? (
+            <>
+              <div className="flex items-center space-x-1">
+                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                  {stats.accuracy}% ({stats.correct}/{stats.total})
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onInfoClick()
+                  }}
+                  className="text-white/70 hover:text-white transition-colors p-1"
+                  title="¿Qué significa este porcentaje?"
+                >
+                  ℹ️
+                </button>
+              </div>
+              <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
+                {stats.lastStudyFormatted}
+              </span>
+            </>
+          ) : (
+            <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+              Empezar
+            </span>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+// ============== MAIN COMPONENT ==============
+
 export default function TestsAuxiliarAdministrativoEstado() {
   const { user, loading } = useAuth()
-  const [userStats, setUserStats] = useState({})
+  const [userStats, setUserStats] = useState<Record<number, ThemeStats>>({})
   const [statsLoading, setStatsLoading] = useState(false)
-  const [sortBy, setSortBy] = useState('tema')
+  const [sortBy, setSortBy] = useState<SortOption>('tema')
   const [showStatsInfo, setShowStatsInfo] = useState(false)
-  const [expandedBlocks, setExpandedBlocks] = useState({
+  const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({
     bloque1: true,
     bloque2: false,
     examenesOficiales: false
   })
-  const [expandedConvocatorias, setExpandedConvocatorias] = useState({})
-  const [availableExams, setAvailableExams] = useState([])
+  const [expandedConvocatorias, setExpandedConvocatorias] = useState<Record<string, boolean>>({})
+  const [availableExams, setAvailableExams] = useState<ExamInfo[]>([])
   const [examsLoading, setExamsLoading] = useState(false)
-  const [examStats, setExamStats] = useState({}) // Stats por examDate
+  const [examStats, setExamStats] = useState<Record<string, ExamStat>>({})
 
   // Cargar estadísticas usando la nueva API V2 con derivación dinámica por oposición
-  const loadUserThemeStats = useCallback(async (userId) => {
+  const loadUserThemeStats = useCallback(async (userId: string) => {
     setStatsLoading(true)
     try {
-      // V2: Pasar oposicionId para derivar tema desde article_id + topic_scope
       const response = await fetch(`/api/user/theme-stats?userId=${userId}&oposicionId=auxiliar-administrativo-estado`)
       const data = await response.json()
 
       if (data.success && data.stats) {
-        // Convertir el objeto de stats a formato esperado por el componente
-        const themeStats = {}
+        const themeStats: Record<number, ThemeStats> = {}
 
         Object.entries(data.stats).forEach(([temaNumber, stat]) => {
-          themeStats[temaNumber] = {
-            total: stat.total,
-            correct: stat.correct,
-            accuracy: stat.accuracy,
-            lastStudy: stat.lastStudy ? new Date(stat.lastStudy) : null,
-            lastStudyFormatted: stat.lastStudyFormatted
+          const s = stat as { total: number; correct: number; accuracy: number; lastStudy?: string; lastStudyFormatted?: string }
+          themeStats[Number(temaNumber)] = {
+            total: s.total,
+            correct: s.correct,
+            accuracy: s.accuracy,
+            lastStudy: s.lastStudy ? new Date(s.lastStudy) : null,
+            lastStudyFormatted: s.lastStudyFormatted
           }
         })
 
@@ -146,7 +240,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
   }, [availableExams.length, user?.id])
 
   // Alternar expansión de bloques
-  const toggleBlock = (blockId) => {
+  const toggleBlock = (blockId: string) => {
     setExpandedBlocks(prev => ({
       ...prev,
       [blockId]: !prev[blockId]
@@ -158,7 +252,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
   }
 
   // Alternar expansión de convocatorias individuales
-  const toggleConvocatoria = (examDate) => {
+  const toggleConvocatoria = (examDate: string) => {
     setExpandedConvocatorias(prev => ({
       ...prev,
       [examDate]: !prev[examDate]
@@ -166,12 +260,12 @@ export default function TestsAuxiliarAdministrativoEstado() {
   }
 
   // Procesar temas con estadísticas y colores
-  const getThemesByBlock = useCallback(() => {
-    const processThemes = (themes) => {
+  const getThemesByBlock = useCallback((): { bloque1: ThemeWithStats[]; bloque2: ThemeWithStats[] } => {
+    const processThemes = (themes: Theme[]): ThemeWithStats[] => {
       return themes.map(theme => {
         const stats = userStats[theme.id]
         const accuracy = stats ? stats.accuracy : 0
-        const color = stats ? getAccuracyColor(accuracy) : 'gray'
+        const color: ColorKey = stats ? getAccuracyColor(accuracy) : 'gray'
         return { ...theme, color, accuracy }
       })
     }
@@ -245,13 +339,13 @@ export default function TestsAuxiliarAdministrativoEstado() {
               <div className="bg-white rounded-lg shadow-md p-4">
                 <div className="text-sm font-medium text-gray-700 mb-3">Ordenar por:</div>
                 <div className="flex flex-wrap gap-2 justify-center">
-                  {[
+                  {([
                     { id: 'tema', label: 'Por Tema', icon: '🔢' },
                     { id: 'accuracy_asc', label: '% Más Bajo', icon: '📉' },
                     { id: 'accuracy_desc', label: '% Más Alto', icon: '📈' },
                     { id: 'last_study_new', label: 'Más Reciente', icon: '🕐' },
                     { id: 'last_study_old', label: 'Más Antiguo', icon: '🕰️' }
-                  ].map((option) => (
+                  ] as const).map((option) => (
                     <button
                       key={option.id}
                       onClick={() => setSortBy(option.id)}
@@ -616,48 +710,5 @@ export default function TestsAuxiliarAdministrativoEstado() {
         </div>
       </div>
     </div>
-  )
-}
-
-// Componente extraído para los enlaces de tema
-function ThemeLink({ theme, stats, onInfoClick }) {
-  return (
-    <Link
-      href={theme.href}
-      className={`block ${COLOR_CLASSES[theme.color] || COLOR_CLASSES.gray} text-white py-3 px-6 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4 group`}
-    >
-      <div className="flex items-center justify-between">
-        <span>Tema {theme.displayNumber || theme.id}: {theme.title}</span>
-        <div className="flex items-center space-x-3">
-          {stats ? (
-            <>
-              <div className="flex items-center space-x-1">
-                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
-                  {stats.accuracy}% ({stats.correct}/{stats.total})
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onInfoClick()
-                  }}
-                  className="text-white/70 hover:text-white transition-colors p-1"
-                  title="¿Qué significa este porcentaje?"
-                >
-                  ℹ️
-                </button>
-              </div>
-              <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
-                {stats.lastStudyFormatted}
-              </span>
-            </>
-          ) : (
-            <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
-              Empezar
-            </span>
-          )}
-        </div>
-      </div>
-    </Link>
   )
 }
