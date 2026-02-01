@@ -55,6 +55,9 @@ Sentry.init({
     'Converting circular structure to JSON',
     // Security errors from cross-origin frames, corrupted URLs, or browser extensions
     /SecurityError/,
+    // Instagram/Meta WebView internal errors (not our code)
+    /enableDidUserTypeOnKeyboardLogging/,
+    /Java object is gone/,
   ],
 
   // Environment tag

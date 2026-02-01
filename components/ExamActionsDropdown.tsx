@@ -40,32 +40,35 @@ export default function ExamActionsDropdown({
   }
 
   return (
-    <div className="flex items-center gap-2 ml-2">
+    <div className="flex items-center gap-1 sm:gap-2 ml-1 sm:ml-2">
       {/* Repetir examen */}
       <button
         onClick={(e) => handleAction(e, 'repeat')}
-        className="px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        className="px-1.5 sm:px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        title="Repetir examen"
       >
         <span>🔄</span>
-        <span>Repetir</span>
+        <span className="hidden sm:inline">Repetir</span>
       </button>
 
       {/* Repasar fallos */}
       <button
         onClick={(e) => handleAction(e, 'repeat-failed')}
-        className="px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        className="px-1.5 sm:px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        title="Repasar fallos"
       >
         <span>🎯</span>
-        <span>Repasar fallos</span>
+        <span className="hidden sm:inline">Repasar fallos</span>
       </button>
 
       {/* Ver fallos */}
       <button
         onClick={(e) => handleAction(e, 'view-failures')}
-        className="px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        className="px-1.5 sm:px-2 py-1 rounded-md bg-white/20 hover:bg-white/40 transition-colors text-xs font-medium text-white flex items-center gap-1"
+        title="Ver fallos"
       >
         <span>👁️</span>
-        <span>Ver fallos</span>
+        <span className="hidden sm:inline">Ver fallos</span>
       </button>
     </div>
   )

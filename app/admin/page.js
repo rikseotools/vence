@@ -1347,7 +1347,7 @@ export default function AdminDashboard() {
                     {Math.round((activity.score / activity.total_questions) * 100)}%
                   </div>
                   <div className="text-xs text-gray-500">
-                    {formatTimeAgo(activity.completed_at)}
+                    {formatTimeAgo(activity.completed_at || activity.started_at || activity.created_at)}
                   </div>
                 </div>
               </div>
