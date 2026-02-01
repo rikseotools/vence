@@ -231,7 +231,9 @@ export const createDetailedTestSession = async (userId, tema, testNumber, questi
       }
     }
 
-    const safeTitle = `Test Tema ${tema || 'X'} - ${testNumber || '1'}`.substring(0, 100)
+    // Usar tema === undefined/null ? 0 : tema para distinguir "no especificado" de "aleatorio (0)"
+    const safeTema = tema !== undefined && tema !== null ? parseInt(tema) : 0
+    const safeTitle = `Test Tema ${safeTema} - ${testNumber || '1'}`.substring(0, 100)
 
     // Validar que questions sea un array
     if (!Array.isArray(questions)) {
@@ -256,7 +258,7 @@ export const createDetailedTestSession = async (userId, tema, testNumber, questi
       test_url: typeof window !== 'undefined' ? window.location.pathname : null,
       total_questions: questions.length,
       score: 0,
-      tema_number: parseInt(tema) || null,
+      tema_number: tema !== undefined && tema !== null ? parseInt(tema) : 0,
       test_number: parseInt(testNumber) || null,
       time_limit_minutes: config?.timeLimit || null,
       started_at: new Date().toISOString(),

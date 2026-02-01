@@ -44,6 +44,11 @@ function TestAleatorioExamenContent() {
     message: 'Conectando con la base de datos...'
   })
 
+  // Estado para resume
+  const resumeTestId = searchParams.get('resume')
+  const [initialAnswers, setInitialAnswers] = useState(null)
+  const [resumeConfig, setResumeConfig] = useState(null)
+
   // Extraer configuración de la URL
   const testConfig = {
     numQuestions: parseInt(searchParams.get('n')) || 25,
@@ -56,19 +61,75 @@ function TestAleatorioExamenContent() {
     adaptiveMode: searchParams.get('adaptive') === 'true'
   }
 
-  // Cargar configuración de la oposición
+  // Si hay resume, cargar el test existente
   useEffect(() => {
+    if (resumeTestId) {
+      loadResumeTest()
+    }
+  }, [resumeTestId])
+
+  async function loadResumeTest() {
+    try {
+      setLoading(true)
+      setError(null)
+      console.log('🔄 Reanudando test aleatorio:', resumeTestId)
+
+      setLoadingProgress({
+        currentPhase: 'resuming',
+        currentMapping: 0,
+        totalMappings: 0,
+        currentLaw: '',
+        questionsFound: 0,
+        message: 'Cargando examen guardado...'
+      })
+
+      // Llamar a la API de resume
+      const response = await fetch(`/api/exam/resume?testId=${resumeTestId}`)
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Error al cargar el examen')
+      }
+
+      console.log('✅ Test cargado, preguntas:', data.questions?.length)
+      console.log('💾 Respuestas guardadas:', Object.keys(data.savedAnswers || {}).length)
+
+      // Guardar configuración del test para mostrar
+      setResumeConfig({
+        title: 'Test Aleatorio - Continuación',
+        totalQuestions: data.totalQuestions || data.questions?.length
+      })
+
+      // Convertir respuestas al formato esperado por ExamLayout
+      if (data.savedAnswers && Object.keys(data.savedAnswers).length > 0) {
+        setInitialAnswers(data.savedAnswers)
+      }
+
+      setQuestions(data.questions || [])
+      setLoading(false)
+
+    } catch (err) {
+      console.error('❌ Error cargando test para resume:', err)
+      setError(err.message)
+      setLoading(false)
+    }
+  }
+
+  // Cargar configuración de la oposición (solo para tests nuevos)
+  useEffect(() => {
+    if (resumeTestId) return // Skip si es resume
     const config = getOposicionConfig(testConfig.oposicion)
     if (config) {
       setOposicionConfig(config)
     }
-  }, [testConfig.oposicion])
+  }, [testConfig.oposicion, resumeTestId])
 
   useEffect(() => {
+    if (resumeTestId) return // Skip si es resume
     if (oposicionConfig) {
       loadExamQuestions()
     }
-  }, [oposicionConfig])
+  }, [oposicionConfig, resumeTestId])
 
   async function loadExamQuestions() {
     try {
@@ -360,8 +421,8 @@ function TestAleatorioExamenContent() {
     ? getThemeNames(oposicionConfig.id, testConfig.themes)
     : {}
 
-  // Validar configuración
-  if (!testConfig.themes || testConfig.themes.length === 0) {
+  // Validar configuración (solo para tests nuevos, no para resume)
+  if (!resumeTestId && (!testConfig.themes || testConfig.themes.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md mx-auto text-center p-6">
@@ -391,9 +452,9 @@ function TestAleatorioExamenContent() {
 
     return (
       <ExamLoadingIndicator
-        numQuestions={testConfig.numQuestions}
-        numThemes={testConfig.themes.length}
-        themeNames={selectedThemeNames}
+        numQuestions={resumeTestId ? (resumeConfig?.totalQuestions || 25) : testConfig.numQuestions}
+        numThemes={resumeTestId ? 1 : testConfig.themes.length}
+        themeNames={resumeTestId ? ['Reanudando examen...'] : selectedThemeNames}
         progress={loadingProgress}
       />
     )
@@ -423,18 +484,31 @@ function TestAleatorioExamenContent() {
     .filter(Boolean)
     .join(', ')
 
-  return (
-    <ExamLayout
-      tema={0}
-      testNumber={1}
-      config={{
+  // Configuración diferente para resume vs nuevo
+  const examConfig = resumeTestId
+    ? {
+        name: resumeConfig?.title || 'Test Aleatorio - Continuación',
+        description: 'Reanudando examen guardado',
+        subtitle: `${questions.length} preguntas`,
+        icon: '🔄',
+        color: 'from-orange-500 to-red-600'
+      }
+    : {
         name: `Test Aleatorio - Modo Examen`,
         description: selectedThemeNamesText,
         subtitle: `${testConfig.themes.length} tema${testConfig.themes.length > 1 ? 's mezclados' : ''} • ${oposicionConfig?.shortName || ''}`,
         icon: '📝',
         color: 'from-orange-500 to-red-600'
-      }}
+      }
+
+  return (
+    <ExamLayout
+      tema={0}
+      testNumber={1}
+      config={examConfig}
       questions={questions}
+      resumeTestId={resumeTestId}
+      initialAnswers={initialAnswers}
     />
   )
 }
