@@ -24,6 +24,17 @@ const oposicionToExamSourcePattern: Record<string, string> = {
 }
 
 /**
+ * Determina la parte del examen basándose en el exam_source
+ * El script mark_exam_parts.cjs añade " - Primera parte" o " - Segunda parte" al exam_source
+ */
+function getExamPart(examSource: string | null): 'primera' | 'segunda' | null {
+  if (!examSource) return null
+  if (examSource.includes('Primera parte')) return 'primera'
+  if (examSource.includes('Segunda parte')) return 'segunda'
+  return null
+}
+
+/**
  * Get all questions for a specific official exam
  * Combines questions from both `questions` and `psychometric_questions` tables
  * SECURITY: Does NOT return correct_option - validation done via separate API
@@ -31,7 +42,7 @@ const oposicionToExamSourcePattern: Record<string, string> = {
 export async function getOfficialExamQuestions(
   params: GetOfficialExamQuestionsRequest
 ): Promise<GetOfficialExamQuestionsResponse> {
-  const { examDate, oposicion, includeReservas = true } = params
+  const { examDate, oposicion, parte, includeReservas = true } = params
 
   try {
     const db = getDb()
@@ -45,6 +56,7 @@ export async function getOfficialExamQuestions(
     }
 
     console.log(`🎯 [OfficialExams] Fetching exam: ${examDate} - ${oposicion}`)
+    console.log(`🔍 [OfficialExams] Params received: parte=${parte} (type: ${typeof parte}), includeReservas=${includeReservas}`)
 
     // Query 1: Legislative questions from `questions` table
     const legislativeQuestions = await db
@@ -148,7 +160,30 @@ export async function getOfficialExamQuestions(
       }))
 
     // Combine all questions
-    const allQuestions = [...formattedLegislative, ...formattedPsychometric]
+    let allQuestions = [...formattedLegislative, ...formattedPsychometric]
+
+    // Filter by parte if specified
+    // Las preguntas tienen " - Primera parte" o " - Segunda parte" en exam_source
+    console.log(`🔍 [OfficialExams] About to filter, parte="${parte}", total before=${allQuestions.length}`)
+    if (parte) {
+      const beforeFilter = allQuestions.length
+      allQuestions = allQuestions.filter(q => {
+        const questionParte = getExamPart(q.examSource)
+        // Si la pregunta tiene parte marcada, filtrar por ella
+        if (questionParte) {
+          return questionParte === parte
+        }
+        // Fallback: psychometric questions son segunda parte
+        if (q.questionType === 'psychometric') {
+          return parte === 'segunda'
+        }
+        // Si no tiene parte marcada, incluir en ambas (no debería pasar)
+        return true
+      })
+      console.log(`✅ [OfficialExams] Filtered from ${beforeFilter} to ${allQuestions.length} questions for parte="${parte}"`)
+    } else {
+      console.log(`⚠️ [OfficialExams] No parte filter applied - parte is falsy: "${parte}"`)
+    }
 
     // Sort: non-reserva first, then reserva
     allQuestions.sort((a, b) => {
@@ -157,12 +192,18 @@ export async function getOfficialExamQuestions(
     })
 
     const reservaCount = allQuestions.filter(q => q.isReserva).length
+    const legislativeInResult = allQuestions.filter(q => q.questionType === 'legislative').length
+    const psychometricInResult = allQuestions.filter(q => q.questionType === 'psychometric').length
 
     // Preguntas anuladas conocidas por examen (no se insertan en BD)
-    const anuladasByExam: Record<string, number> = {
-      '2024-07-09': 1, // P23 anulada en examen julio 2024
+    // Solo contar anuladas si no se filtra por parte (o ajustar según la parte)
+    const anuladasByExam: Record<string, { primera?: number; segunda?: number; total: number }> = {
+      '2024-07-09': { primera: 1, segunda: 0, total: 1 }, // P23 anulada en primera parte
     }
-    const anuladasCount = anuladasByExam[examDate] || 0
+    const examAnuladas = anuladasByExam[examDate]
+    const anuladasCount = parte
+      ? (parte === 'primera' ? examAnuladas?.primera : examAnuladas?.segunda) || 0
+      : examAnuladas?.total || 0
 
     console.log(`✅ [OfficialExams] Total: ${allQuestions.length} questions (${reservaCount} reservas, ${anuladasCount} anuladas)`)
 
@@ -172,10 +213,10 @@ export async function getOfficialExamQuestions(
       metadata: {
         examDate,
         oposicion,
-        parte: null,
+        parte: parte || null,
         totalQuestions: allQuestions.length,
-        legislativeCount: formattedLegislative.length,
-        psychometricCount: formattedPsychometric.length,
+        legislativeCount: legislativeInResult,
+        psychometricCount: psychometricInResult,
         reservaCount,
         anuladasCount,
       },

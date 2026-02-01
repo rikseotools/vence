@@ -33,6 +33,7 @@ function OfficialExamContent() {
   const [initialAnswers, setInitialAnswers] = useState(null)
 
   const examDate = searchParams.get('fecha')
+  const parte = searchParams.get('parte') // 'primera' o 'segunda'
   const resumeParam = searchParams.get('resume')
   const oposicion = 'auxiliar-administrativo-estado'
 
@@ -51,11 +52,12 @@ function OfficialExamContent() {
       }
 
       try {
-        console.log('🎯 [OfficialExam] Loading exam:', examDate, oposicion)
+        console.log('🎯 [OfficialExam] Loading exam:', examDate, oposicion, 'parte:', parte)
 
-        const response = await fetch(
-          `/api/v2/official-exams/questions?examDate=${examDate}&oposicion=${oposicion}&includeReservas=true`
-        )
+        const parteParam = parte ? `&parte=${parte}` : ''
+        const apiUrl = `/api/v2/official-exams/questions?examDate=${examDate}&oposicion=${oposicion}&includeReservas=true${parteParam}`
+        console.log('🔍 [OfficialExam] Fetching URL:', apiUrl)
+        const response = await fetch(apiUrl)
         const data = await response.json()
 
         if (!data.success) {
@@ -184,7 +186,7 @@ function OfficialExamContent() {
     if (!authLoading) {
       loadOfficialExam()
     }
-  }, [examDate, resumeParam, oposicion, authLoading, supabase])
+  }, [examDate, parte, resumeParam, oposicion, authLoading, supabase])
 
   if (authLoading || loading) {
     return (
