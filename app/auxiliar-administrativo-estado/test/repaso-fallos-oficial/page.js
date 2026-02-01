@@ -25,17 +25,27 @@ function transformFailedQuestions(failedQuestions) {
   return failedQuestions.map((q) => ({
     id: q.id,
     question: q.questionText,
+    question_text: q.questionText,
+    option_a: q.optionA,
+    option_b: q.optionB,
+    option_c: q.optionC,
+    option_d: q.optionD,
     options: [q.optionA, q.optionB, q.optionC, q.optionD],
-    explanation: q.explanation,
-    article: q.articleNumber ? {
-      number: q.articleNumber,
-      title: null,
-    } : null,
+    explanation: q.explanation ?? undefined,
+    article: q.primaryArticleId ? {
+      id: q.primaryArticleId,
+      number: q.articleNumber ?? undefined,
+      law_short_name: q.lawName ?? undefined,
+    } : undefined,
     law: q.lawName ? {
       name: q.lawName,
       short_name: q.lawName,
-    } : null,
-    difficulty: q.difficulty,
+    } : undefined,
+    difficulty: q.difficulty ?? undefined,
+    // Mark psychometric questions so TestLayout uses correct API
+    question_type: q.questionType,
+    question_subtype: q.questionSubtype ?? undefined,
+    content_data: q.contentData ?? undefined,
   }))
 }
 

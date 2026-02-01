@@ -346,6 +346,7 @@ export const officialExamFailedQuestionSchema = z.object({
   articleNumber: z.string().nullable(),
   lawName: z.string().nullable(),
   difficulty: z.string().nullable(),
+  primaryArticleId: z.string().uuid().nullable().optional(),
 })
 
 export type OfficialExamFailedQuestion = z.infer<typeof officialExamFailedQuestionSchema>

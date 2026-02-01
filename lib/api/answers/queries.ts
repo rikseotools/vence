@@ -1,6 +1,6 @@
 // lib/api/answers/queries.ts - Queries tipadas para validación de respuestas
 import { getDb } from '@/db/client'
-import { questions, articles, laws } from '@/db/schema'
+import { questions, articles, laws, psychometricQuestions } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import type { ValidateAnswerRequest, ValidateAnswerResponse } from './schemas'
 
@@ -9,6 +9,7 @@ import type { ValidateAnswerRequest, ValidateAnswerResponse } from './schemas'
 // ============================================
 // Esta función es el núcleo de la protección anti-scraping.
 // La respuesta correcta SOLO se revela después de que el usuario responde.
+// Busca primero en questions, luego en psychometric_questions si no encuentra.
 
 export async function validateAnswer(
   params: ValidateAnswerRequest
@@ -16,7 +17,7 @@ export async function validateAnswer(
   try {
     const db = getDb()
 
-    // Query con joins para obtener información completa
+    // Query con joins para obtener información completa (legislative questions)
     const result = await db
       .select({
         correctOption: questions.correctOption,
@@ -34,12 +35,38 @@ export async function validateAnswer(
     const question = result[0]
 
     if (!question) {
-      console.error('❌ [API/answer] Pregunta no encontrada:', params.questionId)
+      // Not found in questions table, try psychometric_questions
+      const psyResult = await db
+        .select({
+          correctOption: psychometricQuestions.correctOption,
+          explanation: psychometricQuestions.explanation,
+        })
+        .from(psychometricQuestions)
+        .where(eq(psychometricQuestions.id, params.questionId))
+        .limit(1)
+
+      const psyQuestion = psyResult[0]
+
+      if (!psyQuestion) {
+        console.error('❌ [API/answer] Pregunta no encontrada en ninguna tabla:', params.questionId)
+        return {
+          success: false,
+          isCorrect: false,
+          correctAnswer: 0,
+          explanation: null
+        }
+      }
+
+      const isCorrect = params.userAnswer === psyQuestion.correctOption
+
       return {
-        success: false,
-        isCorrect: false,
-        correctAnswer: 0,
-        explanation: null
+        success: true,
+        isCorrect,
+        correctAnswer: psyQuestion.correctOption,
+        explanation: psyQuestion.explanation,
+        articleNumber: null,
+        lawShortName: null,
+        lawName: null
       }
     }
 

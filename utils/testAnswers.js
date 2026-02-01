@@ -176,7 +176,8 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
 
     // ✅ USAR ID REAL DE LA BASE DE DATOS O GENERAR COMO FALLBACK
     const questionId = questionData.id || generateQuestionId(questionData, tema, answerData.questionIndex)
-    const articleId = questionData.article?.id || generateArticleId(questionData, tema)
+    // For article_id, only use valid UUIDs (from question data or null for psychometric questions)
+    const articleId = questionData.article?.id || null
 
     // ✅ OBTENER USUARIO (CON CACHE)
     const user = await getCachedUser()
@@ -187,6 +188,9 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
         
     // ✅ OBTENER INFO DE DISPOSITIVO CORRECTAMENTE
     const deviceInfo = getDeviceInfo()
+
+    // Detectar si es pregunta psicotécnica
+    const isPsychometric = questionData.question_type === 'psychometric'
 
     // ✅ DATOS CON NOMBRES EXACTOS DE LA BD Y CORRECCIONES
     const insertData = {
@@ -199,13 +203,15 @@ export const saveDetailedAnswer = async (sessionId, questionData, answerData, te
             : String.fromCharCode(65 + (answerData.selectedAnswer || 0)),
           correct_answer: String.fromCharCode(65 + (answerData.correctAnswer || 0)),
           is_correct: answerData.isCorrect || false,
-          
-          // ✅ CAMPOS DE IDENTIFICACIÓN - NUNCA NULL
-          question_id: questionId, // ✅ GARANTIZADO NO NULL
-          article_id: articleId,   // ✅ GARANTIZADO NO NULL
+
+          // ✅ CAMPOS DE IDENTIFICACIÓN - Usar columna correcta según tipo
+          question_id: isPsychometric ? null : questionId,
+          psychometric_question_id: isPsychometric ? questionId : null,
+          article_id: articleId,
           article_number: questionData.article?.number || 'unknown',
           law_name: questionData.article?.law_short_name || 'unknown',
           tema_number: calculatedTema,
+          question_type: isPsychometric ? 'psychometric' : 'legislative',
           
           // Campos de respuesta y tiempo
           confidence_level: confidenceLevel || 'unknown',

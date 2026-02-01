@@ -1142,6 +1142,7 @@ export async function getOfficialExamFailedQuestions(
       difficulty: string | null
       articleNumber: string | null
       lawName: string | null
+      primaryArticleId: string | null
     }>()
 
     if (legislativeIds.length > 0) {
@@ -1157,6 +1158,7 @@ export async function getOfficialExamFailedQuestions(
           difficulty: questions.difficulty,
           articleNumber: articles.articleNumber,
           lawName: laws.shortName,
+          primaryArticleId: questions.primaryArticleId,
         })
         .from(questions)
         .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
@@ -1233,6 +1235,7 @@ export async function getOfficialExamFailedQuestions(
             articleNumber: legQ.articleNumber,
             lawName: legQ.lawName,
             difficulty: legQ.difficulty,
+            primaryArticleId: legQ.primaryArticleId,
           })
         }
       } else {
@@ -1254,6 +1257,7 @@ export async function getOfficialExamFailedQuestions(
             articleNumber: null,
             lawName: null,
             difficulty: psyQ.difficulty,
+            primaryArticleId: null,
           })
         }
       }
