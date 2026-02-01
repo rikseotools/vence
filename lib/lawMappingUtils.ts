@@ -305,6 +305,7 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   // Órdenes ministeriales
   'orden-pre-1576-2002': 'Orden PRE/1576/2002',
   'orden-pcm-7-2021': 'Orden PCM/7/2021',
+  'orden-pcm-1382-2021': 'Orden PCM/1382/2021',
 
   // Temas técnicos/informática
   'procesadores-de-texto': 'Procesadores de texto',
@@ -427,6 +428,9 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'reglamento-del-congreso': 'Reglamento del Congreso',
   'reglamento-del-senado': 'Reglamento del Senado',
   'reglamento-consejo-ue': 'Reglamento Consejo UE',
+  'reglamento-consejo-europeo': 'Reglamento Consejo UE',  // Alias
+  'reglamento-comision-ue': 'Reglamento Comisión UE',
+  'reglamento-comisi-n-ue': 'Reglamento Comisión UE',  // Encoding roto
   'reglamento-pe-9': 'Reglamento PE 9ª',
 
   // Protocolos
@@ -651,6 +655,7 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'Reglamento del Congreso': 'reglamento-del-congreso',
   'Reglamento del Senado': 'reglamento-del-senado',
   'Reglamento Consejo UE': 'reglamento-consejo-ue',
+  'Reglamento Comisión UE': 'reglamento-comision-ue',
   'Reglamento PE 9ª': 'reglamento-pe-9',
 
   // Protocolos
@@ -662,6 +667,7 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'Orden APU/1461/2002': 'orden-apu-1461-2002',
   'Orden HAP/1949/2014': 'orden-hap-1949-2014',
   'Orden HFP/266/2023': 'orden-hfp-266-2023',
+  'Orden PCM/1382/2021': 'orden-pcm-1382-2021',
 
   // Leyes faltantes
   'Ley 10/2014': 'ley-10-2014',
