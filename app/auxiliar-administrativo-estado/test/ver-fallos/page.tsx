@@ -25,6 +25,53 @@ function parseMarkdown(text: string): string {
   return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 }
 
+// Helper to render tables from contentData
+function renderTables(contentData: Record<string, unknown> | null) {
+  if (!contentData) return null
+
+  const tables = contentData.tables as Array<{
+    title?: string
+    headers: string[]
+    rows: string[][]
+  }> | undefined
+
+  if (!tables || !Array.isArray(tables)) return null
+
+  return (
+    <div className="mb-4 space-y-4">
+      {tables.map((table, tableIndex) => (
+        <div key={tableIndex} className="overflow-x-auto">
+          {table.title && (
+            <h4 className="font-semibold text-gray-700 mb-2 text-sm">{table.title}</h4>
+          )}
+          <table className="w-full border-collapse border border-gray-300 text-xs">
+            <thead>
+              <tr className="bg-gray-100">
+                {table.headers.map((header, i) => (
+                  <th key={i} className="border border-gray-300 px-2 py-1 text-gray-700 font-semibold">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {table.rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="hover:bg-gray-50">
+                  {row.map((cell, cellIndex) => (
+                    <td key={cellIndex} className="border border-gray-300 px-2 py-1 text-center text-gray-600">
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 interface FailedQuestionCardProps {
   question: OfficialExamFailedQuestion
   index: number
@@ -70,6 +117,9 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
           )}
         </div>
       </div>
+
+      {/* Tables for psychometric questions */}
+      {question.questionType === 'psychometric' && renderTables(question.contentData)}
 
       {/* Question text */}
       <p className="text-gray-800 font-medium mb-4">{question.questionText}</p>
