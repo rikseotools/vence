@@ -1090,7 +1090,7 @@ export async function getOfficialExamFailedQuestions(
     const testId = testResults[0].id
     console.log(`✅ [getOfficialExamFailedQuestions] Found test: ${testId}`)
 
-    // Get failed questions from test_questions
+    // Get failed questions from test_questions (includes unanswered)
     const failedQuestionsResult = await db
       .select({
         questionId: testQuestions.questionId,
@@ -1103,9 +1103,8 @@ export async function getOfficialExamFailedQuestions(
       .where(
         and(
           eq(testQuestions.testId, testId),
-          eq(testQuestions.isCorrect, false),
-          // Exclude unanswered questions
-          sql`${testQuestions.userAnswer} IS NOT NULL AND ${testQuestions.userAnswer} != '' AND ${testQuestions.userAnswer} != 'sin_respuesta'`
+          eq(testQuestions.isCorrect, false)
+          // Note: includes unanswered questions (empty userAnswer) as failures
         )
       )
 

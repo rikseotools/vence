@@ -33,7 +33,9 @@ interface FailedQuestionCardProps {
 function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
   const [showExplanation, setShowExplanation] = useState(true)
 
-  const userAnswerIndex = letterToIndex(question.userAnswer)
+  // Check if question was unanswered
+  const isUnanswered = !question.userAnswer || question.userAnswer === '' || question.userAnswer === 'sin_respuesta'
+  const userAnswerIndex = isUnanswered ? -1 : letterToIndex(question.userAnswer)
   const correctAnswerIndex = letterToIndex(question.correctAnswer)
 
   const options = [
@@ -59,6 +61,11 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
           {question.lawName && (
             <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-medium">
               {question.lawName} Art. {question.articleNumber}
+            </span>
+          )}
+          {isUnanswered && (
+            <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-medium">
+              Sin contestar
             </span>
           )}
         </div>
