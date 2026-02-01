@@ -107,6 +107,26 @@ function getAccuracyColor(accuracy: number): ColorKey {
   return 'red'
 }
 
+/**
+ * Get exam stat with fallback to base key (for backwards compatibility)
+ * Old exams were saved without 'parte', so we check both:
+ * 1. "2024-07-09-primera" (new format with parte)
+ * 2. "2024-07-09" (old format without parte)
+ */
+function getExamStat(
+  examStats: Record<string, ExamStat>,
+  examDate: string,
+  parte?: 'primera' | 'segunda'
+): ExamStat | undefined {
+  // First try the specific key with parte
+  const parteKey = parte ? `${examDate}-${parte}` : examDate
+  if (examStats[parteKey]) {
+    return examStats[parteKey]
+  }
+  // Fallback to base key (for old exams without parte)
+  return examStats[examDate]
+}
+
 // ============== COMPONENTS ==============
 
 interface ThemeLinkProps {
@@ -420,10 +440,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             <button
                               onClick={() => toggleConvocatoria('2024-07-09')}
                               className={`w-full ${
-                                (examStats['2024-07-09-primera'] || examStats['2024-07-09-segunda'])
+                                (getExamStat(examStats, '2024-07-09', 'primera') || getExamStat(examStats, '2024-07-09', 'segunda'))
                                   ? COLOR_CLASSES[getAccuracyColor(Math.max(
-                                      examStats['2024-07-09-primera']?.accuracy || 0,
-                                      examStats['2024-07-09-segunda']?.accuracy || 0
+                                      getExamStat(examStats, '2024-07-09', 'primera')?.accuracy || 0,
+                                      getExamStat(examStats, '2024-07-09', 'segunda')?.accuracy || 0
                                     ))]
                                   : 'bg-gray-500 hover:bg-gray-600'
                               } text-white py-3 px-4 text-left font-semibold transition-all duration-300 focus:outline-none`}
@@ -445,62 +465,72 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             {expandedConvocatorias['2024-07-09'] && (
                               <div className="p-3 space-y-2 bg-gray-100">
                                 {/* Primera parte 2024 */}
-                                <Link
-                                  href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2024-07-09&parte=primera"
-                                  className={`block ${COLOR_CLASSES[examStats['2024-07-09-primera'] ? getAccuracyColor(examStats['2024-07-09-primera'].accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                      <span className="mr-2 text-lg">📘</span>
-                                      <div>
-                                        <div className="font-bold">Primera parte</div>
-                                        <div className="text-xs text-white/80">
-                                          Bloque I: Organización del Estado (64 preguntas)
+                                {(() => {
+                                  const stat = getExamStat(examStats, '2024-07-09', 'primera')
+                                  return (
+                                    <Link
+                                      href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2024-07-09&parte=primera"
+                                      className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center">
+                                          <span className="mr-2 text-lg">📘</span>
+                                          <div>
+                                            <div className="font-bold">Primera parte</div>
+                                            <div className="text-xs text-white/80">
+                                              Bloque I: Organización del Estado (64 preguntas)
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center">
+                                          {stat ? (
+                                            <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                                              {stat.accuracy}%
+                                            </span>
+                                          ) : (
+                                            <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                                              Empezar
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                      {examStats['2024-07-09-primera'] ? (
-                                        <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                          {examStats['2024-07-09-primera'].accuracy}%
-                                        </span>
-                                      ) : (
-                                        <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                          Empezar
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </Link>
+                                    </Link>
+                                  )
+                                })()}
 
                                 {/* Segunda parte 2024 */}
-                                <Link
-                                  href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2024-07-09&parte=segunda"
-                                  className={`block ${COLOR_CLASSES[examStats['2024-07-09-segunda'] ? getAccuracyColor(examStats['2024-07-09-segunda'].accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                      <span className="mr-2 text-lg">📗</span>
-                                      <div>
-                                        <div className="font-bold">Segunda parte</div>
-                                        <div className="text-xs text-white/80">
-                                          Bloque II: Actividad Administrativa y Ofimática (50 preguntas)
+                                {(() => {
+                                  const stat = getExamStat(examStats, '2024-07-09', 'segunda')
+                                  return (
+                                    <Link
+                                      href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2024-07-09&parte=segunda"
+                                      className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center">
+                                          <span className="mr-2 text-lg">📗</span>
+                                          <div>
+                                            <div className="font-bold">Segunda parte</div>
+                                            <div className="text-xs text-white/80">
+                                              Bloque II: Actividad Administrativa y Ofimática (50 preguntas)
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center">
+                                          {stat ? (
+                                            <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                                              {stat.accuracy}%
+                                            </span>
+                                          ) : (
+                                            <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                                              Empezar
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                      {examStats['2024-07-09-segunda'] ? (
-                                        <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                          {examStats['2024-07-09-segunda'].accuracy}%
-                                        </span>
-                                      ) : (
-                                        <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                          Empezar
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </Link>
+                                    </Link>
+                                  )
+                                })()}
 
                                 {/* Nota de corte */}
                                 <div className="text-xs text-gray-600 px-2 pt-1">
@@ -518,10 +548,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             <button
                               onClick={() => toggleConvocatoria('2023-01-20')}
                               className={`w-full ${
-                                (examStats['2023-01-20-primera'] || examStats['2023-01-20-segunda'])
+                                (getExamStat(examStats, '2023-01-20', 'primera') || getExamStat(examStats, '2023-01-20', 'segunda'))
                                   ? COLOR_CLASSES[getAccuracyColor(Math.max(
-                                      examStats['2023-01-20-primera']?.accuracy || 0,
-                                      examStats['2023-01-20-segunda']?.accuracy || 0
+                                      getExamStat(examStats, '2023-01-20', 'primera')?.accuracy || 0,
+                                      getExamStat(examStats, '2023-01-20', 'segunda')?.accuracy || 0
                                     ))]
                                   : 'bg-gray-500 hover:bg-gray-600'
                               } text-white py-3 px-4 text-left font-semibold transition-all duration-300 focus:outline-none`}
@@ -543,62 +573,72 @@ export default function TestsAuxiliarAdministrativoEstado() {
                             {expandedConvocatorias['2023-01-20'] && (
                               <div className="p-3 space-y-2 bg-gray-100">
                                 {/* Primera parte 2023 */}
-                                <Link
-                                  href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2023-01-20&parte=primera"
-                                  className={`block ${COLOR_CLASSES[examStats['2023-01-20-primera'] ? getAccuracyColor(examStats['2023-01-20-primera'].accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                      <span className="mr-2 text-lg">📘</span>
-                                      <div>
-                                        <div className="font-bold">Primera parte</div>
-                                        <div className="text-xs text-white/80">
-                                          30 preguntas legislativas + 30 psicotécnicas
+                                {(() => {
+                                  const stat = getExamStat(examStats, '2023-01-20', 'primera')
+                                  return (
+                                    <Link
+                                      href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2023-01-20&parte=primera"
+                                      className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center">
+                                          <span className="mr-2 text-lg">📘</span>
+                                          <div>
+                                            <div className="font-bold">Primera parte</div>
+                                            <div className="text-xs text-white/80">
+                                              30 preguntas legislativas + 30 psicotécnicas
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center">
+                                          {stat ? (
+                                            <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                                              {stat.accuracy}%
+                                            </span>
+                                          ) : (
+                                            <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                                              Empezar
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                      {examStats['2023-01-20-primera'] ? (
-                                        <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                          {examStats['2023-01-20-primera'].accuracy}%
-                                        </span>
-                                      ) : (
-                                        <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                          Empezar
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </Link>
+                                    </Link>
+                                  )
+                                })()}
 
                                 {/* Segunda parte 2023 */}
-                                <Link
-                                  href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2023-01-20&parte=segunda"
-                                  className={`block ${COLOR_CLASSES[examStats['2023-01-20-segunda'] ? getAccuracyColor(examStats['2023-01-20-segunda'].accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center">
-                                      <span className="mr-2 text-lg">📗</span>
-                                      <div>
-                                        <div className="font-bold">Segunda parte</div>
-                                        <div className="text-xs text-white/80">
-                                          Actividad administrativa y Ofimática (51 preguntas)
+                                {(() => {
+                                  const stat = getExamStat(examStats, '2023-01-20', 'segunda')
+                                  return (
+                                    <Link
+                                      href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2023-01-20&parte=segunda"
+                                      className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center">
+                                          <span className="mr-2 text-lg">📗</span>
+                                          <div>
+                                            <div className="font-bold">Segunda parte</div>
+                                            <div className="text-xs text-white/80">
+                                              Actividad administrativa y Ofimática (51 preguntas)
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center">
+                                          {stat ? (
+                                            <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                                              {stat.accuracy}%
+                                            </span>
+                                          ) : (
+                                            <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                                              Empezar
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
-                                    </div>
-                                    <div className="flex items-center">
-                                      {examStats['2023-01-20-segunda'] ? (
-                                        <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                          {examStats['2023-01-20-segunda'].accuracy}%
-                                        </span>
-                                      ) : (
-                                        <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                          Empezar
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </Link>
+                                    </Link>
+                                  )
+                                })()}
                               </div>
                             )}
                           </div>
