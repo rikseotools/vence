@@ -118,18 +118,24 @@ export default function TestsAuxiliarAdministrativoEstado() {
     if (availableExams.length > 0) return // Ya cargados
     setExamsLoading(true)
     try {
-      const response = await fetch('/api/v2/official-exams/list?oposicion=auxiliar-administrativo-estado')
-      const data = await response.json()
-      if (data.success && data.exams) {
-        setAvailableExams(data.exams)
+      // Paralelizar ambas llamadas para reducir tiempo de carga
+      const [listResponse, statsResponse] = await Promise.all([
+        fetch('/api/v2/official-exams/list?oposicion=auxiliar-administrativo-estado'),
+        user?.id
+          ? fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=auxiliar-administrativo-estado`)
+          : Promise.resolve(null)
+      ])
 
-        // Si hay usuario, cargar sus estadísticas de exámenes oficiales
-        if (user?.id) {
-          const statsResponse = await fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=auxiliar-administrativo-estado`)
-          const statsData = await statsResponse.json()
-          if (statsData.success && statsData.stats) {
-            setExamStats(statsData.stats)
-          }
+      const listData = await listResponse.json()
+      if (listData.success && listData.exams) {
+        setAvailableExams(listData.exams)
+      }
+
+      // Cargar estadísticas si hay usuario y respuesta
+      if (statsResponse) {
+        const statsData = await statsResponse.json()
+        if (statsData.success && statsData.stats) {
+          setExamStats(statsData.stats)
         }
       }
     } catch (error) {

@@ -1207,11 +1207,6 @@ export default function OfficialExamLayout({
                         Psicotecnica
                       </span>
                     )}
-                    {!isPsychometric && (
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                        Legislativa
-                      </span>
-                    )}
                   </div>
                   {showFeedback && (
                     <div className={`text-sm font-bold ${isCorrect ? 'text-green-600' : selectedOption ? 'text-red-600' : 'text-gray-400'}`}>

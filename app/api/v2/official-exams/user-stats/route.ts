@@ -29,14 +29,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Query tests table for official exams completed by user
-    // Filter by detailed_analytics->isOfficialExam = true
-    const { data: sessions, error } = await supabase
+    // Filter directly in DB by detailed_analytics->>'isOfficialExam' = 'true'
+    let query = supabase
       .from('tests')
       .select('id, score, total_questions, detailed_analytics, created_at')
       .eq('user_id', userId)
       .eq('test_type', 'exam')
       .eq('is_completed', true)
+      .filter('detailed_analytics->>isOfficialExam', 'eq', 'true')
       .order('score', { ascending: false })
+
+    // Filter by oposicion directly in the query if provided
+    if (oposicion) {
+      query = query.filter('detailed_analytics->>oposicion', 'eq', oposicion)
+    }
+
+    const { data: sessions, error } = await query
 
     if (error) {
       console.error('❌ [API/v2/official-exams/user-stats] Error:', error)
@@ -56,13 +64,10 @@ export async function GET(request: NextRequest) {
 
     sessions?.forEach(session => {
       const analytics = session.detailed_analytics as Record<string, unknown> | null
-      if (!analytics?.isOfficialExam) return
-
-      const examDate = analytics.examDate as string
+      const examDate = analytics?.examDate as string
       if (!examDate) return
 
-      // Filter by oposicion if provided
-      if (oposicion && analytics.oposicion !== oposicion) return
+      // Filtering by isOfficialExam and oposicion now done in DB query
 
       const score = Number(session.score) || 0
       const total = session.total_questions || 0
