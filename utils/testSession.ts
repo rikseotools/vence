@@ -411,8 +411,19 @@ export async function createDetailedTestSession(
     // Validar con Zod
     const validation = createTestSessionSchema.safeParse(params)
     if (!validation.success) {
-      console.error('❌ Validación fallida:', validation.error.flatten())
-      console.error('   Params recibidos:', JSON.stringify(params, null, 2).substring(0, 500))
+      const flattened = validation.error.flatten()
+      console.error('❌ Validación fallida:')
+      console.error('   - formErrors:', flattened.formErrors)
+      console.error('   - fieldErrors:', JSON.stringify(flattened.fieldErrors, null, 2))
+      console.error('   Params claves:', {
+        userId: params.userId,
+        tema: params.tema,
+        testNumber: params.testNumber,
+        questionsCount: params.questions?.length,
+        startTime: params.startTime,
+        pageLoadTime: params.pageLoadTime,
+        testType: params.testType,
+      })
       return null
     }
 
