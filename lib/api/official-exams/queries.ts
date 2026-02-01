@@ -504,7 +504,7 @@ export async function initOfficialExam(
   params: InitOfficialExamRequest,
   userId: string
 ): Promise<InitOfficialExamResponse> {
-  const { examDate, oposicion, questions: questionsData, metadata } = params
+  const { examDate, oposicion, parte, questions: questionsData, metadata } = params
 
   try {
     const db = getDb()
@@ -557,7 +557,9 @@ export async function initOfficialExam(
     // totalQuestions = all questions (including unanswered, which count as failed)
     const [testSession] = await db.insert(tests).values({
       userId,
-      title: `Examen Oficial ${examDate} - ${oposicion}`,
+      title: parte
+        ? `Examen Oficial ${examDate} (${parte} parte) - ${oposicion}`
+        : `Examen Oficial ${examDate} - ${oposicion}`,
       testType: 'exam',
       totalQuestions: questionsData.length,
       score: '0',
@@ -567,6 +569,7 @@ export async function initOfficialExam(
         isOfficialExam: true,
         examDate,
         oposicion,
+        parte: parte ?? null,
         legislativeCount: metadata?.legislativeCount ?? legislativeIds.length,
         psychometricCount: metadata?.psychometricCount ?? psychometricIds.length,
         reservaCount: metadata?.reservaCount ?? 0,

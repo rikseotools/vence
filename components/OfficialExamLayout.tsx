@@ -77,8 +77,10 @@ interface ExamMetadata {
 
 interface ExamConfig {
   examDate?: string
+  parte?: 'primera' | 'segunda'
   backUrl?: string
   backText?: string
+  testType?: string
 }
 
 interface OfficialExamLayoutProps {
@@ -384,6 +386,7 @@ export default function OfficialExamLayout({
         body: JSON.stringify({
           examDate,
           oposicion,
+          parte: config?.parte || null,
           questions: questionsForInit,
           metadata: {
             legislativeCount: metadata?.legislativeCount || 0,
@@ -683,6 +686,7 @@ export default function OfficialExamLayout({
               body: JSON.stringify({
                 examDate: examDateFormatted,
                 oposicion: oposicion,
+                parte: config?.parte || null,
                 results: resultsForApi,
                 totalTimeSeconds,
                 metadata: {

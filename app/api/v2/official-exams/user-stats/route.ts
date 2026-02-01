@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Group by exam date and get best score for each
-    const statsByExamDate: Record<string, {
+    // Group by exam date + parte and get best score for each
+    const statsByExam: Record<string, {
       accuracy: number
       correct: number
       total: number
@@ -67,15 +67,17 @@ export async function GET(request: NextRequest) {
       const examDate = analytics?.examDate as string
       if (!examDate) return
 
-      // Filtering by isOfficialExam and oposicion now done in DB query
+      // Build key: examDate-parte (e.g., "2024-07-09-primera") or just examDate if no parte
+      const parte = analytics?.parte as string | undefined
+      const key = parte ? `${examDate}-${parte}` : examDate
 
       const score = Number(session.score) || 0
       const total = session.total_questions || 0
       const correct = Math.round((score / 100) * total)
 
-      // Keep best score for each exam
-      if (!statsByExamDate[examDate] || statsByExamDate[examDate].accuracy < score) {
-        statsByExamDate[examDate] = {
+      // Keep best score for each exam+parte combination
+      if (!statsByExam[key] || statsByExam[key].accuracy < score) {
+        statsByExam[key] = {
           accuracy: Math.round(score),
           correct,
           total,
@@ -86,7 +88,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      stats: statsByExamDate
+      stats: statsByExam
     })
 
   } catch (error) {

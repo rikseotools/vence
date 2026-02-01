@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Save results using Supabase Admin client (bypasses RLS)
-    const { examDate, oposicion, results, totalTimeSeconds, metadata } = parseResult.data
+    const { examDate, oposicion, parte, results, totalTimeSeconds, metadata } = parseResult.data
 
     // IMPORTANT: Only count answered questions for stats (not 'sin_respuesta')
     const answeredResults = results.filter(r => r.userAnswer && r.userAnswer !== 'sin_respuesta')
@@ -93,7 +93,9 @@ export async function POST(request: NextRequest) {
       .from('tests')
       .insert({
         user_id: user.id,
-        title: `Examen Oficial ${examDate} - ${oposicion}`,
+        title: parte
+          ? `Examen Oficial ${examDate} (${parte} parte) - ${oposicion}`
+          : `Examen Oficial ${examDate} - ${oposicion}`,
         test_type: 'exam',
         total_questions: answeredResults.length, // Only count answered questions
         score: score.toString(),
@@ -104,6 +106,7 @@ export async function POST(request: NextRequest) {
           isOfficialExam: true,
           examDate,
           oposicion,
+          parte: parte ?? null,
           legislativeCount: metadata?.legislativeCount ?? legCount,
           psychometricCount: metadata?.psychometricCount ?? psyCount,
           reservaCount: metadata?.reservaCount ?? 0,

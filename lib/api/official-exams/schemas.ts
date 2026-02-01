@@ -112,6 +112,7 @@ export const saveOfficialExamResultsRequestSchema = z.object({
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
+  parte: z.enum(['primera', 'segunda']).optional(),
   results: z.array(questionResultSchema).min(1, 'Debe haber al menos un resultado'),
   totalTimeSeconds: z.number().int().min(0),
   metadata: z.object({
@@ -160,6 +161,7 @@ export const initOfficialExamRequestSchema = z.object({
     OposicionType.TRAMITACION_PROCESAL,
     OposicionType.AUXILIO_JUDICIAL,
   ]),
+  parte: z.enum(['primera', 'segunda']).optional(),
   questions: z.array(initOfficialExamQuestionSchema).min(1, 'Debe haber al menos una pregunta'),
   metadata: z.object({
     legislativeCount: z.number().int().min(0).optional(),

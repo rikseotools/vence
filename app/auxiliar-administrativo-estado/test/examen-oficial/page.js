@@ -248,6 +248,7 @@ function OfficialExamContent() {
       config={{
         testType: 'official-exam',
         examDate: examDate || metadata?.examDate,
+        parte: parte || null,
         backUrl: '/auxiliar-administrativo-estado/test',
         backText: 'Volver a Tests'
       }}
