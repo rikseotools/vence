@@ -25,51 +25,97 @@ function parseMarkdown(text: string): string {
   return text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
 }
 
-// Helper to render tables from contentData
+// Helper to render a single table
+function renderSingleTable(
+  title: string,
+  headers: string[],
+  rows: string[][],
+  tableIndex: number = 0
+) {
+  return (
+    <div key={tableIndex} className="overflow-x-auto">
+      {title && (
+        <h4 className="font-semibold text-gray-700 mb-2 text-sm">{title}</h4>
+      )}
+      <table className="w-full border-collapse border border-gray-300 text-xs">
+        <thead>
+          <tr className="bg-gray-100">
+            {headers.map((header, i) => (
+              <th key={i} className="border border-gray-300 px-2 py-1 text-gray-700 font-semibold">
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="hover:bg-gray-50">
+              {row.map((cell, cellIndex) => (
+                <td key={cellIndex} className="border border-gray-300 px-2 py-1 text-center text-gray-600">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// Helper to render tables from contentData (handles multiple formats)
 function renderTables(contentData: Record<string, unknown> | null) {
   if (!contentData) return null
 
+  // Format 1: New format with 'tables' array
   const tables = contentData.tables as Array<{
     title?: string
     headers: string[]
     rows: string[][]
   }> | undefined
 
-  if (!tables || !Array.isArray(tables)) return null
+  if (tables && Array.isArray(tables)) {
+    return (
+      <div className="mb-4 space-y-4">
+        {tables.map((table, tableIndex) =>
+          renderSingleTable(table.title || '', table.headers, table.rows, tableIndex)
+        )}
+      </div>
+    )
+  }
 
-  return (
-    <div className="mb-4 space-y-4">
-      {tables.map((table, tableIndex) => (
-        <div key={tableIndex} className="overflow-x-auto">
-          {table.title && (
-            <h4 className="font-semibold text-gray-700 mb-2 text-sm">{table.title}</h4>
-          )}
-          <table className="w-full border-collapse border border-gray-300 text-xs">
-            <thead>
-              <tr className="bg-gray-100">
-                {table.headers.map((header, i) => (
-                  <th key={i} className="border border-gray-300 px-2 py-1 text-gray-700 font-semibold">
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {table.rows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-gray-50">
-                  {row.map((cell, cellIndex) => (
-                    <td key={cellIndex} className="border border-gray-300 px-2 py-1 text-center text-gray-600">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-    </div>
-  )
+  // Format 2: Legacy format with 'table_data' object
+  const tableData = contentData.table_data as {
+    headers?: string[]
+    rows?: string[][]
+  } | undefined
+
+  if (tableData?.headers && tableData?.rows) {
+    // Some questions use table_title, others use table_name
+    const tableName = (contentData.table_title as string) || (contentData.table_name as string) || 'Tabla'
+    return (
+      <div className="mb-4 space-y-4">
+        {renderSingleTable(tableName, tableData.headers, tableData.rows, 0)}
+      </div>
+    )
+  }
+
+  // Format 3: Legacy format with 'main_table' + 'characteristics_table'
+  const mainTable = contentData.main_table as { headers?: string[]; rows?: string[][] } | undefined
+  const charTable = contentData.characteristics_table as { headers?: string[]; rows?: string[][] } | undefined
+
+  if (mainTable?.headers || charTable?.headers) {
+    return (
+      <div className="mb-4 space-y-4">
+        {mainTable?.headers && mainTable?.rows &&
+          renderSingleTable('Tabla Principal', mainTable.headers, mainTable.rows, 0)}
+        {charTable?.headers && charTable?.rows &&
+          renderSingleTable('Tabla de Características', charTable.headers, charTable.rows, 1)}
+      </div>
+    )
+  }
+
+  return null
 }
 
 interface FailedQuestionCardProps {
@@ -175,24 +221,68 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
         <div className="mb-4">
           <button
             onClick={() => {
-              // Build context with tables data if available
+              // Build context with tables data if available (handles multiple formats)
               let tablesContext = ''
-              const tables = question.contentData?.tables as Array<{
-                title?: string
-                headers: string[]
-                rows: string[][]
-              }> | undefined
+              const cd = question.contentData as Record<string, unknown> | null
 
-              if (tables && Array.isArray(tables)) {
-                tablesContext = '\n\n📊 DATOS DE LAS TABLAS:\n'
-                tables.forEach((table, i) => {
-                  tablesContext += `\n${table.title || `Tabla ${i + 1}`}:\n`
-                  tablesContext += table.headers.join(' | ') + '\n'
-                  tablesContext += table.headers.map(() => '---').join(' | ') + '\n'
-                  table.rows.forEach(row => {
-                    tablesContext += row.join(' | ') + '\n'
+              if (cd) {
+                // Format 1: New format with 'tables' array
+                if (cd.tables && Array.isArray(cd.tables)) {
+                  const tables = cd.tables as Array<{
+                    title?: string
+                    headers: string[]
+                    rows: string[][]
+                  }>
+                  tablesContext = '\n\n📊 DATOS DE LAS TABLAS:\n'
+                  tables.forEach((table, i) => {
+                    tablesContext += `\n${table.title || `Tabla ${i + 1}`}:\n`
+                    tablesContext += table.headers.join(' | ') + '\n'
+                    tablesContext += table.headers.map(() => '---').join(' | ') + '\n'
+                    table.rows.forEach(row => {
+                      tablesContext += row.join(' | ') + '\n'
+                    })
                   })
-                })
+                }
+                // Format 2: Legacy format with 'table_data' object
+                else if (cd.table_data) {
+                  const tableData = cd.table_data as { headers?: string[]; rows?: string[][] }
+                  const tableName = (cd.table_title as string) || (cd.table_name as string) || 'Tabla'
+                  if (tableData.headers && tableData.rows) {
+                    tablesContext = '\n\n📊 DATOS DE LA TABLA:\n'
+                    tablesContext += `\n${tableName}:\n`
+                    tablesContext += tableData.headers.join(' | ') + '\n'
+                    tablesContext += tableData.headers.map(() => '---').join(' | ') + '\n'
+                    tableData.rows.forEach(row => {
+                      tablesContext += row.join(' | ') + '\n'
+                    })
+                  }
+                }
+                // Format 3: Legacy format with 'main_table' + 'characteristics_table'
+                else if (cd.main_table || cd.characteristics_table) {
+                  tablesContext = '\n\n📊 DATOS DE LAS TABLAS:\n'
+                  if (cd.main_table) {
+                    const mainTable = cd.main_table as { headers?: string[]; rows?: string[][] }
+                    if (mainTable.headers && mainTable.rows) {
+                      tablesContext += '\nTabla Principal:\n'
+                      tablesContext += mainTable.headers.join(' | ') + '\n'
+                      tablesContext += mainTable.headers.map(() => '---').join(' | ') + '\n'
+                      mainTable.rows.forEach(row => {
+                        tablesContext += row.join(' | ') + '\n'
+                      })
+                    }
+                  }
+                  if (cd.characteristics_table) {
+                    const charTable = cd.characteristics_table as { headers?: string[]; rows?: string[][] }
+                    if (charTable.headers && charTable.rows) {
+                      tablesContext += '\nTabla de Características:\n'
+                      tablesContext += charTable.headers.join(' | ') + '\n'
+                      tablesContext += charTable.headers.map(() => '---').join(' | ') + '\n'
+                      charTable.rows.forEach(row => {
+                        tablesContext += row.join(' | ') + '\n'
+                      })
+                    }
+                  }
+                }
               }
 
               window.dispatchEvent(new CustomEvent('openAIChat', {

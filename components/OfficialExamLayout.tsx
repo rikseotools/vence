@@ -1281,13 +1281,16 @@ export default function OfficialExamLayout({
                       onClick={() => {
                         // Build context with tables data for psychometric questions
                         let tablesContext = ''
-                        if (isPsychometric && question.contentData?.tables) {
-                          const tables = question.contentData.tables as Array<{
-                            title?: string
-                            headers: string[]
-                            rows: string[][]
-                          }>
-                          if (Array.isArray(tables)) {
+                        if (isPsychometric && question.contentData) {
+                          const cd = question.contentData as Record<string, unknown>
+
+                          // Format 1: New format with 'tables' array
+                          if (cd.tables && Array.isArray(cd.tables)) {
+                            const tables = cd.tables as Array<{
+                              title?: string
+                              headers: string[]
+                              rows: string[][]
+                            }>
                             tablesContext = '\n\n📊 DATOS DE LAS TABLAS:\n'
                             tables.forEach((table, i) => {
                               tablesContext += `\n${table.title || `Tabla ${i + 1}`}:\n`
@@ -1297,6 +1300,50 @@ export default function OfficialExamLayout({
                                 tablesContext += row.join(' | ') + '\n'
                               })
                             })
+                          }
+                          // Format 2: Legacy format with 'table_data' object
+                          else if (cd.table_data) {
+                            const tableData = cd.table_data as {
+                              headers?: string[]
+                              rows?: string[][]
+                            }
+                            // Some questions use table_title, others use table_name
+                            const tableName = (cd.table_title as string) || (cd.table_name as string) || 'Tabla'
+                            if (tableData.headers && tableData.rows) {
+                              tablesContext = '\n\n📊 DATOS DE LA TABLA:\n'
+                              tablesContext += `\n${tableName}:\n`
+                              tablesContext += tableData.headers.join(' | ') + '\n'
+                              tablesContext += tableData.headers.map(() => '---').join(' | ') + '\n'
+                              tableData.rows.forEach(row => {
+                                tablesContext += row.join(' | ') + '\n'
+                              })
+                            }
+                          }
+                          // Format 3: Legacy format with 'main_table' + 'characteristics_table'
+                          else if (cd.main_table || cd.characteristics_table) {
+                            tablesContext = '\n\n📊 DATOS DE LAS TABLAS:\n'
+                            if (cd.main_table) {
+                              const mainTable = cd.main_table as { headers?: string[]; rows?: string[][] }
+                              if (mainTable.headers && mainTable.rows) {
+                                tablesContext += '\nTabla Principal:\n'
+                                tablesContext += mainTable.headers.join(' | ') + '\n'
+                                tablesContext += mainTable.headers.map(() => '---').join(' | ') + '\n'
+                                mainTable.rows.forEach(row => {
+                                  tablesContext += row.join(' | ') + '\n'
+                                })
+                              }
+                            }
+                            if (cd.characteristics_table) {
+                              const charTable = cd.characteristics_table as { headers?: string[]; rows?: string[][] }
+                              if (charTable.headers && charTable.rows) {
+                                tablesContext += '\nTabla de Características:\n'
+                                tablesContext += charTable.headers.join(' | ') + '\n'
+                                tablesContext += charTable.headers.map(() => '---').join(' | ') + '\n'
+                                charTable.rows.forEach(row => {
+                                  tablesContext += row.join(' | ') + '\n'
+                                })
+                              }
+                            }
                           }
                         }
 
