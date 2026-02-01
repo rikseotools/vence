@@ -25,7 +25,7 @@ interface FailedQuestionCardProps {
 }
 
 function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
-  const [showExplanation, setShowExplanation] = useState(false)
+  const [showExplanation, setShowExplanation] = useState(true)
 
   const userAnswerIndex = letterToIndex(question.userAnswer)
   const correctAnswerIndex = letterToIndex(question.correctAnswer)
@@ -114,7 +114,7 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
             onClick={() => setShowExplanation(!showExplanation)}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
           >
-            {showExplanation ? 'Ocultar explicacion' : 'Ver explicacion'}
+            {showExplanation ? 'Ocultar explicación' : 'Ver explicación'}
             <svg
               className={`w-4 h-4 transition-transform ${showExplanation ? 'rotate-180' : ''}`}
               fill="none"
@@ -127,7 +127,7 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
 
           {showExplanation && (
             <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">{question.explanation}</p>
+              <p className="text-sm text-blue-800 whitespace-pre-line">{question.explanation}</p>
             </div>
           )}
         </div>
