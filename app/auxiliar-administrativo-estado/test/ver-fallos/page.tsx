@@ -170,6 +170,49 @@ function FailedQuestionCard({ question, index }: FailedQuestionCardProps) {
         })}
       </div>
 
+      {/* AI Explanation button for psychometric questions */}
+      {question.questionType === 'psychometric' && (
+        <div className="mb-4">
+          <button
+            onClick={() => {
+              // Build context with tables data if available
+              let tablesContext = ''
+              const tables = question.contentData?.tables as Array<{
+                title?: string
+                headers: string[]
+                rows: string[][]
+              }> | undefined
+
+              if (tables && Array.isArray(tables)) {
+                tablesContext = '\n\n📊 DATOS DE LAS TABLAS:\n'
+                tables.forEach((table, i) => {
+                  tablesContext += `\n${table.title || `Tabla ${i + 1}`}:\n`
+                  tablesContext += table.headers.join(' | ') + '\n'
+                  tablesContext += table.headers.map(() => '---').join(' | ') + '\n'
+                  table.rows.forEach(row => {
+                    tablesContext += row.join(' | ') + '\n'
+                  })
+                })
+              }
+
+              window.dispatchEvent(new CustomEvent('openAIChat', {
+                detail: {
+                  message: `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${question.questionText}"${tablesContext}\n\nLas opciones son:\nA) ${question.optionA}\nB) ${question.optionB}\nC) ${question.optionC}\nD) ${question.optionD}\n\nLa respuesta correcta es: ${question.correctAnswer.toUpperCase()}`,
+                  suggestion: 'explicar_psico'
+                }
+              }))
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9.5 2l1.5 3.5L14.5 7l-3.5 1.5L9.5 12l-1.5-3.5L4.5 7l3.5-1.5L9.5 2z"/>
+              <path d="M18 8l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5L14.5 11l2.5-1L18 8z"/>
+            </svg>
+            <span>Explicar con IA</span>
+          </button>
+        </div>
+      )}
+
       {/* Explanation toggle */}
       {question.explanation && (
         <div>

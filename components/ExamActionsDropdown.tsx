@@ -48,7 +48,7 @@ export default function ExamActionsDropdown({
         title="Repetir examen"
       >
         <span>🔄</span>
-        <span className="hidden sm:inline">Repetir</span>
+        <span>Repetir</span>
       </button>
 
       {/* Repasar fallos */}
@@ -58,7 +58,7 @@ export default function ExamActionsDropdown({
         title="Repasar fallos"
       >
         <span>🎯</span>
-        <span className="hidden sm:inline">Repasar fallos</span>
+        <span>Repasar</span>
       </button>
 
       {/* Ver fallos */}
@@ -68,7 +68,7 @@ export default function ExamActionsDropdown({
         title="Ver fallos"
       >
         <span>👁️</span>
-        <span className="hidden sm:inline">Ver fallos</span>
+        <span>Ver</span>
       </button>
     </div>
   )
