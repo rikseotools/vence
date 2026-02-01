@@ -1,6 +1,6 @@
 // utils/testAnswers.js - ACTUALIZADO CON FIX ANTI-DUPLICADOS Y SISTEMA DE REINTENTOS
 import { getSupabaseClient } from '../lib/supabase'
-import { getDeviceInfo } from './testSession.js'
+import { getDeviceInfo } from './testSession'
 import { TestBackupSystem } from './testBackup'
 
 const supabase = getSupabaseClient()

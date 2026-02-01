@@ -37,7 +37,7 @@ import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import {
   createDetailedTestSession,
   updateTestScore
-} from '../utils/testSession.js'
+} from '../utils/testSession'
 import {
   completeDetailedTest,
   formatTime

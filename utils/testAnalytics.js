@@ -1,6 +1,6 @@
 // utils/testAnalytics.js - Todo el análisis y completar test
 import { createClient } from '@supabase/supabase-js'
-import { getDeviceInfo } from './testSession.js'
+import { getDeviceInfo } from './testSession'
 
 import { getSupabaseClient } from '../lib/supabase'
 const supabase = getSupabaseClient()

@@ -18,7 +18,7 @@ import {
   createUserSession, 
   createDetailedTestSession, 
   updateTestScore 
-} from '../utils/testSession.js'
+} from '../utils/testSession'
 import { 
   saveDetailedAnswer, 
   calculateConfidence, 
