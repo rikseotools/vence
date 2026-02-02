@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
+import MarkdownExplanation from './MarkdownExplanation'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -1215,9 +1216,10 @@ export default function ExamLayout({
                 {showFeedback && question.explanation && (
                   <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="font-semibold text-blue-900 mb-3 text-base">📖 Explicación:</div>
-                    <p className="text-blue-800 text-base leading-loose whitespace-pre-line">
-                      {question.explanation}
-                    </p>
+                    <MarkdownExplanation
+                      content={question.explanation}
+                      className="text-blue-800 text-base"
+                    />
                     <button
                       onClick={() => {
                         const correctAnswer = validatedResults?.results?.[index]?.correctIndex

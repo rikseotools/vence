@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
+import MarkdownExplanation from '@/components/MarkdownExplanation'
 
 // Tipos
 import type {
@@ -470,9 +471,10 @@ export default function ExamLayoutV2({
                     <div className="font-semibold text-blue-900 dark:text-blue-300 mb-3 text-base">
                       📖 Explicación:
                     </div>
-                    <p className="text-blue-800 dark:text-blue-200 text-base leading-loose whitespace-pre-line">
-                      {question.explanation}
-                    </p>
+                    <MarkdownExplanation
+                      content={question.explanation}
+                      className="text-blue-800 dark:text-blue-200"
+                    />
                     {/* Botón para abrir IA */}
                     <button
                       onClick={() => {

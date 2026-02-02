@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import MarkdownExplanation from './MarkdownExplanation'
 
 export default function SequenceNumericQuestion({
   question,
@@ -199,9 +200,10 @@ export default function SequenceNumericQuestion({
                     <p><strong>✅ Siguiente término:</strong> 5 (porque 7 - 2 = 5)</p>
                   </div>
                 ) : (
-                  <div className="whitespace-pre-line">
-                    {question.explanation}
-                  </div>
+                  <MarkdownExplanation
+                    content={question.explanation}
+                    className="text-gray-700"
+                  />
                 )}
               </div>
             </div>

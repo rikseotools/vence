@@ -10,7 +10,7 @@ import QuestionEvolution from './QuestionEvolution'
 import QuestionDispute from './QuestionDispute'
 import ShareQuestion from './ShareQuestion'
 import InteractiveBreadcrumbs from './InteractiveBreadcrumbs'
-
+import MarkdownExplanation from './MarkdownExplanation'
 
 // Imports modularizados
 import { 
@@ -2035,9 +2035,10 @@ export default function TestLayout({
                           </button>
                         </div>
 
-                        <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed whitespace-pre-line">
-                          {currentQ.explanation}
-                        </p>
+                        <MarkdownExplanation
+                          content={currentQ.explanation}
+                          className="text-blue-700 dark:text-blue-400 text-sm"
+                        />
 
                         {/* 🤖 Botón también al final de la explicación */}
                         <button

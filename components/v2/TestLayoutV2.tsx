@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useQuestionContext } from '@/contexts/QuestionContext'
+import MarkdownExplanation from '@/components/MarkdownExplanation'
 import { useTestCompletion } from '@/hooks/useTestCompletion'
 import { useDailyQuestionLimit } from '@/hooks/useDailyQuestionLimit'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
@@ -706,9 +707,10 @@ export default function TestLayoutV2({
 
                     {/* Contenido de la explicación */}
                     {(currentQ?.explanation || generatedExplanation) && (
-                      <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed whitespace-pre-line">
-                        {currentQ?.explanation || generatedExplanation}
-                      </p>
+                      <MarkdownExplanation
+                        content={currentQ?.explanation || generatedExplanation || ''}
+                        className="text-blue-700 dark:text-blue-400 text-sm"
+                      />
                     )}
 
                     {/* Botón al final de la explicación */}

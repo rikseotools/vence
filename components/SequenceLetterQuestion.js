@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import MarkdownExplanation from './MarkdownExplanation'
 
 export default function SequenceLetterQuestion({
   question,
@@ -182,18 +183,18 @@ export default function SequenceLetterQuestion({
           ) : verifiedExplanation ? (
             // 🔒 SEGURIDAD: Usar verifiedExplanation de API
             <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <div className="text-gray-700 text-sm whitespace-pre-line">
-                {verifiedExplanation}
-              </div>
+              <MarkdownExplanation
+                content={verifiedExplanation}
+                className="text-gray-700 text-sm"
+              />
             </div>
           ) : (
             // Fallback para explanation simple
             <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <div className="text-gray-700 text-sm">
-                <div className="whitespace-pre-line">
-                  {question.explanation}
-                </div>
-              </div>
+              <MarkdownExplanation
+                content={question.explanation}
+                className="text-gray-700 text-sm"
+              />
             </div>
           )}
         </div>

@@ -18,6 +18,7 @@ import { DIFFICULTY_CONFIGS } from './types'
 
 // Hooks
 import { useAnswerValidation } from './hooks/useAnswerValidation'
+import MarkdownExplanation from '@/components/MarkdownExplanation'
 
 // Helper para convertir índice de respuesta a letra (0='A', 1='B', etc.)
 function answerToLetter(index: number | null | undefined): string {
@@ -317,9 +318,10 @@ export default function DynamicTestAi({
                     <h5 className="font-bold text-blue-800 dark:text-blue-300 mb-2">
                       Explicación de IA:
                     </h5>
-                    <p className="text-blue-700 dark:text-blue-400 text-sm leading-relaxed whitespace-pre-line">
-                      {mistake.questionData.explanation}
-                    </p>
+                    <MarkdownExplanation
+                      content={mistake.questionData.explanation}
+                      className="text-blue-700 dark:text-blue-400 text-sm"
+                    />
                   </div>
 
                   {mistake.questionData.article && (
@@ -579,9 +581,10 @@ export default function DynamicTestAi({
                       IA
                     </span>
                   </div>
-                  <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
-                    {currentQ.explanation}
-                  </p>
+                  <MarkdownExplanation
+                    content={currentQ.explanation}
+                    className="text-gray-700 dark:text-gray-300"
+                  />
                   {/* Botón para abrir IA */}
                   <button
                     onClick={() => {

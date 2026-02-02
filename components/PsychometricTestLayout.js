@@ -15,6 +15,7 @@ import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
+import MarkdownExplanation from './MarkdownExplanation'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 
@@ -148,6 +149,8 @@ export default function PsychometricTestLayout({
         'text_question': 'Pregunta de texto',
         'calculation': 'Cálculo',
         'logic': 'Lógica',
+        'synonym': 'Sinónimos',
+        'antonym': 'Antónimos',
         'analogy': 'Analogía',
         'comprehension': 'Comprensión',
         'pattern': 'Patrón',
@@ -540,7 +543,13 @@ export default function PsychometricTestLayout({
           />
         )
       
+      // Preguntas simples de 4 opciones (texto + respuestas A/B/C/D)
+      case 'synonym':
+      case 'antonym':
       case 'text_question':
+      case 'calculation':
+      case 'percentage':
+      case 'probability':
         return (
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h3 className="text-xl font-bold text-gray-900 mb-6">
@@ -593,9 +602,9 @@ export default function PsychometricTestLayout({
             {showResult && verifiedExplanation && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
                 <h4 className="font-semibold text-blue-800 mb-2">📝 Explicación:</h4>
-                <div
-                  className="text-blue-700 whitespace-pre-line"
-                  dangerouslySetInnerHTML={{ __html: verifiedExplanation.replace(/\n/g, '<br>') }}
+                <MarkdownExplanation
+                  content={verifiedExplanation}
+                  className="text-blue-700"
                 />
                 {/* Botón para abrir IA - siempre visible */}
                 <button

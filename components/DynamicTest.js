@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import AdSenseComponent from './AdSenseComponent'
+import MarkdownExplanation from './MarkdownExplanation'
 
 // 🔒 FUNCIÓN: Validar respuesta de forma segura via API
 // Fase 2 de migración: usa API con fallback a validación local
@@ -300,9 +301,10 @@ export default function DynamicTest({ titulo, dificultad }) {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <h5 className="font-bold text-blue-800 mb-2">Explicación de IA:</h5>
-              <p className="text-blue-700 text-sm leading-relaxed whitespace-pre-line">
-                {mistake.questionData.explanation}
-              </p>
+              <MarkdownExplanation
+                content={mistake.questionData.explanation}
+                className="text-blue-700 text-sm"
+              />
             </div>
 
             {mistake.questionData.article && (
@@ -517,9 +519,10 @@ export default function DynamicTest({ titulo, dificultad }) {
                           </span>
                         </div>
                       </div>
-                      <p className="text-gray-700 leading-relaxed mb-4 whitespace-pre-line">
-                        {currentQ.explanation}
-                      </p>
+                      <MarkdownExplanation
+                        content={currentQ.explanation}
+                        className="text-gray-700 mb-4"
+                      />
                       {/* Botón para abrir IA */}
                       <button
                         onClick={() => {

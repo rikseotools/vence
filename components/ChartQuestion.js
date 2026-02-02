@@ -2,14 +2,7 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
-
-// Helper para formatear markdown básico a HTML
-function formatMarkdown(text) {
-  if (!text) return ''
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // **negrita**
-    .replace(/\n/g, '<br>') // saltos de línea
-}
+import MarkdownExplanation from './MarkdownExplanation'
 
 export default function ChartQuestion({
   question,
@@ -305,9 +298,9 @@ export default function ChartQuestion({
                   </h4>
                   {(verifiedExplanation || question.explanation) && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                      <div
+                      <MarkdownExplanation
+                        content={verifiedExplanation || question.explanation}
                         className="text-blue-700"
-                        dangerouslySetInnerHTML={{ __html: formatMarkdown(verifiedExplanation || question.explanation) }}
                       />
                     </div>
                   )}

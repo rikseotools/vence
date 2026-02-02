@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import MarkdownExplanation from './MarkdownExplanation'
 
 export default function SequenceAlphanumericQuestion({
   question,
@@ -171,9 +172,10 @@ export default function SequenceAlphanumericQuestion({
           {(verifiedExplanation || question.explanation) && (
             <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
               <h5 className="font-semibold text-green-800 mb-2">📝 Explicación:</h5>
-              <div className="text-gray-700 text-sm whitespace-pre-line">
-                {verifiedExplanation || question.explanation}
-              </div>
+              <MarkdownExplanation
+                content={verifiedExplanation || question.explanation}
+                className="text-gray-700 text-sm"
+              />
             </div>
           )}
         </div>

@@ -28,6 +28,7 @@ import WordAnalysisQuestion from '@/components/WordAnalysisQuestion'
 import SequenceNumericQuestion from '@/components/SequenceNumericQuestion'
 import SequenceLetterQuestion from '@/components/SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from '@/components/SequenceAlphanumericQuestion'
+import MarkdownExplanation from '@/components/MarkdownExplanation'
 import PsychometricQuestionDispute from './PsychometricQuestionDispute'
 
 // ============================================
@@ -476,9 +477,10 @@ export default function PsychometricTestLayoutV2({
                 <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
                   📝 Explicación:
                 </h4>
-                <p className="text-blue-700 dark:text-blue-200 whitespace-pre-line">
-                  {verifiedExplanation}
-                </p>
+                <MarkdownExplanation
+                  content={verifiedExplanation}
+                  className="text-blue-700 dark:text-blue-200"
+                />
                 {/* Botón para abrir IA */}
                 <button
                   onClick={() => {

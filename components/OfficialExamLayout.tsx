@@ -28,6 +28,7 @@ import WordAnalysisQuestion from './WordAnalysisQuestion'
 import SequenceNumericQuestion from './SequenceNumericQuestion'
 import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
+import MarkdownExplanation from './MarkdownExplanation'
 
 // =====================================================
 // TYPES
@@ -139,28 +140,7 @@ function letterToIndex(letter: string | null | undefined): number | null {
   return map[letter.toLowerCase()] ?? null
 }
 
-// Helper para formatear markdown basico a HTML
-function formatMarkdown(text: string): string {
-  return text
-    // Escapar HTML primero
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    // Negrita: **texto** o __texto__
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/__(.+?)__/g, '<strong>$1</strong>')
-    // Cursiva: *texto* o _texto_
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/_(.+?)_/g, '<em>$1</em>')
-    // Citas: > texto
-    .replace(/^>\s*(.+)$/gm, '<blockquote class="border-l-4 border-blue-300 pl-3 my-2 italic text-blue-700">$1</blockquote>')
-    // Listas con guion: - item
-    .replace(/^-\s+(.+)$/gm, '<li class="ml-4">$1</li>')
-    // Listas numeradas: 1. item
-    .replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-    // Saltos de linea
-    .replace(/\n/g, '<br/>')
-}
+// Helper formatMarkdown eliminado - usando MarkdownExplanation component
 
 // Funcion para obtener mensaje motivacional segun puntuacion
 function getMotivationalMessage(notaSobre10: string, userName: string): MotivationalMessage {
@@ -991,9 +971,9 @@ export default function OfficialExamLayout({
         {showFeedback && verifiedExplanation && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
             <h4 className="font-semibold text-blue-800 mb-2">📝 Explicacion:</h4>
-            <div
+            <MarkdownExplanation
+              content={verifiedExplanation}
               className="text-blue-700"
-              dangerouslySetInnerHTML={{ __html: formatMarkdown(verifiedExplanation) }}
             />
           </div>
         )}
@@ -1293,11 +1273,9 @@ export default function OfficialExamLayout({
                 {showFeedback && !isPsychometric && question.explanation && (
                   <div className="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="font-semibold text-blue-900 mb-3 text-base">📖 Explicacion:</div>
-                    <div
-                      className="text-blue-800 text-base leading-relaxed"
-                      dangerouslySetInnerHTML={{
-                        __html: formatMarkdown(validatedResult?.explanation || question.explanation || '')
-                      }}
+                    <MarkdownExplanation
+                      content={validatedResult?.explanation || question.explanation || ''}
+                      className="text-blue-800 text-base"
                     />
                   </div>
                 )}
