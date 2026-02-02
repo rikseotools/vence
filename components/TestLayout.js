@@ -153,17 +153,33 @@ function isLegalArticle(lawShortName) {
 
 // 🏛️ FUNCIÓN: Verificar si un hot article es válido para la oposición del usuario
 // Mapeo de slugs de URL a valores de target_oposicion en hot_articles
+// Mapeo de slugs de oposición del usuario a valores válidos en hot_articles.target_oposicion
+// Los valores en BD están normalizados con guiones: auxiliar-administrativo-estado, administrativo-estado, etc.
 const HOT_ARTICLE_OPOSICION_MAP = {
-  'auxiliar-administrativo-estado': ['auxiliar_administrativo_estado', 'auxiliar_administrativo'],
-  'auxiliar_administrativo': ['auxiliar_administrativo_estado', 'auxiliar_administrativo'],
-  'tramitacion-procesal': ['tramitacion_procesal'],
-  'tramitacion_procesal': ['tramitacion_procesal'],
-  'auxilio-judicial': ['auxilio_judicial'],
-  'auxilio_judicial': ['auxilio_judicial'],
-  'gestion-procesal': ['gestion_procesal'],
-  'gestion_procesal': ['gestion_procesal'],
-  'cuerpo-general-administrativo': ['cuerpo_general_administrativo', 'administrativo'],
-  'cuerpo_general_administrativo': ['cuerpo_general_administrativo', 'administrativo'],
+  // Auxiliar Administrativo del Estado (C2)
+  'auxiliar-administrativo-estado': ['auxiliar-administrativo-estado'],
+  'auxiliar_administrativo_estado': ['auxiliar-administrativo-estado'],
+  'auxiliar_administrativo': ['auxiliar-administrativo-estado'],
+
+  // Administrativo del Estado (C1) - Cuerpo General Administrativo
+  'administrativo-estado': ['administrativo-estado'],
+  'administrativo_estado': ['administrativo-estado'],
+  'cuerpo-general-administrativo': ['administrativo-estado'],
+  'cuerpo_general_administrativo': ['administrativo-estado'],
+
+  // Tramitación Procesal
+  'tramitacion-procesal': ['tramitacion-procesal'],
+  'tramitacion_procesal': ['tramitacion-procesal'],
+
+  // Auxilio Judicial
+  'auxilio-judicial': ['auxilio-judicial'],
+  'auxilio_judicial': ['auxilio-judicial'],
+
+  // Gestión del Estado
+  'gestion-estado': ['gestion-estado'],
+  'gestion_estado': ['gestion-estado'],
+  'gestion-procesal': ['gestion-estado'],
+  'gestion_procesal': ['gestion-estado'],
 }
 
 function isHotArticleForUserOposicion(targetOposicion, userOposicionSlug) {

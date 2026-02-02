@@ -821,6 +821,22 @@ export interface HotArticlesSearchResult {
   isFromUserOposicion: boolean    // true si son datos de la oposición del usuario
 }
 
+// Normaliza el slug de oposición del usuario al formato de hot_articles (con guiones)
+function normalizeOposicionForHotArticles(oposicion: string): string {
+  const mapping: Record<string, string> = {
+    'auxiliar_administrativo_estado': 'auxiliar-administrativo-estado',
+    'auxiliar_administrativo': 'auxiliar-administrativo-estado',
+    'cuerpo_general_administrativo': 'administrativo-estado',
+    'administrativo_estado': 'administrativo-estado',
+    'tramitacion_procesal': 'tramitacion-procesal',
+    'auxilio_judicial': 'auxilio-judicial',
+    'gestion_estado': 'gestion-estado',
+    'gestion_procesal': 'gestion-estado',
+  }
+  const normalized = oposicion.toLowerCase()
+  return mapping[normalized] || oposicion.replace(/_/g, '-')
+}
+
 /**
  * Obtiene los artículos más preguntados en exámenes oficiales
  * Filtra por oposición del usuario y opcionalmente por ley
@@ -835,7 +851,10 @@ export async function getHotArticlesByOposicion(
 ): Promise<HotArticlesSearchResult> {
   const { lawShortName, limit = 10 } = options
 
-  logger.info(`🔥 getHotArticlesByOposicion: oposicion=${userOposicion}, law=${lawShortName || 'all'}`, { domain: 'search' })
+  // Normalizar la oposición del usuario al formato de la BD (con guiones)
+  const normalizedOposicion = normalizeOposicionForHotArticles(userOposicion)
+
+  logger.info(`🔥 getHotArticlesByOposicion: oposicion=${userOposicion} -> ${normalizedOposicion}, law=${lawShortName || 'all'}`, { domain: 'search' })
 
   // Helper para ejecutar query
   const executeQuery = async (targetOposicion: string | null) => {
@@ -865,8 +884,8 @@ export async function getHotArticlesByOposicion(
     return query
   }
 
-  // 1. Primero intentar con la oposición del usuario
-  const { data: hotArticles, error } = await executeQuery(userOposicion)
+  // 1. Primero intentar con la oposición del usuario (normalizada)
+  const { data: hotArticles, error } = await executeQuery(normalizedOposicion)
 
   if (error) {
     logger.error('Error fetching hot_articles', error, { domain: 'search' })
@@ -875,17 +894,20 @@ export async function getHotArticlesByOposicion(
 
   // Si encontramos datos para la oposición del usuario, usarlos
   if (hotArticles && hotArticles.length > 0) {
-    logger.info(`🔥 Found ${hotArticles.length} hot articles for ${userOposicion}`, { domain: 'search' })
+    logger.info(`🔥 Found ${hotArticles.length} hot articles for ${normalizedOposicion}`, { domain: 'search' })
     const articles = await enrichHotArticles(hotArticles)
-    return { articles, sourceOposicion: userOposicion, isFromUserOposicion: true }
+    return { articles, sourceOposicion: normalizedOposicion, isFromUserOposicion: true }
   }
 
-  logger.info(`🔥 No hot articles found for ${userOposicion}${lawShortName ? ` in ${lawShortName}` : ''}, trying fallback`, { domain: 'search' })
+  logger.info(`🔥 No hot articles found for ${normalizedOposicion}${lawShortName ? ` in ${lawShortName}` : ''}, trying fallback`, { domain: 'search' })
 
-  // 2. Fallback: buscar en oposiciones similares (auxiliar_administrativo_estado como default general)
-  const fallbackOposiciones = ['auxiliar_administrativo_estado', 'cuerpo_general_administrativo']
+  // 2. Fallback: buscar en oposiciones similares (valores normalizados con guiones)
+  const fallbackOposiciones = ['auxiliar-administrativo-estado', 'administrativo-estado']
 
   for (const fallbackOposicion of fallbackOposiciones) {
+    // No usar fallback si ya es la oposición del usuario normalizada
+    if (fallbackOposicion === normalizedOposicion) continue
+
     const { data: fallbackArticles, error: fallbackError } = await executeQuery(fallbackOposicion)
 
     if (!fallbackError && fallbackArticles && fallbackArticles.length > 0) {
