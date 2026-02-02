@@ -34,14 +34,6 @@ interface ThemeStats {
   lastStudyFormatted?: string
 }
 
-interface ExamInfo {
-  examDate: string
-  examSource: string
-  oposicion: string
-  totalQuestions: number
-  partes: string[]
-}
-
 interface ExamStat {
   accuracy: number
   correct: number
@@ -192,9 +184,8 @@ export default function TestsAuxiliarAdministrativoEstado() {
     examenesOficiales: false
   })
   const [expandedConvocatorias, setExpandedConvocatorias] = useState<Record<string, boolean>>({})
-  const [availableExams, setAvailableExams] = useState<ExamInfo[]>([])
-  const [examsLoading, setExamsLoading] = useState(false)
   const [examStats, setExamStats] = useState<Record<string, ExamStat>>({})
+  const [examStatsLoading, setExamStatsLoading] = useState(false)
 
   // Cargar estadísticas usando la nueva API V2 con derivación dinámica por oposición
   const loadUserThemeStats = useCallback(async (userId: string) => {
@@ -233,37 +224,22 @@ export default function TestsAuxiliarAdministrativoEstado() {
     }
   }, [user?.id, loading, loadUserThemeStats])
 
-  // Cargar exámenes oficiales disponibles y estadísticas del usuario
-  const loadAvailableExams = useCallback(async () => {
-    if (availableExams.length > 0) return // Ya cargados
-    setExamsLoading(true)
+  // Cargar estadísticas de exámenes oficiales del usuario
+  const loadExamStats = useCallback(async () => {
+    if (!user?.id || Object.keys(examStats).length > 0) return // Ya cargadas o no hay usuario
+    setExamStatsLoading(true)
     try {
-      // Paralelizar ambas llamadas para reducir tiempo de carga
-      const [listResponse, statsResponse] = await Promise.all([
-        fetch('/api/v2/official-exams/list?oposicion=auxiliar-administrativo-estado'),
-        user?.id
-          ? fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=auxiliar-administrativo-estado`)
-          : Promise.resolve(null)
-      ])
-
-      const listData = await listResponse.json()
-      if (listData.success && listData.exams) {
-        setAvailableExams(listData.exams)
-      }
-
-      // Cargar estadísticas si hay usuario y respuesta
-      if (statsResponse) {
-        const statsData = await statsResponse.json()
-        if (statsData.success && statsData.stats) {
-          setExamStats(statsData.stats)
-        }
+      const response = await fetch(`/api/v2/official-exams/user-stats?userId=${user.id}&oposicion=auxiliar-administrativo-estado`)
+      const data = await response.json()
+      if (data.success && data.stats) {
+        setExamStats(data.stats)
       }
     } catch (error) {
-      console.warn('Error cargando exámenes oficiales:', error)
+      console.warn('Error cargando estadísticas de exámenes:', error)
     } finally {
-      setExamsLoading(false)
+      setExamStatsLoading(false)
     }
-  }, [availableExams.length, user?.id])
+  }, [user?.id, examStats])
 
   // Alternar expansión de bloques
   const toggleBlock = (blockId: string) => {
@@ -271,9 +247,9 @@ export default function TestsAuxiliarAdministrativoEstado() {
       ...prev,
       [blockId]: !prev[blockId]
     }))
-    // Cargar exámenes cuando se expande la sección
+    // Cargar estadísticas cuando se expande la sección de exámenes
     if (blockId === 'examenesOficiales' && !expandedBlocks.examenesOficiales) {
-      loadAvailableExams()
+      loadExamStats()
     }
   }
 
@@ -428,16 +404,9 @@ export default function TestsAuxiliarAdministrativoEstado() {
 
                 {expandedBlocks.examenesOficiales && (
                   <div className="p-4 space-y-3 bg-gray-50">
-                    {examsLoading ? (
-                      <div className="text-center py-4">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600 mx-auto mb-2"></div>
-                        <p className="text-gray-600 text-sm">Cargando exámenes...</p>
-                      </div>
-                    ) : availableExams.length > 0 ? (
-                      <div className="space-y-3">
-                        {/* ===== CONVOCATORIA 2024 ===== */}
-                        {availableExams.filter(e => e.examDate === '2024-07-09').length > 0 && (
-                          <div className="bg-white rounded-lg shadow overflow-hidden">
+                    <div className="space-y-3">
+                      {/* ===== CONVOCATORIA 2024 ===== */}
+                      <div className="bg-white rounded-lg shadow overflow-hidden">
                             <button
                               onClick={() => toggleConvocatoria('2024-07-09')}
                               className={`w-full ${
@@ -559,12 +528,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                               </div>
                             )}
                           </div>
-                        )}
 
-                        {/* ===== CONVOCATORIA 2023 ===== */}
-                        {availableExams.filter(e => e.examDate === '2023-01-20').length > 0 && (
-                          <div className="bg-white rounded-lg shadow overflow-hidden">
-                            <button
+                      {/* ===== CONVOCATORIA 2023 ===== */}
+                      <div className="bg-white rounded-lg shadow overflow-hidden">
+                        <button
                               onClick={() => toggleConvocatoria('2023-01-20')}
                               className={`w-full ${
                                 (getExamStat(examStats, '2023-01-20', 'primera') || getExamStat(examStats, '2023-01-20', 'segunda'))
@@ -606,7 +573,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                             <div>
                                               <div className="font-bold">Primera parte</div>
                                               <div className="text-xs text-white/80">
-                                                30 preguntas legislativas + 30 psicotécnicas
+                                                31 legislativas + 32 psicotécnicas (63 preguntas)
                                               </div>
                                             </div>
                                           </div>
@@ -649,7 +616,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                             <div>
                                               <div className="font-bold">Segunda parte</div>
                                               <div className="text-xs text-white/80">
-                                                Actividad administrativa y Ofimática (51 preguntas)
+                                                Actividad administrativa y Ofimática (50 preguntas)
                                               </div>
                                             </div>
                                           </div>
@@ -679,13 +646,131 @@ export default function TestsAuxiliarAdministrativoEstado() {
                               </div>
                             )}
                           </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-gray-600">
-                        <p>No hay exámenes oficiales disponibles todavía.</p>
-                      </div>
-                    )}
+
+                      {/* ===== CONVOCATORIA 2021 (OEP 2020) ===== */}
+                      <div className="bg-white rounded-lg shadow overflow-hidden">
+                        <button
+                              onClick={() => toggleConvocatoria('2021-05-26')}
+                              className={`w-full ${
+                                (getExamStat(examStats, '2021-05-26', 'primera') || getExamStat(examStats, '2021-05-26', 'segunda'))
+                                  ? COLOR_CLASSES[getAccuracyColor(Math.max(
+                                      getExamStat(examStats, '2021-05-26', 'primera')?.accuracy || 0,
+                                      getExamStat(examStats, '2021-05-26', 'segunda')?.accuracy || 0
+                                    ))]
+                                  : 'bg-gray-500 hover:bg-gray-600'
+                              } text-white py-3 px-4 text-left font-semibold transition-all duration-300 focus:outline-none`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <span className="mr-2 text-lg">📋</span>
+                                  <div>
+                                    <div className="font-bold">Convocatoria 26 de mayo de 2021</div>
+                                    <div className="text-xs text-white/80">OEP 2020</div>
+                                  </div>
+                                </div>
+                                <span className={`text-xl transition-transform duration-300 ${expandedConvocatorias['2021-05-26'] ? 'rotate-180' : ''}`}>
+                                  ▼
+                                </span>
+                              </div>
+                            </button>
+
+                            {expandedConvocatorias['2021-05-26'] && (
+                              <div className="p-3 space-y-2 bg-gray-100">
+                                {/* Primera parte 2021 */}
+                                {(() => {
+                                  const stat = getExamStat(examStats, '2021-05-26', 'primera')
+                                  return (
+                                    <div className="relative">
+                                      <Link
+                                        href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2021-05-26&parte=primera"
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center">
+                                            <span className="mr-2 text-lg">📘</span>
+                                            <div>
+                                              <div className="font-bold">Primera parte</div>
+                                              <div className="text-xs text-white/80">
+                                                Legislativas + Psicotécnicas (62 preguntas)
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {stat ? (
+                                              <>
+                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                                                  {stat.accuracy}%
+                                                </span>
+                                                <ExamActionsDropdown
+                                                  examDate="2021-05-26"
+                                                  parte="primera"
+                                                  oposicion="auxiliar-administrativo-estado"
+                                                />
+                                              </>
+                                            ) : (
+                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                                                Empezar
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </Link>
+                                    </div>
+                                  )
+                                })()}
+
+                                {/* Segunda parte 2021 */}
+                                {(() => {
+                                  const stat = getExamStat(examStats, '2021-05-26', 'segunda')
+                                  return (
+                                    <div className="relative">
+                                      <Link
+                                        href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2021-05-26&parte=segunda"
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center">
+                                            <span className="mr-2 text-lg">📗</span>
+                                            <div>
+                                              <div className="font-bold">Segunda parte</div>
+                                              <div className="text-xs text-white/80">
+                                                Bloque II: Actividad Administrativa y Ofimática (53 preguntas)
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {stat ? (
+                                              <>
+                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                                                  {stat.accuracy}%
+                                                </span>
+                                                <ExamActionsDropdown
+                                                  examDate="2021-05-26"
+                                                  parte="segunda"
+                                                  oposicion="auxiliar-administrativo-estado"
+                                                />
+                                              </>
+                                            ) : (
+                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                                                Empezar
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </Link>
+                                    </div>
+                                  )
+                                })()}
+
+                                {/* Nota informativa */}
+                                <div className="text-xs text-gray-600 px-2 pt-1">
+                                  <span className="text-amber-600 font-medium">ℹ️ Nota:</span>
+                                  <span className="ml-1">Preguntas de informática actualizadas a Office 365 y Windows 11</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                    </div>
                   </div>
                 )}
               </div>

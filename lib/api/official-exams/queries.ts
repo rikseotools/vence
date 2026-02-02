@@ -5,7 +5,6 @@ import type {
   GetOfficialExamQuestionsRequest,
   GetOfficialExamQuestionsResponse,
   OfficialExamQuestion,
-  GetAvailableExamsResponse,
   SaveOfficialExamResultsRequest,
   SaveOfficialExamResultsResponse,
   InitOfficialExamRequest,
@@ -221,104 +220,6 @@ export async function getOfficialExamQuestions(
     }
   } catch (error) {
     console.error('❌ [OfficialExams] Error fetching questions:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Error desconocido',
-    }
-  }
-}
-
-/**
- * Get list of available official exams
- */
-export async function getAvailableOfficialExams(
-  oposicion?: string
-): Promise<GetAvailableExamsResponse> {
-  try {
-    const db = getDb()
-
-    // Get distinct exam dates and sources from questions table
-    const legislativeExams = await db
-      .selectDistinct({
-        examDate: questions.examDate,
-        examSource: questions.examSource,
-      })
-      .from(questions)
-      .where(
-        and(
-          eq(questions.isActive, true),
-          eq(questions.isOfficialExam, true),
-          sql`${questions.examDate} IS NOT NULL`,
-          sql`${questions.examSource} IS NOT NULL`
-        )
-      )
-
-    // Get distinct exam dates and sources from psychometric_questions table
-    const psychometricExams = await db
-      .selectDistinct({
-        examDate: psychometricQuestions.examDate,
-        examSource: psychometricQuestions.examSource,
-      })
-      .from(psychometricQuestions)
-      .where(
-        and(
-          eq(psychometricQuestions.isActive, true),
-          eq(psychometricQuestions.isOfficialExam, true),
-          sql`${psychometricQuestions.examDate} IS NOT NULL`,
-          sql`${psychometricQuestions.examSource} IS NOT NULL`
-        )
-      )
-
-    // Combine and deduplicate
-    const allExams = [...legislativeExams, ...psychometricExams]
-    const uniqueExams = new Map<string, { examDate: string; examSource: string }>()
-
-    allExams.forEach(exam => {
-      if (exam.examDate && exam.examSource) {
-        const key = `${exam.examDate}-${exam.examSource.split('(')[0].trim()}`
-        if (!uniqueExams.has(key)) {
-          uniqueExams.set(key, {
-            examDate: exam.examDate,
-            examSource: exam.examSource.split('(')[0].trim(),
-          })
-        }
-      }
-    })
-
-    // Map to oposicion
-    const examSummaries = Array.from(uniqueExams.values()).map(exam => {
-      let oposicionSlug = 'unknown'
-      if (exam.examSource.includes('Auxiliar Administrativo Estado')) {
-        oposicionSlug = 'auxiliar-administrativo-estado'
-      } else if (exam.examSource.includes('Tramitación Procesal')) {
-        oposicionSlug = 'tramitacion-procesal'
-      } else if (exam.examSource.includes('Auxilio Judicial')) {
-        oposicionSlug = 'auxilio-judicial'
-      }
-
-      return {
-        examDate: exam.examDate,
-        examSource: exam.examSource,
-        oposicion: oposicionSlug,
-        totalQuestions: 0, // Would need additional query to count
-        partes: ['primera'], // Default
-      }
-    })
-
-    // Filter by oposicion if provided
-    const filteredExams = oposicion
-      ? examSummaries.filter(e => e.oposicion === oposicion)
-      : examSummaries
-
-    // Sort by date descending
-    filteredExams.sort((a, b) => b.examDate.localeCompare(a.examDate))
-
-    return {
-      success: true,
-      exams: filteredExams,
-    }
-  } catch (error) {
-    console.error('❌ [OfficialExams] Error fetching available exams:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
