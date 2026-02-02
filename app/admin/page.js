@@ -199,7 +199,7 @@ export default function AdminDashboard() {
 
           const { data: userProfiles, error: userProfilesError } = await supabase
             .from('user_profiles')
-            .select('id, full_name, email, is_premium')
+            .select('id, full_name, email, plan_type')
             .in('id', userIds)
 
           if (userProfilesError) {
@@ -211,7 +211,7 @@ export default function AdminDashboard() {
               const profile = userProfiles?.find(p => p.id === test.user_id)
               return {
                 ...test,
-                user_profiles: profile ? { full_name: profile.full_name, email: profile.email, is_premium: profile.is_premium } : null
+                user_profiles: profile ? { full_name: profile.full_name, email: profile.email, is_premium: profile.plan_type === 'premium' } : null
               }
             })
           }
