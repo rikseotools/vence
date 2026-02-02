@@ -199,7 +199,7 @@ export default function AdminDashboard() {
 
           const { data: userProfiles, error: userProfilesError } = await supabase
             .from('user_profiles')
-            .select('id, full_name, email')
+            .select('id, full_name, email, is_premium')
             .in('id', userIds)
 
           if (userProfilesError) {
@@ -211,7 +211,7 @@ export default function AdminDashboard() {
               const profile = userProfiles?.find(p => p.id === test.user_id)
               return {
                 ...test,
-                user_profiles: profile ? { full_name: profile.full_name, email: profile.email } : null
+                user_profiles: profile ? { full_name: profile.full_name, email: profile.email, is_premium: profile.is_premium } : null
               }
             })
           }
@@ -1028,6 +1028,32 @@ export default function AdminDashboard() {
                     : 'Sin actividad hoy'
                   }
                 </p>
+                {/* Desglose Premium vs Free de usuarios activos hoy */}
+                {(() => {
+                  // Obtener usuarios únicos con su info de premium
+                  const uniqueUsersMap = new Map()
+                  recentActivity.forEach(a => {
+                    if (!uniqueUsersMap.has(a.user_id)) {
+                      uniqueUsersMap.set(a.user_id, a.user_profiles?.is_premium)
+                    }
+                  })
+                  const premiumCount = [...uniqueUsersMap.values()].filter(v => v === true).length
+                  const freeCount = [...uniqueUsersMap.values()].filter(v => v !== true).length
+                  const total = uniqueUsersMap.size
+                  const premiumPct = total > 0 ? Math.round((premiumCount / total) * 100) : 0
+
+                  if (total === 0) return null
+
+                  return (
+                    <div className="flex items-center gap-2 text-xs mt-1">
+                      <span className="text-amber-600 dark:text-amber-400">💎 {premiumCount}</span>
+                      <span className="text-gray-400">|</span>
+                      <span className="text-gray-500">{freeCount} free</span>
+                      <span className="text-gray-400">|</span>
+                      <span className="font-medium text-amber-600 dark:text-amber-400">{premiumPct}% premium</span>
+                    </div>
+                  )
+                })()}
                 <p className="text-xs text-gray-500 mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
                   Ayer: {activeUsersYesterday}
                 </p>
