@@ -214,7 +214,7 @@ export default function LawTestPageWrapper({
       },
       oficial: {
         name: "Test Oficial",
-        description: "Preguntas de exámenes reales",
+        description: "Preguntas de exámenes oficiales",
         color: "from-red-500 to-pink-600",
         icon: "🏛️",
         subtitle: "Solo preguntas que aparecieron en exámenes oficiales",

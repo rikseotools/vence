@@ -136,7 +136,7 @@ export default function TestPageWrapper({
       },
       oficial: {
         name: "Test Oficial",
-        description: "Solo preguntas de exámenes reales",
+        description: "Solo preguntas de exámenes oficiales",
         color: "from-red-500 to-pink-600",
         icon: "🏛️", 
         subtitle: "Preguntas que aparecieron en exámenes oficiales",

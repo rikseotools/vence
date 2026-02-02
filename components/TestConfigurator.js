@@ -6,6 +6,22 @@ import SectionFilterModal from './SectionFilterModal';
 import { fetchLawSections } from '../lib/teoriaFetchers';
 import { getCanonicalSlug } from '../lib/lawMappingUtils';
 
+// 🏛️ Mapeo de positionType a valores válidos de exam_position en la BD
+const EXAM_POSITION_MAP = {
+  'auxiliar_administrativo': ['auxiliar_administrativo_estado', 'auxiliar_administrativo'],
+  'administrativo': ['administrativo_estado', 'administrativo', 'cuerpo_general_administrativo'],
+  'tramitacion_procesal': ['tramitacion_procesal'],
+  'auxilio_judicial': ['auxilio_judicial'],
+  'gestion_procesal': ['gestion_procesal'],
+  'gestion_administracion_civil': ['cuerpo_gestion_administracion_civil'],
+}
+
+// Helper para obtener los valores de exam_position válidos para una oposición
+const getValidExamPositions = (positionType) => {
+  const normalized = positionType?.toLowerCase().replace(/-/g, '_') || 'auxiliar_administrativo'
+  return EXAM_POSITION_MAP[normalized] || [normalized]
+}
+
 const TestConfigurator = ({
   tema = 7,
   temaDisplayName = null, // 🆕 Nombre visible del tema (ej: "Tema 9: Hojas de cálculo: Excel")
@@ -126,7 +142,10 @@ const TestConfigurator = ({
       for (const mapping of mappings) {
         console.log(`🔍 Contando artículos imprescindibles de ${mapping.laws.short_name}, artículos:`, mapping.article_numbers);
         
-        // Para cada artículo, contar cuántas preguntas oficiales tiene
+        // Para cada artículo, contar cuántas preguntas oficiales tiene (FILTRADO POR OPOSICIÓN)
+        const validPositions = getValidExamPositions(positionType)
+        console.log(`🏛️ Filtrando por exam_position IN:`, validPositions)
+
         for (const articleNumber of mapping.article_numbers) {
           const { count, error: countError } = await supabase
             .from('questions')
@@ -134,7 +153,8 @@ const TestConfigurator = ({
             .eq('is_active', true)
             .eq('is_official_exam', true)
             .eq('articles.laws.short_name', mapping.laws.short_name)
-            .eq('articles.article_number', articleNumber);
+            .eq('articles.article_number', articleNumber)
+            .in('exam_position', validPositions); // 🏛️ FILTRAR POR OPOSICIÓN
 
           if (countError) {
             console.error(`❌ Error contando preguntas del artículo ${articleNumber}:`, countError);
@@ -149,7 +169,7 @@ const TestConfigurator = ({
               law: mapping.laws.short_name,
               questionsCount: count
             });
-            console.log(`⭐ Artículo ${articleNumber} de ${mapping.laws.short_name} es imprescindible (${count} preguntas oficiales)`);
+            console.log(`⭐ Artículo ${articleNumber} de ${mapping.laws.short_name} es imprescindible (${count} preguntas oficiales de ${positionType})`);
           }
         }
       }
@@ -1570,10 +1590,17 @@ const TestConfigurator = ({
                             Modo Oficial Activado{temaDisplayName ? ` para ${temaDisplayName}` : ''}
                           </p>
                           <p className="text-xs text-red-700">
-                            {availableQuestions} preguntas de exámenes reales disponibles
+                            {availableQuestions} preguntas de exámenes oficiales disponibles
                           </p>
                           <p className="text-xs text-red-600 mt-1 italic">
-                            💡 Estas preguntas aparecieron en exámenes oficiales reales
+                            💡 Estas preguntas aparecieron en exámenes oficiales de {
+                              positionType === 'auxiliar_administrativo' ? 'Auxiliar Administrativo del Estado (C2)' :
+                              positionType === 'administrativo' ? 'Administrativo del Estado (C1)' :
+                              positionType === 'tramitacion_procesal' ? 'Tramitación Procesal' :
+                              positionType === 'auxilio_judicial' ? 'Auxilio Judicial' :
+                              positionType === 'gestion_procesal' ? 'Gestión Procesal' :
+                              'tu oposición'
+                            }
                           </p>
                         </div>
                       </div>
@@ -1672,7 +1699,14 @@ const TestConfigurator = ({
                       </button>
                     </div>
                     <p className="text-xs text-red-600 mb-2">
-                      El test priorizará artículos que han aparecido frecuentemente en exámenes oficiales
+                      El test priorizará artículos que han aparecido en exámenes oficiales de {
+                        positionType === 'auxiliar_administrativo' ? 'Auxiliar Administrativo del Estado (C2)' :
+                        positionType === 'administrativo' ? 'Administrativo del Estado (C1)' :
+                        positionType === 'tramitacion_procesal' ? 'Tramitación Procesal' :
+                        positionType === 'auxilio_judicial' ? 'Auxilio Judicial' :
+                        positionType === 'gestion_procesal' ? 'Gestión Procesal' :
+                        'tu oposición'
+                      }
                     </p>
                     
                     {/* Mostrar contador de preguntas disponibles */}
@@ -2038,7 +2072,7 @@ const TestConfigurator = ({
                   <div className="flex items-center space-x-2 text-blue-700">
                     <span>🏛️</span>
                     <span className="font-medium">Tests oficiales:</span>
-                    <span>Priorización sobre preguntas de exámenes reales</span>
+                    <span>Priorización sobre preguntas de exámenes oficiales</span>
                   </div>
                 </div>
               </div>
@@ -2242,7 +2276,7 @@ const TestConfigurator = ({
                 <span className="text-2xl">🏛️</span>
                 <div>
                   <h3 className="text-xl font-bold">Preguntas Oficiales</h3>
-                  <p className="text-blue-100 text-sm">Extraídas de exámenes reales</p>
+                  <p className="text-blue-100 text-sm">Extraídas de exámenes oficiales</p>
                 </div>
               </div>
               <button
