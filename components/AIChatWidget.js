@@ -13,7 +13,7 @@ export default function AIChatWidget() {
   const pathname = usePathname()
   const { currentQuestionContext } = useQuestionContext()
   const { oposicionId } = useOposicion()
-  const { user, isPremium } = useAuth()
+  const { user, isPremium, loading: authLoading } = useAuth()
 
   // 📊 Tracking de interacciones
   const { trackChatAction } = useInteractionTracker()
@@ -372,7 +372,12 @@ export default function AIChatWidget() {
         stream: true,
         userId: user?.id ? String(user.id) : null,
         suggestionUsed: currentSuggestion ? String(currentSuggestion) : null,
-        isPremium: isPremium || false
+        isPremium: isPremium || false,
+        debugAuthState: {
+          userExists: !!user,
+          authLoading: authLoading || false,
+          userIdExists: !!user?.id
+        }
       }
 
       // Serializar body

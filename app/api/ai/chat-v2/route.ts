@@ -57,6 +57,11 @@ const chatApiRequestSchema = z.object({
   userId: z.string().nullable().optional(),
   suggestionUsed: z.string().nullable().optional(),
   isPremium: z.boolean().default(false),
+  debugAuthState: z.object({
+    userExists: z.boolean(),
+    authLoading: z.boolean(),
+    userIdExists: z.boolean(),
+  }).nullable().optional(),
 })
 
 const FREE_USER_DAILY_LIMIT = 5
@@ -313,6 +318,9 @@ export async function POST(request: NextRequest) {
             suggestionUsed: data.suggestionUsed,
             userOposicion: data.userOposicion,
             responseTimeMs: Date.now() - startTime,
+            errorMessage: !data.userId && data.debugAuthState
+              ? `DEBUG_AUTH: ${JSON.stringify(data.debugAuthState)}`
+              : null,
           })
 
           // Enviar logId para feedback
@@ -346,6 +354,9 @@ export async function POST(request: NextRequest) {
         suggestionUsed: data.suggestionUsed,
         responseTimeMs: Date.now() - startTime,
         userOposicion: data.userOposicion,
+        errorMessage: !data.userId && data.debugAuthState
+          ? `DEBUG_AUTH: ${JSON.stringify(data.debugAuthState)}`
+          : null,
       })
 
       return NextResponse.json({
