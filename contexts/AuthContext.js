@@ -126,52 +126,72 @@ export function AuthProvider({ children, initialUser = null }) {
     return 'organic'
   }
 
-  // 🎯 OPTIMIZADA: Cargar perfil con timeout más largo y mejor manejo
-  const loadUserProfile = useCallback(async (userId) => {
+  // 🎯 OPTIMIZADA: Cargar perfil con timeout, reintentos y mejor manejo
+  const loadUserProfile = useCallback(async (userId, retryCount = 0) => {
+    const MAX_RETRIES = 3
+
     // ✨ Evitar llamadas concurrentes
-    if (profileLoading) {
+    if (profileLoading && retryCount === 0) {
       console.log('📄 Ya cargando perfil, esperando...')
       return userProfile
     }
-    
+
     // Si ya tenemos el perfil del usuario correcto, no recargar
-    if (userProfile && userProfile.id === userId) {
+    if (userProfile && userProfile.id === userId && retryCount === 0) {
       console.log('✅ Perfil ya cargado para este usuario, reutilizando')
       return userProfile
     }
-    
-    setProfileLoading(true)
-    
+
+    if (retryCount === 0) {
+      setProfileLoading(true)
+    }
+
     try {
-      console.log('📄 Cargando perfil completo del usuario...', { userId })
-      
+      console.log(`📄 Cargando perfil del usuario... ${retryCount > 0 ? `(intento ${retryCount + 1}/${MAX_RETRIES})` : ''}`, { userId })
+
       // 🔧 FIX: Timeout más largo para consultas lentas + AbortController
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 8000) // 8 segundos
-      
+
       const { data: profile, error } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .abortSignal(controller.signal)
         .single()
-      
+
       clearTimeout(timeoutId)
-      
+
       if (error) {
-        // Si es abort/timeout, no es crítico - continuar
+        // Si es abort/timeout, reintentar si no hemos excedido el límite
         if (error.name === 'AbortError' || error.code === 'ABORT_ERR') {
-          console.warn('⏱️ Timeout en consulta de perfil (8s), continuando sin perfil')
+          if (retryCount < MAX_RETRIES - 1) {
+            console.warn(`⏱️ Timeout en consulta de perfil, reintentando... (${retryCount + 1}/${MAX_RETRIES})`)
+            const delay = 1000 * Math.pow(2, retryCount) // 1s, 2s, 4s
+            await new Promise(resolve => setTimeout(resolve, delay))
+            return loadUserProfile(userId, retryCount + 1)
+          }
+          console.warn('⏱️ Timeout en consulta de perfil (8s) tras reintentos, continuando sin perfil')
           setUserProfile(null)
           return null
         }
-        
+
         // Si no existe el perfil, es normal
         if (error.code === 'PGRST116') {
           console.log('📝 Perfil no existe, será creado automáticamente')
           return null
         }
-        
+
+        // 🆕 Error de red: reintentar
+        if (error.message?.includes('network') || error.message?.includes('fetch') || error.code === 'NETWORK_ERROR') {
+          if (retryCount < MAX_RETRIES - 1) {
+            console.warn(`🔄 Error de red cargando perfil, reintentando... (${retryCount + 1}/${MAX_RETRIES})`)
+            const delay = 1000 * Math.pow(2, retryCount)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            return loadUserProfile(userId, retryCount + 1)
+          }
+        }
+
         console.error('❌ Error cargando perfil:', {
           message: error?.message,
           code: error?.code,
@@ -181,27 +201,37 @@ export function AuthProvider({ children, initialUser = null }) {
         })
         return null
       }
-      
+
       if (profile) {
         console.log('✅ Perfil cargado:', profile.email, 'Tipo:', profile.plan_type)
         setUserProfile(profile)
         return profile
       }
-      
+
       return null
-      
+
     } catch (error) {
       console.error('❌ Error en loadUserProfile:', error)
-      
-      // Si es abort/timeout, continuar sin perfil
+
+      // 🆕 Reintentar en errores de red/timeout
+      if (retryCount < MAX_RETRIES - 1 && (error.name === 'AbortError' || error.message?.includes('network') || error.message?.includes('fetch'))) {
+        console.warn(`🔄 Reintentando loadUserProfile... (${retryCount + 1}/${MAX_RETRIES})`)
+        const delay = 1000 * Math.pow(2, retryCount)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        return loadUserProfile(userId, retryCount + 1)
+      }
+
+      // Si es abort/timeout final, continuar sin perfil
       if (error.name === 'AbortError') {
-        console.warn('⏱️ Timeout en loadUserProfile, continuando...')
+        console.warn('⏱️ Timeout en loadUserProfile tras reintentos, continuando...')
         setUserProfile(null)
       }
-      
+
       return null
     } finally {
-      setProfileLoading(false)
+      if (retryCount === 0 || retryCount >= MAX_RETRIES - 1) {
+        setProfileLoading(false)
+      }
     }
   }, [supabase])
 

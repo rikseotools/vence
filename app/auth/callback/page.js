@@ -6,13 +6,37 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { useGoogleAds } from '../../../utils/googleAds'
 import { getMetaParams, isFromMeta, trackMetaRegistration, isFromGoogle, getGoogleParams } from '../../../lib/metaPixelCapture'
 
+// 🆕 Helper para reintentos con backoff exponencial
+const withRetry = async (fn, options = {}) => {
+  const { maxRetries = 3, baseDelay = 1000, onRetry = null } = options
+  let lastError = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+      console.warn(`⚠️ [RETRY] Intento ${attempt}/${maxRetries} falló:`, error.message)
+
+      if (attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt - 1) // 1s, 2s, 4s
+        console.log(`⏳ [RETRY] Esperando ${delay}ms antes del reintento...`)
+        if (onRetry) onRetry(attempt, delay)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+  }
+
+  throw lastError
+}
+
 function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState('loading')
   const [message, setMessage] = useState('Verificando tu cuenta de Google...')
   const [returnUrl, setReturnUrl] = useState(null)
-  
+
   const { events } = useGoogleAds()
   
   useEffect(() => {
@@ -66,10 +90,13 @@ function AuthCallbackContent() {
         
         await new Promise(resolve => setTimeout(resolve, 500))
         
-        // Verificar sesión
+        // Verificar sesión (con reintentos para PWA/móvil)
         console.log('🔍 [CALLBACK] Verificando sesión...')
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-        
+        const { data: sessionData, error: sessionError } = await withRetry(
+          () => supabase.auth.getSession(),
+          { maxRetries: 2, baseDelay: 500 }
+        )
+
         console.log('🔍 [DEBUG] Resultado de getSession:', {
           hasSession: !!sessionData?.session,
           hasUser: !!sessionData?.session?.user,
@@ -112,10 +139,20 @@ function AuthCallbackContent() {
           if (code) {
             console.log('🔍 [CALLBACK] Procesando código OAuth...')
             setMessage('Procesando código de autorización...')
-            
+
             try {
-              const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-              
+              // 🆕 Con reintentos para redes inestables (móvil/PWA)
+              const { data, error } = await withRetry(
+                () => supabase.auth.exchangeCodeForSession(code),
+                {
+                  maxRetries: 3,
+                  baseDelay: 1000,
+                  onRetry: (attempt, delay) => {
+                    setMessage(`Reintentando conexión (${attempt}/3)...`)
+                  }
+                }
+              )
+
               console.log('🔍 [DEBUG] Resultado de exchangeCodeForSession:', {
                 hasData: !!data,
                 hasSession: !!data?.session,
@@ -124,12 +161,12 @@ function AuthCallbackContent() {
                 errorMessage: error?.message || null,
                 errorCode: error?.code || null
               })
-              
+
               if (error) {
                 console.error('❌ [CALLBACK] Error intercambiando código:', error)
                 throw new Error(`Error intercambiando código: ${error.message}`)
               }
-              
+
               if (data.session && data.session.user) {
                 console.log('✅ [CALLBACK] Sesión establecida desde código OAuth')
                 await processAuthenticatedUser(data.session.user, finalReturnUrl, supabase)
@@ -587,26 +624,41 @@ function AuthCallbackContent() {
         {/* ERROR STATE */}
         {status === 'error' && (
           <>
-            <div className="text-6xl mb-6">🔍</div>
+            <div className="text-6xl mb-6">⚠️</div>
             <h2 className="text-2xl font-bold text-red-800 dark:text-red-200 mb-3">
-              Debug Mode - Error de Autenticación
+              Error de Autenticación
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">{message}</p>
             <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-4">
               <p className="text-sm text-red-700 dark:text-red-400">
-                🔍 <strong>MODO DEBUG ACTIVADO</strong><br/>
-                ✅ Los logs detallados están en la consola del navegador<br/>
-                📱 Abre las herramientas de desarrollador (F12) y ve a "Console"<br/>
-                {returnUrl && (
-                  <span className="text-xs block mt-2">
-                    📍 Return URL: {returnUrl}
-                  </span>
-                )}
-                <span className="text-xs block mt-2">
-                  🌐 Current URL: {typeof window !== 'undefined' ? window.location.href : 'N/A'}
-                </span>
+                Hubo un problema al procesar tu inicio de sesión.<br/>
+                Puede deberse a una conexión inestable.
               </p>
             </div>
+
+            {/* 🆕 Botón de reintentar */}
+            <button
+              onClick={() => {
+                console.log('🔄 [MANUAL] Reintentando autenticación...')
+                setStatus('loading')
+                setMessage('Reintentando...')
+                // Recargar la página para reintentar el callback
+                window.location.reload()
+              }}
+              className="mb-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            >
+              🔄 Reintentar
+            </button>
+
+            {process.env.NODE_ENV === 'development' && (
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 mt-4">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  🔍 <strong>Debug Info:</strong><br/>
+                  {returnUrl && <>📍 Return URL: {returnUrl}<br/></>}
+                  🌐 Current URL: {typeof window !== 'undefined' ? window.location.href : 'N/A'}
+                </p>
+              </div>
+            )}
           </>
         )}
         
