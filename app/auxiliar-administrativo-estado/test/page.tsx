@@ -492,7 +492,7 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                             <div>
                                               <div className="font-bold">Segunda parte</div>
                                               <div className="text-xs text-white/80">
-                                                Bloque II: Actividad Administrativa y Ofimática (50 preguntas)
+                                                Bloque II: Actividad Administrativa y Ofimática (55 preguntas)
                                               </div>
                                             </div>
                                           </div>
@@ -746,6 +746,130 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                                 </span>
                                                 <ExamActionsDropdown
                                                   examDate="2021-05-26"
+                                                  parte="segunda"
+                                                  oposicion="auxiliar-administrativo-estado"
+                                                />
+                                              </>
+                                            ) : (
+                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                                                Empezar
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </Link>
+                                    </div>
+                                  )
+                                })()}
+
+                                {/* Nota informativa */}
+                                <div className="text-xs text-gray-600 px-2 pt-1">
+                                  <span className="text-amber-600 font-medium">ℹ️ Nota:</span>
+                                  <span className="ml-1">Preguntas de informática actualizadas a Office 365 y Windows 11</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                      {/* ===== CONVOCATORIA 2019 (OEP 2018-2019) ===== */}
+                      <div className="bg-white rounded-lg shadow overflow-hidden">
+                        <button
+                              onClick={() => toggleConvocatoria('2019-06-14')}
+                              className={`w-full ${
+                                (getExamStat(examStats, '2019-06-14', 'primera') || getExamStat(examStats, '2019-06-14', 'segunda'))
+                                  ? COLOR_CLASSES[getAccuracyColor(Math.max(
+                                      getExamStat(examStats, '2019-06-14', 'primera')?.accuracy || 0,
+                                      getExamStat(examStats, '2019-06-14', 'segunda')?.accuracy || 0
+                                    ))]
+                                  : 'bg-gray-500 hover:bg-gray-600'
+                              } text-white py-3 px-4 text-left font-semibold transition-all duration-300 focus:outline-none`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <span className="mr-2 text-lg">📋</span>
+                                  <div>
+                                    <div className="font-bold">Convocatoria 14 de junio de 2019</div>
+                                    <div className="text-xs text-white/80">OEP 2018-2019</div>
+                                  </div>
+                                </div>
+                                <span className={`text-xl transition-transform duration-300 ${expandedConvocatorias['2019-06-14'] ? 'rotate-180' : ''}`}>
+                                  ▼
+                                </span>
+                              </div>
+                            </button>
+
+                            {expandedConvocatorias['2019-06-14'] && (
+                              <div className="p-3 space-y-2 bg-gray-100">
+                                {/* Primera parte 2019 */}
+                                {(() => {
+                                  const stat = getExamStat(examStats, '2019-06-14', 'primera')
+                                  return (
+                                    <div className="relative">
+                                      <Link
+                                        href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2019-06-14&parte=primera"
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center">
+                                            <span className="mr-2 text-lg">📘</span>
+                                            <div>
+                                              <div className="font-bold">Primera parte</div>
+                                              <div className="text-xs text-white/80">
+                                                Legislativas + Psicotécnicas (64 preguntas)
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {stat ? (
+                                              <>
+                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                                                  {stat.accuracy}%
+                                                </span>
+                                                <ExamActionsDropdown
+                                                  examDate="2019-06-14"
+                                                  parte="primera"
+                                                  oposicion="auxiliar-administrativo-estado"
+                                                />
+                                              </>
+                                            ) : (
+                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
+                                                Empezar
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </Link>
+                                    </div>
+                                  )
+                                })()}
+
+                                {/* Segunda parte 2019 */}
+                                {(() => {
+                                  const stat = getExamStat(examStats, '2019-06-14', 'segunda')
+                                  return (
+                                    <div className="relative">
+                                      <Link
+                                        href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2019-06-14&parte=segunda"
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center">
+                                            <span className="mr-2 text-lg">📗</span>
+                                            <div>
+                                              <div className="font-bold">Segunda parte</div>
+                                              <div className="text-xs text-white/80">
+                                                Bloque II: Actividad Administrativa y Ofimática (34 preguntas)
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {stat ? (
+                                              <>
+                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                                                  {stat.accuracy}%
+                                                </span>
+                                                <ExamActionsDropdown
+                                                  examDate="2019-06-14"
                                                   parte="segunda"
                                                   oposicion="auxiliar-administrativo-estado"
                                                 />
