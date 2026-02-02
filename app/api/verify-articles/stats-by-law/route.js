@@ -15,6 +15,14 @@ function calculateIsOk(summary) {
   // Si es ley sin texto consolidado (doc.php), se considera OK
   if (summary.no_consolidated_text) return true
 
+  // Si no se encontraron artículos en BOE (URL incorrecta o problema de sync), NO está OK
+  // Soporta formato nuevo (boe_count) y antiguo (total_boe)
+  const boeCount = summary.boe_count ?? summary.total_boe ?? null
+  if (boeCount === 0) return false
+
+  // Si el mensaje indica que no se encontraron artículos, NO está OK
+  if (summary.message && summary.message.includes('No se encontraron artículos')) return false
+
   // Artículos de estructura (art. 0, índice, etc.) son intencionales
   // No se cuentan como "extra_in_db" para el cálculo de isOk
   const structureArticles = summary.structure_articles || 0

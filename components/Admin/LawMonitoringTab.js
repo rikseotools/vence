@@ -28,6 +28,7 @@ export default function LawMonitoringTab() {
   const [lawFilter, setLawFilter] = useState('') // Filtro por texto de ley
   const [statusFilter, setStatusFilter] = useState('all') // 'all', 'boe_diff', 'changed', 'ok'
   const [aiVerificationStats, setAiVerificationStats] = useState({}) // { lawId: { lastVerified, pending, fixed } }
+  const [statsLoaded, setStatsLoaded] = useState(false) // Si los stats de verificación están cargados
   const [showInfoModal, setShowInfoModal] = useState(false) // Modal de información
 
   const checkLawChanges = async () => {
@@ -154,6 +155,7 @@ export default function LawMonitoringTab() {
   // Cargar estadísticas de verificación IA por ley
   const loadAiVerificationStats = async () => {
     try {
+      setStatsLoaded(false)
       const response = await fetch('/api/verify-articles/stats-by-law')
       const data = await response.json()
       if (data.success) {
@@ -161,6 +163,8 @@ export default function LawMonitoringTab() {
       }
     } catch (err) {
       console.error('Error cargando stats de verificación IA:', err)
+    } finally {
+      setStatsLoaded(true)
     }
   }
 
@@ -567,8 +571,8 @@ export default function LawMonitoringTab() {
                         Marcar como revisado
                       </button>
                     )}
-                    {/* Botón Sincronizar - para leyes con BOE ≠ BD o sin verificar */}
-                    {((aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk) || !aiVerificationStats[law.id]?.lastVerified) && (
+                    {/* Botón Sincronizar - para leyes con BOE ≠ BD o sin verificar (solo si stats cargados) */}
+                    {statsLoaded && ((aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk) || !aiVerificationStats[law.id]?.lastVerified) && (
                       <button
                         onClick={() => syncAllArticles(law.id, law.law)}
                         disabled={syncingLaws.has(law.id)}
@@ -726,8 +730,8 @@ export default function LawMonitoringTab() {
                   Marcar como revisado
                 </button>
               )}
-              {/* Botón Sincronizar - para leyes con BOE ≠ BD o sin verificar */}
-              {((aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk) || !aiVerificationStats[law.id]?.lastVerified) && (
+              {/* Botón Sincronizar - para leyes con BOE ≠ BD o sin verificar (solo si stats cargados) */}
+              {statsLoaded && ((aiVerificationStats[law.id]?.lastVerified && !aiVerificationStats[law.id]?.isOk) || !aiVerificationStats[law.id]?.lastVerified) && (
                 <button
                   onClick={() => syncAllArticles(law.id, law.law)}
                   disabled={syncingLaws.has(law.id)}
