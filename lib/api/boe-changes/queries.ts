@@ -283,14 +283,21 @@ export async function checkWithFullDownload(url: string): Promise<FullCheckResul
     const content = await response.text()
     const dateFound = extractLastUpdateFromBOE(content)
 
-    let dateOffset: number | null = null
-    if (dateFound) {
-      const match = content.match(/actualización publicada el \d{2}\/\d{2}\/\d{4}/i)
-      if (match) dateOffset = content.indexOf(match[0])
+    if (!dateFound) {
+      return {
+        success: false,
+        reason: 'date_not_found',
+        method: 'full',
+        bytesDownloaded: content.length
+      }
     }
 
+    let dateOffset: number | null = null
+    const match = content.match(/actualización publicada el \d{2}\/\d{2}\/\d{4}/i)
+    if (match) dateOffset = content.indexOf(match[0])
+
     return {
-      success: !!dateFound,
+      success: true,
       method: 'full',
       lastUpdateBOE: dateFound,
       bytesDownloaded: content.length,
