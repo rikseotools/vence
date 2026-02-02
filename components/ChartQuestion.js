@@ -303,11 +303,11 @@ export default function ChartQuestion({
                     <span className="bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
                     {question.content_data?.chart_type === 'error_detection' ? 'EXPLICACIÓN:' : 'ANÁLISIS PASO A PASO:'}
                   </h4>
-                  {question.explanation && (
+                  {(verifiedExplanation || question.explanation) && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                       <div
                         className="text-blue-700"
-                        dangerouslySetInnerHTML={{ __html: formatMarkdown(question.explanation) }}
+                        dangerouslySetInnerHTML={{ __html: formatMarkdown(verifiedExplanation || question.explanation) }}
                       />
                     </div>
                   )}

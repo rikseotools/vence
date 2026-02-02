@@ -193,6 +193,7 @@ export default function PieChartQuestion({
   )
 
   // Usar las explicaciones de la base de datos
+  // Si hay explanation_sections, usarlas. Si no, dejar que ChartQuestion use verifiedExplanation
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
       {question.content_data.explanation_sections.map((section, index) => (
@@ -204,115 +205,7 @@ export default function PieChartQuestion({
         </div>
       ))}
     </>
-  ) : (
-    // Explicación por defecto si no hay en la base de datos
-    <>
-      <div className="bg-white  p-4 rounded-lg mb-4 border-l-4 border-blue-600">
-        <p className="text-gray-700  text-sm leading-relaxed">
-          <strong>💡 ¿Qué evalúa este ejercicio?</strong><br/>
-          Tu capacidad para interpretar datos de un gráfico circular y realizar cálculos matemáticos básicos con porcentajes.
-        </p>
-      </div>
-
-      <h4 className="font-bold text-blue-900  mb-3 flex items-center">
-        <span className="bg-green-100  text-green-800  rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-2">1</span>
-        PASO A PASO - SOLUCIÓN:
-      </h4>
-      
-      <div className="space-y-4">
-        <div className="bg-white  p-4 rounded-lg border-l-4 border-green-500">
-          <h5 className="font-semibold text-green-800  mb-2">📊 Paso 1: Identificar los datos</h5>
-          <p className="text-gray-700  text-sm">
-            Del gráfico vemos que:<br/>
-            • POEMAS = <strong>34,5%</strong><br/>
-            • CIENCIA FICCIÓN = <strong>21,8%</strong><br/>
-            • Total de libros vendidos = <strong>2.350 libros</strong>
-          </p>
-        </div>
-
-        <div className="bg-white  p-4 rounded-lg border-l-4 border-yellow-500">
-          <h5 className="font-semibold text-yellow-800  mb-2">➕ Paso 2: Sumar los porcentajes</h5>
-          <p className="text-gray-700  text-sm">
-            Poemas + Ciencia ficción = <strong>34,5% + 21,8% = 56,3%</strong>
-          </p>
-        </div>
-
-        <div className="bg-white  p-4 rounded-lg border-l-4 border-purple-500">
-          <h5 className="font-semibold text-purple-800  mb-2">🧮 Paso 3: Calcular el 56,3% de 2.350</h5>
-          <p className="text-gray-700  text-sm">
-            <strong>Método:</strong> (Porcentaje ÷ 100) × Total<br/>
-            <strong>Cálculo:</strong> (56,3 ÷ 100) × 2.350<br/>
-            <strong>Resultado:</strong> 0,563 × 2.350 = <strong>1.323,05 libros</strong>
-          </p>
-        </div>
-
-        <div className="bg-white  p-4 rounded-lg border-l-4 border-blue-500">
-          <h5 className="font-semibold text-blue-800  mb-2">🎯 Paso 4: Respuesta final</h5>
-          <p className="text-gray-700  text-sm">
-            Como hablamos de libros (no pueden ser decimales), redondeamos:<br/>
-            <strong>1.323,05 ≈ 1.323 libros</strong> ✅
-          </p>
-        </div>
-      </div>
-
-      {/* Técnicas de descarte rápido */}
-      <div className="mt-6">
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
-          <h5 className="font-bold text-yellow-800  mb-3 flex items-center">
-            ⚡ TÉCNICAS DE DESCARTE RÁPIDO (Sin calculadora)
-          </h5>
-          
-          <div className="space-y-3 text-sm">
-            <div className="bg-white  p-3 rounded border-l-4 border-yellow-500">
-              <h6 className="font-semibold text-yellow-800  mb-1">🧠 Método 1: Estimación por aproximación</h6>
-              <p className="text-gray-700 ">
-                • <strong>56,3% ≈ 56%</strong> (redondeamos)<br/>
-                • <strong>56% de 2.350</strong> = <strong>50% + 6%</strong><br/>
-                • <strong>50% de 2.350</strong> = 1.175<br/>
-                • <strong>6% de 2.350</strong> ≈ 6 × 23,5 ≈ 140<br/>
-                • <strong>Total:</strong> 1.175 + 140 = <strong>1.315</strong> ✅ (cercano a 1.323)
-              </p>
-            </div>
-
-            <div className="bg-white  p-3 rounded border-l-4 border-orange-500">
-              <h6 className="font-semibold text-orange-800  mb-1">🔍 Método 2: Descarte por lógica</h6>
-              <p className="text-gray-700 ">
-                • <strong>Más del 50%:</strong> 56,3% &gt; 50%, así que <strong>&gt; 1.175</strong><br/>
-                • <strong>Menos del 60%:</strong> 56,3% &lt; 60%, así que <strong>&lt; 1.410</strong><br/>
-                • <strong>Rango válido:</strong> Entre 1.175 y 1.410<br/>
-                • <strong>Opciones:</strong> A(1543)❌ B(1221)❌ C(1432)❌ D(1323)✅
-              </p>
-            </div>
-
-            <div className="bg-white  p-3 rounded border-l-4 border-purple-500">
-              <h6 className="font-semibold text-purple-800  mb-1">🎯 Método 3: Cálculo mental por partes</h6>
-              <p className="text-gray-700 ">
-                • <strong>50% de 2.350</strong> = 1.175<br/>
-                • <strong>6% de 2.350</strong> = 6 × 23,5 = 141<br/>
-                • <strong>0,3% de 2.350</strong> = 3 × 2,35 = 7<br/>
-                • <strong>Total:</strong> 1.175 + 141 + 7 = <strong>1.323</strong> ✅
-              </p>
-            </div>
-
-            <div className="bg-white  p-3 rounded border-l-4 border-red-500">
-              <h6 className="font-semibold text-red-800 dark:text-red-300 mb-1">❌ Trampas comunes a evitar</h6>
-              <p className="text-gray-700 ">
-                • <strong>No sumar:</strong> 34,5 + 21,8 = 56,3 (¡no 55,3!)<br/>
-                • <strong>No confundir:</strong> 56,3% ≠ 563 libros<br/>
-                • <strong>No olvidar:</strong> Es porcentaje DEL TOTAL (2.350)
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 p-3 bg-green-100  rounded-lg">
-        <p className="text-green-800  text-sm text-center">
-          <strong>💪 Consejo de oposición:</strong> Domina el cálculo del 50%, 25%, 10% y 1% de cualquier número. ¡Con eso puedes aproximar todo!
-        </p>
-      </div>
-    </>
-  )
+  ) : null // No usar fallback genérico - dejar que ChartQuestion muestre verifiedExplanation
 
   return (
     <ChartQuestion

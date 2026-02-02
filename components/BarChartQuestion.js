@@ -440,7 +440,8 @@ export default function BarChartQuestion({
     )
   }
 
-  // Usar las explicaciones de la base de datos en lugar de hardcodeadas
+  // Usar las explicaciones de la base de datos
+  // Si hay explanation_sections, usarlas. Si no, dejar que ChartQuestion use verifiedExplanation
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
       {question.content_data.explanation_sections.map((section, index) => (
@@ -452,15 +453,7 @@ export default function BarChartQuestion({
         </div>
       ))}
     </>
-  ) : (
-    // Fallback para preguntas sin explanation_sections
-    <div className="bg-white p-4 rounded-lg border-l-4 border-gray-500">
-      <h5 className="font-semibold text-gray-800 mb-2">📊 Análisis del Gráfico</h5>
-      <p className="text-gray-700 text-sm">
-        Analiza los datos presentados en el gráfico para responder la pregunta.
-      </p>
-    </div>
-  )
+  ) : null // No usar fallback genérico - dejar que ChartQuestion muestre verifiedExplanation
 
   return (
     <ChartQuestion

@@ -332,6 +332,7 @@ export default function DataTableQuestion({
   }
 
   // Usar las explicaciones de la base de datos
+  // Si hay explanation_sections, usarlas. Si no, dejar que ChartQuestion use verifiedExplanation
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
       {question.content_data.explanation_sections.map((section, index) => (
@@ -343,14 +344,7 @@ export default function DataTableQuestion({
         </div>
       ))}
     </>
-  ) : (
-    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-gray-500">
-      <h5 className="font-semibold text-gray-800 dark:text-gray-300 mb-2">📊 Análisis de Datos Tabulares</h5>
-      <p className="text-gray-700 dark:text-gray-300 text-sm">
-        Aplica los criterios dados a los datos de la tabla para determinar la clasificación correcta.
-      </p>
-    </div>
-  )
+  ) : null // No usar fallback genérico - dejar que ChartQuestion muestre verifiedExplanation
 
   return (
     <ChartQuestion
