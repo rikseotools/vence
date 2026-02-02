@@ -349,11 +349,26 @@ ${articlesContext}`
 
 IMPORTANTE: Responde algo como: "No he encontrado el artículo [número] en [ley] en mi base de datos. ¿Podrías verificar el número del artículo o la ley? Puedo ayudarte a buscar artículos relacionados."`
     } else if (wantsFullContent) {
-      responseGuidelines = `## Directrices para texto literal:
+      // Detectar si es una pregunta de test (tiene opciones A/B/C/D)
+      const isTestQuestion = /\b[ABCD]\)\s*.+/i.test(context.currentMessage) ||
+        /las opciones son:/i.test(context.currentMessage)
+
+      if (isTestQuestion) {
+        // NO mostrar "¿Quieres practicar?" porque ya está en un test
+        responseGuidelines = `## Directrices para pregunta de test:
+1. **CITA EL TEXTO LITERAL**: Si es de legislación, muestra el texto exacto del artículo relevante usando citas (>).
+2. **ANALIZA LAS OPCIONES**: Explica por qué cada opción es correcta o incorrecta.
+3. **Formato**:
+   - Primero indica la respuesta correcta
+   - Luego explica el razonamiento (citando artículo si aplica)
+   - Después analiza cada opción`
+      } else {
+        responseGuidelines = `## Directrices para texto literal:
 1. **PROPORCIONA EL TEXTO COMPLETO**: El usuario ha pedido el artículo literal/completo. Copia el contenido íntegro del artículo tal como aparece.
 2. **No resumas ni parafrasees**: Transcribe el texto exacto del artículo sin modificaciones.
 3. **Cita la fuente**: Indica claramente de qué ley y artículo se trata.
 4. **Formato**: Mantén la estructura original del artículo (apartados, números, letras).${testSuggestion}`
+      }
     } else {
       responseGuidelines = `## Directrices:
 1. **SIEMPRE responde**: Nunca digas "no encontré información". Si los artículos proporcionados no cubren la pregunta, usa tu conocimiento experto sobre la materia.

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
+import { useQuestionContext } from '../contexts/QuestionContext'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
@@ -264,6 +265,9 @@ export default function OfficialExamLayout({
     recordAnswer
   } = useDailyQuestionLimit()
 
+  // Contexto de pregunta para el chat AI
+  const { setQuestionContext, clearQuestionContext } = useQuestionContext()
+
   // Estados del examen
   // Initialize with saved answers if resuming
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>(initialAnswers || {})
@@ -302,6 +306,46 @@ export default function OfficialExamLayout({
 
     return () => clearInterval(interval)
   }, [isSubmitted, startTime])
+
+  // Actualizar contexto de pregunta para el chat AI cuando se selecciona una pregunta
+  useEffect(() => {
+    if (selectedQuestionForModal && selectedQuestionIndex !== null) {
+      const q = selectedQuestionForModal
+      const isPsicotecnico = q.questionType === 'psychometric'
+      const validationResult = validatedResults?.results?.[selectedQuestionIndex]
+
+      setQuestionContext({
+        id: q.id,
+        question_text: q.question || q.questionText,
+        option_a: q.options?.[0],
+        option_b: q.options?.[1],
+        option_c: q.options?.[2],
+        option_d: q.options?.[3],
+        // Solo exponer respuesta correcta si el examen está validado
+        correct: isSubmitted && validationResult?.correctIndex !== undefined
+          ? validationResult.correctIndex
+          : null,
+        explanation: validationResult?.explanation || q.explanation,
+        law: q.lawName || null,
+        article_number: q.articleNumber || null,
+        difficulty: q.difficulty || null,
+        // Campos de psicotécnicos
+        isPsicotecnico,
+        questionSubtype: isPsicotecnico ? q.questionSubtype : null,
+        questionTypeName: isPsicotecnico ? q.questionSubtype : null,
+        contentData: isPsicotecnico ? q.contentData : null
+      })
+    } else {
+      clearQuestionContext()
+    }
+  }, [selectedQuestionForModal, selectedQuestionIndex, validatedResults, isSubmitted, setQuestionContext, clearQuestionContext])
+
+  // Limpiar contexto al desmontar el componente
+  useEffect(() => {
+    return () => {
+      clearQuestionContext()
+    }
+  }, [clearQuestionContext])
 
   // Initialize exam session (for resume functionality)
   useEffect(() => {
@@ -1348,11 +1392,22 @@ export default function OfficialExamLayout({
                         }
 
                         const correctLetter = ['A', 'B', 'C', 'D'][validatedResult?.correctIndex ?? -1] || '?'
-                        const questionType = isPsychometric ? 'psicotécnica' : 'legislativa'
+
+                        // Solo "paso a paso" para preguntas de tablas, resto sin ello
+                        const isTableQuestion = question.questionSubtype === 'data_tables'
+                        let chatMessage: string
+
+                        if (isPsychometric && isTableQuestion) {
+                          chatMessage = `Explícame paso a paso cómo resolver esta pregunta psicotécnica: "${question.question}"${tablesContext}\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`
+                        } else if (isPsychometric) {
+                          chatMessage = `Explícame esta pregunta psicotécnica: "${question.question}"${tablesContext}\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`
+                        } else {
+                          chatMessage = `Explícame esta pregunta: "${question.question}"\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`
+                        }
 
                         window.dispatchEvent(new CustomEvent('openAIChat', {
                           detail: {
-                            message: `Explícame paso a paso cómo resolver esta pregunta ${questionType}: "${question.question}"${tablesContext}\n\nLas opciones son:\nA) ${question.options[0]}\nB) ${question.options[1]}\nC) ${question.options[2]}\nD) ${question.options[3]}\n\nLa respuesta correcta es: ${correctLetter}`,
+                            message: chatMessage,
                             suggestion: isPsychometric ? 'explicar_psico' : 'explicar_respuesta'
                           }
                         }))
