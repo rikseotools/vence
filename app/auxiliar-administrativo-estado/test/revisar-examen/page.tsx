@@ -42,6 +42,14 @@ function RevisarExamenContent() {
     }>
     temaBreakdown?: Array<{ tema: number; total: number; correct: number; accuracy: number }>
     difficultyBreakdown?: Array<{ difficulty: string; total: number; correct: number; accuracy: number }>
+    notaCorte?: {
+      descripcion: string
+      primera_parte: { nota: number; aciertos: number; errores: number }
+      segunda_parte: { nota: number; aciertos: number; errores: number }
+      total: number
+      orden: number
+      convocatoria_url?: string
+    }
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -169,7 +177,9 @@ function RevisarExamenContent() {
       questions={reviewData.questions}
       temaBreakdown={reviewData.temaBreakdown}
       difficultyBreakdown={reviewData.difficultyBreakdown}
+      notaCorte={reviewData.notaCorte}
       oposicionSlug={oposicion}
+      parte={parte}
     />
   )
 }

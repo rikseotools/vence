@@ -1,6 +1,54 @@
 import { getDb } from '@/db/client'
 import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory } from '@/db/schema'
 import { eq, and, like, sql, inArray, desc, count } from 'drizzle-orm'
+import fs from 'fs'
+import path from 'path'
+
+// Type for nota_corte data from JSON
+interface NotaCorte {
+  descripcion: string
+  primera_parte: {
+    nota: number
+    aciertos: number
+    errores: number
+  }
+  segunda_parte: {
+    nota: number
+    aciertos: number
+    errores: number
+  }
+  total: number
+  orden: number
+  convocatoria_url?: string
+}
+
+// Map examDate to JSON file path
+const examDateToJsonPath: Record<string, string> = {
+  '2024-07-09': 'data/examenes-oficiales/auxiliar-administrativo-estado/24-07-09 convocatoria 9 julio 2024 - OEP-2023-2024/Convocatoria 9 julio 2024.json',
+  '2023-01-20': 'data/examenes-oficiales/auxiliar-administrativo-estado/23-01-20 convocatoria 20 enero 2023 - OEP 2021-2022/20 de enero de 2023.json',
+  '2021-05-26': 'data/examenes-oficiales/auxiliar-administrativo-estado/21-05-26 Convocatoria 26  mayo 2021 - OEP 2020/convocatoria 26 mayo 2021.json',
+  '2019-06-14': 'data/examenes-oficiales/auxiliar-administrativo-estado/19-06-14 convocatoria 14 junio  2019 - OEP 2018-2019/convocatoria 14 junio 2019.json',
+}
+
+/**
+ * Load nota_corte from exam JSON file
+ */
+function getNotaCorte(examDate: string): NotaCorte | null {
+  try {
+    const jsonPath = examDateToJsonPath[examDate]
+    if (!jsonPath) return null
+
+    const fullPath = path.join(process.cwd(), jsonPath)
+    if (!fs.existsSync(fullPath)) return null
+
+    const content = fs.readFileSync(fullPath, 'utf-8')
+    const data = JSON.parse(content)
+    return data.nota_corte || null
+  } catch (error) {
+    console.error(`⚠️ [getNotaCorte] Error loading nota_corte for ${examDate}:`, error)
+    return null
+  }
+}
 import type {
   GetOfficialExamQuestionsRequest,
   GetOfficialExamQuestionsResponse,
@@ -1467,6 +1515,12 @@ export async function getOfficialExamReview(
 
     console.log(`✅ [getOfficialExamReview] Returning ${reviewQuestions.length} questions for review`)
 
+    // Load nota_corte from JSON
+    const notaCorte = getNotaCorte(examDate)
+    if (notaCorte) {
+      console.log(`✅ [getOfficialExamReview] Loaded nota_corte: ${notaCorte.total}`)
+    }
+
     return {
       success: true,
       test: {
@@ -1489,6 +1543,7 @@ export async function getOfficialExamReview(
       questions: reviewQuestions,
       temaBreakdown: temaBreakdown.length > 0 ? temaBreakdown : undefined,
       difficultyBreakdown: difficultyBreakdown.length > 0 ? difficultyBreakdown : undefined,
+      notaCorte: notaCorte || undefined,
     }
   } catch (error) {
     console.error('❌ [getOfficialExamReview] Error:', error)

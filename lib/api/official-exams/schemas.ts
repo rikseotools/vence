@@ -436,6 +436,22 @@ export const getOfficialExamReviewResponseSchema = z.object({
     correct: z.number(),
     accuracy: z.number(),
   })).optional(),
+  notaCorte: z.object({
+    descripcion: z.string(),
+    primera_parte: z.object({
+      nota: z.number(),
+      aciertos: z.number(),
+      errores: z.number(),
+    }),
+    segunda_parte: z.object({
+      nota: z.number(),
+      aciertos: z.number(),
+      errores: z.number(),
+    }),
+    total: z.number(),
+    orden: z.number(),
+    convocatoria_url: z.string().optional(),
+  }).optional(),
   error: z.string().optional(),
 })
 
