@@ -627,6 +627,15 @@ export async function detectLawsFromText(text: string): Promise<string[]> {
       }
     }
 
+    // Bonus para contexto europeo: evita confundir "Tribunal de Cuentas" UE vs España
+    const hasEUContext =
+      /\b(unión\s+europea|tratado\s+de\s+la\s+unión|comisión\s+europea|parlamento\s+europeo)\b/i.test(
+        textLower
+      )
+    if (hasEUContext && (law.shortName === 'TUE' || law.shortName === 'TFUE')) {
+      score += 50
+    }
+
     if (score > 0) {
       detectedLaws.push({ shortName: law.shortName, score })
     }
