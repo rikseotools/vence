@@ -17,6 +17,39 @@
     "orden": 1150,
     "convocatoria_url": "https://sede.inap.gob.es/es/procedimientos-y-servicios/seleccion/procesos-selectivos-de-cuerpos-y-escalas-generales/cuerpo-general-auxiliar-de-la-administracion-del-estado/cuerpo-general-auxiliar-de-la-administracion-del-estado-ingreso-libre-oferta-de-empleo-publico-2021-y-2022"
   },
+  "bases": {
+    "ejercicio_unico": {
+      "descripcion": "Se califica de 0 a 100 puntos",
+      "puntuacion_maxima": 100,
+      "tiempo_maximo": "90 minutos",
+      "primera_parte": {
+        "descripcion": "Cuestionario de máximo 60 preguntas: 30 sobre materias del bloque I del programa y 30 de carácter psicotécnico (aptitudes administrativas, numéricas o verbales)",
+        "num_preguntas": 60,
+        "num_preguntas_reserva": 5,
+        "puntuacion_maxima": 50,
+        "puntuacion_minima_aprobar": 25,
+        "nota": "La Comisión Permanente de Selección fija la puntuación directa mínima necesaria para que pueda evaluarse la segunda parte"
+      },
+      "segunda_parte": {
+        "descripcion": "Cuestionario de máximo 50 preguntas sobre materias del bloque II del programa (Windows 10 y Office 2019)",
+        "num_preguntas": 50,
+        "num_preguntas_reserva": 5,
+        "puntuacion_maxima": 50,
+        "puntuacion_minima_aprobar": 25,
+        "nota": "La Comisión Permanente de Selección fija la puntuación directa mínima necesaria para superar el ejercicio"
+      }
+    },
+    "calificacion": {
+      "descripcion": "La calificación resulta de la transformación de las puntuaciones directas según baremos de la Comisión Permanente de Selección",
+      "reglas": [
+        "Las puntuaciones directas mínimas fijadas para superar cada parte equivalen a las calificaciones mínimas necesarias",
+        "Las puntuaciones directas mínimas no pueden ser inferiores al 30% de la puntuación directa máxima obtenible",
+        "Las puntuaciones directas máximas obtenibles equivalen a las calificaciones máximas del ejercicio"
+      ]
+    },
+    "penalizacion": "1/3 por respuesta incorrecta",
+    "respuestas_en_blanco": "No penalizan"
+  },
   "partes": [
     {
       "nombre": "Primera parte",

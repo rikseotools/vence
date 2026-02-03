@@ -18,6 +18,25 @@
     "orden": 1444,
     "convocatoria_url": "https://sede.inap.gob.es/es/procedimientos-y-servicios/seleccion/procesos-selectivos-de-cuerpos-y-escalas-generales/cuerpo-general-auxiliar-de-la-administracion-del-estado/cuerpo-general-auxiliar-de-la-administracion-del-estado-ingreso-libre-oferta-de-empleo-publico-2018-2019"
   },
+  "bases": {
+    "primer_ejercicio": {
+      "descripcion": "Formado por dos partes, ambas obligatorias y eliminatorias, que se realizan conjuntamente",
+      "tiempo_maximo": "70 minutos",
+      "primera_parte": {
+        "descripcion": "Cuestionario de máximo 60 preguntas: 30 sobre materias del bloque I del programa y 30 de carácter psicotécnico (aptitudes administrativas, numéricas o verbales)",
+        "num_preguntas": 60,
+        "num_preguntas_reserva": 5
+      },
+      "segunda_parte": {
+        "descripcion": "Cuestionario de máximo 30 preguntas sobre materias del bloque II del programa (Windows 10 y Office 2010 Professional Plus SP2)",
+        "num_preguntas": 30,
+        "num_preguntas_reserva": 5
+      }
+    },
+    "penalizacion": "1/3 por respuesta incorrecta",
+    "respuestas_en_blanco": "No penalizan",
+    "nota": "Esta convocatoria tenía un segundo ejercicio de carácter práctico que no se incluye aquí"
+  },
   "corte_primera_parte": 25.47,
   "corte_segunda_parte": 25.15,
   "corte_total": 50.62,
