@@ -1,0 +1,1332 @@
+{
+  "titulo": "Examen Cuerpo General Auxiliar de la Administración del Estado - Ingreso Libre",
+  "convocatoria": "OEP 2018",
+  "fecha_convocatoria": "14 de junio de 2019",
+  "fecha_examen": "",
+  "codigo_examen": "18/AUX-L",
+  "modelo": "A",
+  "enlace_convocatoria": "https://sede.inap.gob.es/es/procedimientos-y-servicios/seleccion/procesos-selectivos-de-cuerpos-y-escalas-generales/cuerpo-general-auxiliar-de-la-administracion-del-estado/cuerpo-general-auxiliar-de-la-administracion-del-estado-ingreso-libre-oferta-de-empleo-publico-2018-2019",
+  "nota_corte": {
+    "descripcion": "Último aprobado en turno libre",
+    "primera_parte": {
+      "nota": 25.47
+    },
+    "segunda_parte": {
+      "nota": 25.15
+    },
+    "total": 50.62,
+    "orden": 1444,
+    "convocatoria_url": "https://sede.inap.gob.es/es/procedimientos-y-servicios/seleccion/procesos-selectivos-de-cuerpos-y-escalas-generales/cuerpo-general-auxiliar-de-la-administracion-del-estado/cuerpo-general-auxiliar-de-la-administracion-del-estado-ingreso-libre-oferta-de-empleo-publico-2018-2019"
+  },
+  "corte_primera_parte": 25.47,
+  "corte_segunda_parte": 25.15,
+  "corte_total": 50.62,
+  "tiempo_realizacion_minutos": 70,
+  "numero_preguntas_primera_parte": 60,
+  "numero_preguntas_segunda_parte": 30,
+  "numero_preguntas_reserva_primera_parte": 5,
+  "numero_preguntas_reserva_segunda_parte": 5,
+  "penalizacion": "1/3",
+  "preguntas": [
+    {
+      "parte": "primera",
+      "numero": 1,
+      "enunciado": "¿Cuáles de los siguientes se propugnan como valores superiores del ordenamiento jurídico español de acuerdo con el artículo 1.1 de la Constitución Española?",
+      "opciones": {
+        "a": "La democracia y el pluralismo político.",
+        "b": "La justicia y la libertad.",
+        "c": "La igualdad y el Estado social.",
+        "d": "La legalidad y la Nación española."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Constitución Española"
+    },
+    {
+      "parte": "primera",
+      "numero": 2,
+      "enunciado": "De acuerdo con el artículo 8 del Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público, el personal laboral de las Administraciones Públicas podrá ser:",
+      "opciones": {
+        "a": "Eventual, fijo o temporal.",
+        "b": "Fijo, interino o temporal.",
+        "c": "Fijo, por tiempo indefinido o temporal.",
+        "d": "Fijo o eventual."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Estatuto Básico del Empleado Público"
+    },
+    {
+      "parte": "primera",
+      "numero": 3,
+      "enunciado": "Según la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, la realización de una actividad de carácter técnico de la competencia de un órgano administrativo que, por no poseer los medios técnicos idóneos para su desempeño, haya sido encomendada a otro órgano de la misma Administración entre cuyas competencias también estén dichas actividades, se denomina:",
+      "opciones": {
+        "a": "Avocación.",
+        "b": "Delegación de competencias.",
+        "c": "Desconcentración.",
+        "d": "Encomienda de gestión."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Régimen Jurídico del Sector Público"
+    },
+    {
+      "parte": "primera",
+      "numero": 4,
+      "enunciado": "Los Delegados del Gobierno en las Comunidades Autónomas en su condición de órganos directivos ostentan el rango de:",
+      "opciones": {
+        "a": "Director General.",
+        "b": "Subsecretario.",
+        "c": "Secretario de Estado.",
+        "d": "Secretario General Técnico."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Régimen Jurídico del Sector Público"
+    },
+    {
+      "parte": "primera",
+      "numero": 5,
+      "enunciado": "La Agenda 2030 para el Desarrollo Sostenible de las Naciones Unidas plantea:",
+      "opciones": {
+        "a": "15 objetivos con 160 metas.",
+        "b": "21 objetivos con 184 metas.",
+        "c": "18 objetivos con 173 metas.",
+        "d": "17 objetivos con 169 metas."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Organización Pública"
+    },
+    {
+      "parte": "primera",
+      "numero": 6,
+      "enunciado": "Según la Ley Orgánica 2/1979, de 3 de octubre, del Tribunal Constitucional, sus magistrados:",
+      "opciones": {
+        "a": "Serán nombrados por el Rey, a propuesta de las Cámaras, del Gobierno y del Consejo General del Poder Judicial.",
+        "b": "Serán nombrados por el Presidente del Congreso por mayoría de las tres quintas partes de sus diputados.",
+        "c": "Serán nombrados por la Comisión Mixta Congreso-Senado, a propuesta del Presidente del Tribunal Supremo.",
+        "d": "Serán nombrados por el Rey, a propuesta conjunta del Presidente del Gobierno y del Tribunal Supremo."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Tribunal Constitucional"
+    },
+    {
+      "parte": "primera",
+      "numero": 7,
+      "enunciado": "De acuerdo con la Constitución Española, los senadores que se eligen por sufragio universal, libre, igual, directo y secreto por los votantes de cada provincia son:",
+      "opciones": {
+        "a": "Uno.",
+        "b": "Cuatro.",
+        "c": "Tres.",
+        "d": "Dos."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Constitución Española"
+    },
+    {
+      "parte": "primera",
+      "numero": 8,
+      "enunciado": "Según el artículo 41 de la Ley 47/2003, de 26 de noviembre, General Presupuestaria, los estados de ingresos de los presupuestos se estructurarán siguiendo las clasificaciones:",
+      "opciones": {
+        "a": "Orgánica y económica.",
+        "b": "Orgánica y por programas.",
+        "c": "Orgánica y funcional.",
+        "d": "Orgánica y por áreas de gasto."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Ley General Presupuestaria"
+    },
+    {
+      "parte": "primera",
+      "numero": 9,
+      "enunciado": "Conforme establece la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, la Administración podrá convalidar un acto si:",
+      "opciones": {
+        "a": "El acto es nulo de pleno derecho y el vicio consiste en incompetencia jerárquica.",
+        "b": "El acto es nulo de pleno derecho y el vicio consiste en incompetencia funcional.",
+        "c": "El acto es anulable y el vicio consiste en incompetencia jerárquica.",
+        "d": "El acto es anulable y el vicio consiste en incompetencia por razón de la materia."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Procedimiento Administrativo Común"
+    },
+    {
+      "parte": "primera",
+      "numero": 10,
+      "enunciado": "Según el artículo 240 del Tratado de Funcionamiento de la Unión Europea, el Comité de Representantes Permanentes de los Gobiernos de los Estados miembros (COREPER) se encargará de preparar los trabajos de la siguiente institución de la Unión Europea:",
+      "opciones": {
+        "a": "El Consejo Europeo.",
+        "b": "El Consejo de la Unión Europea.",
+        "c": "La Comisión Europea.",
+        "d": "El Parlamento Europeo."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Unión Europea"
+    },
+    {
+      "parte": "primera",
+      "numero": 11,
+      "enunciado": "De acuerdo con la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, cuando las normas reguladoras de los procedimientos administrativos NO fijen el plazo máximo para resolver, éste será de:",
+      "opciones": {
+        "a": "Seis meses.",
+        "b": "Un mes.",
+        "c": "Dos meses.",
+        "d": "Tres meses."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Procedimiento Administrativo Común"
+    },
+    {
+      "parte": "primera",
+      "numero": 12,
+      "enunciado": "De acuerdo con el artículo 14.1 de la Ley 19/2013, de 9 de diciembre, de transparencia, acceso a la información pública y buen gobierno, el derecho de acceso podrá ser limitado cuando acceder a la información suponga un perjuicio para:",
+      "opciones": {
+        "a": "La protección del patrimonio histórico.",
+        "b": "La protección del medio ambiente.",
+        "c": "La igualdad de género.",
+        "d": "La protección de la salud."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Transparencia"
+    },
+    {
+      "parte": "primera",
+      "numero": 13,
+      "enunciado": "De acuerdo con el artículo 53.2 de la Constitución, cualquier ciudadano puede recabar la tutela de derechos y libertades a través del recurso de amparo ante el Tribunal Constitucional. ¿A cuál de los siguientes derechos le sería de aplicación esta previsión?",
+      "opciones": {
+        "a": "Al derecho a la propiedad y a la herencia.",
+        "b": "Al derecho al matrimonio.",
+        "c": "Al derecho al trabajo.",
+        "d": "Al derecho a la huelga."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Constitución Española"
+    },
+    {
+      "parte": "primera",
+      "numero": 14,
+      "enunciado": "El Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público regula entre las sanciones que se pueden imponer por razón de las faltas cometidas la siguiente:",
+      "opciones": {
+        "a": "La reducción de retribuciones proporcional a la falta cometida.",
+        "b": "La pérdida de hasta dos niveles del grado personal consolidado.",
+        "c": "El demérito.",
+        "d": "Una multa proporcional a la falta cometida."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Estatuto Básico del Empleado Público"
+    },
+    {
+      "parte": "primera",
+      "numero": 15,
+      "enunciado": "Según el Reglamento (UE) 2016/679, de 27 de abril, relativo a la protección de las personas físicas en lo que respecta al tratamiento de datos personales y a la libre circulación de estos datos, se entiende prestado el consentimiento del interesado para el tratamiento de sus datos personales:",
+      "opciones": {
+        "a": "Mediante la inacción.",
+        "b": "De forma presunta.",
+        "c": "Mediante una declaración o una clara acción negativa.",
+        "d": "Mediante una declaración o una clara acción afirmativa."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Protección de Datos"
+    },
+    {
+      "parte": "primera",
+      "numero": 16,
+      "enunciado": "La resolución de peticiones de acceso a expedientes llevadas a cabo en el marco de la Ley 19/2013, de 9 de diciembre, de Transparencia, Acceso a la Información Pública y Buen Gobierno se habrá de realizar, desde la recepción de la solicitud por el órgano competente para resolver, en el plazo de:",
+      "opciones": {
+        "a": "Quince días.",
+        "b": "Un mes.",
+        "c": "Dos meses.",
+        "d": "Tres meses."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Transparencia"
+    },
+    {
+      "parte": "primera",
+      "numero": 17,
+      "enunciado": "De acuerdo con el Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público, las infracciones graves prescribirán:",
+      "opciones": {
+        "a": "Al año.",
+        "b": "A los dos años.",
+        "c": "A los tres años.",
+        "d": "A los seis meses."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Estatuto Básico del Empleado Público"
+    },
+    {
+      "parte": "primera",
+      "numero": 18,
+      "enunciado": "Las resoluciones del Defensor del Pueblo, según la Ley Orgánica 3/1981, de 6 de abril:",
+      "opciones": {
+        "a": "Pueden modificar o anular los actos y resoluciones de la Administración Pública.",
+        "b": "Pueden declarar la nulidad o inaplicabilidad de una disposición legal.",
+        "c": "Pueden declarar la caducidad de un procedimiento administrativo.",
+        "d": "Pueden formular advertencias, recomendaciones o recordatorios a la Administración Pública."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Defensor del Pueblo"
+    },
+    {
+      "parte": "primera",
+      "numero": 19,
+      "enunciado": "¿Qué instituciones de la Unión Europea ejercen conjuntamente la función legislativa y la presupuestaria?",
+      "opciones": {
+        "a": "La Comisión Europea y el Consejo Europeo.",
+        "b": "El Consejo Europeo y el Consejo de la Unión Europea.",
+        "c": "El Parlamento Europeo y la Comisión Europea.",
+        "d": "El Consejo de la Unión Europea y el Parlamento Europeo."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Unión Europea"
+    },
+    {
+      "parte": "primera",
+      "numero": 20,
+      "enunciado": "¿Cuál es el órgano jurisdiccional superior de nuestro sistema judicial según el artículo 123.1 de la Constitución?",
+      "opciones": {
+        "a": "El Tribunal Constitucional en todos los órdenes.",
+        "b": "El Consejo General del Poder Judicial.",
+        "c": "El Tribunal Supremo, salvo lo dispuesto en materia de garantías constitucionales.",
+        "d": "El Tribunal de Justicia de la UE en materia de garantías constitucionales."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Constitución Española"
+    },
+    {
+      "parte": "primera",
+      "numero": 21,
+      "enunciado": "De acuerdo con la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, en el ámbito de un Ministerio el desempeño de la jefatura superior de todo el personal del Departamento es competencia del:",
+      "opciones": {
+        "a": "Ministro.",
+        "b": "Secretario de Estado.",
+        "c": "Subsecretario.",
+        "d": "Director General de Servicios."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Régimen Jurídico del Sector Público"
+    },
+    {
+      "parte": "primera",
+      "numero": 22,
+      "enunciado": "De acuerdo con el artículo 161.1 de la Constitución, el Tribunal Constitucional tiene jurisdicción en todo el territorio español y es competente para conocer:",
+      "opciones": {
+        "a": "De los conflictos de competencia entre Comunidades Autónomas.",
+        "b": "Del recurso de inconstitucionalidad contra leyes y reglamentos.",
+        "c": "Del recurso de casación.",
+        "d": "De las demás materias que le atribuyan las leyes estatales y las leyes de las Comunidades Autónomas."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Tribunal Constitucional"
+    },
+    {
+      "parte": "primera",
+      "numero": 23,
+      "enunciado": "De acuerdo con la Ley 47/2003, de 26 de noviembre, General Presupuestaria, la estructura de los Presupuestos Generales del Estado se determinará por:",
+      "opciones": {
+        "a": "El Gobierno.",
+        "b": "El Ministerio de Economía y Empresa.",
+        "c": "El Ministerio de Hacienda.",
+        "d": "El Consejo de Ministros."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Ley General Presupuestaria"
+    },
+    {
+      "parte": "primera",
+      "numero": 24,
+      "enunciado": "De acuerdo con el artículo 149.1.5ª de la Constitución Española, la competencia sobre \"Administración de Justicia\":",
+      "opciones": {
+        "a": "Es una competencia exclusiva del Estado.",
+        "b": "Es una competencia exclusiva del Estado, sin perjuicio de las necesarias especialidades que en este orden se deriven de las particularidades del derecho sustantivo de las Comunidades Autónomas.",
+        "c": "Es una competencia exclusiva del Estado, sin perjuicio de la conservación, modificación y desarrollo por las Comunidades Autónomas de los derechos civiles, forales o especiales, allí donde existan.",
+        "d": "Es una competencia compartida de las Comunidades Autónomas."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Constitución Española"
+    },
+    {
+      "parte": "primera",
+      "numero": 25,
+      "enunciado": "Indique cuáles de estos cargos NO forman parte del Gobierno según el artículo 98.1 de la Constitución Española:",
+      "opciones": {
+        "a": "Presidente.",
+        "b": "Vicepresidentes.",
+        "c": "Ministros.",
+        "d": "Secretarios de Estado."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Constitución Española"
+    },
+    {
+      "parte": "primera",
+      "numero": 26,
+      "enunciado": "Conforme establece la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, cuando los plazos se señalen por días:",
+      "opciones": {
+        "a": "Se entiende que son hábiles, excluyendo del cómputo los domingos y festivos, pero no los sábados.",
+        "b": "Se entiende que son naturales, excluyendo del cómputo los domingos y festivos, pero no los sábados.",
+        "c": "Se entiende que son hábiles, excluyendo del cómputo los sábados, domingos y festivos.",
+        "d": "Se entiende que son naturales, excluyendo del cómputo los sábados, domingos y festivos."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Procedimiento Administrativo Común"
+    },
+    {
+      "parte": "primera",
+      "numero": 27,
+      "enunciado": "De acuerdo con la Ley 30/1984, de 2 de agosto, de medidas para la reforma de la Función Pública las gratificaciones por servicios extraordinarios:",
+      "opciones": {
+        "a": "No podrán ser más de dos al año.",
+        "b": "Serán fijas en su cuantía pero no en su devengo.",
+        "c": "No podrán superar la cuantía del complemento de destino.",
+        "d": "En ningún caso serán fijas en su cuantía."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Función Pública"
+    },
+    {
+      "parte": "primera",
+      "numero": 28,
+      "enunciado": "Señale cuál de los siguientes principios NO se encuentra entre los que regirán la programación presupuestaria enumerados en el artículo 26 de la Ley 47/2003, de 26 de noviembre, General Presupuestaria:",
+      "opciones": {
+        "a": "Sostenibilidad financiera.",
+        "b": "Eficiencia en la asignación y utilización de los recursos públicos.",
+        "c": "Unidad de caja.",
+        "d": "Estabilidad presupuestaria."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Ley General Presupuestaria"
+    },
+    {
+      "parte": "primera",
+      "numero": 29,
+      "enunciado": "¿Cuáles son todas las formas de iniciación de los procedimientos administrativos según la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas?",
+      "opciones": {
+        "a": "De oficio, a instancia de parte o mediante denuncia.",
+        "b": "De oficio, en todo caso.",
+        "c": "Siempre será necesario una instancia por escrito del ciudadano ante el órgano correspondiente.",
+        "d": "De oficio o a instancia del interesado."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Procedimiento Administrativo Común"
+    },
+    {
+      "parte": "primera",
+      "numero": 30,
+      "enunciado": "Según dispone la Ley Orgánica 3/2007, de 22 de marzo, para la igualdad efectiva de mujeres y hombres, ¿qué empresas están obligadas a respetar la igualdad de trato y de oportunidades en el ámbito laboral?",
+      "opciones": {
+        "a": "Las empresas de 50 o más personas trabajadoras.",
+        "b": "Las empresas obligadas a elaborar y aplicar un plan de igualdad, previa negociación o consulta, en su caso, con la representación legal de los trabajadores y trabajadoras, cuando la autoridad laboral hubiera acordado en un procedimiento sancionador la sustitución de las sanciones accesorias por la elaboración y aplicación de dicho plan, en los términos que se fijen en el indicado acuerdo.",
+        "c": "Todas las empresas, sea cual sea el número de personas trabajadoras en plantilla como las de más de 50 personas trabajadoras.",
+        "d": "No es una obligación legal que implique a las empresas de menos de 50 personas trabajadoras, sino que es una actuación voluntaria."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Igualdad"
+    },
+    {
+      "parte": "primera",
+      "numero": 31,
+      "enunciado": "¿Cuál de las siguientes opciones tiene un significado más parecido a la palabra REQUERIR?",
+      "opciones": {
+        "a": "Desplegar.",
+        "b": "Trazar.",
+        "c": "Solicitar.",
+        "d": "Imbuir."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera",
+      "numero": 32,
+      "enunciado": "Complete la serie numérica: 7 - 3 - 21 - 3 - ?",
+      "opciones": {
+        "a": "72",
+        "b": "147",
+        "c": "28",
+        "d": "63"
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Series"
+    },
+    {
+      "parte": "primera",
+      "numero": 33,
+      "enunciado": "Indique, entre las siguientes palabras, cuál es el antónimo de la palabra AFANOSO:",
+      "opciones": {
+        "a": "Vago.",
+        "b": "Gasto.",
+        "c": "Cocinado.",
+        "d": "Hablado."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera",
+      "numero": 34,
+      "enunciado": "Señale el número de errores ortográficos en la frase siguiente: Los detectores son dispositibos que captan un determinado fenomeno y cuándo el valor sobrepasa un humbral se genera una señal de alarma.",
+      "opciones": {
+        "a": "3",
+        "b": "6",
+        "c": "2",
+        "d": "5"
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Ortografía"
+    },
+    {
+      "parte": "primera",
+      "numero": 35,
+      "enunciado": "Calcule el valor de X en la siguiente operación: 12 (6X - 13) = X",
+      "opciones": {
+        "a": "4,21",
+        "b": "7,38",
+        "c": "2,19",
+        "d": "1,96"
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Matemáticas"
+    },
+    {
+      "parte": "primera",
+      "numero": 36,
+      "enunciado": "Según la tabla, ¿cuál de estas Comunidades Autónomas tiene menor porcentaje de municipios de más de 10.000 habitantes con respecto al total de municipios existentes en la Comunidad?",
+      "opciones": {
+        "a": "Andalucía.",
+        "b": "Comunidad de Madrid.",
+        "c": "País Vasco.",
+        "d": "Región de Murcia."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 37,
+      "enunciado": "¿Cuál de estas Comunidades Autónomas tiene de media más kilómetros cuadrados de superficie por municipio?",
+      "opciones": {
+        "a": "Cataluña.",
+        "b": "Comunidad Valenciana.",
+        "c": "Castilla-La Mancha.",
+        "d": "Región de Murcia."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 38,
+      "enunciado": "De las siguientes, ¿qué Comunidad Autónoma tiene una media de población menor por municipio?",
+      "opciones": {
+        "a": "Cataluña.",
+        "b": "Comunidad Valenciana.",
+        "c": "País Vasco.",
+        "d": "Canarias."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 39,
+      "enunciado": "Si en Canarias, un 65% de su población vive en municipios de más de 10.000 habitantes, ¿cuánta población hay en los municipios de menos de 10.000 habitantes?",
+      "opciones": {
+        "a": "891.622,90",
+        "b": "651.773,41",
+        "c": "792.459,05",
+        "d": "744.372,65"
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 40,
+      "enunciado": "Si en el País Vasco la media de población en los municipios de más de 10.000 habitantes es de 40.300, ¿cuál es la media de población en los municipios de menos de 10.000?",
+      "opciones": {
+        "a": "2.409,80",
+        "b": "2.391,30",
+        "c": "1.976,50",
+        "d": "2.520,60"
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 41,
+      "enunciado": "Si la media de superficie por municipio mayor de 10.000 habitantes es de 50 kilómetros cuadrados (km2), ¿qué Comunidad Autónoma de las siguientes tiene de media en municipios de menos de 10.000 habitantes?",
+      "opciones": {
+        "a": "Andalucía.",
+        "b": "Comunidad de Madrid.",
+        "c": "País Vasco.",
+        "d": "Región de Murcia."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 42,
+      "enunciado": "Señale qué palabra se corresponde con la siguiente definición: Licencia o consentimiento para hacer o decir algo.",
+      "opciones": {
+        "a": "Permiso.",
+        "b": "Cierta.",
+        "c": "Objetivo.",
+        "d": "Evento."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera",
+      "numero": 43,
+      "enunciado": "¿Qué par de palabras NO mantiene la relación que encontramos entre ANGOSTO y AMPLIO?",
+      "opciones": {
+        "a": "Brillante y Luminoso.",
+        "b": "Provisorio y Definitivo.",
+        "c": "Tenaz e Inconstante.",
+        "d": "Apocado y Enérgico."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera",
+      "numero": 44,
+      "enunciado": "En una empresa hay cuatro socios con el 10, 25, 30 y 35% de las acciones respectivamente. Si el máximo accionista tiene 196.000 € en acciones, ¿cuánto dinero en acciones tiene el segundo accionista como mínimo?",
+      "opciones": {
+        "a": "92.450 €.",
+        "b": "72.200 €.",
+        "c": "68.000 €.",
+        "d": "56.000 €."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Matemáticas"
+    },
+    {
+      "parte": "primera",
+      "numero": 45,
+      "enunciado": "Si de una circunferencia, tomamos una porción del 45% del total, ¿cuántos grados tendrá esta porción?",
+      "opciones": {
+        "a": "123,33 grados.",
+        "b": "162 grados.",
+        "c": "99 grados.",
+        "d": "130,66 grados."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Psicotécnico - Matemáticas"
+    },
+    {
+      "parte": "primera",
+      "numero": 46,
+      "enunciado": "Señale qué palabra se corresponde con la siguiente definición: Ambiente, lo que rodea.",
+      "opciones": {
+        "a": "Flujo.",
+        "b": "Pantalla.",
+        "c": "Entorno.",
+        "d": "Página."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera",
+      "numero": 47,
+      "enunciado": "Señale qué definición es la que se corresponde con la palabra ANÁLISIS:",
+      "opciones": {
+        "a": "Estudio detallado de algo, especialmente de una obra o de un escrito.",
+        "b": "Extraer, echar el agua de un sitio o lugar.",
+        "c": "Tiempo que ha vivido una persona o ciertos animales o vegetales.",
+        "d": "Mandato, decreto publicado con autoridad del príncipe o del magistrado."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera",
+      "numero": 48,
+      "enunciado": "Un almacén tiene una capacidad de 1.200 unidades, y su stock actual es de 336 unidades. Cada cargamento que se recibe para almacenar contiene 96 unidades. ¿Cuántos cargamentos pueden recibir como máximo antes de llenarse por completo?",
+      "opciones": {
+        "a": "12 cargamentos.",
+        "b": "6 cargamentos.",
+        "c": "9 cargamentos.",
+        "d": "5 cargamentos."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Matemáticas"
+    },
+    {
+      "parte": "primera",
+      "numero": 49,
+      "enunciado": "Indique qué pareja de palabras NO tiene un significado parecido entre sí:",
+      "opciones": {
+        "a": "Barato - Costoso.",
+        "b": "Adrede - Aposta.",
+        "c": "Pobre - Indigente.",
+        "d": "Honrar - Ensalzar."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera",
+      "numero": 50,
+      "enunciado": "Señale la palabra que NO pertenece al grupo:",
+      "opciones": {
+        "a": "Garantía.",
+        "b": "Fianza.",
+        "c": "Hipoteca.",
+        "d": "Envoltura."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera",
+      "numero": 51,
+      "enunciado": "Señale qué combinación de números es la correcta para esta operación: _x _ - _ = 75",
+      "opciones": {
+        "a": "10, 15, 4",
+        "b": "7, 12, 9",
+        "c": "13, 7, 2",
+        "d": "9, 11, 5"
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Psicotécnico - Matemáticas"
+    },
+    {
+      "parte": "primera",
+      "numero": 52,
+      "enunciado": "Señale qué serie indica el orden alfabético correcto de las siguientes palabras:",
+      "opciones": {
+        "a": "Obeso, Obligar, Objeto, Óbice, Oblicuo.",
+        "b": "Objeto, Obeso, Obligar, Óbice, Oblicuo.",
+        "c": "Obligar, Obeso, Objeto, Oblicuo, Óbice.",
+        "d": "Obeso, Óbice, Objeto, Oblicuo, Obligar."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Ordenación alfabética"
+    },
+    {
+      "parte": "primera",
+      "numero": 53,
+      "enunciado": "Empresa 1.",
+      "opciones": {
+        "a": "Empresa 1",
+        "b": "Empresa 1",
+        "c": "Empresa 1",
+        "d": "Empresa 1"
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 54,
+      "enunciado": "Empresa 2.",
+      "opciones": {
+        "a": "Empresa 2",
+        "b": "Empresa 2",
+        "c": "Empresa 2",
+        "d": "Empresa 2"
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 55,
+      "enunciado": "Empresa 3.",
+      "opciones": {
+        "a": "Empresa 3",
+        "b": "Empresa 3",
+        "c": "Empresa 3",
+        "d": "Empresa 3"
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 56,
+      "enunciado": "Empresa 4.",
+      "opciones": {
+        "a": "Empresa 4",
+        "b": "Empresa 4",
+        "c": "Empresa 4",
+        "d": "Empresa 4"
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 57,
+      "enunciado": "Empresa 5.",
+      "opciones": {
+        "a": "Empresa 5",
+        "b": "Empresa 5",
+        "c": "Empresa 5",
+        "d": "Empresa 5"
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 58,
+      "enunciado": "Empresa 6.",
+      "opciones": {
+        "a": "Empresa 6",
+        "b": "Empresa 6",
+        "c": "Empresa 6",
+        "d": "Empresa 6"
+      },
+      "respuesta_correcta": "ANULADA",
+      "categoria": "Psicotécnico - Tablas"
+    },
+    {
+      "parte": "primera",
+      "numero": 59,
+      "enunciado": "Una empresa tiene unas ventas totales de 3.721 millones. El 23% se vende en el mercado interior, el 41% en la Unión Europea, y el resto a otros países. Del resto de países, Turquía representa el 55%. ¿Cuál es la cantidad vendida en Turquía?",
+      "opciones": {
+        "a": "533,71 millones.",
+        "b": "857,52 millones.",
+        "c": "736,75 millones.",
+        "d": "657,55 millones."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Matemáticas"
+    },
+    {
+      "parte": "primera",
+      "numero": 60,
+      "enunciado": "Dadas las siguientes equivalencias: d=0001, f=0010, g=0100, h=1000, i=0011, j=0101. ¿Qué serie de letras corresponde a la siguiente serie de números: 001010000011000?",
+      "opciones": {
+        "a": "h-d-f-g",
+        "b": "d-i-d-g",
+        "c": "f-i-g-h",
+        "d": "f-h-d-h"
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Codificación"
+    },
+    {
+      "parte": "primera_reserva",
+      "numero": 1,
+      "enunciado": "De acuerdo con lo previsto en el artículo 55 de la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, en la organización central de la Administración General del Estado:",
+      "opciones": {
+        "a": "Son órganos superiores los Ministros y los Secretarios de Estado.",
+        "b": "Son órganos superiores los Ministros, los Secretarios de Estado, los Secretarios Generales y los Subsecretarios.",
+        "c": "Son órganos directivos los Secretarios de Estado, los Secretarios Generales y los Subsecretarios.",
+        "d": "Son órganos directivos los Secretarios de Estado, los Secretarios Generales, los Subsecretarios y los Directores Generales."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Régimen Jurídico del Sector Público"
+    },
+    {
+      "parte": "primera_reserva",
+      "numero": 2,
+      "enunciado": "El Real Decreto Legislativo 5/2015, de 30 de octubre, por el que se aprueba el texto refundido de la Ley del Estatuto Básico del Empleado Público define a los funcionarios interinos como los que, por razones expresamente justificadas de necesidad y urgencia, son nombrados como tales para el desempeño de funciones propias de funcionarios de carrera, cuando se dé alguna de las siguientes circunstancias:",
+      "opciones": {
+        "a": "La existencia de plazas vacantes cuando no sea posible su cobertura por funcionarios de carrera.",
+        "b": "La sustitución permanente de los titulares.",
+        "c": "La ejecución de programas de carácter temporal, que no podrán tener una duración superior a 2 años, ampliable hasta 12 meses más por las leyes de Función Pública que se dicten en desarrollo de este Estatuto.",
+        "d": "El exceso o acumulación de tareas por plazo máximo de 9 meses, dentro de un periodo de 12 meses."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Estatuto Básico del Empleado Público"
+    },
+    {
+      "parte": "primera_reserva",
+      "numero": 3,
+      "enunciado": "Señale la respuesta correcta sobre las fases del procedimiento de la gestión de los gastos de acuerdo con la Ley 47/2003, de 26 de noviembre, General Presupuestaria:",
+      "opciones": {
+        "a": "La aprobación es el acto mediante el cual se acuerda, tras el cumplimiento de los trámites legalmente establecidos, la realización de gastos previamente comprometidos.",
+        "b": "El compromiso es el acto mediante el que se declara la existencia de un crédito exigible contra la Hacienda Pública estatal o contra la Seguridad Social y que comporta la propuesta de pago correspondiente.",
+        "c": "El compromiso es un acto con relevancia jurídica para con terceros, vinculando a la Hacienda Pública estatal o a la Seguridad Social a la realización del gasto a que se refiera en la cuantía y condiciones establecidas.",
+        "d": "El reconocimiento de la obligación es el acto mediante el cual se ordena el pago y se expide una orden a la Tesorería del Estado para que ésta satisfaga una obligación surgida como consecuencia de un proceso previo de gestión del gasto."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Ley General Presupuestaria"
+    },
+    {
+      "parte": "primera_reserva",
+      "numero": 4,
+      "enunciado": "Indique, entre las siguientes palabras, cuál es el antónimo de la palabra OPUESTO:",
+      "opciones": {
+        "a": "Ducho.",
+        "b": "Medieval.",
+        "c": "Idéntico.",
+        "d": "Prudente."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Psicotécnico - Vocabulario"
+    },
+    {
+      "parte": "primera_reserva",
+      "numero": 5,
+      "enunciado": "Complete la serie de números con las operaciones correspondientes: 56 _ 4 _ 2 = 28",
+      "opciones": {
+        "a": "x , -",
+        "b": "/ , +",
+        "c": "/ , -",
+        "d": "/ , x"
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Psicotécnico - Matemáticas"
+    },
+    {
+      "parte": "segunda",
+      "numero": 1,
+      "enunciado": "Señale cuál de las opciones NO es un sistema de archivos:",
+      "opciones": {
+        "a": "FAT32.",
+        "b": "NTFS.",
+        "c": "ext2.",
+        "d": "SOLARIS."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Informática - Sistemas"
+    },
+    {
+      "parte": "segunda",
+      "numero": 2,
+      "enunciado": "En Word, ¿cuál de las siguientes opciones de Vistas de documento maximiza el espacio disponible para lectura?",
+      "opciones": {
+        "a": "Diseño de impresión.",
+        "b": "Lectura de pantalla completa.",
+        "c": "Esquema.",
+        "d": "Diseño web."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 3,
+      "enunciado": "Si se pulsa el clic derecho de ratón sobre el icono de inicio de Windows 10, ¿qué ocurre?",
+      "opciones": {
+        "a": "Se abre un menú con diversas opciones de configuración y administración de Windows.",
+        "b": "Se abre el Explorador de archivos.",
+        "c": "Se abre Cortana.",
+        "d": "Se abre el explorador web Microsoft Edge."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Sistemas"
+    },
+    {
+      "parte": "segunda",
+      "numero": 4,
+      "enunciado": "En Excel, en la columna A tenemos Nombres, y en la B Apellidos. Queremos calcular una columna que muestre el valor de Nombres, un espacio en blanco y el valor de Apellidos. ¿Cuál de las siguientes fórmulas dará este resultado?",
+      "opciones": {
+        "a": "=A1&\" \"&B1",
+        "b": "=A1&\" \"+B1",
+        "c": "=A1&'\" \"'&B1",
+        "d": "=A1*\" \"*B1"
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 5,
+      "enunciado": "En Windows 10, queremos ver alguna información sobre el computador, como el nombre del PC, la edición de Windows instalada, o la cantidad de RAM instalada. Dentro de la Configuración Sistema, ¿qué opción elegiremos?",
+      "opciones": {
+        "a": "Aplicaciones y características.",
+        "b": "Almacenamiento.",
+        "c": "Acerca de.",
+        "d": "Notificaciones y Acciones."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Informática - Sistemas"
+    },
+    {
+      "parte": "segunda",
+      "numero": 6,
+      "enunciado": "¿Con qué sistema de almacenamiento de archivos en la nube está integrado por defecto el Explorador de archivos de Windows?",
+      "opciones": {
+        "a": "OneDrive.",
+        "b": "Dropbox.",
+        "c": "Google Drive.",
+        "d": "Amazon S3."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Sistemas"
+    },
+    {
+      "parte": "segunda",
+      "numero": 7,
+      "enunciado": "Según la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, respecto del cómputo de plazos, cuando un día fuese inhábil en la Comunidad Autónoma en que residiese el interesado e inhábil en la sede del órgano administrativo, se considerará:",
+      "opciones": {
+        "a": "Hábil en la sede del órgano administrativo.",
+        "b": "Hábil en ambas sedes.",
+        "c": "Inhábil en todo caso.",
+        "d": "No se prevé esta casuística en la Ley 39/2015."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Procedimiento Administrativo Común"
+    },
+    {
+      "parte": "segunda",
+      "numero": 8,
+      "enunciado": "En Excel, queremos mostrar un mensaje \"IVA normal\" si en la celda B10 el valor es 21%, y otro de \"IVA reducido\" si tiene otro valor. ¿Cuál de las siguientes fórmulas cumplirá estos requisitos?",
+      "opciones": {
+        "a": "=SI B10:\"21%\" VALOR(\"IVA normal\"; \"IVA reducido\")",
+        "b": "SI B10=21% THEN \"IVA normal\" ELSE \"IVA reducido\"",
+        "c": "=SI(B10=\"21%\";\"IVA normal\";\"IVA reducido\")",
+        "d": "SI(B10=\"21%\"; \"IVA reducido\"; \"IVA normal\")"
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 9,
+      "enunciado": "¿Qué combinación de teclas me permite volver a las carpetas anteriores en el historial del Explorador de archivos de Windows?",
+      "opciones": {
+        "a": "Ctrl + S",
+        "b": "Alt + flecha izquierda",
+        "c": "logotipo de Windows + U",
+        "d": "Ctrl + flecha izquierda"
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Informática - Sistemas"
+    },
+    {
+      "parte": "segunda",
+      "numero": 10,
+      "enunciado": "En Word, por defecto, ¿qué combinación de teclas abre la ventana para insertar un hipervínculo?",
+      "opciones": {
+        "a": "Alt + K",
+        "b": "Ctrl + Alt + K",
+        "c": "Ctrl + Shift + Q",
+        "d": "Alt + Q"
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 11,
+      "enunciado": "En Access, ¿cuál de los siguientes nombres de campo es válido?",
+      "opciones": {
+        "a": "1_id_moneda€",
+        "b": "precio.$",
+        "c": "oferta!",
+        "d": "direccion[web]"
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 12,
+      "enunciado": "La información publicada en el Portal de Transparencia se adecuará, entre otros, al principio de accesibilidad, según el cual:",
+      "opciones": {
+        "a": "Se proporcionará información estructurada sobre los documentos y recursos de información para facilitar la identificación y búsqueda de la información.",
+        "b": "La información publicada será conforme al Esquema Nacional de Interoperatividad.",
+        "c": "La información será publicada en formatos que permitan su reutilización.",
+        "d": "La información se publicará de acuerdo con los estándares de calidad."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Transparencia"
+    },
+    {
+      "parte": "segunda",
+      "numero": 13,
+      "enunciado": "En Outlook, ¿cuál de las siguientes búsquedas nos permitirá encontrar los correos que en el campo Asunto contenga la palabra \"oferta\" pero no la palabra \"primera\"?",
+      "opciones": {
+        "a": "=oferta <> primera",
+        "b": "Asunto:oferta NO primera",
+        "c": "Asunto= +oferta -primera",
+        "d": "SI \"oferta\" NO \"primera\""
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 14,
+      "enunciado": "¿Cuál de los siguientes términos se refiere a una amenaza informática?",
+      "opciones": {
+        "a": "Conmutador.",
+        "b": "OLAP.",
+        "c": "Gusano.",
+        "d": "Monitorización."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Informática - Seguridad"
+    },
+    {
+      "parte": "segunda",
+      "numero": 15,
+      "enunciado": "En Excel, si una celda tiene el siguiente tipo de formato personalizado: #.### y el valor que introduzco es 123456,98 ¿cuál de las siguientes visualizaciones es la correcta?",
+      "opciones": {
+        "a": "123.456,98",
+        "b": "123456,98",
+        "c": "123.457",
+        "d": "123457"
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 16,
+      "enunciado": "En general, cuando navegamos por una página web, ¿cuál de las siguientes situaciones se producen con respecto al tráfico que generamos?",
+      "opciones": {
+        "a": "La mayor parte del tráfico es de subida, porque necesitamos enviar muchos datos para conectarnos.",
+        "b": "La mayor parte del tráfico es de bajada, porque necesitamos enviar muy pocos datos para conectarnos en comparación a lo que nos envía el servidor.",
+        "c": "El tráfico de subida y bajada es el mismo porque todo lo que nos envía el servidor, también lo recibe de vuelta.",
+        "d": "No generamos tráfico navegando, solo cuando descargamos ficheros."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Informática - Redes"
+    },
+    {
+      "parte": "segunda",
+      "numero": 17,
+      "enunciado": "¿Por qué cantidad de bits está formado un byte?",
+      "opciones": {
+        "a": "16",
+        "b": "8",
+        "c": "2",
+        "d": "32"
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Informática - Conceptos básicos"
+    },
+    {
+      "parte": "segunda",
+      "numero": 18,
+      "enunciado": "Según la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, ¿a qué órgano en la Administración General del Estado le corresponde la planificación de los sistemas de información y comunicación del Ministerio y sus Organismos públicos?",
+      "opciones": {
+        "a": "A los Ministros.",
+        "b": "A los Subsecretarios.",
+        "c": "A los Secretarios Generales Técnicos.",
+        "d": "A los Secretarios de Estado."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Régimen Jurídico del Sector Público"
+    },
+    {
+      "parte": "segunda",
+      "numero": 19,
+      "enunciado": "En Excel, en una celda tenemos el valor \"539\", y en la siguiente a la derecha el valor \"Medida\". Si selecciona las dos celdas y pulsa \"Combinar y centrar\", ¿cuál de los siguientes será el resultado?",
+      "opciones": {
+        "a": "Borrará \"Medida\" y dejará el valor \"539\" centrado en la nueva celda.",
+        "b": "Escribirá los dos valores, sin separación \"MedidaMedida539\" centrados en la nueva celda.",
+        "c": "Borrará \"539\" y dejará el valor \"Medida\" centrado en la nueva celda.",
+        "d": "Borrará los valores de ambas celdas, y creará una nueva celda."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 20,
+      "enunciado": "En Word, ¿cuál es la diferencia entre pulsar Intro y pulsar Mayúscula + Intro?",
+      "opciones": {
+        "a": "Intro indica párrafo nuevo, y Mayúscula + Intro indica salto de línea.",
+        "b": "No hay ninguna diferencia para Word.",
+        "c": "Intro indica párrafo nuevo, y Mayúscula + Intro indica salto de sección.",
+        "d": "Intro indica salto de línea, y Mayúscula + Intro indica salto de sección."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 21,
+      "enunciado": "En Outlook, ¿cuál de las siguientes opciones nos permite cambiar a la vista de Calendario?",
+      "opciones": {
+        "a": "Alt + C",
+        "b": "Ctrl + C",
+        "c": "Ctrl + 2",
+        "d": "Alt + 2"
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 22,
+      "enunciado": "En Access, tenemos dos tablas \"Datos Factura\" y \"Líneas Factura\". En Datos Factura está la información relativa a cada factura, y en Líneas Factura cada línea de los elementos de la factura. Siempre que se vende un elemento se emite una factura, aunque una factura puede incluir también varios elementos. ¿Cuál de las siguientes relaciones es la que mantiene Datos Factura con Líneas Factura?",
+      "opciones": {
+        "a": "Uno a varios.",
+        "b": "Varios a varios.",
+        "c": "Varios a uno.",
+        "d": "Uno a uno."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 23,
+      "enunciado": "En Windows 10, queremos refrescar el contenido de la ventana activa. ¿Qué tecla o teclas de acceso rápido utilizaremos?",
+      "opciones": {
+        "a": "F5",
+        "b": "Ctrl + X",
+        "c": "Alt + F4",
+        "d": "Ctrl + Alt + Tabulador"
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Sistemas"
+    },
+    {
+      "parte": "segunda",
+      "numero": 24,
+      "enunciado": "Queremos que al seleccionar un archivo de tipo docx, se muestre la información del autor y el número de páginas. Para ello, en el Explorador de archivos de Windows, en la pestaña Vista, seleccionamos un tipo de Panel. ¿Cuál es el adecuado?",
+      "opciones": {
+        "a": "Panel de vista previa.",
+        "b": "Panel de navegación.",
+        "c": "Panel de detalles.",
+        "d": "Panel de información."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Informática - Sistemas"
+    },
+    {
+      "parte": "segunda",
+      "numero": 25,
+      "enunciado": "Según la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, los documentos electrónicos que contengan actos administrativos que afecten a derechos o intereses de los particulares deberán conservarse en:",
+      "opciones": {
+        "a": "El Archivo General de la Administración.",
+        "b": "Soportes de naturaleza electrónica.",
+        "c": "Cualquier formato o soporte.",
+        "d": "Siempre en formato papel."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Régimen Jurídico del Sector Público"
+    },
+    {
+      "parte": "segunda",
+      "numero": 26,
+      "enunciado": "En Outlook, cuando en la configuración de la cuenta creo un Delegado, ¿a qué le estoy dando permiso?",
+      "opciones": {
+        "a": "A compartir alguno de mis Calendarios, pero no a recibir y responder a convocatorias de reunión.",
+        "b": "A recibir y responder a convocatorias de reunión, mensajes de correo y respuestas en mi nombre.",
+        "c": "A recibir y responder a convocatorias de reunión, pero no a enviar mensajes de correo ni respuestas en mi nombre.",
+        "d": "No existe la figura de Delegado y nadie puede recibir mis correos."
+      },
+      "respuesta_correcta": "ANULADA",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda",
+      "numero": 27,
+      "enunciado": "¿Cuál de las siguientes afirmaciones es cierta con respecto al funcionamiento de Internet?",
+      "opciones": {
+        "a": "Internet es un conjunto de redes de comunicación, centralizadas en centros de proceso de datos mundiales dependientes de los gobiernos.",
+        "b": "Internet es un conjunto descentralizado de redes de comunicación interconectadas que forman una red lógica única de alcance mundial.",
+        "c": "Internet es un conjunto de redes de comunicación interconectadas mediante redes físicas homogéneas.",
+        "d": "Internet es un conjunto centralizado de redes de comunicación dependientes de organizaciones gubernamentales interconectadas mediante redes físicas homogéneas."
+      },
+      "respuesta_correcta": "b",
+      "categoria": "Informática - Redes"
+    },
+    {
+      "parte": "segunda",
+      "numero": 28,
+      "enunciado": "Un sistema informático que indexa archivos almacenados en servidores web, y que, cuando se solicita información sobre algún tema, proporciona enlaces a las webs donde encontrar esa información es:",
+      "opciones": {
+        "a": "Una red social.",
+        "b": "Una tecnología geoespacial.",
+        "c": "Un motor de búsqueda o buscador.",
+        "d": "Una inteligencia artificial."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Informática - Internet"
+    },
+    {
+      "parte": "segunda",
+      "numero": 29,
+      "enunciado": "Según la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas, los poderes inscritos en el registro electrónico de apoderamientos tendrán una validez:",
+      "opciones": {
+        "a": "Indefinida.",
+        "b": "Máxima de 12 meses a contar desde la fecha de inscripción.",
+        "c": "Máxima de cinco años a contar desde la fecha de inscripción.",
+        "d": "Por el plazo que determine libremente el poderdante al inscribirlo en el Registro."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Procedimiento Administrativo Común"
+    },
+    {
+      "parte": "segunda",
+      "numero": 30,
+      "enunciado": "En Access, creamos una consulta para eliminar de la tabla de Productos, aquellos registros cuyo valor en el campo Activo sea igual a NO. ¿Cuál de los siguientes tipos de consulta deberemos utilizar?",
+      "opciones": {
+        "a": "Consulta de creación de tabla.",
+        "b": "Consulta de selección.",
+        "c": "Consulta de actualización.",
+        "d": "Consulta de eliminación."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Informática - Ofimática"
+    },
+    {
+      "parte": "segunda_reserva",
+      "numero": 1,
+      "enunciado": "Según la Ley 40/2015, de 1 de octubre, de Régimen Jurídico del Sector Público, en el ejercicio de la competencia en la utilización administrativa electrónica, cada Administración Pública podrá determinar los supuestos de utilización de sistemas de firma electrónica, entre los que se encuentra:",
+      "opciones": {
+        "a": "Código seguro de verificación.",
+        "b": "Firma electrónica del titular del órgano.",
+        "c": "Firma electrónica del empleado público.",
+        "d": "Sello no electrónico de Administración Pública."
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Régimen Jurídico del Sector Público"
+    },
+    {
+      "parte": "segunda_reserva",
+      "numero": 2,
+      "enunciado": "¿Cuál de los siguientes tipos de datos sirve para valores lógicos del tipo Verdadero o Falso?",
+      "opciones": {
+        "a": "Número entero.",
+        "b": "Número de coma flotante.",
+        "c": "Carácter.",
+        "d": "Booleano."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Informática - Conceptos básicos"
+    },
+    {
+      "parte": "segunda_reserva",
+      "numero": 3,
+      "enunciado": "¿Qué lenguajes pueden interpretar los navegadores o exploradores de páginas web?",
+      "opciones": {
+        "a": "HTML",
+        "b": "C++",
+        "c": "Pascal",
+        "d": "Ensamblador"
+      },
+      "respuesta_correcta": "a",
+      "categoria": "Informática - Internet"
+    },
+    {
+      "parte": "segunda_reserva",
+      "numero": 4,
+      "enunciado": "¿Cuál de las siguientes funciones de Windows 10 NO es una ayuda de accesibilidad?",
+      "opciones": {
+        "a": "Lupa.",
+        "b": "Narrador.",
+        "c": "OneDrive.",
+        "d": "Subtítulos."
+      },
+      "respuesta_correcta": "c",
+      "categoria": "Informática - Sistemas"
+    },
+    {
+      "parte": "segunda_reserva",
+      "numero": 5,
+      "enunciado": "Para introducir un carácter especial en el texto, como los de Copyright o Registrado, en la pestaña Insertar, ¿cuál de las siguientes herramientas se emplea en Word?",
+      "opciones": {
+        "a": "Marcador.",
+        "b": "WordArt.",
+        "c": "Elementos rápidos.",
+        "d": "Símbolo."
+      },
+      "respuesta_correcta": "d",
+      "categoria": "Informática - Ofimática"
+    }
+  ]
+}
