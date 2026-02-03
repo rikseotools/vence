@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Parámetros inválidos', details: validation.error.errors },
+        { success: false, error: 'Parámetros inválidos', details: validation.error.issues },
         { status: 400 }
       )
     }
