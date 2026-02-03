@@ -1,6 +1,8 @@
 // components/Statistics/RecentTests.js
 'use client'
 
+import Link from 'next/link'
+
 const formatTime = (seconds) => {
   if (!seconds) return '0m'
   const hours = Math.floor(seconds / 3600)
@@ -62,13 +64,19 @@ export default function RecentTests({ recentTests, onInfoClick }) {
                   )}
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-right flex flex-col items-end">
                 <div className={`text-2xl font-bold ${getScoreColor(test.percentage)}`}>
                   {test.score}/{test.total}
                 </div>
                 <div className={`text-lg font-bold ${getScoreColor(test.percentage)}`}>
                   {test.percentage}%
                 </div>
+                <Link
+                  href={`/test/${test.id}/revisar`}
+                  className="mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                >
+                  Ver detalle
+                </Link>
               </div>
             </div>
             
