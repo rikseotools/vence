@@ -15,8 +15,8 @@ import type {
 
 interface NotaCorte {
   descripcion: string
-  primera_parte: { nota: number; aciertos?: number; errores?: number }
-  segunda_parte: { nota: number; aciertos?: number; errores?: number }
+  primera_parte: { nota: number }
+  segunda_parte: { nota: number }
   total: number
   orden: number
   convocatoria_url?: string
@@ -162,56 +162,24 @@ export default function ExamReviewLayout({
           </div>
         </div>
 
-        {/* Nota de corte oficial */}
+        {/* Nota de corte oficial - Solo referencia, sin comparación */}
         {notaCorte && (() => {
-          // Determinar qué nota de corte usar según la parte
-          const parteData = parte === 'primera'
-            ? notaCorte.primera_parte
-            : parte === 'segunda'
-            ? notaCorte.segunda_parte
-            : null
+          // Puntuación neta del usuario (aciertos - errores/3)
+          const puntuacionNeta = summary.correctCount - (summary.incorrectCount / 3)
 
-          // Preguntas reales por parte (primera=60, segunda=50, total=110)
-          const maxPreguntas = parte === 'primera' ? 60 : parte === 'segunda' ? 50 : 110
-          const notaCorteRelevante = parte
-            ? (parte === 'primera' ? notaCorte.primera_parte.nota : notaCorte.segunda_parte.nota)
+          // Nota de corte según la parte que está viendo
+          const notaCorteRelevante = parte === 'primera'
+            ? notaCorte.primera_parte.nota
+            : parte === 'segunda'
+            ? notaCorte.segunda_parte.nota
             : notaCorte.total
 
-          // Nota de corte "sobre 10" (la nota oficial ya tiene penalización incluida)
-          const notaCorteSobre10 = (notaCorteRelevante / maxPreguntas) * 10
-
-          // Nota del usuario "sobre 10" (aciertos - errores/3) / totalPreguntas * 10
-          const penalizacion = summary.incorrectCount / 3
-          const notaUsuarioNeta = summary.correctCount - penalizacion
-          const userNotaSobre10 = (notaUsuarioNeta / summary.totalQuestions) * 10
-
-          // Comparar en base 10
-          const isAboveCutoff = userNotaSobre10 >= notaCorteSobre10
-
           return (
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-6 border-l-4 border-amber-500">
-            {/* Confeti si supera la nota de corte */}
-            {isAboveCutoff && (
-              <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
-                <div className="confetti-container">
-                  {[...Array(30)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="confetti"
-                      style={{
-                        left: `${Math.random() * 100}%`,
-                        animationDelay: `${Math.random() * 3}s`,
-                        backgroundColor: ['#fbbf24', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)]
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 mb-6 border-l-4 border-amber-500">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                 <span className="text-amber-500">📊</span>
-                Nota de corte oficial {parte ? `(${parte === 'primera' ? '1ª' : '2ª'} parte)` : ''}
+                Tu resultado vs referencia oficial
               </h3>
               {notaCorte.convocatoria_url && (
                 <a
@@ -225,137 +193,47 @@ export default function ExamReviewLayout({
                 </a>
               )}
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{notaCorte.descripcion}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-3 italic">
-              Puntuación = aciertos − (errores ÷ 3). {parte === 'primera' ? '60 preguntas' : parte === 'segunda' ? '50 preguntas' : '110 preguntas totales'}.
-            </p>
 
-            {/* Vista específica por parte */}
-            {parte && parteData ? (
-              <div className="grid grid-cols-3 gap-3">
-                {/* Nota de corte oficial */}
-                <div className={`${parte === 'primera' ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-green-50 dark:bg-green-900/20'} rounded-lg p-3`}>
-                  <div className={`text-xs ${parte === 'primera' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'} font-medium mb-1`}>
-                    Nota de corte
-                  </div>
-                  <div className={`text-lg font-bold ${parte === 'primera' ? 'text-blue-800 dark:text-blue-300' : 'text-green-800 dark:text-green-300'}`}>
-                    {parteData.nota} pts
-                  </div>
-                  {parteData.aciertos !== undefined && parteData.errores !== undefined && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      <span className="text-green-600">{parteData.aciertos} aciertos</span>
-                      {' · '}
-                      <span className="text-red-600">{parteData.errores} errores</span>
-                    </div>
-                  )}
-                  <div className={`text-xs ${parte === 'primera' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'} mt-2 font-medium border-t border-gray-200 dark:border-gray-600 pt-2`}>
-                    = {notaCorteSobre10.toFixed(2)} sobre 10
-                  </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Tu resultado */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-2">Tu resultado</div>
+                <div className="text-2xl font-bold text-blue-800 dark:text-blue-300 mb-2">
+                  {puntuacionNeta.toFixed(2)} pts
                 </div>
-
-                {/* Tu nota */}
-                <div className={`${isAboveCutoff ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'} rounded-lg p-3`}>
-                  <div className={`text-xs ${isAboveCutoff ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} font-medium mb-1`}>
-                    Tu nota
-                  </div>
-                  <div className={`text-lg font-bold ${isAboveCutoff ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>
-                    {notaUsuarioNeta.toFixed(2)} pts
-                  </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    <span className="text-green-600">{summary.correctCount} aciertos</span>
-                    {' · '}
-                    <span className="text-red-600">{summary.incorrectCount} errores</span>
-                    {' · '}
-                    <span className="text-gray-400">{summary.blankCount} en blanco</span>
-                  </div>
-                  <div className={`text-xs ${isAboveCutoff ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-2 font-medium border-t border-gray-200 dark:border-gray-600 pt-2`}>
-                    = {userNotaSobre10.toFixed(2)} sobre 10
-                  </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                  <div><span className="text-green-600 font-medium">{summary.correctCount}</span> aciertos</div>
+                  <div><span className="text-red-600 font-medium">{summary.incorrectCount}</span> errores</div>
+                  <div><span className="text-gray-500 font-medium">{summary.blankCount}</span> en blanco</div>
                 </div>
-
-                {/* Orden */}
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
-                  <div className="text-xs text-purple-600 dark:text-purple-400 font-medium mb-1">Último aprobado</div>
-                  <div className="text-lg font-bold text-purple-800 dark:text-purple-300">#{notaCorte.orden}</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">en la lista</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 pt-2 border-t border-blue-200 dark:border-blue-700">
+                  Puntuación = aciertos − (errores ÷ 3)
                 </div>
               </div>
-            ) : (
-              /* Vista completa con ambas partes */
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {/* Primera parte */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
-                  <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">1ª Parte (corte)</div>
-                  <div className="text-lg font-bold text-blue-800 dark:text-blue-300">{notaCorte.primera_parte.nota} pts</div>
-                  {notaCorte.primera_parte.aciertos !== undefined && notaCorte.primera_parte.errores !== undefined && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      <span className="text-green-600">{notaCorte.primera_parte.aciertos} aciertos</span>
-                      {' · '}
-                      <span className="text-red-600">{notaCorte.primera_parte.errores} errores</span>
-                    </div>
-                  )}
-                  <div className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium border-t border-blue-200 dark:border-blue-700 pt-2">
-                    = {((notaCorte.primera_parte.nota / 60) * 10).toFixed(2)} sobre 10
-                  </div>
-                </div>
 
-                {/* Segunda parte */}
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
-                  <div className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">2ª Parte (corte)</div>
-                  <div className="text-lg font-bold text-green-800 dark:text-green-300">{notaCorte.segunda_parte.nota} pts</div>
-                  {notaCorte.segunda_parte.aciertos !== undefined && notaCorte.segunda_parte.errores !== undefined && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      <span className="text-green-600">{notaCorte.segunda_parte.aciertos} aciertos</span>
-                      {' · '}
-                      <span className="text-red-600">{notaCorte.segunda_parte.errores} errores</span>
-                    </div>
-                  )}
-                  <div className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium border-t border-green-200 dark:border-green-700 pt-2">
-                    = {((notaCorte.segunda_parte.nota / 50) * 10).toFixed(2)} sobre 10
-                  </div>
+              {/* Referencia: Nota de corte */}
+              <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4">
+                <div className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-2">
+                  Referencia: Nota de corte {parte ? `(${parte === 'primera' ? '1ª' : '2ª'} parte)` : ''}
                 </div>
-
-                {/* Total nota corte */}
-                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3">
-                  <div className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">Total (corte)</div>
-                  <div className="text-lg font-bold text-amber-800 dark:text-amber-300">{notaCorte.total} pts</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">aprobado #{notaCorte.orden}</div>
-                  <div className="text-xs text-amber-600 dark:text-amber-400 mt-2 font-medium border-t border-amber-200 dark:border-amber-700 pt-2">
-                    = {((notaCorte.total / 110) * 10).toFixed(2)} sobre 10
-                  </div>
+                <div className="text-2xl font-bold text-amber-800 dark:text-amber-300 mb-2">
+                  {notaCorteRelevante} pts
                 </div>
-
-                {/* Tu nota */}
-                <div className={`${isAboveCutoff ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'} rounded-lg p-3`}>
-                  <div className={`text-xs ${isAboveCutoff ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} font-medium mb-1`}>Tu nota</div>
-                  <div className={`text-lg font-bold ${isAboveCutoff ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{notaUsuarioNeta.toFixed(2)} pts</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    <span className="text-green-600">{summary.correctCount} ac</span>
-                    {' · '}
-                    <span className="text-red-600">{summary.incorrectCount} err</span>
-                    {' · '}
-                    <span className="text-gray-400">{summary.blankCount} bl</span>
-                  </div>
-                  <div className={`text-xs ${isAboveCutoff ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} mt-2 font-medium border-t border-gray-200 dark:border-gray-600 pt-2`}>
-                    = {userNotaSobre10.toFixed(2)} sobre 10
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Comparación con tu resultado */}
-            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  <strong className={isAboveCutoff ? 'text-green-600' : 'text-red-600'}>Tu nota: {userNotaSobre10.toFixed(2)}/10</strong>
-                  <span className="mx-2">vs</span>
-                  <strong className="text-amber-600">Corte: {notaCorteSobre10.toFixed(2)}/10</strong>
+                  <div className="mb-1">{notaCorte.descripcion}</div>
+                  <div>Posición: <span className="font-medium">#{notaCorte.orden}</span></div>
                 </div>
-                <span className={`text-sm font-bold px-3 py-1 rounded-full ${isAboveCutoff ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {isAboveCutoff ? '✓ APROBADO' : '✗ SUSPENSO'}
-                </span>
+                {!parte && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 pt-2 border-t border-amber-200 dark:border-amber-700">
+                    1ª parte: {notaCorte.primera_parte.nota} pts · 2ª parte: {notaCorte.segunda_parte.nota} pts
+                  </div>
+                )}
               </div>
             </div>
+
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 italic">
+              Nota: La nota de corte oficial usa un baremo de la Comisión que transforma las puntuaciones. Los valores no son directamente comparables.
+            </p>
           </div>
           )
         })()}

@@ -10,14 +10,10 @@
   "nota_corte": {
     "descripcion": "Último aprobado en turno libre",
     "primera_parte": {
-      "nota": 26.56,
-      "aciertos": 34,
-      "errores": 12
+      "nota": 26.56
     },
     "segunda_parte": {
-      "nota": 25,
-      "aciertos": 26,
-      "errores": 10
+      "nota": 25
     },
     "total": 51.56,
     "orden": 2450,
