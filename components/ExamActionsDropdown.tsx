@@ -68,20 +68,22 @@ export default function ExamActionsDropdown({
       <button
         onClick={(e) => handleAction(e, 'view-failures')}
         className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
-        title="Ver fallos"
+        title="Ver solo las preguntas falladas"
       >
         <span className="text-xs">👁️</span>
-        <span>Ver</span>
+        <span className="hidden sm:inline">Ver fallos</span>
+        <span className="sm:hidden">Fallos</span>
       </button>
 
       {/* Revisar examen completo */}
       <button
         onClick={(e) => handleAction(e, 'review')}
         className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
-        title="Revisar examen completo"
+        title="Revisar todas las preguntas del examen"
       >
         <span className="text-xs">📋</span>
-        <span>Revisar</span>
+        <span className="hidden sm:inline">Revisar todo</span>
+        <span className="sm:hidden">Todo</span>
       </button>
     </div>
   )
