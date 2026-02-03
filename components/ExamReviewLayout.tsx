@@ -33,7 +33,16 @@ export default function ExamReviewLayout({
   oposicionSlug = 'auxiliar-administrativo-estado'
 }: ExamReviewLayoutProps) {
   const [filter, setFilter] = useState<FilterType>('all')
-  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set())
+  // Start with incorrect and blank questions expanded by default
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(() => {
+    const initialExpanded = new Set<number>()
+    questions.forEach(q => {
+      if (!q.isCorrect) {
+        initialExpanded.add(q.order)
+      }
+    })
+    return initialExpanded
+  })
   const [showArticle, setShowArticle] = useState<string | null>(null)
 
   // Filtrar preguntas según selección

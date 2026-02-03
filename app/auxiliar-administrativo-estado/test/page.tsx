@@ -438,10 +438,11 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 {(() => {
                                   const stat = getExamStat(examStats, '2024-07-09', 'primera')
                                   return (
-                                    <div className="relative">
+                                    <div className={`rounded-lg overflow-hidden ${stat ? '' : ''}`}>
+                                      {/* Header con título */}
                                       <Link
                                         href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2024-07-09&parte=primera"
-                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center">
@@ -455,24 +456,27 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {stat ? (
-                                              <>
-                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                                  {stat.accuracy}%
-                                                </span>
-                                                <ExamActionsDropdown
-                                                  examDate="2024-07-09"
-                                                  parte="primera"
-                                                  oposicion="auxiliar-administrativo-estado"
-                                                />
-                                              </>
+                                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                                {stat.accuracy}%
+                                              </span>
                                             ) : (
-                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                                Empezar
+                                              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                Empezar →
                                               </span>
                                             )}
                                           </div>
                                         </div>
                                       </Link>
+                                      {/* Botones de acciones (solo si hay stats) */}
+                                      {stat && (
+                                        <div className="bg-gray-200 p-3">
+                                          <ExamActionsDropdown
+                                            examDate="2024-07-09"
+                                            parte="primera"
+                                            oposicion="auxiliar-administrativo-estado"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })()}
@@ -481,10 +485,11 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 {(() => {
                                   const stat = getExamStat(examStats, '2024-07-09', 'segunda')
                                   return (
-                                    <div className="relative">
+                                    <div className={`rounded-lg overflow-hidden ${stat ? '' : ''}`}>
+                                      {/* Header con título */}
                                       <Link
                                         href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2024-07-09&parte=segunda"
-                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center">
@@ -498,24 +503,27 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {stat ? (
-                                              <>
-                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                                  {stat.accuracy}%
-                                                </span>
-                                                <ExamActionsDropdown
-                                                  examDate="2024-07-09"
-                                                  parte="segunda"
-                                                  oposicion="auxiliar-administrativo-estado"
-                                                />
-                                              </>
+                                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                                {stat.accuracy}%
+                                              </span>
                                             ) : (
-                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                                Empezar
+                                              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                Empezar →
                                               </span>
                                             )}
                                           </div>
                                         </div>
                                       </Link>
+                                      {/* Botones de acciones (solo si hay stats) */}
+                                      {stat && (
+                                        <div className="bg-gray-200 p-3">
+                                          <ExamActionsDropdown
+                                            examDate="2024-07-09"
+                                            parte="segunda"
+                                            oposicion="auxiliar-administrativo-estado"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })()}
@@ -562,10 +570,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 {(() => {
                                   const stat = getExamStat(examStats, '2023-01-20', 'primera')
                                   return (
-                                    <div className="relative">
+                                    <div className="rounded-lg overflow-hidden">
                                       <Link
                                         href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2023-01-20&parte=primera"
-                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center">
@@ -579,24 +587,26 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {stat ? (
-                                              <>
-                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                                  {stat.accuracy}%
-                                                </span>
-                                                <ExamActionsDropdown
-                                                  examDate="2023-01-20"
-                                                  parte="primera"
-                                                  oposicion="auxiliar-administrativo-estado"
-                                                />
-                                              </>
+                                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                                {stat.accuracy}%
+                                              </span>
                                             ) : (
-                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                                Empezar
+                                              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                Empezar →
                                               </span>
                                             )}
                                           </div>
                                         </div>
                                       </Link>
+                                      {stat && (
+                                        <div className="bg-gray-200 p-3">
+                                          <ExamActionsDropdown
+                                            examDate="2023-01-20"
+                                            parte="primera"
+                                            oposicion="auxiliar-administrativo-estado"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })()}
@@ -605,10 +615,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 {(() => {
                                   const stat = getExamStat(examStats, '2023-01-20', 'segunda')
                                   return (
-                                    <div className="relative">
+                                    <div className="rounded-lg overflow-hidden">
                                       <Link
                                         href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2023-01-20&parte=segunda"
-                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center">
@@ -622,24 +632,26 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {stat ? (
-                                              <>
-                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                                  {stat.accuracy}%
-                                                </span>
-                                                <ExamActionsDropdown
-                                                  examDate="2023-01-20"
-                                                  parte="segunda"
-                                                  oposicion="auxiliar-administrativo-estado"
-                                                />
-                                              </>
+                                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                                {stat.accuracy}%
+                                              </span>
                                             ) : (
-                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                                Empezar
+                                              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                Empezar →
                                               </span>
                                             )}
                                           </div>
                                         </div>
                                       </Link>
+                                      {stat && (
+                                        <div className="bg-gray-200 p-3">
+                                          <ExamActionsDropdown
+                                            examDate="2023-01-20"
+                                            parte="segunda"
+                                            oposicion="auxiliar-administrativo-estado"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })()}
@@ -680,10 +692,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 {(() => {
                                   const stat = getExamStat(examStats, '2021-05-26', 'primera')
                                   return (
-                                    <div className="relative">
+                                    <div className="rounded-lg overflow-hidden">
                                       <Link
                                         href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2021-05-26&parte=primera"
-                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center">
@@ -697,24 +709,26 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {stat ? (
-                                              <>
-                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                                  {stat.accuracy}%
-                                                </span>
-                                                <ExamActionsDropdown
-                                                  examDate="2021-05-26"
-                                                  parte="primera"
-                                                  oposicion="auxiliar-administrativo-estado"
-                                                />
-                                              </>
+                                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                                {stat.accuracy}%
+                                              </span>
                                             ) : (
-                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                                Empezar
+                                              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                Empezar →
                                               </span>
                                             )}
                                           </div>
                                         </div>
                                       </Link>
+                                      {stat && (
+                                        <div className="bg-gray-200 p-3">
+                                          <ExamActionsDropdown
+                                            examDate="2021-05-26"
+                                            parte="primera"
+                                            oposicion="auxiliar-administrativo-estado"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })()}
@@ -723,10 +737,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 {(() => {
                                   const stat = getExamStat(examStats, '2021-05-26', 'segunda')
                                   return (
-                                    <div className="relative">
+                                    <div className="rounded-lg overflow-hidden">
                                       <Link
                                         href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2021-05-26&parte=segunda"
-                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center">
@@ -740,24 +754,26 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {stat ? (
-                                              <>
-                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                                  {stat.accuracy}%
-                                                </span>
-                                                <ExamActionsDropdown
-                                                  examDate="2021-05-26"
-                                                  parte="segunda"
-                                                  oposicion="auxiliar-administrativo-estado"
-                                                />
-                                              </>
+                                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                                {stat.accuracy}%
+                                              </span>
                                             ) : (
-                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                                Empezar
+                                              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                Empezar →
                                               </span>
                                             )}
                                           </div>
                                         </div>
                                       </Link>
+                                      {stat && (
+                                        <div className="bg-gray-200 p-3">
+                                          <ExamActionsDropdown
+                                            examDate="2021-05-26"
+                                            parte="segunda"
+                                            oposicion="auxiliar-administrativo-estado"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })()}
@@ -804,10 +820,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 {(() => {
                                   const stat = getExamStat(examStats, '2019-06-14', 'primera')
                                   return (
-                                    <div className="relative">
+                                    <div className="rounded-lg overflow-hidden">
                                       <Link
                                         href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2019-06-14&parte=primera"
-                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center">
@@ -821,24 +837,26 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {stat ? (
-                                              <>
-                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                                  {stat.accuracy}%
-                                                </span>
-                                                <ExamActionsDropdown
-                                                  examDate="2019-06-14"
-                                                  parte="primera"
-                                                  oposicion="auxiliar-administrativo-estado"
-                                                />
-                                              </>
+                                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                                {stat.accuracy}%
+                                              </span>
                                             ) : (
-                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                                Empezar
+                                              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                Empezar →
                                               </span>
                                             )}
                                           </div>
                                         </div>
                                       </Link>
+                                      {stat && (
+                                        <div className="bg-gray-200 p-3">
+                                          <ExamActionsDropdown
+                                            examDate="2019-06-14"
+                                            parte="primera"
+                                            oposicion="auxiliar-administrativo-estado"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })()}
@@ -847,10 +865,10 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                 {(() => {
                                   const stat = getExamStat(examStats, '2019-06-14', 'segunda')
                                   return (
-                                    <div className="relative">
+                                    <div className="rounded-lg overflow-hidden">
                                       <Link
                                         href="/auxiliar-administrativo-estado/test/examen-oficial?fecha=2019-06-14&parte=segunda"
-                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg active:scale-95 focus:outline-none focus:ring-4`}
+                                        className={`block ${COLOR_CLASSES[stat ? getAccuracyColor(stat.accuracy) : 'gray']} text-white py-3 px-4 font-semibold transition-all duration-300 hover:brightness-110 active:brightness-90`}
                                       >
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center">
@@ -864,24 +882,26 @@ export default function TestsAuxiliarAdministrativoEstado() {
                                           </div>
                                           <div className="flex items-center gap-2">
                                             {stat ? (
-                                              <>
-                                                <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                                                  {stat.accuracy}%
-                                                </span>
-                                                <ExamActionsDropdown
-                                                  examDate="2019-06-14"
-                                                  parte="segunda"
-                                                  oposicion="auxiliar-administrativo-estado"
-                                                />
-                                              </>
+                                              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                                                {stat.accuracy}%
+                                              </span>
                                             ) : (
-                                              <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-medium">
-                                                Empezar
+                                              <span className="bg-white/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                                                Empezar →
                                               </span>
                                             )}
                                           </div>
                                         </div>
                                       </Link>
+                                      {stat && (
+                                        <div className="bg-gray-200 p-3">
+                                          <ExamActionsDropdown
+                                            examDate="2019-06-14"
+                                            parte="segunda"
+                                            oposicion="auxiliar-administrativo-estado"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   )
                                 })()}

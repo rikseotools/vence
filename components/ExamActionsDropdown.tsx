@@ -43,47 +43,45 @@ export default function ExamActionsDropdown({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1 ml-1">
-      {/* Repetir examen */}
+    <div className="grid grid-cols-2 gap-2 w-full">
+      {/* Repetir examen completo */}
       <button
         onClick={(e) => handleAction(e, 'repeat')}
-        className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
-        title="Repetir examen"
+        className="px-3 py-2.5 rounded-lg bg-gray-600 hover:bg-gray-700 active:bg-gray-800 transition-colors text-xs sm:text-sm font-medium text-white flex items-center justify-center gap-2 min-h-[44px]"
+        title="Repetir el examen completo desde cero"
       >
-        <span className="text-xs">🔄</span>
-        <span>Repetir</span>
+        <span>🔄</span>
+        <span>Repetir examen</span>
       </button>
 
-      {/* Repasar fallos */}
+      {/* Practicar solo los fallos */}
       <button
         onClick={(e) => handleAction(e, 'repeat-failed')}
-        className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
-        title="Repasar fallos"
+        className="px-3 py-2.5 rounded-lg bg-gray-600 hover:bg-gray-700 active:bg-gray-800 transition-colors text-xs sm:text-sm font-medium text-white flex items-center justify-center gap-2 min-h-[44px]"
+        title="Practicar solo las preguntas que fallaste"
       >
-        <span className="text-xs">🎯</span>
-        <span>Repasar</span>
+        <span>🎯</span>
+        <span>Practicar fallos</span>
       </button>
 
-      {/* Ver fallos */}
+      {/* Ver fallos con respuestas */}
       <button
         onClick={(e) => handleAction(e, 'view-failures')}
-        className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
-        title="Ver solo las preguntas falladas"
+        className="px-3 py-2.5 rounded-lg bg-gray-600 hover:bg-gray-700 active:bg-gray-800 transition-colors text-xs sm:text-sm font-medium text-white flex items-center justify-center gap-2 min-h-[44px]"
+        title="Ver las preguntas falladas con sus respuestas correctas"
       >
-        <span className="text-xs">👁️</span>
-        <span className="hidden sm:inline">Ver fallos</span>
-        <span className="sm:hidden">Fallos</span>
+        <span>👁️</span>
+        <span>Ver fallos</span>
       </button>
 
       {/* Revisar examen completo */}
       <button
         onClick={(e) => handleAction(e, 'review')}
-        className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
-        title="Revisar todas las preguntas del examen"
+        className="px-3 py-2.5 rounded-lg bg-gray-600 hover:bg-gray-700 active:bg-gray-800 transition-colors text-xs sm:text-sm font-medium text-white flex items-center justify-center gap-2 min-h-[44px]"
+        title="Revisar todas las preguntas del examen con sus respuestas"
       >
-        <span className="text-xs">📋</span>
-        <span className="hidden sm:inline">Revisar todo</span>
-        <span className="sm:hidden">Todo</span>
+        <span>📋</span>
+        <span>Revisar todo</span>
       </button>
     </div>
   )

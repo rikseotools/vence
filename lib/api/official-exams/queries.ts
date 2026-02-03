@@ -1273,6 +1273,7 @@ export async function getOfficialExamReview(
       .map(q => q.psychometricQuestionId!)
 
     // Fetch full legislative question data
+    // Note: questions table does NOT have a 'tema' column - tema is derived from topic_scope
     const legislativeQuestionsMap = new Map<string, {
       id: string
       questionText: string
@@ -1285,7 +1286,6 @@ export async function getOfficialExamReview(
       articleNumber: string | null
       lawName: string | null
       articleContent: string | null
-      tema: number | null
     }>()
 
     if (legislativeIds.length > 0) {
@@ -1302,7 +1302,6 @@ export async function getOfficialExamReview(
           articleNumber: articles.articleNumber,
           lawName: laws.shortName,
           articleContent: articles.content,
-          tema: questions.tema,
         })
         .from(questions)
         .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
@@ -1352,9 +1351,10 @@ export async function getOfficialExamReview(
     let incorrectCount = 0
     let blankCount = 0
 
-    // For breakdowns
-    const difficultyStats: Record<string, { total: number; correct: number }> = {}
-    const temaStats: Record<number, { total: number; correct: number }> = {}
+    // For breakdowns - use Map instead of plain objects to avoid prototype issues
+    const difficultyStatsMap = new Map<string, { total: number; correct: number }>()
+    const temaStatsMap = new Map<number, { total: number; correct: number }>()
+
 
     for (const tq of questionsResult) {
       const isLegislative = !!tq.questionId
@@ -1371,7 +1371,7 @@ export async function getOfficialExamReview(
             questionText: legQ.questionText,
             options: [legQ.optionA, legQ.optionB, legQ.optionC, legQ.optionD],
             difficulty: legQ.difficulty || tq.difficulty,
-            tema: legQ.tema,
+            tema: null, // tema is not stored in questions table
             articleNumber: legQ.articleNumber || tq.articleNumber,
             lawName: legQ.lawName || tq.lawName,
             explanation: legQ.explanation,
@@ -1382,15 +1382,7 @@ export async function getOfficialExamReview(
             isCorrect: tq.isCorrect,
             timeSpent: tq.timeSpentSeconds || 0,
           }
-
-          // Track tema stats
-          if (legQ.tema) {
-            if (!temaStats[legQ.tema]) {
-              temaStats[legQ.tema] = { total: 0, correct: 0 }
-            }
-            temaStats[legQ.tema].total++
-            if (tq.isCorrect) temaStats[legQ.tema].correct++
-          }
+          // Note: tema stats not available as tema is not in questions table
         }
       } else {
         const psyQ = psychometricQuestionsMap.get(qId)
@@ -1434,11 +1426,10 @@ export async function getOfficialExamReview(
 
         // Track difficulty stats
         const diff = questionData.difficulty || 'medium'
-        if (!difficultyStats[diff]) {
-          difficultyStats[diff] = { total: 0, correct: 0 }
-        }
-        difficultyStats[diff].total++
-        if (tq.isCorrect) difficultyStats[diff].correct++
+        const existingDiff = difficultyStatsMap.get(diff) || { total: 0, correct: 0 }
+        existingDiff.total++
+        if (tq.isCorrect) existingDiff.correct++
+        difficultyStatsMap.set(diff, existingDiff)
       }
     }
 
@@ -1451,20 +1442,28 @@ export async function getOfficialExamReview(
       ? Math.round((correctCount / totalAnswered) * 100)
       : 0
 
-    // Build breakdowns
-    const difficultyBreakdown = Object.entries(difficultyStats).map(([difficulty, stats]) => ({
-      difficulty,
-      total: stats.total,
-      correct: stats.correct,
-      accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-    }))
+    // Build breakdowns from Maps
 
-    const temaBreakdown = Object.entries(temaStats).map(([tema, stats]) => ({
-      tema: parseInt(tema),
-      total: stats.total,
-      correct: stats.correct,
-      accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-    })).sort((a, b) => a.tema - b.tema)
+    const difficultyBreakdown: Array<{ difficulty: string; total: number; correct: number; accuracy: number }> = []
+    for (const [difficulty, stats] of difficultyStatsMap) {
+      difficultyBreakdown.push({
+        difficulty,
+        total: stats.total,
+        correct: stats.correct,
+        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+      })
+    }
+
+    const temaBreakdown: Array<{ tema: number; total: number; correct: number; accuracy: number }> = []
+    for (const [tema, stats] of temaStatsMap) {
+      temaBreakdown.push({
+        tema,
+        total: stats.total,
+        correct: stats.correct,
+        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+      })
+    }
+    temaBreakdown.sort((a, b) => a.tema - b.tema)
 
     console.log(`✅ [getOfficialExamReview] Returning ${reviewQuestions.length} questions for review`)
 
