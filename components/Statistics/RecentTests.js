@@ -72,7 +72,7 @@ export default function RecentTests({ recentTests, onInfoClick }) {
                   {test.percentage}%
                 </div>
                 <Link
-                  href={`/test/${test.id}/revisar`}
+                  href={`/revisar/${test.id}`}
                   className="mt-2 text-xs text-blue-600 hover:text-blue-800 hover:underline transition-colors"
                 >
                   Ver detalle
