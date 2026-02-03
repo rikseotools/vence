@@ -366,3 +366,81 @@ export type GetOfficialExamFailedQuestionsResponse = z.infer<typeof getOfficialE
 export function safeParseGetOfficialExamFailedQuestions(data: unknown) {
   return getOfficialExamFailedQuestionsRequestSchema.safeParse(data)
 }
+
+// =====================================================
+// REVIEW ALL QUESTIONS SCHEMAS (for reviewing completed exam)
+// =====================================================
+
+export const getOfficialExamReviewRequestSchema = z.object({
+  userId: z.string().uuid(),
+  examDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
+  parte: z.enum(['primera', 'segunda']).optional(),
+  oposicion: z.enum([
+    OposicionType.AUXILIAR_ADMINISTRATIVO_ESTADO,
+    OposicionType.TRAMITACION_PROCESAL,
+    OposicionType.AUXILIO_JUDICIAL,
+  ]),
+})
+
+export type GetOfficialExamReviewRequest = z.infer<typeof getOfficialExamReviewRequestSchema>
+
+export const officialExamReviewQuestionSchema = z.object({
+  id: z.string().uuid(),
+  order: z.number().int().min(1),
+  questionText: z.string(),
+  options: z.array(z.string()),
+  difficulty: z.string().nullable(),
+  tema: z.number().nullable(),
+  articleNumber: z.string().nullable(),
+  lawName: z.string().nullable(),
+  explanation: z.string().nullable(),
+  article: z.string().nullable(),
+  isPsychometric: z.boolean(),
+  userAnswer: z.string().nullable(),
+  correctAnswer: z.string(),
+  isCorrect: z.boolean(),
+  timeSpent: z.number(),
+})
+
+export type OfficialExamReviewQuestion = z.infer<typeof officialExamReviewQuestionSchema>
+
+export const getOfficialExamReviewResponseSchema = z.object({
+  success: z.boolean(),
+  test: z.object({
+    id: z.string().uuid(),
+    title: z.string(),
+    testType: z.string().nullable(),
+    tema: z.number().nullable(),
+    createdAt: z.string().nullable(),
+    completedAt: z.string().nullable(),
+    totalTimeSeconds: z.number(),
+  }).optional(),
+  summary: z.object({
+    totalQuestions: z.number(),
+    correctCount: z.number(),
+    incorrectCount: z.number(),
+    blankCount: z.number(),
+    score: z.string().nullable(),
+    percentage: z.number(),
+  }).optional(),
+  questions: z.array(officialExamReviewQuestionSchema).optional(),
+  temaBreakdown: z.array(z.object({
+    tema: z.number(),
+    total: z.number(),
+    correct: z.number(),
+    accuracy: z.number(),
+  })).optional(),
+  difficultyBreakdown: z.array(z.object({
+    difficulty: z.string(),
+    total: z.number(),
+    correct: z.number(),
+    accuracy: z.number(),
+  })).optional(),
+  error: z.string().optional(),
+})
+
+export type GetOfficialExamReviewResponse = z.infer<typeof getOfficialExamReviewResponseSchema>
+
+export function safeParseGetOfficialExamReview(data: unknown) {
+  return getOfficialExamReviewRequestSchema.safeParse(data)
+}

@@ -19,7 +19,7 @@ export default function ExamActionsDropdown({
 }: ExamActionsDropdownProps) {
   const router = useRouter()
 
-  const handleAction = (e: React.MouseEvent, action: 'repeat' | 'repeat-failed' | 'view-failures') => {
+  const handleAction = (e: React.MouseEvent, action: 'repeat' | 'repeat-failed' | 'view-failures' | 'review') => {
     e.preventDefault()
     e.stopPropagation()
 
@@ -35,6 +35,9 @@ export default function ExamActionsDropdown({
         break
       case 'view-failures':
         router.push(`${baseUrl}/ver-fallos?${params}`)
+        break
+      case 'review':
+        router.push(`${baseUrl}/revisar-examen?${params}`)
         break
     }
   }
@@ -69,6 +72,16 @@ export default function ExamActionsDropdown({
       >
         <span className="text-xs">👁️</span>
         <span>Ver</span>
+      </button>
+
+      {/* Revisar examen completo */}
+      <button
+        onClick={(e) => handleAction(e, 'review')}
+        className="px-1 py-0.5 rounded bg-white/20 hover:bg-white/40 transition-colors text-[10px] sm:text-xs font-medium text-white flex items-center gap-0.5"
+        title="Revisar examen completo"
+      >
+        <span className="text-xs">📋</span>
+        <span>Revisar</span>
       </button>
     </div>
   )

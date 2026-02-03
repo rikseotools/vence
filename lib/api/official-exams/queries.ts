@@ -16,6 +16,9 @@ import type {
   GetOfficialExamFailedQuestionsRequest,
   GetOfficialExamFailedQuestionsResponse,
   OfficialExamFailedQuestion,
+  GetOfficialExamReviewRequest,
+  GetOfficialExamReviewResponse,
+  OfficialExamReviewQuestion,
 } from './schemas'
 
 // Map oposicion slug to exam_source pattern
@@ -1175,6 +1178,321 @@ export async function getOfficialExamFailedQuestions(
     }
   } catch (error) {
     console.error('❌ [getOfficialExamFailedQuestions] Error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+// =====================================================
+// GET ALL QUESTIONS FOR REVIEW (completed official exam)
+// =====================================================
+
+/**
+ * Get all questions from a completed official exam for review
+ * Returns full question data with user answers and correct answers
+ */
+export async function getOfficialExamReview(
+  params: GetOfficialExamReviewRequest
+): Promise<GetOfficialExamReviewResponse> {
+  const { userId, examDate, parte, oposicion } = params
+
+  try {
+    const db = getDb()
+
+    console.log(`🔍 [getOfficialExamReview] Looking for exam: ${examDate} ${parte || 'all'} - ${oposicion}`)
+
+    // Find completed test matching the exam criteria
+    const testResults = await db
+      .select({
+        id: tests.id,
+        title: tests.title,
+        testType: tests.testType,
+        totalQuestions: tests.totalQuestions,
+        score: tests.score,
+        createdAt: tests.createdAt,
+        completedAt: tests.completedAt,
+        totalTimeSeconds: tests.totalTimeSeconds,
+        detailedAnalytics: tests.detailedAnalytics,
+      })
+      .from(tests)
+      .where(
+        and(
+          eq(tests.userId, userId),
+          eq(tests.isCompleted, true),
+          sql`${tests.detailedAnalytics}->>'isOfficialExam' = 'true'`,
+          sql`${tests.detailedAnalytics}->>'examDate' = ${examDate}`,
+          sql`${tests.detailedAnalytics}->>'oposicion' = ${oposicion}`,
+          parte
+            ? sql`${tests.detailedAnalytics}->>'parte' = ${parte}`
+            : sql`true`
+        )
+      )
+      .orderBy(desc(tests.completedAt))
+      .limit(1)
+
+    if (testResults.length === 0) {
+      console.log(`⚠️ [getOfficialExamReview] No completed exam found`)
+      return {
+        success: false,
+        error: 'No se encontró ningún examen completado con esos criterios',
+      }
+    }
+
+    const test = testResults[0]
+    console.log(`✅ [getOfficialExamReview] Found test: ${test.id}`)
+
+    // Get ALL questions from test_questions
+    const questionsResult = await db
+      .select({
+        questionId: testQuestions.questionId,
+        psychometricQuestionId: testQuestions.psychometricQuestionId,
+        questionOrder: testQuestions.questionOrder,
+        userAnswer: testQuestions.userAnswer,
+        correctAnswer: testQuestions.correctAnswer,
+        isCorrect: testQuestions.isCorrect,
+        questionType: testQuestions.questionType,
+        timeSpentSeconds: testQuestions.timeSpentSeconds,
+        difficulty: testQuestions.difficulty,
+        articleNumber: testQuestions.articleNumber,
+        lawName: testQuestions.lawName,
+      })
+      .from(testQuestions)
+      .where(eq(testQuestions.testId, test.id))
+      .orderBy(testQuestions.questionOrder)
+
+    console.log(`✅ [getOfficialExamReview] Found ${questionsResult.length} questions`)
+
+    // Separate question IDs by type
+    const legislativeIds = questionsResult
+      .filter(q => q.questionId)
+      .map(q => q.questionId!)
+    const psychometricIds = questionsResult
+      .filter(q => q.psychometricQuestionId)
+      .map(q => q.psychometricQuestionId!)
+
+    // Fetch full legislative question data
+    const legislativeQuestionsMap = new Map<string, {
+      id: string
+      questionText: string
+      optionA: string
+      optionB: string
+      optionC: string
+      optionD: string
+      explanation: string | null
+      difficulty: string | null
+      articleNumber: string | null
+      lawName: string | null
+      articleContent: string | null
+      tema: number | null
+    }>()
+
+    if (legislativeIds.length > 0) {
+      const legResults = await db
+        .select({
+          id: questions.id,
+          questionText: questions.questionText,
+          optionA: questions.optionA,
+          optionB: questions.optionB,
+          optionC: questions.optionC,
+          optionD: questions.optionD,
+          explanation: questions.explanation,
+          difficulty: questions.difficulty,
+          articleNumber: articles.articleNumber,
+          lawName: laws.shortName,
+          articleContent: articles.content,
+          tema: questions.tema,
+        })
+        .from(questions)
+        .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .leftJoin(laws, eq(articles.lawId, laws.id))
+        .where(inArray(questions.id, legislativeIds))
+
+      for (const q of legResults) {
+        legislativeQuestionsMap.set(q.id, q)
+      }
+    }
+
+    // Fetch full psychometric question data
+    const psychometricQuestionsMap = new Map<string, {
+      id: string
+      questionText: string
+      optionA: string | null
+      optionB: string | null
+      optionC: string | null
+      optionD: string | null
+      explanation: string | null
+      difficulty: string | null
+    }>()
+
+    if (psychometricIds.length > 0) {
+      const psyResults = await db
+        .select({
+          id: psychometricQuestions.id,
+          questionText: psychometricQuestions.questionText,
+          optionA: psychometricQuestions.optionA,
+          optionB: psychometricQuestions.optionB,
+          optionC: psychometricQuestions.optionC,
+          optionD: psychometricQuestions.optionD,
+          explanation: psychometricQuestions.explanation,
+          difficulty: psychometricQuestions.difficulty,
+        })
+        .from(psychometricQuestions)
+        .where(inArray(psychometricQuestions.id, psychometricIds))
+
+      for (const q of psyResults) {
+        psychometricQuestionsMap.set(q.id, q)
+      }
+    }
+
+    // Build response questions
+    const reviewQuestions: OfficialExamReviewQuestion[] = []
+    let correctCount = 0
+    let incorrectCount = 0
+    let blankCount = 0
+
+    // For breakdowns
+    const difficultyStats: Record<string, { total: number; correct: number }> = {}
+    const temaStats: Record<number, { total: number; correct: number }> = {}
+
+    for (const tq of questionsResult) {
+      const isLegislative = !!tq.questionId
+      const qId = tq.questionId || tq.psychometricQuestionId!
+
+      let questionData: OfficialExamReviewQuestion | null = null
+
+      if (isLegislative) {
+        const legQ = legislativeQuestionsMap.get(qId)
+        if (legQ) {
+          questionData = {
+            id: legQ.id,
+            order: tq.questionOrder,
+            questionText: legQ.questionText,
+            options: [legQ.optionA, legQ.optionB, legQ.optionC, legQ.optionD],
+            difficulty: legQ.difficulty || tq.difficulty,
+            tema: legQ.tema,
+            articleNumber: legQ.articleNumber || tq.articleNumber,
+            lawName: legQ.lawName || tq.lawName,
+            explanation: legQ.explanation,
+            article: legQ.articleContent,
+            isPsychometric: false,
+            userAnswer: tq.userAnswer || null,
+            correctAnswer: tq.correctAnswer,
+            isCorrect: tq.isCorrect,
+            timeSpent: tq.timeSpentSeconds || 0,
+          }
+
+          // Track tema stats
+          if (legQ.tema) {
+            if (!temaStats[legQ.tema]) {
+              temaStats[legQ.tema] = { total: 0, correct: 0 }
+            }
+            temaStats[legQ.tema].total++
+            if (tq.isCorrect) temaStats[legQ.tema].correct++
+          }
+        }
+      } else {
+        const psyQ = psychometricQuestionsMap.get(qId)
+        if (psyQ) {
+          questionData = {
+            id: psyQ.id,
+            order: tq.questionOrder,
+            questionText: psyQ.questionText,
+            options: [
+              psyQ.optionA || '',
+              psyQ.optionB || '',
+              psyQ.optionC || '',
+              psyQ.optionD || '',
+            ],
+            difficulty: psyQ.difficulty || tq.difficulty,
+            tema: null,
+            articleNumber: null,
+            lawName: null,
+            explanation: psyQ.explanation,
+            article: null,
+            isPsychometric: true,
+            userAnswer: tq.userAnswer || null,
+            correctAnswer: tq.correctAnswer,
+            isCorrect: tq.isCorrect,
+            timeSpent: tq.timeSpentSeconds || 0,
+          }
+        }
+      }
+
+      if (questionData) {
+        reviewQuestions.push(questionData)
+
+        // Count statistics
+        if (!tq.userAnswer || tq.userAnswer.trim() === '') {
+          blankCount++
+        } else if (tq.isCorrect) {
+          correctCount++
+        } else {
+          incorrectCount++
+        }
+
+        // Track difficulty stats
+        const diff = questionData.difficulty || 'medium'
+        if (!difficultyStats[diff]) {
+          difficultyStats[diff] = { total: 0, correct: 0 }
+        }
+        difficultyStats[diff].total++
+        if (tq.isCorrect) difficultyStats[diff].correct++
+      }
+    }
+
+    // Sort by order
+    reviewQuestions.sort((a, b) => a.order - b.order)
+
+    // Calculate percentage
+    const totalAnswered = correctCount + incorrectCount
+    const percentage = totalAnswered > 0
+      ? Math.round((correctCount / totalAnswered) * 100)
+      : 0
+
+    // Build breakdowns
+    const difficultyBreakdown = Object.entries(difficultyStats).map(([difficulty, stats]) => ({
+      difficulty,
+      total: stats.total,
+      correct: stats.correct,
+      accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+    }))
+
+    const temaBreakdown = Object.entries(temaStats).map(([tema, stats]) => ({
+      tema: parseInt(tema),
+      total: stats.total,
+      correct: stats.correct,
+      accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+    })).sort((a, b) => a.tema - b.tema)
+
+    console.log(`✅ [getOfficialExamReview] Returning ${reviewQuestions.length} questions for review`)
+
+    return {
+      success: true,
+      test: {
+        id: test.id,
+        title: test.title,
+        testType: test.testType,
+        tema: null,
+        createdAt: test.createdAt,
+        completedAt: test.completedAt,
+        totalTimeSeconds: test.totalTimeSeconds || 0,
+      },
+      summary: {
+        totalQuestions: reviewQuestions.length,
+        correctCount,
+        incorrectCount,
+        blankCount,
+        score: test.score,
+        percentage,
+      },
+      questions: reviewQuestions,
+      temaBreakdown: temaBreakdown.length > 0 ? temaBreakdown : undefined,
+      difficultyBreakdown: difficultyBreakdown.length > 0 ? difficultyBreakdown : undefined,
+    }
+  } catch (error) {
+    console.error('❌ [getOfficialExamReview] Error:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',
