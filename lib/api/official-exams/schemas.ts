@@ -440,13 +440,13 @@ export const getOfficialExamReviewResponseSchema = z.object({
     descripcion: z.string(),
     primera_parte: z.object({
       nota: z.number(),
-      aciertos: z.number(),
-      errores: z.number(),
+      aciertos: z.number().optional(),
+      errores: z.number().optional(),
     }),
     segunda_parte: z.object({
       nota: z.number(),
-      aciertos: z.number(),
-      errores: z.number(),
+      aciertos: z.number().optional(),
+      errores: z.number().optional(),
     }),
     total: z.number(),
     orden: z.number(),

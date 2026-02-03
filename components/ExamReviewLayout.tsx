@@ -15,8 +15,8 @@ import type {
 
 interface NotaCorte {
   descripcion: string
-  primera_parte: { nota: number; aciertos: number; errores: number }
-  segunda_parte: { nota: number; aciertos: number; errores: number }
+  primera_parte: { nota: number; aciertos?: number; errores?: number }
+  segunda_parte: { nota: number; aciertos?: number; errores?: number }
   total: number
   orden: number
   convocatoria_url?: string
@@ -241,11 +241,13 @@ export default function ExamReviewLayout({
                   <div className={`text-lg font-bold ${parte === 'primera' ? 'text-blue-800 dark:text-blue-300' : 'text-green-800 dark:text-green-300'}`}>
                     {parteData.nota} pts
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    <span className="text-green-600">{parteData.aciertos} aciertos</span>
-                    {' · '}
-                    <span className="text-red-600">{parteData.errores} errores</span>
-                  </div>
+                  {parteData.aciertos !== undefined && parteData.errores !== undefined && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-green-600">{parteData.aciertos} aciertos</span>
+                      {' · '}
+                      <span className="text-red-600">{parteData.errores} errores</span>
+                    </div>
+                  )}
                   <div className={`text-xs ${parte === 'primera' ? 'text-blue-600 dark:text-blue-400' : 'text-green-600 dark:text-green-400'} mt-2 font-medium border-t border-gray-200 dark:border-gray-600 pt-2`}>
                     = {notaCorteSobre10.toFixed(2)} sobre 10
                   </div>
@@ -285,11 +287,13 @@ export default function ExamReviewLayout({
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
                   <div className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">1ª Parte (corte)</div>
                   <div className="text-lg font-bold text-blue-800 dark:text-blue-300">{notaCorte.primera_parte.nota} pts</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    <span className="text-green-600">{notaCorte.primera_parte.aciertos} aciertos</span>
-                    {' · '}
-                    <span className="text-red-600">{notaCorte.primera_parte.errores} errores</span>
-                  </div>
+                  {notaCorte.primera_parte.aciertos !== undefined && notaCorte.primera_parte.errores !== undefined && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-green-600">{notaCorte.primera_parte.aciertos} aciertos</span>
+                      {' · '}
+                      <span className="text-red-600">{notaCorte.primera_parte.errores} errores</span>
+                    </div>
+                  )}
                   <div className="text-xs text-blue-600 dark:text-blue-400 mt-2 font-medium border-t border-blue-200 dark:border-blue-700 pt-2">
                     = {((notaCorte.primera_parte.nota / 60) * 10).toFixed(2)} sobre 10
                   </div>
@@ -299,11 +303,13 @@ export default function ExamReviewLayout({
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
                   <div className="text-xs text-green-600 dark:text-green-400 font-medium mb-1">2ª Parte (corte)</div>
                   <div className="text-lg font-bold text-green-800 dark:text-green-300">{notaCorte.segunda_parte.nota} pts</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    <span className="text-green-600">{notaCorte.segunda_parte.aciertos} aciertos</span>
-                    {' · '}
-                    <span className="text-red-600">{notaCorte.segunda_parte.errores} errores</span>
-                  </div>
+                  {notaCorte.segunda_parte.aciertos !== undefined && notaCorte.segunda_parte.errores !== undefined && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <span className="text-green-600">{notaCorte.segunda_parte.aciertos} aciertos</span>
+                      {' · '}
+                      <span className="text-red-600">{notaCorte.segunda_parte.errores} errores</span>
+                    </div>
+                  )}
                   <div className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium border-t border-green-200 dark:border-green-700 pt-2">
                     = {((notaCorte.segunda_parte.nota / 50) * 10).toFixed(2)} sobre 10
                   </div>

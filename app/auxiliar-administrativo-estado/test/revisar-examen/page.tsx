@@ -44,8 +44,8 @@ function RevisarExamenContent() {
     difficultyBreakdown?: Array<{ difficulty: string; total: number; correct: number; accuracy: number }>
     notaCorte?: {
       descripcion: string
-      primera_parte: { nota: number; aciertos: number; errores: number }
-      segunda_parte: { nota: number; aciertos: number; errores: number }
+      primera_parte: { nota: number; aciertos?: number; errores?: number }
+      segunda_parte: { nota: number; aciertos?: number; errores?: number }
       total: number
       orden: number
       convocatoria_url?: string

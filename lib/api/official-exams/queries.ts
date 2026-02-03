@@ -9,13 +9,13 @@ interface NotaCorte {
   descripcion: string
   primera_parte: {
     nota: number
-    aciertos: number
-    errores: number
+    aciertos?: number
+    errores?: number
   }
   segunda_parte: {
     nota: number
-    aciertos: number
-    errores: number
+    aciertos?: number
+    errores?: number
   }
   total: number
   orden: number
