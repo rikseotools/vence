@@ -353,10 +353,11 @@ const TestConfigurator = ({
     setSelectedLaws(new Set(favorite.selectedLaws || []));
 
     // Cargar artículos seleccionados por ley
+    // 🔧 FIX: Mantener artículos como strings para coincidir con article.article_number de la BD
     const articlesMap = new Map();
     if (favorite.selectedArticlesByLaw) {
       Object.entries(favorite.selectedArticlesByLaw).forEach(([lawId, articles]) => {
-        articlesMap.set(lawId, new Set(articles.map(a => typeof a === 'string' ? parseInt(a, 10) : a)));
+        articlesMap.set(lawId, new Set(articles.map(a => String(a))));
       });
     }
     setSelectedArticlesByLaw(articlesMap);
