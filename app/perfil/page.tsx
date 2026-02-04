@@ -1055,9 +1055,9 @@ function PerfilPageContent() {
         .insert({
           user_id: user.id,
           message: '[Solicitud de eliminación de cuenta desde perfil]',
-          feedback_type: 'account_deletion',
+          type: 'account_deletion',
           status: 'pending',
-          page_url: '/perfil'
+          url: '/perfil'
         })
 
       if (error) throw error
