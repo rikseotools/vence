@@ -204,6 +204,12 @@ function PerfilPageContent() {
   // Para evitar guardado en primera carga
   const isInitialLoad = useRef<boolean>(true)
   const [hasChanges, setHasChanges] = useState<boolean>(false)
+
+  // 🗑️ ELIMINACIÓN DE CUENTA
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState<boolean>(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState<string>('')
+  const [deletingAccount, setDeletingAccount] = useState<boolean>(false)
+  const [deleteError, setDeleteError] = useState<string>('')
   
   // Form data - SINCRONIZADO CON useUserOposicion
   const [formData, setFormData] = useState<FormData>({
@@ -1029,6 +1035,44 @@ function PerfilPageContent() {
   const getFirstName = (fullName) => {
     if (!fullName) return ''
     return fullName.split(' ')[0] || ''
+  }
+
+  // 🗑️ SOLICITAR ELIMINACIÓN DE CUENTA
+  const requestAccountDeletion = async () => {
+    if (!user || deletingAccount) return
+    if (deleteConfirmText !== 'ELIMINAR') {
+      setDeleteError('Escribe ELIMINAR para confirmar')
+      return
+    }
+
+    try {
+      setDeletingAccount(true)
+      setDeleteError('')
+
+      // Crear feedback automático con la solicitud
+      const { error } = await supabase
+        .from('user_feedback')
+        .insert({
+          user_id: user.id,
+          message: '[Solicitud de eliminación de cuenta desde perfil]',
+          feedback_type: 'account_deletion',
+          status: 'pending',
+          page_url: '/perfil'
+        })
+
+      if (error) throw error
+
+      // Cerrar modal y mostrar confirmación
+      setShowDeleteAccountModal(false)
+      setDeleteConfirmText('')
+      alert('Solicitud recibida. Procesaremos tu petición en 24-48h. Recibirás un email de confirmación.')
+
+    } catch (error) {
+      console.error('Error solicitando eliminación:', error)
+      setDeleteError('Error al enviar la solicitud. Inténtalo de nuevo.')
+    } finally {
+      setDeletingAccount(false)
+    }
   }
 
   // GUARDAR PERFIL VIA API TIPADA
@@ -2408,6 +2452,34 @@ function PerfilPageContent() {
                         </div>
                       </div>
                     )}
+
+                    {/* 🗑️ ZONA DE PELIGRO - ELIMINAR CUENTA */}
+                    <div className="mt-12 pt-8 border-t border-red-200 dark:border-red-900">
+                      <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 mb-4 flex items-center">
+                        <span className="mr-2">⚠️</span>
+                        Zona de peligro
+                      </h3>
+
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                          <div>
+                            <h4 className="font-medium text-red-800 dark:text-red-300">
+                              Eliminar cuenta
+                            </h4>
+                            <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                              Esta acción es irreversible. Se eliminarán todos tus datos.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setShowDeleteAccountModal(true)}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 whitespace-nowrap"
+                          >
+                            <span>🗑️</span>
+                            <span>Solicitar eliminación</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2425,6 +2497,79 @@ function PerfilPageContent() {
           </div>
         </div>
       </div>
+
+      {/* 🗑️ Modal de eliminación de cuenta */}
+      {showDeleteAccountModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-red-600 dark:text-red-400 mb-4 flex items-center">
+              <span className="mr-2">⚠️</span>
+              Eliminar cuenta
+            </h3>
+
+            <div className="space-y-4">
+              <p className="text-gray-600 dark:text-gray-300">
+                Esta acción es <strong>irreversible</strong>. Se eliminarán permanentemente:
+              </p>
+
+              <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-4">
+                <li>• Tu perfil y datos personales</li>
+                <li>• Historial de tests y estadísticas</li>
+                <li>• Preferencias y configuración</li>
+              </ul>
+
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                <label className="block text-sm font-medium text-red-800 dark:text-red-300 mb-2">
+                  Escribe <strong>ELIMINAR</strong> para confirmar:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => {
+                    setDeleteConfirmText(e.target.value.toUpperCase())
+                    setDeleteError('')
+                  }}
+                  placeholder="ELIMINAR"
+                  className="w-full px-3 py-2 border border-red-300 dark:border-red-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+                {deleteError && (
+                  <p className="text-red-600 text-sm mt-1">{deleteError}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowDeleteAccountModal(false)
+                  setDeleteConfirmText('')
+                  setDeleteError('')
+                }}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={requestAccountDeletion}
+                disabled={deletingAccount || deleteConfirmText !== 'ELIMINAR'}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
+              >
+                {deletingAccount ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Enviando...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🗑️</span>
+                    <span>Confirmar eliminación</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de cancelación de suscripción */}
       <CancellationFlow
