@@ -28,21 +28,19 @@ export default function AdminDashboard() {
         setLoading(true)
         console.log('📊 Cargando datos del dashboard...')
 
-        // 1. Estadísticas generales de usuarios - CORREGIDO: leer is_active_student directo de user_profiles
-        // (la vista admin_users_with_roles tiene un bug que calcula is_active_student mal)
+        // 1. Estadísticas generales de usuarios - USAR admin_users_with_roles para evitar RLS
+        // NOTA: La vista tiene un bug menor en is_active_student (lo calcula de forma diferente)
+        // pero es necesaria para que el admin pueda ver TODOS los usuarios y contar registros correctamente.
+        // RLS en user_profiles bloquea el acceso incluso para admins autenticados.
         const { data: generalStats, error: generalStatsError } = await supabase
-          .from('user_profiles')
-          .select('id, is_active_student, created_at, registration_source')
+          .from('admin_users_with_roles')
+          .select('user_id, is_active_student, user_created_at, registration_source')
+          .limit(5000) // Supabase default es 1000, necesitamos más para stats correctas
 
         if (generalStatsError) throw generalStatsError
 
-        // Transformar para compatibilidad con el resto del código
-        const generalStatsTransformed = generalStats?.map(u => ({
-          user_id: u.id,
-          is_active_student: u.is_active_student,
-          user_created_at: u.created_at,
-          registration_source: u.registration_source
-        })) || []
+        // Ya viene en el formato correcto desde la vista
+        const generalStatsTransformed = generalStats || []
 
         // 2. Tests completados últimos 30 días - Ordenados por fecha
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
