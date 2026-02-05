@@ -1,22 +1,40 @@
-// app/premium/page.js - PÁGINA DE PAGO PREMIUM
+// app/premium/page.tsx - PÁGINA DE PAGO PREMIUM
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 import { trackPremiumPageView, trackCheckoutStarted } from '@/lib/services/conversionTracker'
 
+type PlanType = 'monthly' | 'quarterly' | 'semester'
+
+interface PriceIds {
+  monthly: string
+  quarterly: string
+  semester: string
+}
+
+interface AuthUser {
+  id: string
+  email: string
+  plan_type: string
+}
+
 function PremiumPageContent() {
-  const { user, loading: authLoading, supabase } = useAuth()
+  const { user, loading: authLoading, supabase } = useAuth() as {
+    user: AuthUser | null
+    loading: boolean
+    supabase: any
+  }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [selectedPlan, setSelectedPlan] = useState('semester') // 'semester' o 'monthly'
+  const [selectedPlan, setSelectedPlan] = useState<PlanType>('semester')
   const searchParams = useSearchParams()
   const hasTrackedPageView = useRef(false)
 
   // Preseleccionar plan desde URL (ej: /premium?plan=monthly)
   useEffect(() => {
     const planParam = searchParams.get('plan')
-    if (planParam === 'monthly' || planParam === 'semester') {
+    if (planParam === 'monthly' || planParam === 'quarterly' || planParam === 'semester') {
       setSelectedPlan(planParam)
     }
   }, [searchParams])
@@ -25,7 +43,7 @@ function PremiumPageContent() {
   useEffect(() => {
     if (user && supabase && !hasTrackedPageView.current && !authLoading) {
       const referrer = document.referrer || null
-      const fromSource = searchParams.get('from') || null // ej: 'ai_chat_limit'
+      const fromSource = searchParams.get('from') || null
       trackPremiumPageView(supabase, user.id, referrer, fromSource)
       hasTrackedPageView.current = true
     }
@@ -46,6 +64,7 @@ function PremiumPageContent() {
 
       handleCheckout()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, searchParams, loading])
 
   // FUNCIÓN: Registrarse con Google (Paso 1)
@@ -75,7 +94,7 @@ function PremiumPageContent() {
 
     } catch (err) {
       console.error('Error:', err)
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Error desconocido')
       setLoading(false)
     }
   }
@@ -99,9 +118,12 @@ function PremiumPageContent() {
       }
 
       // Determinar el priceId según el plan seleccionado
-      const priceId = selectedPlan === 'semester'
-        ? (process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER || 'price_1RjhHBCybKEAFwateoAVKstO')
-        : (process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder')
+      const priceIds: PriceIds = {
+        monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
+        quarterly: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY || 'price_quarterly_placeholder',
+        semester: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER || 'price_1RjhHBCybKEAFwateoAVKstO'
+      }
+      const priceId = priceIds[selectedPlan]
 
       const response = await fetch('/api/stripe/create-checkout', {
         method: 'POST',
@@ -136,6 +158,10 @@ function PremiumPageContent() {
       }
 
       const stripe = await loadStripe(stripeKey)
+      if (!stripe) {
+        throw new Error('Failed to load Stripe')
+      }
+
       const { error: stripeError } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
       })
@@ -144,9 +170,17 @@ function PremiumPageContent() {
 
     } catch (err) {
       console.error('Error en checkout:', err)
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const getPlanDisplayText = (plan: PlanType): string => {
+    switch (plan) {
+      case 'semester': return '59€ / 6 meses'
+      case 'quarterly': return '35€ / 3 meses'
+      case 'monthly': return '20€ / mes'
     }
   }
 
@@ -157,7 +191,7 @@ function PremiumPageContent() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            👑 Vence Premium
+            Vence Premium
           </h1>
           <p className="text-xl text-gray-600">
             Acceso ilimitado a todos los tests de la plataforma
@@ -165,8 +199,8 @@ function PremiumPageContent() {
         </div>
 
         {/* Plan Cards */}
-        <div className="max-w-2xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-4 mb-8">
 
             {/* Plan Mensual */}
             <div
@@ -178,7 +212,7 @@ function PremiumPageContent() {
               }`}
             >
               <div className="text-center">
-                <div className="h-6 mb-4"></div> {/* Spacer para alinear */}
+                <div className="h-6 mb-4"></div>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Mensual</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-1">20€</div>
                 <div className="text-gray-500 text-sm mb-4">al mes</div>
@@ -188,7 +222,27 @@ function PremiumPageContent() {
               </div>
             </div>
 
-            {/* Plan Semestral */}
+            {/* Plan Trimestral */}
+            <div
+              onClick={() => setSelectedPlan('quarterly')}
+              className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all relative ${
+                selectedPlan === 'quarterly'
+                  ? 'border-amber-500 ring-2 ring-amber-200'
+                  : 'border-gray-200 hover:border-amber-300'
+              }`}
+            >
+              <div className="text-center">
+                <div className="h-6 mb-4"></div>
+                <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Trimestral</h3>
+                <div className="text-4xl font-bold text-gray-900 mb-1">35€</div>
+                <div className="text-gray-500 text-sm mb-4">cada 3 meses</div>
+                <div className="text-green-600 text-sm font-medium">
+                  Ahorras 100€ al año
+                </div>
+              </div>
+            </div>
+
+            {/* Plan Semestral - RECOMENDADO */}
             <div
               onClick={() => setSelectedPlan('semester')}
               className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all ${
@@ -198,11 +252,9 @@ function PremiumPageContent() {
               }`}
             >
               <div className="text-center">
-                {selectedPlan === 'semester' && (
-                  <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-4 inline-block">
-                    MEJOR PRECIO
-                  </span>
-                )}
+                <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-4 inline-block">
+                  RECOMENDADO
+                </span>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Semestral</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-1">59€</div>
                 <div className="text-gray-500 text-sm mb-4">cada 6 meses</div>
@@ -289,7 +341,7 @@ function PremiumPageContent() {
                 {user.plan_type === 'legacy_free' && (
                   <div className="text-center">
                     <div className="bg-gradient-to-r from-green-100 to-emerald-100 border border-green-300 text-green-800 px-4 py-3 rounded-lg mb-4">
-                      <span className="text-lg font-bold">🎉 ¡Usuario VIP!</span><br/>
+                      <span className="text-lg font-bold">¡Usuario VIP!</span><br/>
                       Tienes acceso gratuito de por vida
                     </div>
                     <a
@@ -304,7 +356,7 @@ function PremiumPageContent() {
                 {user.plan_type === 'premium' && (
                   <div className="text-center">
                     <div className="bg-gradient-to-r from-amber-100 to-orange-100 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg mb-4">
-                      <span className="text-lg font-bold">👑 Ya eres Premium</span><br/>
+                      <span className="text-lg font-bold">Ya eres Premium</span><br/>
                       Disfruta de acceso ilimitado
                     </div>
                     <a
@@ -321,7 +373,7 @@ function PremiumPageContent() {
                     <div className="text-center mb-6">
                       <p className="text-lg font-medium text-gray-800">
                         Plan seleccionado: <span className="text-amber-600 font-bold">
-                          {selectedPlan === 'semester' ? '59€ / 6 meses' : '20€ / mes'}
+                          {getPlanDisplayText(selectedPlan)}
                         </span>
                       </p>
                     </div>
@@ -337,7 +389,7 @@ function PremiumPageContent() {
                           Procesando...
                         </div>
                       ) : (
-                        '💳 Pagar'
+                        'Pagar'
                       )}
                     </button>
                   </div>
