@@ -41,5 +41,16 @@ export {
   type DisputeStats,
 } from './DisputeService'
 
+// Detección de discrepancias y re-análisis
+export {
+  detectDiscrepancy,
+  hasUncertaintyIndicators,
+  type DiscrepancyResult,
+} from './DiscrepancyDetector'
+
+export {
+  reanalyzeWithSuperiorModel,
+} from './ReanalysisService'
+
 // Schemas
 export * from './schemas'

@@ -9,6 +9,11 @@ import {
   getOrchestrator,
 } from '@/lib/chat/core'
 import { logger, handleError } from '@/lib/chat/shared'
+import {
+  detectDiscrepancy,
+  hasUncertaintyIndicators,
+  reanalyzeWithSuperiorModel,
+} from '@/lib/chat/domains/verification'
 
 // Cliente Supabase para logging (la tabla ai_chat_logs no está en Drizzle schema)
 const supabase = createClient(
@@ -138,6 +143,11 @@ async function logChatInteraction(data: {
   errorMessage?: string | null
   userOposicion?: string | null
   detectedLaws?: string[]
+  // Nuevos campos para discrepancia y re-análisis
+  hadDiscrepancy?: boolean
+  aiSuggestedAnswer?: string | null
+  dbAnswer?: string | null
+  reanalysisResponse?: string | null
 }): Promise<string | null> {
   try {
     const { data: result, error } = await supabase
@@ -157,6 +167,14 @@ async function logChatInteraction(data: {
         error_message: data.errorMessage || null,
         user_oposicion: data.userOposicion || null,
         detected_laws: data.detectedLaws || [],
+        // Campos de discrepancia (si la tabla los soporta)
+        // Nota: Si estos campos no existen en la tabla, Supabase los ignorará
+        ...(data.hadDiscrepancy !== undefined && {
+          had_discrepancy: data.hadDiscrepancy,
+          ai_suggested_answer: data.aiSuggestedAnswer || null,
+          db_answer: data.dbAnswer || null,
+          reanalysis_response: data.reanalysisResponse || null,
+        }),
       })
       .select('id')
       .single()
@@ -287,6 +305,9 @@ export async function POST(request: NextRequest) {
       const encoder = new TextEncoder()
       const decoder = new TextDecoder()
 
+      // Capturar el questionContext normalizado para usarlo en flush
+      const qContext = normalizedQuestionContext
+
       const transformStream = new TransformStream({
         transform(chunk, controller) {
           // Pasar el chunk al cliente
@@ -308,6 +329,90 @@ export async function POST(request: NextRequest) {
           }
         },
         async flush(controller) {
+          // Variables para logging de discrepancia
+          let hadDiscrepancy = false
+          let aiSuggestedAnswer: string | null = null
+          let dbAnswer: string | null = null
+          let reanalysisResponse: string | null = null
+
+          // Detectar discrepancia SOLO para preguntas psicotécnicas con respuesta correcta conocida
+          if (
+            qContext?.isPsicotecnico &&
+            qContext?.correctAnswer !== undefined &&
+            qContext?.questionText &&
+            qContext?.options &&
+            fullResponse.length > 50 // Respuesta suficientemente larga
+          ) {
+            try {
+              // Verificar si la IA muestra incertidumbre (no vale la pena re-analizar)
+              const hasUncertainty = hasUncertaintyIndicators(fullResponse)
+
+              if (!hasUncertainty) {
+                const discrepancy = detectDiscrepancy(fullResponse, qContext.correctAnswer)
+
+                if (discrepancy.hasDiscrepancy && discrepancy.aiSuggestedAnswer) {
+                  hadDiscrepancy = true
+                  aiSuggestedAnswer = discrepancy.aiSuggestedAnswer
+                  dbAnswer = discrepancy.dbAnswer
+
+                  logger.info('Discrepancy detected, initiating reanalysis', {
+                    domain: 'verification',
+                    aiSuggested: aiSuggestedAnswer,
+                    dbAnswer,
+                    confidence: discrepancy.confidence,
+                    questionType: qContext.questionTypeName
+                  })
+
+                  // Enviar mensaje de que vamos a hacer análisis avanzado
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'reanalysis_start',
+                    message: '\n\n---\n\n⚠️ **Algo no cuadra, voy a hacer un análisis más avanzado...**\n\n'
+                  })}\n\n`))
+
+                  // Preparar opciones en formato objeto
+                  const optionsObj = Array.isArray(qContext.options)
+                    ? {
+                        a: qContext.options[0] || '',
+                        b: qContext.options[1] || '',
+                        c: qContext.options[2] || '',
+                        d: qContext.options[3] || ''
+                      }
+                    : qContext.options
+
+                  // Re-analizar con modelo superior
+                  const reanalysis = await reanalyzeWithSuperiorModel({
+                    questionText: qContext.questionText,
+                    options: optionsObj as { a: string; b: string; c: string; d: string },
+                    correctAnswer: dbAnswer,
+                    aiSuggestedAnswer: aiSuggestedAnswer,
+                    originalAnalysis: fullResponse,
+                    questionTypeName: qContext.questionTypeName,
+                    questionSubtype: qContext.questionSubtype,
+                    contentData: qContext.contentData
+                  })
+
+                  reanalysisResponse = reanalysis.analysis
+
+                  // Enviar resultado del re-análisis
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                    type: 'reanalysis_result',
+                    content: `🔍 **Análisis avanzado:**\n\n${reanalysis.analysis}`
+                  })}\n\n`))
+
+                  logger.info('Reanalysis completed and sent to client', {
+                    domain: 'verification',
+                    tokensUsed: reanalysis.tokensUsed
+                  })
+                }
+              }
+            } catch (reanalysisError) {
+              // No bloquear la respuesta si falla el re-análisis
+              logger.error('Error during discrepancy detection/reanalysis', reanalysisError, {
+                domain: 'verification'
+              })
+            }
+          }
+
           // Cuando termina el stream, loguear la respuesta completa
           const logId = await logChatInteraction({
             userId: data.userId,
@@ -321,6 +426,11 @@ export async function POST(request: NextRequest) {
             errorMessage: !data.userId && data.debugAuthState
               ? `DEBUG_AUTH: ${JSON.stringify(data.debugAuthState)}`
               : null,
+            // Datos de discrepancia
+            hadDiscrepancy,
+            aiSuggestedAnswer,
+            dbAnswer,
+            reanalysisResponse,
           })
 
           // Enviar logId para feedback

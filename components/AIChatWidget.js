@@ -453,6 +453,43 @@ export default function AIChatWidget() {
                     return updated
                   })
                 }
+              } else if (data.type === 'reanalysis_start') {
+                // Se detectó discrepancia, mostrar mensaje de análisis avanzado
+                fullContent += data.message
+                contentBufferRef.current = fullContent
+                setMessages(prev => {
+                  const updated = [...prev]
+                  const lastIdx = updated.length - 1
+                  if (updated[lastIdx]?.role === 'assistant') {
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      content: fullContent,
+                      sources,
+                      isStreaming: true,
+                      isReanalyzing: true // Indicador de que está re-analizando
+                    }
+                  }
+                  return updated
+                })
+              } else if (data.type === 'reanalysis_result') {
+                // Resultado del análisis avanzado
+                fullContent += data.content
+                contentBufferRef.current = fullContent
+                setMessages(prev => {
+                  const updated = [...prev]
+                  const lastIdx = updated.length - 1
+                  if (updated[lastIdx]?.role === 'assistant') {
+                    updated[lastIdx] = {
+                      ...updated[lastIdx],
+                      content: fullContent,
+                      sources,
+                      isStreaming: true,
+                      isReanalyzing: false,
+                      hadReanalysis: true // Marcar que hubo re-análisis
+                    }
+                  }
+                  return updated
+                })
               } else if (data.type === 'done') {
                 potentialErrorDetected = data.potentialErrorDetected
                 questionId = data.questionId
