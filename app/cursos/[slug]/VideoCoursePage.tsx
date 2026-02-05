@@ -62,6 +62,8 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
   const saveProgressTimeout = useRef<NodeJS.Timeout | null>(null)
   const urlCacheRef = useRef<Map<string, CachedVideoData>>(new Map())
   const preloadedVideosRef = useRef<Map<string, HTMLVideoElement>>(new Map())
+  const sessionTokenRef = useRef<string | null>(null)
+  const sessionExpiryRef = useRef<number>(0)
 
   // Get next lesson for preloading
   const getNextLesson = useCallback((currentId: string): Lesson | null => {
@@ -87,7 +89,6 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
     // Check cache first
     const cached = getCachedUrl(lessonId)
     if (cached) {
-      console.log(`✅ [VideoCache] Using cached URL for lesson ${lessonId}`)
       return cached
     }
 
@@ -130,8 +131,27 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
     preloadElement.preload = 'metadata'
     preloadElement.src = videoData.signedUrl
     preloadedVideosRef.current.set(lesson.id, preloadElement)
-    console.log(`✅ [VideoPreload] Preloading video for lesson ${lesson.id}`)
   }, [fetchVideoUrl])
+
+  // Get cached session token or fetch new one
+  const getSessionToken = useCallback(async (): Promise<string | null> => {
+    // Use cached token if still valid (with 5 min buffer)
+    const now = Date.now()
+    if (sessionTokenRef.current && sessionExpiryRef.current > now + 300000) {
+      return sessionTokenRef.current
+    }
+
+    // Fetch new session
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (session?.access_token) {
+      sessionTokenRef.current = session.access_token
+      // Cache for session duration (usually 1 hour) minus buffer
+      sessionExpiryRef.current = now + 3600000 - 300000
+      return session.access_token
+    }
+    return null
+  }, [supabase])
 
   // Load video URL when lesson changes (optimized with cache and parallel requests)
   const loadVideo = useCallback(async (lesson: Lesson) => {
@@ -140,9 +160,9 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       return
     }
 
-    // Get current session from Supabase
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) {
+    // Get session token (cached or fresh)
+    const token = await getSessionToken()
+    if (!token) {
       setError('Inicia sesión para ver los videos')
       return
     }
@@ -166,9 +186,9 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
     try {
       // Fetch video URL and progress in parallel
       const [videoData, progressRes] = await Promise.all([
-        cached ? Promise.resolve(cached) : fetchVideoUrl(lesson.id, session.access_token),
+        cached ? Promise.resolve(cached) : fetchVideoUrl(lesson.id, token),
         fetch(`/api/cursos/progress?lessonId=${lesson.id}`, {
-          headers: { 'Authorization': `Bearer ${session.access_token}` },
+          headers: { 'Authorization': `Bearer ${token}` },
         }).then(res => res.json()).catch(() => ({ success: false }))
       ])
 
@@ -198,7 +218,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       // Preload next video
       const nextLesson = getNextLesson(lesson.id)
       if (nextLesson) {
-        preloadVideo(nextLesson, session.access_token)
+        preloadVideo(nextLesson, token)
       }
     } catch (err) {
       setError('Error de conexión')
@@ -206,7 +226,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       setIsLoading(false)
       setIsTransitioning(false)
     }
-  }, [user, supabase, getCachedUrl, fetchVideoUrl, getNextLesson, preloadVideo])
+  }, [user, supabase, getSessionToken, getCachedUrl, fetchVideoUrl, getNextLesson, preloadVideo])
 
   // Load video when lesson changes and auth is ready
   useEffect(() => {

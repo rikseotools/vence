@@ -18,6 +18,27 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Server-side cache for lesson data (reduces DB latency impact)
+interface LessonCacheEntry {
+  videoPath: string
+  previewSeconds: number | null
+  isPreview: boolean | null
+  courseIsPremium: boolean | null
+  timestamp: number
+}
+
+interface UserPremiumCacheEntry {
+  isPremium: boolean
+  timestamp: number
+}
+
+const lessonCache = new Map<string, LessonCacheEntry>()
+const userPremiumCache = new Map<string, UserPremiumCacheEntry>()
+
+// Cache TTL: 5 minutes for lessons, 1 minute for user premium status
+const LESSON_CACHE_TTL = 5 * 60 * 1000
+const USER_CACHE_TTL = 60 * 1000
+
 /**
  * Get all active video courses
  */
@@ -205,34 +226,62 @@ export async function getVideoSignedUrl(
 ): Promise<GetVideoUrlResponse> {
   try {
     const db = getDb()
+    const now = Date.now()
 
-    // Single optimized query: lesson + course + user profile in parallel
-    const [lessonWithCourseResult, profileResult] = await Promise.all([
-      // Get lesson with course info in one query using JOIN
-      db
-        .select({
-          id: videoLessons.id,
-          videoPath: videoLessons.videoPath,
-          previewSeconds: videoLessons.previewSeconds,
-          isPreview: videoLessons.isPreview,
-          courseIsPremium: videoCourses.isPremium,
-        })
-        .from(videoLessons)
-        .innerJoin(videoCourses, eq(videoLessons.courseId, videoCourses.id))
-        .where(and(
-          eq(videoLessons.id, lessonId),
-          eq(videoLessons.isActive, true)
-        ))
-        .limit(1),
-      // Get user premium status
-      db
-        .select({
-          planType: userProfiles.planType,
-        })
-        .from(userProfiles)
-        .where(eq(userProfiles.id, userId))
-        .limit(1)
-    ])
+    // Check caches first
+    let lessonData: LessonCacheEntry | null = null
+    let userIsPremium: boolean | null = null
+
+    const cachedLesson = lessonCache.get(lessonId)
+    if (cachedLesson && now - cachedLesson.timestamp < LESSON_CACHE_TTL) {
+      lessonData = cachedLesson
+    }
+
+    const cachedUser = userPremiumCache.get(userId)
+    if (cachedUser && now - cachedUser.timestamp < USER_CACHE_TTL) {
+      userIsPremium = cachedUser.isPremium
+    }
+
+    // Only query what we need
+    const queries: Promise<any>[] = []
+
+    if (!lessonData) {
+      queries.push(
+        db
+          .select({
+            id: videoLessons.id,
+            videoPath: videoLessons.videoPath,
+            previewSeconds: videoLessons.previewSeconds,
+            isPreview: videoLessons.isPreview,
+            courseIsPremium: videoCourses.isPremium,
+          })
+          .from(videoLessons)
+          .innerJoin(videoCourses, eq(videoLessons.courseId, videoCourses.id))
+          .where(and(
+            eq(videoLessons.id, lessonId),
+            eq(videoLessons.isActive, true)
+          ))
+          .limit(1)
+      )
+    } else {
+      queries.push(Promise.resolve([lessonData]))
+    }
+
+    if (userIsPremium === null) {
+      queries.push(
+        db
+          .select({
+            planType: userProfiles.planType,
+          })
+          .from(userProfiles)
+          .where(eq(userProfiles.id, userId))
+          .limit(1)
+      )
+    } else {
+      queries.push(Promise.resolve([{ planType: userIsPremium ? 'premium' : 'free' }]))
+    }
+
+    const [lessonWithCourseResult, profileResult] = await Promise.all(queries)
 
     if (lessonWithCourseResult.length === 0) {
       return {
@@ -242,9 +291,29 @@ export async function getVideoSignedUrl(
     }
 
     const lesson = lessonWithCourseResult[0]
-    const courseIsPremium = lesson.courseIsPremium ?? true
+
+    // Update caches
+    if (!cachedLesson || now - cachedLesson.timestamp >= LESSON_CACHE_TTL) {
+      lessonCache.set(lessonId, {
+        videoPath: lesson.videoPath,
+        previewSeconds: lesson.previewSeconds,
+        isPreview: lesson.isPreview,
+        courseIsPremium: lesson.courseIsPremium,
+        timestamp: now,
+      })
+    }
+
     const isPremium = profileResult[0]?.planType === 'premium' ||
                       profileResult[0]?.planType === 'trial'
+
+    if (userIsPremium === null) {
+      userPremiumCache.set(userId, {
+        isPremium,
+        timestamp: now,
+      })
+    }
+
+    const courseIsPremium = lesson.courseIsPremium ?? true
 
     // Determine access level
     const previewOnly = courseIsPremium && !isPremium && !lesson.isPreview
