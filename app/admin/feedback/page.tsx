@@ -473,6 +473,35 @@ export default function AdminFeedbackPage() {
         } catch (emailError) {
           console.error('⚠️ Error enviando email:', emailError)
         }
+
+        // Crear notificación para la campana del usuario
+        try {
+          const messagePreview = inlineNewMessage.trim().length > 100
+            ? inlineNewMessage.trim().substring(0, 100) + '...'
+            : inlineNewMessage.trim()
+
+          const { error: notifError } = await supabaseAdmin
+            .from('notification_logs')
+            .insert({
+              user_id: selectedFeedback.user_id,
+              message_sent: `El equipo de Vence: "${messagePreview}"`,
+              delivery_status: 'sent',
+              context_data: {
+                type: 'feedback_response',
+                title: 'Nueva respuesta de Vence',
+                conversation_id: conversation.id,
+                feedback_id: selectedFeedback.id
+              }
+            })
+
+          if (notifError) {
+            console.error('❌ Error creando notificación:', notifError)
+          } else {
+            console.log('🔔 Notificación creada para campana')
+          }
+        } catch (notifError) {
+          console.error('⚠️ Error creando notificación:', notifError)
+        }
       }
 
       // Añadir mensaje a la lista

@@ -60,7 +60,6 @@ function SoporteContent() {
   const [feedbacks, setFeedbacks] = useState([])
   const [notifications, setNotifications] = useState([])
   const [conversations, setConversations] = useState({})
-  const [selectedConversation, setSelectedConversation] = useState(null)
   const [chatMessages, setChatMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
@@ -92,13 +91,13 @@ function SoporteContent() {
 
   // Bloquear scroll del body cuando hay modales abiertos
   useEffect(() => {
-    if (selectedConversation || selectedQuestionModal || expandedImage) {
+    if (selectedQuestionModal || expandedImage) {
       document.body.style.overflow = 'hidden'
       return () => {
         document.body.style.overflow = 'unset'
       }
     }
-  }, [selectedConversation, selectedQuestionModal, expandedImage])
+  }, [selectedQuestionModal, expandedImage])
 
   // Handle ESC key to close modals
   useEffect(() => {
@@ -110,14 +109,12 @@ function SoporteContent() {
           setExpandedImage(null)
         } else if (selectedQuestionModal) {
           setSelectedQuestionModal(null)
-        } else if (selectedConversation) {
-          setSelectedConversation(null)
         }
       }
     }
     document.addEventListener('keydown', handleEsc)
     return () => document.removeEventListener('keydown', handleEsc)
-  }, [showEmojiPicker, expandedImage, selectedQuestionModal, selectedConversation])
+  }, [showEmojiPicker, expandedImage, selectedQuestionModal])
 
   // Close emoji picker when clicking outside
   useEffect(() => {
@@ -134,9 +131,9 @@ function SoporteContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  // Handle image upload
+  // Handle image upload (legacy - FeedbackModal now handles its own uploads)
   const handleImageUpload = async (file) => {
-    if (!file || !selectedConversation) return
+    if (!file) return
     
     try {
       setUploadingImage(true)
@@ -243,17 +240,16 @@ function SoporteContent() {
   }
 
   // Auto-abrir conversación si viene del parámetro conversation_id
+  // Ahora abre el FeedbackModal nuevo (con lista de chats a la izquierda)
   useEffect(() => {
     const conversationId = searchParams.get('conversation_id')
-    if (conversationId && Object.keys(conversations).length > 0) {
-      const conversation = Object.values(conversations).find(c => c.id === conversationId)
-      if (conversation) {
-        setSelectedConversation(conversation)
-        loadChatMessages(conversation.id)
-        setActiveTab('conversations')
-      }
+    if (conversationId) {
+      // Abrir el FeedbackModal con la conversación pre-seleccionada
+      setInitialConversationId(conversationId)
+      setShowFeedbackModal(true)
+      setActiveTab('conversations')
     }
-  }, [searchParams, conversations])
+  }, [searchParams])
 
   // Auto-abrir tab de impugnaciones y resaltar disputa específica
   useEffect(() => {
@@ -657,7 +653,7 @@ function SoporteContent() {
           user_email: user.email,
           user_name: user.user_metadata?.full_name || 'Usuario',
           message: message.trim(),
-          feedback_id: selectedConversation?.feedback_id,
+          feedback_id: conversationData?.feedback_id,
           created_at: new Date().toISOString()
         })
         console.log('✅ Notificación admin enviada')
@@ -1369,189 +1365,6 @@ function SoporteContent() {
                   </div>
                 )}
 
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de Chat */}
-        {selectedConversation && (
-          <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-hidden"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setSelectedConversation(null)
-              }
-            }}
-          >
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm sm:max-w-lg lg:max-w-2xl h-[90vh] sm:h-[85vh] flex flex-col overflow-hidden">
-              
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 sm:p-6 border-b dark:border-gray-700 bg-gradient-to-r from-blue-500 to-purple-600">
-                <div>
-                  <h3 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    💬 Chat de Soporte
-                  </h3>
-                  <p className="text-xs sm:text-sm text-blue-100 mt-1">
-                    {selectedConversation.status === 'waiting_admin' ? '⏳ Esperando respuesta de nuestro equipo' : 
-                     selectedConversation.status === 'waiting_user' ? '💬 Continúa la conversación' : 
-                     'Chat activo'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSelectedConversation(null)}
-                  className="text-white/80 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Feedback original - ocultar si es conversación iniciada por soporte */}
-              {!feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message?.startsWith('[Conversación iniciada') && (
-                <div className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
-                  <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tu consulta:
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-800 dark:text-gray-200">
-                    {renderMessageWithImages(feedbacks.find(f => f.id === selectedConversation.feedback_id)?.message)}
-                  </div>
-                </div>
-              )}
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gray-25">
-                {chatMessages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.is_admin ? 'justify-start' : 'justify-end'}`}
-                  >
-                    <div className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg ${
-                      message.is_admin 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-green-600 text-white'
-                    }`}>
-                      <div className="text-sm mb-1 font-medium">
-                        {message.is_admin ? '👨‍💼 Equipo Vence' : '👤 Tú'}
-                      </div>
-                      <div className="text-sm">{renderMessageWithImages(message.message)}</div>
-                      <div className="text-xs mt-1 opacity-70">
-                        {new Date(message.created_at).toLocaleString('es-ES', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          day: '2-digit',
-                          month: '2-digit',
-                          timeZone: 'Europe/Madrid'
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input para Usuario */}
-              <div className="p-4 border-t dark:border-gray-700 bg-white dark:bg-gray-800">
-                <form onSubmit={(e) => {
-                  e.preventDefault()
-                  if (newMessage.trim()) {
-                    sendUserMessage(selectedConversation.id, newMessage)
-                  }
-                }} className="space-y-3">
-                  
-                  {/* Textarea con botones */}
-                  <div className="relative">
-                    <textarea
-                      ref={textareaRef}
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Escribe tu mensaje..."
-                      disabled={sendingMessage}
-                      rows="3"
-                      className="w-full p-3 pr-20 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:opacity-50 resize-none"
-                    />
-                    
-                    {/* Action buttons */}
-                    <div className="absolute right-3 top-3 flex gap-2">
-                      {/* Image upload button */}
-                      <label className="cursor-pointer p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              handleImageUpload(file)
-                            }
-                            e.target.value = '' // Reset input
-                          }}
-                          disabled={uploadingImage}
-                        />
-                        {uploadingImage ? (
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
-                        ) : (
-                          <span className="text-lg">🖼️</span>
-                        )}
-                      </label>
-
-                      {/* Emoji button */}
-                      <button
-                        type="button"
-                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                        className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                      >
-                        <span className="text-lg">😊</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Emoji picker */}
-                  {showEmojiPicker && (
-                    <div className="emoji-picker-container bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-                      <div className="grid grid-cols-8 gap-1 text-xl">
-                        {['😊', '😂', '😍', '😢', '😡', '👍', '👎', '❤️', '🎉', '🔥', '💡', '❌', '✅', '⚠️', '🤔', '😴'].map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            onClick={() => insertEmoji(emoji)}
-                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Help text and send button */}
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Usa el botón de imagen para adjuntar imagen si lo deseas
-                    </p>
-                    <button
-                      type="submit"
-                      disabled={sendingMessage || !newMessage.trim()}
-                      className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 focus:ring-4 focus:ring-blue-300 transition-colors font-medium disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {sendingMessage ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          <span>Enviando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                          <span>Enviar</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
               </div>
             </div>
           </div>
