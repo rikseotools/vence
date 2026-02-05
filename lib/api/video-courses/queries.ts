@@ -196,6 +196,8 @@ export async function getCourseBySlug(
 /**
  * Get signed URL for video playback
  * Returns previewOnly=true if user is not premium and course is premium
+ *
+ * Optimized: Single query with JOIN instead of 3 separate queries
  */
 export async function getVideoSignedUrl(
   lessonId: string,
@@ -204,52 +206,43 @@ export async function getVideoSignedUrl(
   try {
     const db = getDb()
 
-    // Get lesson with course info
-    const lessonResult = await db
-      .select({
-        id: videoLessons.id,
-        videoPath: videoLessons.videoPath,
-        previewSeconds: videoLessons.previewSeconds,
-        isPreview: videoLessons.isPreview,
-        courseId: videoLessons.courseId,
-      })
-      .from(videoLessons)
-      .where(and(
-        eq(videoLessons.id, lessonId),
-        eq(videoLessons.isActive, true)
-      ))
-      .limit(1)
+    // Single optimized query: lesson + course + user profile in parallel
+    const [lessonWithCourseResult, profileResult] = await Promise.all([
+      // Get lesson with course info in one query using JOIN
+      db
+        .select({
+          id: videoLessons.id,
+          videoPath: videoLessons.videoPath,
+          previewSeconds: videoLessons.previewSeconds,
+          isPreview: videoLessons.isPreview,
+          courseIsPremium: videoCourses.isPremium,
+        })
+        .from(videoLessons)
+        .innerJoin(videoCourses, eq(videoLessons.courseId, videoCourses.id))
+        .where(and(
+          eq(videoLessons.id, lessonId),
+          eq(videoLessons.isActive, true)
+        ))
+        .limit(1),
+      // Get user premium status
+      db
+        .select({
+          planType: userProfiles.planType,
+        })
+        .from(userProfiles)
+        .where(eq(userProfiles.id, userId))
+        .limit(1)
+    ])
 
-    if (lessonResult.length === 0) {
+    if (lessonWithCourseResult.length === 0) {
       return {
         success: false,
         error: 'Lección no encontrada',
       }
     }
 
-    const lesson = lessonResult[0]
-
-    // Get course premium status
-    let courseIsPremium = true
-    if (lesson.courseId) {
-      const courseResult = await db
-        .select({ isPremium: videoCourses.isPremium })
-        .from(videoCourses)
-        .where(eq(videoCourses.id, lesson.courseId))
-        .limit(1)
-
-      courseIsPremium = courseResult[0]?.isPremium ?? true
-    }
-
-    // Check user premium status
-    const profileResult = await db
-      .select({
-        planType: userProfiles.planType,
-      })
-      .from(userProfiles)
-      .where(eq(userProfiles.id, userId))
-      .limit(1)
-
+    const lesson = lessonWithCourseResult[0]
+    const courseIsPremium = lesson.courseIsPremium ?? true
     const isPremium = profileResult[0]?.planType === 'premium' ||
                       profileResult[0]?.planType === 'trial'
 

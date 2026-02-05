@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -30,6 +30,16 @@ interface VideoCoursePageProps {
   lessons: Lesson[]
 }
 
+interface CachedVideoData {
+  signedUrl: string
+  previewOnly: boolean
+  previewSeconds: number
+  timestamp: number
+}
+
+// Cache duration: 50 minutes (URLs are valid for 1 hour)
+const CACHE_DURATION = 50 * 60 * 1000
+
 export default function VideoCoursePage({ course, lessons }: VideoCoursePageProps) {
   const { user, isPremium, supabase, loading: authLoading } = useAuth() as {
     user: any
@@ -40,17 +50,90 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(lessons[0] || null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true) // Start true while auth loads
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [previewOnly, setPreviewOnly] = useState(false)
   const [previewSeconds, setPreviewSeconds] = useState(600)
   const [showPreviewWarning, setShowPreviewWarning] = useState(false)
   const [progress, setProgress] = useState<Record<string, { currentTime: number; completed: boolean }>>({})
+  const [isTransitioning, setIsTransitioning] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const saveProgressTimeout = useRef<NodeJS.Timeout | null>(null)
+  const urlCacheRef = useRef<Map<string, CachedVideoData>>(new Map())
+  const preloadedVideosRef = useRef<Map<string, HTMLVideoElement>>(new Map())
 
-  // Load video URL when lesson changes
+  // Get next lesson for preloading
+  const getNextLesson = useCallback((currentId: string): Lesson | null => {
+    const currentIndex = lessons.findIndex(l => l.id === currentId)
+    if (currentIndex >= 0 && currentIndex < lessons.length - 1) {
+      return lessons[currentIndex + 1]
+    }
+    return null
+  }, [lessons])
+
+  // Check if cached URL is still valid
+  const getCachedUrl = useCallback((lessonId: string): CachedVideoData | null => {
+    const cached = urlCacheRef.current.get(lessonId)
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      return cached
+    }
+    urlCacheRef.current.delete(lessonId)
+    return null
+  }, [])
+
+  // Fetch video URL (with caching)
+  const fetchVideoUrl = useCallback(async (lessonId: string, token: string): Promise<CachedVideoData | null> => {
+    // Check cache first
+    const cached = getCachedUrl(lessonId)
+    if (cached) {
+      console.log(`✅ [VideoCache] Using cached URL for lesson ${lessonId}`)
+      return cached
+    }
+
+    const response = await fetch('/api/cursos/video-url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ lessonId }),
+    })
+
+    const data = await response.json()
+    if (!data.success) {
+      return null
+    }
+
+    const videoData: CachedVideoData = {
+      signedUrl: data.signedUrl,
+      previewOnly: data.previewOnly || false,
+      previewSeconds: data.previewSeconds || 600,
+      timestamp: Date.now(),
+    }
+
+    // Cache the result
+    urlCacheRef.current.set(lessonId, videoData)
+    return videoData
+  }, [getCachedUrl])
+
+  // Preload next video
+  const preloadVideo = useCallback(async (lesson: Lesson, token: string) => {
+    // Skip if already preloaded
+    if (preloadedVideosRef.current.has(lesson.id)) return
+
+    const videoData = await fetchVideoUrl(lesson.id, token)
+    if (!videoData) return
+
+    // Create hidden video element for preloading
+    const preloadElement = document.createElement('video')
+    preloadElement.preload = 'metadata'
+    preloadElement.src = videoData.signedUrl
+    preloadedVideosRef.current.set(lesson.id, preloadElement)
+    console.log(`✅ [VideoPreload] Preloading video for lesson ${lesson.id}`)
+  }, [fetchVideoUrl])
+
+  // Load video URL when lesson changes (optimized with cache and parallel requests)
   const loadVideo = useCallback(async (lesson: Lesson) => {
     if (!user || !supabase) {
       setError('Inicia sesión para ver los videos')
@@ -64,52 +147,66 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       return
     }
 
-    setIsLoading(true)
     setError(null)
     setShowPreviewWarning(false)
 
+    // Check cache for instant loading
+    const cached = getCachedUrl(lesson.id)
+    if (cached) {
+      // Instant transition with cached URL
+      setIsTransitioning(true)
+      setVideoUrl(cached.signedUrl)
+      setPreviewOnly(cached.previewOnly)
+      setPreviewSeconds(cached.previewSeconds)
+      setTimeout(() => setIsTransitioning(false), 100)
+    } else {
+      setIsLoading(true)
+    }
+
     try {
-      const response = await fetch('/api/cursos/video-url', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ lessonId: lesson.id }),
-      })
+      // Fetch video URL and progress in parallel
+      const [videoData, progressRes] = await Promise.all([
+        cached ? Promise.resolve(cached) : fetchVideoUrl(lesson.id, session.access_token),
+        fetch(`/api/cursos/progress?lessonId=${lesson.id}`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        }).then(res => res.json()).catch(() => ({ success: false }))
+      ])
 
-      const data = await response.json()
-
-      if (!data.success) {
-        setError(data.error || 'Error al cargar el video')
+      if (!videoData) {
+        setError('Error al cargar el video')
         return
       }
 
-      setVideoUrl(data.signedUrl)
-      setPreviewOnly(data.previewOnly || false)
-      setPreviewSeconds(data.previewSeconds || 600)
+      // Update state (only if not already from cache)
+      if (!cached) {
+        setVideoUrl(videoData.signedUrl)
+        setPreviewOnly(videoData.previewOnly)
+        setPreviewSeconds(videoData.previewSeconds)
+      }
 
-      // Load saved progress
-      const progressRes = await fetch(`/api/cursos/progress?lessonId=${lesson.id}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-      })
-      const progressData = await progressRes.json()
-
-      if (progressData.success && progressData.progress) {
+      // Update progress
+      if (progressRes.success && progressRes.progress) {
         setProgress(prev => ({
           ...prev,
           [lesson.id]: {
-            currentTime: progressData.progress.currentTimeSeconds,
-            completed: progressData.progress.completed,
+            currentTime: progressRes.progress.currentTimeSeconds,
+            completed: progressRes.progress.completed,
           }
         }))
+      }
+
+      // Preload next video
+      const nextLesson = getNextLesson(lesson.id)
+      if (nextLesson) {
+        preloadVideo(nextLesson, session.access_token)
       }
     } catch (err) {
       setError('Error de conexión')
     } finally {
       setIsLoading(false)
+      setIsTransitioning(false)
     }
-  }, [user, supabase])
+  }, [user, supabase, getCachedUrl, fetchVideoUrl, getNextLesson, preloadVideo])
 
   // Load video when lesson changes and auth is ready
   useEffect(() => {
@@ -123,6 +220,17 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
       loadVideo(currentLesson)
     }
   }, [currentLesson, loadVideo, authLoading])
+
+  // Cleanup preloaded videos on unmount
+  useEffect(() => {
+    return () => {
+      preloadedVideosRef.current.forEach(video => {
+        video.src = ''
+      })
+      preloadedVideosRef.current.clear()
+      urlCacheRef.current.clear()
+    }
+  }, [])
 
   // Set video time when loaded
   useEffect(() => {
@@ -237,9 +345,21 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
           {/* Video Player */}
           <div className="lg:col-span-2">
             <div className="bg-black rounded-xl overflow-hidden aspect-video relative">
-              {isLoading && (
+              {/* Loading spinner - only show when no video or full loading (not transitioning) */}
+              {isLoading && !videoUrl && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent"></div>
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-3"></div>
+                    <p className="text-gray-400 text-sm">Cargando video...</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Subtle loading indicator when transitioning between videos */}
+              {(isLoading || isTransitioning) && videoUrl && (
+                <div className="absolute top-4 right-4 z-10 bg-black/70 rounded-lg px-3 py-2 flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  <span className="text-white text-sm">Cargando...</span>
                 </div>
               )}
 
@@ -262,14 +382,16 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
                 </div>
               )}
 
-              {videoUrl && !isLoading && !error && (
+              {videoUrl && !error && (
                 <video
                   ref={videoRef}
                   src={videoUrl}
                   controls
-                  className="w-full h-full"
+                  className={`w-full h-full transition-opacity duration-200 ${isTransitioning ? 'opacity-80' : 'opacity-100'}`}
                   onTimeUpdate={handleTimeUpdate}
                   onEnded={handleVideoEnded}
+                  onLoadStart={() => setIsTransitioning(true)}
+                  onCanPlay={() => setIsTransitioning(false)}
                 />
               )}
 
