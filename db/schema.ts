@@ -2946,3 +2946,64 @@ export const userAvatarSettings = pgTable("user_avatar_settings", {
 	pgPolicy("Users can update own avatar settings", { as: "permissive", for: "update", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 	check("user_avatar_settings_mode_check", sql`mode = ANY (ARRAY['manual'::text, 'automatic'::text])`),
 ]);
+
+// ============================================
+// SISTEMA DE CURSOS DE VIDEO
+// Cursos premium con lecciones en video
+// ============================================
+
+export const videoCourses = pgTable("video_courses", {
+	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	slug: text().unique().notNull(),
+	title: text().notNull(),
+	description: text(),
+	thumbnailPath: text("thumbnail_path"),
+	totalLessons: integer("total_lessons").default(0),
+	totalDurationMinutes: integer("total_duration_minutes").default(0),
+	isPremium: boolean("is_premium").default(true),
+	isActive: boolean("is_active").default(true),
+	orderPosition: integer("order_position").default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_video_courses_slug").using("btree", table.slug.asc().nullsLast()),
+	index("idx_video_courses_active").using("btree", table.isActive.asc().nullsLast()).where(sql`is_active = true`),
+	pgPolicy("Anyone can view active video courses", { as: "permissive", for: "select", to: ["public"], using: sql`(is_active = true)` }),
+]);
+
+export const videoLessons = pgTable("video_lessons", {
+	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	courseId: uuid("course_id").references(() => videoCourses.id, { onDelete: "cascade" }),
+	slug: text().notNull(),
+	title: text().notNull(),
+	description: text(),
+	videoPath: text("video_path").notNull(),
+	durationSeconds: integer("duration_seconds").notNull(),
+	orderPosition: integer("order_position").notNull(),
+	isPreview: boolean("is_preview").default(false),
+	previewSeconds: integer("preview_seconds").default(600), // 10 minutes
+	isActive: boolean("is_active").default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	unique("video_lessons_course_id_slug_key").on(table.courseId, table.slug),
+	index("idx_video_lessons_course").using("btree", table.courseId.asc().nullsLast()),
+	index("idx_video_lessons_order").using("btree", table.courseId.asc().nullsLast(), table.orderPosition.asc().nullsLast()),
+	pgPolicy("Anyone can view active video lessons", { as: "permissive", for: "select", to: ["public"], using: sql`(is_active = true)` }),
+]);
+
+export const userVideoProgress = pgTable("user_video_progress", {
+	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+	lessonId: uuid("lesson_id").references(() => videoLessons.id, { onDelete: "cascade" }),
+	currentTimeSeconds: integer("current_time_seconds").default(0),
+	completed: boolean().default(false),
+	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
+	lastWatchedAt: timestamp("last_watched_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	watchCount: integer("watch_count").default(1),
+}, (table) => [
+	unique("user_video_progress_user_lesson_key").on(table.userId, table.lessonId),
+	index("idx_user_video_progress_user").using("btree", table.userId.asc().nullsLast()),
+	index("idx_user_video_progress_lesson").using("btree", table.lessonId.asc().nullsLast()),
+	pgPolicy("Users can view own video progress", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can insert own video progress", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can update own video progress", { as: "permissive", for: "update", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+]);

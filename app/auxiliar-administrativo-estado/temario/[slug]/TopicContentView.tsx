@@ -3,10 +3,36 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import ReactMarkdown from 'react-markdown'
 import type { TopicContent, LawWithArticles, Article } from '@/lib/api/temario/schemas'
 import { useTopicUnlock } from '@/hooks/useTopicUnlock'
 import { useAuth } from '@/contexts/AuthContext'
 import { getCanonicalSlug } from '@/lib/lawMappingUtils'
+import VideoCourseBanner from '@/components/VideoCourseBanner'
+
+// Mapping de temas a cursos de video
+const topicVideoCourses: Record<number, {
+  slug: string
+  title: string
+  totalLessons: number
+  totalDurationMinutes: number
+  description: string
+}> = {
+  108: {
+    slug: 'word-365',
+    title: 'Curso de Word 365',
+    totalLessons: 6,
+    totalDurationMinutes: 365,
+    description: '74 lecciones en video: desde lo básico hasta macros, ChatGPT y colaboración online.',
+  },
+  109: {
+    slug: 'excel-365',
+    title: 'Curso de Excel 365',
+    totalLessons: 7,
+    totalDurationMinutes: 423,
+    description: '79 lecciones en video: fórmulas, tablas dinámicas, gráficos, macros y más.',
+  },
+}
 
 interface TopicContentViewProps {
   content: TopicContent
@@ -242,6 +268,17 @@ export default function TopicContentView({ content }: TopicContentViewProps) {
             </p>
           </div>
         </header>
+
+        {/* Video course banner for topics 108 (Word) and 109 (Excel) */}
+        {topicVideoCourses[content.topicNumber] && (
+          <VideoCourseBanner
+            courseSlug={topicVideoCourses[content.topicNumber].slug}
+            courseTitle={topicVideoCourses[content.topicNumber].title}
+            totalLessons={topicVideoCourses[content.topicNumber].totalLessons}
+            totalDurationMinutes={topicVideoCourses[content.topicNumber].totalDurationMinutes}
+            description={topicVideoCourses[content.topicNumber].description}
+          />
+        )}
 
         {/* Laws and articles */}
         <div className="space-y-6">
@@ -622,9 +659,9 @@ function ArticleCard({ article, weakInfo, lawShortName, lawName }: ArticleCardPr
       </div>
 
       {/* Article content */}
-      <div className="px-4 py-4 article-content text-gray-700 dark:text-gray-300 leading-relaxed">
+      <div className="px-4 py-4 article-content text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm dark:prose-invert max-w-none prose-headings:text-gray-800 dark:prose-headings:text-gray-200 prose-headings:font-semibold prose-h2:text-base prose-h2:mt-4 prose-h2:mb-2 prose-h3:text-sm prose-strong:text-gray-900 dark:prose-strong:text-white prose-ul:my-2 prose-li:my-0.5">
         {article.content ? (
-          formatContent(article.content)
+          <ReactMarkdown>{article.content}</ReactMarkdown>
         ) : (
           <p className="text-gray-400 dark:text-gray-500 italic">
             Contenido no disponible
