@@ -31,15 +31,16 @@ interface VideoCoursePageProps {
 }
 
 export default function VideoCoursePage({ course, lessons }: VideoCoursePageProps) {
-  const { user, isPremium, session } = useAuth() as {
+  const { user, isPremium, supabase, loading: authLoading } = useAuth() as {
     user: any
     isPremium: boolean
-    session: any
+    supabase: any
+    loading: boolean
   }
 
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(lessons[0] || null)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true) // Start true while auth loads
   const [error, setError] = useState<string | null>(null)
   const [previewOnly, setPreviewOnly] = useState(false)
   const [previewSeconds, setPreviewSeconds] = useState(600)
@@ -51,7 +52,14 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
 
   // Load video URL when lesson changes
   const loadVideo = useCallback(async (lesson: Lesson) => {
-    if (!user || !session?.access_token) {
+    if (!user || !supabase) {
+      setError('Inicia sesión para ver los videos')
+      return
+    }
+
+    // Get current session from Supabase
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
       setError('Inicia sesión para ver los videos')
       return
     }
@@ -101,14 +109,20 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
     } finally {
       setIsLoading(false)
     }
-  }, [user, session])
+  }, [user, supabase])
 
-  // Load video when lesson changes
+  // Load video when lesson changes and auth is ready
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      setIsLoading(true)
+      return
+    }
+
     if (currentLesson) {
       loadVideo(currentLesson)
     }
-  }, [currentLesson, loadVideo])
+  }, [currentLesson, loadVideo, authLoading])
 
   // Set video time when loaded
   useEffect(() => {
@@ -122,6 +136,9 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
 
   // Save progress periodically
   const saveProgress = useCallback(async (lessonId: string, currentTime: number, completed: boolean = false) => {
+    if (!supabase) return
+
+    const { data: { session } } = await supabase.auth.getSession()
     if (!session?.access_token) return
 
     try {
@@ -140,7 +157,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
     } catch (err) {
       console.error('Error saving progress:', err)
     }
-  }, [session])
+  }, [supabase])
 
   // Handle time update
   const handleTimeUpdate = () => {
