@@ -107,42 +107,55 @@ async function getTopicContentBaseInternal(
   // Crear mapa de leyes para lookup rápido
   const lawsMap = new Map(lawsResult.map(l => [l.id, l]))
 
-  // 4. Obtener TODOS los artículos de todas las leyes en UNA sola query
-  // Construir array de todas las combinaciones law_id + article_numbers
-  const allArticleNumbers: string[] = []
+  // 4. Obtener artículos por ley - queries separadas para evitar timeout
+  // con muchos parámetros IN (problema cuando hay 4+ leyes con 90+ artículos)
   const scopeByLaw = new Map<string, string[]>()
 
   for (const scope of validScopes) {
     const existing = scopeByLaw.get(scope.lawId!) || []
     scopeByLaw.set(scope.lawId!, [...existing, ...scope.articleNumbers!])
-    allArticleNumbers.push(...scope.articleNumbers!)
   }
 
-  // Query única para todos los artículos con JOIN implícito por lawId
-  const articlesResult = await db
-    .select({
-      id: articles.id,
-      lawId: articles.lawId,
-      articleNumber: articles.articleNumber,
-      title: articles.title,
-      content: articles.content,
-      titleNumber: articles.titleNumber,
-      chapterNumber: articles.chapterNumber,
-      section: articles.section,
-    })
-    .from(articles)
-    .where(
-      and(
-        inArray(articles.lawId, lawIds),
-        inArray(articles.articleNumber, [...new Set(allArticleNumbers)])
-      )
-    )
+  // Query separada por cada ley - usa mejor el índice (law_id, article_number)
+  const filteredArticles: {
+    id: string
+    lawId: string | null
+    articleNumber: string
+    title: string | null
+    content: string | null
+    titleNumber: string | null
+    chapterNumber: string | null
+    section: string | null
+  }[] = []
 
-  // Filtrar artículos que realmente pertenecen al scope de su ley
-  const filteredArticles = articlesResult.filter(a => {
-    const scopeArticles = scopeByLaw.get(a.lawId!)
-    return scopeArticles?.includes(a.articleNumber)
+  // Ejecutar queries en paralelo para cada ley
+  const articlePromises = Array.from(scopeByLaw.entries()).map(async ([lawId, articleNums]) => {
+    const uniqueArticleNums = [...new Set(articleNums)]
+    const result = await db
+      .select({
+        id: articles.id,
+        lawId: articles.lawId,
+        articleNumber: articles.articleNumber,
+        title: articles.title,
+        content: articles.content,
+        titleNumber: articles.titleNumber,
+        chapterNumber: articles.chapterNumber,
+        section: articles.section,
+      })
+      .from(articles)
+      .where(
+        and(
+          eq(articles.lawId, lawId),
+          inArray(articles.articleNumber, uniqueArticleNums)
+        )
+      )
+    return result
   })
+
+  const articlesResults = await Promise.all(articlePromises)
+  for (const result of articlesResults) {
+    filteredArticles.push(...result)
+  }
 
   // 5. Obtener conteos de preguntas oficiales en UNA sola query
   const allArticleIds = filteredArticles.map(a => a.id)
