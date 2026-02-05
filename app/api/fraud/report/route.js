@@ -117,10 +117,20 @@ export async function POST(request) {
       .single()
 
     if (insertError) {
-      console.error('Error insertando alerta de fraude:', insertError)
+      // Log detallado: el objeto error de Supabase puede estar vacío
+      console.error('Error insertando alerta de fraude:', {
+        message: insertError.message || 'Unknown error',
+        code: insertError.code,
+        details: insertError.details,
+        hint: insertError.hint,
+        // Incluir status del response si el error está vacío
+        status: insertError.status || 'N/A'
+      })
+      // Graceful degradation: no romper la experiencia del usuario
+      // El sistema de fraude es secundario, no crítico
       return NextResponse.json(
-        { error: 'Error guardando alerta' },
-        { status: 500 }
+        { success: false, message: 'Alerta no guardada (sistema en mantenimiento)' },
+        { status: 200 } // 200 para no causar errores en el cliente
       )
     }
 
