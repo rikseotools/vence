@@ -724,20 +724,26 @@ export default function AdminFeedbackPage() {
       console.log(`✅ Perfiles cargados: ${profiles?.length || 0}/${userIds.length}`)
       console.log('📝 IDs de perfiles obtenidos:', profiles?.map(p => p.id) || [])
 
-      // Cargar refunds/cancelaciones para marcar usuarios que pidieron devolución
-      const { data: refunds } = await supabaseServiceRole
+      // Cargar refunds/cancelaciones para marcar usuarios
+      const { data: cancellations } = await supabaseServiceRole
         .from('cancellation_feedback')
         .select('user_id, cancellation_type')
         .in('user_id', userIds)
-        .in('cancellation_type', ['manual_refund', 'self_service']) // Solo refunds, no cancelaciones normales
+        .in('cancellation_type', ['manual_refund', 'self_service'])
 
-      // Crear Set de user_ids con refunds
-      const usersWithRefunds = new Set()
-      if (refunds) {
-        refunds.forEach(refund => {
-          usersWithRefunds.add(refund.user_id)
+      // Crear Map de user_ids con tipo de cancelación (refund tiene prioridad sobre cancelled)
+      const userCancellationType = new Map()
+      if (cancellations) {
+        cancellations.forEach(c => {
+          const current = userCancellationType.get(c.user_id)
+          // manual_refund tiene prioridad sobre self_service
+          if (c.cancellation_type === 'manual_refund' || current !== 'refund') {
+            userCancellationType.set(c.user_id, c.cancellation_type === 'manual_refund' ? 'refund' : 'cancelled')
+          }
         })
-        console.log(`🔴 Usuarios con refunds: ${usersWithRefunds.size}`)
+        const refunds = [...userCancellationType.values()].filter(t => t === 'refund').length
+        const cancelled = [...userCancellationType.values()].filter(t => t === 'cancelled').length
+        console.log(`🔴 Usuarios con devolución: ${refunds}, 🟠 Usuarios que cancelaron: ${cancelled}`)
       }
 
       // Cargar última sesión de cada usuario para obtener info de dispositivo
@@ -801,10 +807,11 @@ export default function AdminFeedbackPage() {
             browserName: lastSession?.browser_name,
             operatingSystem: lastSession?.operating_system,
             deviceModel: lastSession?.device_model,
-            hasRefund: usersWithRefunds.has(profile.id) // Marcar si pidió devolución
+            cancellationType: userCancellationType.get(profile.id) || null // 'refund', 'cancelled', o null
           }
           profilesMap.set(profile.id, profileWithDevice)
-          console.log(`📝 Perfil cargado: ${profile.full_name || profile.email || profile.id}${usersWithRefunds.has(profile.id) ? ' 🔴' : ''}`)
+          const cancelIcon = userCancellationType.get(profile.id) === 'refund' ? ' 🔴' : userCancellationType.get(profile.id) === 'cancelled' ? ' 🟠' : ''
+          console.log(`📝 Perfil cargado: ${profile.full_name || profile.email || profile.id}${cancelIcon}`)
         })
 
         // Actualizar cache global
@@ -817,7 +824,7 @@ export default function AdminFeedbackPage() {
               browserName: lastSession?.browser_name,
               operatingSystem: lastSession?.operating_system,
               deviceModel: lastSession?.device_model,
-              hasRefund: usersWithRefunds.has(profile.id)
+              cancellationType: userCancellationType.get(profile.id) || null
             })
           })
           return newCache
@@ -865,7 +872,7 @@ export default function AdminFeedbackPage() {
           targetOposicion: profile?.target_oposicion,
           isActiveStudent: profile?.is_active_student,
           ciudad: profile?.ciudad,
-          hasRefund: profile?.hasRefund || false, // Usuario que pidió devolución
+          cancellationType: profile?.cancellationType || null, // 'refund', 'cancelled', o null
           // Info de dispositivo
           browserName: profile?.browserName,
           operatingSystem: profile?.operatingSystem,
@@ -912,7 +919,8 @@ export default function AdminFeedbackPage() {
 
       // Actualizar última actividad (considerar también la conversación)
       const feedbackDate = new Date(feedback.updated_at || feedback.created_at)
-      const conversationDate = conversation?.updated_at ? new Date(conversation.updated_at) : null
+      // Usar last_message_at (fecha real del último mensaje) en lugar de updated_at
+      const conversationDate = conversation?.last_message_at ? new Date(conversation.last_message_at) : null
       const mostRecentDate = conversationDate && conversationDate > feedbackDate ? conversationDate : feedbackDate
       const lastDate = new Date(userData.lastActivity)
       if (mostRecentDate > lastDate) {
@@ -1838,8 +1846,11 @@ export default function AdminFeedbackPage() {
                             {(userData.planType === 'premium' || userData.planType === 'pro') && (
                               <span className="text-yellow-500" title="Usuario Premium">👑</span>
                             )}
-                            {userData.hasRefund && (
+                            {userData.cancellationType === 'refund' && (
                               <span title="Usuario con devolución procesada">🔴</span>
+                            )}
+                            {userData.cancellationType === 'cancelled' && (
+                              <span title="Usuario que canceló renovación">🟠</span>
                             )}
                           </div>
                           {userData.name && userData.email && (
@@ -1918,9 +1929,14 @@ export default function AdminFeedbackPage() {
                         {selectedUser.pendingConversations} por responder
                       </span>
                     )}
-                    {selectedUser.hasRefund && (
+                    {selectedUser.cancellationType === 'refund' && (
                       <span className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs px-2 py-0.5 rounded font-medium flex items-center gap-1">
                         🔴 Devolución
+                      </span>
+                    )}
+                    {selectedUser.cancellationType === 'cancelled' && (
+                      <span className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 text-xs px-2 py-0.5 rounded font-medium flex items-center gap-1">
+                        🟠 Canceló
                       </span>
                     )}
                   </div>
@@ -1975,8 +1991,10 @@ export default function AdminFeedbackPage() {
                     const isPendingA = convA?.status === 'waiting_admin' || (a.status === 'pending' && !convA)
                     const isPendingB = convB?.status === 'waiting_admin' || (b.status === 'pending' && !convB)
                     if (isPendingA !== isPendingB) return isPendingA ? -1 : 1
-                    // Luego por fecha más reciente
-                    return new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+                    // Luego por fecha del último mensaje (o fecha de creación si no hay conversación)
+                    const dateA = convA?.last_message_at || a.updated_at || a.created_at
+                    const dateB = convB?.last_message_at || b.updated_at || b.created_at
+                    return new Date(dateB) - new Date(dateA)
                   })
                   .map((feedback) => {
                     const conversation = conversations[feedback.id]
