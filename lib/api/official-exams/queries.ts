@@ -88,6 +88,29 @@ function getExamPart(examSource: string | null): 'primera' | 'segunda' | null {
 }
 
 /**
+ * Normalize difficulty value to valid enum
+ * Handles legacy numeric strings ('1', '2', '3', '4') and ensures valid output
+ */
+function normalizeDifficulty(difficulty: string | null | undefined): 'easy' | 'medium' | 'hard' | 'extreme' {
+  if (!difficulty) return 'medium'
+
+  const validValues = ['easy', 'medium', 'hard', 'extreme']
+  if (validValues.includes(difficulty)) {
+    return difficulty as 'easy' | 'medium' | 'hard' | 'extreme'
+  }
+
+  // Handle legacy numeric values
+  const numericMap: Record<string, 'easy' | 'medium' | 'hard' | 'extreme'> = {
+    '1': 'easy',
+    '2': 'medium',
+    '3': 'hard',
+    '4': 'extreme',
+  }
+
+  return numericMap[difficulty] || 'medium'
+}
+
+/**
  * Get all questions for a specific official exam
  * Combines questions from both `questions` and `psychometric_questions` tables
  * SECURITY: Does NOT return correct_option - validation done via separate API
@@ -350,7 +373,7 @@ export async function saveOfficialExamResults(
         timeSpentSeconds: 0,
         articleNumber: isLegislative ? (result.articleNumber ?? null) : null,
         lawName: isLegislative ? (result.lawName ?? null) : null,
-        difficulty: result.difficulty,
+        difficulty: normalizeDifficulty(result.difficulty),
         questionType: result.questionType,
       }
     })
@@ -560,7 +583,7 @@ export async function initOfficialExam(
         isCorrect: false,
         articleNumber: q.articleNumber ?? null,
         lawName: q.lawName ?? null,
-        difficulty: q.difficulty ?? null,
+        difficulty: normalizeDifficulty(q.difficulty),
         questionType: q.questionType,
         timeSpentSeconds: 0,
       }
