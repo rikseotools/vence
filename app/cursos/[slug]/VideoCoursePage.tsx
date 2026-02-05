@@ -439,7 +439,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                       <Link
-                        href="/planes"
+                        href="/premium"
                         className="px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-600 hover:to-orange-600"
                       >
                         Ver planes Premium
@@ -571,7 +571,7 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
                   Con Premium tienes acceso ilimitado a todos los videos y guardamos tu progreso.
                 </p>
                 <Link
-                  href="/planes"
+                  href="/premium"
                   className="block w-full text-center py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-600 hover:to-orange-600"
                 >
                   Ver planes
