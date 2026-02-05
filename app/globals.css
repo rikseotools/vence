@@ -106,3 +106,20 @@ body {
     display: none;
   }
 }
+
+/* Video player protection - hide download controls */
+video::-webkit-media-controls-download-button,
+video::-webkit-media-controls-enclosure > button[aria-label*="download" i],
+video::-internal-media-controls-download-button {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+video::-webkit-media-controls-panel {
+  -webkit-user-select: none;
+  user-select: none;
+}

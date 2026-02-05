@@ -364,7 +364,10 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Video Player */}
           <div className="lg:col-span-2">
-            <div className="bg-black rounded-xl overflow-hidden aspect-video relative">
+            <div
+              className="bg-black rounded-xl overflow-hidden aspect-video relative select-none"
+              onContextMenu={(e) => e.preventDefault()}
+            >
               {/* Loading spinner - only show when no video or full loading (not transitioning) */}
               {isLoading && !videoUrl && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -407,11 +410,15 @@ export default function VideoCoursePage({ course, lessons }: VideoCoursePageProp
                   ref={videoRef}
                   src={videoUrl}
                   controls
+                  controlsList="nodownload noplaybackrate"
+                  disablePictureInPicture
+                  playsInline
                   className={`w-full h-full transition-opacity duration-200 ${isTransitioning ? 'opacity-80' : 'opacity-100'}`}
                   onTimeUpdate={handleTimeUpdate}
                   onEnded={handleVideoEnded}
                   onLoadStart={() => setIsTransitioning(true)}
                   onCanPlay={() => setIsTransitioning(false)}
+                  onContextMenu={(e) => e.preventDefault()}
                 />
               )}
 
