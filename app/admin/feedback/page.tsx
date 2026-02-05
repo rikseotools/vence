@@ -1,8 +1,146 @@
-// app/admin/feedback/page.js - Panel de administración de soporte
+// app/admin/feedback/page.tsx - Panel de administración de soporte
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, ReactNode, MouseEvent, KeyboardEvent, ChangeEvent } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
+
+// ============================================
+// TIPOS
+// ============================================
+
+// Tipo para el usuario de auth
+interface AuthUser {
+  id: string
+  email?: string
+  [key: string]: unknown
+}
+
+// Tipo para lo que devuelve useAuth
+interface AuthContext {
+  user: AuthUser | null
+  supabase: SupabaseClient
+  loading?: boolean
+  [key: string]: unknown
+}
+
+type FeedbackType = 'bug' | 'suggestion' | 'content' | 'design' | 'praise' | 'other'
+type FeedbackStatus = 'pending' | 'in_review' | 'in_progress' | 'resolved' | 'dismissed'
+type ConversationStatus = 'waiting_admin' | 'waiting_user' | 'closed' | 'resolved' | 'dismissed'
+type FilterType = 'all' | 'pending' | 'resolved' | 'dismissed'
+
+interface UserProfile {
+  id: string
+  email: string
+  full_name?: string
+  nickname?: string
+  plan_type?: string
+  target_oposicion?: string
+  registration_date?: string
+  created_at?: string
+  browserName?: string
+  operatingSystem?: string
+  deviceModel?: string
+  ciudad?: string
+  cancellationType?: string | null
+  is_active_student?: boolean
+}
+
+interface FeedbackMessage {
+  id: string
+  conversation_id: string
+  sender_id: string
+  is_admin: boolean
+  message: string
+  created_at: string
+  read_at?: string
+  sender?: {
+    full_name?: string
+    email?: string
+  } | Array<{
+    full_name?: string
+    email?: string
+  }>
+}
+
+interface FeedbackConversation {
+  id: string
+  feedback_id: string
+  user_id: string
+  status: ConversationStatus
+  last_message_at: string
+  created_at: string
+  updated_at?: string
+  closed_at?: string
+  admin_user_id?: string
+  feedback_messages?: FeedbackMessage[]
+  feedback?: Feedback
+}
+
+interface Feedback {
+  id: string
+  user_id?: string
+  email?: string
+  type: FeedbackType
+  message: string
+  url?: string
+  user_agent?: string
+  viewport?: string
+  referrer?: string
+  screenshot_url?: string
+  status: FeedbackStatus
+  priority?: string
+  admin_response?: string
+  admin_user_id?: string
+  wants_response?: boolean
+  created_at: string
+  updated_at?: string
+  resolved_at?: string
+  question_id?: string
+  user_profiles?: UserProfile
+}
+
+interface UserWithConversations {
+  id: string
+  odeName: string
+  key: string
+  email: string | null
+  name: string | null
+  planType: string
+  registrationDate?: string
+  targetOposicion?: string
+  isActiveStudent?: boolean
+  feedbacks: Feedback[]
+  totalConversations: number
+  pendingConversations: number
+  lastActivity: string
+  cancellationType?: string | null
+  ciudad?: string | null
+  browserName?: string | null
+  operatingSystem?: string | null
+  deviceModel?: string | null
+}
+
+interface Stats {
+  total: number
+  pending: number
+  resolved: number
+  dismissed: number
+}
+
+interface TypeConfig {
+  label: string
+  color: string
+}
+
+interface UploadedImage {
+  id: string
+  url: string
+  path: string
+}
+
+// ============================================
+// CONSTANTES
+// ============================================
 
 // Emoticonos populares para el chat admin
 const EMOJIS = [
@@ -28,8 +166,15 @@ const STATUS_CONFIG = {
   'dismissed': { label: '❌ Descartado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' }
 }
 
+// Helper para obtener sender (puede ser objeto o array)
+const getSenderInfo = (sender: FeedbackMessage['sender']): { full_name?: string; email?: string } | undefined => {
+  if (!sender) return undefined
+  if (Array.isArray(sender)) return sender[0]
+  return sender
+}
+
 // Función para convertir URLs en enlaces clickeables
-const linkifyText = (text, isAdminMessage = false) => {
+const linkifyText = (text: string | null | undefined, isAdminMessage = false): ReactNode => {
   if (!text) return null
 
   // Regex para detectar URLs (http://, https://, www.)
@@ -76,51 +221,51 @@ const linkifyText = (text, isAdminMessage = false) => {
 }
 
 export default function AdminFeedbackPage() {
-  const { user, supabase } = useAuth()
-  const [feedbacks, setFeedbacks] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({
+  const { user, supabase } = useAuth() as AuthContext
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [stats, setStats] = useState<Stats>({
     total: 0,
     pending: 0,
     resolved: 0,
     dismissed: 0
   })
-  const [selectedFeedback, setSelectedFeedback] = useState(null)
-  const [adminResponse, setAdminResponse] = useState('')
-  const [updatingStatus, setUpdatingStatus] = useState(false)
-  const [conversations, setConversations] = useState({})
-  const [selectedConversation, setSelectedConversation] = useState(null)
-  const [chatMessages, setChatMessages] = useState([])
-  const [newUserMessages, setNewUserMessages] = useState(new Set()) // IDs de conversaciones con mensajes nuevos
-  const [activeFilter, setActiveFilter] = useState('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
-  const [selectedUser, setSelectedUser] = useState(null) // Usuario seleccionado para ver sus conversaciones
-  const [usersWithConversations, setUsersWithConversations] = useState([]) // Lista de usuarios agrupados
-  const [inlineChatMessages, setInlineChatMessages] = useState([]) // Mensajes del chat inline
-  const [inlineNewMessage, setInlineNewMessage] = useState('') // Mensaje nuevo para el chat inline
-  const [sendingInlineMessage, setSendingInlineMessage] = useState(false) // Enviando mensaje inline
-  const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState(false) // Flag para saber si ya se inicializó
-  const [expandedImage, setExpandedImage] = useState(null) // Estado para modal de imagen expandida
-  const [userProfilesCache, setUserProfilesCache] = useState(new Map()) // Cache de perfiles de usuario
-  
+  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null)
+  const [adminResponse, setAdminResponse] = useState<string>('')
+  const [updatingStatus, setUpdatingStatus] = useState<boolean>(false)
+  const [conversations, setConversations] = useState<Record<string, FeedbackConversation>>({})
+  const [selectedConversation, setSelectedConversation] = useState<FeedbackConversation | null>(null)
+  const [chatMessages, setChatMessages] = useState<FeedbackMessage[]>([])
+  const [newUserMessages, setNewUserMessages] = useState<Set<string>>(new Set()) // IDs de conversaciones con mensajes nuevos
+  const [activeFilter, setActiveFilter] = useState<FilterType>('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
+  const [selectedUser, setSelectedUser] = useState<UserWithConversations | null>(null) // Usuario seleccionado para ver sus conversaciones
+  const [usersWithConversations, setUsersWithConversations] = useState<UserWithConversations[]>([]) // Lista de usuarios agrupados
+  const [inlineChatMessages, setInlineChatMessages] = useState<FeedbackMessage[]>([]) // Mensajes del chat inline
+  const [inlineNewMessage, setInlineNewMessage] = useState<string>('') // Mensaje nuevo para el chat inline
+  const [sendingInlineMessage, setSendingInlineMessage] = useState<boolean>(false) // Enviando mensaje inline
+  const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState<boolean>(false) // Flag para saber si ya se inicializó
+  const [expandedImage, setExpandedImage] = useState<string | null>(null) // Estado para modal de imagen expandida
+  const [userProfilesCache, setUserProfilesCache] = useState<Map<string, UserProfile>>(new Map()) // Cache de perfiles de usuario
+
   // Estados para emojis e imágenes en admin
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [showInlineEmojiPicker, setShowInlineEmojiPicker] = useState(false)
-  const [uploadedImages, setUploadedImages] = useState([])
-  const [uploadingImage, setUploadingImage] = useState(false)
-  const messagesEndRef = useRef(null)
-  const chatTextareaRef = useRef(null)
-  const inlineTextareaRef = useRef(null)
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
+  const [showInlineEmojiPicker, setShowInlineEmojiPicker] = useState<boolean>(false)
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([])
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false)
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const chatTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const inlineTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Estado para otras conversaciones del mismo usuario
-  const [userOtherConversations, setUserOtherConversations] = useState([])
+  const [userOtherConversations, setUserOtherConversations] = useState<FeedbackConversation[]>([])
 
   // Estados para modal de nueva conversación iniciada por admin
-  const [showNewConversationModal, setShowNewConversationModal] = useState(false)
-  const [newConvEmail, setNewConvEmail] = useState('')
-  const [newConvMessage, setNewConvMessage] = useState('')
-  const [newConvUser, setNewConvUser] = useState(null)
-  const [newConvSearching, setNewConvSearching] = useState(false)
-  const [newConvCreating, setNewConvCreating] = useState(false)
+  const [showNewConversationModal, setShowNewConversationModal] = useState<boolean>(false)
+  const [newConvEmail, setNewConvEmail] = useState<string>('')
+  const [newConvMessage, setNewConvMessage] = useState<string>('')
+  const [newConvUser, setNewConvUser] = useState<UserProfile | null>(null)
+  const [newConvSearching, setNewConvSearching] = useState<boolean>(false)
+  const [newConvCreating, setNewConvCreating] = useState<boolean>(false)
 
   // Efecto para cerrar modal de imagen con ESC
   useEffect(() => {
@@ -436,6 +581,29 @@ export default function AdminFeedbackPage() {
           .eq('id', selectedFeedback.id)
       }
 
+      // Enviar email de notificación al usuario
+      if (selectedFeedback.user_id) {
+        try {
+          const emailResponse = await fetch('/api/send-support-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: selectedFeedback.user_id,
+              adminMessage: inlineNewMessage.trim(),
+              conversationId: conversation.id
+            })
+          })
+          const emailResult = await emailResponse.json()
+          if (emailResult.sent) {
+            console.log('📧 Email de soporte enviado')
+          } else {
+            console.log('📧 Email no enviado:', emailResult.reason)
+          }
+        } catch (emailError) {
+          console.error('⚠️ Error enviando email:', emailError)
+        }
+      }
+
       // Añadir mensaje a la lista
       setInlineChatMessages(prev => [...prev, newMsg])
       setInlineNewMessage('')
@@ -630,10 +798,10 @@ export default function AdminFeedbackPage() {
         }
       } else {
         if (waitingConversations && waitingConversations.length > 0) {
-          const unviewedIds = waitingConversations.map(conv => conv.id)
+          const unviewedIds: string[] = waitingConversations.map((conv: { id: string }) => conv.id)
           console.log(`🔔 Conversaciones no vistas esperando admin: ${unviewedIds.length}`)
-          
-          const newSet = new Set(unviewedIds)
+
+          const newSet = new Set<string>(unviewedIds)
           setNewUserMessages(newSet)
         } else {
           // No hay conversaciones esperando, limpiar notificaciones
@@ -901,7 +1069,7 @@ export default function AdminFeedbackPage() {
           // Conversación vacía = necesita atención del admin
           isPendingForAdmin = true
         } else {
-          const sorted = [...messages].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          const sorted = [...messages].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           const lastMsg = sorted[0]
           // Si el último mensaje NO es del admin, necesita respuesta
           if (lastMsg && lastMsg.is_admin === false) {
@@ -936,7 +1104,7 @@ export default function AdminFeedbackPage() {
           return b.pendingConversations - a.pendingConversations
         }
         // Luego por última actividad
-        return new Date(b.lastActivity) - new Date(a.lastActivity)
+        return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
       })
   }
 
@@ -1210,22 +1378,28 @@ export default function AdminFeedbackPage() {
     }
   }
 
-  const updateFeedbackStatus = async (feedbackId, newStatus, response = null) => {
+  const updateFeedbackStatus = async (feedbackId: string, newStatus: FeedbackStatus, response: string | null = null) => {
     try {
       setUpdatingStatus(true)
-      
-      const updateData = {
+
+      const updateData: {
+        status: FeedbackStatus
+        updated_at: string
+        admin_response?: string
+        admin_user_id?: string
+        resolved_at?: string
+      } = {
         status: newStatus,
         updated_at: new Date().toISOString()
       }
-      
+
       if (response) {
         // La respuesta ya incluye las URLs de imagen directamente en el texto
         updateData.admin_response = response
         // Nota: attachments se incluyen en el texto de la respuesta, no como columna separada
-        updateData.admin_user_id = user.id
+        updateData.admin_user_id = user?.id
       }
-      
+
       if (newStatus === 'resolved' || newStatus === 'dismissed') {
         updateData.resolved_at = new Date().toISOString()
       }
@@ -1367,14 +1541,15 @@ export default function AdminFeedbackPage() {
                 className="max-w-48 max-h-36 rounded-lg border-2 border-blue-400 dark:border-blue-500 hover:opacity-80 hover:border-blue-600 transition-all object-cover shadow-lg pointer-events-none"
                 onError={(e) => {
                   console.error('❌ [DEBUG] Error cargando imagen:', part)
-                  e.target.style.display = 'none'
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
                   // Mostrar link si la imagen no carga
                   const link = document.createElement('a')
                   link.href = part
                   link.target = '_blank'
                   link.className = 'text-blue-500 hover:underline text-sm font-medium'
                   link.textContent = '🖼️ Ver imagen (enlace directo)'
-                  e.target.parentNode.appendChild(link)
+                  target.parentNode?.appendChild(link)
                 }}
                 onLoad={() => {
                   console.log('✅ [DEBUG] Imagen cargada exitosamente:', part)
@@ -1624,7 +1799,7 @@ export default function AdminFeedbackPage() {
   }
 
   // Función para eliminar imagen subida
-  const removeImage = async (imageId, imagePath) => {
+  const removeImage = async (imageId: string, imagePath: string) => {
     try {
       console.log('🗑️ Eliminando imagen:', imagePath)
       
@@ -1813,7 +1988,7 @@ export default function AdminFeedbackPage() {
                           if (conv && conv.status !== 'closed') {
                             const messages = conv.feedback_messages || []
                             if (messages.length > 0) {
-                              const sorted = [...messages].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                              const sorted = [...messages].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                               return sorted[0]?.is_admin === false
                             }
                           }
@@ -1994,7 +2169,7 @@ export default function AdminFeedbackPage() {
                     // Luego por fecha del último mensaje (o fecha de creación si no hay conversación)
                     const dateA = convA?.last_message_at || a.updated_at || a.created_at
                     const dateB = convB?.last_message_at || b.updated_at || b.created_at
-                    return new Date(dateB) - new Date(dateA)
+                    return new Date(dateB).getTime() - new Date(dateA).getTime()
                   })
                   .map((feedback) => {
                     const conversation = conversations[feedback.id]
@@ -2603,7 +2778,7 @@ export default function AdminFeedbackPage() {
                         : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600'
                     }`}>
                       <div className="text-xs sm:text-sm mb-1 font-medium">
-                        {message.is_admin ? '👨‍💼 Tú (Admin)' : `👤 ${message.sender?.full_name || message.sender?.email || 'Usuario'}`}
+                        {message.is_admin ? '👨‍💼 Tú (Admin)' : `👤 ${getSenderInfo(message.sender)?.full_name || getSenderInfo(message.sender)?.email || 'Usuario'}`}
                       </div>
                       <div className="text-xs sm:text-sm">
                         {renderMessageWithImages(message.message)}
@@ -2641,11 +2816,13 @@ export default function AdminFeedbackPage() {
 
                 <form onSubmit={(e) => {
                   e.preventDefault()
-                  const message = e.target.message.value.trim()
-                  if (message) {
+                  const form = e.target as HTMLFormElement
+                  const messageInput = form.elements.namedItem('message') as HTMLTextAreaElement
+                  const message = messageInput.value.trim()
+                  if (message && selectedConversation) {
                     // El mensaje ya incluye las URLs de imagen directamente
                     sendAdminMessage(selectedConversation.id, message)
-                    e.target.message.value = ''
+                    messageInput.value = ''
                     setShowEmojiPicker(false)
                   }
                 }}>
@@ -2699,16 +2876,18 @@ export default function AdminFeedbackPage() {
                             // Enviar con Ctrl/Cmd + Enter
                             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                               e.preventDefault()
-                              e.target.form.requestSubmit()
+                              const target = e.target as HTMLTextAreaElement
+                              target.form?.requestSubmit()
                             }
                           }}
                           onInput={(e) => {
                             // Auto-resize textarea
-                            e.target.style.height = 'auto'
-                            const scrollHeight = e.target.scrollHeight
+                            const target = e.target as HTMLTextAreaElement
+                            target.style.height = 'auto'
+                            const scrollHeight = target.scrollHeight
                             const maxHeight = 400
                             const minHeight = 150
-                            e.target.style.height = `${Math.min(Math.max(scrollHeight, minHeight), maxHeight)}px`
+                            target.style.height = `${Math.min(Math.max(scrollHeight, minHeight), maxHeight)}px`
                           }}
                         />
                       </div>
@@ -2760,35 +2939,35 @@ export default function AdminFeedbackPage() {
                 {/* Botón para resolver y cerrar */}
                 <div className="mt-3 pt-3 border-t dark:border-gray-600">
                   <button
-                    onClick={() => {
-                      if (confirm('¿Cerrar este chat de soporte?')) {
-                        // Cerrar conversación
-                        const closeTime = new Date().toISOString()
-                        supabase
-                          .from('feedback_conversations')
-                          .update({ status: 'closed', closed_at: closeTime, last_message_at: closeTime })
-                          .eq('id', selectedConversation.id)
-                          .then(() => {
-                            console.log('💬 Conversación cerrada')
-                            // Marcar feedback como resuelto
-                            return supabase
-                              .from('user_feedback')
-                              .update({
-                                status: 'resolved',
-                                resolved_at: closeTime
-                              })
-                              .eq('id', selectedConversation.feedback_id)
-                          })
-                          .then(() => {
-                            console.log('✅ Feedback marcado como resuelto')
-                            setSelectedConversation(null)
-                            loadConversations()
-                            loadFeedbacks()
-                          })
-                          .catch(error => {
-                            console.error('Error:', error)
-                            alert('Error al cerrar la conversación')
-                          })
+                    onClick={async () => {
+                      if (confirm('¿Cerrar este chat de soporte?') && selectedConversation) {
+                        try {
+                          // Cerrar conversación
+                          const closeTime = new Date().toISOString()
+                          await supabase
+                            .from('feedback_conversations')
+                            .update({ status: 'closed', closed_at: closeTime, last_message_at: closeTime })
+                            .eq('id', selectedConversation.id)
+
+                          console.log('💬 Conversación cerrada')
+
+                          // Marcar feedback como resuelto
+                          await supabase
+                            .from('user_feedback')
+                            .update({
+                              status: 'resolved',
+                              resolved_at: closeTime
+                            })
+                            .eq('id', selectedConversation.feedback_id)
+
+                          console.log('✅ Feedback marcado como resuelto')
+                          setSelectedConversation(null)
+                          loadConversations()
+                          loadFeedbacks()
+                        } catch (error) {
+                          console.error('Error:', error)
+                          alert('Error al cerrar la conversación')
+                        }
                       }
                     }}
                     className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs sm:text-sm font-medium"
