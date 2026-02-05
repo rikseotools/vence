@@ -1,137 +1,29 @@
 // app/admin/feedback/page.tsx - Panel de administración de soporte
 'use client'
-import { useState, useEffect, useRef, useCallback, ReactNode, MouseEvent, KeyboardEvent, ChangeEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js'
 
-// ============================================
-// TIPOS
-// ============================================
+// Importar tipos desde el archivo centralizado
+import {
+  type AuthContextType,
+  type UserProfileResponse,
+  type FeedbackMessageResponse,
+  type FeedbackConversationResponse,
+  type FeedbackResponse,
+  type UserWithConversations,
+  type FeedbackStats,
+  type FeedbackType,
+  type FeedbackStatus,
+  type ConversationStatus,
+  type FilterType,
+  type TypeConfig,
+  getSenderInfo,
+  FEEDBACK_TYPES,
+  STATUS_CONFIG,
+} from '@/types/feedback'
 
-// Tipo para el usuario de auth
-interface AuthUser {
-  id: string
-  email?: string
-  [key: string]: unknown
-}
-
-// Tipo para lo que devuelve useAuth
-interface AuthContext {
-  user: AuthUser | null
-  supabase: SupabaseClient
-  loading?: boolean
-  [key: string]: unknown
-}
-
-type FeedbackType = 'bug' | 'suggestion' | 'content' | 'design' | 'praise' | 'other'
-type FeedbackStatus = 'pending' | 'in_review' | 'in_progress' | 'resolved' | 'dismissed'
-type ConversationStatus = 'waiting_admin' | 'waiting_user' | 'closed' | 'resolved' | 'dismissed'
-type FilterType = 'all' | 'pending' | 'resolved' | 'dismissed'
-
-interface UserProfile {
-  id: string
-  email: string
-  full_name?: string
-  nickname?: string
-  plan_type?: string
-  target_oposicion?: string
-  registration_date?: string
-  created_at?: string
-  browserName?: string
-  operatingSystem?: string
-  deviceModel?: string
-  ciudad?: string
-  cancellationType?: string | null
-  is_active_student?: boolean
-}
-
-interface FeedbackMessage {
-  id: string
-  conversation_id: string
-  sender_id: string
-  is_admin: boolean
-  message: string
-  created_at: string
-  read_at?: string
-  sender?: {
-    full_name?: string
-    email?: string
-  } | Array<{
-    full_name?: string
-    email?: string
-  }>
-}
-
-interface FeedbackConversation {
-  id: string
-  feedback_id: string
-  user_id: string
-  status: ConversationStatus
-  last_message_at: string
-  created_at: string
-  updated_at?: string
-  closed_at?: string
-  admin_user_id?: string
-  feedback_messages?: FeedbackMessage[]
-  feedback?: Feedback
-}
-
-interface Feedback {
-  id: string
-  user_id?: string
-  email?: string
-  type: FeedbackType
-  message: string
-  url?: string
-  user_agent?: string
-  viewport?: string
-  referrer?: string
-  screenshot_url?: string
-  status: FeedbackStatus
-  priority?: string
-  admin_response?: string
-  admin_user_id?: string
-  wants_response?: boolean
-  created_at: string
-  updated_at?: string
-  resolved_at?: string
-  question_id?: string
-  user_profiles?: UserProfile
-}
-
-interface UserWithConversations {
-  id: string
-  odeName: string
-  key: string
-  email: string | null
-  name: string | null
-  planType: string
-  registrationDate?: string
-  targetOposicion?: string
-  isActiveStudent?: boolean
-  feedbacks: Feedback[]
-  totalConversations: number
-  pendingConversations: number
-  lastActivity: string
-  cancellationType?: string | null
-  ciudad?: string | null
-  browserName?: string | null
-  operatingSystem?: string | null
-  deviceModel?: string | null
-}
-
-interface Stats {
-  total: number
-  pending: number
-  resolved: number
-  dismissed: number
-}
-
-interface TypeConfig {
-  label: string
-  color: string
-}
-
+// Tipo local para imágenes subidas (no usado actualmente pero mantenido por compatibilidad)
 interface UploadedImage {
   id: string
   url: string
@@ -150,28 +42,7 @@ const EMOJIS = [
   '🎉', '🎊', '🔥', '💰', '📚', '✅', '❌', '⭐', '💡', '🚀'
 ]
 
-const FEEDBACK_TYPES = {
-  'bug': { label: '🐛 Bug', color: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
-  'suggestion': { label: '💡 Sugerencia', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' },
-  'content': { label: '📚 Contenido', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300' },
-  'design': { label: '🎨 Diseño', color: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300' },
-  'praise': { label: '⭐ Felicitación', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
-  'other': { label: '❓ Otro', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' }
-}
-
-const STATUS_CONFIG = {
-  'pending': { label: '⏳ Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' },
-  'in_review': { label: '👀 En Revisión', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' },
-  'resolved': { label: '✅ Cerrado', color: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
-  'dismissed': { label: '❌ Descartado', color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300' }
-}
-
-// Helper para obtener sender (puede ser objeto o array)
-const getSenderInfo = (sender: FeedbackMessage['sender']): { full_name?: string; email?: string } | undefined => {
-  if (!sender) return undefined
-  if (Array.isArray(sender)) return sender[0]
-  return sender
-}
+// FEEDBACK_TYPES, STATUS_CONFIG y getSenderInfo importados desde @/types/feedback
 
 // Función para convertir URLs en enlaces clickeables
 const linkifyText = (text: string | null | undefined, isAdminMessage = false): ReactNode => {
@@ -221,31 +92,31 @@ const linkifyText = (text: string | null | undefined, isAdminMessage = false): R
 }
 
 export default function AdminFeedbackPage() {
-  const { user, supabase } = useAuth() as AuthContext
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const { user, supabase } = useAuth() as AuthContextType
+  const [feedbacks, setFeedbacks] = useState<FeedbackResponse[]>([])
   const [loading, setLoading] = useState<boolean>(true)
-  const [stats, setStats] = useState<Stats>({
+  const [stats, setStats] = useState<FeedbackStats>({
     total: 0,
     pending: 0,
     resolved: 0,
     dismissed: 0
   })
-  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null)
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackResponse | null>(null)
   const [adminResponse, setAdminResponse] = useState<string>('')
   const [updatingStatus, setUpdatingStatus] = useState<boolean>(false)
-  const [conversations, setConversations] = useState<Record<string, FeedbackConversation>>({})
-  const [selectedConversation, setSelectedConversation] = useState<FeedbackConversation | null>(null)
-  const [chatMessages, setChatMessages] = useState<FeedbackMessage[]>([])
+  const [conversations, setConversations] = useState<Record<string, FeedbackConversationResponse>>({})
+  const [selectedConversation, setSelectedConversation] = useState<FeedbackConversationResponse | null>(null)
+  const [chatMessages, setChatMessages] = useState<FeedbackMessageResponse[]>([])
   const [newUserMessages, setNewUserMessages] = useState<Set<string>>(new Set()) // IDs de conversaciones con mensajes nuevos
   const [activeFilter, setActiveFilter] = useState<FilterType>('pending') // Filtro activo: 'all', 'pending', 'resolved', 'dismissed'
   const [selectedUser, setSelectedUser] = useState<UserWithConversations | null>(null) // Usuario seleccionado para ver sus conversaciones
   const [usersWithConversations, setUsersWithConversations] = useState<UserWithConversations[]>([]) // Lista de usuarios agrupados
-  const [inlineChatMessages, setInlineChatMessages] = useState<FeedbackMessage[]>([]) // Mensajes del chat inline
+  const [inlineChatMessages, setInlineChatMessages] = useState<FeedbackMessageResponse[]>([]) // Mensajes del chat inline
   const [inlineNewMessage, setInlineNewMessage] = useState<string>('') // Mensaje nuevo para el chat inline
   const [sendingInlineMessage, setSendingInlineMessage] = useState<boolean>(false) // Enviando mensaje inline
   const [viewedConversationsLoaded, setViewedConversationsLoaded] = useState<boolean>(false) // Flag para saber si ya se inicializó
   const [expandedImage, setExpandedImage] = useState<string | null>(null) // Estado para modal de imagen expandida
-  const [userProfilesCache, setUserProfilesCache] = useState<Map<string, UserProfile>>(new Map()) // Cache de perfiles de usuario
+  const [userProfilesCache, setUserProfilesCache] = useState<Map<string, UserProfileResponse>>(new Map()) // Cache de perfiles de usuario
 
   // Estados para emojis e imágenes en admin
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
@@ -257,13 +128,13 @@ export default function AdminFeedbackPage() {
   const inlineTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Estado para otras conversaciones del mismo usuario
-  const [userOtherConversations, setUserOtherConversations] = useState<FeedbackConversation[]>([])
+  const [userOtherConversations, setUserOtherConversations] = useState<FeedbackConversationResponse[]>([])
 
   // Estados para modal de nueva conversación iniciada por admin
   const [showNewConversationModal, setShowNewConversationModal] = useState<boolean>(false)
   const [newConvEmail, setNewConvEmail] = useState<string>('')
   const [newConvMessage, setNewConvMessage] = useState<string>('')
-  const [newConvUser, setNewConvUser] = useState<UserProfile | null>(null)
+  const [newConvUser, setNewConvUser] = useState<UserProfileResponse | null>(null)
   const [newConvSearching, setNewConvSearching] = useState<boolean>(false)
   const [newConvCreating, setNewConvCreating] = useState<boolean>(false)
 
