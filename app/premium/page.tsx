@@ -184,6 +184,82 @@ function PremiumPageContent() {
     }
   }
 
+  // Seleccionar plan y ir directo a checkout si está logueado
+  const handlePlanClick = (plan: PlanType) => {
+    setSelectedPlan(plan)
+
+    // Si el usuario está logueado y puede pagar, ir directo a checkout
+    if (user && user.plan_type !== 'legacy_free' && user.plan_type !== 'premium' && !loading) {
+      // Pequeño delay para que se vea la selección
+      setTimeout(() => {
+        handleCheckoutWithPlan(plan)
+      }, 150)
+    }
+  }
+
+  // Checkout con plan específico (para ir directo desde el click)
+  const handleCheckoutWithPlan = async (plan: PlanType) => {
+    if (!user) {
+      setError('Necesitas estar registrado primero')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+
+    try {
+      console.log('🔄 Creando checkout para usuario:', user.email, 'Plan:', plan)
+
+      if (supabase && user.id) {
+        trackCheckoutStarted(supabase, user.id, plan)
+      }
+
+      const priceIds: PriceIds = {
+        monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
+        quarterly: process.env.NEXT_PUBLIC_STRIPE_PRICE_QUARTERLY || 'price_quarterly_placeholder',
+        semester: process.env.NEXT_PUBLIC_STRIPE_PRICE_SEMESTER || 'price_1RjhHBCybKEAFwateoAVKstO'
+      }
+      const priceId = priceIds[plan]
+
+      const response = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId: priceId,
+          userId: user.id,
+          mode: 'normal'
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error)
+
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+        return
+      }
+
+      const { loadStripe } = await import('@stripe/stripe-js')
+      const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+      if (!stripeKey) throw new Error('Stripe publishable key is not configured')
+
+      const stripe = await loadStripe(stripeKey)
+      if (!stripe) throw new Error('Failed to load Stripe')
+
+      const { error: stripeError } = await stripe.redirectToCheckout({
+        sessionId: data.sessionId,
+      })
+
+      if (stripeError) throw new Error(stripeError.message)
+
+    } catch (err) {
+      console.error('Error en checkout:', err)
+      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 py-12">
       <div className="max-w-4xl mx-auto px-4">
@@ -204,12 +280,12 @@ function PremiumPageContent() {
 
             {/* Plan Mensual */}
             <div
-              onClick={() => setSelectedPlan('monthly')}
+              onClick={() => handlePlanClick('monthly')}
               className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all ${
                 selectedPlan === 'monthly'
                   ? 'border-amber-500 ring-2 ring-amber-200'
                   : 'border-gray-200 hover:border-amber-300'
-              }`}
+              } ${loading ? 'pointer-events-none opacity-50' : ''}`}
             >
               <div className="text-center">
                 <div className="h-6 mb-4"></div>
@@ -224,12 +300,12 @@ function PremiumPageContent() {
 
             {/* Plan Trimestral */}
             <div
-              onClick={() => setSelectedPlan('quarterly')}
+              onClick={() => handlePlanClick('quarterly')}
               className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all relative ${
                 selectedPlan === 'quarterly'
                   ? 'border-amber-500 ring-2 ring-amber-200'
                   : 'border-gray-200 hover:border-amber-300'
-              }`}
+              } ${loading ? 'pointer-events-none opacity-50' : ''}`}
             >
               <div className="text-center">
                 <div className="h-6 mb-4"></div>
@@ -244,12 +320,12 @@ function PremiumPageContent() {
 
             {/* Plan Semestral - RECOMENDADO */}
             <div
-              onClick={() => setSelectedPlan('semester')}
+              onClick={() => handlePlanClick('semester')}
               className={`bg-white rounded-2xl shadow-lg p-6 border-2 cursor-pointer transition-all ${
                 selectedPlan === 'semester'
                   ? 'border-amber-500 ring-2 ring-amber-200'
                   : 'border-gray-200 hover:border-amber-300'
-              }`}
+              } ${loading ? 'pointer-events-none opacity-50' : ''}`}
             >
               <div className="text-center">
                 <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-4 inline-block">
@@ -268,10 +344,11 @@ function PremiumPageContent() {
           {/* Beneficios */}
           <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
             <h3 className="font-bold text-gray-800 mb-4 text-center">Incluido en Premium:</h3>
-            <div className="grid md:grid-cols-2 gap-3">
+            <div className="grid md:grid-cols-3 gap-3">
               {[
                 "Preguntas ilimitadas",
-                "Chat AI ilimitado"
+                "Chat AI ilimitado",
+                "Cursos de informática"
               ].map((feature, index) => (
                 <div key={index} className="flex items-center">
                   <span className="text-green-500 mr-2">✓</span>

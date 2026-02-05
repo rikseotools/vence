@@ -19,6 +19,25 @@ async function getSubscription(subscriptionId: string): Promise<StripeSubscripti
   return await stripe.subscriptions.retrieve(subscriptionId)
 }
 
+// Helper to determine plan type from subscription interval
+function getPlanTypeFromSubscription(subscription: StripeSubscription): string {
+  const priceData = subscription.items?.data?.[0]?.price?.recurring
+  const interval = priceData?.interval
+  const intervalCount = priceData?.interval_count || 1
+
+  if (interval === 'month') {
+    if (intervalCount === 1) return 'premium_monthly'
+    if (intervalCount === 3) return 'premium_quarterly'
+    if (intervalCount === 6) return 'premium_semester'
+  }
+  if (interval === 'year') return 'premium_yearly'
+
+  // Fallback based on interval count
+  if (intervalCount <= 1) return 'premium_monthly'
+  if (intervalCount <= 3) return 'premium_quarterly'
+  return 'premium_semester'
+}
+
 const resend = new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
@@ -246,8 +265,7 @@ async function handleCheckoutSessionCompleted(
       if (session.subscription) {
         try {
           const subscription = await getSubscription(session.subscription as string)
-          const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
-          planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
+          planType = getPlanTypeFromSubscription(subscription)
 
           const { error: subError } = await supabase
             .from('user_subscriptions')
@@ -419,8 +437,7 @@ async function handleCheckoutSessionCompleted(
         if (session.subscription) {
           try {
             const subscription = await getSubscription(session.subscription as string)
-            const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
-            const planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
+            const planType = getPlanTypeFromSubscription(subscription)
 
             await supabase
               .from('user_subscriptions')
@@ -505,8 +522,7 @@ async function handleSubscriptionCreated(
     return
   }
 
-  const interval = subscription.items?.data?.[0]?.price?.recurring?.interval
-  const planType = interval === 'month' ? 'premium_monthly' : 'premium_semester'
+  const planType = getPlanTypeFromSubscription(subscription)
 
   try {
     const { error } = await supabase
