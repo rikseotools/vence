@@ -71,6 +71,15 @@ const chatApiRequestSchema = z.object({
 
 const FREE_USER_DAILY_LIMIT = 5
 
+// Sugerencias que NO cuentan contra el límite diario (explicaciones de preguntas)
+// Estas son parte del flujo de estudio, no "chat libre"
+const EXEMPT_SUGGESTIONS = [
+  'explicar_respuesta',
+  'explicar_psico',
+  'analizar_psico',
+  'Explícame la respuesta correcta',
+]
+
 /**
  * Obtener nombre del usuario desde user_profiles
  */
@@ -99,6 +108,7 @@ async function getUserName(userId: string): Promise<string | undefined> {
 
 /**
  * Obtener conteo de mensajes del día para rate limiting
+ * Excluye las explicaciones de preguntas (EXEMPT_SUGGESTIONS)
  */
 async function getUserDailyMessageCount(userId: string): Promise<number> {
   if (!userId) return 0
@@ -107,9 +117,10 @@ async function getUserDailyMessageCount(userId: string): Promise<number> {
     const today = new Date()
     today.setUTCHours(0, 0, 0, 0)
 
-    const { count, error } = await supabase
+    // Contar mensajes del día excluyendo las explicaciones de preguntas
+    const { data, error } = await supabase
       .from('ai_chat_logs')
-      .select('*', { count: 'exact', head: true })
+      .select('suggestion_used')
       .eq('user_id', userId)
       .gte('created_at', today.toISOString())
       .eq('had_error', false)
@@ -119,7 +130,12 @@ async function getUserDailyMessageCount(userId: string): Promise<number> {
       return 0
     }
 
-    return count || 0
+    // Filtrar: solo contar mensajes que NO son explicaciones exentas
+    const countableMessages = data?.filter(msg =>
+      !msg.suggestion_used || !EXEMPT_SUGGESTIONS.includes(msg.suggestion_used)
+    ) || []
+
+    return countableMessages.length
   } catch (error) {
     logger.error('Error counting daily messages', error)
     return 0
@@ -214,7 +230,10 @@ export async function POST(request: NextRequest) {
     const data = validation.data
 
     // Rate limiting para usuarios free
-    if (data.userId && !data.isPremium) {
+    // Las explicaciones de preguntas (EXEMPT_SUGGESTIONS) no cuentan contra el límite
+    const isExemptSuggestion = data.suggestionUsed && EXEMPT_SUGGESTIONS.includes(data.suggestionUsed)
+
+    if (data.userId && !data.isPremium && !isExemptSuggestion) {
       const dailyCount = await getUserDailyMessageCount(data.userId)
       if (dailyCount >= FREE_USER_DAILY_LIMIT) {
         logger.warn('Rate limit exceeded', {
