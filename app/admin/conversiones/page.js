@@ -200,24 +200,41 @@ export default function ConversionesPage() {
 
   // Actualizar peso de un mensaje
   const updateMessageWeight = async (messageId, newWeight) => {
+    if (!supabase) {
+      console.error('❌ Supabase no inicializado')
+      return
+    }
+
     const { error } = await supabase
       .from('upgrade_messages')
       .update({ weight: newWeight })
       .eq('id', messageId)
 
-    if (!error) {
+    if (error) {
+      console.error('❌ Error actualizando peso:', error)
+      alert('Error actualizando peso: ' + error.message)
+    } else {
+      console.log('✅ Peso actualizado a', newWeight)
       loadABTestingData()
     }
   }
 
   // Activar/desactivar mensaje
   const toggleMessageActive = async (messageId, currentActive) => {
+    if (!supabase) {
+      console.error('❌ Supabase no inicializado')
+      return
+    }
+
     const { error } = await supabase
       .from('upgrade_messages')
       .update({ is_active: !currentActive })
       .eq('id', messageId)
 
-    if (!error) {
+    if (error) {
+      console.error('❌ Error actualizando estado:', error)
+      alert('Error actualizando estado: ' + error.message)
+    } else {
       loadABTestingData()
     }
   }
