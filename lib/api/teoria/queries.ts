@@ -118,11 +118,12 @@ async function getArticleContentInternal(
   }
 }
 
-// 🚀 VERSIÓN CACHEADA (30 minutos)
+// 🚀 VERSIÓN CACHEADA (permanente - el contenido de artículos no cambia)
+// Para invalidar: revalidateTag('teoria')
 export const getArticleContent = unstable_cache(
   getArticleContentInternal,
   ['teoria-article-content'],
-  { revalidate: 86400, tags: ['teoria'] }  // 1 día
+  { revalidate: false, tags: ['teoria'] }
 )
 
 // ============================================
@@ -167,11 +168,12 @@ async function getArticleNavigationInternal(
   }
 }
 
-// 🚀 VERSIÓN CACHEADA (1 hora) - navegación cambia poco
+// 🚀 VERSIÓN CACHEADA (permanente - la estructura de artículos no cambia)
+// Para invalidar: revalidateTag('teoria')
 export const getArticleNavigation = unstable_cache(
   getArticleNavigationInternal,
   ['teoria-article-navigation'],
-  { revalidate: 86400, tags: ['teoria'] }  // 1 día
+  { revalidate: false, tags: ['teoria'] }
 )
 
 // ============================================
@@ -223,11 +225,12 @@ async function getRelatedArticlesInternal(
   }))
 }
 
-// 🚀 VERSIÓN CACHEADA (30 minutos)
+// 🚀 VERSIÓN CACHEADA (permanente - artículos relacionados no cambian)
+// Para invalidar: revalidateTag('teoria')
 export const getRelatedArticles = unstable_cache(
   getRelatedArticlesInternal,
   ['teoria-related-articles'],
-  { revalidate: 86400, tags: ['teoria'] }  // 1 día
+  { revalidate: false, tags: ['teoria'] }
 )
 
 // ============================================
@@ -264,9 +267,10 @@ async function getLawBasicInfoInternal(
   }
 }
 
-// 🚀 VERSIÓN CACHEADA (1 hora)
+// 🚀 VERSIÓN CACHEADA (permanente - info de leyes no cambia)
+// Para invalidar: revalidateTag('teoria')
 export const getLawBasicInfo = unstable_cache(
   getLawBasicInfoInternal,
   ['teoria-law-basic-info'],
-  { revalidate: 86400, tags: ['teoria'] }  // 1 día
+  { revalidate: false, tags: ['teoria'] }
 )
