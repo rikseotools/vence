@@ -210,6 +210,7 @@ function PerfilPageContent() {
   const [deleteConfirmText, setDeleteConfirmText] = useState<string>('')
   const [deletingAccount, setDeletingAccount] = useState<boolean>(false)
   const [deleteError, setDeleteError] = useState<string>('')
+  const [deletionRequested, setDeletionRequested] = useState<boolean>(false)
   
   // Form data - SINCRONIZADO CON useUserOposicion
   const [formData, setFormData] = useState<FormData>({
@@ -1065,6 +1066,7 @@ function PerfilPageContent() {
       // Cerrar modal y mostrar confirmación
       setShowDeleteAccountModal(false)
       setDeleteConfirmText('')
+      setDeletionRequested(true)
       alert('Solicitud recibida. Procesaremos tu petición en 24-48h. Recibirás un email de confirmación.')
 
     } catch (error) {
@@ -2470,13 +2472,20 @@ function PerfilPageContent() {
                               Esta acción es irreversible. Se eliminarán todos tus datos.
                             </p>
                           </div>
-                          <button
-                            onClick={() => setShowDeleteAccountModal(true)}
-                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 whitespace-nowrap"
-                          >
-                            <span>🗑️</span>
-                            <span>Solicitar eliminación</span>
-                          </button>
+                          {deletionRequested ? (
+                            <div className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 rounded-lg font-medium flex items-center justify-center space-x-2 whitespace-nowrap">
+                              <span>⏳</span>
+                              <span>Solicitud pendiente</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setShowDeleteAccountModal(true)}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 whitespace-nowrap"
+                            >
+                              <span>🗑️</span>
+                              <span>Solicitar eliminación</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
