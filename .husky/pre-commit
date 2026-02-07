@@ -1,16 +1,36 @@
 #!/bin/sh
 # .husky/pre-commit
-# Hook para ejecutar tests antes de commit
+# Hook para ejecutar validaciones antes de commit
 
-echo "🧪 Ejecutando tests antes del commit..."
+echo "🔍 Ejecutando validaciones pre-commit..."
+echo ""
 
-# Ejecutar tests con coverage
+# 1. Verificar schema drift (si DATABASE_URL disponible)
+if [ -n "$DATABASE_URL" ]; then
+  echo "📊 Verificando sincronización schema vs BD..."
+  npm run db:check
+  SCHEMA_EXIT_CODE=$?
+
+  if [ $SCHEMA_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "⚠️  Schema desincronizado. Ver errores arriba."
+    echo "   Para sincronizar: npm run db:pull"
+    echo ""
+    # Solo warning, no bloquea el commit
+  fi
+else
+  echo "⏭️  Saltando verificación de schema (DATABASE_URL no configurada)"
+fi
+
+echo ""
+
+# 2. Ejecutar tests
+echo "🧪 Ejecutando tests..."
 npm run test:ci
-
-# Capturar código de salida
 TEST_EXIT_CODE=$?
 
 if [ $TEST_EXIT_CODE -ne 0 ]; then
+  echo ""
   echo "❌ Tests fallaron. Commit cancelado."
   echo ""
   echo "💡 Para solucionar:"
@@ -21,4 +41,5 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
   exit 1
 fi
 
-echo "✅ Todos los tests pasaron. Continuando con el commit..."
+echo ""
+echo "✅ Todas las validaciones pasaron. Continuando con el commit..."

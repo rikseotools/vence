@@ -1,7 +1,7 @@
-import { pgTable, pgSchema, index, foreignKey, pgPolicy, uuid, text, jsonb, integer, timestamp, unique, check, boolean, varchar, numeric, date, uniqueIndex, interval, inet, point, serial, time, bigint, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
+import { pgTable, pgSchema, index, foreignKey, pgPolicy, uuid, text, jsonb, integer, timestamp, unique, check, boolean, varchar, numeric, date, vector, uniqueIndex, interval, inet, point, serial, time, bigint, primaryKey, pgView, pgEnum } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-// Referencia a la tabla auth.users de Supabase (schema auth)
+// Schema auth de Supabase (referencia mínima para FKs)
 const authSchema = pgSchema("auth")
 export const users = authSchema.table("users", {
   id: uuid().primaryKey().notNull(),
@@ -47,6 +47,7 @@ export const topics = pgTable("topics", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
+	index("idx_topics_position_type_active").using("btree", table.positionType.asc().nullsLast().op("text_ops"), table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),
 	unique("topics_position_type_topic_number_key").on(table.positionType, table.topicNumber),
 	pgPolicy("Enable read access for topics", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
 	check("topics_difficulty_check", sql`difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text, 'extreme'::text])`),
@@ -110,6 +111,8 @@ export const userProfiles = pgTable("user_profiles", {
 	onboardingSkipCount: integer("onboarding_skip_count").default(0),
 	onboardingLastSkipAt: timestamp("onboarding_last_skip_at", { withTimezone: true, mode: 'string' }),
 	registrationIp: varchar("registration_ip", { length: 45 }),
+	registrationFunnel: text("registration_funnel"),
+	registrationUrl: text("registration_url"),
 }, (table) => [
 	index("idx_user_profiles_active_student").using("btree", table.isActiveStudent.asc().nullsLast().op("bool_ops")).where(sql`(is_active_student = true)`),
 	index("idx_user_profiles_ciudad").using("btree", table.ciudad.asc().nullsLast().op("text_ops")),
@@ -146,6 +149,37 @@ export const telegramSession = pgTable("telegram_session", {
 			name: "telegram_session_user_id_fkey"
 		}).onDelete("cascade"),
 	unique("telegram_session_user_id_key").on(table.userId),
+]);
+
+export const articles = pgTable("articles", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	lawId: uuid("law_id"),
+	articleNumber: text("article_number").notNull(),
+	title: text(),
+	content: text(),
+	section: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	titleNumber: text("title_number"),
+	chapterNumber: text("chapter_number"),
+	sectionNumber: text("section_number"),
+	isActive: boolean("is_active").default(true),
+	contentHash: text("content_hash"),
+	lastModificationDate: date("last_modification_date"),
+	verificationDate: date("verification_date").default(sql`CURRENT_DATE`),
+	isVerified: boolean("is_verified").default(false),
+	embedding: vector({ dimensions: 1536 }),
+}, (table) => [
+	index("articles_embedding_idx").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "100"}),
+	index("idx_articles_law_id").using("btree", table.lawId.asc().nullsLast().op("uuid_ops")),
+	index("idx_articles_structure").using("btree", table.lawId.asc().nullsLast().op("uuid_ops"), table.titleNumber.asc().nullsLast().op("text_ops"), table.chapterNumber.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.lawId],
+			foreignColumns: [laws.id],
+			name: "articles_law_id_fkey"
+		}).onDelete("cascade"),
+	unique("articles_law_id_article_number_key").on(table.lawId, table.articleNumber),
+	pgPolicy("Enable read access for articles", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
 ]);
 
 export const userProgress = pgTable("user_progress", {
@@ -249,34 +283,6 @@ export const testConfigurations = pgTable("test_configurations", {
 	pgPolicy("Users can manage own test configs", { as: "permissive", for: "all", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 ]);
 
-export const articles = pgTable("articles", {
-	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
-	lawId: uuid("law_id"),
-	articleNumber: text("article_number").notNull(),
-	title: text(),
-	content: text(),
-	section: text(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	titleNumber: text("title_number"),
-	chapterNumber: text("chapter_number"),
-	sectionNumber: text("section_number"),
-	isActive: boolean("is_active").default(true),
-	contentHash: text("content_hash"),
-	lastModificationDate: date("last_modification_date"),
-	verificationDate: date("verification_date").default(sql`CURRENT_DATE`),
-	isVerified: boolean("is_verified").default(false),
-}, (table) => [
-	index("idx_articles_structure").using("btree", table.lawId.asc().nullsLast().op("text_ops"), table.titleNumber.asc().nullsLast().op("text_ops"), table.chapterNumber.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.lawId],
-			foreignColumns: [laws.id],
-			name: "articles_law_id_fkey"
-		}).onDelete("cascade"),
-	unique("articles_law_id_article_number_key").on(table.lawId, table.articleNumber),
-	pgPolicy("Enable read access for articles", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
-]);
-
 export const topicScope = pgTable("topic_scope", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	topicId: uuid("topic_id"),
@@ -289,6 +295,8 @@ export const topicScope = pgTable("topic_scope", {
 	weight: numeric({ precision: 3, scale:  2 }).default('1.0'),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
+	index("idx_topic_scope_article_numbers_gin").using("gin", table.articleNumbers.asc().nullsLast().op("array_ops")),
+	index("idx_topic_scope_law_id_topic_id").using("btree", table.lawId.asc().nullsLast().op("uuid_ops"), table.topicId.asc().nullsLast().op("uuid_ops")),
 	index("idx_topic_scope_topic").using("btree", table.topicId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
 			columns: [table.lawId],
@@ -356,45 +364,6 @@ export const aiVerificationResults = pgTable("ai_verification_results", {
 	unique("ai_verification_results_question_id_ai_provider_key").on(table.questionId, table.aiProvider),
 ]);
 
-export const userFeedback = pgTable("user_feedback", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id"),
-	email: text(),
-	type: text().notNull(),
-	message: text().notNull(),
-	url: text().notNull(),
-	userAgent: text("user_agent"),
-	viewport: text(),
-	referrer: text(),
-	screenshotUrl: text("screenshot_url"),
-	status: text().default('pending'),
-	priority: text().default('medium'),
-	adminResponse: text("admin_response"),
-	adminUserId: uuid("admin_user_id"),
-	wantsResponse: boolean("wants_response").default(false),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
-	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
-	questionId: uuid("question_id"), // ID de pregunta para debugging
-}, (table) => [
-	foreignKey({
-			columns: [table.adminUserId],
-			foreignColumns: [users.id],
-			name: "user_feedback_admin_user_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_feedback_user_id_fkey"
-		}),
-	foreignKey({
-			columns: [table.questionId],
-			foreignColumns: [questions.id],
-			name: "user_feedback_question_id_fkey"
-		}),
-	index("idx_user_feedback_question_id").using("btree", table.questionId.asc().nullsLast()),
-]);
-
 export const questionArticles = pgTable("question_articles", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	questionId: uuid("question_id"),
@@ -421,7 +390,7 @@ export const questionArticles = pgTable("question_articles", {
 export const convocatorias = pgTable("convocatorias", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	oposicionId: uuid("oposicion_id"),
-	anio: integer("año").notNull(),
+	"año": integer("año").notNull(),
 	fechaExamen: date("fecha_examen"),
 	tipoExamen: text("tipo_examen").default('ordinaria'),
 	boeNumero: text("boe_numero"),
@@ -430,13 +399,13 @@ export const convocatorias = pgTable("convocatorias", {
 	observaciones: text(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
-	index("idx_convocatorias_oposicion_año").using("btree", table.oposicionId.asc().nullsLast().op("int4_ops"), table.anio.asc().nullsLast().op("int4_ops")),
+	index("idx_convocatorias_oposicion_año").using("btree", table.oposicionId.asc().nullsLast().op("int4_ops"), table["año"].asc().nullsLast().op("int4_ops")),
 	foreignKey({
 			columns: [table.oposicionId],
 			foreignColumns: [oposiciones.id],
 			name: "convocatorias_oposicion_id_fkey"
 		}).onDelete("cascade"),
-	unique("convocatorias_oposicion_id_año_tipo_examen_key").on(table.oposicionId, table.anio, table.tipoExamen),
+	unique("convocatorias_oposicion_id_año_tipo_examen_key").on(table.oposicionId, table["año"], table.tipoExamen),
 	check("convocatorias_año_check", sql`("año" >= 2000) AND ("año" <= 2030)`),
 	check("convocatorias_tipo_examen_check", sql`tipo_examen = ANY (ARRAY['ordinaria'::text, 'extraordinaria'::text, 'estabilizacion'::text])`),
 ]);
@@ -471,6 +440,45 @@ export const userRoles = pgTable("user_roles", {
 	pgPolicy("Admins can view all roles", { as: "permissive", for: "select", to: ["authenticated"] }),
 	pgPolicy("Only admins can manage roles", { as: "permissive", for: "all", to: ["authenticated"] }),
 	check("user_roles_role_check", sql`role = ANY (ARRAY['user'::text, 'admin'::text, 'super_admin'::text])`),
+]);
+
+export const userFeedback = pgTable("user_feedback", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	email: text(),
+	type: text().notNull(),
+	message: text().notNull(),
+	url: text().notNull(),
+	userAgent: text("user_agent"),
+	viewport: text(),
+	referrer: text(),
+	screenshotUrl: text("screenshot_url"),
+	status: text().default('pending'),
+	priority: text().default('medium'),
+	adminResponse: text("admin_response"),
+	adminUserId: uuid("admin_user_id"),
+	wantsResponse: boolean("wants_response").default(false),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow(),
+	resolvedAt: timestamp("resolved_at", { mode: 'string' }),
+	questionId: uuid("question_id"),
+}, (table) => [
+	index("idx_user_feedback_question_id").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")).where(sql`(question_id IS NOT NULL)`),
+	foreignKey({
+			columns: [table.adminUserId],
+			foreignColumns: [users.id],
+			name: "user_feedback_admin_user_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [questions.id],
+			name: "user_feedback_question_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_feedback_user_id_fkey"
+		}),
 ]);
 
 export const articulosExamenes = pgTable("articulos_examenes", {
@@ -519,6 +527,82 @@ export const oposicionTopics = pgTable("oposicion_topics", {
 			name: "oposicion_topics_topic_id_fkey"
 		}).onDelete("cascade"),
 	unique("oposicion_topics_oposicion_id_topic_id_key").on(table.oposicionId, table.topicId),
+]);
+
+export const testQuestions = pgTable("test_questions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	testId: uuid("test_id"),
+	questionId: uuid("question_id"),
+	articleId: uuid("article_id"),
+	questionOrder: integer("question_order").notNull(),
+	questionText: text("question_text").notNull(),
+	userAnswer: text("user_answer").notNull(),
+	correctAnswer: text("correct_answer").notNull(),
+	isCorrect: boolean("is_correct").notNull(),
+	confidenceLevel: text("confidence_level"),
+	timeSpentSeconds: integer("time_spent_seconds").default(0),
+	timeToFirstInteraction: integer("time_to_first_interaction").default(0),
+	timeHesitation: integer("time_hesitation").default(0),
+	interactionCount: integer("interaction_count").default(1),
+	articleNumber: text("article_number"),
+	lawName: text("law_name"),
+	temaNumber: integer("tema_number"),
+	difficulty: text(),
+	questionType: text("question_type"),
+	tags: text().array().default([""]),
+	previousAttemptsThisArticle: integer("previous_attempts_this_article").default(0),
+	historicalAccuracyThisArticle: numeric("historical_accuracy_this_article").default('0'),
+	knowledgeRetentionScore: numeric("knowledge_retention_score"),
+	learningEfficiencyScore: numeric("learning_efficiency_score"),
+	userAgent: text("user_agent"),
+	screenResolution: text("screen_resolution"),
+	deviceType: text("device_type"),
+	browserLanguage: text("browser_language"),
+	timezone: text(),
+	fullQuestionContext: jsonb("full_question_context").default({}),
+	userBehaviorData: jsonb("user_behavior_data").default({}),
+	learningAnalytics: jsonb("learning_analytics").default({}),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	psychometricQuestionId: uuid("psychometric_question_id"),
+}, (table) => [
+	index("idx_test_questions_article_performance").using("btree", table.articleId.asc().nullsLast().op("bool_ops"), table.isCorrect.asc().nullsLast().op("bool_ops")),
+	index("idx_test_questions_confidence_accuracy").using("btree", table.confidenceLevel.asc().nullsLast().op("bool_ops"), table.isCorrect.asc().nullsLast().op("bool_ops")),
+	index("idx_test_questions_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_test_questions_difficulty_time").using("btree", table.difficulty.asc().nullsLast().op("int4_ops"), table.timeSpentSeconds.asc().nullsLast().op("int4_ops")),
+	index("idx_test_questions_psychometric_id").using("btree", table.psychometricQuestionId.asc().nullsLast().op("uuid_ops")).where(sql`(psychometric_question_id IS NOT NULL)`),
+	index("idx_test_questions_question_user").using("btree", table.questionId.asc().nullsLast().op("uuid_ops"), table.testId.asc().nullsLast().op("uuid_ops")),
+	index("idx_test_questions_tema_stats").using("btree", table.temaNumber.asc().nullsLast().op("int4_ops"), table.isCorrect.asc().nullsLast().op("bool_ops")),
+	index("idx_test_questions_test_id").using("btree", table.testId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.articleId],
+			foreignColumns: [articles.id],
+			name: "test_questions_article_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.psychometricQuestionId],
+			foreignColumns: [psychometricQuestions.id],
+			name: "test_questions_psychometric_question_id_fkey"
+		}),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [questions.id],
+			name: "test_questions_question_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.testId],
+			foreignColumns: [tests.id],
+			name: "test_questions_test_id_fkey"
+		}).onDelete("cascade"),
+	unique("unique_test_question").on(table.testId, table.questionOrder),
+	pgPolicy("Users can insert their own test answers", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(test_id IN ( SELECT tests.id
+   FROM tests
+  WHERE (tests.user_id = auth.uid())))`  }),
+	pgPolicy("Users can view their own test answers", { as: "permissive", for: "select", to: ["public"] }),
+	pgPolicy("Users can update their own test answers", { as: "permissive", for: "update", to: ["public"] }),
+	check("check_confidence_level", sql`confidence_level = ANY (ARRAY['very_sure'::text, 'sure'::text, 'unsure'::text, 'guessing'::text, 'unknown'::text])`),
+	check("check_device_type", sql`device_type = ANY (ARRAY['mobile'::text, 'tablet'::text, 'desktop'::text, 'unknown'::text])`),
+	check("check_difficulty", sql`difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text, 'extreme'::text])`),
 ]);
 
 export const oposicionArticles = pgTable("oposicion_articles", {
@@ -648,76 +732,6 @@ export const legalModifications = pgTable("legal_modifications", {
 	check("legal_modifications_impact_level_check", sql`impact_level = ANY (ARRAY['mayor'::text, 'menor'::text, 'tecnica'::text, 'correccion'::text])`),
 ]);
 
-export const testQuestions = pgTable("test_questions", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	testId: uuid("test_id"),
-	questionId: uuid("question_id"),
-	psychometricQuestionId: uuid("psychometric_question_id"),
-	articleId: uuid("article_id"),
-	questionOrder: integer("question_order").notNull(),
-	questionText: text("question_text").notNull(),
-	userAnswer: text("user_answer").notNull(),
-	correctAnswer: text("correct_answer").notNull(),
-	isCorrect: boolean("is_correct").notNull(),
-	confidenceLevel: text("confidence_level"),
-	timeSpentSeconds: integer("time_spent_seconds").default(0),
-	timeToFirstInteraction: integer("time_to_first_interaction").default(0),
-	timeHesitation: integer("time_hesitation").default(0),
-	interactionCount: integer("interaction_count").default(1),
-	articleNumber: text("article_number"),
-	lawName: text("law_name"),
-	temaNumber: integer("tema_number"),
-	difficulty: text(),
-	questionType: text("question_type"),
-	tags: text().array().default([""]),
-	previousAttemptsThisArticle: integer("previous_attempts_this_article").default(0),
-	historicalAccuracyThisArticle: numeric("historical_accuracy_this_article").default('0'),
-	knowledgeRetentionScore: numeric("knowledge_retention_score"),
-	learningEfficiencyScore: numeric("learning_efficiency_score"),
-	userAgent: text("user_agent"),
-	screenResolution: text("screen_resolution"),
-	deviceType: text("device_type"),
-	browserLanguage: text("browser_language"),
-	timezone: text(),
-	fullQuestionContext: jsonb("full_question_context").default({}),
-	userBehaviorData: jsonb("user_behavior_data").default({}),
-	learningAnalytics: jsonb("learning_analytics").default({}),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_test_questions_article_performance").using("btree", table.articleId.asc().nullsLast().op("bool_ops"), table.isCorrect.asc().nullsLast().op("bool_ops")),
-	index("idx_test_questions_confidence_accuracy").using("btree", table.confidenceLevel.asc().nullsLast().op("text_ops"), table.isCorrect.asc().nullsLast().op("bool_ops")),
-	index("idx_test_questions_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
-	index("idx_test_questions_difficulty_time").using("btree", table.difficulty.asc().nullsLast().op("int4_ops"), table.timeSpentSeconds.asc().nullsLast().op("text_ops")),
-	index("idx_test_questions_question_user").using("btree", table.questionId.asc().nullsLast().op("uuid_ops"), table.testId.asc().nullsLast().op("uuid_ops")),
-	index("idx_test_questions_tema_stats").using("btree", table.temaNumber.asc().nullsLast().op("bool_ops"), table.isCorrect.asc().nullsLast().op("int4_ops")),
-	index("idx_test_questions_test_id").using("btree", table.testId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.articleId],
-			foreignColumns: [articles.id],
-			name: "test_questions_article_id_fkey"
-		}).onDelete("set null"),
-	foreignKey({
-			columns: [table.questionId],
-			foreignColumns: [questions.id],
-			name: "test_questions_question_id_fkey"
-		}).onDelete("set null"),
-	foreignKey({
-			columns: [table.testId],
-			foreignColumns: [tests.id],
-			name: "test_questions_test_id_fkey"
-		}).onDelete("cascade"),
-	unique("unique_test_question").on(table.testId, table.questionOrder),
-	pgPolicy("Users can insert their own test answers", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(test_id IN ( SELECT tests.id
-   FROM tests
-  WHERE (tests.user_id = auth.uid())))`  }),
-	pgPolicy("Users can view their own test answers", { as: "permissive", for: "select", to: ["public"] }),
-	pgPolicy("Users can update their own test answers", { as: "permissive", for: "update", to: ["public"] }),
-	check("check_confidence_level", sql`confidence_level = ANY (ARRAY['very_sure'::text, 'sure'::text, 'unsure'::text, 'guessing'::text, 'unknown'::text])`),
-	check("check_device_type", sql`device_type = ANY (ARRAY['mobile'::text, 'tablet'::text, 'desktop'::text, 'unknown'::text])`),
-	check("check_difficulty", sql`difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text, 'extreme'::text])`),
-]);
-
 export const verificationSchedule = pgTable("verification_schedule", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	lawId: uuid("law_id"),
@@ -775,6 +789,7 @@ export const feedbackConversations = pgTable("feedback_conversations", {
 	lastMessageAt: timestamp("last_message_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	adminViewedAt: timestamp("admin_viewed_at", { withTimezone: true, mode: 'string' }),
+	closedAt: timestamp("closed_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("idx_feedback_conversations_admin_viewed").using("btree", table.status.asc().nullsLast().op("text_ops"), table.adminViewedAt.asc().nullsLast().op("text_ops")).where(sql`(admin_viewed_at IS NULL)`),
 	foreignKey({
@@ -825,87 +840,26 @@ export const articleExamStats = pgTable("article_exam_stats", {
 	check("article_exam_stats_classification_check", sql`classification = ANY (ARRAY['VERY_FREQUENT'::text, 'FREQUENT'::text, 'OCCASIONAL'::text, 'NEVER'::text])`),
 ]);
 
-export const userSessions = pgTable("user_sessions", {
+export const aiKnowledgeBase = pgTable("ai_knowledge_base", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id"),
-	sessionToken: text("session_token"),
-	ipAddress: inet("ip_address"),
-	userAgent: text("user_agent"),
-	deviceFingerprint: text("device_fingerprint"),
-	screenResolution: text("screen_resolution"),
-	viewportSize: text("viewport_size"),
-	browserName: text("browser_name"),
-	browserVersion: text("browser_version"),
-	operatingSystem: text("operating_system"),
-	deviceModel: text("device_model"),
-	browserLanguage: text("browser_language"),
-	timezone: text(),
-	colorDepth: integer("color_depth"),
-	pixelRatio: numeric("pixel_ratio"),
-	countryCode: text("country_code"),
-	region: text(),
-	city: text(),
-	coordinates: point(),
-	isp: text(),
-	connectionType: text("connection_type"),
-	sessionStart: timestamp("session_start", { withTimezone: true, mode: 'string' }).defaultNow(),
-	sessionEnd: timestamp("session_end", { withTimezone: true, mode: 'string' }),
-	totalDurationMinutes: integer("total_duration_minutes").default(0),
-	activeTimeMinutes: integer("active_time_minutes").default(0),
-	idleTimeMinutes: integer("idle_time_minutes").default(0),
-	pagesVisited: text("pages_visited").array().default([""]),
-	pageViewCount: integer("page_view_count").default(0),
-	testsAttempted: integer("tests_attempted").default(0),
-	testsCompleted: integer("tests_completed").default(0),
-	questionsAnswered: integer("questions_answered").default(0),
-	questionsCorrect: integer("questions_correct").default(0),
-	topicsStudied: text("topics_studied").array().default([""]),
-	timeSpentStudyingMinutes: integer("time_spent_studying_minutes").default(0),
-	entryPage: text("entry_page"),
-	exitPage: text("exit_page"),
-	referrerUrl: text("referrer_url"),
-	utmSource: text("utm_source"),
-	utmCampaign: text("utm_campaign"),
-	utmMedium: text("utm_medium"),
-	searchQueries: text("search_queries").array().default([""]),
-	navigationPattern: jsonb("navigation_pattern").default({}),
-	clickCount: integer("click_count").default(0),
-	scrollDepthMax: numeric("scroll_depth_max").default('0'),
-	formInteractions: integer("form_interactions").default(0),
-	searchInteractions: integer("search_interactions").default(0),
-	downloadActions: integer("download_actions").default(0),
-	engagementScore: numeric("engagement_score").default('0'),
-	interactionRate: numeric("interaction_rate").default('0'),
-	contentConsumptionRate: numeric("content_consumption_rate").default('0'),
-	bounceIndicator: boolean("bounce_indicator").default(false),
-	conversionEvents: text("conversion_events").array().default([""]),
-	learningSessionType: text("learning_session_type"),
-	sessionGoal: text("session_goal"),
-	sessionOutcome: text("session_outcome"),
-	satisfactionIndicator: text("satisfaction_indicator"),
-	technicalDetails: jsonb("technical_details").default({}),
-	interactionEvents: jsonb("interaction_events").default({}),
-	performanceMetrics: jsonb("performance_metrics").default({}),
-	accessibilityData: jsonb("accessibility_data").default({}),
+	category: text().notNull(),
+	subcategory: text(),
+	title: text().notNull(),
+	content: text().notNull(),
+	shortAnswer: text("short_answer"),
+	keywords: text().array().default([""]),
+	priority: integer().default(0),
+	isActive: boolean("is_active").default(true),
+	metadata: jsonb().default({}),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	embedding: vector({ dimensions: 1536 }),
 }, (table) => [
-	index("idx_user_sessions_behavior").using("gin", table.navigationPattern.asc().nullsLast().op("jsonb_ops")),
-	index("idx_user_sessions_date").using("btree", table.sessionStart.asc().nullsLast().op("timestamptz_ops")),
-	index("idx_user_sessions_device").using("btree", table.deviceModel.asc().nullsLast().op("text_ops"), table.operatingSystem.asc().nullsLast().op("text_ops")),
-	index("idx_user_sessions_duration").using("btree", table.totalDurationMinutes.asc().nullsLast().op("int4_ops")),
-	index("idx_user_sessions_engagement").using("btree", table.engagementScore.asc().nullsLast().op("numeric_ops")),
-	index("idx_user_sessions_learning_type").using("btree", table.learningSessionType.asc().nullsLast().op("text_ops")),
-	index("idx_user_sessions_performance").using("gin", table.performanceMetrics.asc().nullsLast().op("jsonb_ops")),
-	index("idx_user_sessions_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	unique("user_sessions_session_token_key").on(table.sessionToken),
-	pgPolicy("Users can view their own sessions", { as: "permissive", for: "select", to: ["public"], using: sql`(user_id = auth.uid())` }),
-	pgPolicy("Users can insert their own sessions", { as: "permissive", for: "insert", to: ["public"] }),
-	pgPolicy("Users can update their own sessions", { as: "permissive", for: "update", to: ["public"] }),
-	check("check_engagement_score", sql`(engagement_score >= (0)::numeric) AND (engagement_score <= (100)::numeric)`),
-	check("check_learning_session_type", sql`learning_session_type = ANY (ARRAY['practice'::text, 'review'::text, 'exploration'::text, 'focused_study'::text, 'exam_prep'::text])`),
-	check("check_satisfaction_indicator", sql`satisfaction_indicator = ANY (ARRAY['positive'::text, 'neutral'::text, 'negative'::text, 'unknown'::text])`),
-	check("check_scroll_depth", sql`(scroll_depth_max >= (0)::numeric) AND (scroll_depth_max <= (100)::numeric)`),
+	index("idx_ai_knowledge_base_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),
+	index("idx_ai_knowledge_base_category").using("btree", table.category.asc().nullsLast().op("text_ops")),
+	index("idx_ai_knowledge_base_embedding").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "20"}),
+	index("idx_ai_knowledge_base_keywords").using("gin", table.keywords.asc().nullsLast().op("array_ops")),
+	pgPolicy("Anyone can read knowledge base", { as: "permissive", for: "select", to: ["public"], using: sql`(is_active = true)` }),
 ]);
 
 export const userLearningAnalytics = pgTable("user_learning_analytics", {
@@ -991,6 +945,91 @@ export const feedbackMessages = pgTable("feedback_messages", {
 		}),
 ]);
 
+export const userSessions = pgTable("user_sessions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	sessionToken: text("session_token"),
+	ipAddress: inet("ip_address"),
+	userAgent: text("user_agent"),
+	deviceFingerprint: text("device_fingerprint"),
+	screenResolution: text("screen_resolution"),
+	viewportSize: text("viewport_size"),
+	browserName: text("browser_name"),
+	browserVersion: text("browser_version"),
+	operatingSystem: text("operating_system"),
+	deviceModel: text("device_model"),
+	browserLanguage: text("browser_language"),
+	timezone: text(),
+	colorDepth: integer("color_depth"),
+	pixelRatio: numeric("pixel_ratio"),
+	countryCode: text("country_code"),
+	region: text(),
+	city: text(),
+	coordinates: point(),
+	isp: text(),
+	connectionType: text("connection_type"),
+	sessionStart: timestamp("session_start", { withTimezone: true, mode: 'string' }).defaultNow(),
+	sessionEnd: timestamp("session_end", { withTimezone: true, mode: 'string' }),
+	totalDurationMinutes: integer("total_duration_minutes").default(0),
+	activeTimeMinutes: integer("active_time_minutes").default(0),
+	idleTimeMinutes: integer("idle_time_minutes").default(0),
+	pagesVisited: text("pages_visited").array().default([""]),
+	pageViewCount: integer("page_view_count").default(0),
+	testsAttempted: integer("tests_attempted").default(0),
+	testsCompleted: integer("tests_completed").default(0),
+	questionsAnswered: integer("questions_answered").default(0),
+	questionsCorrect: integer("questions_correct").default(0),
+	topicsStudied: text("topics_studied").array().default([""]),
+	timeSpentStudyingMinutes: integer("time_spent_studying_minutes").default(0),
+	entryPage: text("entry_page"),
+	exitPage: text("exit_page"),
+	referrerUrl: text("referrer_url"),
+	utmSource: text("utm_source"),
+	utmCampaign: text("utm_campaign"),
+	utmMedium: text("utm_medium"),
+	searchQueries: text("search_queries").array().default([""]),
+	navigationPattern: jsonb("navigation_pattern").default({}),
+	clickCount: integer("click_count").default(0),
+	scrollDepthMax: numeric("scroll_depth_max").default('0'),
+	formInteractions: integer("form_interactions").default(0),
+	searchInteractions: integer("search_interactions").default(0),
+	downloadActions: integer("download_actions").default(0),
+	engagementScore: numeric("engagement_score").default('0'),
+	interactionRate: numeric("interaction_rate").default('0'),
+	contentConsumptionRate: numeric("content_consumption_rate").default('0'),
+	bounceIndicator: boolean("bounce_indicator").default(false),
+	conversionEvents: text("conversion_events").array().default([""]),
+	learningSessionType: text("learning_session_type"),
+	sessionGoal: text("session_goal"),
+	sessionOutcome: text("session_outcome"),
+	satisfactionIndicator: text("satisfaction_indicator"),
+	technicalDetails: jsonb("technical_details").default({}),
+	interactionEvents: jsonb("interaction_events").default({}),
+	performanceMetrics: jsonb("performance_metrics").default({}),
+	accessibilityData: jsonb("accessibility_data").default({}),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	deviceId: text("device_id"),
+}, (table) => [
+	index("idx_sessions_device_id").using("btree", table.deviceId.asc().nullsLast().op("text_ops")),
+	index("idx_user_sessions_behavior").using("gin", table.navigationPattern.asc().nullsLast().op("jsonb_ops")),
+	index("idx_user_sessions_date").using("btree", table.sessionStart.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_user_sessions_device").using("btree", table.deviceModel.asc().nullsLast().op("text_ops"), table.operatingSystem.asc().nullsLast().op("text_ops")),
+	index("idx_user_sessions_duration").using("btree", table.totalDurationMinutes.asc().nullsLast().op("int4_ops")),
+	index("idx_user_sessions_engagement").using("btree", table.engagementScore.asc().nullsLast().op("numeric_ops")),
+	index("idx_user_sessions_learning_type").using("btree", table.learningSessionType.asc().nullsLast().op("text_ops")),
+	index("idx_user_sessions_performance").using("gin", table.performanceMetrics.asc().nullsLast().op("jsonb_ops")),
+	index("idx_user_sessions_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	unique("user_sessions_session_token_key").on(table.sessionToken),
+	pgPolicy("Users can view their own sessions", { as: "permissive", for: "select", to: ["public"], using: sql`(user_id = auth.uid())` }),
+	pgPolicy("Users can insert their own sessions", { as: "permissive", for: "insert", to: ["public"] }),
+	pgPolicy("Users can update their own sessions", { as: "permissive", for: "update", to: ["public"] }),
+	check("check_engagement_score", sql`(engagement_score >= (0)::numeric) AND (engagement_score <= (100)::numeric)`),
+	check("check_learning_session_type", sql`learning_session_type = ANY (ARRAY['practice'::text, 'review'::text, 'exploration'::text, 'focused_study'::text, 'exam_prep'::text])`),
+	check("check_satisfaction_indicator", sql`satisfaction_indicator = ANY (ARRAY['positive'::text, 'neutral'::text, 'negative'::text, 'unknown'::text])`),
+	check("check_scroll_depth", sql`(scroll_depth_max >= (0)::numeric) AND (scroll_depth_max <= (100)::numeric)`),
+]);
+
 export const emailLogs = pgTable("email_logs", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id"),
@@ -1062,73 +1101,6 @@ export const hotArticles = pgTable("hot_articles", {
 	check("hot_articles_priority_level_check", sql`priority_level = ANY (ARRAY['critical'::text, 'high'::text, 'medium'::text, 'low'::text])`),
 ]);
 
-export const emailPreferences = pgTable("email_preferences", {
-	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
-	userId: uuid("user_id").notNull(),
-	emailReactivacion: boolean("email_reactivacion").default(true),
-	emailUrgente: boolean("email_urgente").default(true),
-	emailBienvenidaMotivacional: boolean("email_bienvenida_motivacional").default(true),
-	unsubscribedAll: boolean("unsubscribed_all").default(false),
-	unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	emailBienvenidaInmediato: boolean("email_bienvenida_inmediato").default(true),
-	emailResumenSemanal: boolean("email_resumen_semanal").default(true),
-}, (table) => [
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "email_preferences_user_id_fkey"
-		}).onDelete("cascade"),
-	unique("email_preferences_user_id_key").on(table.userId),
-	pgPolicy("Users can manage their own email preferences", { as: "permissive", for: "all", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-]);
-
-export const userTestFavorites = pgTable("user_test_favorites", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id").notNull(),
-	name: text().notNull(),
-	description: text(),
-	selectedLaws: jsonb("selected_laws").notNull().$type<string[]>().default([]),
-	selectedArticlesByLaw: jsonb("selected_articles_by_law").notNull().$type<Record<string, string[]>>().default({}),
-	positionType: text("position_type"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("user_test_favorites_user_id_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [userProfiles.id],
-			name: "user_test_favorites_user_id_fkey"
-		}).onDelete("cascade"),
-	unique("user_test_favorites_user_name_unique").on(table.userId, table.name),
-	pgPolicy("Users can view own favorites", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Users can insert own favorites", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Users can update own favorites", { as: "permissive", for: "update", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Users can delete own favorites", { as: "permissive", for: "delete", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-]);
-
-export const emailUnsubscribeTokens = pgTable("email_unsubscribe_tokens", {
-	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
-	userId: uuid("user_id").notNull(),
-	token: text().notNull(),
-	email: text().notNull(),
-	emailType: text("email_type").notNull(),
-	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).default(sql`(now() + '30 days'::interval)`).notNull(),
-	usedAt: timestamp("used_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_email_unsubscribe_tokens_expires").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
-	index("idx_email_unsubscribe_tokens_token").using("btree", table.token.asc().nullsLast().op("text_ops")),
-	index("idx_email_unsubscribe_tokens_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [userProfiles.id],
-			name: "email_unsubscribe_tokens_user_id_fkey"
-		}).onDelete("cascade"),
-	unique("email_unsubscribe_tokens_token_key").on(table.token),
-]);
-
 export const userSubscriptions = pgTable("user_subscriptions", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	userId: uuid("user_id"),
@@ -1153,46 +1125,56 @@ export const userSubscriptions = pgTable("user_subscriptions", {
 			foreignColumns: [userProfiles.id],
 			name: "user_subscriptions_user_id_fkey"
 		}).onDelete("cascade"),
+	unique("user_subscriptions_user_id_unique").on(table.userId),
 	pgPolicy("Users can view own subscriptions", { as: "permissive", for: "select", to: ["public"], using: sql`(user_id = auth.uid())` }),
 	pgPolicy("Service role can manage subscriptions", { as: "permissive", for: "all", to: ["public"] }),
-	check("user_subscriptions_plan_type_check", sql`plan_type = ANY (ARRAY['trial'::text, 'premium_semester'::text, 'premium_annual'::text])`),
+	check("user_subscriptions_plan_type_check", sql`plan_type = ANY (ARRAY['trial'::text, 'premium_semester'::text, 'premium_annual'::text, 'premium_monthly'::text])`),
 	check("user_subscriptions_status_check", sql`status = ANY (ARRAY['trialing'::text, 'active'::text, 'canceled'::text, 'past_due'::text, 'unpaid'::text])`),
 ]);
 
-export const userQuestionHistory = pgTable("user_question_history", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
+export const emailUnsubscribeTokens = pgTable("email_unsubscribe_tokens", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	userId: uuid("user_id").notNull(),
-	questionId: uuid("question_id").notNull(),
-	totalAttempts: integer("total_attempts").default(0),
-	correctAttempts: integer("correct_attempts").default(0),
-	successRate: numeric("success_rate", { precision: 3, scale:  2 }).default('0.00'),
-	personalDifficulty: difficultyLevel("personal_difficulty").default('medium'),
-	firstAttemptAt: timestamp("first_attempt_at", { withTimezone: true, mode: 'string' }),
-	lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true, mode: 'string' }),
-	trend: varchar({ length: 20 }).default('stable'),
-	trendCalculatedAt: timestamp("trend_calculated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	token: text().notNull(),
+	email: text().notNull(),
+	emailType: text("email_type").notNull(),
+	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }).default(sql`(now() + '30 days'::interval)`).notNull(),
+	usedAt: timestamp("used_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_email_unsubscribe_tokens_expires").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_email_unsubscribe_tokens_token").using("btree", table.token.asc().nullsLast().op("text_ops")),
+	index("idx_email_unsubscribe_tokens_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "email_unsubscribe_tokens_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("email_unsubscribe_tokens_token_key").on(table.token),
+]);
+
+export const emailPreferences = pgTable("email_preferences", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	emailReactivacion: boolean("email_reactivacion").default(true),
+	emailUrgente: boolean("email_urgente").default(true),
+	emailBienvenidaMotivacional: boolean("email_bienvenida_motivacional").default(true),
+	unsubscribedAll: boolean("unsubscribed_all").default(false),
+	unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	emailBienvenidaInmediato: boolean("email_bienvenida_inmediato").default(true),
+	emailResumenSemanal: boolean("email_resumen_semanal").default(true),
+	emailSoporteDisabled: boolean("email_soporte_disabled").default(false),
+	emailNewsletterDisabled: boolean("email_newsletter_disabled").default(false),
 }, (table) => [
-	index("idx_user_question_history_difficulty").using("btree", table.personalDifficulty.asc().nullsLast().op("enum_ops")),
-	index("idx_user_question_history_question_id").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
-	index("idx_user_question_history_success_rate").using("btree", table.successRate.asc().nullsLast().op("numeric_ops")),
-	index("idx_user_question_history_trend").using("btree", table.trend.asc().nullsLast().op("text_ops")),
-	index("idx_user_question_history_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.questionId],
-			foreignColumns: [questions.id],
-			name: "user_question_history_question_id_fkey"
-		}).onDelete("cascade"),
 	foreignKey({
 			columns: [table.userId],
 			foreignColumns: [users.id],
-			name: "user_question_history_user_id_fkey"
+			name: "email_preferences_user_id_fkey"
 		}).onDelete("cascade"),
-	unique("user_question_history_user_id_question_id_key").on(table.userId, table.questionId),
-	pgPolicy("Users can view their own question history", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Allow trigger inserts for question history", { as: "permissive", for: "insert", to: ["public"] }),
-	pgPolicy("Allow trigger updates for question history", { as: "permissive", for: "update", to: ["public"] }),
+	unique("email_preferences_user_id_key").on(table.userId),
+	pgPolicy("Users can manage their own email preferences", { as: "permissive", for: "all", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 ]);
 
 export const userDifficultyMetrics = pgTable("user_difficulty_metrics", {
@@ -1239,6 +1221,7 @@ export const pwaSessions = pgTable("pwa_sessions", {
 	pgPolicy("Users can insert own PWA sessions", { as: "permissive", for: "insert", to: ["public"] }),
 	pgPolicy("Users can update own PWA sessions", { as: "permissive", for: "update", to: ["public"] }),
 	pgPolicy("Service role can manage all PWA sessions", { as: "permissive", for: "all", to: ["public"] }),
+	pgPolicy("Admin can view all pwa sessions", { as: "permissive", for: "select", to: ["public"] }),
 ]);
 
 export const pwaEvents = pgTable("pwa_events", {
@@ -1268,41 +1251,7 @@ export const pwaEvents = pgTable("pwa_events", {
 	pgPolicy("Users can view own PWA events", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 	pgPolicy("Users can insert own PWA events", { as: "permissive", for: "insert", to: ["public"] }),
 	pgPolicy("Service role can manage all PWA events", { as: "permissive", for: "all", to: ["public"] }),
-]);
-
-export const userInteractions = pgTable("user_interactions", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id"),
-	sessionId: uuid("session_id"),
-	eventType: text("event_type").notNull(),
-	eventCategory: text("event_category").notNull(),
-	component: text(),
-	action: text(),
-	label: text(),
-	value: jsonb().default({}),
-	pageUrl: text("page_url"),
-	elementId: text("element_id"),
-	elementText: text("element_text"),
-	responseTimeMs: integer("response_time_ms"),
-	deviceInfo: jsonb("device_info").default({}),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_user_interactions_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	index("idx_user_interactions_event_type").using("btree", table.eventType.asc().nullsLast().op("text_ops")),
-	index("idx_user_interactions_category").using("btree", table.eventCategory.asc().nullsLast().op("text_ops")),
-	index("idx_user_interactions_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
-	index("idx_user_interactions_component").using("btree", table.component.asc().nullsLast().op("text_ops")),
-	index("idx_user_interactions_session").using("btree", table.sessionId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "user_interactions_user_id_fkey"
-		}).onDelete("cascade"),
-	pgPolicy("Users can view own interactions", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Users can insert own interactions", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(auth.uid() = user_id OR user_id IS NULL)` }),
-	pgPolicy("Admins can view all interactions", { as: "permissive", for: "select", to: ["public"], using: sql`(EXISTS ( SELECT 1 FROM user_profiles WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'ilovetestpro@gmail.com'::text)))))` }),
-	pgPolicy("Service role full access", { as: "permissive", for: "all", to: ["public"] }),
-	check("user_interactions_category_check", sql`event_category = ANY (ARRAY['test'::text, 'chat'::text, 'navigation'::text, 'ui'::text, 'auth'::text, 'error'::text, 'conversion'::text, 'psychometric'::text])`),
+	pgPolicy("Admin can view all pwa events", { as: "permissive", for: "select", to: ["public"] }),
 ]);
 
 export const userStreaks = pgTable("user_streaks", {
@@ -1329,6 +1278,78 @@ export const userStreaks = pgTable("user_streaks", {
 	pgPolicy("Users can update own streak only", { as: "permissive", for: "update", to: ["authenticated"] }),
 ]);
 
+export const paymentSettlements = pgTable("payment_settlements", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	stripePaymentIntentId: text("stripe_payment_intent_id"),
+	stripeChargeId: text("stripe_charge_id"),
+	stripeInvoiceId: text("stripe_invoice_id"),
+	stripeCustomerId: text("stripe_customer_id"),
+	userId: uuid("user_id"),
+	userEmail: text("user_email"),
+	amountGross: integer("amount_gross").notNull(),
+	stripeFee: integer("stripe_fee").notNull(),
+	amountNet: integer("amount_net").notNull(),
+	currency: text().default('eur'),
+	manuelAmount: integer("manuel_amount").notNull(),
+	armandoAmount: integer("armando_amount").notNull(),
+	armandoMarkedPaid: boolean("armando_marked_paid").default(false),
+	armandoMarkedPaidAt: timestamp("armando_marked_paid_at", { withTimezone: true, mode: 'string' }),
+	manuelConfirmedReceived: boolean("manuel_confirmed_received").default(false),
+	manuelConfirmedAt: timestamp("manuel_confirmed_at", { withTimezone: true, mode: 'string' }),
+	settlementBatchId: uuid("settlement_batch_id"),
+	notes: text(),
+	paymentDate: timestamp("payment_date", { withTimezone: true, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	payoutFeeEstimated: integer("payout_fee_estimated").default(0),
+}, (table) => [
+	index("idx_payment_settlements_pending").using("btree", table.manuelConfirmedReceived.asc().nullsLast().op("bool_ops")).where(sql`(manuel_confirmed_received = false)`),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "payment_settlements_user_id_fkey"
+		}),
+	unique("payment_settlements_stripe_payment_intent_id_key").on(table.stripePaymentIntentId),
+	pgPolicy("Allow public read on payment_settlements", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+	pgPolicy("Allow public update on payment_settlements", { as: "permissive", for: "update", to: ["public"] }),
+]);
+
+export const userQuestionHistory = pgTable("user_question_history", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	questionId: uuid("question_id").notNull(),
+	totalAttempts: integer("total_attempts").default(0),
+	correctAttempts: integer("correct_attempts").default(0),
+	successRate: numeric("success_rate", { precision: 3, scale:  2 }).default('0.00'),
+	personalDifficulty: difficultyLevel("personal_difficulty").default('medium'),
+	firstAttemptAt: timestamp("first_attempt_at", { withTimezone: true, mode: 'string' }),
+	lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true, mode: 'string' }),
+	trend: varchar({ length: 20 }).default('stable'),
+	trendCalculatedAt: timestamp("trend_calculated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_user_question_history_difficulty").using("btree", table.personalDifficulty.asc().nullsLast().op("enum_ops")),
+	index("idx_user_question_history_question_id").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
+	index("idx_user_question_history_success_rate").using("btree", table.successRate.asc().nullsLast().op("numeric_ops")),
+	index("idx_user_question_history_trend").using("btree", table.trend.asc().nullsLast().op("text_ops")),
+	index("idx_user_question_history_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [questions.id],
+			name: "user_question_history_question_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_question_history_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("user_question_history_user_id_question_id_key").on(table.userId, table.questionId),
+	pgPolicy("Users can view their own question history", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Allow trigger inserts for question history", { as: "permissive", for: "insert", to: ["public"] }),
+	pgPolicy("Allow trigger updates for question history", { as: "permissive", for: "update", to: ["public"] }),
+]);
+
 export const psychometricCategories = pgTable("psychometric_categories", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	categoryKey: text("category_key").notNull(),
@@ -1342,25 +1363,6 @@ export const psychometricCategories = pgTable("psychometric_categories", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
 	unique("psychometric_categories_category_key_key").on(table.categoryKey),
-]);
-
-export const psychometricSections = pgTable("psychometric_sections", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	categoryId: uuid("category_id").notNull(),
-	sectionKey: text("section_key").notNull(),
-	displayName: text("display_name").notNull(),
-	description: text(),
-	isActive: boolean("is_active").default(true),
-	displayOrder: integer("display_order").default(0),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	foreignKey({
-			columns: [table.categoryId],
-			foreignColumns: [psychometricCategories.id],
-			name: "psychometric_sections_category_id_fkey"
-		}).onDelete("cascade"),
-	unique("psychometric_sections_category_id_section_key_key").on(table.categoryId, table.sectionKey),
 ]);
 
 export const psychometricQuestions = pgTable("psychometric_questions", {
@@ -1391,6 +1393,7 @@ export const psychometricQuestions = pgTable("psychometric_questions", {
 	examSource: text("exam_source"),
 	examDate: date("exam_date"),
 }, (table) => [
+	index("idx_psychometric_official_exam").using("btree", table.isOfficialExam.asc().nullsLast().op("bool_ops")).where(sql`(is_official_exam = true)`),
 	index("idx_psychometric_questions_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),
 	index("idx_psychometric_questions_category").using("btree", table.categoryId.asc().nullsLast().op("uuid_ops")),
 	index("idx_psychometric_questions_content_gin").using("gin", table.contentData.asc().nullsLast().op("jsonb_ops")),
@@ -1409,6 +1412,25 @@ export const psychometricQuestions = pgTable("psychometric_questions", {
 		}),
 	check("psychometric_questions_correct_option_check", sql`correct_option = ANY (ARRAY[0, 1, 2, 3])`),
 	check("psychometric_questions_difficulty_check", sql`difficulty = ANY (ARRAY['easy'::text, 'medium'::text, 'hard'::text, 'expert'::text])`),
+]);
+
+export const psychometricSections = pgTable("psychometric_sections", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	categoryId: uuid("category_id").notNull(),
+	sectionKey: text("section_key").notNull(),
+	displayName: text("display_name").notNull(),
+	description: text(),
+	isActive: boolean("is_active").default(true),
+	displayOrder: integer("display_order").default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	foreignKey({
+			columns: [table.categoryId],
+			foreignColumns: [psychometricCategories.id],
+			name: "psychometric_sections_category_id_fkey"
+		}).onDelete("cascade"),
+	unique("psychometric_sections_category_id_section_key_key").on(table.categoryId, table.sectionKey),
 ]);
 
 export const userNotificationSettings = pgTable("user_notification_settings", {
@@ -1433,6 +1455,9 @@ export const userNotificationSettings = pgTable("user_notification_settings", {
 			name: "user_notification_settings_user_id_fkey"
 		}).onDelete("cascade"),
 	unique("user_notification_settings_user_id_unique").on(table.userId),
+	pgPolicy("Admin can view all notification settings", { as: "permissive", for: "select", to: ["public"], using: sql`(EXISTS ( SELECT 1
+   FROM user_profiles
+  WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'manueltrader@gmail.com'::text)))))` }),
 	check("user_notification_settings_frequency_check", sql`frequency = ANY (ARRAY['daily'::text, 'smart'::text, 'minimal'::text, 'off'::text])`),
 	check("user_notification_settings_motivation_level_check", sql`motivation_level = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'extreme'::text])`),
 ]);
@@ -1440,7 +1465,7 @@ export const userNotificationSettings = pgTable("user_notification_settings", {
 export const userActivityPatterns = pgTable("user_activity_patterns", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id"),
-	preferredHours: integer("preferred_hours").array().default([9, 14, 20]),
+	preferredHours: integer("preferred_hours").array().default([9, 14, 2]),
 	activeDays: integer("active_days").array().default([1, 2, 3, 4, 5, 6]),
 	avgSessionDuration: integer("avg_session_duration").default(15),
 	peakPerformanceTime: time("peak_performance_time"),
@@ -1612,37 +1637,6 @@ export const questionDisputes = pgTable("question_disputes", {
 	check("question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
 ]);
 
-export const psychometricQuestionDisputes = pgTable("psychometric_question_disputes", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	questionId: uuid("question_id"),
-	userId: uuid("user_id"),
-	disputeType: text("dispute_type").notNull(),
-	description: text().notNull(),
-	status: text().default('pending'),
-	adminResponse: text("admin_response"),
-	adminUserId: uuid("admin_user_id"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: 'string' }),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	isRead: boolean("is_read").default(false),
-}, (table) => [
-	index("idx_psych_disputes_question").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
-	index("idx_psych_disputes_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	index("idx_psych_disputes_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.questionId],
-			foreignColumns: [psychometricQuestions.id],
-			name: "psychometric_question_disputes_question_id_fkey"
-		}).onDelete("cascade"),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [userProfiles.id],
-			name: "psychometric_question_disputes_user_id_fkey"
-		}).onDelete("set null"),
-	check("psychometric_question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['ai_detected_error'::text, 'respuesta_incorrecta'::text, 'explicacion_confusa'::text, 'datos_erroneos'::text, 'otro'::text])`),
-	check("psychometric_question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
-]);
-
 export const userNotificationMetrics = pgTable("user_notification_metrics", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id"),
@@ -1685,41 +1679,6 @@ export const userNotificationMetrics = pgTable("user_notification_metrics", {
 	pgPolicy("Users can view own notification metrics", { as: "permissive", for: "select", to: ["public"] }),
 	pgPolicy("Allow users to update own notification metrics", { as: "permissive", for: "insert", to: ["public"] }),
 	pgPolicy("Allow users to update notification metrics", { as: "permissive", for: "update", to: ["public"] }),
-]);
-
-export const notificationEvents = pgTable("notification_events", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: uuid("user_id"),
-	eventType: text("event_type").notNull(),
-	notificationType: text("notification_type"),
-	deviceInfo: jsonb("device_info").default({}),
-	browserInfo: jsonb("browser_info").default({}),
-	pushSubscription: jsonb("push_subscription"),
-	notificationData: jsonb("notification_data").default({}),
-	responseTimeMs: integer("response_time_ms"),
-	errorDetails: text("error_details"),
-	ipAddress: inet("ip_address"),
-	userAgent: text("user_agent"),
-	referrer: text(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_notification_events_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
-	index("idx_notification_events_event_type").using("btree", table.eventType.asc().nullsLast().op("text_ops")),
-	index("idx_notification_events_type_date").using("btree", table.notificationType.asc().nullsLast().op("text_ops"), table.createdAt.asc().nullsLast().op("timestamptz_ops")),
-	index("idx_notification_events_user_event").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.eventType.asc().nullsLast().op("text_ops")),
-	index("idx_notification_events_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "notification_events_user_id_fkey"
-		}).onDelete("cascade"),
-	pgPolicy("Admin can view all notification events", { as: "permissive", for: "select", to: ["public"], using: sql`(EXISTS ( SELECT 1
-   FROM user_profiles
-  WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'ilovetestpro@gmail.com'::text)))))` }),
-	pgPolicy("Users can view own notification events", { as: "permissive", for: "select", to: ["public"] }),
-	pgPolicy("Allow insert notification events", { as: "permissive", for: "insert", to: ["public"] }),
-	check("notification_events_event_type_check", sql`event_type = ANY (ARRAY['permission_requested'::text, 'permission_granted'::text, 'permission_denied'::text, 'subscription_created'::text, 'subscription_updated'::text, 'subscription_deleted'::text, 'notification_sent'::text, 'notification_delivered'::text, 'notification_clicked'::text, 'notification_dismissed'::text, 'notification_failed'::text, 'settings_updated'::text])`),
-	check("notification_events_notification_type_check", sql`notification_type = ANY (ARRAY['motivation'::text, 'streak_reminder'::text, 'achievement'::text, 'study_reminder'::text, 'reactivation'::text, 'urgent'::text, 'welcome'::text, 'test'::text])`),
 ]);
 
 export const customOposiciones = pgTable("custom_oposiciones", {
@@ -1796,6 +1755,41 @@ export const emailEvents = pgTable("email_events", {
 	pgPolicy("Allow insert email events", { as: "permissive", for: "insert", to: ["public"] }),
 	check("email_events_email_type_check", sql`email_type = ANY (ARRAY['welcome'::text, 'reactivation'::text, 'urgent_reactivation'::text, 'motivation'::text, 'achievement'::text, 'streak_danger'::text, 'newsletter'::text, 'system'::text, 'bienvenida_inmediato'::text, 'impugnacion_respuesta'::text, 'soporte_respuesta'::text])`),
 	check("email_events_event_type_check", sql`event_type = ANY (ARRAY['sent'::text, 'delivered'::text, 'opened'::text, 'clicked'::text, 'bounced'::text, 'complained'::text, 'unsubscribed'::text])`),
+]);
+
+export const notificationEvents = pgTable("notification_events", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	eventType: text("event_type").notNull(),
+	notificationType: text("notification_type"),
+	deviceInfo: jsonb("device_info").default({}),
+	browserInfo: jsonb("browser_info").default({}),
+	pushSubscription: jsonb("push_subscription"),
+	notificationData: jsonb("notification_data").default({}),
+	responseTimeMs: integer("response_time_ms"),
+	errorDetails: text("error_details"),
+	ipAddress: inet("ip_address"),
+	userAgent: text("user_agent"),
+	referrer: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_notification_events_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_notification_events_event_type").using("btree", table.eventType.asc().nullsLast().op("text_ops")),
+	index("idx_notification_events_type_date").using("btree", table.notificationType.asc().nullsLast().op("text_ops"), table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_notification_events_user_event").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.eventType.asc().nullsLast().op("text_ops")),
+	index("idx_notification_events_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "notification_events_user_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("Admin can view all notification events", { as: "permissive", for: "select", to: ["public"], using: sql`(EXISTS ( SELECT 1
+   FROM user_profiles
+  WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'ilovetestpro@gmail.com'::text)))))` }),
+	pgPolicy("Users can view own notification events", { as: "permissive", for: "select", to: ["public"] }),
+	pgPolicy("Allow insert notification events", { as: "permissive", for: "insert", to: ["public"] }),
+	check("notification_events_event_type_check", sql`event_type = ANY (ARRAY['permission_requested'::text, 'permission_granted'::text, 'permission_denied'::text, 'subscription_created'::text, 'subscription_updated'::text, 'subscription_deleted'::text, 'notification_sent'::text, 'notification_delivered'::text, 'notification_clicked'::text, 'notification_dismissed'::text, 'notification_failed'::text, 'settings_updated'::text, 'banner_viewed'::text, 'banner_dismissed'::text, 'banner_clicked'::text])`),
+	check("notification_events_notification_type_check", sql`notification_type = ANY (ARRAY['motivation'::text, 'streak_reminder'::text, 'achievement'::text, 'study_reminder'::text, 'reactivation'::text, 'urgent'::text, 'welcome'::text, 'test'::text])`),
 ]);
 
 export const userStreaksBackup20241208 = pgTable("user_streaks_backup_20241208", {
@@ -1996,14 +1990,40 @@ export const laws = pgTable("laws", {
 	lastUpdateBoe: text("last_update_boe"),
 	lastVerificationSummary: jsonb("last_verification_summary"),
 	videoUrl: text("video_url"),
-	// Columnas de cache para optimización de monitoreo BOE
-	boeContentLength: integer("boe_content_length"),
 	dateByteOffset: integer("date_byte_offset"),
+	boeContentLength: integer("boe_content_length"),
+	isDerogated: boolean("is_derogated").default(false),
+	derogatedBy: text("derogated_by"),
+	derogatedAt: date("derogated_at"),
 }, (table) => [
 	pgPolicy("Enable read access for laws", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
 	check("laws_scope_check", sql`scope = ANY (ARRAY['national'::text, 'regional'::text, 'local'::text, 'eu'::text])`),
 	check("laws_type_check", sql`type = ANY (ARRAY['constitution'::text, 'code'::text, 'law'::text, 'regulation'::text])`),
 	check("laws_verification_status_check", sql`verification_status = ANY (ARRAY['actualizada'::text, 'pendiente'::text, 'desactualizada'::text, 'error'::text])`),
+]);
+
+export const userThemePerformanceCache = pgTable("user_theme_performance_cache", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	topicNumber: integer("topic_number").notNull(),
+	topicTitle: text("topic_title"),
+	totalQuestions: integer("total_questions").default(0),
+	correctAnswers: integer("correct_answers").default(0),
+	accuracy: numeric({ precision: 5, scale:  2 }).default('0'),
+	averageTime: numeric("average_time", { precision: 10, scale:  2 }).default('0'),
+	lastPracticed: timestamp("last_practiced", { withTimezone: true, mode: 'string' }),
+	calculatedAt: timestamp("calculated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_theme_cache_calculated_at").using("btree", table.calculatedAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_theme_cache_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_theme_performance_cache_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("user_theme_performance_cache_user_id_topic_number_key").on(table.userId, table.topicNumber),
+	pgPolicy("Users can read own theme cache", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Service can manage all theme cache", { as: "permissive", for: "all", to: ["public"] }),
 ]);
 
 export const aiApiUsage = pgTable("ai_api_usage", {
@@ -2098,6 +2118,7 @@ export const questions = pgTable("questions", {
 	index("idx_questions_official_article").using("btree", table.primaryArticleId.asc().nullsLast().op("bool_ops"), table.isOfficialExam.asc().nullsLast().op("uuid_ops")),
 	index("idx_questions_official_exam").using("btree", table.isOfficialExam.asc().nullsLast().op("bool_ops")).where(sql`(is_official_exam = true)`),
 	index("idx_questions_primary_article").using("btree", table.primaryArticleId.asc().nullsLast().op("uuid_ops")),
+	index("idx_questions_primary_article_id").using("btree", table.primaryArticleId.asc().nullsLast().op("uuid_ops")).where(sql`(primary_article_id IS NOT NULL)`),
 	index("idx_questions_verification_status").using("btree", table.verificationStatus.asc().nullsLast().op("text_ops")).where(sql`(verification_status IS NOT NULL)`),
 	index("idx_questions_verified_at").using("btree", table.verifiedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(verified_at IS NULL)`),
 	foreignKey({
@@ -2175,6 +2196,26 @@ export const publicUserProfiles = pgTable("public_user_profiles", {
 	pgPolicy("Perfiles públicos visibles para todos", { as: "permissive", for: "select", to: ["public"] }),
 ]);
 
+export const deletedUsersLog = pgTable("deleted_users_log", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	originalUserId: uuid("original_user_id").notNull(),
+	email: text().notNull(),
+	fullName: text("full_name"),
+	planType: text("plan_type"),
+	targetOposicion: text("target_oposicion"),
+	registeredAt: timestamp("registered_at", { withTimezone: true, mode: 'string' }),
+	deletedAt: timestamp("deleted_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	daysActive: integer("days_active"),
+	totalTests: integer("total_tests").default(0),
+	totalPayments: numeric("total_payments").default('0'),
+	deletionReason: text("deletion_reason"),
+	requestedVia: text("requested_via").default('feedback'),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_deleted_users_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_deleted_users_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
+]);
+
 export const oposiciones = pgTable("oposiciones", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	nombre: text().notNull(),
@@ -2211,7 +2252,7 @@ export const telegramGroups = pgTable("telegram_groups", {
 	username: text(),
 	memberCount: integer("member_count"),
 	isMonitoring: boolean("is_monitoring").default(true),
-	keywords: text().array().default(["RAY['test'::text", "'vence'::text", "'oposiciones'::text", "'auxiliar'::tex"]),
+	keywords: text().array().default(['test', 'vence', 'oposiciones', 'auxiliar']),
 	addedAt: timestamp("added_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
@@ -2438,6 +2479,46 @@ export const shareEvents = pgTable("share_events", {
 	pgPolicy("Users can read own shares", { as: "permissive", for: "select", to: ["public"] }),
 ]);
 
+export const predictionTracking = pgTable("prediction_tracking", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	predictionDate: date("prediction_date").default(sql`CURRENT_DATE`).notNull(),
+	methodName: text("method_name").notNull(),
+	predictedSalesPerMonth: numeric("predicted_sales_per_month", { precision: 10, scale:  2 }).notNull(),
+	predictedRevenuePerMonth: numeric("predicted_revenue_per_month", { precision: 10, scale:  2 }).notNull(),
+	predictionInputs: jsonb("prediction_inputs").default({}),
+	actualSales: integer("actual_sales"),
+	actualRevenue: numeric("actual_revenue", { precision: 10, scale:  2 }),
+	errorPercent: numeric("error_percent", { precision: 6, scale:  2 }),
+	absoluteError: numeric("absolute_error", { precision: 6, scale:  2 }),
+	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_prediction_tracking_date").using("btree", table.predictionDate.desc().nullsFirst().op("date_ops")),
+	index("idx_prediction_tracking_method").using("btree", table.methodName.asc().nullsLast().op("text_ops")),
+	index("idx_prediction_tracking_verified").using("btree", table.verifiedAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(verified_at IS NOT NULL)`),
+	unique("prediction_tracking_prediction_date_method_name_key").on(table.predictionDate, table.methodName),
+	check("prediction_tracking_method_name_check", sql`method_name = ANY (ARRAY['by_registrations'::text, 'by_active_users'::text, 'by_historic'::text, 'combined'::text])`),
+]);
+
+export const stripePlatformFees = pgTable("stripe_platform_fees", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	stripeTransactionId: text("stripe_transaction_id").notNull(),
+	stripeSourceId: text("stripe_source_id"),
+	feeType: text("fee_type").notNull(),
+	amount: integer().notNull(),
+	description: text(),
+	periodStart: date("period_start"),
+	periodEnd: date("period_end"),
+	feeDate: timestamp("fee_date", { withTimezone: true, mode: 'string' }).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_stripe_platform_fees_date").using("btree", table.feeDate.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_stripe_platform_fees_type").using("btree", table.feeType.asc().nullsLast().op("text_ops")),
+	unique("stripe_platform_fees_stripe_transaction_id_key").on(table.stripeTransactionId),
+	check("stripe_platform_fees_fee_type_check", sql`fee_type = ANY (ARRAY['payout_fee'::text, 'billing_fee'::text, 'refund_fee'::text, 'dispute_fee'::text, 'other'::text])`),
+]);
+
 export const articleUpdateLogs = pgTable("article_update_logs", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	lawId: uuid("law_id"),
@@ -2522,6 +2603,602 @@ export const dailyQuestionUsage = pgTable("daily_question_usage", {
 	pgPolicy("Users can read own usage", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
 	pgPolicy("Users can insert own usage", { as: "permissive", for: "insert", to: ["public"] }),
 	pgPolicy("Users can update own usage", { as: "permissive", for: "update", to: ["public"] }),
+]);
+
+export const fraudWatchList = pgTable("fraud_watch_list", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	reason: text().notNull(),
+	detectionDetails: jsonb("detection_details"),
+	suspicionScore: integer("suspicion_score").default(0),
+	addedAt: timestamp("added_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	confirmedFraud: boolean("confirmed_fraud").default(false),
+	confirmedAt: timestamp("confirmed_at", { withTimezone: true, mode: 'string' }),
+	confirmedDeviceId: text("confirmed_device_id"),
+	relatedUsers: uuid("related_users").array(),
+	notes: text(),
+}, (table) => [
+	index("idx_fraud_watch_added_at").using("btree", table.addedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_fraud_watch_confirmed").using("btree", table.confirmedFraud.asc().nullsLast().op("bool_ops")),
+	index("idx_fraud_watch_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "fraud_watch_list_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("fraud_watch_list_user_id_key").on(table.userId),
+	pgPolicy("Admins can manage fraud_watch_list", { as: "permissive", for: "all", to: ["public"], using: sql`(EXISTS ( SELECT 1
+   FROM user_roles
+  WHERE ((user_roles.user_id = auth.uid()) AND (user_roles.role = ANY (ARRAY['admin'::text, 'super_admin'::text])) AND (user_roles.is_active = true))))` }),
+	pgPolicy("Users can check own watch status", { as: "permissive", for: "select", to: ["public"] }),
+]);
+
+export const fraudConfirmations = pgTable("fraud_confirmations", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	deviceId: text("device_id").notNull(),
+	userIds: uuid("user_ids").array().notNull(),
+	firstDetectedAt: timestamp("first_detected_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	lastActivityAt: timestamp("last_activity_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	sessionCount: integer("session_count").default(0),
+	status: text().default('confirmed'),
+	actionTaken: text("action_taken"),
+	actionTakenAt: timestamp("action_taken_at", { withTimezone: true, mode: 'string' }),
+	actionTakenBy: uuid("action_taken_by"),
+	notes: text(),
+}, (table) => [
+	index("idx_fraud_confirmations_device_id").using("btree", table.deviceId.asc().nullsLast().op("text_ops")),
+	index("idx_fraud_confirmations_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	foreignKey({
+			columns: [table.actionTakenBy],
+			foreignColumns: [users.id],
+			name: "fraud_confirmations_action_taken_by_fkey"
+		}),
+	pgPolicy("Admins can manage fraud_confirmations", { as: "permissive", for: "all", to: ["public"], using: sql`(EXISTS ( SELECT 1
+   FROM user_roles
+  WHERE ((user_roles.user_id = auth.uid()) AND (user_roles.role = ANY (ARRAY['admin'::text, 'super_admin'::text])) AND (user_roles.is_active = true))))` }),
+	check("fraud_confirmations_status_check", sql`status = ANY (ARRAY['confirmed'::text, 'dismissed'::text, 'action_taken'::text])`),
+]);
+
+export const psychometricQuestionDisputes = pgTable("psychometric_question_disputes", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	questionId: uuid("question_id").notNull(),
+	userId: uuid("user_id"),
+	disputeType: text("dispute_type").notNull(),
+	description: text().notNull(),
+	status: text().default('pending').notNull(),
+	adminResponse: text("admin_response"),
+	adminUserId: uuid("admin_user_id"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	resolvedAt: timestamp("resolved_at", { withTimezone: true, mode: 'string' }),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	isRead: boolean("is_read").default(false),
+}, (table) => [
+	index("idx_psych_disputes_question").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
+	index("idx_psych_disputes_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("idx_psych_disputes_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.adminUserId],
+			foreignColumns: [users.id],
+			name: "psychometric_question_disputes_admin_user_id_fkey"
+		}).onDelete("set null"),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [psychometricQuestions.id],
+			name: "psychometric_question_disputes_question_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "psychometric_question_disputes_user_id_fkey"
+		}).onDelete("set null"),
+	pgPolicy("Users can view own disputes", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can create disputes", { as: "permissive", for: "insert", to: ["public"] }),
+	pgPolicy("Service role full access", { as: "permissive", for: "all", to: ["public"] }),
+	check("psychometric_question_disputes_dispute_type_check", sql`dispute_type = ANY (ARRAY['ai_detected_error'::text, 'respuesta_incorrecta'::text, 'otro'::text])`),
+	check("psychometric_question_disputes_status_check", sql`status = ANY (ARRAY['pending'::text, 'reviewing'::text, 'resolved'::text, 'rejected'::text])`),
+]);
+
+export const userInteractions = pgTable("user_interactions", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	userId: uuid("user_id"),
+	sessionId: uuid("session_id"),
+	eventType: text("event_type").notNull(),
+	eventCategory: text("event_category").notNull(),
+	component: text(),
+	action: text(),
+	label: text(),
+	value: jsonb().default({}),
+	pageUrl: text("page_url"),
+	elementId: text("element_id"),
+	elementText: text("element_text"),
+	responseTimeMs: integer("response_time_ms"),
+	deviceInfo: jsonb("device_info").default({}),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_user_interactions_category").using("btree", table.eventCategory.asc().nullsLast().op("text_ops")),
+	index("idx_user_interactions_component").using("btree", table.component.asc().nullsLast().op("text_ops")),
+	index("idx_user_interactions_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_user_interactions_event_type").using("btree", table.eventType.asc().nullsLast().op("text_ops")),
+	index("idx_user_interactions_session").using("btree", table.sessionId.asc().nullsLast().op("uuid_ops")),
+	index("idx_user_interactions_user_category_date").using("btree", table.userId.asc().nullsLast().op("text_ops"), table.eventCategory.asc().nullsLast().op("text_ops"), table.createdAt.desc().nullsFirst().op("uuid_ops")),
+	index("idx_user_interactions_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_interactions_user_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("Users can view own interactions", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can insert own interactions", { as: "permissive", for: "insert", to: ["public"] }),
+	pgPolicy("Admins can view all interactions", { as: "permissive", for: "select", to: ["public"] }),
+	check("user_interactions_category_check", sql`event_category = ANY (ARRAY['test'::text, 'chat'::text, 'navigation'::text, 'ui'::text, 'auth'::text, 'error'::text, 'conversion'::text, 'psychometric'::text])`),
+]);
+
+export const payoutTransfers = pgTable("payout_transfers", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	stripePayoutId: text("stripe_payout_id").notNull(),
+	payoutDate: timestamp("payout_date", { withTimezone: true, mode: 'string' }).notNull(),
+	payoutAmount: integer("payout_amount").notNull(),
+	payoutFee: integer("payout_fee").default(0),
+	manuelAmount: integer("manuel_amount").notNull(),
+	armandoAmount: integer("armando_amount").notNull(),
+	sentToManuel: boolean("sent_to_manuel").default(false),
+	sentDate: timestamp("sent_date", { withTimezone: true, mode: 'string' }),
+	manuelConfirmed: boolean("manuel_confirmed").default(false),
+	manuelConfirmedDate: timestamp("manuel_confirmed_date", { withTimezone: true, mode: 'string' }),
+	notes: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_payout_transfers_date").using("btree", table.payoutDate.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_payout_transfers_sent").using("btree", table.sentToManuel.asc().nullsLast().op("bool_ops")),
+	unique("payout_transfers_stripe_payout_id_key").on(table.stripePayoutId),
+]);
+
+export const sessionBlockEvents = pgTable("session_block_events", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	sessionsCount: integer("sessions_count").default(0).notNull(),
+	blockedAt: timestamp("blocked_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("idx_session_block_events_blocked_at").using("btree", table.blockedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_session_block_events_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "session_block_events_user_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const convocatoriasBoe = pgTable("convocatorias_boe", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	boeId: text("boe_id").notNull(),
+	boeFecha: date("boe_fecha").notNull(),
+	boeUrlPdf: text("boe_url_pdf"),
+	boeUrlHtml: text("boe_url_html"),
+	boeUrlXml: text("boe_url_xml"),
+	titulo: text().notNull(),
+	tituloLimpio: text("titulo_limpio"),
+	departamentoCodigo: text("departamento_codigo"),
+	departamentoNombre: text("departamento_nombre"),
+	epigrafe: text(),
+	tipo: text(),
+	categoria: text(),
+	cuerpo: text(),
+	acceso: text(),
+	numPlazas: integer("num_plazas"),
+	numPlazasLibre: integer("num_plazas_libre"),
+	numPlazasPi: integer("num_plazas_pi"),
+	numPlazasDiscapacidad: integer("num_plazas_discapacidad"),
+	fechaDisposicion: date("fecha_disposicion"),
+	fechaLimiteInscripcion: date("fecha_limite_inscripcion"),
+	fechaExamen: date("fecha_examen"),
+	oposicionRelacionada: text("oposicion_relacionada"),
+	convocatoriaOrigenId: uuid("convocatoria_origen_id"),
+	resumen: text(),
+	contenidoTexto: text("contenido_texto"),
+	rango: text(),
+	paginaInicial: integer("pagina_inicial"),
+	paginaFinal: integer("pagina_final"),
+	plazoInscripcionDias: integer("plazo_inscripcion_dias"),
+	titulacionRequerida: text("titulacion_requerida"),
+	tieneTemario: boolean("tiene_temario").default(false),
+	urlBases: text("url_bases"),
+	relevanciaScore: integer("relevancia_score").default(0),
+	destacada: boolean().default(false),
+	isActive: boolean("is_active").default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	ambito: text(),
+	comunidadAutonoma: text("comunidad_autonoma"),
+	provincia: text(),
+	municipio: text(),
+	slug: text(),
+}, (table) => [
+	index("idx_convocatorias_active_tipo_fecha").using("btree", table.isActive.asc().nullsLast().op("date_ops"), table.tipo.asc().nullsLast().op("bool_ops"), table.boeFecha.desc().nullsFirst().op("date_ops")).where(sql`(is_active = true)`),
+	index("idx_convocatorias_boe_active").using("btree", table.isActive.asc().nullsLast().op("bool_ops")).where(sql`(is_active = true)`),
+	index("idx_convocatorias_boe_ambito").using("btree", table.ambito.asc().nullsLast().op("text_ops")),
+	index("idx_convocatorias_boe_categoria").using("btree", table.categoria.asc().nullsLast().op("text_ops")).where(sql`(categoria IS NOT NULL)`),
+	index("idx_convocatorias_boe_ccaa").using("btree", table.comunidadAutonoma.asc().nullsLast().op("text_ops")),
+	index("idx_convocatorias_boe_departamento").using("btree", table.departamentoCodigo.asc().nullsLast().op("text_ops")),
+	index("idx_convocatorias_boe_fecha").using("btree", table.boeFecha.desc().nullsFirst().op("date_ops")),
+	index("idx_convocatorias_boe_oposicion").using("btree", table.oposicionRelacionada.asc().nullsLast().op("text_ops")).where(sql`(oposicion_relacionada IS NOT NULL)`),
+	index("idx_convocatorias_boe_provincia").using("btree", table.provincia.asc().nullsLast().op("text_ops")),
+	index("idx_convocatorias_boe_relevancia").using("btree", table.relevanciaScore.desc().nullsFirst().op("int4_ops")),
+	index("idx_convocatorias_boe_slug").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	index("idx_convocatorias_boe_tipo").using("btree", table.tipo.asc().nullsLast().op("text_ops")).where(sql`(tipo IS NOT NULL)`),
+	index("idx_convocatorias_boe_titulo_fts").using("gin", sql`to_tsvector('spanish'::regconfig, titulo)`),
+	index("idx_convocatorias_origen").using("btree", table.convocatoriaOrigenId.asc().nullsLast().op("uuid_ops")).where(sql`(convocatoria_origen_id IS NOT NULL)`),
+	index("idx_convocatorias_titulo_trgm").using("gin", table.titulo.asc().nullsLast().op("gin_trgm_ops")),
+	foreignKey({
+			columns: [table.convocatoriaOrigenId],
+			foreignColumns: [table.id],
+			name: "convocatorias_boe_convocatoria_origen_id_fkey"
+		}),
+	unique("convocatorias_boe_boe_id_key").on(table.boeId),
+	unique("convocatorias_boe_slug_key").on(table.slug),
+	pgPolicy("Public can read active convocatorias", { as: "permissive", for: "select", to: ["public"], using: sql`(is_active = true)` }),
+	pgPolicy("Service can insert convocatorias", { as: "permissive", for: "insert", to: ["service_role"] }),
+	pgPolicy("Service can update convocatorias", { as: "permissive", for: "update", to: ["service_role"] }),
+	check("convocatorias_boe_acceso_check", sql`(acceso IS NULL) OR (acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'mixto'::text, 'discapacidad'::text]))`),
+	check("convocatorias_boe_ambito_check", sql`(ambito IS NULL) OR (ambito = ANY (ARRAY['estatal'::text, 'autonomico'::text, 'local'::text]))`),
+	check("convocatorias_boe_categoria_check", sql`(categoria IS NULL) OR (categoria = ANY (ARRAY['A1'::text, 'A2'::text, 'B'::text, 'C1'::text, 'C2'::text]))`),
+	check("convocatorias_boe_tipo_check", sql`(tipo IS NULL) OR (tipo = ANY (ARRAY['convocatoria'::text, 'admitidos'::text, 'tribunal'::text, 'resultado'::text, 'correccion'::text, 'otro'::text]))`),
+]);
+
+export const userTestFavorites = pgTable("user_test_favorites", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	name: text().notNull(),
+	description: text(),
+	selectedLaws: jsonb("selected_laws").default([]).notNull(),
+	selectedArticlesByLaw: jsonb("selected_articles_by_law").default({}).notNull(),
+	positionType: text("position_type"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("user_test_favorites_user_id_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [userProfiles.id],
+			name: "user_test_favorites_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("user_test_favorites_user_name_unique").on(table.userId, table.name),
+	pgPolicy("Allow all operations", { as: "permissive", for: "all", to: ["public"], using: sql`true`, withCheck: sql`true`  }),
+]);
+
+export const verificationQueue = pgTable("verification_queue", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	topicId: uuid("topic_id"),
+	questionIds: uuid("question_ids").array().default([""]),
+	aiProvider: text("ai_provider").default('openai').notNull(),
+	aiModel: text("ai_model").default('gpt-4o-mini').notNull(),
+	status: text().default('pending').notNull(),
+	totalQuestions: integer("total_questions").default(0),
+	processedQuestions: integer("processed_questions").default(0),
+	successfulVerifications: integer("successful_verifications").default(0),
+	failedVerifications: integer("failed_verifications").default(0),
+	errorMessage: text("error_message"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }),
+	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
+	createdBy: uuid("created_by"),
+}, (table) => [
+	uniqueIndex("idx_verification_queue_active_topic").using("btree", table.topicId.asc().nullsLast().op("uuid_ops")).where(sql`(status = ANY (ARRAY['pending'::text, 'processing'::text]))`),
+	index("idx_verification_queue_pending").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(status = 'pending'::text)`),
+	index("idx_verification_queue_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("idx_verification_queue_topic").using("btree", table.topicId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.createdBy],
+			foreignColumns: [users.id],
+			name: "verification_queue_created_by_fkey"
+		}),
+	foreignKey({
+			columns: [table.topicId],
+			foreignColumns: [topics.id],
+			name: "verification_queue_topic_id_fkey"
+		}).onDelete("cascade"),
+	check("verification_queue_status_check", sql`status = ANY (ARRAY['pending'::text, 'processing'::text, 'completed'::text, 'failed'::text, 'cancelled'::text])`),
+]);
+
+export const aiChatSuggestionClicks = pgTable("ai_chat_suggestion_clicks", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	suggestionId: uuid("suggestion_id"),
+	userId: uuid("user_id"),
+	sessionId: text("session_id"),
+	clickedAt: timestamp("clicked_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_suggestion_clicks_date").using("btree", table.clickedAt.asc().nullsLast().op("timestamptz_ops")),
+	index("idx_suggestion_clicks_suggestion").using("btree", table.suggestionId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.suggestionId],
+			foreignColumns: [aiChatSuggestions.id],
+			name: "ai_chat_suggestion_clicks_suggestion_id_fkey"
+		}).onDelete("cascade"),
+]);
+
+export const aiChatSuggestions = pgTable("ai_chat_suggestions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	label: text().notNull(),
+	message: text().notNull(),
+	suggestionKey: text("suggestion_key").notNull(),
+	emoji: text().default('💡'),
+	isActive: boolean("is_active").default(true),
+	priority: integer().default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	oposicionId: uuid("oposicion_id"),
+	contextType: text("context_type").default('general'),
+	pageContext: text("page_context").default('general'),
+}, (table) => [
+	foreignKey({
+			columns: [table.oposicionId],
+			foreignColumns: [oposiciones.id],
+			name: "ai_chat_suggestions_oposicion_id_fkey"
+		}).onDelete("set null"),
+	unique("ai_chat_suggestions_suggestion_key_key").on(table.suggestionKey),
+	check("ai_chat_suggestions_context_type_check", sql`context_type = ANY (ARRAY['general'::text, 'law_context'::text])`),
+	check("ai_chat_suggestions_page_context_check", sql`page_context = ANY (ARRAY['general'::text, 'test'::text, 'psicotecnico'::text, 'psicotecnico_test'::text])`),
+]);
+
+export const aiChatLogs = pgTable("ai_chat_logs", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	message: text().notNull(),
+	responsePreview: text("response_preview"),
+	fullResponse: text("full_response"),
+	sourcesUsed: jsonb("sources_used").default([]),
+	questionContextId: uuid("question_context_id"),
+	questionContextLaw: text("question_context_law"),
+	suggestionUsed: text("suggestion_used"),
+	responseTimeMs: integer("response_time_ms"),
+	tokensUsed: integer("tokens_used"),
+	hadError: boolean("had_error").default(false),
+	errorMessage: text("error_message"),
+	userOposicion: text("user_oposicion"),
+	detectedLaws: jsonb("detected_laws").default([]),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	feedback: text(),
+	feedbackComment: text("feedback_comment"),
+	reviewed: boolean().default(false),
+	hadDiscrepancy: boolean("had_discrepancy").default(false),
+	aiSuggestedAnswer: text("ai_suggested_answer"),
+	dbAnswer: text("db_answer"),
+	reanalysisResponse: text("reanalysis_response"),
+}, (table) => [
+	index("idx_ai_chat_logs_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_ai_chat_logs_feedback").using("btree", table.feedback.asc().nullsLast().op("text_ops")),
+	index("idx_ai_chat_logs_had_error").using("btree", table.hadError.asc().nullsLast().op("bool_ops")),
+	index("idx_ai_chat_logs_suggestion").using("btree", table.suggestionUsed.asc().nullsLast().op("text_ops")),
+	index("idx_ai_chat_logs_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "ai_chat_logs_user_id_fkey"
+		}).onDelete("set null"),
+	check("ai_chat_logs_feedback_check", sql`feedback = ANY (ARRAY['positive'::text, 'negative'::text])`),
+]);
+
+export const userAvatarSettings = pgTable("user_avatar_settings", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	mode: text().default('automatic'),
+	currentProfile: text("current_profile"),
+	currentEmoji: text("current_emoji"),
+	currentName: text("current_name"),
+	lastRotationAt: timestamp("last_rotation_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	rotationNotificationPending: boolean("rotation_notification_pending").default(false),
+	previousProfile: text("previous_profile"),
+	previousEmoji: text("previous_emoji"),
+}, (table) => [
+	index("idx_user_avatar_settings_mode").using("btree", table.mode.asc().nullsLast().op("text_ops")).where(sql`(mode = 'automatic'::text)`),
+	index("idx_user_avatar_settings_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.currentProfile],
+			foreignColumns: [avatarProfiles.id],
+			name: "user_avatar_settings_current_profile_fkey"
+		}),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_avatar_settings_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("user_avatar_settings_user_id_key").on(table.userId),
+	pgPolicy("Users can view own avatar settings", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
+	pgPolicy("Users can insert own avatar settings", { as: "permissive", for: "insert", to: ["public"] }),
+	pgPolicy("Users can update own avatar settings", { as: "permissive", for: "update", to: ["public"] }),
+	pgPolicy("Service role full access to user_avatar_settings", { as: "permissive", for: "all", to: ["public"] }),
+	pgPolicy("Anyone can view avatar settings", { as: "permissive", for: "select", to: ["authenticated"] }),
+	check("user_avatar_settings_mode_check", sql`mode = ANY (ARRAY['manual'::text, 'automatic'::text])`),
+]);
+
+export const avatarProfiles = pgTable("avatar_profiles", {
+	id: text().primaryKey().notNull(),
+	emoji: text().notNull(),
+	nameEs: text("name_es").notNull(),
+	descriptionEs: text("description_es").notNull(),
+	color: text().notNull(),
+	priority: integer().default(50),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	nameEsF: text("name_es_f"),
+}, (table) => [
+	pgPolicy("Anyone can view avatar profiles", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+]);
+
+export const fraudAlerts = pgTable("fraud_alerts", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	alertType: text("alert_type").notNull(),
+	severity: text().default('medium').notNull(),
+	status: text().default('new').notNull(),
+	userIds: uuid("user_ids").array().notNull(),
+	details: jsonb().default({}),
+	matchCriteria: text("match_criteria"),
+	detectedAt: timestamp("detected_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
+	reviewedBy: uuid("reviewed_by"),
+	notes: text(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_fraud_alerts_detected").using("btree", table.detectedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_fraud_alerts_severity").using("btree", table.severity.asc().nullsLast().op("text_ops")),
+	index("idx_fraud_alerts_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+	index("idx_fraud_alerts_type").using("btree", table.alertType.asc().nullsLast().op("text_ops")),
+	index("idx_fraud_alerts_user_ids").using("gin", table.userIds.asc().nullsLast().op("array_ops")),
+	foreignKey({
+			columns: [table.reviewedBy],
+			foreignColumns: [users.id],
+			name: "fraud_alerts_reviewed_by_fkey"
+		}).onDelete("set null"),
+]);
+
+export const questionOfficialExams = pgTable("question_official_exams", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	questionId: uuid("question_id"),
+	psychometricQuestionId: uuid("psychometric_question_id"),
+	examDate: date("exam_date").notNull(),
+	examSource: text("exam_source").notNull(),
+	examPart: text("exam_part"),
+	questionNumber: integer("question_number"),
+	oposicionType: text("oposicion_type"),
+	isReserve: boolean("is_reserve").default(false),
+	isAnnulled: boolean("is_annulled").default(false),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_qoe_exam_date").using("btree", table.examDate.asc().nullsLast().op("date_ops")),
+	index("idx_qoe_exam_source").using("btree", table.examSource.asc().nullsLast().op("text_ops")),
+	index("idx_qoe_oposicion").using("btree", table.oposicionType.asc().nullsLast().op("text_ops")),
+	index("idx_qoe_psychometric_id").using("btree", table.psychometricQuestionId.asc().nullsLast().op("uuid_ops")),
+	index("idx_qoe_question_id").using("btree", table.questionId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("unique_psychometric_per_exam").using("btree", table.psychometricQuestionId.asc().nullsLast().op("date_ops"), table.examDate.asc().nullsLast().op("date_ops"), table.examSource.asc().nullsLast().op("date_ops")).where(sql`(psychometric_question_id IS NOT NULL)`),
+	uniqueIndex("unique_question_per_exam").using("btree", table.questionId.asc().nullsLast().op("date_ops"), table.examDate.asc().nullsLast().op("uuid_ops"), table.examSource.asc().nullsLast().op("uuid_ops")).where(sql`(question_id IS NOT NULL)`),
+	foreignKey({
+			columns: [table.psychometricQuestionId],
+			foreignColumns: [psychometricQuestions.id],
+			name: "question_official_exams_psychometric_question_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.questionId],
+			foreignColumns: [questions.id],
+			name: "question_official_exams_question_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("Enable read access for question_official_exams", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
+	check("question_or_psychometric_required", sql`(question_id IS NOT NULL) OR (psychometric_question_id IS NOT NULL)`),
+]);
+
+export const cancellationFeedback = pgTable("cancellation_feedback", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	subscriptionId: text("subscription_id"),
+	reason: text().notNull(),
+	reasonDetails: text("reason_details"),
+	alternative: text(),
+	contactedSupport: boolean("contacted_support").default(false),
+	planType: text("plan_type"),
+	periodEndAt: timestamp("period_end_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	cancellationType: text("cancellation_type").default('self_service'),
+	userEmail: text("user_email"),
+	stripeCustomerId: text("stripe_customer_id"),
+	stripeChargeId: text("stripe_charge_id"),
+	stripeRefundId: text("stripe_refund_id"),
+	refundAmountCents: integer("refund_amount_cents"),
+	requestedVia: text("requested_via").default('app'),
+	adminNotes: text("admin_notes"),
+	processedBy: text("processed_by"),
+}, (table) => [
+	index("idx_cancellation_feedback_created_at").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_cancellation_feedback_reason").using("btree", table.reason.asc().nullsLast().op("text_ops")),
+	index("idx_cancellation_feedback_type").using("btree", table.cancellationType.asc().nullsLast().op("text_ops")),
+	index("idx_cancellation_feedback_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "cancellation_feedback_user_id_fkey"
+		}).onDelete("cascade"),
+	pgPolicy("Service can insert cancellation feedback", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`true`  }),
+	pgPolicy("Admins can view cancellation feedback", { as: "permissive", for: "select", to: ["authenticated"] }),
+]);
+
+export const planTypeAuditLog = pgTable("plan_type_audit_log", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id").notNull(),
+	userEmail: text("user_email"),
+	oldPlanType: text("old_plan_type"),
+	newPlanType: text("new_plan_type"),
+	changedAt: timestamp("changed_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	triggerSource: text("trigger_source").default('database_trigger'),
+}, (table) => [
+	index("idx_plan_audit_changed_at").using("btree", table.changedAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_plan_audit_user_id").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	pgPolicy("Admins can view audit log", { as: "permissive", for: "select", to: ["public"], using: sql`(EXISTS ( SELECT 1
+   FROM user_profiles
+  WHERE ((user_profiles.id = auth.uid()) AND ((user_profiles.plan_type = 'admin'::text) OR (user_profiles.email = 'manueltrader@gmail.com'::text)))))` }),
+]);
+
+export const videoCourses = pgTable("video_courses", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	slug: text().notNull(),
+	title: text().notNull(),
+	description: text(),
+	thumbnailPath: text("thumbnail_path"),
+	totalLessons: integer("total_lessons").default(0),
+	totalDurationMinutes: integer("total_duration_minutes").default(0),
+	isPremium: boolean("is_premium").default(true),
+	isActive: boolean("is_active").default(true),
+	orderPosition: integer("order_position").default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	unique("video_courses_slug_key").on(table.slug),
+]);
+
+export const userVideoProgress = pgTable("user_video_progress", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: uuid("user_id"),
+	lessonId: uuid("lesson_id"),
+	currentTimeSeconds: integer("current_time_seconds").default(0),
+	completed: boolean().default(false),
+	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
+	lastWatchedAt: timestamp("last_watched_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	watchCount: integer("watch_count").default(1),
+}, (table) => [
+	index("idx_progress_lesson").using("btree", table.lessonId.asc().nullsLast().op("uuid_ops")),
+	index("idx_progress_user").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.lessonId],
+			foreignColumns: [videoLessons.id],
+			name: "user_video_progress_lesson_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.userId],
+			foreignColumns: [users.id],
+			name: "user_video_progress_user_id_fkey"
+		}).onDelete("cascade"),
+	unique("user_video_progress_user_id_lesson_id_key").on(table.userId, table.lessonId),
+]);
+
+export const videoLessons = pgTable("video_lessons", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	courseId: uuid("course_id"),
+	slug: text().notNull(),
+	title: text().notNull(),
+	description: text(),
+	videoPath: text("video_path").notNull(),
+	durationSeconds: integer("duration_seconds").notNull(),
+	orderPosition: integer("order_position").notNull(),
+	isPreview: boolean("is_preview").default(false),
+	isActive: boolean("is_active").default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	previewSeconds: integer("preview_seconds").default(600),
+}, (table) => [
+	index("idx_lessons_course").using("btree", table.courseId.asc().nullsLast().op("uuid_ops")),
+	foreignKey({
+			columns: [table.courseId],
+			foreignColumns: [videoCourses.id],
+			name: "video_lessons_course_id_fkey"
+		}).onDelete("cascade"),
+	unique("video_lessons_course_id_slug_key").on(table.courseId, table.slug),
 ]);
 
 export const questionFirstAttempts = pgTable("question_first_attempts", {
@@ -2731,6 +3408,22 @@ export const adminDisputesDashboard = pgView("admin_disputes_dashboard", {	id: u
 	priorityStatus: text("priority_status"),
 }).as(sql`SELECT qd.id, qd.dispute_type, qd.description, qd.status, qd.created_at, up.full_name AS reporter_name, q.question_text, a.article_number, l.short_name AS law_name, EXTRACT(days FROM now() - qd.created_at) AS days_since_created, CASE WHEN qd.status = 'pending'::text AND EXTRACT(days FROM now() - qd.created_at) > 7::numeric THEN 'urgent'::text WHEN qd.status = 'pending'::text THEN 'pending'::text ELSE qd.status END AS priority_status FROM question_disputes qd LEFT JOIN user_profiles up ON qd.user_id = up.id LEFT JOIN questions q ON qd.question_id = q.id LEFT JOIN articles a ON q.primary_article_id = a.id LEFT JOIN laws l ON a.law_id = l.id`);
 
+export const settlementSummary = pgView("settlement_summary", {	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	totalPayments: bigint("total_payments", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	pendingPayments: bigint("pending_payments", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	totalNet: bigint("total_net", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	totalManuel: bigint("total_manuel", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	totalArmando: bigint("total_armando", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	pendingManuel: bigint("pending_manuel", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	pendingArmando: bigint("pending_armando", { mode: "number" }),
+}).as(sql`SELECT count(*) AS total_payments, count(*) FILTER (WHERE manuel_confirmed_received = false) AS pending_payments, COALESCE(sum(amount_net), 0::bigint) AS total_net, COALESCE(sum(manuel_amount), 0::bigint) AS total_manuel, COALESCE(sum(armando_amount), 0::bigint) AS total_armando, COALESCE(sum(manuel_amount) FILTER (WHERE manuel_confirmed_received = false), 0::bigint) AS pending_manuel, COALESCE(sum(armando_amount) FILTER (WHERE manuel_confirmed_received = false), 0::bigint) AS pending_armando FROM payment_settlements`);
+
 export const adminUsersWithRoles = pgView("admin_users_with_roles", {	userId: uuid("user_id"),
 	email: text(),
 	fullName: text("full_name"),
@@ -2768,6 +3461,34 @@ export const adminUpgradeMessageStats = pgView("admin_upgrade_message_stats", {	
 	conversionRate: numeric("conversion_rate"),
 }).as(sql`SELECT um.id, um.message_key, um.title, um.is_active, um.weight, count(umi.id) AS total_impressions, count(umi.id) FILTER (WHERE umi.clicked_upgrade) AS total_clicks, count(umi.id) FILTER (WHERE umi.dismissed) AS total_dismisses, count(umi.id) FILTER (WHERE umi.converted_to_premium) AS total_conversions, round(count(umi.id) FILTER (WHERE umi.clicked_upgrade)::numeric / NULLIF(count(umi.id), 0)::numeric * 100::numeric, 2) AS click_rate, round(count(umi.id) FILTER (WHERE umi.converted_to_premium)::numeric / NULLIF(count(umi.id), 0)::numeric * 100::numeric, 2) AS conversion_rate FROM upgrade_messages um LEFT JOIN upgrade_message_impressions umi ON umi.message_id = um.id GROUP BY um.id ORDER BY (count(umi.id)) DESC`);
 
+export const predictionAccuracyByMethod = pgView("prediction_accuracy_by_method", {	methodName: text("method_name"),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	totalPredictions: bigint("total_predictions", { mode: "number" }),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	verifiedPredictions: bigint("verified_predictions", { mode: "number" }),
+	avgErrorPercent: numeric("avg_error_percent"),
+	avgAbsoluteError: numeric("avg_absolute_error"),
+	errorStddev: numeric("error_stddev"),
+	bestPredictionError: numeric("best_prediction_error"),
+	worstPredictionError: numeric("worst_prediction_error"),
+	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
+	predictionsWithin20Pct: bigint("predictions_within_20pct", { mode: "number" }),
+	lastVerifiedDate: date("last_verified_date"),
+}).as(sql`SELECT method_name, count(*) AS total_predictions, count(*) FILTER (WHERE verified_at IS NOT NULL) AS verified_predictions, round(avg(error_percent) FILTER (WHERE verified_at IS NOT NULL), 2) AS avg_error_percent, round(avg(absolute_error) FILTER (WHERE verified_at IS NOT NULL), 2) AS avg_absolute_error, round(stddev(error_percent) FILTER (WHERE verified_at IS NOT NULL), 2) AS error_stddev, min(absolute_error) FILTER (WHERE verified_at IS NOT NULL) AS best_prediction_error, max(absolute_error) FILTER (WHERE verified_at IS NOT NULL) AS worst_prediction_error, count(*) FILTER (WHERE verified_at IS NOT NULL AND absolute_error <= 20::numeric) AS predictions_within_20pct, max(prediction_date) FILTER (WHERE verified_at IS NOT NULL) AS last_verified_date FROM prediction_tracking GROUP BY method_name ORDER BY (round(avg(absolute_error) FILTER (WHERE verified_at IS NOT NULL), 2))`);
+
+export const predictionHistory = pgView("prediction_history", {	predictionDate: date("prediction_date"),
+	methodName: text("method_name"),
+	predictedSalesPerMonth: numeric("predicted_sales_per_month", { precision: 10, scale:  2 }),
+	predictedRevenuePerMonth: numeric("predicted_revenue_per_month", { precision: 10, scale:  2 }),
+	actualSales: integer("actual_sales"),
+	actualRevenue: numeric("actual_revenue", { precision: 10, scale:  2 }),
+	errorPercent: numeric("error_percent", { precision: 6, scale:  2 }),
+	absoluteError: numeric("absolute_error", { precision: 6, scale:  2 }),
+	predictionQuality: text("prediction_quality"),
+	verifiedAt: timestamp("verified_at", { withTimezone: true, mode: 'string' }),
+	predictionInputs: jsonb("prediction_inputs"),
+}).as(sql`SELECT prediction_date, method_name, predicted_sales_per_month, predicted_revenue_per_month, actual_sales, actual_revenue, error_percent, absolute_error, CASE WHEN absolute_error <= 10::numeric THEN 'excelente'::text WHEN absolute_error <= 20::numeric THEN 'buena'::text WHEN absolute_error <= 50::numeric THEN 'regular'::text ELSE 'mala'::text END AS prediction_quality, verified_at, prediction_inputs FROM prediction_tracking WHERE verified_at IS NOT NULL ORDER BY prediction_date DESC, method_name`);
+
 export const adminShareAnalytics = pgView("admin_share_analytics", {	fecha: timestamp({ withTimezone: true, mode: 'string' }),
 	shareType: text("share_type"),
 	platform: text(),
@@ -2777,233 +3498,3 @@ export const adminShareAnalytics = pgView("admin_share_analytics", {	fecha: time
 	usuariosUnicos: bigint("usuarios_unicos", { mode: "number" }),
 	notaPromedioCompartida: numeric("nota_promedio_compartida"),
 }).as(sql`SELECT date_trunc('day'::text, created_at) AS fecha, share_type, platform, count(*) AS total_shares, count(DISTINCT user_id) AS usuarios_unicos, avg(score) AS nota_promedio_compartida FROM share_events GROUP BY (date_trunc('day'::text, created_at)), share_type, platform ORDER BY (date_trunc('day'::text, created_at)) DESC`);
-
-// Base de conocimiento para el chat IA: FAQs, info de planes, funcionalidades
-export const aiKnowledgeBase = pgTable("ai_knowledge_base", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	category: text().notNull(), // 'planes', 'funcionalidades', 'faq', 'plataforma', 'oposiciones'
-	subcategory: text(),
-	title: text().notNull(), // Título/pregunta: "¿Qué incluye el plan Free?"
-	content: text().notNull(), // Respuesta completa en markdown
-	shortAnswer: text("short_answer"), // Respuesta corta para respuestas rápidas
-	keywords: text().array().default([]), // Keywords para fallback sin embeddings
-	// embedding: vector(1536) - Se añade con migración SQL (pgvector)
-	priority: integer().default(0), // Mayor = más prioridad
-	isActive: boolean("is_active").default(true),
-	metadata: jsonb().default({}), // Info extra: precios, links, etc.
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_ai_knowledge_base_category").using("btree", table.category.asc().nullsLast()),
-	index("idx_ai_knowledge_base_active").using("btree", table.isActive.asc().nullsLast()),
-	pgPolicy("Anyone can read knowledge base", { as: "permissive", for: "select", to: ["public"], using: sql`is_active = true` }),
-]);
-
-// Sistema de alertas de fraude: multi-cuentas, IPs compartidas, dispositivos duplicados
-export const fraudAlerts = pgTable("fraud_alerts", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	alertType: text("alert_type").notNull(), // 'same_ip', 'same_device', 'multi_account', 'suspicious_premium', 'location_anomaly'
-	severity: text().notNull().default('medium'), // 'low', 'medium', 'high', 'critical'
-	status: text().notNull().default('new'), // 'new', 'reviewed', 'dismissed', 'action_taken'
-	userIds: uuid("user_ids").array().notNull(), // Array de user_ids involucrados
-	details: jsonb().default({}), // Detalles: IPs, devices, locations, etc.
-	matchCriteria: text("match_criteria"), // Qué criterios coincidieron: 'ip+device', 'name+device', etc.
-	detectedAt: timestamp("detected_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	reviewedAt: timestamp("reviewed_at", { withTimezone: true, mode: 'string' }),
-	reviewedBy: uuid("reviewed_by"),
-	notes: text(), // Notas del admin
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_fraud_alerts_status").using("btree", table.status.asc().nullsLast()),
-	index("idx_fraud_alerts_type").using("btree", table.alertType.asc().nullsLast()),
-	index("idx_fraud_alerts_severity").using("btree", table.severity.asc().nullsLast()),
-	index("idx_fraud_alerts_detected").using("btree", table.detectedAt.desc().nullsFirst()),
-	foreignKey({
-		columns: [table.reviewedBy],
-		foreignColumns: [users.id],
-		name: "fraud_alerts_reviewed_by_fkey"
-	}).onDelete("set null"),
-]);
-
-// ============================================
-// CONVOCATORIAS BOE
-// Sistema de detección y almacenamiento de convocatorias del BOE
-// ============================================
-
-export const convocatoriasBoe = pgTable("convocatorias_boe", {
-	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
-
-	// Identificación BOE
-	boeId: text("boe_id").unique().notNull(),
-	boeFecha: date("boe_fecha").notNull(),
-	boeUrlPdf: text("boe_url_pdf"),
-	boeUrlHtml: text("boe_url_html"),
-	boeUrlXml: text("boe_url_xml"),
-
-	// Datos extraídos del sumario
-	titulo: text().notNull(),
-	tituloLimpio: text("titulo_limpio"),
-	departamentoCodigo: text("departamento_codigo"),
-	departamentoNombre: text("departamento_nombre"),
-	epigrafe: text(),
-
-	// Clasificación
-	tipo: text(), // 'convocatoria'|'admitidos'|'tribunal'|'resultado'|'correccion'|'otro'
-	categoria: text(), // 'A1'|'A2'|'B'|'C1'|'C2'
-	cuerpo: text(),
-	acceso: text(), // 'libre'|'promocion_interna'|'mixto'|'discapacidad'
-
-	// Plazas
-	numPlazas: integer("num_plazas"),
-	numPlazasLibre: integer("num_plazas_libre"),
-	numPlazasPi: integer("num_plazas_pi"),
-	numPlazasDiscapacidad: integer("num_plazas_discapacidad"),
-
-	// Fechas importantes
-	fechaDisposicion: date("fecha_disposicion"),
-	fechaLimiteInscripcion: date("fecha_limite_inscripcion"),
-	fechaExamen: date("fecha_examen"),
-
-	// Relaciones
-	oposicionRelacionada: text("oposicion_relacionada"),
-	convocatoriaOrigenId: uuid("convocatoria_origen_id"),
-
-	// Contenido (desde XML)
-	resumen: text(),
-	contenidoTexto: text("contenido_texto"),
-	rango: text(),
-	paginaInicial: integer("pagina_inicial"),
-	paginaFinal: integer("pagina_final"),
-
-	// Datos extraídos del texto
-	plazoInscripcionDias: integer("plazo_inscripcion_dias"),
-	titulacionRequerida: text("titulacion_requerida"),
-	tieneTemario: boolean("tiene_temario").default(false),
-	urlBases: text("url_bases"),
-
-	// Metadatos
-	relevanciaScore: integer("relevancia_score").default(0),
-	destacada: boolean().default(false),
-	isActive: boolean("is_active").default(true),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_convocatorias_boe_fecha").using("btree", table.boeFecha.desc().nullsFirst()),
-	index("idx_convocatorias_boe_tipo").using("btree", table.tipo.asc().nullsLast()),
-	index("idx_convocatorias_boe_categoria").using("btree", table.categoria.asc().nullsLast()),
-	index("idx_convocatorias_boe_departamento").using("btree", table.departamentoCodigo.asc().nullsLast()),
-	index("idx_convocatorias_boe_oposicion").using("btree", table.oposicionRelacionada.asc().nullsLast()),
-	index("idx_convocatorias_boe_relevancia").using("btree", table.relevanciaScore.desc().nullsFirst()),
-	foreignKey({
-		columns: [table.convocatoriaOrigenId],
-		foreignColumns: [table.id],
-		name: "convocatorias_boe_origen_fkey"
-	}).onDelete("set null"),
-	pgPolicy("Public can read active convocatorias", { as: "permissive", for: "select", to: ["public"], using: sql`(is_active = true)` }),
-	check("convocatorias_boe_tipo_check", sql`tipo IS NULL OR tipo = ANY (ARRAY['convocatoria'::text, 'admitidos'::text, 'tribunal'::text, 'resultado'::text, 'correccion'::text, 'otro'::text])`),
-	check("convocatorias_boe_categoria_check", sql`categoria IS NULL OR categoria = ANY (ARRAY['A1'::text, 'A2'::text, 'B'::text, 'C1'::text, 'C2'::text])`),
-	check("convocatorias_boe_acceso_check", sql`acceso IS NULL OR acceso = ANY (ARRAY['libre'::text, 'promocion_interna'::text, 'mixto'::text, 'discapacidad'::text])`),
-]);
-
-// ============================================
-// SISTEMA DE AVATARES AUTOMÁTICOS
-// Avatares que cambian según patrones de estudio del usuario
-// ============================================
-
-// Perfiles de avatar (datos estáticos)
-export const avatarProfiles = pgTable("avatar_profiles", {
-	id: text().primaryKey().notNull(),           // 'night_owl', 'early_bird', etc.
-	emoji: text().notNull(),
-	nameEs: text("name_es").notNull(),
-	descriptionEs: text("description_es").notNull(),
-	color: text().notNull(),                      // Color hex para UI
-	priority: integer().default(50),              // Para resolver empates (mayor = más prioritario)
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	pgPolicy("Anyone can view avatar profiles", { as: "permissive", for: "select", to: ["public"], using: sql`true` }),
-]);
-
-// Configuración de avatar por usuario
-export const userAvatarSettings = pgTable("user_avatar_settings", {
-	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }).unique(),
-	mode: text().default('manual').notNull(),     // 'manual' | 'automatic'
-	currentProfile: text("current_profile").references(() => avatarProfiles.id),
-	currentEmoji: text("current_emoji"),
-	currentName: text("current_name"),
-	lastRotationAt: timestamp("last_rotation_at", { withTimezone: true, mode: 'string' }),
-	// Campos para notificación in-app de rotación
-	rotationNotificationPending: boolean("rotation_notification_pending").default(false),
-	previousProfile: text("previous_profile"),
-	previousEmoji: text("previous_emoji"),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_user_avatar_settings_user_id").using("btree", table.userId.asc().nullsLast()),
-	index("idx_user_avatar_settings_mode").using("btree", table.mode.asc().nullsLast()).where(sql`mode = 'automatic'`),
-	pgPolicy("Users can view own avatar settings", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Users can insert own avatar settings", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Users can update own avatar settings", { as: "permissive", for: "update", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-	check("user_avatar_settings_mode_check", sql`mode = ANY (ARRAY['manual'::text, 'automatic'::text])`),
-]);
-
-// ============================================
-// SISTEMA DE CURSOS DE VIDEO
-// Cursos premium con lecciones en video
-// ============================================
-
-export const videoCourses = pgTable("video_courses", {
-	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	slug: text().unique().notNull(),
-	title: text().notNull(),
-	description: text(),
-	thumbnailPath: text("thumbnail_path"),
-	totalLessons: integer("total_lessons").default(0),
-	totalDurationMinutes: integer("total_duration_minutes").default(0),
-	isPremium: boolean("is_premium").default(true),
-	isActive: boolean("is_active").default(true),
-	orderPosition: integer("order_position").default(0),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	index("idx_video_courses_slug").using("btree", table.slug.asc().nullsLast()),
-	index("idx_video_courses_active").using("btree", table.isActive.asc().nullsLast()).where(sql`is_active = true`),
-	pgPolicy("Anyone can view active video courses", { as: "permissive", for: "select", to: ["public"], using: sql`(is_active = true)` }),
-]);
-
-export const videoLessons = pgTable("video_lessons", {
-	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	courseId: uuid("course_id").references(() => videoCourses.id, { onDelete: "cascade" }),
-	slug: text().notNull(),
-	title: text().notNull(),
-	description: text(),
-	videoPath: text("video_path").notNull(),
-	durationSeconds: integer("duration_seconds").notNull(),
-	orderPosition: integer("order_position").notNull(),
-	isPreview: boolean("is_preview").default(false),
-	previewSeconds: integer("preview_seconds").default(600), // 10 minutes
-	isActive: boolean("is_active").default(true),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => [
-	unique("video_lessons_course_id_slug_key").on(table.courseId, table.slug),
-	index("idx_video_lessons_course").using("btree", table.courseId.asc().nullsLast()),
-	index("idx_video_lessons_order").using("btree", table.courseId.asc().nullsLast(), table.orderPosition.asc().nullsLast()),
-	pgPolicy("Anyone can view active video lessons", { as: "permissive", for: "select", to: ["public"], using: sql`(is_active = true)` }),
-]);
-
-export const userVideoProgress = pgTable("user_video_progress", {
-	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
-	userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
-	lessonId: uuid("lesson_id").references(() => videoLessons.id, { onDelete: "cascade" }),
-	currentTimeSeconds: integer("current_time_seconds").default(0),
-	completed: boolean().default(false),
-	completedAt: timestamp("completed_at", { withTimezone: true, mode: 'string' }),
-	lastWatchedAt: timestamp("last_watched_at", { withTimezone: true, mode: 'string' }).defaultNow(),
-	watchCount: integer("watch_count").default(1),
-}, (table) => [
-	unique("user_video_progress_user_lesson_key").on(table.userId, table.lessonId),
-	index("idx_user_video_progress_user").using("btree", table.userId.asc().nullsLast()),
-	index("idx_user_video_progress_lesson").using("btree", table.lessonId.asc().nullsLast()),
-	pgPolicy("Users can view own video progress", { as: "permissive", for: "select", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Users can insert own video progress", { as: "permissive", for: "insert", to: ["public"], withCheck: sql`(auth.uid() = user_id)` }),
-	pgPolicy("Users can update own video progress", { as: "permissive", for: "update", to: ["public"], using: sql`(auth.uid() = user_id)` }),
-]);

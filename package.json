@@ -26,7 +26,9 @@
     "create-pwa-tables": "node scripts/create-pwa-tables.js",
     "setup-feedback-storage": "node scripts/setup-feedback-storage.js",
     "setup-storage-policies": "node scripts/setup-storage-policies.js",
-    "test-image-upload": "node scripts/test-image-upload.js"
+    "test-image-upload": "node scripts/test-image-upload.js",
+    "db:check": "npx tsx scripts/check-schema-drift.ts",
+    "db:pull": "drizzle-kit introspect"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
@@ -49,6 +51,7 @@
     "pdfjs-dist": "^2.16.105",
     "playwright": "^1.56.1",
     "postgres": "^3.4.7",
+    "puppeteer-real-browser": "^1.4.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
@@ -78,7 +81,9 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "pg": "^8.16.3",
+    "playwright-extra": "^4.3.6",
     "postcss": "^8.5.4",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "tailwindcss": "^3.4.16"
   },
   "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).",
