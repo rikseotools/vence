@@ -1033,7 +1033,7 @@ export async function getOfficialExamFailedQuestions(
     // The test title follows pattern: "Examen Oficial {examDate} ({parte} parte) - {oposicion}"
     // or without parte: "Examen Oficial {examDate} - {oposicion}"
     // IMPORTANT: Filter totalQuestions > 0 to skip corrupted test sessions
-    // Order by score DESC to get the BEST attempt (matches user-stats which shows best score)
+    // Order by completedAt DESC to get the MOST RECENT attempt
     const testResults = await db
       .select({
         id: tests.id,
@@ -1054,7 +1054,7 @@ export async function getOfficialExamFailedQuestions(
             : sql`true`
         )
       )
-      .orderBy(desc(tests.score))
+      .orderBy(desc(tests.completedAt))
       .limit(1)
 
     if (testResults.length === 0) {
@@ -1279,7 +1279,8 @@ export async function getOfficialExamReview(
 
     // Find completed test matching the exam criteria
     // IMPORTANT: Filter totalQuestions > 0 to skip corrupted test sessions
-    // Order by score DESC to get the BEST attempt (matches user-stats which shows best score)
+    // Order by completedAt DESC to get the MOST RECENT attempt
+    // (old tests don't have correctCount in detailed_analytics)
     const testResults = await db
       .select({
         id: tests.id,
@@ -1306,7 +1307,7 @@ export async function getOfficialExamReview(
             : sql`true`
         )
       )
-      .orderBy(desc(tests.score))
+      .orderBy(desc(tests.completedAt))
       .limit(1)
 
     if (testResults.length === 0) {

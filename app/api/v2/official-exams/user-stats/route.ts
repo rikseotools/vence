@@ -73,15 +73,17 @@ export async function GET(request: NextRequest) {
       const parte = analytics?.parte as string | undefined
       const key = parte ? `${examDate}-${parte}` : examDate
 
-      const score = Number(session.score) || 0
+      // Use correctCount from detailed_analytics, fallback to score for old tests
+      // (old tests stored correct count in score field)
+      const correctCount = Number(analytics?.correctCount) || Number(session.score) || 0
       const total = session.total_questions || 0
-      const correct = Math.round((score / 100) * total)
+      const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0
 
-      // Keep best score for each exam+parte combination
-      if (!statsByExam[key] || statsByExam[key].accuracy < score) {
+      // Keep best attempt (most correct answers) for each exam+parte combination
+      if (!statsByExam[key] || statsByExam[key].correct < correctCount) {
         statsByExam[key] = {
-          accuracy: Math.round(score),
-          correct,
+          accuracy,
+          correct: correctCount,
           total,
           lastAttempt: session.created_at
         }
