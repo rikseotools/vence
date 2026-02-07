@@ -1032,6 +1032,8 @@ export async function getOfficialExamFailedQuestions(
     // Find completed test matching the exam criteria
     // The test title follows pattern: "Examen Oficial {examDate} ({parte} parte) - {oposicion}"
     // or without parte: "Examen Oficial {examDate} - {oposicion}"
+    // IMPORTANT: Filter totalQuestions > 0 to skip corrupted test sessions
+    // Order by score DESC to get the BEST attempt (matches user-stats which shows best score)
     const testResults = await db
       .select({
         id: tests.id,
@@ -1042,6 +1044,7 @@ export async function getOfficialExamFailedQuestions(
         and(
           eq(tests.userId, userId),
           eq(tests.isCompleted, true),
+          sql`${tests.totalQuestions} > 0`,
           sql`${tests.detailedAnalytics}->>'isOfficialExam' = 'true'`,
           sql`${tests.detailedAnalytics}->>'examDate' = ${examDate}`,
           sql`${tests.detailedAnalytics}->>'oposicion' = ${oposicion}`,
@@ -1051,7 +1054,7 @@ export async function getOfficialExamFailedQuestions(
             : sql`true`
         )
       )
-      .orderBy(desc(tests.completedAt))
+      .orderBy(desc(tests.score))
       .limit(1)
 
     if (testResults.length === 0) {
@@ -1275,6 +1278,8 @@ export async function getOfficialExamReview(
     console.log(`🔍 [getOfficialExamReview] Looking for exam: ${examDate} ${parte || 'all'} - ${oposicion}`)
 
     // Find completed test matching the exam criteria
+    // IMPORTANT: Filter totalQuestions > 0 to skip corrupted test sessions
+    // Order by score DESC to get the BEST attempt (matches user-stats which shows best score)
     const testResults = await db
       .select({
         id: tests.id,
@@ -1292,6 +1297,7 @@ export async function getOfficialExamReview(
         and(
           eq(tests.userId, userId),
           eq(tests.isCompleted, true),
+          sql`${tests.totalQuestions} > 0`,
           sql`${tests.detailedAnalytics}->>'isOfficialExam' = 'true'`,
           sql`${tests.detailedAnalytics}->>'examDate' = ${examDate}`,
           sql`${tests.detailedAnalytics}->>'oposicion' = ${oposicion}`,
@@ -1300,7 +1306,7 @@ export async function getOfficialExamReview(
             : sql`true`
         )
       )
-      .orderBy(desc(tests.completedAt))
+      .orderBy(desc(tests.score))
       .limit(1)
 
     if (testResults.length === 0) {

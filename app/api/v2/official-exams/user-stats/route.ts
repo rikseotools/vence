@@ -30,12 +30,14 @@ export async function GET(request: NextRequest) {
 
     // Query tests table for official exams completed by user
     // Filter directly in DB by detailed_analytics->>'isOfficialExam' = 'true'
+    // IMPORTANT: Filter total_questions > 0 to skip corrupted test sessions
     let query = supabase
       .from('tests')
       .select('id, score, total_questions, detailed_analytics, created_at')
       .eq('user_id', userId)
       .eq('test_type', 'exam')
       .eq('is_completed', true)
+      .gt('total_questions', 0)
       .filter('detailed_analytics->>isOfficialExam', 'eq', 'true')
       .order('score', { ascending: false })
 
