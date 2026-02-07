@@ -1516,10 +1516,10 @@ export async function getOfficialExamReview(
     // Sort by order
     reviewQuestions.sort((a, b) => a.order - b.order)
 
-    // Calculate percentage
-    const totalAnswered = correctCount + incorrectCount
-    const percentage = totalAnswered > 0
-      ? Math.round((correctCount / totalAnswered) * 100)
+    // Calculate percentage based on TOTAL questions (not just answered)
+    // 1 correct out of 51 total should be ~2%, not 100%
+    const percentage = reviewQuestions.length > 0
+      ? Math.round((correctCount / reviewQuestions.length) * 100)
       : 0
 
     // Build breakdowns from Maps
