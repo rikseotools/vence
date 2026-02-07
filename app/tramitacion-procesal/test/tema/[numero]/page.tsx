@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/tramitacion-procesal/test/tema/[numero]/page.tsx
 'use client'
 

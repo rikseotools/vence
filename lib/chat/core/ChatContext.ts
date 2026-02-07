@@ -87,8 +87,8 @@ export function getQuestionInfo(context: ChatContext): {
 
   return {
     hasQuestion: true,
-    lawName: qc.lawName,
-    articleNumber: qc.articleNumber,
+    lawName: qc.lawName ?? undefined,
+    articleNumber: qc.articleNumber ?? undefined,
     isAnswered: qc.selectedAnswer !== undefined,
     wasCorrect: qc.correctAnswer !== undefined && qc.selectedAnswer !== undefined
       ? qc.selectedAnswer === qc.correctAnswer

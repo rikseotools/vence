@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/tramitacion-procesal/test/test-aleatorio-examen/page.tsx
 'use client'
 

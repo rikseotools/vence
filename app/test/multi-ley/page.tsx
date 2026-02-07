@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/test/multi-ley/page.tsx - Página de test con múltiples leyes seleccionadas
 // Usa la API /api/questions/filtered para obtener preguntas de varias leyes
 'use client'

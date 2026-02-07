@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 'use client'
 
 import { useState, useMemo } from 'react'

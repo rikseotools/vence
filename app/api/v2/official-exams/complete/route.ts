@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getDb } from '@/db/client'

@@ -175,7 +175,7 @@ export class SearchDomain implements ChatDomain {
       : context
     const searchResult = await searchArticles(searchContext, {
       userOposicion: context.userDomain,
-      contextLawName: effectiveLawName,
+      contextLawName: effectiveLawName ?? undefined,
       limit: 10,
     })
 

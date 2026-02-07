@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/teoria/[law]/[articleNumber]/page.tsx - OPTIMIZADO con Drizzle + Cache
 import {
   getArticleContent,

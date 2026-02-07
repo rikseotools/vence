@@ -526,7 +526,9 @@ export async function initOfficialExam(
         .where(inArray(psychometricQuestions.id, psychometricIds))
 
       for (const q of psyResults) {
-        psychometricCorrectMap.set(q.id, q.correctOption)
+        if (q.correctOption !== null) {
+          psychometricCorrectMap.set(q.id, q.correctOption)
+        }
       }
       console.log(`✅ [initOfficialExam] Got ${psychometricCorrectMap.size} psychometric correct_options`)
     }

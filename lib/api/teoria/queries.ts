@@ -61,6 +61,8 @@ async function getArticleContentInternal(
   const db = getDb()
   const lawShortName = mapLawSlugToShortName(lawSlug)
 
+  if (!lawShortName) return null
+
   // Query única con JOIN
   const result = await db
     .select({
@@ -138,6 +140,8 @@ async function getArticleNavigationInternal(
   const db = getDb()
   const lawShortName = mapLawSlugToShortName(lawSlug)
 
+  if (!lawShortName) return { articleNumbers: [], totalCount: 0 }
+
   // Query MUY ligera - solo article_number
   const result = await db
     .select({
@@ -187,6 +191,8 @@ async function getRelatedArticlesInternal(
 ): Promise<RelatedArticle[]> {
   const db = getDb()
   const lawShortName = mapLawSlugToShortName(lawSlug)
+
+  if (!lawShortName) return []
 
   const result = await db
     .select({
@@ -242,6 +248,8 @@ async function getLawBasicInfoInternal(
 ): Promise<LawBasic | null> {
   const db = getDb()
   const lawShortName = mapLawSlugToShortName(lawSlug)
+
+  if (!lawShortName) return null
 
   const result = await db
     .select({

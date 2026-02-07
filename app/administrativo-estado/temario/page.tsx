@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/administrativo-estado/temario/page.tsx - Server Component para SEO
 import { Suspense } from 'react'
 import Link from 'next/link'

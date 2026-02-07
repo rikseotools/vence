@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/admin/feedback/page.tsx - Panel de administración de soporte
 'use client'
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'

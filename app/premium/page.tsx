@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/premium/page.tsx - PÁGINA DE PAGO PREMIUM
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'

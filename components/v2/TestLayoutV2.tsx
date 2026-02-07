@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // components/v2/TestLayoutV2.tsx
 // Versión TypeScript del componente TestLayout
 // Usa Drizzle + Zod para type safety

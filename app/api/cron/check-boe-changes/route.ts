@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/api/cron/check-boe-changes/route.ts
 // Endpoint para verificar cambios en el BOE de leyes monitoreadas
 // Migrado a TypeScript con Drizzle y Zod

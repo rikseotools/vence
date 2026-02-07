@@ -575,7 +575,7 @@ async function loadLawsForDetection() {
       // Si contiene "tribunal constitucional", "poder judicial", etc., extraer esos términos
       const institutionMatches = nameLower.match(/tribunal\s+constitucional|poder\s+judicial|consejo\s+de\s+estado|defensor\s+del\s+pueblo|tribunal\s+de\s+cuentas/gi)
       if (institutionMatches) {
-        institutionMatches.forEach(m => patterns.push(m.toLowerCase()))
+        institutionMatches.forEach((m: string) => patterns.push(m.toLowerCase()))
       }
 
       // Extraer "Ley Orgánica del XXX" -> "XXX"

@@ -62,7 +62,7 @@ export async function validateAnswer(
       return {
         success: true,
         isCorrect,
-        correctAnswer: psyQuestion.correctOption,
+        correctAnswer: psyQuestion.correctOption ?? 0,
         explanation: psyQuestion.explanation,
         articleNumber: null,
         lawShortName: null,

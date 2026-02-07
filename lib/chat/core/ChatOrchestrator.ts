@@ -61,6 +61,7 @@ export class ChatOrchestrator {
 
           const response = await domain.handle(context)
           response.metadata = {
+            domain: domain.name,
             ...response.metadata,
             processingTime: Date.now() - startTime,
           }
@@ -106,6 +107,7 @@ export class ChatOrchestrator {
           // Procesar con el dominio y convertir a stream
           const response = await domain.handle(context)
           response.metadata = {
+            domain: domain.name,
             ...response.metadata,
             processingTime: Date.now() - startTime,
           }

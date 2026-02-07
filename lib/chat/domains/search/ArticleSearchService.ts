@@ -128,7 +128,7 @@ export async function searchArticles(
       return {
         ...result,
         mentionedLaws,
-        contextLaw,
+        contextLaw: contextLaw ?? undefined,
       }
     }
   }
@@ -142,7 +142,7 @@ export async function searchArticles(
         ...result,
         pattern,
         mentionedLaws,
-        contextLaw,
+        contextLaw: contextLaw ?? undefined,
       }
     }
   }
@@ -150,7 +150,7 @@ export async function searchArticles(
   // 6. Búsqueda semántica general
   const semanticResult = await searchSemantic(message, {
     userOposicion: options.userOposicion,
-    contextLawName: contextLaw,
+    contextLawName: contextLaw ?? undefined,
     mentionedLawNames: mentionedLaws,
     limit,
   })
@@ -159,7 +159,7 @@ export async function searchArticles(
     return {
       ...semanticResult,
       mentionedLaws,
-      contextLaw,
+      contextLaw: contextLaw ?? undefined,
     }
   }
 
@@ -168,7 +168,7 @@ export async function searchArticles(
   return {
     ...keywordResult,
     mentionedLaws,
-    contextLaw,
+    contextLaw: contextLaw ?? undefined,
   }
 }
 

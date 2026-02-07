@@ -214,10 +214,10 @@ export async function resolveTemaByArticle(
         ))
         .limit(1)
 
-      if (scopeResult.length) {
+      if (scopeResult.length && scopeResult[0].topicId) {
         const response: ResolveTemaResponse = {
           success: true,
-          temaNumber: scopeResult[0].topicNumber,
+          temaNumber: scopeResult[0].topicNumber ?? '',
           topicId: scopeResult[0].topicId,
           topicTitle: scopeResult[0].topicTitle || undefined,
           positionType: scopeResult[0].positionType as PositionType,
@@ -249,10 +249,10 @@ export async function resolveTemaByArticle(
       ))
       .limit(1)
 
-    if (fullLawScopeResult.length) {
+    if (fullLawScopeResult.length && fullLawScopeResult[0].topicId) {
       const response: ResolveTemaResponse = {
         success: true,
-        temaNumber: fullLawScopeResult[0].topicNumber,
+        temaNumber: fullLawScopeResult[0].topicNumber ?? '',
         topicId: fullLawScopeResult[0].topicId,
         topicTitle: fullLawScopeResult[0].topicTitle || undefined,
         positionType: fullLawScopeResult[0].positionType as PositionType,

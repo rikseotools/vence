@@ -87,7 +87,7 @@ export class VerificationDomain implements ChatDomain {
     logger.info('VerificationDomain handling request', {
       domain: 'verification',
       userId: context.userId,
-      questionId: context.questionContext?.questionId,
+      questionId: context.questionContext?.questionId ?? undefined,
     })
 
     // Verificar si tenemos la respuesta correcta disponible

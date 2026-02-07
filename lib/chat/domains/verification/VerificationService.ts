@@ -244,8 +244,8 @@ export async function verifyAnswer(
         lawName: article.lawName,
         lawShortName: article.lawShortName,
         articleNumber: article.articleNumber,
-        title: article.title,
-        content: article.content,
+        title: article.title ?? '',
+        content: article.content ?? '',
         similarity: 1.0,
       }, ...allArticles]
     }
@@ -268,8 +268,8 @@ export async function verifyAnswer(
         lawName: linkedArticle.lawName,
         lawShortName: linkedArticle.lawShortName,
         articleNumber: linkedArticle.articleNumber,
-        title: linkedArticle.title,
-        content: linkedArticle.content,
+        title: linkedArticle.title ?? '',
+        content: linkedArticle.content ?? '',
         similarity: 1.0,
       }, ...allArticles]
     }
@@ -406,8 +406,8 @@ async function generateVerificationResponse(
         lawName: a.lawShortName,
         lawShortName: a.lawShortName,
         articleNumber: a.articleNumber,
-        title: a.title,
-        content: a.content,
+        title: a.title ?? '',
+        content: a.content ?? '',
       })))
     : 'No se encontraron artículos relevantes en la base de datos.'
 
@@ -479,7 +479,7 @@ ${ourExplanation}
   }
 
   // Construir el system prompt (diferente para informática vs derecho)
-  const systemPrompt = buildVerificationSystemPrompt(isVirtual)
+  const systemPrompt = buildVerificationSystemPrompt(isVirtual ?? false)
 
   // Construir el mensaje del usuario con contexto
   // NOTA: 'question' ya viene con los valores detectados (effectiveLawName, effectiveArticleNumber)

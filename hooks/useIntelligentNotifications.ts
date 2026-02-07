@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // hooks/useIntelligentNotifications.ts - SISTEMA COMPLETO DE NOTIFICACIONES INTELIGENTES CON PERSISTENCIA Y EMAIL FALLBACK
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'

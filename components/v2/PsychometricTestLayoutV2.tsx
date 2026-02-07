@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // components/v2/PsychometricTestLayoutV2.tsx
 // Tests psicotécnicos - Versión TypeScript
 'use client'

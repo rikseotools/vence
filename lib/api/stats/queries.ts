@@ -157,7 +157,7 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
         },
         weakArticles, // Usando getArticleStats con temaNumber
         strongArticles, // Usando getArticleStats con temaNumber
-        userOposicion: await getUserOposicion(db, userId),
+        userOposicion: await getUserOposicion(db, userId) ?? undefined,
       },
       generatedAt: now.toISOString(),
     }

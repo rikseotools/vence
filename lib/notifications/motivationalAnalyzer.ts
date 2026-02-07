@@ -253,7 +253,7 @@ export class MotivationalAnalyzer {
       // Validar con Zod (soft validation)
       let recentTests: TestRecord[] = []
       try {
-        recentTests = testRecordsArraySchema.parse(recentTestsRaw || [])
+        recentTests = testRecordsArraySchema.parse(recentTestsRaw || []) as TestRecord[]
       } catch (zodError) {
         console.warn('⚠️ Zod validation warning for tests:', zodError)
         recentTests = (recentTestsRaw || []) as TestRecord[]

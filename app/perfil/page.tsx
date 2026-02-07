@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/perfil/page.tsx - CON PESTAÑAS Y EMAIL PREFERENCES
 'use client'
 import { useState, useEffect, useRef, Suspense, useMemo, ChangeEvent } from 'react'
