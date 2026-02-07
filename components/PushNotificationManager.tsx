@@ -1,4 +1,3 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
 // Componente para gestionar notificaciones push
 // Solo muestra el prompt en dispositivos móviles o PWA
 'use client'
@@ -299,6 +298,7 @@ export default function PushNotificationManager() {
         window.removeEventListener('unhandledrejection', handleUnhandledRejection)
       }
     }
+    return undefined
   }, [user, supabase, checkNotificationSupport, loadUserSettings])
 
   // Verificaciones automáticas de suscripción

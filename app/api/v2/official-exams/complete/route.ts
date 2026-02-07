@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getDb } from '@/db/client'
@@ -199,8 +199,9 @@ export async function POST(request: NextRequest) {
         .limit(1)
 
       if (existing.length > 0) {
-        const newTotal = existing[0].totalAttempts + 1
-        const newCorrect = answer.isCorrect ? existing[0].correctAttempts + 1 : existing[0].correctAttempts
+        const record = existing[0]!
+        const newTotal = (record.totalAttempts ?? 0) + 1
+        const newCorrect = answer.isCorrect ? (record.correctAttempts ?? 0) + 1 : (record.correctAttempts ?? 0)
         await db
           .update(userQuestionHistory)
           .set({
@@ -209,7 +210,7 @@ export async function POST(request: NextRequest) {
             successRate: (newCorrect / newTotal).toFixed(2),
             lastAttemptAt: new Date().toISOString(),
           })
-          .where(eq(userQuestionHistory.id, existing[0].id))
+          .where(eq(userQuestionHistory.id, record.id))
       } else {
         await db.insert(userQuestionHistory).values({
           userId: user.id,
@@ -241,14 +242,15 @@ export async function POST(request: NextRequest) {
         .limit(1)
 
       if (existing.length > 0) {
+        const record = existing[0]!
         await db
           .update(psychometricUserQuestionHistory)
           .set({
-            attempts: existing[0].attempts + 1,
-            correctAttempts: answer.isCorrect ? existing[0].correctAttempts + 1 : existing[0].correctAttempts,
+            attempts: (record.attempts ?? 0) + 1,
+            correctAttempts: answer.isCorrect ? (record.correctAttempts ?? 0) + 1 : (record.correctAttempts ?? 0),
             lastAttemptAt: new Date().toISOString(),
           })
-          .where(eq(psychometricUserQuestionHistory.id, existing[0].id))
+          .where(eq(psychometricUserQuestionHistory.id, record.id))
       } else {
         await db.insert(psychometricUserQuestionHistory).values({
           userId: user.id,
@@ -279,16 +281,17 @@ export async function POST(request: NextRequest) {
         .limit(1)
 
       if (existing.length > 0) {
-        const newTotal = existing[0].totalAttempts + 1
+        const record = existing[0]!
+        const newTotal = (record.totalAttempts ?? 0) + 1
         // Unanswered = incorrect, so correctAttempts stays the same
         await db
           .update(userQuestionHistory)
           .set({
             totalAttempts: newTotal,
-            successRate: (existing[0].correctAttempts / newTotal).toFixed(2),
+            successRate: ((record.correctAttempts ?? 0) / newTotal).toFixed(2),
             lastAttemptAt: new Date().toISOString(),
           })
-          .where(eq(userQuestionHistory.id, existing[0].id))
+          .where(eq(userQuestionHistory.id, record.id))
       } else {
         await db.insert(userQuestionHistory).values({
           userId: user.id,
@@ -319,14 +322,15 @@ export async function POST(request: NextRequest) {
         .limit(1)
 
       if (existing.length > 0) {
+        const record = existing[0]!
         await db
           .update(psychometricUserQuestionHistory)
           .set({
-            attempts: existing[0].attempts + 1,
+            attempts: (record.attempts ?? 0) + 1,
             // correctAttempts stays the same (unanswered = failed)
             lastAttemptAt: new Date().toISOString(),
           })
-          .where(eq(psychometricUserQuestionHistory.id, existing[0].id))
+          .where(eq(psychometricUserQuestionHistory.id, record.id))
       } else {
         await db.insert(psychometricUserQuestionHistory).values({
           userId: user.id,

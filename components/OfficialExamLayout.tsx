@@ -1,4 +1,3 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
 // components/OfficialExamLayout.tsx - Examen Oficial (legislativo + psicotecnico)
 'use client'
 import React, { useState, useEffect } from 'react'

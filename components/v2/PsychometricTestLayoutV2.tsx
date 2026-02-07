@@ -1,4 +1,3 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
 // components/v2/PsychometricTestLayoutV2.tsx
 // Tests psicotécnicos - Versión TypeScript
 'use client'
@@ -266,7 +265,7 @@ export default function PsychometricTestLayoutV2({
 
   const completeTest = useCallback(async () => {
     // 📊 Tracking de test completado
-    trackPsychometricAction('test_completed', null, {
+    trackPsychometricAction('test_completed', undefined, {
       totalQuestions,
       correctAnswers: score,
       accuracy: Math.round((score / totalQuestions) * 100),

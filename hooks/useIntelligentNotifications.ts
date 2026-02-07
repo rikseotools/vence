@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+// @ts-nocheck - TODO: Migrar tipos gradualmente (archivo complejo con muchas dependencias)
 // hooks/useIntelligentNotifications.ts - SISTEMA COMPLETO DE NOTIFICACIONES INTELIGENTES CON PERSISTENCIA Y EMAIL FALLBACK
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
@@ -561,8 +561,8 @@ function validateAndMapLawShortName(lawShortName: string | null | undefined, law
         lawFullName.toLowerCase().includes('constitución') ? 'ce' : null,
         lawFullName.includes('50/1997') ? 'ley-50-1997' : null,
         lawFullName.includes('7/1985') ? 'ley-7-1985' : null
-      ].filter(Boolean)
-      
+      ].filter((s): s is string => Boolean(s))
+
       for (const slug of possibleSlugs) {
         const mappedShortName = mapLawSlugToShortName(slug)
         // Si el mapeo devuelve algo diferente al slug original, es válido
@@ -637,10 +637,10 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
             
             baseParams.append('articles', articles)
             baseParams.append('mode', 'intensive')
-            baseParams.append('n', Math.min(notification.articlesCount * 2, 10).toString())
-            
+            baseParams.append('n', Math.min((notification.articlesCount ?? 1) * 2, 10).toString())
+
             // 🎯 Añadir parámetro de ley para filtrado interno
-            const lawSlug = generateLawSlug(notification.law_short_name)
+            const lawSlug = generateLawSlug(notification.law_short_name ?? '')
             baseParams.append('law', lawSlug)
             
             // 💥 CACHE BUSTER: Forzar nuevo timestamp
@@ -653,7 +653,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
             console.log(`   URL final: ${finalUrl}`)
             return finalUrl
           } else if (actionType === 'view_theory') {
-            const lawSlug = generateLawSlug(notification.law_short_name)
+            const lawSlug = generateLawSlug(notification.law_short_name ?? '')
             // 🆕 INCLUIR ARTÍCULOS ESPECÍFICOS EN LA URL DE TEORÍA
             const articles = notification.articlesList?.map(a => a.article_number).join(',') || ''
             console.log('🔗 Generando URL view_theory para:', notification.law_short_name)
@@ -675,9 +675,9 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
             baseParams.append('n', '15')
             
             // 🎯 Añadir parámetro de ley para filtrado interno
-            const lawSlug = generateLawSlug(notification.law_short_name)
+            const lawSlug = generateLawSlug(notification.law_short_name ?? '')
             baseParams.append('law', lawSlug)
-            
+
             // 💥 CACHE BUSTER: Forzar nuevo timestamp
             baseParams.append('_t', Date.now().toString())
             
@@ -685,7 +685,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
             console.log('🔗 HOOK Generated level_regression URL (FIXED):', finalUrl)
             return finalUrl
           } else if (actionType === 'view_theory') {
-            const lawSlug = generateLawSlug(notification.law_short_name)
+            const lawSlug = generateLawSlug(notification.law_short_name ?? '')
             // 🆕 INCLUIR ARTÍCULOS ESPECÍFICOS EN LA URL DE TEORÍA
             const articles = notification.articlesList?.map(a => a.article_number).join(',') || ''
             console.log('🔗 Generando URL view_theory para:', notification.law_short_name)
@@ -753,7 +753,7 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   // 🆕 FUNCIÓN PARA EJECUTAR ACCIÓN - ACTUALIZADA CON PERSISTENCIA
   const executeAction = async (notification: Notification, actionType: 'primary' | 'secondary' = 'primary'): Promise<void> => {
     try {
-      const notificationType = NOTIFICATION_TYPES[notification.type]
+      const notificationType = NOTIFICATION_TYPES[notification.type as keyof typeof NOTIFICATION_TYPES]
       if (!notificationType) return
 
       const action = actionType === 'primary' 
@@ -791,16 +791,17 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   // 🧪 Setup global test notifications listener (solo desarrollo)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      const handleGlobalTestNotificationsUpdate = (notifications) => {
+      const handleGlobalTestNotificationsUpdate = (notifications: Notification[]) => {
         setTestNotifications(notifications)
       }
-      
+
       addGlobalTestNotificationsListener(handleGlobalTestNotificationsUpdate)
-      
+
       return () => {
         removeGlobalTestNotificationsListener(handleGlobalTestNotificationsUpdate)
       }
     }
+    return undefined
   }, [])
 
   // Cargar todas las notificaciones cuando el usuario cambie
@@ -824,13 +825,13 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
   }, [user, userProfile, authLoading, supabase])
 
   // Función auxiliar para filtrar notificaciones leídas (OPCIÓN B: desaparecen)
-  const filterUnreadNotifications = (notifications) => {
+  const filterUnreadNotifications = (notifications: Notification[]) => {
     try {
       const readNotificationsKey = `read_notifications_${user?.id || 'anonymous'}`
-      const readNotifications = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
-      
+      const readNotifications: Record<string, boolean> = JSON.parse(localStorage.getItem(readNotificationsKey) || '{}')
+
       // Filtrar: solo mostrar las que NO están marcadas como leídas
-      return notifications.filter(notification => {
+      return notifications.filter((notification: Notification) => {
         const isReadInStorage = !!readNotifications[notification.id]
         const isReadInDB = notification.isRead // Para impugnaciones
         return !isReadInStorage && !isReadInDB

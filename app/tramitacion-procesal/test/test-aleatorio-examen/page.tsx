@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/tramitacion-procesal/test/test-aleatorio-examen/page.tsx
 'use client'
 
@@ -36,6 +36,17 @@ interface LoadingProgress {
   message: string
 }
 
+interface QuestionArticle {
+  id?: string
+  article_number?: string
+  title?: string | null
+  content?: string | null
+  laws?: {
+    short_name: string
+    name?: string
+  }
+}
+
 interface Question {
   id: string
   question_text: string
@@ -43,18 +54,14 @@ interface Question {
   option_b: string
   option_c: string
   option_d: string
-  correct_option: number
-  explanation: string | null
-  difficulty: string | null
-  is_official_exam: boolean | null
+  correct_option?: number
+  explanation?: string | null
+  difficulty?: string | null
+  is_official_exam?: boolean | null
   source_topic?: number
-  articles?: {
-    id: string
-    article_number: string
-    laws?: {
-      short_name: string
-    }
-  }
+  tema_number?: number
+  primary_article_id?: string
+  articles?: QuestionArticle
 }
 
 function TestAleatorioExamenContent() {
@@ -178,7 +185,7 @@ function TestAleatorioExamenContent() {
           if (questionsError) {
             console.error(`Error con ley ${normalizedLawName}:`, questionsError.message)
           } else if (lawQuestions && lawQuestions.length > 0) {
-            const questionsWithTopic = lawQuestions.map(q => ({
+            const questionsWithTopic = lawQuestions.map((q: Question) => ({
               ...q,
               source_topic: mapping.topics?.topic_number || 0,
             }))
@@ -333,7 +340,8 @@ function TestAleatorioExamenContent() {
         icon: '📝',
         color: 'from-purple-500 to-indigo-600',
       }}
-      questions={questions}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      questions={questions as any}
     />
   )
 }

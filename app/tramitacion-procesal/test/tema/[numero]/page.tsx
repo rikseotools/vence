@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/tramitacion-procesal/test/tema/[numero]/page.tsx
 'use client'
 
@@ -52,7 +52,7 @@ export default function TemaTramitacionPage({ params }: PageProps) {
   const [testLoading, setTestLoading] = useState(false)
   const [userRecentStats, setUserRecentStats] = useState<any>(null)
   const [userAnswers, setUserAnswers] = useState<any[]>([])
-  const [testMode, setTestMode] = useState('practica')
+  const [testMode, setTestMode] = useState<'practica' | 'examen'>('practica')
 
   useEffect(() => {
     try {
@@ -65,7 +65,7 @@ export default function TemaTramitacionPage({ params }: PageProps) {
     }
   }, [])
 
-  const handleTestModeChange = (newMode: string) => {
+  const handleTestModeChange = (newMode: 'practica' | 'examen') => {
     setTestMode(newMode)
     try {
       localStorage.setItem('preferredTestMode', newMode)
@@ -183,7 +183,7 @@ export default function TemaTramitacionPage({ params }: PageProps) {
 
     async function fetchAllData() {
       try {
-        const basicData = await loadTopicData(temaNumber, null)
+        const basicData = await loadTopicData(temaNumber!, null)
 
         if (!basicData?.success) {
           setTemaNotFound(true)
@@ -216,7 +216,7 @@ export default function TemaTramitacionPage({ params }: PageProps) {
         if (user) {
           setUserStatsLoading(true)
 
-          const userData = await loadTopicData(temaNumber, user.id)
+          const userData = await loadTopicData(temaNumber!, user.id)
 
           if (userData?.success && userData.userProgress) {
             setUserStats({
@@ -243,7 +243,7 @@ export default function TemaTramitacionPage({ params }: PageProps) {
               })
             }
 
-            await loadUserAnswersForMetrics(user.id, temaNumber)
+            await loadUserAnswersForMetrics(user.id, temaNumber!)
           }
 
           setUserStatsLoading(false)

@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // components/ExamLayout.tsx - MODO EXAMEN (todas las preguntas a la vez)
 'use client'
 import { useState, useEffect, useRef } from 'react'
@@ -470,7 +470,7 @@ export default function ExamLayout({
       console.log('')
 
       const testSessionData = await createDetailedTestSession(
-        user?.id || null,
+        user?.id || '',
         tema ?? 'exam',
         testNumber || 1,
         questions,
@@ -1328,7 +1328,7 @@ export default function ExamLayout({
 
       {showSharePrompt && isSubmitted && (
         <SharePrompt
-          score={notaSobre10}
+          score={parseFloat(notaSobre10)}
           testSessionId={currentTestSession?.id}
           onClose={() => setShowSharePrompt(false)}
         />

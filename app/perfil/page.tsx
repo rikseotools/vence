@@ -1,4 +1,3 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/perfil/page.tsx - CON PESTAÑAS Y EMAIL PREFERENCES
 'use client'
 import { useState, useEffect, useRef, Suspense, useMemo, ChangeEvent } from 'react'
@@ -753,7 +752,7 @@ function PerfilPageContent() {
   }, [formData, user, profile, isInitialLoad.current]) // Escuchar todo formData y isInitialLoad
 
   // 🆕 GUARDAR EMAIL PREFERENCES - VIA API TIPADA
-  const saveEmailPreferences = async (newPreferences) => {
+  const saveEmailPreferences = async (newPreferences: EmailPreferences) => {
     if (!user || emailPrefSaving) return
 
     try {
@@ -837,7 +836,7 @@ function PerfilPageContent() {
   // 🆕 MANEJAR CAMBIOS EN SOPORTE
   // Si se activa y "Emails de Vence" está desactivado, activarlo automáticamente
   // Si se desactiva y es la última opción activa, desactivar "Emails de Vence"
-  const handleSupportEmailChange = (value) => {
+  const handleSupportEmailChange = (value: boolean) => {
     const newNewsletterEmails = emailPreferences.newsletter_emails
 
     // Si activamos soporte y Vence está desactivado, activar Vence
@@ -853,7 +852,7 @@ function PerfilPageContent() {
 
   // 🆕 MANEJAR CAMBIOS EN NEWSLETTER
   // Misma lógica que soporte
-  const handleNewsletterEmailChange = (value) => {
+  const handleNewsletterEmailChange = (value: boolean) => {
     const newSupportEmails = emailPreferences.support_emails
 
     // Si activamos newsletter y Vence está desactivado, activar Vence
@@ -898,7 +897,7 @@ function PerfilPageContent() {
           const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey || '')
           })
 
           // Track subscription created
@@ -920,7 +919,7 @@ function PerfilPageContent() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId: user.id,
+            userId: user!.id,
             data: settingsData
           })
         })
@@ -986,7 +985,7 @@ function PerfilPageContent() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user!.id,
           data: { pushEnabled: false }
         })
       })
@@ -1018,7 +1017,7 @@ function PerfilPageContent() {
   }
 
   // Utility function para convertir VAPID key
-  function urlBase64ToUint8Array(base64String) {
+  function urlBase64ToUint8Array(base64String: string) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4)
     const base64 = (base64String + padding)
       .replace(/-/g, '+')
@@ -1034,7 +1033,7 @@ function PerfilPageContent() {
   }
 
   // Función para extraer el primer nombre
-  const getFirstName = (fullName) => {
+  const getFirstName = (fullName: string | null | undefined) => {
     if (!fullName) return ''
     return fullName.split(' ')[0] || ''
   }
@@ -1191,7 +1190,7 @@ function PerfilPageContent() {
     setTimeout(() => setMessage(''), 2000)
   }
 
-  const createInitialProfile = async (user) => {
+  const createInitialProfile = async (user: User) => {
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -1226,7 +1225,7 @@ function PerfilPageContent() {
   }
 
   // MANEJADOR DE CAMBIOS - Solo actualiza estado local
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -1235,7 +1234,7 @@ function PerfilPageContent() {
   }
 
   // Función auxiliar para cambios directos (no desde eventos)
-  const handleDirectChange = (name, value) => {
+  const handleDirectChange = (name: string, value: string | number | boolean) => {
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -1296,16 +1295,17 @@ function PerfilPageContent() {
       )
     }
 
-    const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString('es-ES', {
+    const formatDate = (dateInput: string | number | undefined) => {
+      if (!dateInput) return 'N/A'
+      return new Date(dateInput).toLocaleDateString('es-ES', {
         day: 'numeric',
         month: 'long',
         year: 'numeric'
       })
     }
 
-    const getStatusBadge = (status) => {
-      const badges = {
+    const getStatusBadge = (status: string) => {
+      const badges: Record<string, { bg: string; text: string; label: string }> = {
         active: { bg: 'bg-green-100', text: 'text-green-800', label: 'Activa' },
         trialing: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Periodo de prueba' },
         canceled: { bg: 'bg-red-100', text: 'text-red-800', label: 'Cancelada' },
@@ -1346,7 +1346,7 @@ function PerfilPageContent() {
                     {subscriptionData.subscription.planInterval === 'month' ? 'mes' :
                      subscriptionData.subscription.planInterval === 'year' ? 'año' :
                      subscriptionData.subscription.planInterval}
-                    {subscriptionData.subscription.planIntervalCount > 1 ? 'es' : ''}
+                    {(subscriptionData.subscription.planIntervalCount ?? 1) > 1 ? 'es' : ''}
                   </div>
                 </div>
               </div>
@@ -2587,15 +2587,18 @@ function PerfilPageContent() {
         onClose={() => setShowCancellationFlow(false)}
         userId={user?.id}
         periodEndDate={subscriptionData?.subscription?.currentPeriodEnd}
-        onCancelled={(periodEnd) => {
+        onCancelled={(_periodEnd: string | number | undefined) => {
           // Actualizar datos de suscripción localmente
-          setSubscriptionData(prev => ({
-            ...prev,
-            subscription: {
-              ...prev.subscription,
-              cancelAtPeriodEnd: true
+          setSubscriptionData((prev: SubscriptionData | null): SubscriptionData | null => {
+            if (!prev) return null
+            return {
+              ...prev,
+              subscription: prev.subscription ? {
+                ...prev.subscription,
+                cancelAtPeriodEnd: true
+              } : undefined
             }
-          }))
+          })
         }}
       />
     </div>

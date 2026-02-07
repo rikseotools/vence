@@ -1,4 +1,3 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
 // components/NotificationBell.tsx - SISTEMA CON INDICADORES ÚTILES Y COMPORTAMIENTO MEJORADO
 'use client'
 import { useState, useEffect, useRef, TouchEvent, MouseEvent } from 'react'
@@ -48,9 +47,10 @@ export default function NotificationBell() {
           unreadCount
         })
       }, 1000) // Throttle a 1 segundo
-      
+
       return () => clearTimeout(timeoutId)
     }
+    return undefined
   }, [unreadCount, notifications?.length])
 
   // Hook para impugnaciones/disputas
@@ -85,9 +85,9 @@ export default function NotificationBell() {
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
-          buttonRef.current && !buttonRef.current.contains(event.target)) {
+    function handleClickOutside(event: Event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
@@ -251,7 +251,7 @@ export default function NotificationBell() {
     event.stopPropagation()
     console.log('🔍 handleActionClick called:', { notificationId: notification?.id, actionType })
 
-    const notificationType = notificationTypes[notification.type]
+    const notificationType = notificationTypes[notification.type as keyof typeof notificationTypes]
     if (!notificationType) {
       console.warn('❌ No notification type found for:', notification.type)
       return
@@ -350,7 +350,7 @@ export default function NotificationBell() {
             
             baseParams.append('articles', articles)
             baseParams.append('mode', 'intensive')
-            baseParams.append('n', Math.min(notification.articlesCount * 2, 10).toString())
+            baseParams.append('n', Math.min((notification.articlesCount ?? 1) * 2, 10).toString())
             
             // 🚀 SISTEMA UNIVERSAL: Usar /test/rapido con filtros (como level_regression)
             baseParams.append('law', lawSlug)
@@ -466,8 +466,8 @@ export default function NotificationBell() {
   // 🆕 GENERAR SLUG DE LEY (copiada del hook)
   const generateLawSlug = (lawName: string | undefined): string => {
     if (!lawName) return 'unknown'
-    
-    const specialCases = {
+
+    const specialCases: Record<string, string> = {
       'Ley 19/2013': 'ley-19-2013',
       'Ley 50/1997': 'ley-50-1997',
       'Ley 40/2015': 'ley-40-2015',
@@ -482,7 +482,7 @@ export default function NotificationBell() {
       'TUE': 'tue',
       'TFUE': 'tfue'
     }
-    
+
     if (specialCases[lawName]) {
       return specialCases[lawName]
     }
@@ -573,13 +573,15 @@ export default function NotificationBell() {
       return !(swipeState && swipeState.opacity === 0)
     })
     
-    const mainNotifs = (categorizedNotifications[selectedCategory] || []).filter(notification => {
+    const categoryKey = selectedCategory as keyof typeof categorizedNotifications
+    const mainNotifs = (categorizedNotifications[categoryKey] || []).filter((notification: Notification) => {
       const swipeState = swipeStates[notification.id]
       return !(swipeState && swipeState.opacity === 0)
     })
-    
+
     if (selectedCategory === 'important') {
-      return [...mainNotifs, ...disputeNotifs]
+      // Cast dispute notifications to Notification type for compatibility
+      return [...mainNotifs, ...(disputeNotifs as unknown as Notification[])]
     }
     
     return mainNotifs
@@ -914,7 +916,7 @@ export default function NotificationBell() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleShowAppealForm(notification.disputeId)
+                                    handleShowAppealForm(notification.disputeId ?? '')
                                   }}
                                   className="w-full sm:flex-1 px-3 py-2.5 bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded-lg text-sm hover:bg-orange-200 dark:hover:bg-orange-800/50 transition-colors border border-orange-300 dark:border-orange-600 touch-manipulation"
                                   title="Contestar impugnación rechazada"
@@ -941,7 +943,7 @@ export default function NotificationBell() {
                               )}
                               
                               {/* 🚨 Indicador de urgencia para artículos problemáticos */}
-                              {notification.type === 'problematic_articles' && notification.accuracy < 50 && (
+                              {notification.type === 'problematic_articles' && (notification.accuracy ?? 100) < 50 && (
                                 <span className="text-xs bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-2 py-1 rounded-full">
                                   🚨 Urgente
                                 </span>
@@ -1043,7 +1045,7 @@ export default function NotificationBell() {
                                   Cancelar
                                 </button>
                                 <button
-                                  onClick={() => handleSubmitAppeal(notification.disputeId)}
+                                  onClick={() => handleSubmitAppeal(notification.disputeId ?? '')}
                                   disabled={!appealText.trim() || submittingAppeal}
                                   className="flex-1 px-3 py-2 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >

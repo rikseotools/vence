@@ -1,4 +1,3 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
 // app/admin/newsletters/page.tsx - Panel de newsletters
 'use client'
 import { useState, useEffect, ChangeEvent } from 'react'
@@ -263,7 +262,7 @@ export default function NewslettersPage() {
   }
 
   // Cargar usuarios de una campaña específica
-  const loadCampaignUsers = async (newsletter, eventType, eventLabel, activityFilter = null) => {
+  const loadCampaignUsers = async (newsletter: Newsletter, eventType: string, eventLabel: string, activityFilter: string | null = null) => {
     setLoadingUsersModal(true)
     setShowUsersModal(true)
     setUsersSearchQuery('')
@@ -282,7 +281,7 @@ export default function NewslettersPage() {
         // Filtrar usuarios por nivel de actividad si se especifica
         let filteredUsers = data.users
         if (activityFilter) {
-          filteredUsers = data.users.filter(user => user.activityLevel === activityFilter)
+          filteredUsers = data.users.filter((user: User) => user.activityLevel === activityFilter)
         }
 
         setUsersModalData({
@@ -326,7 +325,7 @@ export default function NewslettersPage() {
   }
 
   // Helper para obtener estadísticas de una plantilla específica
-  const getTemplateStats = (templateId) => {
+  const getTemplateStats = (templateId: string) => {
     return templateStats[templateId] || null
   }
 
@@ -358,7 +357,7 @@ export default function NewslettersPage() {
     setLoadingUsers(false)
   }
 
-  const toggleUser = (userId) => {
+  const toggleUser = (userId: string) => {
     const newSelected = new Set(selectedUsers)
     if (newSelected.has(userId)) {
       newSelected.delete(userId)
@@ -403,7 +402,7 @@ export default function NewslettersPage() {
     alert('Plantilla guardada exitosamente!')
   }
 
-  const loadTemplate = (template) => {
+  const loadTemplate = (template: Template) => {
     setSubject(template.subject)
     setHtmlContent(template.content)
     setSelectedTemplate(null) // Limpiar plantilla predefinida
@@ -412,7 +411,7 @@ export default function NewslettersPage() {
     alert('Plantilla cargada exitosamente!')
   }
 
-  const duplicateTemplate = (template) => {
+  const duplicateTemplate = (template: Template) => {
     const newTemplate = {
       ...template,
       id: Date.now().toString(),
@@ -426,7 +425,7 @@ export default function NewslettersPage() {
     alert('Plantilla duplicada exitosamente!')
   }
 
-  const deleteTemplate = (templateId) => {
+  const deleteTemplate = (templateId: string) => {
     if (confirm('¿Estás seguro de que quieres eliminar esta plantilla?')) {
       const updatedTemplates = savedTemplates.filter(t => t.id !== templateId)
       setSavedTemplates(updatedTemplates)
@@ -435,12 +434,12 @@ export default function NewslettersPage() {
     }
   }
 
-  const startEditingTemplateName = (template) => {
+  const startEditingTemplateName = (template: Template) => {
     setEditingTemplate(template.id)
     setEditingTemplateName(template.name)
   }
 
-  const saveTemplateName = (templateId) => {
+  const saveTemplateName = (templateId: string) => {
     if (!editingTemplateName.trim()) {
       alert('El nombre no puede estar vacío')
       return
@@ -529,7 +528,7 @@ export default function NewslettersPage() {
     setLoading(false)
   }
 
-  const toggleAudience = (audienceValue) => {
+  const toggleAudience = (audienceValue: string) => {
     setSelectedAudiences(prev => {
       if (prev.includes(audienceValue)) {
         return prev.filter(a => a !== audienceValue)
@@ -654,7 +653,7 @@ export default function NewslettersPage() {
         for (let i = 0; i < selectedAudiences.length; i++) {
           const audienceType = selectedAudiences[i]
           const audienceName = audienceOptions.find(opt => opt.value === audienceType)?.label || audienceType
-          const audienceCount = audienceStats[audienceType] || 0
+          const audienceCount = audienceStats?.[audienceType] || 0
           
           // Update progress for current audience
           setSendingProgress(prev => ({
@@ -835,11 +834,13 @@ export default function NewslettersPage() {
             <div className="mb-8">
               <h3 className="text-sm font-medium text-gray-500 mb-2">Por oposición</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {(audienceStats.byOposicion || oposicionAudienceOptions).map(item => {
-                  const option = item.key ? item : oposicionAudienceOptions.find(o => o.value === item.value)
-                  const count = item.count ?? audienceStats[item.value] ?? 0
-                  const key = item.key || item.value
-                  const label = item.name || option?.label || key
+                {(audienceStats.byOposicion || oposicionAudienceOptions).map((item: OposicionStat | AudienceOption) => {
+                  const itemKey = 'key' in item ? item.key : ('value' in item ? item.value : '')
+                  const itemValue = 'value' in item ? item.value : ('key' in item ? item.key : '')
+                  const option = 'key' in item ? item : oposicionAudienceOptions.find(o => o.value === itemValue)
+                  const count = ('count' in item ? item.count : null) ?? audienceStats?.[itemValue] ?? 0
+                  const key = itemKey || itemValue
+                  const label = ('name' in item ? item.name : null) || ('label' in option! ? option!.label : null) || key
                   return (
                     <div key={key} className="bg-white rounded-lg shadow p-3 border-l-4 border-purple-500">
                       <div className="text-xl font-bold text-purple-600">
@@ -1079,7 +1080,7 @@ export default function NewslettersPage() {
                                     {user.full_name || 'Sin nombre'}
                                   </span>
                                   <span className="text-sm text-gray-500">
-                                    {new Date(user.created_at).toLocaleDateString('es-ES')}
+                                    {user.created_at ? new Date(user.created_at).toLocaleDateString('es-ES') : 'N/A'}
                                   </span>
                                 </div>
                                 <p className="text-sm text-gray-500 truncate">{user.email}</p>
@@ -1337,13 +1338,13 @@ export default function NewslettersPage() {
                       </div>
                     )}
                     
-                    {result.errors?.length > 0 && (
+                    {result.errors && result.errors.length > 0 && (
                       <div className="mt-4">
                         <h4 className="font-medium text-red-600 mb-2">
                           Errores restantes ({result.errors.length}):
                         </h4>
                         <div className="text-xs space-y-1 max-h-32 overflow-y-auto">
-                          {result.errors.slice(0, 10).map((error, i) => (
+                          {result.errors.slice(0, 10).map((error: { email: string; error: string }, i: number) => (
                             <div key={i} className="text-red-600">
                               {error.email}: {error.error}
                             </div>
@@ -3274,7 +3275,7 @@ export default function NewslettersPage() {
                         Activos (90d)
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-500">
-                        {((usersModalData.metrics.active / usersModalData.total) * 100).toFixed(1)}%
+                        {((usersModalData.metrics.active / (usersModalData.total || 1)) * 100).toFixed(1)}%
                       </div>
                     </div>
                     <div>
@@ -3322,7 +3323,7 @@ export default function NewslettersPage() {
                       })
                       .map((user, index) => {
                         // Calcular tiempo relativo desde última conexión
-                        const getRelativeTime = (date) => {
+                        const getRelativeTime = (date: string | null | undefined) => {
                           if (!date) return 'Nunca'
                           const days = Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
                           if (days === 0) return 'Hoy'
@@ -3368,9 +3369,9 @@ export default function NewslettersPage() {
                               {/* % Aciertos 30d */}
                               <div className="text-center">
                                 <div className={`font-bold ${
-                                  user.avgScore >= 70 ? 'text-green-600 dark:text-green-400' :
-                                  user.avgScore >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                                  user.avgScore > 0 ? 'text-red-600 dark:text-red-400' :
+                                  (user.avgScore ?? 0) >= 70 ? 'text-green-600 dark:text-green-400' :
+                                  (user.avgScore ?? 0) >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                  (user.avgScore ?? 0) > 0 ? 'text-red-600 dark:text-red-400' :
                                   'text-gray-400 dark:text-gray-500'
                                 }`}>
                                   {user.avgScore ? user.avgScore.toFixed(0) + '%' : 'Sin completar'}
