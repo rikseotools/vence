@@ -27,7 +27,13 @@ export default {
     '!components/ChatInterface.js'
   ],
   coverageThreshold: {
-    // Sin umbrales específicos - sistema de bloqueo eliminado
+    global: {
+      branches: 5,
+      functions: 5,
+      lines: 5,
+      statements: 5,
+    },
+    // TODO: Incrementar gradualmente a 50%+ cuando se añadan más tests
   },
   // Ignorar archivos que no necesitan testing
   testPathIgnorePatterns: [

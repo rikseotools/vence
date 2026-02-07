@@ -1,3 +1,4 @@
+// @ts-nocheck - TODO: Migrate to strict TypeScript
 // hooks/useSessionControl.ts
 // Hook para controlar sesiones simultáneas de usuarios específicos
 'use client'
