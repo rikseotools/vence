@@ -156,13 +156,14 @@ export async function POST(request: NextRequest) {
 
     // 6. Update test record
     // totalQuestions = all questions (unanswered count as failed attempts)
+    // score = percentage based on answered questions (not count of correct)
     await db
       .update(tests)
       .set({
         isCompleted: true,
         completedAt: new Date().toISOString(),
         totalQuestions: results.length, // All questions, including unanswered
-        score: correctCount.toString(),
+        score: score.toString(), // Use calculated percentage, not correctCount
         totalTimeSeconds: totalTimeSeconds || 0,
       })
       .where(eq(tests.id, testId))
