@@ -280,14 +280,11 @@ export async function updateTestScore(testId: string): Promise<void> {
   const total = result[0]?.total ?? 0
   const correct = Number(result[0]?.correct) ?? 0
 
-  // Calcular porcentaje (score debe ser %, no el número de correctas)
-  const scorePercentage = total > 0 ? Math.round((correct / total) * 100) : 0
-
   // Actualizar test
   await db
     .update(tests)
     .set({
-      score: scorePercentage.toString(),
+      score: correct.toString(),
       totalQuestions: total,
     })
     .where(eq(tests.id, testId))
@@ -517,16 +514,13 @@ export async function completeExam(
       }
     }
 
-    // Calcular porcentaje (score debe ser %, no el número de correctas)
-    const scorePercentage = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0
-
     // Marcar como completado
     await db
       .update(tests)
       .set({
         isCompleted: true,
         completedAt: new Date().toISOString(),
-        score: scorePercentage.toString(),
+        score: correctCount.toString(),
         totalQuestions: answeredCount, // Usar las que realmente se respondieron
       })
       .where(eq(tests.id, testId))
@@ -534,7 +528,7 @@ export async function completeExam(
     return {
       success: true,
       testId,
-      finalScore: scorePercentage,
+      finalScore: correctCount,
       totalQuestions: answeredCount,
       correctAnswers: correctCount,
       incorrectAnswers: answeredCount - correctCount,
