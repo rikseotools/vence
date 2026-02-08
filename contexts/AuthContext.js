@@ -401,25 +401,23 @@ export function AuthProvider({ children, initialUser = null }) {
             }, 1000) // Pequeño delay para que termine de cargar
           }
           
-          // Cargar perfil en background
+          // Cargar perfil en background - ensureUserProfile ya tiene protección interna
           let profile = userProfile?.id === newUser.id ? userProfile : null
           if (!profile) {
-            console.log('🔄 Cargando perfil onAuthStateChange en background...')
-            loadUserProfile(newUser.id).catch(err => {
-              console.warn('⚠️ Error cargando perfil onAuth (no crítico):', err)
+            console.log('🔄 Cargando perfil onAuthStateChange...')
+            // Primero intentar cargar, solo crear si no existe
+            loadUserProfile(newUser.id).then(loadedProfile => {
+              if (!loadedProfile) {
+                // Solo llamar ensureUserProfile si loadUserProfile no encontró perfil
+                console.log('🆕 Perfil no encontrado, asegurando creación...')
+                return ensureUserProfile(newUser)
+              }
+              console.log('✅ Perfil cargado:', loadedProfile.plan_type)
+            }).catch(err => {
+              console.warn('⚠️ Error en flujo de perfil (no crítico):', err)
             })
-          }
-
-          if (!profile) {
-            // Solo crear perfil si no existe - EN BACKGROUND
-            console.log('🔄 Asegurando perfil en background...')
-            ensureUserProfile(newUser).catch(err => {
-              console.warn('⚠️ Error asegurando perfil (no crítico):', err)
-            })
-          }
-          
-          if (profile) {
-            console.log('✅ Perfil procesado:', profile.registration_source, profile.plan_type)
+          } else {
+            console.log('✅ Perfil ya en memoria:', profile.plan_type)
           }
           
         } else {
