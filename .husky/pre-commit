@@ -24,7 +24,28 @@ fi
 
 echo ""
 
-# 2. Ejecutar tests
+# 2. Verificar patrones de bug conocidos
+echo "🔎 Verificando patrones de bugs conocidos..."
+
+# Bug: guardar correctCount como score en vez de porcentaje
+# Patrón: score: correctCount.toString() o score: correct.toString()
+BUGGY_PATTERN=$(grep -rn "score:.*\(correctCount\|correct\)\.toString()" lib/ app/api/ 2>/dev/null | grep -v "scorePercentage\|score\.toString()" || true)
+
+if [ -n "$BUGGY_PATTERN" ]; then
+  echo ""
+  echo "⚠️  POSIBLE BUG DETECTADO: score guardando conteo en vez de porcentaje"
+  echo ""
+  echo "$BUGGY_PATTERN"
+  echo ""
+  echo "💡 El score debe ser un PORCENTAJE (0-100), no el número de correctas."
+  echo "   Usa: score: scorePercentage.toString() o score: Math.round((correct/total)*100).toString()"
+  echo ""
+  # Warning, no bloquea (podría ser falso positivo)
+fi
+
+echo ""
+
+# 3. Ejecutar tests
 echo "🧪 Ejecutando tests..."
 npm run test:ci
 TEST_EXIT_CODE=$?
