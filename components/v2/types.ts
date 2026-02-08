@@ -284,6 +284,8 @@ export interface ExamLayoutV2Props {
   initialAnswers?: Record<number, string> | null
   /** Contenido hijo opcional */
   children?: React.ReactNode
+  /** Tipo de oposición para generar URLs correctas */
+  positionType?: string
 }
 
 export interface ExamQuestion {

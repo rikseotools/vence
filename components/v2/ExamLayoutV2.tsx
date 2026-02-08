@@ -39,6 +39,38 @@ function formatElapsedTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+/**
+ * Convertir número de tema interno a número de display
+ * Ejemplo: 301 → 1, 402 → 2, pero 1-11 se mantienen igual
+ */
+function getDisplayTemaNumber(temaNumber: number): number {
+  if (isNaN(temaNumber)) return 0
+  // Bloque I: 1-99 se mantienen
+  if (temaNumber >= 1 && temaNumber <= 99) return temaNumber
+  // Bloques II-VI: 201→1, 302→2, etc.
+  return temaNumber % 100
+}
+
+/**
+ * Obtener la ruta base según positionType
+ */
+function getPositionBasePath(positionType?: string): string {
+  switch (positionType) {
+    case 'administrativo':
+      return 'administrativo-estado'
+    case 'auxiliar_administrativo':
+      return 'auxiliar-administrativo-estado'
+    case 'tramitacion_procesal':
+      return 'tramitacion-procesal'
+    case 'auxilio_judicial':
+      return 'auxilio-judicial'
+    case 'gestion_procesal':
+      return 'gestion-procesal'
+    default:
+      return 'auxiliar-administrativo-estado'
+  }
+}
+
 // ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
@@ -50,7 +82,8 @@ export default function ExamLayoutV2({
   questions,
   resumeTestId = null,
   initialAnswers = null,
-  children
+  children,
+  positionType
 }: ExamLayoutV2Props) {
   // Auth
   const { user, loading: authLoading } = useAuth() as {
@@ -536,12 +569,12 @@ export default function ExamLayoutV2({
           <div className="mt-8 mb-8 text-center">
             <Link
               href={tema && tema !== 0
-                ? `/auxiliar-administrativo-estado/test/tema/${tema}`
-                : '/auxiliar-administrativo-estado/test'
+                ? `/${getPositionBasePath(positionType)}/test/tema/${tema}`
+                : `/${getPositionBasePath(positionType)}/test`
               }
               className="inline-block px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md"
             >
-              {tema && tema !== 0 ? `← Volver al tema ${tema}` : '← Volver a tests'}
+              {tema && tema !== 0 ? `← Volver al tema ${getDisplayTemaNumber(tema)}` : '← Volver a tests'}
             </Link>
           </div>
         )}
