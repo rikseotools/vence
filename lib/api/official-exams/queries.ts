@@ -1,5 +1,5 @@
 import { getDb } from '@/db/client'
-import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory } from '@/db/schema'
+import { questions, psychometricQuestions, articles, laws, tests, testQuestions, psychometricUserQuestionHistory, userFeedback } from '@/db/schema'
 import { eq, and, like, sql, inArray, desc, count } from 'drizzle-orm'
 import fs from 'fs'
 import path from 'path'
@@ -378,9 +378,36 @@ export async function saveOfficialExamResults(
       }
     })
 
-    await db.insert(testQuestions).values(testQuestionsData)
+    try {
+      await db.insert(testQuestions).values(testQuestionsData)
+      console.log(`✅ [OfficialExams] ${testQuestionsData.length} questions saved (${legCount} legislative, ${psyCount} psychometric)`)
+    } catch (questionsError) {
+      console.error('❌ [OfficialExams] Questions insert error:', questionsError)
 
-    console.log(`✅ [OfficialExams] ${testQuestionsData.length} questions saved (${legCount} legislative, ${psyCount} psychometric)`)
+      // Crear feedback automático con todos los datos para poder reconstruir el test
+      try {
+        await db.insert(userFeedback).values({
+          userId,
+          type: 'system_error_ghost_test',
+          message: JSON.stringify({
+            error: questionsError instanceof Error ? questionsError.message : 'Unknown error',
+            testId: testSession.id,
+            examDate,
+            oposicion,
+            totalQuestions: answeredResults.length,
+            correctCount: totalCorrect,
+            incorrectCount: totalIncorrect,
+            questionsData: testQuestionsData,
+          }),
+          url: '/lib/api/official-exams/saveOfficialExamResults',
+          status: 'pending',
+          priority: 'high',
+        })
+        console.log('📝 [OfficialExams] Auto-feedback created for ghost test debugging')
+      } catch (feedbackError) {
+        console.error('❌ [OfficialExams] Failed to create auto-feedback:', feedbackError)
+      }
+    }
 
     // 3. Update psychometric history for statistics
     // Note: answeredResults already excludes 'sin_respuesta' questions
@@ -1281,6 +1308,7 @@ export async function getOfficialExamReview(
 
     // Find completed test matching the exam criteria
     // IMPORTANT: Filter totalQuestions > 0 to skip corrupted test sessions
+    // IMPORTANT: Use EXISTS to ensure test has questions in test_questions (skip ghost tests)
     // Order by completedAt DESC to get the MOST RECENT attempt
     // (old tests don't have correctCount in detailed_analytics)
     const testResults = await db
@@ -1306,7 +1334,9 @@ export async function getOfficialExamReview(
           sql`${tests.detailedAnalytics}->>'oposicion' = ${oposicion}`,
           parte
             ? sql`${tests.detailedAnalytics}->>'parte' = ${parte}`
-            : sql`true`
+            : sql`true`,
+          // Skip ghost tests (completed but no questions in test_questions)
+          sql`EXISTS (SELECT 1 FROM test_questions tq WHERE tq.test_id = ${tests.id})`
         )
       )
       .orderBy(desc(tests.completedAt))

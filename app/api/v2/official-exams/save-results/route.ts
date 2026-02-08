@@ -153,7 +153,32 @@ export async function POST(request: NextRequest) {
 
     if (questionsError) {
       console.error('❌ [API/v2/save] Questions insert error:', questionsError)
-      // Test was created, so we return partial success
+
+      // Crear feedback automático con todos los datos para poder reconstruir el test
+      try {
+        await supabaseAdmin.from('user_feedback').insert({
+          user_id: user.id,
+          type: 'system_error_ghost_test',
+          message: JSON.stringify({
+            error: questionsError.message,
+            errorCode: questionsError.code,
+            testId: testSession.id,
+            examDate,
+            oposicion,
+            parte: parte ?? null,
+            totalQuestions: answeredResults.length,
+            correctCount: totalCorrect,
+            incorrectCount: totalIncorrect,
+            questionsData: testQuestionsData, // Datos completos para reconstruir
+          }),
+          url: '/api/v2/official-exams/save-results',
+          status: 'pending',
+          priority: 'high',
+        })
+        console.log('📝 [API/v2/save] Auto-feedback created for ghost test debugging')
+      } catch (feedbackError) {
+        console.error('❌ [API/v2/save] Failed to create auto-feedback:', feedbackError)
+      }
     }
 
     // 3c. Update user_question_history for legislative questions (needed for stats)
