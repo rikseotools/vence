@@ -5,7 +5,7 @@
 
 ## Resumen
 
-Cuando un usuario solicita un reembolso, hay que realizar **3 pasos** porque el webhook de Stripe no maneja automáticamente el evento `charge.refunded`.
+Cuando un usuario solicita un reembolso, hay que realizar **4 pasos** porque el webhook de Stripe no maneja automáticamente el evento `charge.refunded`.
 
 ## Pasos del Procedimiento
 
@@ -67,22 +67,67 @@ const SUBSCRIPTION_ID = 'sub_xxxxx';     // <-- CAMBIAR (obtener de Stripe)
 "
 ```
 
+### 4. Registrar Reembolso en Base de Datos
+
+**IMPORTANTE:** Este paso es necesario para que aparezca el badge 🔴 en el panel de admin/feedback.
+
+```bash
+node -e "
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+const EMAIL = 'email@del-usuario.com';           // <-- CAMBIAR
+const SUBSCRIPTION_ID = 'sub_xxxxx';              // <-- CAMBIAR
+const STRIPE_CUSTOMER_ID = 'cus_xxxxx';           // <-- CAMBIAR
+const REFUND_AMOUNT_CENTS = 2900;                 // <-- CAMBIAR (en céntimos)
+const REASON = 'Usuario solicitó devolución';    // <-- CAMBIAR si es necesario
+
+(async () => {
+  // Obtener user_id
+  const { data: user } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('email', EMAIL)
+    .single();
+
+  if (!user) { console.error('Usuario no encontrado'); return; }
+
+  // Insertar registro de reembolso
+  const { data, error } = await supabase
+    .from('cancellation_feedback')
+    .insert({
+      user_id: user.id,
+      user_email: EMAIL,
+      stripe_customer_id: STRIPE_CUSTOMER_ID,
+      subscription_id: SUBSCRIPTION_ID,
+      reason: 'guarantee_refund',
+      reason_details: REASON,
+      cancellation_type: 'manual_refund',  // <-- IMPORTANTE: debe ser 'manual_refund'
+      refund_amount_cents: REFUND_AMOUNT_CENTS,
+      requested_via: 'support_ticket',
+      admin_notes: 'Reembolso procesado vía Stripe Dashboard',
+      processed_by: 'manuel'
+    })
+    .select();
+
+  if (error) console.error('Error:', error.message);
+  else console.log('✅ Registro creado:', data[0]?.id);
+})();
+"
+```
+
 ## Checklist de Verificación
 
 - [ ] Reembolso procesado en Stripe
 - [ ] Suscripción cancelada en Stripe (status: `canceled`)
 - [ ] `user_profiles.plan_type` = `free`
 - [ ] `user_subscriptions.status` = `canceled`
-
-## Opcional: Registrar en cancellation_feedback
-
-Si quieres mantener un registro de la cancelación con motivo:
-
-```sql
-INSERT INTO cancellation_feedback (user_id, reason, refund_amount_cents, created_at)
-SELECT id, 'Reembolso solicitado por usuario', 2900, NOW()
-FROM user_profiles WHERE email = 'email@del-usuario.com';
-```
+- [ ] Registro en `cancellation_feedback` con `cancellation_type = 'manual_refund'`
+- [ ] Badge 🔴 visible en admin/feedback
 
 ## Comunicación con el Usuario
 
