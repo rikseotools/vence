@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+// Lazy initialization para evitar error en build
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -85,7 +86,7 @@ export async function POST(request) {
 
     if (!keyToTest) {
       // Buscar en BD
-      const { data: config } = await supabase
+      const { data: config } = await getSupabase()
         .from('ai_api_config')
         .select('api_key_encrypted')
         .eq('provider', provider)
@@ -158,7 +159,7 @@ export async function POST(request) {
         testedAt: new Date().toISOString()
       })
 
-      await supabase
+      await getSupabase()
         .from('ai_api_config')
         .update({
           last_verified_at: new Date().toISOString(),
@@ -200,7 +201,7 @@ export async function POST(request) {
     }
 
     // Actualizar estado en BD
-    await supabase
+    await getSupabase()
       .from('ai_api_config')
       .update({
         last_verified_at: new Date().toISOString(),

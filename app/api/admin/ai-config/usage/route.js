@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+// Lazy initialization para evitar error en build
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -18,7 +19,7 @@ export async function GET(request) {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - days)
 
-    let query = supabase
+    let query = getSupabase()
       .from('ai_api_usage')
       .select('*')
       .gte('created_at', startDate.toISOString())

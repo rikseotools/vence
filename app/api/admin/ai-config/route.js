@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+// Lazy initialization para evitar error en build
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -39,7 +40,7 @@ const DEFAULT_MODELS = {
  */
 export async function GET() {
   try {
-    const { data: configs, error } = await supabase
+    const { data: configs, error } = await getSupabase()
       .from('ai_api_config')
       .select('*')
       .order('provider')
@@ -169,7 +170,7 @@ export async function POST(request) {
     }
 
     // Usar upsert para crear o actualizar
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('ai_api_config')
       .upsert({
         provider,
