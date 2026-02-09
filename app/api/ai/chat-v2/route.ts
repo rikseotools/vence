@@ -21,6 +21,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+/**
+ * Generar UUID para el logId antes de procesar
+ * Esto permite vincular los traces con el log
+ */
+function generateLogId(): string {
+  return crypto.randomUUID()
+}
+
 // Schema para el request del chat (compatible con el actual)
 const chatApiRequestSchema = z.object({
   message: z.string().min(1, 'Se requiere un mensaje'),
@@ -144,8 +152,10 @@ async function getUserDailyMessageCount(userId: string): Promise<number> {
 
 /**
  * Guardar log de la interacción
+ * @param logId - ID opcional pre-generado para vincular con traces
  */
 async function logChatInteraction(data: {
+  logId?: string | null  // ID pre-generado para vincular traces
   userId?: string | null
   message: string
   response?: string | null
@@ -166,32 +176,39 @@ async function logChatInteraction(data: {
   reanalysisResponse?: string | null
 }): Promise<string | null> {
   try {
+    const insertData: Record<string, unknown> = {
+      user_id: data.userId || null,
+      message: data.message,
+      response_preview: data.response?.substring(0, 500) || null,
+      full_response: data.response || null,
+      sources_used: data.sources || [],
+      question_context_id: data.questionContextId || null,
+      question_context_law: data.questionContextLaw || null,
+      suggestion_used: data.suggestionUsed || null,
+      response_time_ms: data.responseTimeMs || null,
+      tokens_used: data.tokensUsed || null,
+      had_error: data.hadError || false,
+      error_message: data.errorMessage || null,
+      user_oposicion: data.userOposicion || null,
+      detected_laws: data.detectedLaws || [],
+    }
+
+    // Añadir ID pre-generado si existe
+    if (data.logId) {
+      insertData.id = data.logId
+    }
+
+    // Campos de discrepancia (si la tabla los soporta)
+    if (data.hadDiscrepancy !== undefined) {
+      insertData.had_discrepancy = data.hadDiscrepancy
+      insertData.ai_suggested_answer = data.aiSuggestedAnswer || null
+      insertData.db_answer = data.dbAnswer || null
+      insertData.reanalysis_response = data.reanalysisResponse || null
+    }
+
     const { data: result, error } = await supabase
       .from('ai_chat_logs')
-      .insert({
-        user_id: data.userId || null,
-        message: data.message,
-        response_preview: data.response?.substring(0, 500) || null,
-        full_response: data.response || null,
-        sources_used: data.sources || [],
-        question_context_id: data.questionContextId || null,
-        question_context_law: data.questionContextLaw || null,
-        suggestion_used: data.suggestionUsed || null,
-        response_time_ms: data.responseTimeMs || null,
-        tokens_used: data.tokensUsed || null,
-        had_error: data.hadError || false,
-        error_message: data.errorMessage || null,
-        user_oposicion: data.userOposicion || null,
-        detected_laws: data.detectedLaws || [],
-        // Campos de discrepancia (si la tabla los soporta)
-        // Nota: Si estos campos no existen en la tabla, Supabase los ignorará
-        ...(data.hadDiscrepancy !== undefined && {
-          had_discrepancy: data.hadDiscrepancy,
-          ai_suggested_answer: data.aiSuggestedAnswer || null,
-          db_answer: data.dbAnswer || null,
-          reanalysis_response: data.reanalysisResponse || null,
-        }),
-      })
+      .insert(insertData)
       .select('id')
       .single()
 
@@ -312,12 +329,15 @@ export async function POST(request: NextRequest) {
       }
     )
 
+    // Generar logId antes de procesar para vincular traces
+    const logId = generateLogId()
+
     // Obtener orquestador y procesar
     const orchestrator = getOrchestrator()
 
     if (data.stream) {
-      // Respuesta streaming
-      const originalStream = await orchestrator.processStream(context)
+      // Respuesta streaming - pasar logId para traces
+      const originalStream = await orchestrator.processStream(context, logId)
 
       // Crear un stream que capture la respuesta completa para logging
       let fullResponse = ''
@@ -433,7 +453,9 @@ export async function POST(request: NextRequest) {
           }
 
           // Cuando termina el stream, loguear la respuesta completa
-          const logId = await logChatInteraction({
+          // Usar el logId pre-generado para vincular con los traces
+          const savedLogId = await logChatInteraction({
+            logId,  // ID pre-generado para vincular traces
             userId: data.userId,
             message: data.message,
             response: fullResponse || null,
@@ -453,8 +475,8 @@ export async function POST(request: NextRequest) {
           })
 
           // Enviar logId para feedback
-          if (logId) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'logId', logId })}\n\n`))
+          if (savedLogId) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'logId', logId: savedLogId })}\n\n`))
           }
         },
       })
@@ -469,11 +491,12 @@ export async function POST(request: NextRequest) {
         },
       })
     } else {
-      // Respuesta normal (sin streaming)
-      const response = await orchestrator.process(context)
+      // Respuesta normal (sin streaming) - pasar logId para traces
+      const response = await orchestrator.process(context, logId)
 
-      // Log
+      // Log - usar el logId pre-generado para vincular con los traces
       await logChatInteraction({
+        logId,  // ID pre-generado para vincular traces
         userId: data.userId,
         message: data.message,
         response: response.content,

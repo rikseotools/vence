@@ -6,6 +6,7 @@ import { ChatResponseBuilder, createChatStream, StreamEncoder } from './ChatResp
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../shared/openai'
 import { logger } from '../shared/logger'
 import { ChatError, handleError } from '../shared/errors'
+import { AITracer, createTracer } from './AITracer'
 
 // Importar dominios
 import { getSearchDomain } from '../domains/search'
@@ -41,8 +42,14 @@ export class ChatOrchestrator {
   /**
    * Procesa un mensaje y devuelve una respuesta
    */
-  async process(context: ChatContext): Promise<ChatResponse> {
+  async process(context: ChatContext, logId?: string): Promise<ChatResponse> {
     const startTime = Date.now()
+    const tracer = createTracer()
+
+    // Iniciar trace si tenemos logId
+    if (logId) {
+      tracer.startTrace(logId)
+    }
 
     logger.info('Processing chat request', {
       domain: 'orchestrator',
@@ -51,30 +58,122 @@ export class ChatOrchestrator {
       domainCount: this.domains.length,
     })
 
+    // Span de routing - COMPLETO con contexto del usuario
+    const routingSpan = tracer.spanRouting({
+      evaluatedDomains: [],
+      selectedDomain: null,
+      confidence: 0,
+      // Contexto completo de la request
+      userMessage: context.currentMessage,
+      userId: context.userId,
+      isPremium: context.isPremium,
+      userDomain: context.userDomain,
+      conversationLength: context.messages.length,
+      // Contexto de pregunta si existe
+      hasQuestionContext: !!context.questionContext,
+      questionContext: context.questionContext ? {
+        questionId: context.questionContext.questionId,
+        lawName: context.questionContext.lawName,
+        questionText: context.questionContext.questionText,
+        correctAnswer: context.questionContext.correctAnswer,
+        selectedAnswer: context.questionContext.selectedAnswer,
+        questionSubtype: context.questionContext.questionSubtype,
+      } : null,
+    })
+
     try {
       // Buscar dominio que pueda manejar el mensaje
       for (const domain of this.domains) {
-        if (await domain.canHandle(context)) {
+        const evalStart = Date.now()
+        const canHandle = await domain.canHandle(context)
+        const evalTime = Date.now() - evalStart
+
+        // Registrar evaluación del dominio
+        const evaluatedDomains = (routingSpan.span?.input?.evaluatedDomains as Array<unknown>) || []
+        evaluatedDomains.push({
+          name: domain.name,
+          priority: domain.priority,
+          canHandle,
+          evalTimeMs: evalTime,
+          reason: (domain as any).getLastDecisionReason?.() || undefined
+        })
+
+        if (canHandle) {
+          // Actualizar routing span con dominio seleccionado
+          routingSpan.setOutput({
+            evaluatedDomains,
+            selectedDomain: domain.name,
+            confidence: (domain as any).getConfidence?.() ?? 1.0
+          })
+          routingSpan.end()
+
           logger.info(`Domain ${domain.name} handling request`, {
             domain: 'orchestrator',
           })
 
-          const response = await domain.handle(context)
+          // Span de procesamiento del dominio
+          const domainSpan = tracer.spanDomain(domain.name, {
+            domain: domain.name,
+            patternDetected: (domain as any).getLastPattern?.()?.type,
+            patternConfidence: (domain as any).getLastPattern?.()?.confidence,
+          })
+
+          const response = await domain.handle(context, tracer)
+
+          domainSpan.setOutput({
+            responseLength: response.content?.length || 0,
+            hasSources: !!response.metadata?.sources?.length,
+            hasVerification: !!response.metadata?.verificationResult,
+          })
+          domainSpan.end()
+
           response.metadata = {
             domain: domain.name,
             ...response.metadata,
             processingTime: Date.now() - startTime,
           }
 
+          // Flush traces
+          if (logId) {
+            await tracer.flush()
+          }
+
           return response
         }
       }
 
+      // Ningún dominio matched
+      routingSpan.setOutput({
+        evaluatedDomains: routingSpan.span?.input?.evaluatedDomains || [],
+        selectedDomain: 'fallback',
+        confidence: 0
+      })
+      routingSpan.end()
+
       // Fallback: respuesta genérica con OpenAI
       logger.info('No domain matched, using fallback', { domain: 'orchestrator' })
-      return this.fallbackResponse(context, startTime)
+      const response = await this.fallbackResponse(context, startTime, tracer)
+
+      // Flush traces
+      if (logId) {
+        await tracer.flush()
+      }
+
+      return response
     } catch (error) {
       const chatError = handleError(error)
+
+      // Registrar error en trace
+      tracer.spanError(chatError, {
+        message: context.currentMessage,
+        userId: context.userId,
+      }).end()
+
+      // Flush traces incluso en error
+      if (logId) {
+        await tracer.flush()
+      }
+
       logger.error('Error processing chat', chatError, { domain: 'orchestrator' })
       throw chatError
     }
@@ -83,8 +182,14 @@ export class ChatOrchestrator {
   /**
    * Procesa un mensaje y devuelve un stream
    */
-  async processStream(context: ChatContext): Promise<ReadableStream> {
+  async processStream(context: ChatContext, logId?: string): Promise<ReadableStream> {
     const startTime = Date.now()
+    const tracer = createTracer()
+
+    // Iniciar trace si tenemos logId
+    if (logId) {
+      tracer.startTrace(logId)
+    }
 
     logger.info('Processing streaming chat request', {
       domain: 'orchestrator',
@@ -93,23 +198,83 @@ export class ChatOrchestrator {
       domainCount: this.domains.length,
     })
 
+    // Span de routing - COMPLETO con contexto del usuario
+    const routingSpan = tracer.spanRouting({
+      evaluatedDomains: [],
+      selectedDomain: null,
+      confidence: 0,
+      // Contexto completo de la request
+      userMessage: context.currentMessage,
+      userId: context.userId,
+      isPremium: context.isPremium,
+      userDomain: context.userDomain,
+      conversationLength: context.messages.length,
+      // Contexto de pregunta si existe
+      hasQuestionContext: !!context.questionContext,
+      questionContext: context.questionContext ? {
+        questionId: context.questionContext.questionId,
+        lawName: context.questionContext.lawName,
+        questionText: context.questionContext.questionText,
+        correctAnswer: context.questionContext.correctAnswer,
+        selectedAnswer: context.questionContext.selectedAnswer,
+        questionSubtype: context.questionContext.questionSubtype,
+      } : null,
+    })
+
     try {
       // Buscar dominio que pueda manejar el mensaje
       for (const domain of this.domains) {
+        const evalStart = Date.now()
         const canHandle = await domain.canHandle(context)
+        const evalTime = Date.now() - evalStart
+
+        // Registrar evaluación del dominio
+        const evaluatedDomains = (routingSpan.span?.input?.evaluatedDomains as Array<unknown>) || []
+        evaluatedDomains.push({
+          name: domain.name,
+          priority: domain.priority,
+          canHandle,
+          evalTimeMs: evalTime,
+        })
+
         logger.debug(`Domain ${domain.name} canHandle: ${canHandle}`, { domain: 'orchestrator' })
 
         if (canHandle) {
+          // Actualizar routing span
+          routingSpan.setOutput({
+            evaluatedDomains,
+            selectedDomain: domain.name,
+            confidence: (domain as any).getConfidence?.() ?? 1.0
+          })
+          routingSpan.end()
+
           logger.info(`Domain ${domain.name} handling streaming request`, {
             domain: 'orchestrator',
           })
 
+          // Span de procesamiento del dominio
+          const domainSpan = tracer.spanDomain(domain.name, {
+            domain: domain.name,
+          })
+
           // Procesar con el dominio y convertir a stream
-          const response = await domain.handle(context)
+          const response = await domain.handle(context, tracer)
+
+          domainSpan.setOutput({
+            responseLength: response.content?.length || 0,
+            hasSources: !!response.metadata?.sources?.length,
+          })
+          domainSpan.end()
+
           response.metadata = {
             domain: domain.name,
             ...response.metadata,
             processingTime: Date.now() - startTime,
+          }
+
+          // Flush traces
+          if (logId) {
+            await tracer.flush()
           }
 
           // Convertir respuesta a stream (formato legacy)
@@ -117,11 +282,37 @@ export class ChatOrchestrator {
         }
       }
 
+      // Ningún dominio matched
+      routingSpan.setOutput({
+        evaluatedDomains: routingSpan.span?.input?.evaluatedDomains || [],
+        selectedDomain: 'fallback',
+        confidence: 0
+      })
+      routingSpan.end()
+
       // Fallback: streaming con OpenAI
       logger.info('No domain matched, using fallback stream', { domain: 'orchestrator' })
-      return this.fallbackStream(context, startTime)
+      const stream = await this.fallbackStream(context, startTime, tracer)
+
+      // Flush traces
+      if (logId) {
+        await tracer.flush()
+      }
+
+      return stream
     } catch (error) {
       const chatError = handleError(error)
+
+      // Registrar error en trace
+      tracer.spanError(chatError, {
+        message: context.currentMessage,
+      }).end()
+
+      // Flush traces
+      if (logId) {
+        await tracer.flush()
+      }
+
       const encoder = new StreamEncoder()
 
       return new ReadableStream({
@@ -164,12 +355,25 @@ export class ChatOrchestrator {
    */
   private async fallbackResponse(
     context: ChatContext,
-    startTime: number
+    startTime: number,
+    tracer?: AITracer
   ): Promise<ChatResponse> {
     const openai = await getOpenAI()
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
     const messages = this.buildOpenAIMessages(context)
+
+    // Crear span LLM si hay tracer - COMPLETO sin truncar
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature: 0.7,
+      maxTokens: 1500,
+      // Prompts completos
+      systemPrompt: messages[0]?.content || '',
+      userPrompt: context.currentMessage,
+      // Mensajes completos enviados a la API
+      messagesArray: messages,
+    })
 
     const completion = await openai.chat.completions.create({
       model,
@@ -179,6 +383,20 @@ export class ChatOrchestrator {
     })
 
     const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+
+    // Finalizar span LLM - COMPLETO sin truncar
+    llmSpan?.setOutput({
+      responseContent: content,
+      finishReason: completion.choices[0]?.finish_reason,
+      promptTokens: completion.usage?.prompt_tokens,
+      completionTokens: completion.usage?.completion_tokens,
+      totalTokens: completion.usage?.total_tokens,
+    })
+    llmSpan?.addMetadata('tokensIn', completion.usage?.prompt_tokens)
+    llmSpan?.addMetadata('tokensOut', completion.usage?.completion_tokens)
+    llmSpan?.addMetadata('model', model)
+    llmSpan?.addMetadata('responseLength', content.length)
+    llmSpan?.end()
 
     return new ChatResponseBuilder()
       .domain('fallback')
@@ -193,12 +411,25 @@ export class ChatOrchestrator {
    */
   private async fallbackStream(
     context: ChatContext,
-    startTime: number
+    startTime: number,
+    tracer?: AITracer
   ): Promise<ReadableStream> {
     const openai = await getOpenAI()
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
 
     const messages = this.buildOpenAIMessages(context)
+
+    // Crear span LLM si hay tracer - COMPLETO sin truncar
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature: 0.7,
+      maxTokens: 1500,
+      // Prompts completos
+      systemPrompt: messages[0]?.content || '',
+      userPrompt: context.currentMessage,
+      // Mensajes completos enviados a la API
+      messagesArray: messages,
+    })
 
     const stream = await openai.chat.completions.create({
       model,
@@ -215,6 +446,9 @@ export class ChatOrchestrator {
       processingTime: 0,
     }
 
+    // Acumular contenido para trace
+    let fullContent = ''
+
     return new ReadableStream({
       async start(controller) {
         try {
@@ -225,9 +459,19 @@ export class ChatOrchestrator {
           for await (const chunk of stream) {
             const content = chunk.choices[0]?.delta?.content
             if (content) {
+              fullContent += content
               controller.enqueue(encoder.encodeText(content))
             }
           }
+
+          // Finalizar span LLM con contenido completo - SIN truncar
+          llmSpan?.setOutput({
+            responseContent: fullContent,
+            finishReason: 'stop',
+          })
+          llmSpan?.addMetadata('model', model)
+          llmSpan?.addMetadata('responseLength', fullContent.length)
+          llmSpan?.end()
 
           // 3. Enviar done (formato legacy: type: 'done')
           controller.enqueue(encoder.encodeDone({
@@ -236,6 +480,9 @@ export class ChatOrchestrator {
             suggestions: null,
           }))
         } catch (error) {
+          llmSpan?.setError(error instanceof Error ? error.message : 'Unknown error')
+          llmSpan?.end()
+
           logger.error('Stream error', error)
           controller.enqueue(encoder.encodeError(
             error instanceof Error ? error.message : 'Error desconocido'

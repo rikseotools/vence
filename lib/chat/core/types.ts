@@ -92,11 +92,31 @@ export interface VerificationResult {
 // Tipos de dominio
 // ============================================
 
+// Forward declaration para evitar import circular
+export interface TraceSpanBuilderInterface {
+  setOutput(output: Record<string, unknown>): TraceSpanBuilderInterface
+  addOutput(key: string, value: unknown): TraceSpanBuilderInterface
+  setMetadata(metadata: Record<string, unknown>): TraceSpanBuilderInterface
+  addMetadata(key: string, value: unknown): TraceSpanBuilderInterface
+  setError(message: string, stack?: string): TraceSpanBuilderInterface
+  end(): TraceSpanBuilderInterface
+}
+
+export interface AITracerInterface {
+  spanDB(operation: string, input?: Record<string, unknown>): TraceSpanBuilderInterface
+  spanLLM(input: Record<string, unknown>): TraceSpanBuilderInterface
+  spanPostProcess(input?: Record<string, unknown>): TraceSpanBuilderInterface
+}
+
 export interface ChatDomain {
   name: string
   priority: number
   canHandle(context: ChatContext): Promise<boolean>
-  handle(context: ChatContext): Promise<ChatResponse>
+  handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse>
+  // Métodos opcionales para observabilidad
+  getLastDecisionReason?(): string | undefined
+  getConfidence?(): number
+  getLastPattern?(): { type: string; confidence: number } | undefined
 }
 
 // ============================================

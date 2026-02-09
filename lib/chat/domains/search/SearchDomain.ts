@@ -1,7 +1,7 @@
 // lib/chat/domains/search/SearchDomain.ts
 // Dominio de búsqueda de artículos para el chat
 
-import type { ChatDomain, ChatContext, ChatResponse, ArticleSource } from '../../core/types'
+import type { ChatDomain, ChatContext, ChatResponse, ArticleSource, AITracerInterface } from '../../core/types'
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
 import { logger } from '../../shared/logger'
@@ -113,7 +113,7 @@ export class SearchDomain implements ChatDomain {
   /**
    * Procesa el contexto y genera una respuesta
    */
-  async handle(context: ChatContext): Promise<ChatResponse> {
+  async handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse> {
     const startTime = Date.now()
 
     logger.info('SearchDomain handling request', {
@@ -170,6 +170,26 @@ export class SearchDomain implements ChatDomain {
     }
 
     // 2. Buscar artículos relevantes (usar mensaje expandido)
+    const dbSpan = tracer?.spanDB('searchArticles', {
+      // Parámetros de búsqueda
+      userOposicion: context.userDomain,
+      contextLawName: effectiveLawName,
+      isFollowUp: followUpResult.isFollowUp,
+      searchLimit: 10,
+      // Mensaje usado para búsqueda
+      originalMessage: context.currentMessage,
+      effectiveMessage: effectiveMessage,
+      // Contexto de usuario
+      userId: context.userId,
+      isPremium: context.isPremium,
+      // Contexto de pregunta si existe
+      questionContext: context.questionContext ? {
+        questionId: context.questionContext.questionId,
+        lawName: context.questionContext.lawName,
+        questionText: context.questionContext.questionText,
+      } : null,
+    })
+
     const searchContext = followUpResult.isFollowUp
       ? { ...context, currentMessage: effectiveMessage }
       : context
@@ -178,6 +198,23 @@ export class SearchDomain implements ChatDomain {
       contextLawName: effectiveLawName ?? undefined,
       limit: 10,
     })
+
+    dbSpan?.setOutput({
+      // Resultados completos
+      articlesFound: searchResult.articles.length,
+      searchMethod: searchResult.searchMethod,
+      mentionedLaws: searchResult.mentionedLaws,
+      // Detalle de artículos encontrados
+      articles: searchResult.articles.map(a => ({
+        id: a.id,
+        articleNumber: a.articleNumber,
+        lawShortName: a.lawShortName,
+        lawName: a.lawName,
+        title: a.title,
+        contentPreview: a.content?.substring(0, 200),
+      })),
+    })
+    dbSpan?.end()
 
     logger.info(`Search completed: ${searchResult.articles.length} articles found via ${searchResult.searchMethod}`, {
       domain: 'search',
@@ -193,7 +230,7 @@ export class SearchDomain implements ChatDomain {
     }
 
     // 3. Generar respuesta con OpenAI
-    const response = await this.generateResponse(context, searchResult)
+    const response = await this.generateResponse(context, searchResult, tracer)
 
     // 4. Construir respuesta final
     const builder = new ChatResponseBuilder()
@@ -241,7 +278,8 @@ Puedo ayudarte con:
    */
   private async generateResponse(
     context: ChatContext,
-    searchResult: Awaited<ReturnType<typeof searchArticles>>
+    searchResult: Awaited<ReturnType<typeof searchArticles>>,
+    tracer?: AITracerInterface
   ): Promise<string> {
     const openai = await getOpenAI()
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
@@ -301,6 +339,28 @@ ${articlesContext}`
 
     messages.push({ role: 'user', content: userMessageWithContext })
 
+    // Crear span LLM - COMPLETO sin truncar
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature: 0.7,
+      maxTokens: 1500,
+      // Prompts completos
+      systemPrompt,
+      userPrompt: context.currentMessage,
+      userPromptWithContext: userMessageWithContext,
+      // Mensajes completos enviados a la API
+      messagesArray: messages,
+      // Contexto adicional
+      articlesInContext: searchResult.articles.length,
+      articlesSummary: searchResult.articles.map(a => ({
+        id: a.id,
+        articleNumber: a.articleNumber,
+        lawShortName: a.lawShortName,
+        title: a.title,
+      })),
+      conversationHistoryLength: recentHistory.length,
+    })
+
     try {
       const completion = await openai.chat.completions.create({
         model,
@@ -309,8 +369,29 @@ ${articlesContext}`
         max_tokens: 1500,
       })
 
-      return completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+      const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+
+      // Finalizar span LLM - COMPLETO
+      llmSpan?.setOutput({
+        // Respuesta completa
+        responseContent: content,
+        finishReason: completion.choices[0]?.finish_reason,
+        // Uso de tokens
+        promptTokens: completion.usage?.prompt_tokens,
+        completionTokens: completion.usage?.completion_tokens,
+        totalTokens: completion.usage?.total_tokens,
+      })
+      llmSpan?.addMetadata('tokensIn', completion.usage?.prompt_tokens)
+      llmSpan?.addMetadata('tokensOut', completion.usage?.completion_tokens)
+      llmSpan?.addMetadata('model', model)
+      llmSpan?.addMetadata('responseLength', content.length)
+      llmSpan?.end()
+
+      return content
     } catch (error) {
+      llmSpan?.setError(error instanceof Error ? error.message : 'Unknown error')
+      llmSpan?.end()
+
       logger.error('Error generating response with OpenAI', error, { domain: 'search' })
       return 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.'
     }

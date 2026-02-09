@@ -1,7 +1,7 @@
 // lib/chat/domains/knowledge-base/KnowledgeBaseDomain.ts
 // Dominio de base de conocimiento para el chat
 
-import type { ChatDomain, ChatContext, ChatResponse } from '../../core/types'
+import type { ChatDomain, ChatContext, ChatResponse, AITracerInterface } from '../../core/types'
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
 import { logger } from '../../shared/logger'
@@ -42,7 +42,7 @@ export class KnowledgeBaseDomain implements ChatDomain {
   /**
    * Procesa el contexto y genera una respuesta
    */
-  async handle(context: ChatContext): Promise<ChatResponse> {
+  async handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse> {
     const startTime = Date.now()
 
     logger.info('KnowledgeBaseDomain handling request', {
@@ -62,8 +62,30 @@ export class KnowledgeBaseDomain implements ChatDomain {
         .build()
     }
 
-    // 2. Buscar en la knowledge base
+    // 2. Buscar en la knowledge base - COMPLETO
+    const dbSpan = tracer?.spanDB('searchKB', {
+      // Mensaje completo
+      message: context.currentMessage,
+      // Contexto de usuario
+      userId: context.userId,
+      isPremium: context.isPremium,
+      userDomain: context.userDomain,
+    })
+
     const searchResult = await searchKB(context)
+
+    dbSpan?.setOutput({
+      // Resultados
+      entriesFound: searchResult.entries.length,
+      category: searchResult.category,
+      // Detalle de entradas encontradas
+      entries: searchResult.entries.map(e => ({
+        id: e.id,
+        category: e.category,
+        keywords: e.keywords,
+      })),
+    })
+    dbSpan?.end()
 
     // 3. Si no hay resultados, devolver respuesta genérica
     if (searchResult.entries.length === 0) {
@@ -83,7 +105,7 @@ export class KnowledgeBaseDomain implements ChatDomain {
     }
 
     // 5. Generar respuesta con OpenAI usando el contexto de KB
-    const response = await this.generateResponse(context, searchResult)
+    const response = await this.generateResponse(context, searchResult, tracer)
 
     return new ChatResponseBuilder()
       .domain('knowledge-base')
@@ -117,7 +139,8 @@ ${suggestions.map(s => `• ${s}`).join('\n')}
    */
   private async generateResponse(
     context: ChatContext,
-    searchResult: Awaited<ReturnType<typeof searchKB>>
+    searchResult: Awaited<ReturnType<typeof searchKB>>,
+    tracer?: AITracerInterface
   ): Promise<string> {
     const openai = await getOpenAI()
     const model = context.isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
@@ -133,19 +156,56 @@ ${suggestions.map(s => `• ${s}`).join('\n')}
 
 ${kbContext}`
 
+    // Span LLM - COMPLETO
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: userMessage },
+    ]
+
+    const llmSpan = tracer?.spanLLM({
+      model,
+      temperature: 0.7,
+      maxTokens: 1000,
+      // Prompts completos
+      systemPrompt,
+      userPrompt: context.currentMessage,
+      userPromptWithContext: userMessage,
+      // Contexto de KB usado
+      kbEntriesCount: searchResult.entries.length,
+      kbContext,
+      // Mensajes completos
+      messagesArray: messages,
+    })
+
     try {
       const completion = await openai.chat.completions.create({
         model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
+        messages,
         temperature: 0.7,
         max_tokens: 1000,
       })
 
-      return completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+      const content = completion.choices[0]?.message?.content || 'No pude generar una respuesta.'
+
+      llmSpan?.setOutput({
+        // Respuesta completa
+        responseContent: content,
+        finishReason: completion.choices[0]?.finish_reason,
+        // Tokens
+        promptTokens: completion.usage?.prompt_tokens,
+        completionTokens: completion.usage?.completion_tokens,
+        totalTokens: completion.usage?.total_tokens,
+      })
+      llmSpan?.addMetadata('tokensIn', completion.usage?.prompt_tokens)
+      llmSpan?.addMetadata('tokensOut', completion.usage?.completion_tokens)
+      llmSpan?.addMetadata('responseLength', content.length)
+      llmSpan?.end()
+
+      return content
     } catch (error) {
+      llmSpan?.setError(error instanceof Error ? error.message : 'Unknown error')
+      llmSpan?.end()
+
       logger.error('Error generating KB response', error, { domain: 'knowledge-base' })
       return 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.'
     }

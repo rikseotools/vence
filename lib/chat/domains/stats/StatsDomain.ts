@@ -1,7 +1,7 @@
 // lib/chat/domains/stats/StatsDomain.ts
 // Dominio de estadísticas para el chat
 
-import type { ChatDomain, ChatContext, ChatResponse } from '../../core/types'
+import type { ChatDomain, ChatContext, ChatResponse, AITracerInterface } from '../../core/types'
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { getOpenAI, CHAT_MODEL, CHAT_MODEL_PREMIUM } from '../../shared/openai'
 import { logger } from '../../shared/logger'
@@ -55,7 +55,7 @@ export class StatsDomain implements ChatDomain {
   /**
    * Procesa el contexto y genera una respuesta
    */
-  async handle(context: ChatContext): Promise<ChatResponse> {
+  async handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse> {
     const startTime = Date.now()
 
     logger.info('StatsDomain handling request', {
@@ -64,8 +64,40 @@ export class StatsDomain implements ChatDomain {
     })
 
     try {
+      // Span para búsqueda de estadísticas - COMPLETO
+      const dbSpan = tracer?.spanDB('searchStats', {
+        // Contexto de usuario
+        userId: context.userId,
+        isPremium: context.isPremium,
+        userDomain: context.userDomain,
+        // Mensaje completo
+        message: context.currentMessage,
+        // Contexto de pregunta si existe
+        questionContext: context.questionContext ? {
+          questionId: context.questionContext.questionId,
+          lawName: context.questionContext.lawName,
+        } : null,
+      })
+
       // Obtener estadísticas
       const statsResult = await searchStats(context)
+
+      dbSpan?.setOutput({
+        // Tipo de stats
+        type: statsResult.type,
+        // Resultados de exámenes
+        hasExamStats: !!statsResult.examStats?.topArticles?.length,
+        examStatsCount: statsResult.examStats?.topArticles?.length || 0,
+        // Resultados de usuario
+        hasUserStats: !!statsResult.userStats?.mostFailed?.length,
+        userStatsMostFailedCount: statsResult.userStats?.mostFailed?.length || 0,
+        // Filtro temporal
+        temporalFilter: statsResult.temporalFilter,
+        // Datos detallados (si existen)
+        examTopArticles: statsResult.examStats?.topArticles?.slice(0, 10),
+        userMostFailed: statsResult.userStats?.mostFailed?.slice(0, 10),
+      })
+      dbSpan?.end()
 
       // Si no se encontraron estadísticas
       if (statsResult.type === 'none') {

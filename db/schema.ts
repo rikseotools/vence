@@ -2980,6 +2980,41 @@ export const aiChatLogs = pgTable("ai_chat_logs", {
 	check("ai_chat_logs_feedback_check", sql`feedback = ANY (ARRAY['positive'::text, 'negative'::text])`),
 ]);
 
+export const aiChatTraces = pgTable("ai_chat_traces", {
+	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
+	logId: uuid("log_id"),
+	traceType: text("trace_type").notNull(),
+	startedAt: timestamp("started_at", { withTimezone: true, mode: 'string' }).notNull(),
+	endedAt: timestamp("ended_at", { withTimezone: true, mode: 'string' }),
+	durationMs: integer("duration_ms"),
+	inputData: jsonb("input_data").default({}),
+	outputData: jsonb("output_data").default({}),
+	metadata: jsonb("metadata").default({}),
+	success: boolean().default(true),
+	errorMessage: text("error_message"),
+	errorStack: text("error_stack"),
+	sequenceNumber: integer("sequence_number").notNull(),
+	parentTraceId: uuid("parent_trace_id"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_ai_chat_traces_log_id").using("btree", table.logId.asc().nullsLast().op("uuid_ops")),
+	index("idx_ai_chat_traces_type").using("btree", table.traceType.asc().nullsLast().op("text_ops")),
+	index("idx_ai_chat_traces_created").using("btree", table.createdAt.desc().nullsFirst().op("timestamptz_ops")),
+	index("idx_ai_chat_traces_errors").using("btree", table.success.asc().nullsLast().op("bool_ops")).where(sql`(success = false)`),
+	index("idx_ai_chat_traces_parent").using("btree", table.parentTraceId.asc().nullsLast().op("uuid_ops")).where(sql`(parent_trace_id IS NOT NULL)`),
+	foreignKey({
+			columns: [table.logId],
+			foreignColumns: [aiChatLogs.id],
+			name: "ai_chat_traces_log_id_fkey"
+		}).onDelete("cascade"),
+	foreignKey({
+			columns: [table.parentTraceId],
+			foreignColumns: [table.id],
+			name: "ai_chat_traces_parent_trace_id_fkey"
+		}).onDelete("cascade"),
+	check("ai_chat_traces_type_check", sql`trace_type = ANY (ARRAY['routing'::text, 'domain'::text, 'llm_call'::text, 'db_query'::text, 'post_process'::text, 'error'::text])`),
+]);
+
 export const userAvatarSettings = pgTable("user_avatar_settings", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	userId: uuid("user_id"),

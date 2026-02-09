@@ -1,7 +1,7 @@
 // lib/chat/domains/verification/VerificationDomain.ts
 // Dominio de verificación de respuestas para el chat
 
-import type { ChatDomain, ChatContext, ChatResponse, ArticleSource } from '../../core/types'
+import type { ChatDomain, ChatContext, ChatResponse, ArticleSource, AITracerInterface } from '../../core/types'
 import { ChatResponseBuilder } from '../../core/ChatResponseBuilder'
 import { logger } from '../../shared/logger'
 import { DOMAIN_PRIORITIES } from '../../core/types'
@@ -81,7 +81,7 @@ export class VerificationDomain implements ChatDomain {
   /**
    * Procesa el contexto y genera una respuesta
    */
-  async handle(context: ChatContext): Promise<ChatResponse> {
+  async handle(context: ChatContext, tracer?: AITracerInterface): Promise<ChatResponse> {
     const startTime = Date.now()
 
     logger.info('VerificationDomain handling request', {
@@ -114,8 +114,37 @@ export class VerificationDomain implements ChatDomain {
         .build()
     }
 
+    // Span de verificación - COMPLETO
+    const verifySpan = tracer?.spanDB('verifyAnswer', {
+      // Contexto de usuario
+      userId: context.userId,
+      isPremium: context.isPremium,
+      userMessage: context.currentMessage,
+      // Datos de la pregunta
+      questionId: context.questionContext?.questionId,
+      questionText: context.questionContext?.questionText,
+      // Datos de verificación
+      markedCorrect: input.markedCorrect,
+      questionOptions: input.options,
+      lawName: input.lawName,
+      articleNumber: input.articleNumber,
+    })
+
     // Realizar verificación
     const result = await verifyAnswer(input, context)
+
+    verifySpan?.setOutput({
+      // Resultado de verificación
+      errorDetected: result.errorDetected,
+      errorDetails: result.errorDetails,
+      // Respuesta generada
+      response: result.response,
+      responseLength: result.response.length,
+      // Fuentes usadas
+      sourcesCount: result.sources.length,
+      sources: result.sources,
+    })
+    verifySpan?.end()
 
     // Construir respuesta
     const builder = new ChatResponseBuilder()
