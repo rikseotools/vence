@@ -1,0 +1,33 @@
+name: Close Inactive Feedback
+
+on:
+  schedule:
+    # Ejecutar todos los días a las 4:00 AM UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+
+jobs:
+  close-inactive-feedback:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Close Inactive Feedback Conversations
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X GET \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            https://www.vence.es/api/cron/close-inactive-feedback)
+
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+
+          if [ "$http_code" != "200" ]; then
+            echo "❌ Error: HTTP $http_code"
+            exit 1
+          fi
+
+      - name: Log completion
+        run: echo "✅ Feedback inactivos cerrados - $(date)"
