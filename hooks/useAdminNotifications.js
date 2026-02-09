@@ -82,29 +82,17 @@ export function useAdminNotifications() {
             setTimeout(() => reject(new Error('Timeout')), 10000)
           )
         ]),
-        // 3. Contar impugnaciones pendientes (normales)
+        // 3. Obtener impugnaciones via API (usa SERVICE_ROLE para bypass RLS)
+        // Esto incluye tanto normales como psicotécnicas
         Promise.race([
-          supabase
-            .from('question_disputes')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'pending'),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 10000)
-          )
-        ]),
-        // 4. Contar impugnaciones psicotécnicas pendientes
-        Promise.race([
-          supabase
-            .from('psychometric_question_disputes')
-            .select('id', { count: 'exact', head: true })
-            .eq('status', 'pending'),
+          fetch('/api/admin/pending-counts').then(r => r.json()),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 10000)
           )
         ])
       ])
 
-      const [conversationsResult, feedbacksResult, impugnacionesResult, psychoImpugnacionesResult] = results
+      const [conversationsResult, feedbacksResult, impugnacionesApiResult] = results
 
       let pendingFeedback = 0
       let pendingImpugnaciones = 0
@@ -147,16 +135,16 @@ export function useAdminNotifications() {
         console.warn('Error cargando feedbacks:', feedbacksResult.reason?.message)
       }
 
-      if (impugnacionesResult.status === 'fulfilled') {
-        pendingImpugnaciones += impugnacionesResult.value.count || 0
+      // Obtener conteo de impugnaciones desde la API (incluye normales + psicotécnicas)
+      if (impugnacionesApiResult.status === 'fulfilled') {
+        const apiData = impugnacionesApiResult.value
+        if (apiData.success) {
+          pendingImpugnaciones = apiData.impugnaciones || 0
+        } else {
+          console.warn('Error en API impugnaciones:', apiData.error)
+        }
       } else {
-        console.warn('Error cargando impugnaciones:', impugnacionesResult.reason?.message)
-      }
-
-      if (psychoImpugnacionesResult.status === 'fulfilled') {
-        pendingImpugnaciones += psychoImpugnacionesResult.value.count || 0
-      } else {
-        console.warn('Error cargando impugnaciones psicotécnicas:', psychoImpugnacionesResult.reason?.message)
+        console.warn('Error cargando impugnaciones:', impugnacionesApiResult.reason?.message)
       }
 
       setNotifications({
