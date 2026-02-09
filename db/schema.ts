@@ -1966,6 +1966,7 @@ export const laws = pgTable("laws", {
 	id: uuid().default(sql`uuid_generate_v4()`).primaryKey().notNull(),
 	name: text().notNull(),
 	shortName: text("short_name").notNull(),
+	slug: text("slug"),
 	description: text(),
 	year: integer(),
 	type: text().notNull(),

@@ -1,5 +1,9 @@
 // lib/lawMappingUtils.ts - MAPEOS CENTRALIZADOS PARA TODAS LAS LEYES
 // Tipado completo con TypeScript para mejor DX y seguridad de tipos
+//
+// 🔄 MIGRACIÓN A BD: Este archivo mantiene diccionarios como fallback
+// mientras se migra a usar la columna `slug` de la tabla `laws`.
+// Ver lib/api/laws/ para la versión basada en BD.
 
 // ============================================
 // TIPOS
@@ -27,6 +31,48 @@ type LawInfoMapping = Record<string, LawInfo>
 interface SlugPattern {
   regex: RegExp
   transform: (match: RegExpMatchArray) => string
+}
+
+// ============================================
+// CACHE DE BD (opcional - se puede poblar desde servidor)
+// ============================================
+
+/** Cache síncrono de mapeos desde BD - se puebla con setDbCache() */
+let dbSlugToShortName: Map<string, string> | null = null
+let dbShortNameToSlug: Map<string, string> | null = null
+
+/**
+ * Establece el cache de BD desde código servidor
+ * Llamar desde Server Components después de cargar de lib/api/laws
+ *
+ * @example
+ * // En un Server Component o API route:
+ * import { getShortNameBySlug } from '@/lib/api/laws'
+ * // ... cargar cache y pasarlo aquí
+ */
+export function setDbCache(
+  slugToShortName: Map<string, string>,
+  shortNameToSlug: Map<string, string>
+): void {
+  dbSlugToShortName = slugToShortName
+  dbShortNameToSlug = shortNameToSlug
+  console.log(`✅ [lawMappingUtils] Cache BD establecido: ${slugToShortName.size} leyes`)
+}
+
+/**
+ * Invalida el cache de BD (llamar después de actualizar leyes)
+ */
+export function invalidateDbCache(): void {
+  dbSlugToShortName = null
+  dbShortNameToSlug = null
+  console.log('🗑️ [lawMappingUtils] Cache BD invalidado')
+}
+
+/**
+ * Verifica si el cache de BD está disponible
+ */
+export function isDbCacheLoaded(): boolean {
+  return dbSlugToShortName !== null && dbShortNameToSlug !== null
 }
 
 // ============================================
@@ -827,10 +873,23 @@ function generateShortNameFromSlug(slug: string): string | null {
 /**
  * Mapea un slug de URL al short_name de la BD
  * Devuelve null si el slug no está en el mapeo conocido (para evitar soft 404)
+ *
+ * Orden de búsqueda:
+ * 1. Cache de BD (si está cargado) - fuente de verdad
+ * 2. Diccionario estático (fallback)
+ * 3. Patrones inteligentes (generación automática)
  */
 export function mapLawSlugToShortName(lawSlug: string): string | null {
-  const result = SLUG_TO_SHORT_NAME[lawSlug]
+  // 1. Primero intentar cache de BD (fuente de verdad)
+  if (dbSlugToShortName) {
+    const dbResult = dbSlugToShortName.get(lawSlug)
+    if (dbResult) {
+      return dbResult
+    }
+  }
 
+  // 2. Fallback a diccionario estático
+  const result = SLUG_TO_SHORT_NAME[lawSlug]
   if (result) {
     return result
   }
@@ -889,15 +948,29 @@ export function mapLawSlugToShortName(lawSlug: string): string | null {
 
 /**
  * Genera un slug de URL desde el short_name
+ *
+ * Orden de búsqueda:
+ * 1. Cache de BD (si está cargado) - fuente de verdad
+ * 2. Diccionario estático (fallback)
+ * 3. Generación automática
  */
 export function generateLawSlug(shortName: string): string {
   if (!shortName) return 'unknown'
 
+  // 1. Primero intentar cache de BD
+  if (dbShortNameToSlug) {
+    const dbResult = dbShortNameToSlug.get(shortName)
+    if (dbResult) {
+      return dbResult
+    }
+  }
+
+  // 2. Fallback a diccionario estático
   if (SHORT_NAME_TO_SLUG[shortName]) {
     return SHORT_NAME_TO_SLUG[shortName]
   }
 
-  // Generación automática
+  // 3. Generación automática
   return shortName
     .toLowerCase()
     .replace(/\s+/g, '-')
@@ -910,7 +983,8 @@ export function generateLawSlug(shortName: string): string {
  * Obtiene el slug canónico para SEO
  */
 export function getCanonicalSlug(shortName: string): string {
-  return SHORT_NAME_TO_SLUG[shortName] ?? generateLawSlug(shortName)
+  // generateLawSlug ya verifica cache BD, diccionario y genera automático
+  return generateLawSlug(shortName)
 }
 
 /**
