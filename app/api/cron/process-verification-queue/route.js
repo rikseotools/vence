@@ -5,7 +5,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -34,7 +34,7 @@ export async function GET(request) {
     }
 
     // 1. Buscar tarea en proceso o tomar la siguiente pendiente
-    let { data: task } = await supabase
+    let { data: task } = await getSupabase()
       .from('verification_queue')
       .select('*')
       .eq('status', 'processing')
@@ -44,7 +44,7 @@ export async function GET(request) {
 
     // Si no hay ninguna procesándose, tomar la siguiente pendiente
     if (!task) {
-      const { data: pendingTask, error: pendingError } = await supabase
+      const { data: pendingTask, error: pendingError } = await getSupabase()
         .from('verification_queue')
         .select('*')
         .eq('status', 'pending')
@@ -61,7 +61,7 @@ export async function GET(request) {
       }
 
       // Marcar como processing
-      const { data: updatedTask, error: updateError } = await supabase
+      const { data: updatedTask, error: updateError } = await getSupabase()
         .from('verification_queue')
         .update({
           status: 'processing',
@@ -147,7 +147,7 @@ export async function GET(request) {
         billingError = true
 
         // Marcar la tarea como fallida
-        await supabase
+        await getSupabase()
           .from('verification_queue')
           .update({
             status: 'failed',
@@ -176,7 +176,7 @@ export async function GET(request) {
       // Verificar si terminamos (usamos pendingQuestionIds.length porque es dinámico)
       isComplete = pendingQuestionIds.length <= batch.length
 
-      await supabase
+      await getSupabase()
         .from('verification_queue')
         .update({
           processed_questions: newProcessed,
@@ -194,7 +194,7 @@ export async function GET(request) {
     }
 
     // Recargar task para obtener valores actualizados
-    const { data: finalTask } = await supabase
+    const { data: finalTask } = await getSupabase()
       .from('verification_queue')
       .select('*')
       .eq('id', task.id)
@@ -232,7 +232,7 @@ export async function GET(request) {
 async function getPendingQuestionIds(task) {
   // Si hay IDs específicos, filtrar los que aún están pendientes
   if (task.question_ids && task.question_ids.length > 0) {
-    const { data: questions } = await supabase
+    const { data: questions } = await getSupabase()
       .from('questions')
       .select('id')
       .in('id', task.question_ids)
@@ -243,7 +243,7 @@ async function getPendingQuestionIds(task) {
   }
 
   // Si no, obtener todas las pendientes del tema
-  const { data: topicScopes } = await supabase
+  const { data: topicScopes } = await getSupabase()
     .from('topic_scope')
     .select('article_numbers, laws(id)')
     .eq('topic_id', task.topic_id)
@@ -252,7 +252,7 @@ async function getPendingQuestionIds(task) {
   for (const scope of topicScopes || []) {
     if (!scope.laws?.id || !scope.article_numbers?.length) continue
 
-    const { data: articles } = await supabase
+    const { data: articles } = await getSupabase()
       .from('articles')
       .select('id')
       .eq('law_id', scope.laws.id)
@@ -271,7 +271,7 @@ async function getPendingQuestionIds(task) {
 
   for (let i = 0; i < articleIds.length; i += batchSize) {
     const batch = articleIds.slice(i, i + batchSize)
-    const { data: questions } = await supabase
+    const { data: questions } = await getSupabase()
       .from('questions')
       .select('id')
       .in('primary_article_id', batch)

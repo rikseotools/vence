@@ -3,7 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -22,7 +22,7 @@ export async function GET(request) {
     const topicId = searchParams.get('topic_id')
     const status = searchParams.get('status')
 
-    let query = supabase
+    let query = getSupabase()
       .from('verification_queue')
       .select('*')
       .order('created_at', { ascending: false })
@@ -82,7 +82,7 @@ export async function POST(request) {
     }
 
     // Verificar que el tema existe
-    const { data: topic, error: topicError } = await supabase
+    const { data: topic, error: topicError } = await getSupabase()
       .from('topics')
       .select('id, title, topic_number')
       .eq('id', topic_id)
@@ -96,7 +96,7 @@ export async function POST(request) {
     }
 
     // Verificar si ya hay una verificación pendiente o en proceso para este tema
-    const { data: existing } = await supabase
+    const { data: existing } = await getSupabase()
       .from('verification_queue')
       .select('id, status')
       .eq('topic_id', topic_id)
@@ -116,7 +116,7 @@ export async function POST(request) {
 
     if (!question_ids || question_ids.length === 0) {
       // Obtener preguntas pendientes del tema usando la misma lógica que la API de detalle
-      const { data: topicScopes } = await supabase
+      const { data: topicScopes } = await getSupabase()
         .from('topic_scope')
         .select('article_numbers, laws(id)')
         .eq('topic_id', topic_id)
@@ -125,7 +125,7 @@ export async function POST(request) {
       for (const scope of topicScopes || []) {
         if (!scope.laws?.id || !scope.article_numbers?.length) continue
 
-        const { data: articles } = await supabase
+        const { data: articles } = await getSupabase()
           .from('articles')
           .select('id')
           .eq('law_id', scope.laws.id)
@@ -137,7 +137,7 @@ export async function POST(request) {
       }
 
       if (articleIds.length > 0) {
-        const { count } = await supabase
+        const { count } = await getSupabase()
           .from('questions')
           .select('id', { count: 'exact', head: true })
           .in('primary_article_id', articleIds)
@@ -156,7 +156,7 @@ export async function POST(request) {
     }
 
     // Crear entrada en la cola
-    const { data: queueEntry, error: insertError } = await supabase
+    const { data: queueEntry, error: insertError } = await getSupabase()
       .from('verification_queue')
       .insert({
         topic_id,
@@ -215,7 +215,7 @@ export async function DELETE(request) {
       }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('verification_queue')
       .update({ status: 'cancelled' })
       .eq('id', id)

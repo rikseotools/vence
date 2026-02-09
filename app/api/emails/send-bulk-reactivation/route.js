@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -12,7 +12,7 @@ export async function POST(request) {
     console.log('📧 Iniciando envío masivo de emails de reactivación...')
 
     // Obtener usuarios inactivos (que no están activos como estudiantes)
-    const { data: inactiveUsers, error: usersError } = await supabase
+    const { data: inactiveUsers, error: usersError } = await getSupabase()
       .from('admin_users_with_roles')
       .select('user_id, email, full_name, is_active_student')
       .eq('is_active_student', false)
@@ -66,7 +66,7 @@ export async function POST(request) {
           
           // Registrar en BD para métricas
           try {
-            await supabase.from('email_events').insert({
+            await getSupabase().from('email_events').insert({
               user_id: user.user_id,
               event_type: 'sent',
               email_type: 'reactivation',
@@ -117,7 +117,7 @@ export async function POST(request) {
 
     // Registrar la campaña masiva
     try {
-      await supabase.from('email_events').insert({
+      await getSupabase().from('email_events').insert({
         user_id: null, // Campaña masiva
         event_type: 'campaign_completed',
         email_type: 'reactivation_bulk',

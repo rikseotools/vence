@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -23,7 +23,7 @@ export async function GET(request) {
       }, { status: 400 })
     }
 
-    let query = supabase
+    let query = getSupabase()
       .from('ai_verification_errors')
       .select('*')
       .eq('law_id', lawId)

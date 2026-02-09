@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -118,7 +118,7 @@ export async function GET(request) {
     const readonly = searchParams.get('readonly') === 'true'
 
     // Si se especifica una ley, verificar solo esa
-    let query = supabase
+    let query = getSupabase()
       .from('laws')
       .select('id, short_name, name, boe_url, content_hash, last_checked, change_status, last_update_boe')
       .not('boe_url', 'is', null)
@@ -235,7 +235,7 @@ export async function GET(request) {
 
         // Si hay cambios reales, marcar como changed
         if (hasChanged) {
-          await supabase
+          await getSupabase()
             .from('laws')
             .update({
               content_hash: currentHash,
@@ -250,7 +250,7 @@ export async function GET(request) {
           result.newChangeDetected = true
         } else {
           // NO hay cambios reales: solo actualizar hash y fecha sin cambiar el estado
-          await supabase
+          await getSupabase()
             .from('laws')
             .update({
               content_hash: currentHash,
@@ -307,7 +307,7 @@ export async function POST(request) {
     const { action, lawId } = body
 
     if (action === 'mark_reviewed' && lawId) {
-      const { error } = await supabase
+      const { error } = await getSupabase()
         .from('laws')
         .update({
           change_status: 'reviewed',

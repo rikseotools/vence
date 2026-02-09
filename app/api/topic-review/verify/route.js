@@ -1,7 +1,7 @@
 // app/api/topic-review/verify/route.js
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -10,7 +10,7 @@ const supabase = createClient(
  * Obtiene la configuración de IA desde la base de datos
  */
 async function getAIConfig(provider) {
-  const { data: config } = await supabase
+  const { data: config } = await getSupabase()
     .from('ai_api_config')
     .select('*')
     .eq('provider', provider)
@@ -442,7 +442,7 @@ async function verifyPsychometricQuestions(questionIds, provider, model, apiKey)
 
     for (const questionId of questionIds) {
       // Marcar como verificada
-      const { error: updateError } = await supabase
+      const { error: updateError } = await getSupabase()
         .from('psychometric_questions')
         .update({ is_verified: true })
         .eq('id', questionId)
@@ -516,7 +516,7 @@ export async function POST(request) {
 
     // Obtener preguntas con sus artículos (solo para questions normales)
     // Nota: Las leyes virtuales se detectan por tener "ficticia" en su descripción
-    const { data: questions, error: qError } = await supabase
+    const { data: questions, error: qError } = await getSupabase()
       .from('questions')
       .select(`
         id,
@@ -593,7 +593,7 @@ export async function POST(request) {
 
         if (emptyOptions.length > 0) {
           // Marcar como estructura inválida y saltar verificación IA
-          await supabase
+          await getSupabase()
             .from('questions')
             .update({
               verified_at: new Date().toISOString(),
@@ -615,7 +615,7 @@ export async function POST(request) {
 
         // Verificar que el texto de la pregunta existe
         if (!question.question_text?.trim()) {
-          await supabase
+          await getSupabase()
             .from('questions')
             .update({
               verified_at: new Date().toISOString(),
@@ -637,7 +637,7 @@ export async function POST(request) {
         // Verificar que correct_option es válido (0-3)
         if (question.correct_option === null || question.correct_option === undefined ||
             question.correct_option < 0 || question.correct_option > 3) {
-          await supabase
+          await getSupabase()
             .from('questions')
             .update({
               verified_at: new Date().toISOString(),
@@ -730,7 +730,7 @@ export async function POST(request) {
         }
 
         // Guardar en ai_verification_results
-        await supabase
+        await getSupabase()
           .from('ai_verification_results')
           .upsert({
             question_id: question.id,
@@ -754,7 +754,7 @@ export async function POST(request) {
 
         // Actualizar pregunta
         const isPerfect = topicReviewStatus === 'perfect' || topicReviewStatus === 'tech_perfect'
-        await supabase
+        await getSupabase()
           .from('questions')
           .update({
             verified_at: new Date().toISOString(),
@@ -764,7 +764,7 @@ export async function POST(request) {
           .eq('id', question.id)
 
         // Guardar uso de tokens
-        await supabase.from('ai_api_usage').insert({
+        await getSupabase().from('ai_api_usage').insert({
           provider: normalizedProvider,
           model: modelUsed,
           endpoint: 'topic-review-verify',

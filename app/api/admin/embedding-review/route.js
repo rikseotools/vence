@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -10,7 +10,7 @@ const supabase = createClient(
 export async function GET() {
   try {
     // Obtener preguntas marcadas por embedding similarity con article_ok = false
-    const { data: verifications, error: verError } = await supabase
+    const { data: verifications, error: verError } = await getSupabase()
       .from('ai_verification_results')
       .select(`
         id,
@@ -39,7 +39,7 @@ export async function GET() {
 
     // Obtener datos de las preguntas
     const questionIds = verifications.map(v => v.question_id)
-    const { data: questions, error: qError } = await supabase
+    const { data: questions, error: qError } = await getSupabase()
       .from('questions')
       .select(`
         id,
@@ -65,7 +65,7 @@ export async function GET() {
     })
 
     // Obtener topics de cada pregunta (una pregunta puede estar en varios topics)
-    const { data: testQuestions, error: tqError } = await supabase
+    const { data: testQuestions, error: tqError } = await getSupabase()
       .from('test_questions')
       .select(`
         question_id,
@@ -166,7 +166,7 @@ export async function POST(request) {
 
     if (action === 'mark_correct') {
       // Actualizar ai_verification_results para marcar como correcto
-      const { error: updateError } = await supabase
+      const { error: updateError } = await getSupabase()
         .from('ai_verification_results')
         .update({
           article_ok: true,
@@ -180,7 +180,7 @@ export async function POST(request) {
       }
 
       // Limpiar topic_review_status de la pregunta si estaba en wrong_article
-      await supabase
+      await getSupabase()
         .from('questions')
         .update({
           topic_review_status: null,
@@ -193,7 +193,7 @@ export async function POST(request) {
 
     } else if (action === 'needs_llm_review') {
       // Mantener wrong_article pero añadir flag para revisión LLM
-      const { error: updateError } = await supabase
+      const { error: updateError } = await getSupabase()
         .from('questions')
         .update({
           topic_review_status: 'wrong_article',

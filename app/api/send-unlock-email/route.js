@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -32,7 +32,7 @@ export async function POST(request) {
 
     // Verificar preferencias de email del usuario antes de enviar
     if (userId) {
-      const { data: emailPreferences } = await supabase
+      const { data: emailPreferences } = await getSupabase()
         .from('email_preferences')
         .select('unsubscribed_all, email_urgente')
         .eq('user_id', userId)
@@ -223,7 +223,7 @@ vence.es - Preparación Inteligente para Oposiciones
     if (userId) {
       try {
         const supabase = getSupabaseClient()
-        await supabase
+        await getSupabase()
           .from('email_events')
           .insert({
             user_id: userId,

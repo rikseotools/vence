@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { generateUnsubscribeUrl } from '../email-unsubscribe/route.js'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -84,7 +84,7 @@ export async function POST(request) {
 
     // Verificar preferencias de email del usuario antes de enviar
     if (userId) {
-      const { data: emailPreferences } = await supabase
+      const { data: emailPreferences } = await getSupabase()
         .from('email_preferences')
         .select('unsubscribed_all, email_reactivacion')
         .eq('user_id', userId)
@@ -160,7 +160,7 @@ export async function POST(request) {
         const { getSupabaseClient } = await import('../../../lib/supabase')
         const supabase = getSupabaseClient()
         
-        await supabase.from('email_events').insert({
+        await getSupabase().from('email_events').insert({
           user_id: userId,
           event_type: 'sent',
           email_type: 'motivational',

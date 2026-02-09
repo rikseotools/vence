@@ -3,7 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -41,7 +41,7 @@ export async function GET(request) {
     let savedCount = 0
     for (const alert of alerts) {
       // Verificar si ya existe una alerta similar reciente (últimas 24h)
-      const { data: existing } = await supabase
+      const { data: existing } = await getSupabase()
         .from('fraud_alerts')
         .select('id')
         .eq('alert_type', alert.alert_type)
@@ -50,7 +50,7 @@ export async function GET(request) {
         .limit(1)
 
       if (!existing || existing.length === 0) {
-        const { error } = await supabase
+        const { error } = await getSupabase()
           .from('fraud_alerts')
           .insert(alert)
 
@@ -80,7 +80,7 @@ export async function GET(request) {
 async function detectSameIPAccounts() {
   const alerts = []
 
-  const { data: profiles } = await supabase
+  const { data: profiles } = await getSupabase()
     .from('user_profiles')
     .select('id, email, registration_ip, created_at, plan_type')
     .not('registration_ip', 'is', null)
@@ -126,7 +126,7 @@ async function detectSharedDevices() {
   // Obtener sesiones recientes (últimos 7 días)
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  const { data: sessions } = await supabase
+  const { data: sessions } = await getSupabase()
     .from('user_sessions')
     .select('user_id, user_agent, ip_address')
     .gte('session_start', sevenDaysAgo)
@@ -171,7 +171,7 @@ async function detectBotBehavior() {
   // Buscar tests donde el tiempo promedio por pregunta es menor a 3 segundos
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-  const { data: tests } = await supabase
+  const { data: tests } = await getSupabase()
     .from('tests')
     .select('id, user_id, total_questions, total_time_seconds, completed_at')
     .eq('is_completed', true)
@@ -225,7 +225,7 @@ async function detectSharedPremium() {
   const alerts = []
 
   // Buscar cuentas premium con sesiones desde múltiples IPs en poco tiempo
-  const { data: premiumUsers } = await supabase
+  const { data: premiumUsers } = await getSupabase()
     .from('user_profiles')
     .select('id, email, plan_type')
     .in('plan_type', ['premium', 'semestral', 'anual'])
@@ -236,7 +236,7 @@ async function detectSharedPremium() {
 
   for (const user of premiumUsers) {
     // Obtener IPs únicas de las últimas 24h
-    const { data: sessions } = await supabase
+    const { data: sessions } = await getSupabase()
       .from('user_sessions')
       .select('ip_address, city, region')
       .eq('user_id', user.id)

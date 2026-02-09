@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { generateUnsubscribeUrl } from '../../email-unsubscribe/route.js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -23,7 +23,7 @@ export async function POST(request) {
       console.log('📧 Enviando email de prueba a:', testEmail)
     } else {
       // Para usuarios reales, obtener datos de la BD
-      const { data: user, error: userError } = await supabase
+      const { data: user, error: userError } = await getSupabase()
         .from('user_profiles')
         .select('id, email, full_name, nickname')
         .eq('id', userId)
@@ -41,7 +41,7 @@ export async function POST(request) {
     }
 
     // Verificar preferencias de email
-    const { data: emailPreferences } = await supabase
+    const { data: emailPreferences } = await getSupabase()
       .from('email_preferences')
       .select('unsubscribed_all, email_reactivacion')
       .eq('user_id', targetUserId)
@@ -64,7 +64,7 @@ export async function POST(request) {
     }
 
     // Obtener estadísticas del usuario
-    const { data: userStats } = await supabase
+    const { data: userStats } = await getSupabase()
       .from('admin_users_with_roles')
       .select('*')
       .eq('user_id', targetUserId)
@@ -75,7 +75,7 @@ export async function POST(request) {
     const daysSinceLastActivity = userStats?.stats?.daysSinceLastActivity || 0
 
     // Obtener estadísticas globales
-    const { data: globalStats } = await supabase
+    const { data: globalStats } = await getSupabase()
       .from('admin_users_with_roles')
       .select('stats')
 
@@ -138,7 +138,7 @@ export async function POST(request) {
 
     // Registrar evento en la BD
     try {
-      await supabase.from('email_events').insert({
+      await getSupabase().from('email_events').insert({
         user_id: targetUserId,
         event_type: 'sent',
         email_type: 'reactivation',

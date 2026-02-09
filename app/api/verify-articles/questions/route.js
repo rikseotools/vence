@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -23,7 +23,7 @@ export async function GET(request) {
 
   try {
     // Primero obtenemos el artículo
-    const { data: article, error: articleError } = await supabase
+    const { data: article, error: articleError } = await getSupabase()
       .from('articles')
       .select('id, article_number, title, content')
       .eq('law_id', lawId)
@@ -43,7 +43,7 @@ export async function GET(request) {
 
     // Método 1: Por FK directa si el artículo existe en BD
     if (article?.id) {
-      const { data: directQuestions, error: directError } = await supabase
+      const { data: directQuestions, error: directError } = await getSupabase()
         .from('questions')
         .select(`
           id,
@@ -73,7 +73,7 @@ export async function GET(request) {
     if (questions.length === 0) {
       // Buscar preguntas que mencionen este artículo en su texto
       // Primero necesitamos saber qué ley es para filtrar
-      const { data: law } = await supabase
+      const { data: law } = await getSupabase()
         .from('laws')
         .select('short_name')
         .eq('id', lawId)
@@ -88,7 +88,7 @@ export async function GET(request) {
           `articulo ${articleNumber}`
         ]
 
-        const { data: textQuestions, error: textError } = await supabase
+        const { data: textQuestions, error: textError } = await getSupabase()
           .from('questions')
           .select(`
             id,

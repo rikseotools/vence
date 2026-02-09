@@ -5,7 +5,7 @@ import {
   normalizeArticleNumber
 } from '@/lib/boe-extractor'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -37,7 +37,7 @@ export async function POST(request) {
     }
 
     // 1. Obtener la ley
-    const { data: law, error: lawError } = await supabase
+    const { data: law, error: lawError } = await getSupabase()
       .from('laws')
       .select('id, short_name, name, boe_url')
       .eq('id', lawId)
@@ -96,7 +96,7 @@ export async function POST(request) {
     }
 
     // 5. Verificar que no existan ya en BD
-    const { data: existingArticles } = await supabase
+    const { data: existingArticles } = await getSupabase()
       .from('articles')
       .select('article_number')
       .eq('law_id', lawId)
@@ -138,7 +138,7 @@ export async function POST(request) {
     }))
 
     // 7. Insertar en la BD
-    const { data: inserted, error: insertError } = await supabase
+    const { data: inserted, error: insertError } = await getSupabase()
       .from('articles')
       .insert(articlesToInsert)
       .select('id, article_number, title')

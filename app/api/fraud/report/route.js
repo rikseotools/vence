@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -53,7 +53,7 @@ export async function POST(request) {
 
     // Verificar si ya existe una alerta similar reciente (últimas 24h)
     // para evitar duplicados
-    const { data: existingAlert } = await supabase
+    const { data: existingAlert } = await getSupabase()
       .from('fraud_alerts')
       .select('id')
       .eq('alert_type', alertType)
@@ -64,10 +64,10 @@ export async function POST(request) {
 
     if (existingAlert) {
       // Ya existe una alerta similar, actualizar detalles
-      const { error: updateError } = await supabase
+      const { error: updateError } = await getSupabase()
         .from('fraud_alerts')
         .update({
-          details: supabase.sql`details || ${JSON.stringify({
+          details: getSupabase().sql`details || ${JSON.stringify({
             lastDetection: timestamp,
             lastScore: score,
             lastUrl: url
@@ -110,7 +110,7 @@ export async function POST(request) {
       detected_at: timestamp || new Date().toISOString()
     }
 
-    const { data: newAlert, error: insertError } = await supabase
+    const { data: newAlert, error: insertError } = await getSupabase()
       .from('fraud_alerts')
       .insert(alertData)
       .select('id')

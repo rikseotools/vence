@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { adaptiveDifficultyService } from '@/lib/services/adaptiveDifficulty'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -113,7 +113,7 @@ export async function POST(request) {
 
       case 'recalculate_metrics':
         // Recalcular métricas de usuario desde cero
-        const { data, error } = await supabase
+        const { data, error } = await getSupabase()
           .rpc('recalculate_user_metrics', { p_user_id: userId })
 
         if (error) throw error

@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/api/exam/init/route.ts - API para guardar todas las preguntas al iniciar examen
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -94,28 +94,34 @@ export async function POST(request: NextRequest) {
     console.log(`✅ [exam/init] Obtenidas ${correctAnswersMap.size} respuestas correctas de BD`)
 
     // Preparar preguntas para guardar (con correctAnswer de la BD)
-    const preparedQuestions = questions.map((q, index) => {
-      const questionId = q.id || q.questionId || null
-      // 🔒 Usar respuesta de BD, NO del cliente
-      const correctFromDb = questionId ? correctAnswersMap.get(questionId) : undefined
+    const preparedQuestions = questions
+      .map((q, index) => {
+        const questionId = q.id || q.questionId
+        if (!questionId) {
+          console.warn(`⚠️ [exam/init] Pregunta sin ID en posición ${index}, será ignorada`)
+          return null
+        }
+        // 🔒 Usar respuesta de BD, NO del cliente
+        const correctFromDb = correctAnswersMap.get(questionId)
 
-      if (!correctFromDb && questionId) {
-        console.warn(`⚠️ [exam/init] Pregunta ${questionId} no encontrada en BD, usando fallback`)
-      }
+        if (!correctFromDb) {
+          console.warn(`⚠️ [exam/init] Pregunta ${questionId} no encontrada en BD, usando fallback`)
+        }
 
-      return {
-        questionId,
-        questionOrder: index + 1,
-        questionText: q.question_text || q.questionText || '',
-        // 🔒 CRÍTICO: Priorizar respuesta de BD sobre cualquier dato del cliente
-        correctAnswer: correctFromDb || 'x', // 'x' como flag de error
-        articleId: q.articles?.id || q.primary_article_id || q.articleId || null,
-        articleNumber: q.articles?.article_number || q.articleNumber || null,
-        lawName: q.articles?.laws?.short_name || q.lawName || null,
-        temaNumber: q.tema_number || q.temaNumber || null,
-        difficulty: q.difficulty || null,
-      }
-    })
+        return {
+          questionId,
+          questionOrder: index + 1,
+          questionText: q.question_text || q.questionText || '',
+          // 🔒 CRÍTICO: Priorizar respuesta de BD sobre cualquier dato del cliente
+          correctAnswer: correctFromDb || 'x', // 'x' como flag de error
+          articleId: q.articles?.id || q.primary_article_id || q.articleId || null,
+          articleNumber: q.articles?.article_number || q.articleNumber || null,
+          lawName: q.articles?.laws?.short_name || q.lawName || null,
+          temaNumber: q.tema_number || q.temaNumber || null,
+          difficulty: q.difficulty || null,
+        }
+      })
+      .filter((q): q is NonNullable<typeof q> => q !== null)
 
     // Verificar que tenemos respuestas correctas para todas las preguntas
     const questionsWithoutCorrect = preparedQuestions.filter(q => q.correctAnswer === 'x')

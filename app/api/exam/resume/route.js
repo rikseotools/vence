@@ -4,7 +4,7 @@ import { getResumedExamData, verifyTestOwnership } from '@/lib/api/exam'
 import { createClient } from '@supabase/supabase-js'
 
 // Supabase para obtener preguntas completas (questions table)
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -66,7 +66,7 @@ export async function GET(request) {
 
     // Obtener preguntas completas desde Supabase
     // 🔒 SEGURIDAD: NO incluir correct_option - se valida via /api/exam/validate
-    const { data: fullQuestions, error: questionsError } = await supabase
+    const { data: fullQuestions, error: questionsError } = await getSupabase()
       .from('questions')
       .select(`
         id, question_text, option_a, option_b, option_c, option_d,

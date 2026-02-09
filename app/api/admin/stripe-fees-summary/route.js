@@ -19,7 +19,7 @@ function getTypeDescription(type) {
   return descriptions[type] || type;
 }
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
@@ -167,7 +167,7 @@ export async function GET(request) {
       summary.totals.trueNet - summary.totals.manuelAmount;
 
     // Obtener pagos pendientes de confirmar desde BD
-    const { data: pendingSettlements } = await supabase
+    const { data: pendingSettlements } = await getSupabase()
       .from('payment_settlements')
       .select('*')
       .eq('manuel_confirmed_received', false);

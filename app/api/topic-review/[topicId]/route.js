@@ -1,7 +1,7 @@
 // app/api/topic-review/[topicId]/route.js
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
     }
 
     // 1. Obtener el tema
-    const { data: topic, error: topicError } = await supabase
+    const { data: topic, error: topicError } = await getSupabase()
       .from('topics')
       .select(`
         id,
@@ -42,7 +42,7 @@ export async function GET(request, { params }) {
     }
 
     // 2. Obtener topic_scope (mapeo a leyes y artículos)
-    const { data: topicScopes, error: scopeError } = await supabase
+    const { data: topicScopes, error: scopeError } = await getSupabase()
       .from('topic_scope')
       .select(`
         id,
@@ -75,7 +75,7 @@ export async function GET(request, { params }) {
         const articleNumbers = scope.article_numbers || []
 
         // Obtener artículos de esta ley que estén en el scope
-        const { data: articles } = await supabase
+        const { data: articles } = await getSupabase()
           .from('articles')
           .select(`
             id,
@@ -90,7 +90,7 @@ export async function GET(request, { params }) {
         // Para cada artículo, obtener sus preguntas
         const articlesWithQuestions = await Promise.all(
           (articles || []).map(async (article) => {
-            const { data: questions } = await supabase
+            const { data: questions } = await getSupabase()
               .from('questions')
               .select(`
                 id,
@@ -115,7 +115,7 @@ export async function GET(request, { params }) {
             let aiVerifications = {}
 
             if (questionIds.length > 0) {
-              const { data: verifications } = await supabase
+              const { data: verifications } = await getSupabase()
                 .from('ai_verification_results')
                 .select(`
                   question_id,

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -37,7 +37,7 @@ export async function GET(request) {
     }
 
     // Obtener los artículos de esta ley con sus números
-    const { data: articles, error: articlesError } = await supabase
+    const { data: articles, error: articlesError } = await getSupabase()
       .from('articles')
       .select('id, article_number')
       .eq('law_id', lawId)
@@ -69,7 +69,7 @@ export async function GET(request) {
     })
 
     // Obtener todas las preguntas vinculadas a estos artículos
-    const { data: questions, error: questionsError } = await supabase
+    const { data: questions, error: questionsError } = await getSupabase()
       .from('questions')
       .select('id, primary_article_id')
       .in('primary_article_id', articleIds)
@@ -107,7 +107,7 @@ export async function GET(request) {
     })
 
     // Obtener verificaciones de IA para estas preguntas
-    const { data: verifications, error: verificationsError } = await supabase
+    const { data: verifications, error: verificationsError } = await getSupabase()
       .from('ai_verification_results')
       .select('question_id, is_correct, fix_applied, verified_at')
       .in('question_id', questionIds)

@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -25,7 +25,7 @@ export async function GET(request) {
       // Verificar si ya se registró un click similar en los últimos 2 minutos
       const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString()
       
-      const { data: recentClicks } = await supabase
+      const { data: recentClicks } = await getSupabase()
         .from('email_events')
         .select('id')
         .eq('user_id', userId)
@@ -38,13 +38,13 @@ export async function GET(request) {
         console.log('⏸️ Click duplicado ignorado - cooldown de 2 minutos activo')
       } else {
         // Obtener información del usuario para el tracking
-        const { data: userProfile } = await supabase
+        const { data: userProfile } = await getSupabase()
           .from('user_profiles')
           .select('email')
           .eq('id', userId)
           .single()
 
-        await supabase.from('email_events').insert({
+        await getSupabase().from('email_events').insert({
           user_id: userId,
           event_type: 'clicked',
           email_type: type, // ✅ FIX: Usar el tipo real del email

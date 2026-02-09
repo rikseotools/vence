@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -222,7 +222,7 @@ export async function POST(request) {
     }
 
     // Obtener la URL del BOE de la ley
-    const { data: law, error: lawError } = await supabase
+    const { data: law, error: lawError } = await getSupabase()
       .from('laws')
       .select('boe_url')
       .eq('id', lawId)
@@ -250,7 +250,7 @@ export async function POST(request) {
           const boeData = await fetchArticleFromBOE(law.boe_url, article_number)
 
           // Obtener contenido actual de la BD para el log
-          const { data: currentArticle } = await supabase
+          const { data: currentArticle } = await getSupabase()
             .from('articles')
             .select('content')
             .eq('id', db_id)
@@ -266,7 +266,7 @@ export async function POST(request) {
             updateData.content = boeData.content
           }
 
-          const { error: updateError } = await supabase
+          const { error: updateError } = await getSupabase()
             .from('articles')
             .update(updateData)
             .eq('id', db_id)
@@ -286,7 +286,7 @@ export async function POST(request) {
             })
 
             // Guardar registro del cambio
-            await supabase.from('article_update_logs').insert({
+            await getSupabase().from('article_update_logs').insert({
               law_id: lawId,
               article_id: db_id,
               article_number,
@@ -347,7 +347,7 @@ export async function GET(request) {
   }
 
   try {
-    const { data: logs, error } = await supabase
+    const { data: logs, error } = await getSupabase()
       .from('article_update_logs')
       .select('*')
       .eq('law_id', lawId)

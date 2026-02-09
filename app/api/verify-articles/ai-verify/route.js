@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -21,7 +21,7 @@ export async function POST(request) {
     }
 
     // 1. Obtener la ley y su URL del BOE
-    const { data: law, error: lawError } = await supabase
+    const { data: law, error: lawError } = await getSupabase()
       .from('laws')
       .select('id, short_name, name, boe_url')
       .eq('id', lawId)
@@ -35,7 +35,7 @@ export async function POST(request) {
     }
 
     // 2. Obtener la pregunta
-    const { data: question, error: questionError } = await supabase
+    const { data: question, error: questionError } = await getSupabase()
       .from('questions')
       .select(`
         id,

@@ -1,7 +1,7 @@
 // app/api/topic-review/route.js
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -26,7 +26,7 @@ export async function GET(request) {
     }
 
     // 1. Obtener oposiciones disponibles (para el selector)
-    const { data: positions, error: posError } = await supabase
+    const { data: positions, error: posError } = await getSupabase()
       .from('topics')
       .select('position_type')
       .not('position_type', 'is', null)
@@ -56,7 +56,7 @@ export async function GET(request) {
     }
 
     // 2. Obtener temas de la oposición seleccionada
-    const { data: topics, error: topicsError } = await supabase
+    const { data: topics, error: topicsError } = await getSupabase()
       .from('topics')
       .select(`
         id,
@@ -82,7 +82,7 @@ export async function GET(request) {
     const topicsWithStats = await Promise.all(
       topics.map(async (topic) => {
         // Obtener leyes vinculadas via topic_scope
-        const { data: topicScopes } = await supabase
+        const { data: topicScopes } = await getSupabase()
           .from('topic_scope')
           .select(`
             id,
@@ -132,7 +132,7 @@ export async function GET(request) {
           for (const scope of topicScopes || []) {
             if (!scope.laws?.id || !scope.article_numbers?.length) continue
 
-            const { data: articles } = await supabase
+            const { data: articles } = await getSupabase()
               .from('articles')
               .select('id')
               .eq('law_id', scope.laws.id)
@@ -147,7 +147,7 @@ export async function GET(request) {
 
           if (articleIds.length > 0) {
             // Obtener preguntas vinculadas a esos artículos
-            const { data: questions } = await supabase
+            const { data: questions } = await getSupabase()
               .from('questions')
               .select(`
                 id,
@@ -287,7 +287,7 @@ export async function GET(request) {
 async function getPsychometricTopics() {
   try {
     // 1. Obtener todas las categorías activas
-    const { data: categories, error: categoriesError } = await supabase
+    const { data: categories, error: categoriesError } = await getSupabase()
       .from('psychometric_categories')
       .select('*')
       .eq('is_active', true)
@@ -305,7 +305,7 @@ async function getPsychometricTopics() {
     const categoriesWithStats = await Promise.all(
       categories.map(async (category) => {
         // Obtener preguntas de esta categoría
-        const { data: questions } = await supabase
+        const { data: questions } = await getSupabase()
           .from('psychometric_questions')
           .select('id, is_verified, difficulty')
           .eq('category_id', category.id)
@@ -364,7 +364,7 @@ async function getPsychometricTopics() {
 async function getTopicQuestions(topicId) {
   try {
     // Primero intentar si es una categoría psicotécnica
-    const { data: psychoCategory, error: psychoError } = await supabase
+    const { data: psychoCategory, error: psychoError } = await getSupabase()
       .from('psychometric_categories')
       .select('id, display_name, category_key')
       .eq('id', topicId)
@@ -372,7 +372,7 @@ async function getTopicQuestions(topicId) {
 
     // Si es psicotécnico, devolver preguntas psicotécnicas
     if (psychoCategory && !psychoError) {
-      const { data: psychoQuestions, error: psychoQuestionsError } = await supabase
+      const { data: psychoQuestions, error: psychoQuestionsError } = await getSupabase()
         .from('psychometric_questions')
         .select('id, question_text, is_verified, difficulty')
         .eq('category_id', topicId)
@@ -410,7 +410,7 @@ async function getTopicQuestions(topicId) {
     }
 
     // 1. Obtener el tema normal
-    const { data: topic, error: topicError } = await supabase
+    const { data: topic, error: topicError } = await getSupabase()
       .from('topics')
       .select('id, title, topic_number')
       .eq('id', topicId)
@@ -424,7 +424,7 @@ async function getTopicQuestions(topicId) {
     }
 
     // 2. Obtener scope del tema (leyes y artículos)
-    const { data: topicScopes } = await supabase
+    const { data: topicScopes } = await getSupabase()
       .from('topic_scope')
       .select(`
         article_numbers,
@@ -437,7 +437,7 @@ async function getTopicQuestions(topicId) {
     for (const scope of topicScopes || []) {
       if (!scope.laws?.id || !scope.article_numbers?.length) continue
 
-      const { data: articles } = await supabase
+      const { data: articles } = await getSupabase()
         .from('articles')
         .select('id')
         .eq('law_id', scope.laws.id)
@@ -457,7 +457,7 @@ async function getTopicQuestions(topicId) {
     }
 
     // 4. Obtener preguntas de esos artículos
-    const { data: questions, error: questionsError } = await supabase
+    const { data: questions, error: questionsError } = await getSupabase()
       .from('questions')
       .select(`
         id,

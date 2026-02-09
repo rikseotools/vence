@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -43,7 +43,7 @@ function calculateIsOk(summary) {
 export async function GET() {
   try {
     // Obtener todas las leyes con su estado de verificación y resumen
-    const { data: laws, error: lawsError } = await supabase
+    const { data: laws, error: lawsError } = await getSupabase()
       .from('laws')
       .select('id, short_name, last_checked, verification_status, last_verification_summary')
 

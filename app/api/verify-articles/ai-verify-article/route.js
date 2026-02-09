@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -9,7 +9,7 @@ const supabase = createClient(
  * Obtiene la configuración de IA desde la base de datos
  */
 async function getAIConfig(provider) {
-  const { data: config } = await supabase
+  const { data: config } = await getSupabase()
     .from('ai_api_config')
     .select('*')
     .eq('provider', provider)
@@ -107,7 +107,7 @@ async function logVerificationError({
   tokensUsed
 }) {
   try {
-    await supabase.from('ai_verification_errors').insert({
+    await getSupabase().from('ai_verification_errors').insert({
       law_id: lawId,
       article_number: articleNumber,
       provider,
@@ -172,7 +172,7 @@ async function processBatch({
     anthropic: '/v1/messages',
     google: '/v1beta/models/generateContent'
   }
-  await supabase.from('ai_api_usage').insert({
+  await getSupabase().from('ai_api_usage').insert({
     provider,
     model,
     endpoint: endpoints[provider] || 'unknown',
@@ -219,7 +219,7 @@ async function processBatch({
                         { isCorrect: null, explanation: 'No se pudo verificar esta pregunta' }
 
     // Guardar en BD
-    const { error: insertError } = await supabase
+    const { error: insertError } = await getSupabase()
       .from('ai_verification_results')
       .upsert({
         question_id: question.id,
@@ -250,7 +250,7 @@ async function processBatch({
         ? 'problem'
         : null  // No guardar status si no se pudo determinar
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabase()
       .from('questions')
       .update({
         verified_at: new Date().toISOString(),
@@ -292,7 +292,7 @@ export async function POST(request) {
     }
 
     // 1. Obtener la ley y su URL del BOE
-    const { data: law, error: lawError } = await supabase
+    const { data: law, error: lawError } = await getSupabase()
       .from('laws')
       .select('id, short_name, name, boe_url')
       .eq('id', lawId)
@@ -306,7 +306,7 @@ export async function POST(request) {
     }
 
     // 2. Obtener el artículo
-    const { data: article, error: articleError } = await supabase
+    const { data: article, error: articleError } = await getSupabase()
       .from('articles')
       .select('id, article_number, title, content')
       .eq('law_id', lawId)
@@ -321,7 +321,7 @@ export async function POST(request) {
     }
 
     // 3. Obtener las preguntas del artículo (todas o solo las especificadas)
-    let questionsQuery = supabase
+    let questionsQuery = getSupabase()
       .from('questions')
       .select(`
         id,
@@ -926,7 +926,7 @@ export async function GET(request) {
 
   try {
     // Obtener el artículo
-    const { data: article } = await supabase
+    const { data: article } = await getSupabase()
       .from('articles')
       .select('id')
       .eq('law_id', lawId)
@@ -941,7 +941,7 @@ export async function GET(request) {
     }
 
     // Obtener verificaciones guardadas
-    const { data: verifications, error } = await supabase
+    const { data: verifications, error } = await getSupabase()
       .from('ai_verification_results')
       .select(`
         *,

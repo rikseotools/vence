@@ -1,7 +1,7 @@
 // app/api/topic-review/update-status/route.js
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -37,7 +37,7 @@ export async function POST(request) {
     }
 
     // Actualizar el estado en la tabla questions
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabase()
       .from('questions')
       .update({
         topic_review_status: status,
@@ -54,14 +54,14 @@ export async function POST(request) {
     }
 
     // Si existe verificación IA, marcarla como descartada (override manual)
-    const { data: aiVerification } = await supabase
+    const { data: aiVerification } = await getSupabase()
       .from('ai_verification_results')
       .select('id')
       .eq('question_id', questionId)
       .single()
 
     if (aiVerification) {
-      await supabase
+      await getSupabase()
         .from('ai_verification_results')
         .update({
           discarded: true,

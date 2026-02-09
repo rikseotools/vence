@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -37,7 +37,7 @@ export async function POST(request) {
     const batchSize = MODEL_BATCH_LIMITS[model] || 4
 
     // Obtener artículos con sus IDs
-    const { data: articles, error: articlesError } = await supabase
+    const { data: articles, error: articlesError } = await getSupabase()
       .from('articles')
       .select('id, article_number')
       .eq('law_id', lawId)
@@ -53,7 +53,7 @@ export async function POST(request) {
     let totalBatches = 0
 
     for (const article of articles) {
-      const { count, error: countError } = await supabase
+      const { count, error: countError } = await getSupabase()
         .from('questions')
         .select('id', { count: 'exact', head: true })
         .eq('primary_article_id', article.id)

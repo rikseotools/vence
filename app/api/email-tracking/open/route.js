@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -23,7 +23,7 @@ export async function GET(request) {
       // Verificar si ya se registró una apertura en los últimos 5 minutos
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
       
-      const { data: recentOpens } = await supabase
+      const { data: recentOpens } = await getSupabase()
         .from('email_events')
         .select('id')
         .eq('user_id', userId)
@@ -36,13 +36,13 @@ export async function GET(request) {
         console.log('⏸️ Apertura duplicada ignorada - cooldown de 5 minutos activo')
       } else {
         // Obtener información del usuario para el tracking
-        const { data: userProfile } = await supabase
+        const { data: userProfile } = await getSupabase()
           .from('user_profiles')
           .select('email')
           .eq('id', userId)
           .single()
 
-        await supabase.from('email_events').insert({
+        await getSupabase().from('email_events').insert({
           user_id: userId,
           event_type: 'opened',
           email_type: type, // ✅ FIX: Usar el tipo real del email

@@ -2,7 +2,7 @@
 // Versión optimizada para cron diario - mínimo consumo de ancho de banda
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -212,7 +212,7 @@ export async function GET(request) {
 
   try {
     // Obtener leyes a verificar (incluir offset y content_length cacheados)
-    let query = supabase
+    let query = getSupabase()
       .from('laws')
       .select('id, short_name, name, boe_url, last_update_boe, last_checked, date_byte_offset, boe_content_length')
       .not('boe_url', 'is', null)
@@ -282,7 +282,7 @@ export async function GET(request) {
           lawResult.newDate = law.last_update_boe
 
           // Solo actualizar last_checked
-          await supabase.from('laws').update({
+          await getSupabase().from('laws').update({
             last_checked: now.toISOString()
           }).eq('id', law.id)
 
@@ -337,7 +337,7 @@ export async function GET(request) {
           updateData.change_status = 'changed'
           updateData.change_detected_at = now.toISOString()
         }
-        await supabase.from('laws').update(updateData).eq('id', law.id)
+        await getSupabase().from('laws').update(updateData).eq('id', law.id)
 
         results.push(lawResult)
         stats.checked++
@@ -378,7 +378,7 @@ export async function GET(request) {
           fullUpdateData.change_status = 'changed'
           fullUpdateData.change_detected_at = now.toISOString()
         }
-        await supabase.from('laws').update(fullUpdateData).eq('id', law.id)
+        await getSupabase().from('laws').update(fullUpdateData).eq('id', law.id)
       } else {
         stats.errors++
         lawResult.error = fullResult.reason

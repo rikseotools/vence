@@ -1,7 +1,7 @@
 // app/api/law-titles/route.js
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -16,7 +16,7 @@ export async function GET(request) {
     }
     
     // Obtener ID de la ley
-    const { data: lawData, error: lawError } = await supabase
+    const { data: lawData, error: lawError } = await getSupabase()
       .from('laws')
       .select('id, name')
       .eq('short_name', lawShortName)
@@ -27,7 +27,7 @@ export async function GET(request) {
     }
     
     // Obtener títulos únicos con información agregada
-    const { data: titlesData, error: titlesError } = await supabase
+    const { data: titlesData, error: titlesError } = await getSupabase()
       .from('articles')
       .select('title_number, section, article_number')
       .eq('law_id', lawData.id)

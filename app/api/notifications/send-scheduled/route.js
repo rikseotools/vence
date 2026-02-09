@@ -17,7 +17,7 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 }
 
 // Cliente Supabase con permisos de servicio
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -33,7 +33,7 @@ export async function POST(request) {
     console.log('🚀 Iniciando envío programado de notificaciones...')
 
     // Obtener usuarios que necesitan notificación
-    const { data: usersToNotify, error: usersError } = await supabase
+    const { data: usersToNotify, error: usersError } = await getSupabase()
       .from('users_needing_notifications')
       .select('*')
 
@@ -290,7 +290,7 @@ function getNotificationActions(type) {
 // Registrar notificación en logs
 async function logNotification(userId, type, message, payload) {
   try {
-    await supabase
+    await getSupabase()
       .from('notification_logs')
       .insert({
         user_id: userId,
@@ -326,7 +326,7 @@ async function updateNextNotificationTime(userId, patterns) {
 
     const nextNotificationTime = new Date(Date.now() + hoursUntilNext * 60 * 60 * 1000)
 
-    await supabase
+    await getSupabase()
       .from('user_smart_scheduling')
       .update({
         next_notification_time: nextNotificationTime.toISOString(),
@@ -343,7 +343,7 @@ async function updateNextNotificationTime(userId, patterns) {
 // Desactivar notificaciones para usuario
 async function disableUserNotifications(userId) {
   try {
-    await supabase
+    await getSupabase()
       .from('user_notification_settings')
       .update({
         push_enabled: false,
@@ -363,13 +363,13 @@ export async function GET() {
     const hasVapidKeys = !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)
     
     // Contar usuarios con notificaciones habilitadas
-    const { count: enabledUsers } = await supabase
+    const { count: enabledUsers } = await getSupabase()
       .from('user_notification_settings')
       .select('*', { count: 'exact', head: true })
       .eq('push_enabled', true)
 
     // Contar usuarios que necesitan notificación
-    const { count: pendingNotifications } = await supabase
+    const { count: pendingNotifications } = await getSupabase()
       .from('users_needing_notifications')
       .select('*', { count: 'exact', head: true })
 

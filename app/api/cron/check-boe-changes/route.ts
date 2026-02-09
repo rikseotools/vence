@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/api/cron/check-boe-changes/route.ts
 // Endpoint para verificar cambios en el BOE de leyes monitoreadas
 // Migrado a TypeScript con Drizzle y Zod
@@ -123,7 +123,7 @@ async function processLaw(
   stats: CheckStats,
   changes: DetectedChange[]
 ): Promise<boolean> {
-  let currentContentLength: number | null = null
+  let currentContentLength: number | null | undefined = null
 
   // ============================================
   // FASE 0: HEAD check con tolerancia de tamaño

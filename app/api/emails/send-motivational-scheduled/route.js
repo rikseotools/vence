@@ -98,7 +98,7 @@ async function checkEmailLimits(supabase, userId) {
   
   // Límite semanal: máximo 1 email motivacional por semana
   const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
-  const { data: weeklyEmails } = await supabase
+  const { data: weeklyEmails } = await getSupabase()
     .from('email_events')
     .select('id')
     .eq('user_id', userId)
@@ -115,7 +115,7 @@ async function checkEmailLimits(supabase, userId) {
   
   // Límite mensual: máximo 3 emails de cualquier tipo por mes
   const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
-  const { data: monthlyEmails } = await supabase
+  const { data: monthlyEmails } = await getSupabase()
     .from('email_events')
     .select('id')
     .eq('user_id', userId)
@@ -135,7 +135,7 @@ async function checkEmailLimits(supabase, userId) {
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Cliente Supabase con permisos de servicio
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -185,7 +185,7 @@ export async function POST(request) {
     console.log('🔍 Testing database connection...')
 
     // Test database connection first
-    const { data: testData, error: testError } = await supabase
+    const { data: testData, error: testError } = await getSupabase()
       .from('user_profiles')
       .select('id')
       .limit(1)
@@ -202,7 +202,7 @@ export async function POST(request) {
     console.log('✅ Database connection OK')
 
     // 1. Obtener tests activos de los últimos 30 días
-    const { data: sessions, error: sessionsError } = await supabase
+    const { data: sessions, error: sessionsError } = await getSupabase()
       .from('tests')
       .select('user_id, created_at, score')
       .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
@@ -232,7 +232,7 @@ export async function POST(request) {
     const uniqueUserIds = [...new Set(sessions.map(s => s.user_id))]
     
     // 3. Obtener información de usuarios
-    const { data: userProfiles, error: profilesError } = await supabase
+    const { data: userProfiles, error: profilesError } = await getSupabase()
       .from('user_profiles')
       .select('id, email, full_name')
       .in('id', uniqueUserIds)
@@ -453,7 +453,7 @@ async function analyzeUserForMotivationalEmail(userData, supabase) {
   const daysSinceLastSession = hoursSinceLastSession / 24
 
   // Verificar preferencias de email del usuario
-  const { data: emailPreferences } = await supabase
+  const { data: emailPreferences } = await getSupabase()
     .from('email_preferences')
     .select('unsubscribed_all, email_reactivacion')
     .eq('user_id', userId)
@@ -468,7 +468,7 @@ async function analyzeUserForMotivationalEmail(userData, supabase) {
   }
 
   // 🔧 FIX CRÍTICO: Verificar emails recientes en tabla correcta con cooldown de 7 días
-  const { data: recentEmails } = await supabase
+  const { data: recentEmails } = await getSupabase()
     .from('email_events')
     .select('created_at')
     .eq('user_id', userId)
@@ -487,7 +487,7 @@ async function analyzeUserForMotivationalEmail(userData, supabase) {
 
   // 🔧 UNIFICACIÓN: Verificar TODOS los tipos de emails en ambas tablas
   // Verificar en email_logs (sistema viejo de emailService.server.js)
-  const { data: emailLogsCheck } = await supabase
+  const { data: emailLogsCheck } = await getSupabase()
     .from('email_logs')
     .select('sent_at, email_type')
     .eq('user_id', userId)
@@ -650,7 +650,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
     }
 
     // Guardar evento en base de datos para tracking
-    const { error: insertError } = await supabase.from('email_events').insert({
+    const { error: insertError } = await getSupabase().from('email_events').insert({
       user_id: userId,
       email_type: 'motivation',
       event_type: 'sent',

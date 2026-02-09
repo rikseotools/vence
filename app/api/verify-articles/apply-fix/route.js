@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -27,7 +27,7 @@ export async function POST(request) {
     }
 
     // Obtener la pregunta actual para guardar historial
-    const { data: currentQuestion, error: fetchError } = await supabase
+    const { data: currentQuestion, error: fetchError } = await getSupabase()
       .from('questions')
       .select('id, correct_option, explanation, question_text')
       .eq('id', questionId)
@@ -59,7 +59,7 @@ export async function POST(request) {
     }
 
     // Guardar en historial de cambios antes de actualizar
-    await supabase.from('question_corrections').insert({
+    await getSupabase().from('question_corrections').insert({
       question_id: questionId,
       previous_correct_option: currentQuestion.correct_option,
       new_correct_option: updateData.correct_option ?? currentQuestion.correct_option,
@@ -75,7 +75,7 @@ export async function POST(request) {
     })
 
     // Actualizar la pregunta
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabase()
       .from('questions')
       .update(updateData)
       .eq('id', questionId)
@@ -86,7 +86,7 @@ export async function POST(request) {
 
     // Marcar la verificación como aplicada
     if (verificationId) {
-      await supabase
+      await getSupabase()
         .from('ai_verification_results')
         .update({
           fix_applied: true,

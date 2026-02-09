@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -22,7 +22,7 @@ export async function GET(request) {
     }
 
     // Obtener todos los artículos de la ley
-    const { data: articles, error: articlesError } = await supabase
+    const { data: articles, error: articlesError } = await getSupabase()
       .from('articles')
       .select('id, article_number, title')
       .eq('law_id', lawId)
@@ -46,7 +46,7 @@ export async function GET(request) {
     const articleIds = articles.map(a => a.id)
 
     // Obtener preguntas con su estado de verificación
-    const { data: questions, error: questionsError } = await supabase
+    const { data: questions, error: questionsError } = await getSupabase()
       .from('questions')
       .select('id, primary_article_id, verified_at, verification_status')
       .in('primary_article_id', articleIds)

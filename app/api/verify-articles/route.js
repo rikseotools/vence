@@ -11,7 +11,7 @@ import {
 } from '@/lib/eurlex-extractor'
 import { isStructureArticle } from '@/lib/api/article-sync'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -30,7 +30,7 @@ export async function GET(request) {
 
   try {
     // 1. Obtener la ley de la BD
-    let lawQuery = supabase
+    let lawQuery = getSupabase()
       .from('laws')
       .select('id, short_name, name, boe_url')
 
@@ -105,7 +105,7 @@ export async function GET(request) {
           message: 'Ley sin texto consolidado en BOE (solo documento original)'
         }
 
-        await supabase
+        await getSupabase()
           .from('laws')
           .update({
             last_checked: now,
@@ -161,7 +161,7 @@ export async function GET(request) {
     }
 
     // 4. Obtener artículos de la BD (incluyendo contenido)
-    const { data: dbArticles, error: dbError } = await supabase
+    const { data: dbArticles, error: dbError } = await getSupabase()
       .from('articles')
       .select('id, article_number, title, content')
       .eq('law_id', law.id)
@@ -323,7 +323,7 @@ export async function GET(request) {
     }
     console.log('💾 [VERIFY] Guardando summary para ley:', law.id, summaryToSave)
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabase()
       .from('laws')
       .update({
         last_checked: new Date().toISOString(),
