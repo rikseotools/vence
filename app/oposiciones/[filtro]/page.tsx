@@ -35,9 +35,14 @@ export async function generateStaticParams() {
 // ============================================
 
 async function getFilteredConvocatorias(filter: FilterInfo, slug: string) {
+  // En CI/build sin variables de entorno, devolver array vacío
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return [];
+  }
+
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
   let query = supabase
@@ -159,9 +164,14 @@ export async function generateMetadata({
 
 // Verificar si hay resultados sin cargar todos los datos
 async function checkHasResults(filter: FilterInfo, slug: string): Promise<boolean> {
+  // En CI/build sin variables de entorno, devolver false
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return false;
+  }
+
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
   let query = supabase

@@ -50,9 +50,14 @@ interface SearchParams {
 }
 
 async function getConvocatorias(searchParams: SearchParams) {
+  // En CI/build sin variables de entorno, devolver datos vacíos
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { convocatorias: [], total: 0 };
+  }
+
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
   const page = parseInt(searchParams.page || '1');
@@ -154,9 +159,14 @@ async function getConvocatorias(searchParams: SearchParams) {
 }
 
 async function getEstadisticas() {
+  // En CI/build sin variables de entorno, devolver datos vacíos
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { total: 0, porTipo: { convocatoria: 0, admitidos: 0 }, ultimaFecha: null };
+  }
+
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
   const [totalResult, convocatoriasResult, admitidosResult, ultimaResult] = await Promise.all([
