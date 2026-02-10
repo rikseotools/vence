@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { logger } from '../../shared/logger'
 
 // Cliente Supabase
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -157,7 +157,7 @@ async function createDispute(input: CreateDisputeInput): Promise<DisputeResult> 
   // Elegir tabla según tipo de pregunta
   const tableName = input.isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from(tableName)
     .insert({
       question_id: input.questionId,
@@ -197,7 +197,7 @@ async function findExistingDispute(
 ): Promise<Dispute | null> {
   const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from(tableName)
     .select('*')
     .eq('question_id', questionId)
@@ -221,7 +221,7 @@ async function findUserDispute(
 ): Promise<Dispute | null> {
   const tableName = isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from(tableName)
     .select('*')
     .eq('question_id', questionId)
@@ -239,7 +239,7 @@ async function findUserDispute(
  * Obtiene todas las disputas de una pregunta
  */
 export async function getDisputesForQuestion(questionId: string): Promise<Dispute[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('question_disputes')
     .select('*')
     .eq('question_id', questionId)
@@ -256,7 +256,7 @@ export async function getDisputesForQuestion(questionId: string): Promise<Disput
  * Obtiene las disputas pendientes de un usuario
  */
 export async function getUserPendingDisputes(userId: string): Promise<Dispute[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('question_disputes')
     .select('*')
     .eq('user_id', userId)
@@ -274,7 +274,7 @@ export async function getUserPendingDisputes(userId: string): Promise<Dispute[]>
  * Verifica si una pregunta tiene disputas pendientes
  */
 export async function hasOpenDisputes(questionId: string): Promise<boolean> {
-  const { count, error } = await supabase
+  const { count, error } = await getSupabase()
     .from('question_disputes')
     .select('*', { count: 'exact', head: true })
     .eq('question_id', questionId)

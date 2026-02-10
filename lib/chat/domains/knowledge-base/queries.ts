@@ -8,7 +8,7 @@ import { eq, and, or, ilike, inArray } from 'drizzle-orm'
 import { logger } from '../../shared/logger'
 
 // Cliente Supabase para RPC functions (match_knowledge_base usa pgvector)
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -50,7 +50,7 @@ export async function searchKnowledgeBase(
   const { threshold = 0.40, limit = 3, category = null } = options
 
   try {
-    const { data, error } = await supabase.rpc('match_knowledge_base', {
+    const { data, error } = await getSupabase().rpc('match_knowledge_base', {
       query_embedding: embedding,
       match_threshold: threshold,
       match_count: limit,
@@ -101,7 +101,7 @@ export async function searchKnowledgeBaseByKeywords(
       `title.ilike.%${kw}%,content.ilike.%${kw}%,short_answer.ilike.%${kw}%`
     ).join(',')
 
-    let query = supabase
+    let query = getSupabase()
       .from('ai_knowledge_base')
       .select('*')
       .eq('is_active', true)
@@ -186,7 +186,7 @@ export async function getByCategory(
  */
 export async function getById(id: string): Promise<KnowledgeBaseEntry | null> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('ai_knowledge_base')
       .select('*')
       .eq('id', id)

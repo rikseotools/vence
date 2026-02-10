@@ -4,7 +4,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { logger } from '../../shared/logger'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -40,7 +40,7 @@ export async function getLinkedArticle(questionId: string): Promise<LinkedArticl
 
   try {
     // Primero obtener el primary_article_id de la pregunta
-    const { data: question, error: questionError } = await supabase
+    const { data: question, error: questionError } = await getSupabase()
       .from('questions')
       .select('primary_article_id')
       .eq('id', questionId)
@@ -52,7 +52,7 @@ export async function getLinkedArticle(questionId: string): Promise<LinkedArticl
     }
 
     // Obtener el artículo con su ley
-    const { data: article, error: articleError } = await supabase
+    const { data: article, error: articleError } = await getSupabase()
       .from('articles')
       .select(`
         id,
@@ -98,7 +98,7 @@ export async function getQuestionFullData(questionId: string): Promise<QuestionF
   if (!questionId) return null
 
   try {
-    const { data: question, error } = await supabase
+    const { data: question, error } = await getSupabase()
       .from('questions')
       .select(`
         id,

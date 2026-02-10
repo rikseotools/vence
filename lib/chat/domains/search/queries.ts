@@ -9,7 +9,7 @@ import { logger } from '../../shared/logger'
 import type { ArticleMatch, SearchOptions } from '../../core/types'
 
 // Cliente Supabase para RPC functions (match_articles usa pgvector)
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -42,7 +42,7 @@ export async function searchArticlesBySimilarity(
   // Si hay leyes mencionadas, pedir más resultados
   const multiplier = mentionedLawNames.length > 0 ? 15 : 4
 
-  const { data: rawArticles, error } = await supabase.rpc('match_articles', {
+  const { data: rawArticles, error } = await getSupabase().rpc('match_articles', {
     query_embedding: embedding,
     match_threshold: minSimilarity,
     match_count: limit * multiplier,
@@ -59,7 +59,7 @@ export async function searchArticlesBySimilarity(
 
   // Obtener info de las leyes
   const lawIds = [...new Set(rawArticles.map((a: any) => a.law_id))]
-  const { data: lawsData } = await supabase
+  const { data: lawsData } = await getSupabase()
     .from('laws')
     .select('id, short_name, name, is_derogated')
     .in('id', lawIds)
@@ -161,7 +161,7 @@ export async function searchArticlesByLawDirect(
   const { limit = 15, searchTerms = null } = options
 
   // Buscar la ley
-  const { data: law, error: lawError } = await supabase
+  const { data: law, error: lawError } = await getSupabase()
     .from('laws')
     .select('id, short_name, name, is_derogated')
     .eq('short_name', lawShortName)
@@ -177,7 +177,7 @@ export async function searchArticlesByLawDirect(
     return []
   }
 
-  let query = supabase
+  let query = getSupabase()
     .from('articles')
     .select('id, law_id, article_number, title, content')
     .eq('law_id', law.id)
@@ -249,7 +249,7 @@ export async function searchArticlesByKeywords(
     .map(kw => `title.ilike.%${kw}%,content.ilike.%${kw}%`)
     .join(',')
 
-  const { data: articlesData, error } = await supabase
+  const { data: articlesData, error } = await getSupabase()
     .from('articles')
     .select(`
       id,
@@ -318,7 +318,7 @@ export async function searchArticlesForPattern(
   let lawInfo: { id: string; short_name: string; name: string } | null = null
 
   if (lawShortName) {
-    const { data: law } = await supabase
+    const { data: law } = await getSupabase()
       .from('laws')
       .select('id, short_name, name')
       .eq('short_name', lawShortName)
@@ -335,7 +335,7 @@ export async function searchArticlesForPattern(
     .flatMap(term => [`title.ilike.%${term}%`, `content.ilike.%${term}%`])
     .join(',')
 
-  let query = supabase
+  let query = getSupabase()
     .from('articles')
     .select(`
       id,
@@ -402,7 +402,7 @@ export async function findLawByName(
   name: string
 ): Promise<{ id: string; shortName: string; name: string } | null> {
   // 1. Primero intentar exact match por short_name (más preciso)
-  const { data: exactMatch } = await supabase
+  const { data: exactMatch } = await getSupabase()
     .from('laws')
     .select('id, short_name, name')
     .eq('short_name', name)
@@ -420,7 +420,7 @@ export async function findLawByName(
   }
 
   // 2. Si no hay exact match, intentar case-insensitive exact
-  const { data: ciExact } = await supabase
+  const { data: ciExact } = await getSupabase()
     .from('laws')
     .select('id, short_name, name')
     .ilike('short_name', name)
@@ -438,7 +438,7 @@ export async function findLawByName(
   }
 
   // 3. Fallback: fuzzy search (solo si no hay match exacto)
-  const { data: fuzzyMatch } = await supabase
+  const { data: fuzzyMatch } = await getSupabase()
     .from('laws')
     .select('id, short_name, name')
     .or(`short_name.ilike.%${name}%,name.ilike.%${name}%`)
@@ -473,7 +473,7 @@ export async function getOposicionLawIds(userOposicion: string): Promise<string[
   if (!positionType) return []
 
   // Obtener topics de esta oposición
-  const { data: topics } = await supabase
+  const { data: topics } = await getSupabase()
     .from('topics')
     .select('id')
     .eq('position_type', positionType)
@@ -483,7 +483,7 @@ export async function getOposicionLawIds(userOposicion: string): Promise<string[
   const topicIds = topics.map(t => t.id)
 
   // Obtener leyes de estos topics
-  const { data: scopes } = await supabase
+  const { data: scopes } = await getSupabase()
     .from('topic_scope')
     .select('law_id')
     .in('topic_id', topicIds)
@@ -545,7 +545,7 @@ async function loadLawsForDetection() {
     return lawsDetectionCache
   }
 
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('laws')
     .select('id, short_name, name')
     .eq('is_active', true)
@@ -727,7 +727,7 @@ export async function findArticleInLaw(
   logger.debug(`🔎 findArticleInLaw: searching ${lawShortName} art. ${articleNumber}`, { domain: 'search' })
 
   // Primero buscar la ley
-  const { data: law } = await supabase
+  const { data: law } = await getSupabase()
     .from('laws')
     .select('id, short_name, name')
     .eq('short_name', lawShortName)
@@ -736,7 +736,7 @@ export async function findArticleInLaw(
 
   if (!law) {
     // Intentar búsqueda case-insensitive
-    const { data: lawCI } = await supabase
+    const { data: lawCI } = await getSupabase()
       .from('laws')
       .select('id, short_name, name')
       .ilike('short_name', lawShortName)
@@ -749,7 +749,7 @@ export async function findArticleInLaw(
     }
   }
 
-  const effectiveLaw = law || (await supabase
+  const effectiveLaw = law || (await getSupabase()
     .from('laws')
     .select('id, short_name, name')
     .ilike('short_name', lawShortName)
@@ -759,7 +759,7 @@ export async function findArticleInLaw(
   if (!effectiveLaw) return null
 
   // Buscar el artículo en esa ley
-  const { data: article } = await supabase
+  const { data: article } = await getSupabase()
     .from('articles')
     .select('id, article_number, title, content')
     .eq('law_id', effectiveLaw.id)
@@ -768,7 +768,7 @@ export async function findArticleInLaw(
 
   if (!article) {
     // Intentar con variantes (ej: "9" vs "9.1")
-    const { data: articleFuzzy } = await supabase
+    const { data: articleFuzzy } = await getSupabase()
       .from('articles')
       .select('id, article_number, title, content')
       .eq('law_id', effectiveLaw.id)
@@ -867,7 +867,7 @@ export async function getHotArticlesByOposicion(
 
   // Helper para ejecutar query
   const executeQuery = async (targetOposicion: string | null) => {
-    let query = supabase
+    let query = getSupabase()
       .from('hot_articles')
       .select(`
         article_id,
@@ -942,7 +942,7 @@ async function enrichHotArticles(hotArticles: Array<{
   hotness_score: number
 }>): Promise<HotArticleResult[]> {
   const articleIds = hotArticles.map(h => h.article_id)
-  const { data: articlesData } = await supabase
+  const { data: articlesData } = await getSupabase()
     .from('articles')
     .select('id, title, content')
     .in('id', articleIds)
@@ -1055,7 +1055,7 @@ export function formatHotArticlesResponse(
  */
 export async function hasQuestionsForArticle(articleId: string): Promise<boolean> {
   try {
-    const { count, error } = await supabase
+    const { count, error } = await getSupabase()
       .from('questions')
       .select('id', { count: 'exact', head: true })
       .eq('primary_article_id', articleId)

@@ -184,12 +184,48 @@ const CHAT_LAW_ALIASES: Record<string, string[]> = {
 }
 
 /**
+ * Detecta la ley específicamente asociada a un número de artículo
+ * Ej: "art. 62 del TREBEP" -> TREBEP, "artículo 47 de la CE" -> CE
+ * Esto tiene PRIORIDAD porque indica exactamente qué ley se necesita
+ */
+function detectLawFromArticlePattern(message: string): string | null {
+  const msgLower = message.toLowerCase()
+
+  // Patrón: art(ículo) X del/de la/de [LEY]
+  // Captura la ley que viene JUSTO DESPUÉS del número de artículo
+  const patterns = [
+    /art[ií]culo\.?\s*\d+[.\s]*(?:\d+)?\s*(?:del?|de\s+la)\s+(\w+)/i,
+    /art\.?\s*\d+[.\s]*(?:\d+)?\s*(?:del?|de\s+la)\s+(\w+)/i,
+  ]
+
+  for (const pattern of patterns) {
+    const match = message.match(pattern)
+    if (match && match[1]) {
+      const lawAbbr = match[1].toLowerCase()
+      // Mapear a nombre corto reconocido
+      const shortName = mapLawSlugToShortName(lawAbbr)
+      if (shortName) {
+        return shortName
+      }
+    }
+  }
+
+  return null
+}
+
+/**
  * Detecta qué leyes se mencionan en el mensaje
  * Usa el mapeo centralizado de lawMappingUtils.ts + aliases específicos para chat
  */
 export function detectMentionedLaws(message: string): string[] {
   const msgLower = message.toLowerCase()
   const mentioned: string[] = []
+
+  // 0. PRIORIDAD: Detectar ley asociada al número de artículo (art. X del TREBEP)
+  const articleLaw = detectLawFromArticlePattern(message)
+  if (articleLaw) {
+    mentioned.push(articleLaw)
+  }
 
   // 1. Detectar abreviaturas comunes directamente (ce, lotc, lpac, etc.)
   const commonAbbreviations = [
