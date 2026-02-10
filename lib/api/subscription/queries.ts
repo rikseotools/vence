@@ -68,7 +68,7 @@ export async function getSubscription(
     }
 
     // Obtener suscripciones activas de Stripe
-    const subscriptions = await stripe.subscriptions.list({
+    const subscriptions = await stripe().subscriptions.list({
       customer: profile.stripeCustomerId,
       status: 'all',
       limit: 1,
@@ -154,7 +154,7 @@ export async function createPortalSession(
     }
 
     // Crear sesión del portal de Stripe
-    const portalSession = await stripe.billingPortal.sessions.create({
+    const portalSession = await stripe().billingPortal.sessions.create({
       customer: profile.stripeCustomerId,
       return_url: `${process.env.NEXT_PUBLIC_SITE_URL}/perfil?tab=suscripcion`
     })
@@ -198,7 +198,7 @@ export async function cancelSubscription(
     }
 
     // 2. Obtener suscripción activa de Stripe
-    const subscriptions = await stripe.subscriptions.list({
+    const subscriptions = await stripe().subscriptions.list({
       customer: profile.stripeCustomerId,
       status: 'active',
       limit: 1
@@ -213,7 +213,7 @@ export async function cancelSubscription(
     const periodEnd = new Date(subscription.current_period_end * 1000)
 
     // 3. Cancelar suscripción al final del período
-    await stripe.subscriptions.update(subscription.id, {
+    await stripe().subscriptions.update(subscription.id, {
       cancel_at_period_end: true
     })
 

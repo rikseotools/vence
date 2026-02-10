@@ -16,7 +16,7 @@ type StripeCustomer = Stripe.Customer
 
 // Helper to retrieve subscription
 async function getSubscription(subscriptionId: string): Promise<StripeSubscription> {
-  return await stripe.subscriptions.retrieve(subscriptionId)
+  return await stripe().subscriptions.retrieve(subscriptionId)
 }
 
 // Helper to determine plan type from subscription interval
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     let event: Stripe.Event
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+      event = stripe().webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err) {
       const error = err as Error
       console.error('Webhook signature verification failed:', error.message)
@@ -183,7 +183,7 @@ async function sendWebhookErrorEmail(error: Error): Promise<void> {
             <pre style="background: #1f2937; color: #f3f4f6; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">${error.stack || 'Sin stack trace'}</pre>
           </div>
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://dashboard.stripe.com/webhooks" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-right: 10px;">📊 Ver Webhooks en Stripe</a>
+            <a href="https://dashboard.stripe().com/webhooks" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; margin-right: 10px;">📊 Ver Webhooks en Stripe</a>
             <a href="https://www.vence.es/admin" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">🏠 Panel Admin</a>
           </div>
         </div>
@@ -370,7 +370,7 @@ async function handleCheckoutSessionCompleted(
   // CASO 2: Buscar por email
   console.log('🔍 Buscando usuario por email del customer...')
   try {
-    const customer = await stripe.customers.retrieve(session.customer as string) as StripeCustomer
+    const customer = await stripe().customers.retrieve(session.customer as string) as StripeCustomer
 
     if (customer.email) {
       const { data: existingUser } = await supabase
@@ -906,7 +906,7 @@ async function sendAdminPaymentIssueEmail(data: PaymentIssueEmailData): Promise<
             <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
           </div>
           <div style="text-align: center; margin-top: 20px;">
-            <a href="https://dashboard.stripe.com/subscriptions/${data.subscriptionId}" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">📊 Ver en Stripe</a>
+            <a href="https://dashboard.stripe().com/subscriptions/${data.subscriptionId}" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">📊 Ver en Stripe</a>
           </div>
         </div>
       </body>
@@ -928,7 +928,7 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
 
     if (!actualChargeId && data.paymentIntentId) {
       try {
-        const paymentIntent = await stripe.paymentIntents.retrieve(data.paymentIntentId)
+        const paymentIntent = await stripe().paymentIntents.retrieve(data.paymentIntentId)
         if (paymentIntent.latest_charge) {
           actualChargeId = paymentIntent.latest_charge as string
         }
@@ -940,9 +940,9 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
 
     if (actualChargeId) {
       try {
-        const charge = await stripe.charges.retrieve(actualChargeId)
+        const charge = await stripe().charges.retrieve(actualChargeId)
         if (charge.balance_transaction) {
-          const balanceTransaction = await stripe.balanceTransactions.retrieve(
+          const balanceTransaction = await stripe().balanceTransactions.retrieve(
             charge.balance_transaction as string
           )
           stripeFee = balanceTransaction.fee

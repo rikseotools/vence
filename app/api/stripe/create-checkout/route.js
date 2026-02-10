@@ -93,7 +93,7 @@ export async function POST(request) {
     if (!customerId) {
       console.log('🆕 Creando nuevo customer en Stripe...')
       try {
-        const customer = await stripe.customers.create({
+        const customer = await stripe().customers.create({
           email: user.email,
           name: user.full_name,
           metadata: {
@@ -151,7 +151,7 @@ export async function POST(request) {
       }
 
       console.log('🔄 Creando session de Stripe (pago inmediato)...')
-      const session = await stripe.checkout.sessions.create(sessionData)
+      const session = await stripe().checkout.sessions.create(sessionData)
 
       console.log('✅ Checkout session creada:', session.id)
       console.log('📊 Usuario:', user.email, '| Fuente:', user.registration_source, '| Plan:', user.plan_type)
