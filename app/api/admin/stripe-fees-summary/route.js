@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const getStripe = () => new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Descripciones en español para tipos de transacción
 function getTypeDescription(type) {
@@ -50,7 +50,7 @@ export async function GET(request) {
       };
     }
 
-    const transactions = await stripe.balanceTransactions.list(params);
+    const transactions = await getStripe().balanceTransactions.list(params);
 
     // Clasificar transacciones
     const summary = {
@@ -211,7 +211,7 @@ export async function GET(request) {
     }));
 
     // Obtener balance actual de Stripe
-    const balance = await stripe.balance.retrieve();
+    const balance = await getStripe().balance.retrieve();
     const currentBalance = {
       available: balance.available.reduce((sum, b) => sum + b.amount, 0),
       pending: balance.pending.reduce((sum, b) => sum + b.amount, 0),
