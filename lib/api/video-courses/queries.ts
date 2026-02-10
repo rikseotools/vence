@@ -13,7 +13,7 @@ import type {
 } from './schemas'
 
 // Supabase client for storage operations
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -319,7 +319,7 @@ export async function getVideoSignedUrl(
     const previewOnly = courseIsPremium && !isPremium && !lesson.isPreview
 
     // Generate signed URL (valid for 1 hour)
-    const { data: signedUrlData, error: signedUrlError } = await supabase
+    const { data: signedUrlData, error: signedUrlError } = await getSupabase()
       .storage
       .from('videos-premium')
       .createSignedUrl(lesson.videoPath, 3600)

@@ -226,7 +226,13 @@ export function detectarCategoriaDeContenido(contenido: string): Categoria | nul
     t.includes('cuerpo superior') ||
     t.includes('cuerpo facultativo') ||
     t.includes('ingeniero de') ||
-    t.includes('arquitecto de')
+    t.includes('arquitecto de') ||
+    t.includes('cuerpos docentes universitarios') ||
+    t.includes('profesor titular') ||
+    t.includes('catedrático') ||
+    t.includes('catedratico') ||
+    t.includes('doctorado') ||
+    t.includes('doctor en')
   ) {
     return 'A1';
   }

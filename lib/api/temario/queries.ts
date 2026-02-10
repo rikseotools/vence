@@ -247,11 +247,13 @@ async function getTopicContentBaseInternal(
   }
 }
 
-// 🚀 VERSIÓN CACHEADA del contenido base (1 día de cache)
+// 🚀 VERSIÓN CACHEADA del contenido base (cache permanente)
+// El contenido de leyes/artículos casi nunca cambia
+// Para invalidar manualmente: revalidateTag('temario')
 const getTopicContentBaseCached = unstable_cache(
   getTopicContentBaseInternal,
   ['topic-content-base'],
-  { revalidate: 86400, tags: ['temario'] } // 1 día
+  { revalidate: false, tags: ['temario'] }
 )
 
 // Función pública para obtener contenido del tema
