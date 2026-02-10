@@ -1,0 +1,212 @@
+{
+  "total": 30,
+  "success": 6,
+  "warning": 2,
+  "error": 22,
+  "details": [
+    {
+      "questionId": "0dd5ed37-9b76-4ef9-aa13-0afb37800d43",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "581eafcb-8098-4ebf-bf4a-8cff844d82dc",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "d6021615-7332-435c-a98d-8c1e41825e2a",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "63674223-7e64-409c-9481-9c3b4db7e7a3",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "b7307d13-d7bf-4b72-9b90-3acfb23e0018",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "e116e69d-2583-413c-8449-8d8ea8debd66",
+      "status": "success",
+      "urlsFound": 1,
+      "urlsValid": 0,
+      "urlValidations": [
+        {
+          "url": "https://support.microsoft.com/es-es/office/cambiar-el-espaciado-entre-p%C3%A1rrafos-f80cfb63-0b08-4785-a4e7-0f5b0d8d1449",
+          "valid": false,
+          "reason": "Contenido insuficiente"
+        }
+      ]
+    },
+    {
+      "questionId": "9de1d78a-ff55-4315-8cf0-a6f33ed8a22f",
+      "status": "success",
+      "urlsFound": 1,
+      "urlsValid": 0,
+      "urlValidations": [
+        {
+          "url": "https://support.microsoft.com/es-es/office/subrayar-texto-o-espacios-en-word-af0a5e3d-ba9c-4b95-891d-7b3829fa0e80",
+          "valid": false,
+          "reason": "Contenido insuficiente"
+        }
+      ]
+    },
+    {
+      "questionId": "a2f89c67-f10c-41bc-a856-392d3732d98a",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "2e9547a8-d285-44eb-8640-79c9fdd17e53",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "f4618938-27c1-4388-bdea-195b11b695d9",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "37829fdb-bdd9-4030-9126-3dadb733f8ad",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "714e62ae-f1de-41fc-bbd3-007f00573888",
+      "status": "success",
+      "urlsFound": 1,
+      "urlsValid": 0,
+      "urlValidations": [
+        {
+          "url": "https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-en-word-95ef89dd-7142-4b50-afb2-f762f663ceb2",
+          "valid": false,
+          "reason": "Contenido insuficiente"
+        }
+      ]
+    },
+    {
+      "questionId": "ce2b1acc-2e63-4064-86f6-ae131a0cb725",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "07e22f6a-7863-46b6-a5b2-d605d72e3770",
+      "status": "warning",
+      "reason": "Sin explicación"
+    },
+    {
+      "questionId": "5a731471-5999-42fc-afaf-1bf1f9c48dd4",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "479671ea-452a-4dac-8246-1fa42c65dc0a",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "ce5ad92a-e0d5-403c-9d54-c3b205eda7b8",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "18c57dcb-1a98-4bf7-85de-e780451d186c",
+      "status": "success",
+      "urlsFound": 1,
+      "urlsValid": 0,
+      "urlValidations": [
+        {
+          "url": "https://support.microsoft.com/es-es/office/m%C3%A9todos-abreviados-de-teclado-en-word-95ef89dd-7142-4b50-afb2-f762f663ceb2",
+          "valid": false,
+          "reason": "Contenido insuficiente"
+        }
+      ]
+    },
+    {
+      "questionId": "b9247a6d-9067-4925-acab-6d870c387ade",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "ee07b9f8-449c-4e43-a68b-1e19429452a6",
+      "status": "success",
+      "urlsFound": 1,
+      "urlsValid": 1,
+      "urlValidations": [
+        {
+          "url": "https://support.microsoft.com/es-es/office/insertar-un-salto-de-secci%C3%B3n-eef20fd8-e38c-4ba6-a027-e503bdf8375c",
+          "valid": true,
+          "reason": "URL validada"
+        }
+      ]
+    },
+    {
+      "questionId": "1b0baa01-5800-4da1-ac83-cb4669eb4c2c",
+      "status": "warning",
+      "reason": "Sin explicación"
+    },
+    {
+      "questionId": "e8d368e4-fce0-41d0-ad9b-f07ce716c42f",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "bcb2f9be-84df-4946-9889-879e29d7f5cd",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "86ec20fb-a004-4b28-aae5-4783e9d2a109",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "8fb5ea4b-6d58-4c19-b090-9158a59f7075",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "af0aedca-1b4b-4302-8106-2bd912f97b6a",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "2db79b93-0313-4f2d-9447-b58dc373d2d2",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "57969daa-6822-4a9a-b697-e0ab189a1dd6",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "64932671-8968-42f3-8563-adee4e75e804",
+      "status": "error",
+      "reason": "No contiene URLs de Microsoft válidas"
+    },
+    {
+      "questionId": "4a94a126-cfb0-404c-bd21-86ae37ce266b",
+      "status": "success",
+      "urlsFound": 1,
+      "urlsValid": 0,
+      "urlValidations": [
+        {
+          "url": "https://support.microsoft.com/es-es/office/seleccionar-texto-en-word-e9df73d3-7cb6-4da1-afc0-c3cf1b9f8df6",
+          "valid": false,
+          "reason": "Contenido insuficiente"
+        }
+      ]
+    }
+  ],
+  "statistics": {
+    "totalUrlsFound": 6,
+    "totalUrlsValid": 1,
+    "averageUrlsPerQuestion": "1.00",
+    "averageValidUrls": "0.17"
+  }
+}

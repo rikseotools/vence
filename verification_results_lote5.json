@@ -1,0 +1,162 @@
+[
+  {
+    "questionId": "33ad0d2d-daf5-49c6-a324-fe531e3f0127",
+    "status": "tech_bad_answer_and_explanation",
+    "answerOk": false,
+    "explanationOk": false,
+    "improvedExplanation": "PREGUNTA INVÁLIDA:\n\nEn Word 365, NO existe una sección separada llamada \"Opciones de documento\" en la ficha Archivo.\n\nLo que SÍ existe:\n\n**Archivo > Opciones:**\nConfiguraciones globales que afectan al funcionamiento de Word en todos los documentos (idioma, autorrecuperación, ortografía, personalización de cinta, etc.)\n\n**Archivo > Información:**\nOpciones específicas del documento actual:\n- Proteger documento\n- Inspeccionar documento\n- Administrar documento\n- Propiedades del documento\n\nLa pregunta está basada en terminología incorrecta que no corresponde con la interfaz real de Word 365.\n\nRECOMENDACIÓN: Eliminar esta pregunta o reformularla completamente usando la terminología correcta de Microsoft.",
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/troubleshoot/word/reset-options-and-settings-in-word",
+    "verifiedAt": "2026-01-23T15:30:00Z",
+    "notes": "La terminología 'Opciones de documento' como elemento separado no existe en Word 365. Solo existe 'Archivo > Opciones' (global) y 'Archivo > Información' (específico del documento)."
+  },
+  {
+    "questionId": "d9165445-b880-4035-bdc6-b651c2675336",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/troubleshoot/office-suite-issues/manage-office-program-templates",
+    "verifiedAt": "2026-01-23T15:32:00Z",
+    "notes": "La respuesta C (Nombre del archivo) es correcta. Al cambiar el nombre del archivo al guardar, se crea una nueva plantilla conservando la original. La explicación es clara y precisa."
+  },
+  {
+    "questionId": "13d9573a-41bf-45db-b599-24c7716ab8cb",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/deployoffice/compat/office-file-format-reference",
+    "verifiedAt": "2026-01-23T15:34:00Z",
+    "notes": "La respuesta B es correcta. Para guardar en otro formato (HTML, PDF, etc.), se usa Archivo > Guardar como y se selecciona el tipo en el desplegable 'Tipo'."
+  },
+  {
+    "questionId": "279f019e-edef-41a5-859d-979bee15cd62",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5125905/pregunta-sobre-extensi-n-doc",
+    "verifiedAt": "2026-01-23T15:36:00Z",
+    "notes": "La respuesta A es correcta. .dotm = plantilla habilitada para macros VBA para Word 2007 y posteriores. La explicación es precisa y bien documentada."
+  },
+  {
+    "questionId": "567965ce-1a69-4a0b-a13a-e09a1065d7ec",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5232441/impresi-n-de-revisiones-en-pdf-de-archivo-word",
+    "verifiedAt": "2026-01-23T15:38:00Z",
+    "notes": "La respuesta D es correcta. En Archivo > Imprimir > Configuración, se selecciona 'Imprimir documento con revisiones' o 'Imprimir con revisiones'."
+  },
+  {
+    "questionId": "649e3bde-71d8-4260-b6cd-1876f0ca601d",
+    "status": "tech_bad_explanation",
+    "answerOk": true,
+    "explanationOk": false,
+    "improvedExplanation": "La opción D es correcta SOLO si el documento está en OneDrive o SharePoint.\n\n**Restaurar versiones anteriores - DOS MÉTODOS:**\n\n**1. Documentos en OneDrive/SharePoint (con Autoguardado):**\n- Hacer clic en el nombre del archivo (parte superior de la ventana)\n- Seleccionar \"Historial de versiones\"\n- Elegir versión a restaurar\n\n**2. Documentos locales (con Autorrecuperación):**\n- Ir a Archivo > Información\n- Hacer clic en \"Administrar documento\"\n- Seleccionar versión de autorrecuperación disponible\n\n**Diferencias clave:**\n- OneDrive: Historial completo de versiones guardadas automáticamente\n- Local: Solo versiones temporales de autorrecuperación (limitadas)\n\nLa pregunta debería especificar la ubicación del documento (OneDrive vs local) para evitar ambigüedad.\n\nFuente: Microsoft Learn - Cómo recuperar documentos de Word",
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/troubleshoot/word/recover-lost-unsaved-corrupted-document",
+    "verifiedAt": "2026-01-23T15:40:00Z",
+    "notes": "La respuesta D es correcta pero incompleta. El método varía según si el documento está en OneDrive (historial de versiones en nombre archivo) o local (Administrar documento). La explicación original es ambigua."
+  },
+  {
+    "questionId": "387fe06d-2888-4eff-8b29-b6262f045ce2",
+    "status": "tech_bad_explanation",
+    "answerOk": true,
+    "explanationOk": false,
+    "improvedExplanation": "La respuesta correcta es D: **Archivo > Opciones > General**\n\nPasos exactos para configurar el nombre de usuario en Word 365:\n\n1. Hacer clic en **Archivo**\n2. Seleccionar **Opciones**\n3. En el panel izquierdo, hacer clic en **General**\n4. Buscar la sección superior donde aparece:\n   - **Nombre de usuario:** [Campo de texto]\n   - **Iniciales:** [Campo de texto]\n5. Modificar los valores\n6. Hacer clic en **Aceptar**\n\n**Este nombre e iniciales se usan para:**\n- Marcas de revisión cuando Control de cambios está activo\n- Comentarios insertados en documentos\n- Historial de versiones\n\n**IMPORTANTE:** Este cambio afecta a TODAS las aplicaciones de Microsoft Office instaladas en el equipo (Word, Excel, PowerPoint, etc.).\n\nFuente: Microsoft Support - Control de cambios en Word",
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/troubleshoot/word/reset-options-and-settings-in-word",
+    "verifiedAt": "2026-01-23T15:42:00Z",
+    "notes": "La respuesta D es correcta. La explicación original menciona 'Personalizar la copia de Microsoft Office' que puede no aparecer con ese nombre en versiones recientes. La sección correcta es simplemente 'General' en Archivo > Opciones."
+  },
+  {
+    "questionId": "508a950d-4da5-40ad-94d1-c70ce162584a",
+    "status": "tech_bad_answer",
+    "answerOk": false,
+    "explanationOk": false,
+    "improvedExplanation": "RESPUESTA INCORRECTA - El triple clic en el margen izquierdo NO selecciona todo el documento.\n\n**Método oficial documentado por Microsoft para seleccionar TODO el documento:**\n\n**Atajo de teclado (método recomendado):**\n- **Ctrl+E** (en versión española de Word)\n- **Ctrl+A** (en versión inglesa de Word)\n\n**Otros métodos oficiales:**\n- Cinta de opciones: **Inicio > Seleccionar > Seleccionar todo**\n- Menú contextual: Clic derecho > Seleccionar todo\n\n**Lo que hace el triple clic:**\n- Triple clic en el texto: Selecciona UN PÁRRAFO\n- Doble clic: Selecciona UNA PALABRA\n- Clic simple en margen izquierdo: Selecciona UNA LÍNEA\n- Doble clic en margen izquierdo: Selecciona UN PÁRRAFO\n\n**La opción D es INCORRECTA** según documentación oficial de Microsoft.\n\n**Respuesta correcta:** Ninguna de las opciones listadas. Debería ser Ctrl+E.\n\nFuente: Microsoft Learn - Atajos de teclado en Word",
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5366911/duda-atajo-de-teclado-ctrl-a",
+    "verifiedAt": "2026-01-23T15:44:00Z",
+    "notes": "La respuesta D (triple clic izquierda) es INCORRECTA. El método oficial es Ctrl+E (español) o Ctrl+A (inglés). Triple clic selecciona un párrafo, NO todo el documento. RECOMENDACIÓN: Cambiar respuesta correcta."
+  },
+  {
+    "questionId": "e328f8ee-e8d9-41e7-b80c-456e42962d72",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5128351/problema-impresi-n-con-comentarios",
+    "verifiedAt": "2026-01-23T15:46:00Z",
+    "notes": "La respuesta A es correcta. Al seleccionar 'Imprimir solo comentarios' (también llamado 'Lista de marcas'), se imprime un resumen separado con solo los comentarios, sin el contenido del documento."
+  },
+  {
+    "questionId": "d27ebf50-6040-401f-b86e-8f3544657441",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/deployoffice/compat/office-file-format-reference",
+    "verifiedAt": "2026-01-23T15:48:00Z",
+    "notes": "La respuesta D es correcta. La diferencia clave entre .dotm y .dotx es que .dotm puede contener y ejecutar macros VBA, mientras que .dotx no. Explicación clara y precisa."
+  },
+  {
+    "questionId": "d353e414-6773-40d0-adde-d9065ece7937",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/microsoft-365-apps/deploy/accessibility-guide",
+    "verifiedAt": "2026-01-23T15:50:00Z",
+    "notes": "La respuesta D es correcta. El Comprobador de accesibilidad ayuda a detectar y corregir problemas para facilitar lectura a personas con discapacidad (visual, auditiva, cognitiva, motriz). Explicación completa y precisa."
+  },
+  {
+    "questionId": "61d452bf-418f-4409-9602-31b6941031e8",
+    "status": "tech_bad_answer",
+    "answerOk": false,
+    "explanationOk": false,
+    "improvedExplanation": "RESPUESTA INCORRECTA - El 'Estado de accesibilidad' NO está visible por defecto en la barra de estado.\n\n**Elementos que SÍ aparecen por defecto en la barra de estado de Word:**\n✅ Páginas del documento (Página X de Y)\n✅ Recuento de palabras\n✅ Idioma de corrección\n✅ Vista del documento (Lectura, Diseño de impresión, Web)\n✅ Nivel de zoom\n\n**Elementos que NO aparecen por defecto:**\n❌ Estado de accesibilidad (se puede activar con clic derecho)\n❌ Número de sección\n❌ Número de línea\n❌ Número de columna\n\n**Personalización de barra de estado:**\nHacer clic derecho en la barra de estado para activar/desactivar elementos opcionales.\n\n**La opción D es INCORRECTA** porque afirma que TODOS los elementos (incluyendo Estado de accesibilidad) están en la barra predeterminada.\n\n**Respuesta correcta:** C (Estado de la accesibilidad) - NO se encuentra visible por defecto.\n\nFuente: Microsoft Learn - Guía de accesibilidad Microsoft 365",
+    "microsoftSource": "https://learn.microsoft.com/es-es/microsoft-365-apps/deploy/accessibility-guide",
+    "verifiedAt": "2026-01-23T15:52:00Z",
+    "notes": "La respuesta D es INCORRECTA. El 'Estado de accesibilidad' NO está visible por defecto en la barra de estado, aunque puede activarse. La respuesta correcta debería ser C. RECOMENDACIÓN: Cambiar respuesta correcta."
+  },
+  {
+    "questionId": "15c5a257-616e-4c22-8839-974be70c2630",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5265116/c-mo-eliminar-un-salto-de-secci-n-continua-sin-que",
+    "verifiedAt": "2026-01-23T15:54:00Z",
+    "notes": "La respuesta D es correcta. Al eliminar un salto de sección, las secciones se fusionan y el documento adopta la configuración de encabezado/pie de la sección anterior, perdiendo configuraciones específicas."
+  },
+  {
+    "questionId": "c36f20ba-1b22-4004-b495-93d2280ea969",
+    "status": "tech_bad_explanation",
+    "answerOk": true,
+    "explanationOk": false,
+    "improvedExplanation": "La pregunta tiene AMBIGÜEDAD TERMINOLÓGICA importante.\n\n**'Quitar de la galería' NO es lo mismo que 'borrar/eliminar':**\n\n**Estilos predefinidos de Word (Normal, Título 1, Título 2, etc.):**\n❌ NO se pueden ELIMINAR permanentemente\n✅ SÍ se pueden OCULTAR de la galería\n✅ SÍ se pueden MODIFICAR\n\n**Cómo OCULTAR de la galería (opción C):**\n1. Inicio > Panel de estilos\n2. Clic derecho en el estilo predefinido\n3. Seleccionar \"Quitar de la galería de estilos rápidos\"\n4. El estilo sigue existiendo, solo se oculta de vista rápida\n\n**Cómo ELIMINAR estilos personalizados:**\n- Solo los estilos CREADOS POR EL USUARIO se pueden eliminar permanentemente\n- Panel de estilos > Clic derecho > Eliminar\n\n**Conclusión sobre la pregunta:**\n- Si pregunta \"¿cómo OCULTAR?\" → Respuesta C correcta\n- Si pregunta \"¿cómo BORRAR?\" → Respuesta B correcta (\"No se puede borrar\")\n\nLa opción B (\"No se puede borrar un estilo predefinido\") es técnicamente más correcta si interpretamos \"borrar\" como eliminación permanente.\n\n**RECOMENDACIÓN:** Reformular pregunta especificando:\n- \"Ocultar de la galería\" → Respuesta C\n- \"Eliminar permanentemente\" → Respuesta B\n\nFuente: Microsoft Q&A - Eliminar estilos",
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5191305/se-puede-borrar-un-estilo-predefinido-en-word-2010",
+    "verifiedAt": "2026-01-23T15:56:00Z",
+    "notes": "La respuesta C es técnicamente correcta para 'quitar de la galería', pero la pregunta dice 'borrar', que implica eliminación permanente. Los estilos predefinidos NO se pueden borrar, solo ocultar. La pregunta necesita reformulación para clarificar terminología."
+  },
+  {
+    "questionId": "e7e48d69-8485-44be-8624-cfb533cd5995",
+    "status": "tech_bad_answer",
+    "answerOk": false,
+    "explanationOk": false,
+    "improvedExplanation": "RESPUESTA INCORRECTA - NO todas las opciones evitan cambios accidentales.\n\n**Análisis de cada herramienta de Proteger documento:**\n\n**A) Cifrar con contraseña:**\n❌ NO evita cambios accidentales\n✅ Evita acceso NO AUTORIZADO\n- Requiere contraseña para ABRIR el documento\n- Propósito: Confidencialidad y seguridad\n- No previene edición accidental por usuarios autorizados\n\n**B) Restringir edición:**\n✅ Evita cambios (pero no específicamente 'accidentales')\n- Define qué partes se pueden editar\n- Puede proteger con contraseña opcional\n- Propósito: Control de edición específico\n\n**C) Abrir siempre como solo lectura:**\n✅ SÍ evita cambios ACCIDENTALES específicamente\n- Sugiere abrir sin permitir cambios\n- Usuario puede editar SI LO DESEA explícitamente\n- Propósito: Advertencia contra edición no intencionada\n- NO requiere contraseña\n\n**La opción D ('Todas las respuestas') es INCORRECTA** porque 'Cifrar con contraseña' NO está diseñada para prevenir cambios accidentales, sino para seguridad y confidencialidad.\n\n**Respuesta más adecuada:** C ('Abrir siempre como solo lectura')\n\nEs la MÁS ESPECÍFICA para cambios accidentales porque:\n- No bloquea absolutamente\n- Advierte al usuario\n- Permite cambios intencionales\n- No requiere contraseña\n\nFuente: Microsoft Support - Proteger documento con contraseña",
+    "microsoftSource": "https://support.microsoft.com/es-es/office/proteger-un-documento-con-una-contrase%C3%B1a-05084cc3-300d-4c1a-8416-38d3e37d6826",
+    "verifiedAt": "2026-01-23T15:58:00Z",
+    "notes": "La respuesta D es INCORRECTA. 'Cifrar con contraseña' NO está diseñada para evitar cambios accidentales (su propósito es confidencialidad). La respuesta más adecuada es C ('Abrir siempre como solo lectura'). RECOMENDACIÓN: Cambiar respuesta correcta a C."
+  },
+  {
+    "questionId": "9a8b99c5-c1a2-4e10-9c19-ad66422f7287",
+    "status": "tech_bad_explanation",
+    "answerOk": true,
+    "explanationOk": false,
+    "improvedExplanation": "La respuesta A es correcta, pero la explicación necesita aclaraciones importantes.\n\n**MÉTODO 1 - Todas las páginas impares (OPCIÓN A - CORRECTA):**\n1. Archivo > Imprimir\n2. En Configuración, buscar desplegable \"Imprimir todas las páginas\"\n3. Seleccionar **\"Imprimir solo páginas impares\"**\n4. Esto imprimirá TODAS las páginas impares del documento (1, 3, 5, 7, 9, 11...)\n\n**MÉTODO 2 - Páginas específicas no consecutivas:**\nPara imprimir SOLO las páginas 1, 3, 5, 7 de un documento que tiene más páginas:\n- En el campo \"Páginas\" escribir: **1,3,5,7** (con COMAS)\n- NO usar guiones para páginas no consecutivas\n\n**Por qué las otras opciones son INCORRECTAS:**\n\n❌ **B) \"1-3-5-7\"** - INCORRECTO\n- El guion (-) se usa SOLO para rangos continuos\n- Ejemplo: \"1-5\" significa páginas 1, 2, 3, 4, 5\n- Para páginas no consecutivas usar COMAS: \"1,3,5,7\"\n\n❌ **C) \"Páginas alternas\"** - NO EXISTE en Word\n- Esta opción no existe en la interfaz de Word\n\n**Nota importante:**\nLa opción A es correcta SOLO si deseas imprimir TODAS las páginas impares del documento. Si el documento tiene 20 páginas, imprimirá 1, 3, 5, 7, 9, 11, 13, 15, 17, 19.\n\nSi solo quieres páginas específicas (1, 3, 5, 7 de un documento largo), debes usar: 1,3,5,7 en el campo Páginas.\n\nFuente: Microsoft Learn - Cómo exportar páginas seleccionadas",
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5353127/c-mo-exportar-de-word-a-pdf-solo-algunas-p-ginas-s",
+    "verifiedAt": "2026-01-23T16:00:00Z",
+    "notes": "La respuesta A es correcta pero la explicación necesita clarificar que 'Imprimir páginas impares' imprime TODAS las impares, no solo 1,3,5,7. Para páginas específicas, usar 1,3,5,7 con comas. La opción B (1-3-5-7) es incorrecta porque guiones son para rangos continuos."
+  }
+]

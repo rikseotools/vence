@@ -1,0 +1,452 @@
+[
+  {
+    "questionId": "f24105b7-3bce-48f9-98ad-f83d10d7985f",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office (función Portada)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Portada). Insertar > Portada permite añadir páginas prediseñadas. La explicación es clara y correcta."
+  },
+  {
+    "questionId": "32b54e2b-aea3-43aa-92a9-68ac41ddab01",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/4376005/",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (José María). Para buscar literalmente 'José María' no se necesitan caracteres comodín. La tabla de comodines es correcta según Microsoft."
+  },
+  {
+    "questionId": "d7b8cb98-03be-4561-9a3f-98011844268a",
+    "status": "tech_bad_answer",
+    "answerOk": false,
+    "explanationOk": false,
+    "improvedExplanation": "La expresión correcta NO es [150-175].\n\nPara buscar números entre 150 y 175 con caracteres comodín en Word, la sintaxis correcta sería:\n15[0-9] para encontrar números de 150-159\n16[0-9] para encontrar números de 160-169\n17[0-5] para encontrar números de 170-175\n\nLa notación [150-175] es INCORRECTA porque los corchetes solo funcionan para rangos de caracteres individuales, no para rangos numéricos completos.\n\nEn Word, para buscar cualquier dígito de un rango específico, se usa la sintaxis [x-y] donde x e y son dígitos individuales.\n\nReferencia: Documentación oficial de Microsoft sobre caracteres comodín en Word (support.microsoft.com/es-es).",
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/4376005/",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "RESPUESTA INCORRECTA. La opción A [150-175] NO es válida en Word. Los corchetes solo aceptan rangos de caracteres individuales como [0-9] o [a-z], no rangos numéricos completos."
+  },
+  {
+    "questionId": "8c688670-1c79-49f4-94d2-177631781b0f",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/4376005/",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: B (Indica negación). El símbolo ! dentro de corchetes [!a] indica negación según la documentación oficial de Microsoft sobre comodines."
+  },
+  {
+    "questionId": "28387fe6-f0d6-4ae9-a89c-bf9db067493f",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (varios hilos sobre barra de estado)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (clic derecho). Se personaliza la barra de estado haciendo clic con el botón derecho sobre ella."
+  },
+  {
+    "questionId": "eb3292ff-aec3-41eb-bb80-53c212e71b0f",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/insertar-un-salto-de-secci%C3%B3n-eef20fd8-e38c-4ba6-a027-e503bdf8375c",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Ocultar determinadas partes). Las secciones NO sirven para ocultar partes del documento. Las opciones A, B, C son usos válidos de secciones."
+  },
+  {
+    "questionId": "afe94d01-7c16-4b1d-8ed3-84a5bcd8b328",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (varios hilos sobre mostrar todo)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: B (Muestra marcas de párrafo y símbolos de formato). El botón 'Mostrar todo' (¶) muestra caracteres no imprimibles. Ctrl+Shift+8 es el atajo."
+  },
+  {
+    "questionId": "1b01c168-83a4-4a58-bc13-5b60b782e93a",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre estilos)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Se reemplaza por 'Normal'). Al eliminar un estilo personalizado aplicado, Word automáticamente lo sustituye por el estilo Normal. Comportamiento estándar documentado."
+  },
+  {
+    "questionId": "40d96974-ebcf-448c-bb06-0fb9c867d471",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre márgenes y secciones)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Aplica a todas las secciones). Si no se especifica 'Aplicar a: Esta sección', los márgenes se aplican a todo el documento por defecto."
+  },
+  {
+    "questionId": "c031055f-444a-48a5-8c3b-7689dc8df3c3",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/quitar-un-salto-de-p%C3%A1gina-e696a217-adc7-4ef3-977b-de0c3d87b762",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Mostrar todo). La opción 'Mostrar todo' (¶) en Inicio permite visualizar símbolos de formato, saltos de página, espacios, etc."
+  },
+  {
+    "questionId": "03622d46-ff09-4802-b616-50b1ff90b77f",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/insertar-un-salto-de-secci%C3%B3n-eef20fd8-e38c-4ba6-a027-e503bdf8375c",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Secciones). Las secciones permiten aplicar formato específico a partes del documento (encabezados diferentes, orientación, columnas, márgenes)."
+  },
+  {
+    "questionId": "5f07bc46-b743-4f9b-af25-d5ca86290f72",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre temas)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Temas). En Diseño > Temas se aplican conjuntos predefinidos de colores, fuentes y efectos para dar apariencia uniforme al documento."
+  },
+  {
+    "questionId": "e5a570de-0154-441e-8457-5f58cf4f00c7",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "Conocimiento general de Word sobre formato de párrafo vs. carácter",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Líneas y Párrafos). El formato de párrafo afecta a bloques de texto (párrafos completos y líneas), no a caracteres individuales."
+  },
+  {
+    "questionId": "8db8f01e-de76-4638-a2a9-fbdb6676ceb2",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/insertar-un-objeto-en-word-8fc1ea53-0e01-4603-a4cf-98c49b6ea3f5",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: C (Insertar > Texto > Objeto > Texto de archivo). Esta es la ruta correcta para insertar contenido de un documento existente."
+  },
+  {
+    "questionId": "306e2d08-9467-47bd-913f-bce317409be7",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre formato de imagen)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: B (Seleccionar imagen y pulsar Formato de imagen). Al seleccionar una imagen aparece automáticamente la pestaña contextual Formato de imagen."
+  },
+  {
+    "questionId": "9779f81c-59cb-4d5c-ae0d-b516ef6cb980",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/agregar-una-celda-fila-o-columna-a-una-tabla-b030ef77-f219-4998-868e-ade5175343b0",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: C (El contenido se elimina pero la celda permanece). Suprimir elimina el contenido de la celda, no la estructura de la tabla."
+  },
+  {
+    "questionId": "fae46674-ac5b-4f56-9b95-502c5df10485",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre girar imágenes)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: B (Organizar). En Formato > grupo Organizar se encuentra el botón Girar para rotar objetos e imágenes."
+  },
+  {
+    "questionId": "12866c01-1830-40d9-a5af-a0c3716047d7",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre formato de imagen)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Seleccionar y pulsar Formato de Imagen). Procedimiento estándar para manipular imágenes en Word 365."
+  },
+  {
+    "questionId": "bc06c590-5666-4ef2-a9a2-5bf054b487b0",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/vba/api/word.table.autofitbehavior",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Autoajustar a la ventana). Esta opción ajusta la tabla para ocupar el ancho completo de la página."
+  },
+  {
+    "questionId": "b3f1cea9-7403-46f3-9e03-446e33f9005f",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/4923984/",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Dividir tabla). Herramientas de tabla > Presentación > Dividir tabla separa una tabla en dos desde la fila seleccionada."
+  },
+  {
+    "questionId": "3d0e1d0f-c5e0-48b7-8eb6-d2b4e4f24f6a",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/insertar-numeros-de-pagina-9f366518-0500-4b45-903d-987d3827c007",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: C (Insertar > Número de Página). La opción está en la pestaña Insertar, grupo Encabezado y pie de página."
+  },
+  {
+    "questionId": "8ddf627e-a9d4-44d5-8c8f-c787071be213",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/agregar-texto-alternativo-a-formas-im%C3%A1genes-gr%C3%A1ficos-gr%C3%A1ficos-smartart-u-otros-objetos-44989b2a-903c-4d9a-b742-6a75b451c669",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Formato de imagen > Accesibilidad > Texto alternativo). Ruta correcta para añadir texto alternativo a imágenes para accesibilidad."
+  },
+  {
+    "questionId": "591e6cb8-8757-490e-853b-269b1932a1a4",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/deshacer-rehacer-o-repetir-una-acci%C3%B3n-84bdb9bc-4e23-4f06-ba78-f7b893eb2d28",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Control + Y). Ctrl+Y es el atajo estándar de teclado para Rehacer en Word 365 y Office."
+  },
+  {
+    "questionId": "f9d0a78d-3bbb-4eab-bfee-bbf9199312bc",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "Conocimiento general de Word sobre tablas (basado en la descripción)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Tabla 7x2 con primera columna combinada). Procedimiento correcto para crear una tabla con texto vertical en primera columna y lista numerada en segunda."
+  },
+  {
+    "questionId": "599053ee-8337-4983-9856-350f154ed3d4",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/convertir-texto-en-tabla-o-tabla-en-texto-b5ce45db-52d5-4fe3-8e9c-e04b62f189e1",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: B (Insertar > Tabla > Convertir texto en tabla). Ruta correcta para convertir texto seleccionado en tabla en Word 365."
+  },
+  {
+    "questionId": "a45f68f0-0d14-429a-8a02-c37f5a2e0e21",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/crear-o-editar-un-hiperv%C3%ADnculo-5d8c0804-f998-4143-86b1-1199735e07bf",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: C (Insertar > Vínculo). La opción para añadir hipervínculos está en la pestaña Insertar. También Ctrl+K."
+  },
+  {
+    "questionId": "b0ce1815-f882-40a1-bc6d-86fe3f872667",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre herramientas de tabla)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: B (Sobre la celda de la tabla). Al hacer clic en una celda de la tabla aparece automáticamente la pestaña contextual Diseño de tabla."
+  },
+  {
+    "questionId": "6247f7d1-8f93-443e-bf15-250b29ceead6",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/personalizar-la-cinta-de-opciones-en-office-00f24ca7-6021-48d3-9514-a31a460ecb31",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: B (Primero crear grupo personalizado). Solo se pueden agregar comandos a grupos personalizados, no a grupos predefinidos como Edición."
+  },
+  {
+    "questionId": "6533a0c8-8a0f-4196-a05e-80fa02a933fe",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre herramientas de tabla)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: C (Sobre una celda de la tabla). Al hacer clic en cualquier celda aparece automáticamente la pestaña contextual Herramientas de tabla."
+  },
+  {
+    "questionId": "145a905a-0d66-4aae-845e-933623d0561c",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/crear-un-elemento-gr%C3%A1fico-smartart-fac94c93-500b-4a0a-97af-124040594842",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Insertar elemento gráfico para comunicar información). SmartArt permite crear diagramas visuales para comunicar información."
+  },
+  {
+    "questionId": "f039f26a-4520-4a1f-a9cc-a39a60eea46c",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre campos dinámicos)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Insertar > Texto > Elementos rápidos > Campo > Date). Ruta para insertar fecha dinámica que se actualiza automáticamente."
+  },
+  {
+    "questionId": "202f832a-0abe-40b5-b4c1-10f0bc2d0a17",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre marcas de agua)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Diseño > Marca de agua). La marca de agua se encuentra en Diseño > Fondo de página > Marca de agua."
+  },
+  {
+    "questionId": "1cb0bdc6-58c3-4c28-af14-541b408e4c70",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre estilos de tabla)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: C (Se aplica diseño uniforme rápidamente). Los estilos de tabla permiten aplicar formato predefinido de forma rápida y consistente."
+  },
+  {
+    "questionId": "be50da39-9af7-494a-aa5f-75a63651868b",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/insertar-una-letra-capital-a6990851-8ae5-4a15-89a6-ebe48f424407",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Insertar > Texto > Letra capital). Ruta correcta para insertar una letra capital decorativa al inicio de un párrafo."
+  },
+  {
+    "questionId": "aabb1498-1c36-4bab-b3bc-064f09e64bed",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/4923984/",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Divide tabla en varias tablas). Disposición de tabla > Dividir tabla separa una tabla en dos tablas independientes."
+  },
+  {
+    "questionId": "cf53cef3-8c67-4c76-b816-dbac8905f7b4",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/alinear-u-organizar-objetos-c78e0bf4-1c88-4a3c-8a18-d3d2aba0e3e3",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Formato de imagen > Organizar > Alinear). Procedimiento correcto para alinear múltiples objetos seleccionados."
+  },
+  {
+    "questionId": "491c4b40-1d7c-408a-847c-abb6cd9dc987",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/crear-un-elemento-gr%C3%A1fico-smartart-fac94c93-500b-4a0a-97af-124040594842",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Insertar > SmartArt > Ciclo). Ruta correcta para crear diagramas de ciclo usando SmartArt."
+  },
+  {
+    "questionId": "a1a9235b-a4da-424f-8d3f-d4b7734c011b",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/revisar-la-ortograf%C3%ADa-y-gram%C3%A1tica-en-office-5cdeced7-d81d-47de-9096-efd0ee909227",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Sugerencias de claridad, concisión y vocabulario). El panel Editor muestra sugerencias de estilo además de ortografía y gramática."
+  },
+  {
+    "questionId": "071e7b5e-3af4-42ed-a655-58fd8d6a169d",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre comentarios)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Se genera hilo de comentarios). Al usar 'Respuesta' se crea un hilo de conversación agrupado bajo el comentario original."
+  },
+  {
+    "questionId": "52fcaf1d-c66b-431c-9fca-984c9b066c92",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/troubleshoot/word/create-toc-entries-no-page-number",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: A (Referencias). La tabla de contenido se inserta desde la pestaña Referencias en Word 365."
+  },
+  {
+    "questionId": "35d67982-3244-4f7b-bdd5-28c4d44460ac",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre comentarios)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: C (Permite añadir comentario asociado a texto). El botón Nuevo comentario inserta un comentario en la parte seleccionada o punto de inserción."
+  },
+  {
+    "questionId": "03e40931-a763-4e60-ae70-ca8a0bcc5f8e",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://support.microsoft.com/es-es/office/revisar-la-ortograf%C3%ADa-y-gram%C3%A1tica-en-office-5cdeced7-d81d-47de-9096-efd0ee909227",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Revisar errores ortográficos, gramaticales y de estilo). El comando revisa ortografía, gramática y puede mostrar sugerencias de estilo según configuración."
+  },
+  {
+    "questionId": "d1778f2a-2a9e-4f02-ae20-8872b0afb8a2",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers (documentación sobre exportar a PDF)",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: B (Hipervínculos y marcadores pueden conservarse). Al exportar a PDF desde Exportar, se pueden conservar hipervínculos y marcadores según configuración."
+  },
+  {
+    "questionId": "523387b9-bc6c-436c-a25c-19e72e4502e1",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/troubleshoot/word/recover-lost-unsaved-corrupted-document",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: C (Campo Nombre de Archivo). En el cuadro de diálogo Abrir > Examinar existe el campo 'Nombre de archivo' para escribir o buscar documentos."
+  },
+  {
+    "questionId": "97d6a527-d7e6-499d-9c86-9aea9ee0ee21",
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": null,
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/troubleshoot/word/recover-lost-unsaved-corrupted-document",
+    "verifiedAt": "2026-01-23T05:30:00.000Z",
+    "notes": "Respuesta correcta: D (Todas correctas). El apartado Información del menú Archivo incluye Proteger documento, Inspeccionar documento y Administrar documento."
+  }
+]

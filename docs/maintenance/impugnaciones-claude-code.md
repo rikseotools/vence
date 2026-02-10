@@ -159,7 +159,28 @@ corrige la pregunta pero no cierres la impugnación
 
 Claude actualizará:
 
-### 5.1 Explicación (tabla `questions`)
+### 5.1 Formato de Explicaciones
+
+Las explicaciones deben tener formato markdown con saltos de línea para ser legibles:
+
+**Formato correcto:**
+```
+La respuesta correcta es X.
+
+Según el artículo Y de la Ley Z:
+
+**A) INCORRECTA** - Razón...
+
+**B) CORRECTA** - El artículo dice literalmente...
+
+**C) INCORRECTA** - Razón...
+
+**D) INCORRECTA** - Razón...
+```
+
+**Evitar:** Texto corrido sin saltos de línea ni formato.
+
+### 5.2 Explicación (tabla `questions`)
 ```javascript
 supabase
   .from('questions')
@@ -171,14 +192,14 @@ supabase
   .eq('id', questionId);
 ```
 
-### 5.2 Vincular artículo (tabla `question_articles`)
+### 5.3 Vincular artículo (tabla `question_articles`)
 ```javascript
 supabase
   .from('question_articles')
   .insert({ question_id: questionId, article_id: articleId });
 ```
 
-### 5.3 Actualizar verificación AI (tabla `ai_verification_results`)
+### 5.4 Actualizar verificación AI (tabla `ai_verification_results`)
 ```javascript
 supabase
   .from('ai_verification_results')
@@ -238,12 +259,67 @@ supabase
 
 | Tabla | Uso |
 |-------|-----|
-| `question_disputes` | Impugnaciones de usuarios |
-| `questions` | Preguntas y explicaciones |
+| `question_disputes` | Impugnaciones de preguntas legislativas |
+| `psychometric_question_disputes` | Impugnaciones de preguntas psicotécnicas |
+| `questions` | Preguntas legislativas y explicaciones |
+| `psychometric_questions` | Preguntas psicotécnicas |
 | `question_articles` | Relación pregunta-artículo (tabla de unión) |
 | `articles` | Artículos de leyes |
 | `ai_verification_results` | Resultados de verificación AI |
 | `user_profiles` / `auth.users` | Datos del usuario para personalizar mensaje |
+
+### 7.0 Dos Tablas de Impugnaciones
+
+**IMPORTANTE:** Las impugnaciones están en DOS tablas diferentes:
+
+| Tabla | Tipo de Pregunta | Campos Principales |
+|-------|------------------|-------------------|
+| `question_disputes` | Legislativas | `question_id` → `questions` |
+| `psychometric_question_disputes` | Psicotécnicas | `question_id` → `psychometric_questions` |
+
+**Para ver TODAS las impugnaciones pendientes:**
+
+```javascript
+// 1. Impugnaciones legislativas pendientes
+const { data: legDisputes } = await supabase
+  .from('question_disputes')
+  .select('id, question_id, user_id, dispute_type, description, status, created_at')
+  .eq('status', 'pending')
+  .order('created_at', { ascending: true });
+
+// 2. Impugnaciones psicotécnicas pendientes
+const { data: psyDisputes } = await supabase
+  .from('psychometric_question_disputes')
+  .select('id, question_id, user_id, dispute_type, description, status, created_at')
+  .eq('status', 'pending')
+  .order('created_at', { ascending: true });
+
+console.log('Legislativas:', legDisputes?.length || 0);
+console.log('Psicotécnicas:', psyDisputes?.length || 0);
+```
+
+**Para corregir preguntas psicotécnicas:**
+
+```javascript
+// Actualizar pregunta psicotécnica
+await supabase
+  .from('psychometric_questions')
+  .update({
+    explanation: nuevaExplicacion,
+    correct_option: nuevoIndice  // 0=A, 1=B, 2=C, 3=D
+  })
+  .eq('id', questionId);
+
+// Cerrar impugnación psicotécnica
+await supabase
+  .from('psychometric_question_disputes')
+  .update({
+    status: 'resolved',  // o 'rejected'
+    admin_response: mensaje,
+    resolved_at: new Date().toISOString()
+  })
+  .eq('id', disputeId);
+```
 
 ### 7.1 Dos formas de vincular artículos
 
@@ -530,20 +606,25 @@ await supabase
 
 ### 14.4 Cerrar un Feedback
 
-**⚠️ CUIDADO:** Al actualizar el status, se actualiza `updated_at` del feedback, lo que cambia el orden en el UI.
+**⚠️ IMPORTANTE:** NO cerrar la conversación manualmente. El sistema la cierra automáticamente si el usuario no responde en unos días.
+
+Después de responder:
+1. La conversación queda en `waiting_user`
+2. Si el usuario responde, vuelve a aparecer como pendiente
+3. Si no responde en X días, se cierra automáticamente
 
 ```javascript
-// 1. Cerrar la conversación
-await supabase
-  .from('feedback_conversations')
-  .update({ status: 'closed' })
-  .eq('feedback_id', feedbackId);
-
-// 2. Cerrar el feedback
+// Solo actualizar el feedback si es necesario (opcional)
 await supabase
   .from('user_feedback')
   .update({ status: 'resolved' })
   .eq('id', feedbackId);
+
+// ❌ NO HACER: cerrar conversación manualmente
+// await supabase
+//   .from('feedback_conversations')
+//   .update({ status: 'closed' })
+//   .eq('feedback_id', feedbackId);
 ```
 
 ### 14.5 Corregir Fechas (si se alteraron)
@@ -571,3 +652,131 @@ await supabase
 - La conversación NO está cerrada (`status != 'closed'`)
 - Y el último mensaje NO es del admin (`is_admin = false`)
 - O la conversación está vacía (sin mensajes)
+
+### 14.8 Flujo Completo para Responder Feedback
+
+```
+1. "revisar si hay nuevas impugnaciones pendientes o feedback"
+   ↓
+2. Claude muestra feedbacks pendientes con resumen
+   ↓
+3. "investiga el feedback de [usuario]"
+   ↓
+4. Claude obtiene: user_id, mensaje, URL, user_agent (móvil/PC)
+   ↓
+5. Claude investiga eventos del usuario si es necesario
+   ↓
+6. Claude propone respuesta personalizada
+   ↓
+7. Usuario aprueba → Claude inserta en feedback_messages y cierra
+```
+
+### 14.9 Ejemplo Real: Usuario no puede guardar PDF
+
+**Feedback recibido:**
+```
+Usuario: Osruben 7 (osruben75@gmail.com)
+Plan: FREE
+Mensaje: "Hola.como se guarda el PDF no me deja gracias"
+URL: /tramitacion-procesal/temario/tema-6
+User Agent: Android 10 / Chrome Mobile
+```
+
+**Investigación:**
+- Usuario registrado hace 3 minutos (nuevo)
+- Estaba en la página del temario
+- Usa móvil Android
+
+**Diagnóstico:**
+- El PDF está disponible para usuarios FREE (no hay restricción)
+- En móvil, `window.print()` abre diálogo del sistema
+- Hay que elegir "Guardar como PDF" en vez de impresora
+
+**Respuesta enviada:**
+```
+Hola Ruben,
+
+Para guardar el PDF desde el móvil:
+1. Pulsa el botón "Imprimir PDF"
+2. En el diálogo que aparece, elige "Guardar como PDF" (en vez de una impresora)
+3. Se descargará a tu carpeta de descargas
+
+Un saludo,
+Equipo de Vence
+```
+
+**Código ejecutado:**
+```javascript
+const conversationId = "97dc13f3-c103-4a01-8a35-81ef14b79949";
+const adminId = "2fc60bc8-1f9a-42c8-9c60-845c00af4a1f"; // Admin que responde
+
+// 1. Insertar mensaje en la conversación
+await supabase
+  .from("feedback_messages")
+  .insert({
+    conversation_id: conversationId,
+    sender_id: adminId,
+    is_admin: true,
+    message: mensaje
+  });
+
+// 2. Actualizar timestamp de la conversación (NO cerrar)
+await supabase
+  .from("feedback_conversations")
+  .update({
+    status: "waiting_user",  // Esperando respuesta del usuario
+    last_message_at: new Date().toISOString()
+  })
+  .eq("id", conversationId);
+
+// ❌ NO cerrar manualmente - el sistema lo hace automáticamente
+```
+
+### 14.10 Cómo Investigar al Usuario
+
+Para entender mejor el contexto del feedback:
+
+```javascript
+// 1. Datos del feedback
+const { data: feedback } = await supabase
+  .from("user_feedback")
+  .select("*")
+  .eq("id", feedbackId)
+  .single();
+
+// user_agent revela: móvil vs PC, navegador, sistema operativo
+console.log("User Agent:", feedback.user_agent);
+// Ej: "Mozilla/5.0 (Linux; Android 10; K)..." = Móvil Android
+
+// 2. Perfil del usuario
+const { data: profile } = await supabase
+  .from("user_profiles")
+  .select("full_name, email, plan_type, created_at, target_oposicion")
+  .eq("id", feedback.user_id)
+  .single();
+
+// 3. Eventos recientes (si existen)
+const { data: events } = await supabase
+  .from("user_events")
+  .select("event_type, page_url, created_at")
+  .eq("user_id", feedback.user_id)
+  .gte("created_at", fechaHoy)
+  .order("created_at", { ascending: true });
+```
+
+### 14.11 Obtener Admin ID para Respuestas
+
+El `sender_id` debe ser un admin válido. Para obtenerlo:
+
+```javascript
+// Buscar un admin que haya respondido antes
+const { data: adminMsg } = await supabase
+  .from("feedback_messages")
+  .select("sender_id")
+  .eq("is_admin", true)
+  .limit(1)
+  .single();
+
+const adminId = adminMsg.sender_id;
+// Resultado: "2fc60bc8-1f9a-42c8-9c60-845c00af4a1f" (Manuel)
+```

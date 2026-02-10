@@ -1,0 +1,35 @@
+[
+  {
+    "questionId": "13d9573a-41bf-45db-b599-24c7716ab8cb",
+    "questionText": "Si un documento de Word queremos guardarlo en otro tipo de documento, como por ejemplo página web:",
+    "currentAnswer": 1,
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": "Para guardar un documento de Word en otro formato (página web, PDF, etc.), debe ir a:\n\n1. Archivo > Guardar como\n2. En el cuadro de diálogo, hacer clic en el desplegable \"Tipo\" (o \"Guardar como tipo\")\n3. Seleccionar el formato deseado: Página web (.html), PDF (.pdf), Texto sin formato (.txt), etc.\n4. Elegir ubicación y nombre, luego hacer clic en Guardar\n\nFuente: Microsoft Support",
+    "microsoftSource": "https://support.microsoft.com/es-es/office/video-save-files-in-different-places-and-formats-01a1f301-aa7d-4ecb-beec-e7a6b0127dc9",
+    "verifiedAt": "2026-01-23T16:20:02.832Z"
+  },
+  {
+    "questionId": "279f019e-edef-41a5-859d-979bee15cd62",
+    "questionText": "Entre los formatos de archivo que son compatibles con Word, la extensión .dotm indica:",
+    "currentAnswer": 0,
+    "status": "tech_perfect",
+    "answerOk": true,
+    "explanationOk": true,
+    "improvedExplanation": "La extensión .dotm corresponde a:\n\n**Plantilla habilitada para macros de Word**\n\nCaracterísticas:\n- Compatible con Word 2019, 2016, 2013, 2010 y Office Word 2007\n- Basada en formato XML\n- Permite guardar macros VBA (Visual Basic para Aplicaciones)\n- Permite personalizaciones de la interfaz de usuario\n\nDiferencia con .dotx: .dotx es plantilla sin macros, .dotm es plantilla CON macros.\n\nFuente: Microsoft Learn",
+    "microsoftSource": "https://learn.microsoft.com/es-es/office/compatibility/office-file-format-reference",
+    "verifiedAt": "2026-01-23T16:20:02.832Z"
+  },
+  {
+    "questionId": "33ad0d2d-daf5-49c6-a324-fe531e3f0127",
+    "questionText": "¿Cuál es la principal diferencia entre \"Opciones de documento\" y \"Opciones de Word\" en la ficha Archivo?",
+    "currentAnswer": 3,
+    "status": "tech_bad_answer_and_explanation",
+    "answerOk": false,
+    "explanationOk": false,
+    "improvedExplanation": "⚠️ PREGUNTA PROBLEMÁTICA:\n\nEn Word 365, NO existe una sección llamada \"Opciones de documento\" como elemento separado en la ficha Archivo. Esta distinción es incorrecta.\n\nLo que SÍ existe:\n- **Archivo > Opciones**: Configuraciones globales de Word (afectan a todos los documentos)\n- **Archivo > Información**: Configuraciones específicas del documento actual (Proteger documento, Propiedades, Inspeccionar documento, Administrar documento)\n\nLa pregunta está basada en una terminología que no corresponde con la interfaz real de Word 365.\n\nRECOMENDACIÓN: Reformular la pregunta con terminología oficial de Microsoft.",
+    "microsoftSource": "https://support.microsoft.com/es-es/office/word-options-general-7bfe9d54-1821-4fc7-b661-c1caaa2e8c95",
+    "verifiedAt": "2026-01-23T16:20:02.832Z"
+  }
+]

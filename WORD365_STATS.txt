@@ -1,0 +1,164 @@
+================================================================================
+PROCESAMIENTO DE 30 PREGUNTAS WORD 365 - ESTADÍSTICAS FINALES
+================================================================================
+
+EJECUCIÓN: 22 de enero de 2026, 21:38 UTC
+DURACIÓN: 2 minutos 45 segundos
+DOMINIO PERMITIDO: support.microsoft.com/es-es y learn.microsoft.com/es-es
+
+================================================================================
+RESUMEN EJECUTIVO
+================================================================================
+
+PREGUNTAS PROCESADAS:
+  ✅ Con éxito (con URLs): 6 preguntas (20%)
+  ⚠️  Con advertencia (sin explicación): 2 preguntas (6.7%)
+  ❌ Con error (sin URLs Microsoft): 22 preguntas (73.3%)
+  TOTAL: 30 preguntas
+
+VALIDACIÓN DE URLs:
+  • URLs de Microsoft encontradas: 6
+  • URLs validadas correctamente: 1
+  • URLs con problemas: 5
+  • Tasa de éxito: 16.7%
+
+================================================================================
+BASE DE DATOS - CAMBIOS REALIZADOS
+================================================================================
+
+TABLA: ai_verification_results
+  Provider: microsoft_url_validator
+  Registros insertados: 6
+  
+  Por confianza:
+    - HIGH:   1 (Verificada exitosamente)
+    - MEDIUM: 5 (Necesitan revisión)
+    - LOW:    0
+
+TABLA: questions
+  topic_review_status actualizado: 6 preguntas
+  
+  Estados:
+    - microsoft_verified:      1 pregunta (3.3%)
+    - microsoft_needs_review:  5 preguntas (16.7%)
+    - Sin actualizar:         24 preguntas (80%)
+
+================================================================================
+PREGUNTAS VERIFICADAS
+================================================================================
+
+1. ✅ VERIFICADA (HIGH CONFIDENCE)
+   ID: ee07b9f8-449c-4e43-a68b-1e19429452a6
+   Tema: Saltos de sección
+   URL: https://support.microsoft.com/es-es/office/insertar-un-salto...
+   Status: microsoft_verified
+
+2. ⚠️  NECESITA REVISIÓN (MEDIUM CONFIDENCE)
+   ID: e116e69d-2583-413c-8449-8d8ea8debd66
+   Tema: Espaciado entre párrafos
+   URL: https://support.microsoft.com/es-es/office/cambiar-el-espaci...
+   Status: microsoft_needs_review
+   Razón: Contenido insuficiente
+
+3. ⚠️  NECESITA REVISIÓN (MEDIUM CONFIDENCE)
+   ID: 9de1d78a-ff55-4315-8cf0-a6f33ed8a22f
+   Tema: Subrayado
+   URL: https://support.microsoft.com/es-es/office/subrayar-texto-o-...
+   Status: microsoft_needs_review
+   Razón: Contenido insuficiente
+
+4. ⚠️  NECESITA REVISIÓN (MEDIUM CONFIDENCE)
+   ID: 714e62ae-f1de-41fc-bbd3-007f00573888
+   Tema: Estilo de fuente
+   URL: https://support.microsoft.com/es-es/office/m%C3%A9todos-abre...
+   Status: microsoft_needs_review
+   Razón: Contenido insuficiente
+
+5. ⚠️  NECESITA REVISIÓN (MEDIUM CONFIDENCE)
+   ID: 18c57dcb-1a98-4bf7-85de-e780451d186c
+   Tema: Alineación
+   URL: https://support.microsoft.com/es-es/office/m%C3%A9todos-abre...
+   Status: microsoft_needs_review
+   Razón: Contenido insuficiente
+
+6. ⚠️  NECESITA REVISIÓN (MEDIUM CONFIDENCE)
+   ID: 4a94a126-cfb0-404c-bd21-86ae37ce266b
+   Tema: Selección de texto
+   URL: https://support.microsoft.com/es-es/office/seleccionar-texto...
+   Status: microsoft_needs_review
+   Razón: Contenido insuficiente
+
+================================================================================
+PREGUNTAS SIN PROCESAR (24 PREGUNTAS)
+================================================================================
+
+CATEGORÍA 1: SIN URLS DE MICROSOFT (22 preguntas)
+  0dd5ed37-9b76-4ef9-aa13-0afb37800d43
+  581eafcb-8098-4ebf-bf4a-8cff844d82dc
+  d6021615-7332-435c-a98d-8c1e41825e2a
+  63674223-7e64-409c-9481-9c3b4db7e7a3
+  b7307d13-d7bf-4b72-9b90-3acfb23e0018
+  a2f89c67-f10c-41bc-a856-392d3732d98a
+  2e9547a8-d285-44eb-8640-79c9fdd17e53
+  f4618938-27c1-4388-bdea-195b11b695d9
+  37829fdb-bdd9-4030-9126-3dadb733f8ad
+  ce2b1acc-2e63-4064-86f6-ae131a0cb725
+  5a731471-5999-42fc-afaf-1bf1f9c48dd4
+  479671ea-452a-4dac-8246-1fa42c65dc0a
+  ce5ad92a-e0d5-403c-9d54-c3b205eda7b8
+  b9247a6d-9067-4925-acab-6d870c387ade
+  e8d368e4-fce0-41d0-ad9b-f07ce716c42f
+  bcb2f9be-84df-4946-9889-879e29d7f5cd
+  86ec20fb-a004-4b28-aae5-4783e9d2a109
+  8fb5ea4b-6d58-4c19-b090-9158a59f7075
+  af0aedca-1b4b-4302-8106-2bd912f97b6a
+  2db79b93-0313-4f2d-9447-b58dc373d2d2
+  57969daa-6822-4a9a-b697-e0ab189a1dd6
+  64932671-8968-42f3-8563-adee4e75e804
+
+CATEGORÍA 2: SIN EXPLICACIÓN (2 preguntas)
+  07e22f6a-7863-46b6-a5b2-d605d72e3770
+  1b0baa01-5800-4da1-ac83-cb4669eb4c2c
+
+================================================================================
+RECOMENDACIONES
+================================================================================
+
+INMEDIATO:
+  1. Revisar manualmente 5 preguntas con status microsoft_needs_review
+  2. Añadir explicaciones a 2 preguntas faltantes
+
+CORTO PLAZO:
+  3. Completar 22 preguntas sin referencias Microsoft
+  4. Investigar URLs con contenido incompleto (posible bloqueo temporal)
+
+LARGO PLAZO:
+  5. Implementar validador robusto de URLs
+  6. Automatizar verificaciones periódicas
+
+================================================================================
+ARCHIVOS GENERADOS
+================================================================================
+
+Scripts:
+  • process_word365_batch.cjs - Procesamiento principal
+  • verify_word365_results.cjs - Verificación de resultados
+  • generate_word365_report.cjs - Generación de reportes
+
+Reportes:
+  • word365_verification_report.json - Reporte JSON inicial
+  • word365_detailed_report.json - Reporte JSON detallado
+  • word365_processing.log - Log completo de ejecución
+  • WORD365_PROCESSING_SUMMARY.md - Resumen en Markdown
+  • WORD365_STATS.txt - Este archivo
+
+================================================================================
+STATUS FINAL: ✅ COMPLETADO CON HALLAZGOS
+================================================================================
+
+Toda la validación se completó exitosamente. Los datos han sido guardados en:
+  - ai_verification_results (6 registros)
+  - questions.topic_review_status (6 actualizaciones)
+
+Se requiere acción manual para completar las 24 preguntas restantes.
+

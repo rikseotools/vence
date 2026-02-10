@@ -1,0 +1,479 @@
+{
+  "timestamp": "2026-01-23T18:50:00.864Z",
+  "config": {
+    "TOPIC_ID": null,
+    "LIMIT": 500,
+    "SIMILARITY_THRESHOLD": 0.6,
+    "TOP_K": 10
+  },
+  "summary": {
+    "total": 477,
+    "correct": 460,
+    "wrong": 17,
+    "wrongArticleOnly": 17,
+    "topicIncorrecto": 0,
+    "errors": 0
+  },
+  "wrongArticles": [
+    {
+      "questionId": "8c63304e-a6f1-4528-8694-6aafbe46d55c",
+      "questionText": "La Integridad Pública es:...",
+      "assignedArticle": "Gobierno Abierto Art. 1",
+      "assignedArticleId": "027778c0-5ba1-4a7b-9694-9a32bc1aa684",
+      "assignedSimilarity": 0.5718005112096382,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "Reglamento del Senado Art. 11 bis",
+      "suggestedArticleId": "a6ea66f3-c28a-4888-a1cc-a53e18447be6",
+      "suggestedSimilarity": 0.37482413649559,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "Reglamento del Senado Art. 11 bis",
+          "similarity": 0.37482413649559
+        },
+        {
+          "article": "Reglamento del Congreso Art. 198",
+          "similarity": 0.373299196159746
+        },
+        {
+          "article": "Ley 10/2014 Art. 24",
+          "similarity": 0.35987504006922
+        }
+      ]
+    },
+    {
+      "questionId": "d877f713-9ac9-43dc-ac8c-e8ec4e697385",
+      "questionText": "El Tercer Plan de Gobierno Abierto de España contiene 20 med...",
+      "assignedArticle": "Gobierno Abierto Art. 1",
+      "assignedArticleId": "027778c0-5ba1-4a7b-9694-9a32bc1aa684",
+      "assignedSimilarity": 0.5957537902087653,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "Ley 19/2013 Art. 38",
+      "suggestedArticleId": "efdc7166-c8ab-4e79-9ece-e9dde88bcbf9",
+      "suggestedSimilarity": 0.541049902564276,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "Ley 19/2013 Art. 38",
+          "similarity": 0.541049902564276
+        },
+        {
+          "article": "RD 210/2024 Art. 11",
+          "similarity": 0.532391043447915
+        },
+        {
+          "article": "RD 210/2024 Art. 8",
+          "similarity": 0.489126472369012
+        }
+      ]
+    },
+    {
+      "questionId": "b3975b1e-800b-4f08-9252-e3f285c31c02",
+      "questionText": "Según el art. 143 de la CE, en caso de no prosperar la inici...",
+      "assignedArticle": "CE Art. 143",
+      "assignedArticleId": "360b0ab8-0784-4334-ac85-d29980651f0e",
+      "assignedSimilarity": 0.5823344509206818,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "RD 1720/2007 Art. 122",
+      "suggestedArticleId": "738a5fcb-014d-4634-b288-353187ccb123",
+      "suggestedSimilarity": 0.519418981179182,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "RD 1720/2007 Art. 122",
+          "similarity": 0.519418981179182
+        },
+        {
+          "article": "RDL 8/2015 Art. 53",
+          "similarity": 0.515854462508735
+        },
+        {
+          "article": "RDL 1/2020 Art. 697 sexies",
+          "similarity": 0.50554513799068
+        }
+      ]
+    },
+    {
+      "questionId": "67b3d8ec-019f-4f59-8e00-7edd7e8dfa45",
+      "questionText": "El art. 141.4 CE establece que en los archipiélagos, las Isl...",
+      "assignedArticle": "CE Art. 141",
+      "assignedArticleId": "62132b2e-c3e6-45df-bba1-fc8504745204",
+      "assignedSimilarity": 0.527125907499268,
+      "rankInTop": 7,
+      "suggestedArticle": "TRRL Art. 1",
+      "suggestedArticleId": "9b92076a-bce7-4868-8861-01cf81d0dd8e",
+      "suggestedSimilarity": 0.598774170802511,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "TRRL Art. 1",
+          "similarity": 0.598774170802511
+        },
+        {
+          "article": "Ley 40/2015 Art. 70",
+          "similarity": 0.585458973536736
+        },
+        {
+          "article": "CE Art. 143",
+          "similarity": 0.583911244895684
+        }
+      ]
+    },
+    {
+      "questionId": "34b76916-c4df-49bc-b61e-0fbe069eb469",
+      "questionText": "De acuerdo con el principio de supletoriedad previsto en el ...",
+      "assignedArticle": "CE Art. 149",
+      "assignedArticleId": "379d013a-0860-4bda-92dd-a51f417e7920",
+      "assignedSimilarity": 0.5925341897899735,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "LOTC Art. 59",
+      "suggestedArticleId": "6282560d-ffa0-43b8-b3b3-f1d02ec65e37",
+      "suggestedSimilarity": 0.58700225600661,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "LOTC Art. 59",
+          "similarity": 0.58700225600661
+        },
+        {
+          "article": "Ley 1/2000 Art. 478",
+          "similarity": 0.549459317229873
+        },
+        {
+          "article": "LO 8/1980 Art. 19",
+          "similarity": 0.528457259259934
+        }
+      ]
+    },
+    {
+      "questionId": "2b4cbaaf-62d9-4b9b-ac7b-651ad1e77dd3",
+      "questionText": "Según el art. 141 de la CE, cualquier alteración de los lími...",
+      "assignedArticle": "CE Art. 141",
+      "assignedArticleId": "62132b2e-c3e6-45df-bba1-fc8504745204",
+      "assignedSimilarity": 0.5914449691796592,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "LSC Art. 464",
+      "suggestedArticleId": "168e99a7-09a2-4a1c-ba01-8df3680b794d",
+      "suggestedSimilarity": 0.407143813584565,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "LSC Art. 464",
+          "similarity": 0.407143813584565
+        },
+        {
+          "article": "LGT Art. 256",
+          "similarity": 0.364499292641842
+        },
+        {
+          "article": "LGT Art. 124",
+          "similarity": 0.360451348993102
+        }
+      ]
+    },
+    {
+      "questionId": "9e154dd2-170a-4135-b7b9-0f30b7b87439",
+      "questionText": "Según el artículo 17 del Tratado de la Unión Europea:...",
+      "assignedArticle": "TUE Art. 17",
+      "assignedArticleId": "09baff8d-8161-4a25-b650-3d44159f96e9",
+      "assignedSimilarity": 0.575342291608353,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "Ley 1/2000 Art. 434",
+      "suggestedArticleId": "8756b2e9-a1ae-4d24-ae56-bc9698e44d1c",
+      "suggestedSimilarity": 0.501359999017719,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "Ley 1/2000 Art. 434",
+          "similarity": 0.501359999017719
+        },
+        {
+          "article": "Ley 9/2017 Art. 219",
+          "similarity": 0.464797982025628
+        },
+        {
+          "article": "Ley 9/2017 Art. 220",
+          "similarity": 0.443624089308247
+        }
+      ]
+    },
+    {
+      "questionId": "ba32f3eb-59b3-4f5d-942a-b49603d032e1",
+      "questionText": "¿Qué institución de la Unión Europea supervisa la aplicación...",
+      "assignedArticle": "TUE Art. 17",
+      "assignedArticleId": "09baff8d-8161-4a25-b650-3d44159f96e9",
+      "assignedSimilarity": 0.5932426543083689,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "TUE Art. 48",
+      "suggestedArticleId": "db3650b3-2a82-44c6-9df2-6bc6d9189adf",
+      "suggestedSimilarity": 0.52430304740054,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "TUE Art. 48",
+          "similarity": 0.52430304740054
+        },
+        {
+          "article": "RD 1184/2024 Art. 10",
+          "similarity": 0.523903875118271
+        },
+        {
+          "article": "RD 1567/1985 Art. 1",
+          "similarity": 0.523237319185575
+        }
+      ]
+    },
+    {
+      "questionId": "60baf3bd-f8cd-48db-af71-cdb7f7448b3b",
+      "questionText": "¿Qué instituciones de la Unión Europea ejercen conjuntamente...",
+      "assignedArticle": "TUE Art. 14",
+      "assignedArticleId": "9557e93a-c5a9-46fa-b3c5-b4087ba1b64b",
+      "assignedSimilarity": 0.5560714114399282,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "Ley 8/1994 Art. 3",
+      "suggestedArticleId": "d857cfe2-2197-40c4-8f79-e1db707a03df",
+      "suggestedSimilarity": 0.559478633465934,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "Ley 8/1994 Art. 3",
+          "similarity": 0.559478633465934
+        },
+        {
+          "article": "TFUE Art. 225",
+          "similarity": 0.516385449494238
+        },
+        {
+          "article": "TUE Art. 19",
+          "similarity": 0.498921901180405
+        }
+      ]
+    },
+    {
+      "questionId": "108c81a4-c2e1-40a9-8b58-5f16c2636b6c",
+      "questionText": "Según el artículo 138 de la Ley 7/1985, de 2 de abril, Regul...",
+      "assignedArticle": "Orden HFP/134/2018 Art. 3",
+      "assignedArticleId": "4124d3e1-f289-4f5f-a27e-05a5aa914350",
+      "assignedSimilarity": 0.571794132736109,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "Ley 7/1988 Art. 21",
+      "suggestedArticleId": "0b81041c-ca12-43fb-9129-b70ce420d052",
+      "suggestedSimilarity": 0.530040939158343,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "Ley 7/1988 Art. 21",
+          "similarity": 0.530040939158343
+        },
+        {
+          "article": "LO 6/1985 Art. 466",
+          "similarity": 0.526375667046776
+        },
+        {
+          "article": "TFUE Art. 305",
+          "similarity": 0.523738575839533
+        }
+      ]
+    },
+    {
+      "questionId": "56ca7e05-8b68-4096-a241-ea6f7de0220d",
+      "questionText": "¿Cuáles son las Comunidades Autónomas históricas de España?...",
+      "assignedArticle": "CE Art. 151",
+      "assignedArticleId": "a5a000d2-9d1a-45b5-a172-2da2ff6c3734",
+      "assignedSimilarity": 0.5235366350184614,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "CE Art. 148",
+      "suggestedArticleId": "65d0dbf4-6459-469a-a067-1391a133eb4c",
+      "suggestedSimilarity": 0.553203811037881,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "CE Art. 148",
+          "similarity": 0.553203811037881
+        },
+        {
+          "article": "LO 8/1980 Art. 2",
+          "similarity": 0.549152119482993
+        },
+        {
+          "article": "CE Art. 157",
+          "similarity": 0.514780909704024
+        }
+      ]
+    },
+    {
+      "questionId": "7ebe57f2-527a-4405-bbfe-be40aca1275b",
+      "questionText": "¿Cuál de las siguientes es una competencia exclusiva del Est...",
+      "assignedArticle": "CE Art. 149",
+      "assignedArticleId": "379d013a-0860-4bda-92dd-a51f417e7920",
+      "assignedSimilarity": 0.5916164006637721,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "LGS Art. 72",
+      "suggestedArticleId": "8926839d-51a6-4829-941d-68efc3d01697",
+      "suggestedSimilarity": 0.500322550477526,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "LGS Art. 72",
+          "similarity": 0.500322550477526
+        },
+        {
+          "article": "CE Art. 131",
+          "similarity": 0.471565425395969
+        },
+        {
+          "article": "LO 6/1985 Art. 498",
+          "similarity": 0.462435607619809
+        }
+      ]
+    },
+    {
+      "questionId": "0ed68922-001d-49e4-b30f-057ad118b3c8",
+      "questionText": "El Parlamento Europeo podrá votar una moción de censura cont...",
+      "assignedArticle": "TFUE Art. 234",
+      "assignedArticleId": "557c0730-fae1-4dd2-9269-f0c9df1fb5f4",
+      "assignedSimilarity": 0.5779419068429816,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "TFUE Art. 245",
+      "suggestedArticleId": "99cc9395-9e95-4181-90f0-acc1dda84302",
+      "suggestedSimilarity": 0.621397384155274,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "TFUE Art. 245",
+          "similarity": 0.621397384155274
+        },
+        {
+          "article": "Ley 8/1994 Art. 5",
+          "similarity": 0.52333926151321
+        },
+        {
+          "article": "LO 5/1985 Art. 211",
+          "similarity": 0.519587128186994
+        }
+      ]
+    },
+    {
+      "questionId": "2201f846-a67c-4e9b-90b0-fc74a965f61c",
+      "questionText": "¿A quién le corresponde proponer al Parlamento Europeo, un c...",
+      "assignedArticle": "TUE Art. 17",
+      "assignedArticleId": "09baff8d-8161-4a25-b650-3d44159f96e9",
+      "assignedSimilarity": 0.5957744435997538,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "Ley 8/1994 Art. 2",
+      "suggestedArticleId": "2d579b4a-971e-47bc-b16b-353d81ddd1b3",
+      "suggestedSimilarity": 0.51373359479108,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "Ley 8/1994 Art. 2",
+          "similarity": 0.51373359479108
+        },
+        {
+          "article": "Orden DSA/819/2020 Art. 5.3",
+          "similarity": 0.497541636228561
+        },
+        {
+          "article": "CP Art. 427",
+          "similarity": 0.478941681511205
+        }
+      ]
+    },
+    {
+      "questionId": "ef8017e5-2bc6-43c4-bce6-9e39443505da",
+      "questionText": "De conformidad con lo establecido en los Tratados, ¿qué inst...",
+      "assignedArticle": "TUE Art. 17",
+      "assignedArticleId": "09baff8d-8161-4a25-b650-3d44159f96e9",
+      "assignedSimilarity": 0.5283899155556334,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "LSC Art. 464",
+      "suggestedArticleId": "168e99a7-09a2-4a1c-ba01-8df3680b794d",
+      "suggestedSimilarity": 0.37619155290597,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "LSC Art. 464",
+          "similarity": 0.37619155290597
+        },
+        {
+          "article": "Ley 1/2000 Art. 739",
+          "similarity": 0.320600409543539
+        },
+        {
+          "article": "LGT Art. 256",
+          "similarity": 0.310684021237616
+        }
+      ]
+    },
+    {
+      "questionId": "020828f4-53a3-4a55-9a2d-feca5cbb7e5b",
+      "questionText": "Teniendo en cuenta el resultado de las elecciones al Parlame...",
+      "assignedArticle": "TUE Art. 17",
+      "assignedArticleId": "09baff8d-8161-4a25-b650-3d44159f96e9",
+      "assignedSimilarity": 0.5978669543929442,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "Ley 8/1994 Art. 5",
+      "suggestedArticleId": "45389c0a-83e7-40e6-a7d5-be74d096c7ad",
+      "suggestedSimilarity": 0.524412233294898,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "Ley 8/1994 Art. 5",
+          "similarity": 0.524412233294898
+        },
+        {
+          "article": "LO 5/1985 Art. 211",
+          "similarity": 0.487781287696208
+        },
+        {
+          "article": "Reglamento del Senado Art. 116",
+          "similarity": 0.451924177889576
+        }
+      ]
+    },
+    {
+      "questionId": "2ca1c86c-ae22-4f11-babf-954db9583a78",
+      "questionText": "Conforme al artículo 62 de la CE, el ejercicio del derecho d...",
+      "assignedArticle": "CE Art. 62",
+      "assignedArticleId": "ec0aee8b-9982-4002-b7e5-63e9fb3eaeaa",
+      "assignedSimilarity": 0.5989690965176427,
+      "rankInTop": "fuera de top",
+      "suggestedArticle": "CE Art. 63",
+      "suggestedArticleId": "4c881970-7081-4cf2-aac3-dda9584e299f",
+      "suggestedSimilarity": 0.54524943502244,
+      "topicIncorrecto": false,
+      "topics": [],
+      "allMatches": [
+        {
+          "article": "CE Art. 63",
+          "similarity": 0.54524943502244
+        },
+        {
+          "article": "Ley 25/2014 Art. 16",
+          "similarity": 0.531939490677732
+        },
+        {
+          "article": "Ley 19/2013 Art. 12",
+          "similarity": 0.517590792035508
+        }
+      ]
+    }
+  ],
+  "topicIncorrecto": []
+}

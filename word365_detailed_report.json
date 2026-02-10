@@ -1,0 +1,82 @@
+{
+  "processingDate": "2026-01-22T20:38:55.892Z",
+  "totalProcessed": 6,
+  "totalQuestions": 30,
+  "processed": 6,
+  "notProcessed": 24,
+  "verified": 1,
+  "needsReview": 5,
+  "confidenceBreakdown": {
+    "high": 1,
+    "medium": 5,
+    "low": 0
+  },
+  "details": [
+    {
+      "index": 1,
+      "questionId": "4a94a126-cfb0-404c-bd21-86ae37ce266b",
+      "questionText": "En Microsoft Word 365 ¿cuántos clics con el ratón tenemos qu",
+      "status": "needs_review",
+      "confidence": "medium",
+      "topicReviewStatus": "microsoft_needs_review",
+      "verifiedAt": "2026-01-22T20:33:58.527+00:00",
+      "explanation": "Validación de URLs Microsoft en explicación. URLs encontradas: 1. URLs válidas: 0"
+    },
+    {
+      "index": 2,
+      "questionId": "ee07b9f8-449c-4e43-a68b-1e19429452a6",
+      "questionText": "En Word 365, ¿cuál de los siguientes no es un tipo de “Salto",
+      "status": "verified",
+      "confidence": "high",
+      "topicReviewStatus": "microsoft_verified",
+      "verifiedAt": "2026-01-22T20:33:52.29+00:00",
+      "explanation": "Validación de URLs Microsoft en explicación. URLs encontradas: 1. URLs válidas: 1"
+    },
+    {
+      "index": 3,
+      "questionId": "18c57dcb-1a98-4bf7-85de-e780451d186c",
+      "questionText": "En un documento Word 365, ¿cómo se puede “Modificar la aline",
+      "status": "needs_review",
+      "confidence": "medium",
+      "topicReviewStatus": "microsoft_needs_review",
+      "verifiedAt": "2026-01-22T20:33:50.65+00:00",
+      "explanation": "Validación de URLs Microsoft en explicación. URLs encontradas: 1. URLs válidas: 0"
+    },
+    {
+      "index": 4,
+      "questionId": "714e62ae-f1de-41fc-bbd3-007f00573888",
+      "questionText": "En Word 365, para cambiar el “estilo de fuente de normal a n",
+      "status": "needs_review",
+      "confidence": "medium",
+      "topicReviewStatus": "microsoft_needs_review",
+      "verifiedAt": "2026-01-22T20:33:46.617+00:00",
+      "explanation": "Validación de URLs Microsoft en explicación. URLs encontradas: 1. URLs válidas: 0"
+    },
+    {
+      "index": 5,
+      "questionId": "9de1d78a-ff55-4315-8cf0-a6f33ed8a22f",
+      "questionText": "¿Cómo se puede conseguir un subrayado no predeterminado en W",
+      "status": "needs_review",
+      "confidence": "medium",
+      "topicReviewStatus": "microsoft_needs_review",
+      "verifiedAt": "2026-01-22T20:33:43.344+00:00",
+      "explanation": "Validación de URLs Microsoft en explicación. URLs encontradas: 1. URLs válidas: 0"
+    },
+    {
+      "index": 6,
+      "questionId": "e116e69d-2583-413c-8449-8d8ea8debd66",
+      "questionText": "En Word 365, en la opción “Espaciado entre párrafos” de la p",
+      "status": "needs_review",
+      "confidence": "medium",
+      "topicReviewStatus": "microsoft_needs_review",
+      "verifiedAt": "2026-01-22T20:33:42.383+00:00",
+      "explanation": "Validación de URLs Microsoft en explicación. URLs encontradas: 1. URLs válidas: 0"
+    }
+  ],
+  "summary": {
+    "processedSuccessfully": 1,
+    "needsManualReview": 5,
+    "processingRate": "20.0%",
+    "verificationRate": "16.7%"
+  }
+}

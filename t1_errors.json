@@ -1,0 +1,47 @@
+[
+  {
+    "id": "5ef09550-ea7b-4820-9f91-861a1d53b369",
+    "question_text": "El derecho a la propiedad privada reconocido en el artículo 33 de la Constitución Española:",
+    "option_a": "Su desarrollo sólo puede hacerse mediante ley orgánica.",
+    "option_b": "Es susceptible de tutela ante los Tribunales ordinarios por un procedimiento basado en los principios de preferencia y sumariedad.",
+    "option_c": "Es susceptible de tutela a través del recurso de amparo ante el Tribunal Constitucional.",
+    "option_d": "En ningún caso puede ser regulado por decreto-ley.",
+    "correct_option": 3,
+    "correct_letter": "D",
+    "explanation": "Constitución Española.\nArtículo 33.\n1. Se reconoce el derecho a la propiedad privada y a la herencia.\n2. La función social de estos derechos delimitará su contenido, de acuerdo con las leyes.\n3. Nadie podrá ser privado de sus bienes y derechos sino por causa justificada de utilidad pública o interés social, mediante la correspondiente indemnización y de conformidad con lo dispuesto por las leyes.\nArtículo 86.\n1. En caso de extraordinaria y urgente necesidad, el Gobierno podrá dictar disposiciones legislativas provisionales que tomarán la forma de Decretos-leyes y que no podrán afectar al ordenamiento de las instituciones básicas del Estado, a los derechos, deberes y libertades de los ciudadanos regulados en el Título I, al régimen de las Comunidades Autónomas ni al Derecho electoral general.",
+    "topic_review_status": "bad_answer_and_explanation",
+    "article_number": "33",
+    "article_content": "1. Se reconoce el derecho a la propiedad privada y a la herencia.\n\n2. La función social de estos derechos delimitará su contenido, de acuerdo con las leyes.\n\n3. Nadie podrá ser privado de sus bienes y derechos sino por causa justificada de utilidad pública o interés social, mediante la correspondiente indemnización y de conformidad con lo dispuesto por las leyes.",
+    "law_short_name": "CE"
+  },
+  {
+    "id": "1843eb3a-7575-4d64-85c6-d365f6b4925c",
+    "question_text": "La Constitución Española establece una serie de derechos que, en todo caso, tendrán los condenados a penas de prisión, entre los que no se encuentra:",
+    "option_a": "El desarrollo integral de su personalidad.",
+    "option_b": "Los beneficios correspondientes de la Seguridad Social.",
+    "option_c": "El derecho al trabajo remunerado.",
+    "option_d": "El derecho a la intimidad personal.",
+    "correct_option": 3,
+    "correct_letter": "D",
+    "explanation": "La respuesta correcta es D). Según el artículo 25.2 de la Constitución Española (CE), el condenado a pena de prisión tendrá derecho al trabajo remunerado, a los beneficios de la Seguridad Social, al acceso a la cultura y al desarrollo de su personalidad. Sin embargo, estos tienen ciertas limitaciones. El derecho a la intimidad personal se garantiza expresamente \"en todo caso\".",
+    "topic_review_status": "bad_answer_and_explanation",
+    "article_number": "25",
+    "article_content": "1. Nadie puede ser condenado o sancionado por acciones u omisiones que en el momento de producirse no constituyan delito, falta o infracción administrativa, según la legislación vigente en aquel momento.\n\n2. Las penas privativas de libertad y las medidas de seguridad estarán orientadas hacia la reeducación y reinserción social y no podrán consistir en trabajos forzados. El condenado a pena de prisión que estuviere cumpliendo la misma gozará de los derechos fundamentales de este Capítulo, a excepción de los que se vean expresamente limitados por el contenido del fallo condenatorio, el sentido de la pena y la ley penitenciaria. En todo caso, tendrá derecho a un trabajo remunerado y a los beneficios correspondientes de la Seguridad Social, así como al acceso a la cultura y al desarrollo integral de su personalidad.\n\n3. La Administración civil no podrá imponer sanciones que, directa o subsidiariamente, impliquen privación de libertad.",
+    "law_short_name": "CE"
+  },
+  {
+    "id": "65313a59-63af-4cc9-b338-5835319a904d",
+    "question_text": "Respecto al derecho a la propiedad privada del artículo 33 de la Constitución Española, señale la afirmación INCORRECTA:",
+    "option_a": "Está ubicado en la Sección 2ª del Capítulo II del Título I.",
+    "option_b": "Puede ser desarrollado mediante decreto-ley.",
+    "option_c": "NO tiene tutela mediante recurso de amparo ante el Tribunal Constitucional.",
+    "option_d": "Su desarrollo puede realizarse mediante ley ordinaria.",
+    "correct_option": 1,
+    "correct_letter": "B",
+    "explanation": "La respuesta correcta es B). El derecho a la propiedad privada (art. 33) está en la Sección 2ª del Capítulo II del Título I, por lo que puede ser desarrollado mediante decreto-ley (no requiere ley orgánica ni está protegido por reserva absoluta de ley), su desarrollo puede hacerse por ley ordinaria, y no tiene recurso de amparo.",
+    "topic_review_status": "bad_answer_and_explanation",
+    "article_number": "33",
+    "article_content": "1. Se reconoce el derecho a la propiedad privada y a la herencia.\n\n2. La función social de estos derechos delimitará su contenido, de acuerdo con las leyes.\n\n3. Nadie podrá ser privado de sus bienes y derechos sino por causa justificada de utilidad pública o interés social, mediante la correspondiente indemnización y de conformidad con lo dispuesto por las leyes.",
+    "law_short_name": "CE"
+  }
+]

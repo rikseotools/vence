@@ -1,0 +1,32 @@
+[
+  {
+    "id": "b16c33ba-3d45-49cd-936f-60524298bb42",
+    "question_text": "Indique cual de las siguientes decisiones de las Cortes Generales no será necesario que se adopte por mayoría de cada una de las Cámaras, según el artículo 74 de la Constitución:",
+    "option_a": "La distribución de los recursos del Fondo de Compensación entre las Comunidades Autónomas y las provincias.",
+    "option_b": "Los acuerdos de cooperación entre las Comunidades Autónomas.",
+    "option_c": "Las decisiones políticas de especial trascendencia para los ciudadanos.",
+    "option_d": "La prestación del consentimiento del Estado para obligarse por medio de tratados o convenios .",
+    "correct_option": 3,
+    "correct_letter": "D",
+    "explanation": "Artículo 74 de la Constitución Española: \n1. Las Cámaras se reunirán en sesión conjunta para ejercer las competencias no legislativas que el Título II atribuye expresamente a las Cortes Generales.\n2. Las decisiones de las Cortes Generales previstas en los artículos 94.1, 145.2 y 158.2, se adoptarán por mayoría de cada una de las Cámaras. En el primer caso, el procedimiento se iniciará por el Congreso, y en los otros dos, por el Senado. En ambos casos, si no hubiera acuerdo entre Senado y Congreso, se intentará obtener por una Comisión Mixta compuesta de igual número de Diputados y Senadores. La Comisión presentará un texto que será votado por ambas Cámaras. Si no se aprueba en la forma establecida, decidirá el Congreso por mayoría absoluta.\nArtículo 94 de la Constitución Española: \n1. La prestación del consentimiento del Estado para obligarse por medio de tratados o convenios requerirá la previa autorización de las Cortes Generales, en los siguientes casos:\na) Tratados de carácter político.\nb) Tratados o convenios de carácter militar.\nc) Tratados o convenios que afecten a la integridad territorial del Estado o a los derechos y deberes fundamentales establecidos en el Título I.\nd) Tratados o convenios que impliquen obligaciones financieras para la Hacienda Pública.\ne) Tratados o convenios que supongan modificación o derogación de alguna ley o exijan medidas legislativas para su ejecución.\nArtículo 145 de la Constitución Española: \n2. Los Estatutos podrán prever los supuestos, requisitos y términos en que las Comunidades Autónomas podrán celebrar convenios entre sí para la gestión y prestación de servicios propios de las mismas, así como el carácter y efectos de la correspondiente comunicación a las Cortes Generales. En los demás supuestos, los acuerdos de cooperación entre las Comunidades Autónomas necesitarán la autorización de las Cortes Generales.\nArtículo 158 de la Constitución Española: \n2. Con el fin de corregir desequilibrios económicos interterritoriales y hacer efectivo el principio de solidaridad, se constituirá un Fondo de Compensación con destino a gastos de inversión, cuyos recursos serán distribuidos por las Cortes Generales entre las Comunidades Autónomas y provincias, en su caso.",
+    "topic_review_status": "bad_answer_and_explanation",
+    "article_number": "74",
+    "article_content": "1. Las Cámaras se reunirán en sesión conjunta para ejercer las competencias no legislativas que el Título II atribuye expresamente a las Cortes Generales.\n\n2. Las decisiones de las Cortes Generales previstas en los artículos 94, 1, 145, 2 y 158, 2, se adoptarán por mayoría de cada una de las Cámaras. En el primer caso, el procedimiento se iniciará por el Congreso, y en los otros dos, por el Senado. En ambos casos, si no hubiera acuerdo entre Senado y Congreso, se intentará obtener por una Comisión Mixta compuesta de igual número de Diputados y Senadores. La Comisión presentará un texto que será votado por ambas Cámaras. Si no se aprueba en la forma establecida, decidirá el Congreso por mayoría absoluta.",
+    "law_short_name": "CE"
+  },
+  {
+    "id": "0a08371a-3858-46db-af3f-6a336ff55026",
+    "question_text": "Señale cuál de las siguientes funciones requiere sesión conjunta del Congreso y el Senado:",
+    "option_a": "Proveer a la Corona cuando no haya nadie con derechos sucesorios.",
+    "option_b": "Resolver las dudas de hecho o de derecho que puedan surgir en el orden sucesorio.",
+    "option_c": "Decidir sobre las abdicaciones.",
+    "option_d": "Todas las anteriores son correctas.",
+    "correct_option": 0,
+    "correct_letter": "A",
+    "explanation": "Constitución Española.\nArtículo 74.\n1. Las Cámaras se reunirán en sesión conjunta para ejercer las competencias no legislativas que el Título II atribuye expresamente a las Cortes Generales.\nArtículo 57.\n3. Extinguidas todas las líneas llamadas en Derecho, las Cortes Generales proveerán a la sucesión en la Corona en la forma que más convenga a los intereses de España.",
+    "topic_review_status": "all_wrong",
+    "article_number": "74",
+    "article_content": "1. Las Cámaras se reunirán en sesión conjunta para ejercer las competencias no legislativas que el Título II atribuye expresamente a las Cortes Generales.\n\n2. Las decisiones de las Cortes Generales previstas en los artículos 94, 1, 145, 2 y 158, 2, se adoptarán por mayoría de cada una de las Cámaras. En el primer caso, el procedimiento se iniciará por el Congreso, y en los otros dos, por el Senado. En ambos casos, si no hubiera acuerdo entre Senado y Congreso, se intentará obtener por una Comisión Mixta compuesta de igual número de Diputados y Senadores. La Comisión presentará un texto que será votado por ambas Cámaras. Si no se aprueba en la forma establecida, decidirá el Congreso por mayoría absoluta.",
+    "law_short_name": "CE"
+  }
+]

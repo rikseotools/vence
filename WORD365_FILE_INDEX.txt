@@ -1,0 +1,288 @@
+================================================================================
+WORD 365 PROCESSING - FILE INDEX
+================================================================================
+
+LOCATION: /home/manuel/Documentos/github/vence/
+
+================================================================================
+EXECUTABLE SCRIPTS (Node.js)
+================================================================================
+
+1. process_word365_batch.cjs (12 KB)
+   └─ Main processing script
+   └─ Validates 30 Word 365 questions
+   └─ Inserts results into ai_verification_results
+   └─ Updates questions.topic_review_status
+   └─ Usage: node process_word365_batch.cjs
+
+2. verify_word365_results.cjs (2.2 KB)
+   └─ Quick verification of database results
+   └─ Shows counts by status
+   └─ Validates data integrity
+   └─ Usage: node verify_word365_results.cjs
+
+3. generate_word365_report.cjs (4.4 KB)
+   └─ Generates detailed JSON reports
+   └─ Compiles statistics
+   └─ Creates summary metrics
+   └─ Usage: node generate_word365_report.cjs
+
+================================================================================
+JSON REPORTS (Structured Data)
+================================================================================
+
+1. word365_verification_report.json (6.2 KB)
+   └─ Initial execution report
+   └─ Contains all 6 processed questions
+   └─ Includes URL validation details
+   └─ Structure:
+      {
+        "total": 30,
+        "success": 6,
+        "warning": 2,
+        "error": 22,
+        "details": [...]
+      }
+
+2. word365_detailed_report.json (3.1 KB)
+   └─ Consolidated report
+   └─ Aggregated statistics
+   └─ Processing rates
+   └─ Structure:
+      {
+        "processingDate": "2026-01-22T21:38:55.000Z",
+        "totalProcessed": 6,
+        "verified": 1,
+        "needsReview": 5,
+        "details": [...]
+      }
+
+================================================================================
+MARKDOWN REPORTS (Human Readable)
+================================================================================
+
+1. WORD365_README.md (6.8 KB) ← START HERE
+   └─ Complete documentation
+   └─ How to use scripts
+   └─ Troubleshooting guide
+   └─ Technical information
+   └─ Next steps
+
+2. WORD365_PROCESSING_SUMMARY.md (5.4 KB)
+   └─ Executive summary
+   └─ Main statistics
+   └─ Problem analysis
+   └─ Recommendations
+   └─ Best for managers/reports
+
+3. WORD365_STATS.txt (6.1 KB)
+   └─ Detailed statistics
+   └─ Lists all questions by category
+   └─ Results breakdown
+   └─ Best for thorough review
+
+4. WORD365_FILE_INDEX.txt (THIS FILE)
+   └─ Navigation guide
+   └─ File descriptions
+   └─ Quick reference
+
+================================================================================
+LOG FILES (Execution Trace)
+================================================================================
+
+1. word365_processing.log (7.7 KB)
+   └─ Complete execution log
+   └─ All 30 questions processed
+   └─ Detailed success/error messages
+   └─ Timestamps and metrics
+   └─ Use for debugging
+
+================================================================================
+FILE RELATIONSHIP DIAGRAM
+================================================================================
+
+                    process_word365_batch.cjs
+                             |
+                    [Processes 30 questions]
+                             |
+                   ┌─────────┴──────────┐
+                   |                    |
+          Database Updates         Log Files
+                   |                    |
+    ┌──────────────┴──────────┐  word365_processing.log
+    |                         |
+ai_verification_results   questions table
+  (6 records)           (topic_review_status)
+    |                         |
+    └──────────────┬──────────┘
+                   |
+         verify_word365_results.cjs
+                   |
+         [Verifies DB changes]
+                   |
+    ┌──────────────┴──────────┐
+    |                         |
+ Console Output      generate_word365_report.cjs
+                             |
+                   ┌─────────┴──────────┐
+                   |                    |
+        word365_verification_    word365_detailed_
+        report.json              report.json
+
+                         Reports
+                             |
+                   ┌─────────┼──────────┐
+                   |         |          |
+            README.md   STATS.txt   SUMMARY.md
+
+================================================================================
+QUICK START GUIDE
+================================================================================
+
+Step 1: Read Documentation
+  → cat WORD365_README.md
+
+Step 2: Check Execution Log
+  → cat word365_processing.log
+
+Step 3: Review Statistics
+  → cat WORD365_STATS.txt
+
+Step 4: View Database Changes
+  → node verify_word365_results.cjs
+
+Step 5: Generate New Report (if needed)
+  → node generate_word365_report.cjs
+
+================================================================================
+FILE SIZES SUMMARY
+================================================================================
+
+Scripts:        ~18.6 KB (3 files)
+Reports JSON:   ~9.3 KB (2 files)
+Reports MD/TXT: ~24.3 KB (4 files)
+Logs:           ~7.7 KB (1 file)
+─────────────────────────────
+TOTAL:          ~59.9 KB
+
+================================================================================
+DATABASE CHANGES SUMMARY
+================================================================================
+
+TABLE: ai_verification_results
+  Action: INSERT
+  Records: 6
+  Provider: microsoft_url_validator
+  HIGH confidence: 1
+  MEDIUM confidence: 5
+
+TABLE: questions
+  Action: UPDATE
+  Records: 6
+  Status 'microsoft_verified': 1
+  Status 'microsoft_needs_review': 5
+
+================================================================================
+PROBLEM CATEGORIES
+================================================================================
+
+1. VERIFIED (1 question)
+   ✅ ee07b9f8-449c-4e43-a68b-1e19429452a6
+   File: WORD365_STATS.txt (line ~120)
+   Details: WORD365_PROCESSING_SUMMARY.md
+
+2. NEEDS REVIEW (5 questions)
+   ⚠️  URLs incomplete - see WORD365_STATS.txt (lines ~140-160)
+   Action needed: Manual verification
+
+3. NO URLS (22 questions)
+   ❌ Missing Microsoft references
+   File: WORD365_STATS.txt (lines ~165-190)
+   Action needed: Add explanations
+
+4. NO EXPLANATION (2 questions)
+   ❌ Missing all content
+   File: WORD365_STATS.txt (lines ~192-197)
+   Action needed: Create explanations
+
+================================================================================
+HOW TO FIND SPECIFIC INFORMATION
+================================================================================
+
+Need to find a specific question ID?
+  → grep "question_id" word365_verification_report.json
+
+Need to see all preguntas sin procesar?
+  → grep -A 5 "PREGUNTAS SIN PROCESAR" WORD365_STATS.txt
+
+Need database verification?
+  → node verify_word365_results.cjs
+
+Need to see exact URLs that failed?
+  → grep -i "contenido insuficiente" word365_processing.log
+
+Need processing statistics?
+  → grep "RESUMEN" WORD365_STATS.txt -A 20
+
+================================================================================
+MAINTENANCE AND UPDATES
+================================================================================
+
+To re-run processing:
+  → node process_word365_batch.cjs
+
+To verify current state:
+  → node verify_word365_results.cjs
+
+To generate new reports:
+  → node generate_word365_report.cjs
+
+To clean up old reports:
+  → rm word365_verification_report.json word365_detailed_report.json
+
+================================================================================
+NEXT ACTIONS CHECKLIST
+================================================================================
+
+Immediate:
+  [ ] Read WORD365_README.md for overview
+  [ ] Review WORD365_PROCESSING_SUMMARY.md for executive summary
+  [ ] Check word365_processing.log for any errors
+
+Short-term:
+  [ ] Manually verify 5 URLs in microsoft_needs_review
+  [ ] Add explanations to 2 questions without text
+  [ ] Add Microsoft URLs to 22 questions without references
+  [ ] Re-run process_word365_batch.cjs to verify changes
+
+Long-term:
+  [ ] Implement automated URL validation
+  [ ] Set up periodic verification jobs
+  [ ] Create monitoring alerts for broken URLs
+
+================================================================================
+TIMESTAMPS
+================================================================================
+
+Processing Date: 2026-01-22
+Processing Time: 21:30-21:39 UTC (9 minutes)
+Report Generated: 2026-01-22 21:39 UTC
+Last Updated: 2026-01-22 21:40 UTC
+
+================================================================================
+CONTACT & SUPPORT
+================================================================================
+
+For questions about:
+  • Processing results → WORD365_PROCESSING_SUMMARY.md
+  • Database changes → WORD365_README.md (Technical Information section)
+  • Specific questions → WORD365_STATS.txt
+  • Execution details → word365_processing.log
+
+Questions count by category:
+  • Verified: 1 (3.3%)
+  • Needs Review: 5 (16.7%)
+  • Missing URLs: 22 (73.3%)
+  • Missing Explanation: 2 (6.7%)
+
+================================================================================

@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // components/v2/TestLayoutV2.tsx
 // Versión TypeScript del componente TestLayout
 // Usa Drizzle + Zod para type safety
@@ -338,7 +338,7 @@ export default function TestLayoutV2({
       }
     } else {
       // 📊 Tracking de test completado
-      trackTestAction('test_completed', null, {
+      trackTestAction('test_completed', undefined, {
         totalQuestions: effectiveQuestions.length,
         correctAnswers: score,
         accuracy: Math.round((score / effectiveQuestions.length) * 100),

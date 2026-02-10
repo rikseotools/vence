@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-01-23T18:40:55.558Z",
+  "config": {
+    "TOPIC_ID": null,
+    "LIMIT": 50,
+    "SIMILARITY_THRESHOLD": 0.6,
+    "TOP_K": 10
+  },
+  "summary": {
+    "total": 48,
+    "correct": 48,
+    "wrong": 0,
+    "wrongArticleOnly": 0,
+    "topicIncorrecto": 0,
+    "errors": 0
+  },
+  "wrongArticles": [],
+  "topicIncorrecto": []
+}

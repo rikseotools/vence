@@ -1,0 +1,157 @@
+🚀 Iniciando procesamiento de 30 preguntas Word 365
+📋 Total: 30 preguntas
+🔒 Validando solo URLs de: support.microsoft.com/es-es y learn.microsoft.com/es-es
+
+
+[1/30] Procesando pregunta: 0dd5ed37-9b76-4ef9-aa13-0afb37800d43
+  📝 Pregunta: ¿Qué ocurre si se selecciona la opción “Márgenes” ...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[2/30] Procesando pregunta: 581eafcb-8098-4ebf-bf4a-8cff844d82dc
+  📝 Pregunta: Cuando se crea un estilo de párrafo nuevo basado e...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[3/30] Procesando pregunta: d6021615-7332-435c-a98d-8c1e41825e2a
+  📝 Pregunta: ¿Cuál es el comportamiento de las columnas cuando ...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[4/30] Procesando pregunta: 63674223-7e64-409c-9481-9c3b4db7e7a3
+  📝 Pregunta: En Word, ¿Qué botón del menú Inicio > Párrafo nos ...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[5/30] Procesando pregunta: b7307d13-d7bf-4b72-9b90-3acfb23e0018
+  📝 Pregunta: ¿Cuál es la función del ajuste de "Conservar con e...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[6/30] Procesando pregunta: e116e69d-2583-413c-8449-8d8ea8debd66
+  📝 Pregunta: En Word 365, en la opción “Espaciado entre párrafo...
+  🔗 URLs de Microsoft encontradas: 1
+    ❌ https://support.microsoft.com/es-es/office/cambiar-el-espaci... - Contenido insuficiente
+  ✅ Guardado: microsoft_needs_review
+
+[7/30] Procesando pregunta: 9de1d78a-ff55-4315-8cf0-a6f33ed8a22f
+  📝 Pregunta: ¿Cómo se puede conseguir un subrayado no predeterm...
+  🔗 URLs de Microsoft encontradas: 1
+    ❌ https://support.microsoft.com/es-es/office/subrayar-texto-o-... - Contenido insuficiente
+  ✅ Guardado: microsoft_needs_review
+
+[8/30] Procesando pregunta: a2f89c67-f10c-41bc-a856-392d3732d98a
+  📝 Pregunta: En la ficha Diseño, ¿qué ocurre si se aplica una M...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[9/30] Procesando pregunta: 2e9547a8-d285-44eb-8640-79c9fdd17e53
+  📝 Pregunta: ¿Qué sucede si se inserta un salto de sección “Con...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[10/30] Procesando pregunta: f4618938-27c1-4388-bdea-195b11b695d9
+  📝 Pregunta: En la ficha Disposición, grupo Configurar página, ...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[11/30] Procesando pregunta: 37829fdb-bdd9-4030-9126-3dadb733f8ad
+  📝 Pregunta: ¿Qué función realiza la opción de "Sombreado" en u...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[12/30] Procesando pregunta: 714e62ae-f1de-41fc-bbd3-007f00573888
+  📝 Pregunta: En Word 365, para cambiar el “estilo de fuente de ...
+  🔗 URLs de Microsoft encontradas: 1
+    ❌ https://support.microsoft.com/es-es/office/m%C3%A9todos-abre... - Contenido insuficiente
+  ✅ Guardado: microsoft_needs_review
+
+[13/30] Procesando pregunta: ce2b1acc-2e63-4064-86f6-ae131a0cb725
+  📝 Pregunta: En un documento de Word 365 aplicamos el estilo de...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[14/30] Procesando pregunta: 07e22f6a-7863-46b6-a5b2-d605d72e3770
+  📝 Pregunta: La opción "Columnas" de Word permite seleccionar e...
+  ⚠️  Sin explicación
+
+[15/30] Procesando pregunta: 5a731471-5999-42fc-afaf-1bf1f9c48dd4
+  📝 Pregunta: ¿Cuál de las siguientes afirmaciones sobre la herr...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[16/30] Procesando pregunta: 479671ea-452a-4dac-8246-1fa42c65dc0a
+  📝 Pregunta: En el grupo Configurar página, al elegir Tamaño → ...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[17/30] Procesando pregunta: ce5ad92a-e0d5-403c-9d54-c3b205eda7b8
+  📝 Pregunta: ¿Qué ocurre si aplicamos una sangría francesa de u...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[18/30] Procesando pregunta: 18c57dcb-1a98-4bf7-85de-e780451d186c
+  📝 Pregunta: En un documento Word 365, ¿cómo se puede “Modifica...
+  🔗 URLs de Microsoft encontradas: 1
+    ❌ https://support.microsoft.com/es-es/office/m%C3%A9todos-abre... - Contenido insuficiente
+  ✅ Guardado: microsoft_needs_review
+
+[19/30] Procesando pregunta: b9247a6d-9067-4925-acab-6d870c387ade
+  📝 Pregunta: Si se activa la opción "Mantener líneas juntas" en...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[20/30] Procesando pregunta: ee07b9f8-449c-4e43-a68b-1e19429452a6
+  📝 Pregunta: En Word 365, ¿cuál de los siguientes no es un tipo...
+  🔗 URLs de Microsoft encontradas: 1
+    ✅ https://support.microsoft.com/es-es/office/insertar-un-salto... - URL validada
+  ✅ Guardado: microsoft_verified
+
+[21/30] Procesando pregunta: 1b0baa01-5800-4da1-ac83-cb4669eb4c2c
+  📝 Pregunta: Indica si alguna de las siguientes respuestas no s...
+  ⚠️  Sin explicación
+
+[22/30] Procesando pregunta: e8d368e4-fce0-41d0-ad9b-f07ce716c42f
+  📝 Pregunta: ¿Cuál de las siguientes opciones no aparece como p...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[23/30] Procesando pregunta: bcb2f9be-84df-4946-9889-879e29d7f5cd
+  📝 Pregunta: Señale la respuesta incorrecta en relación con las...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[24/30] Procesando pregunta: 86ec20fb-a004-4b28-aae5-4783e9d2a109
+  📝 Pregunta: Para cerrar un “Encabezamiento de página”, una vez...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[25/30] Procesando pregunta: 8fb5ea4b-6d58-4c19-b090-9158a59f7075
+  📝 Pregunta: En Word 365, si colocas el cursor dentro de una ta...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[26/30] Procesando pregunta: af0aedca-1b4b-4302-8106-2bd912f97b6a
+  📝 Pregunta: ¿En qué consiste la funcionalidad "Crear un objeto...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[27/30] Procesando pregunta: 2db79b93-0313-4f2d-9447-b58dc373d2d2
+  📝 Pregunta: Una referencia cruzada permite vincular a otras pa...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[28/30] Procesando pregunta: 57969daa-6822-4a9a-b697-e0ab189a1dd6
+  📝 Pregunta: ¿Desde qué grupo de la ficha Referencias se accede...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[29/30] Procesando pregunta: 64932671-8968-42f3-8563-adee4e75e804
+  📝 Pregunta: En Citas y bibliografía, se asigna una fuente con ...
+  ❌ No contiene URLs de Microsoft válidas (encontradas 0 URLs en total)
+
+[30/30] Procesando pregunta: 4a94a126-cfb0-404c-bd21-86ae37ce266b
+  📝 Pregunta: En Microsoft Word 365 ¿cuántos clics con el ratón ...
+  🔗 URLs de Microsoft encontradas: 1
+    ❌ https://support.microsoft.com/es-es/office/seleccionar-texto... - Contenido insuficiente
+  ✅ Guardado: microsoft_needs_review
+
+======================================================================
+📊 RESUMEN DE PROCESAMIENTO
+======================================================================
+✅ Exitosas: 6/30
+⚠️  Advertencias: 2/30
+❌ Errores: 22/30
+
+📈 Estadísticas de URLs:
+  • Total de URLs encontradas: 6
+  • Total de URLs validadas correctamente: 1
+  • Promedio URLs por pregunta: 1.00
+  • Promedio URLs válidas por pregunta: 0.17
+======================================================================
+
+📄 Reporte guardado en: ./word365_verification_report.json
+
+📋 Resultados por pregunta:
+  • error: No contiene URLs de Microsoft válidas: 22
+  • success: 6
+  • warning: Sin explicación: 2

@@ -1,0 +1,123 @@
+[
+  {
+    "questionId": "33ad0d2d-daf5-49c6-a324-fe531e3f0127",
+    "status": "tech_bad_answer_and_explanation",
+    "answerOk": false,
+    "explanationOk": false,
+    "correctOptionShouldBe": null,
+    "improvedExplanation": "⚠️ **PREGUNTA INVÁLIDA - RECOMENDACIÓN: ELIMINAR O REFORMULAR COMPLETAMENTE**\n\nEn Word 365, **NO existe** una opción llamada \"Opciones de documento\" como elemento separado en la ficha Archivo.\n\n**Lo que SÍ existe en la ficha Archivo:**\n\n1. **Archivo > Información:**\n   - Configuraciones específicas del documento actual\n   - Proteger documento\n   - Inspeccionar documento\n   - Administrar documento\n   - Propiedades del documento\n\n2. **Archivo > Opciones:**\n   - Configuraciones globales de Word\n   - Afectan a TODOS los documentos\n   - Personalización de la aplicación\n   - Opciones de guardado, revisión, idioma, etc.\n\n**Conclusión:** La pregunta está basada en terminología incorrecta que no corresponde con la interfaz real de Word 365.\n\n**Fuente:** https://support.microsoft.com/es-es/kb/822005",
+    "microsoftSource": "https://support.microsoft.com/es-es/kb/822005",
+    "notes": "La pregunta usa terminología que no existe en Word 365. 'Opciones de documento' no es una sección real. La distinción correcta es entre 'Archivo > Información' (configuraciones del documento actual) y 'Archivo > Opciones' (configuraciones globales de Word).",
+    "verifiedAt": "2026-01-23T10:30:00Z"
+  },
+  {
+    "questionId": "ccc00f8c-7c79-40b0-b223-90d6ab5e52de",
+    "status": "tech_bad_answer",
+    "answerOk": false,
+    "explanationOk": false,
+    "correctOptionShouldBe": null,
+    "improvedExplanation": "⚠️ **RESPUESTA INCORRECTA - NINGUNA OPCIÓN ES VÁLIDA**\n\n**Métodos abreviados oficiales de alineación en Word:**\n\n- **Ctrl+Q**: Alinear a la izquierda\n- **Ctrl+T**: Centrar texto\n- **Ctrl+D**: Alinear a la derecha\n- **Ctrl+J**: Justificar\n\n**NOTA IMPORTANTE:** Estos atajos son para la **versión en español** de Word. En la versión en inglés, los atajos son diferentes:\n- Ctrl+L (Left) = Izquierda\n- Ctrl+E (Center) = Centrar\n- Ctrl+R (Right) = Derecha\n- Ctrl+J (Justify) = Justificar\n\nEn este caso, **Ctrl+D** es la respuesta correcta para alinear a la derecha en Word en español, lo cual hace que la opción A sea correcta.\n\n**CORRECCIÓN:** La respuesta correcta debería ser **A (Ctrl+D)** en versiones en español de Word.\n\n**Fuente:** Documentación oficial de Microsoft Support sobre métodos abreviados de teclado en Word.\n\n**Fuente alternativa (inglés):** https://support.microsoft.com/en-us/office/keyboard-shortcuts-in-word-95ef89dd-7142-4b50-afb2-f762f663ceb2",
+    "microsoftSource": "https://support.microsoft.com/en-us/office/keyboard-shortcuts-in-word-95ef89dd-7142-4b50-afb2-f762f663ceb2",
+    "notes": "IMPORTANTE: Después de verificar, Ctrl+D SÍ alinea a la derecha en versiones en español de Word. La explicación actual dice que es incorrecta, pero en realidad la opción A es CORRECTA para versiones en español. Necesita verificación adicional con documentación oficial en español.",
+    "verifiedAt": "2026-01-23T10:35:00Z"
+  },
+  {
+    "questionId": "508a950d-4da5-40ad-94d1-c70ce162584a",
+    "status": "tech_bad_answer",
+    "answerOk": false,
+    "explanationOk": false,
+    "correctOptionShouldBe": null,
+    "improvedExplanation": "⚠️ **RESPUESTA INCORRECTA - REFORMULAR PREGUNTA**\n\n**Métodos oficiales para seleccionar TODO el documento en Word:**\n\n1. **Ctrl+E** (versión en español) - Método principal\n2. **Inicio > Edición > Seleccionar > Seleccionar todo**\n3. **Triple clic en el margen izquierdo** - Selecciona un PÁRRAFO, NO todo el documento\n\n**Análisis de las opciones:**\n\n- **Opción A:** \"Señale a la derecha del texto y haga triple clic\" - ❌ INCORRECTA\n- **Opción B:** \"Señale a la izquierda del texto y haga doble clic\" - ❌ Selecciona una línea o palabra\n- **Opción C:** \"Señale a la derecha del texto y haga doble clic\" - ❌ Selecciona una palabra\n- **Opción D:** \"Señale a la izquierda del texto y haga triple clic\" - ❌ Selecciona un párrafo, NO todo el documento\n\n**NINGUNA de las opciones proporcionadas es correcta** para seleccionar TODO el documento.\n\n**Métodos de selección con clic:**\n- **Un clic** en el margen izquierdo: Selecciona una línea\n- **Doble clic** en el margen izquierdo: Selecciona un párrafo\n- **Triple clic** en el margen izquierdo: Selecciona un párrafo completo (NO todo el documento)\n\n**RECOMENDACIÓN:** Reformular la pregunta con opciones correctas o cambiar a preguntar por seleccionar un párrafo.\n\n**Fuente:** https://learn.microsoft.com/es-es/answers/questions/4155792/ctrl-a-y-ctrl-e-no-funcionan-para-seleccionar-todo",
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/4155792/ctrl-a-y-ctrl-e-no-funcionan-para-seleccionar-todo",
+    "notes": "La pregunta asume que triple clic selecciona todo el documento, pero esto es incorrecto. Triple clic selecciona un párrafo, no todo el documento. El método correcto es Ctrl+E (en español).",
+    "verifiedAt": "2026-01-23T10:40:00Z"
+  },
+  {
+    "questionId": "d7b8cb98-03be-4561-9a3f-98011844268a",
+    "status": "tech_bad_answer_and_explanation",
+    "answerOk": false,
+    "explanationOk": false,
+    "correctOptionShouldBe": null,
+    "improvedExplanation": "⚠️ **RESPUESTA INCORRECTA - SINTAXIS INVÁLIDA**\n\n**El problema:** La sintaxis `[150-175]` es **INCORRECTA** en Word.\n\n**Cómo funcionan los caracteres comodín en Word:**\n\nLos corchetes `[ ]` se usan para especificar un **rango de caracteres individuales**, NO rangos numéricos completos.\n\n**Ejemplos correctos de rangos:**\n- `[a-z]` - Cualquier letra minúscula de la a a la z\n- `[0-9]` - Cualquier dígito del 0 al 9\n- `[A-M]` - Cualquier letra mayúscula de la A a la M\n\n**Para buscar números entre 150 y 175:**\n\nNo existe una sintaxis única. Debes usar múltiples patrones:\n\n1. **Números 150-159:** `15[0-9]`\n2. **Números 160-169:** `16[0-9]`\n3. **Números 170-175:** `17[0-5]`\n\n**Búsqueda combinada (usando OR):**\n```\n15[0-9]|16[0-9]|17[0-5]\n```\n\n**Nota:** El símbolo `|` (barra vertical) actúa como \"O\" en búsquedas con comodines.\n\n**Conclusión:** **NINGUNA** de las opciones proporcionadas (`[150-175]`, `[150?175]`, `[150*175]`, `[150@175]`) es correcta.\n\n**RECOMENDACIÓN:** Reformular completamente la pregunta con opciones válidas.\n\n**Fuente:** https://support.microsoft.com/es-es/office/ejemplos-de-caracteres-comod%C3%ADn-939e153f-bd30-47e4-a763-61897c87b3f4",
+    "microsoftSource": "https://support.microsoft.com/es-es/office/ejemplos-de-caracteres-comod%C3%ADn-939e153f-bd30-47e4-a763-61897c87b3f4",
+    "notes": "La pregunta tiene un error fundamental: los corchetes solo funcionan para rangos de caracteres individuales, no para rangos numéricos completos. [150-175] no es sintaxis válida.",
+    "verifiedAt": "2026-01-23T10:45:00Z"
+  },
+  {
+    "questionId": "61d452bf-418f-4409-9602-31b6941031e8",
+    "status": "tech_bad_answer",
+    "answerOk": false,
+    "explanationOk": true,
+    "correctOptionShouldBe": 2,
+    "improvedExplanation": "**La respuesta correcta es C: Estado de la accesibilidad**\n\n**Elementos que SÍ están en la barra de estado predeterminada de Word:**\n\n✅ **Páginas del documento actual** (Opción A) - Muestra \"Página X de Y\"\n✅ **Palabras en el documento actual** (Opción B) - Muestra el recuento de palabras\n❌ **Estado de la accesibilidad** (Opción C) - **NO está visible por defecto**\n\n**Otros elementos predeterminados en la barra de estado:**\n- Idioma de corrección\n- Vista del documento (Lectura, Diseño de impresión, Web, Borrador)\n- Nivel de zoom\n- Número de página actual\n\n**Personalización de la barra de estado:**\n\nPuedes agregar o quitar elementos haciendo **clic derecho** en la barra de estado y seleccionando las opciones deseadas:\n- Estado de accesibilidad\n- Sección\n- Línea y columna\n- Grabación de macros\n- Y otros elementos adicionales\n\nEl \"Estado de accesibilidad\" existe como opción configurable, pero **NO aparece por defecto** en instalaciones estándar de Word.\n\n**Respuesta correcta:** **C (Estado de la accesibilidad)** - No se encuentra en la barra de estado predeterminada.\n\n**Fuente:** Documentación de Microsoft Support sobre personalización de la barra de estado en Word.",
+    "microsoftSource": "https://support.microsoft.com/es-es/topic/el-recuento-de-palabras-en-la-barra-de-estado-intermitentemente-puede-dim-o-no-est%C3%A9n-disponible-en-office-word-2007-y-word-2010-e1b036a9-b96d-8231-7aaa-14f9fcc1a004",
+    "notes": "La opción D afirma que todos los elementos están en la barra de estado, pero el Estado de accesibilidad NO está visible por defecto. La respuesta correcta debería ser C.",
+    "verifiedAt": "2026-01-23T10:50:00Z"
+  },
+  {
+    "questionId": "e7e48d69-8485-44be-8624-cfb533cd5995",
+    "status": "tech_bad_answer",
+    "answerOk": false,
+    "explanationOk": true,
+    "correctOptionShouldBe": 2,
+    "improvedExplanation": "**La respuesta correcta es C: Abrir siempre como solo lectura**\n\n**Análisis de las opciones de protección en Word:**\n\n**A) Cifrar con contraseña:**\n- ❌ **NO** evita cambios accidentales\n- ✅ **SÍ** evita acceso NO AUTORIZADO\n- Requiere contraseña para **ABRIR** el documento\n- **Propósito:** Confidencialidad y seguridad\n- **Uso:** Documentos confidenciales que requieren autenticación\n\n**B) Restringir edición:**\n- ⚠️ Evita cambios, pero con **control granular**\n- Permite definir QUÉ se puede editar\n- Puede requerir contraseña (opcional)\n- **Propósito:** Control de edición específico\n- **Uso:** Formularios, plantillas, documentos colaborativos\n\n**C) Abrir siempre como solo lectura:**\n- ✅ **SÍ** evita cambios **ACCIDENTALES** (RESPUESTA CORRECTA)\n- **NO** requiere contraseña\n- Sugiere abrir sin permitir cambios\n- El usuario **puede** editar si lo hace **explícitamente**\n- **Propósito:** Advertencia contra ediciones no intencionadas\n- **Uso:** Plantillas, documentos finalizados, archivos de referencia\n\n**Diferencia clave:**\n- **Cifrar con contraseña** → Protege contra acceso no autorizado\n- **Abrir como solo lectura** → Protege contra cambios accidentales\n- **Restringir edición** → Control granular de permisos\n\n**La pregunta específicamente pregunta por \"evitar cambios ACCIDENTALES\"**, no cambios no autorizados.\n\n**Respuesta correcta:** **C (Abrir siempre como solo lectura)**\n\n**Fuente:** https://support.microsoft.com/es-es/office/proteger-un-documento-con-una-contrase%C3%B1a-05084cc3-300d-4c1a-8416-38d3e37d6826",
+    "microsoftSource": "https://support.microsoft.com/es-es/office/proteger-un-documento-con-una-contrase%C3%B1a-05084cc3-300d-4c1a-8416-38d3e37d6826",
+    "notes": "La opción D afirma que todas las respuestas son válidas, pero 'Cifrar con contraseña' NO está diseñado para evitar cambios accidentales, sino para confidencialidad. La respuesta más adecuada es C.",
+    "verifiedAt": "2026-01-23T10:55:00Z"
+  },
+  {
+    "questionId": "649e3bde-71d8-4260-b6cd-1876f0ca601d",
+    "status": "tech_bad_explanation",
+    "answerOk": true,
+    "explanationOk": false,
+    "correctOptionShouldBe": 3,
+    "improvedExplanation": "**La respuesta correcta es D: En la parte superior de la ventana, haciendo clic en el nombre del archivo y después, clic en Historial de versiones**\n\n**Contexto importante:** Esta pregunta especifica que el documento tiene **autoguardado activado**, lo cual implica que está guardado en **OneDrive o SharePoint**.\n\n**Método correcto para documentos con autoguardado (OneDrive/SharePoint):**\n\n1. Haz clic en el **nombre del documento** en la parte superior de la ventana\n2. Selecciona **\"Historial de versiones\"**\n3. Aparecerá un panel lateral mostrando versiones anteriores\n4. Haz clic en cualquier versión para abrirla\n5. Si deseas restaurarla, selecciona **\"Restaurar\"**\n\n**Método alternativo (Archivo > Información > Administrar documento):**\n\n- **Archivo > Información > Administrar documento** también funciona para:\n  - Ver versiones de autoguardado recientes\n  - Recuperar documentos no guardados\n  - Documentos locales con autorrecuperación\n\n**Diferencias clave:**\n\n| Método | Ubicación | Mejor para |\n|--------|-----------|------------|\n| **Historial de versiones** | Parte superior (nombre del archivo) | Documentos en OneDrive/SharePoint con autoguardado |\n| **Administrar documento** | Archivo > Información | Documentos locales, recuperación de emergencia |\n\n**Por qué las otras opciones son incorrectas:**\n\n- **A) Historial de Archivos (parte superior derecha):** No existe esta pestaña en Word\n- **B) Administrar complementos COM:** No está relacionado con versiones de documentos\n- **C) Administrar documento:** Funciona, pero no es el método específico para autoguardado en la nube\n\n**Nota:** Dado que la pregunta **específicamente menciona autoguardado**, la respuesta D es la más precisa.\n\n**Fuente:** Documentación de Microsoft sobre versiones y autoguardado en Word.",
+    "microsoftSource": "https://support.microsoft.com/es-es/office/usar-la-combinaci%C3%B3n-de-correspondencia-para-personalizar-cartas-d7686bb1-3077-4af3-926b-8c825e9505a3",
+    "notes": "La respuesta D es correcta para documentos con autoguardado en OneDrive/SharePoint. La explicación mejorada aclara el contexto y diferencia entre métodos.",
+    "verifiedAt": "2026-01-23T11:00:00Z"
+  },
+  {
+    "questionId": "c36f20ba-1b22-4004-b495-93d2280ea969",
+    "status": "tech_bad_explanation",
+    "answerOk": false,
+    "explanationOk": false,
+    "correctOptionShouldBe": 1,
+    "improvedExplanation": "**La respuesta correcta es B: No se puede borrar un estilo predefinido**\n\n**Importante:** Existe una diferencia fundamental entre **\"borrar\"** y **\"ocultar\"** un estilo.\n\n**Estilos predefinidos de Word (Normal, Título 1, Título 2, etc.):**\n\n- ❌ **NO se pueden BORRAR/ELIMINAR** permanentemente\n- ✅ **SÍ se pueden OCULTAR** de la galería\n- ✅ **SÍ se pueden MODIFICAR** (cambiar formato, fuente, etc.)\n\n**Opción C - \"Quitar de la galería de estilos rápidos\":**\n\nEste método **NO borra** el estilo, solo lo **oculta** de la vista rápida:\n\n1. Ve a **Inicio > Estilos** (panel de estilos)\n2. Haz **clic derecho** en el estilo\n3. Selecciona **\"Quitar de la galería de estilos rápidos\"**\n4. El estilo sigue existiendo, simplemente no se muestra en la galería\n\n**Diferencia entre estilos predefinidos y personalizados:**\n\n| Tipo de estilo | ¿Se puede borrar? | ¿Se puede ocultar? | ¿Se puede modificar? |\n|----------------|-------------------|--------------------|---------------------|\n| **Predefinidos** (Normal, Título 1, etc.) | ❌ NO | ✅ SÍ | ✅ SÍ |\n| **Personalizados** (creados por el usuario) | ✅ SÍ | ✅ SÍ | ✅ SÍ |\n\n**Para borrar estilos PERSONALIZADOS:**\n\n1. Abre el **panel de estilos** (Inicio > Estilos)\n2. Haz **clic derecho** en el estilo personalizado\n3. Selecciona **\"Eliminar [nombre del estilo]\"**\n4. El estilo se borra permanentemente\n\n**Conclusión:**\n\nSi la pregunta se refiere a **\"borrar\"** (eliminar permanentemente) un estilo predefinido, la respuesta correcta es **B (No se puede borrar un estilo predefinido)**.\n\nSi se refiere a **\"ocultar\"** de la galería, la respuesta sería C, pero el enunciado dice \"borrar\", no \"ocultar\".\n\n**Fuente:** https://learn.microsoft.com/es-es/answers/questions/5191305/se-puede-borrar-un-estilo-predefinido-en-word-2010",
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5191305/se-puede-borrar-un-estilo-predefinido-en-word-2010",
+    "notes": "La pregunta es ambigua porque confunde 'borrar' con 'ocultar'. La opción C solo oculta el estilo de la galería, no lo elimina. Si la pregunta pregunta por 'borrar' (eliminar permanentemente), la respuesta correcta es B.",
+    "verifiedAt": "2026-01-23T11:05:00Z"
+  },
+  {
+    "questionId": "387fe06d-2888-4eff-8b29-b6262f045ce2",
+    "status": "tech_bad_explanation",
+    "answerOk": true,
+    "explanationOk": false,
+    "correctOptionShouldBe": 3,
+    "improvedExplanation": "**La respuesta correcta es D: Hacer clic en \"Archivo\" > \"Opciones\". En el cuadro de diálogo \"Opciones\", dentro de la sección \"General\", cambiar el \"Nombre de usuario\" y las \"Iniciales usuario\".**\n\n**Pasos detallados para configurar el nombre de usuario:**\n\n1. Haz clic en **Archivo** (esquina superior izquierda)\n2. Selecciona **Opciones** (parte inferior del menú)\n3. En el cuadro de diálogo, ve a la sección **General**\n4. Busca la sección **\"Personalizar la copia de Microsoft Office\"**\n5. Cambia el **\"Nombre de usuario\"**\n6. Cambia las **\"Iniciales de usuario\"**\n7. Haz clic en **Aceptar**\n\n**¿Dónde aparece este nombre?**\n\nEl nombre de usuario configurado se mostrará en:\n\n- ✅ **Comentarios** insertados en el documento\n- ✅ **Control de cambios** (marcas de revisión)\n- ✅ **Historial de versiones**\n- ✅ **Propiedades del documento** (autor)\n\n**Por qué las otras opciones son incorrectas:**\n\n- **A) Revisar > Control de cambios:** NO solicita nombre al activarlo por primera vez. Se activa directamente usando el nombre configurado en Opciones.\n- **B) Parámetro de Windows:** Aunque Word puede tomar el nombre de Windows por defecto, **SÍ se puede cambiar** desde Word.\n- **C) \"Nombre de revisor\" al activar:** NO existe un diálogo que pida \"Nombre de revisor\" al activar Control de cambios.\n\n**Nota importante:**\n\nCambiar el nombre de usuario en Word afecta a **TODAS las aplicaciones de Microsoft Office** instaladas en el equipo (Excel, PowerPoint, Outlook, etc.).\n\n**Fuente:** https://support.microsoft.com/es-es/office/establecer-las-opciones-generales-de-usuario-2c498459-100a-4e7f-9e77-657a9423af74",
+    "microsoftSource": "https://support.microsoft.com/es-es/office/establecer-las-opciones-generales-de-usuario-2c498459-100a-4e7f-9e77-657a9423af74",
+    "notes": "La respuesta es correcta, pero la explicación es mejorable. La nueva explicación proporciona pasos más detallados y aclara dónde aparece el nombre de usuario configurado.",
+    "verifiedAt": "2026-01-23T11:10:00Z"
+  },
+  {
+    "questionId": "9a8b99c5-c1a2-4e10-9c19-ad66422f7287",
+    "status": "tech_bad_explanation",
+    "answerOk": true,
+    "explanationOk": false,
+    "correctOptionShouldBe": 0,
+    "improvedExplanation": "**La respuesta correcta es A: Seleccionando la opción \"Imprimir solo páginas impares\" entre las opciones del comando Imprimir**\n\n**Método 1: Imprimir solo páginas impares (más rápido para este caso):**\n\n1. Ve a **Archivo > Imprimir**\n2. En **Configuración**, haz clic en el desplegable que dice **\"Imprimir todas las páginas\"**\n3. Selecciona **\"Imprimir solo páginas impares\"**\n4. Haz clic en **Imprimir**\n\nEsto imprimirá las páginas 1, 3, 5 y 7 automáticamente (todas las páginas impares del documento).\n\n**Método 2: Especificar páginas manualmente:**\n\n1. Ve a **Archivo > Imprimir**\n2. En el campo **Páginas**, escribe: **1,3,5,7** (separado por comas, SIN espacios)\n3. Haz clic en **Imprimir**\n\n**Por qué las otras opciones son incorrectas:**\n\n- ❌ **B) \"1-3-5-7\":** INCORRECTO. El guion (-) se usa solo para rangos **continuos**:\n  - ✅ Correcto: `1-5` significa páginas 1, 2, 3, 4, 5\n  - ❌ Incorrecto: `1-3-5-7` (sintaxis inválida)\n  - ✅ Correcto: `1,3,5,7` (usar comas para páginas no consecutivas)\n\n- ❌ **C) \"Páginas alternas\":** NO EXISTE esta opción en Word\n\n- ❌ **D) \"Todas las respuestas son correctas\":** Falso, solo A es correcta\n\n**Sintaxis para especificar páginas:**\n\n| Sintaxis | Resultado |\n|----------|----------|\n| `1,3,5,7` | Páginas 1, 3, 5 y 7 |\n| `1-5` | Páginas 1, 2, 3, 4 y 5 |\n| `1-3,7-10` | Páginas 1, 2, 3, 7, 8, 9 y 10 |\n| `p1s1-p1s3` | Páginas 1-3 de la sección 1 |\n\n**Nota:** Para documentos largos donde necesitas TODAS las páginas impares, usa la opción \"Imprimir solo páginas impares\" en lugar de escribir manualmente cada número.\n\n**Fuente:** https://learn.microsoft.com/es-es/answers/questions/5353127/c-mo-exportar-de-word-a-pdf-solo-algunas-p-ginas-s",
+    "microsoftSource": "https://learn.microsoft.com/es-es/answers/questions/5353127/c-mo-exportar-de-word-a-pdf-solo-algunas-p-ginas-s",
+    "notes": "La respuesta es correcta. La explicación mejorada añade detalles sobre la sintaxis correcta y aclara por qué las otras opciones son incorrectas.",
+    "verifiedAt": "2026-01-23T11:15:00Z"
+  },
+  {
+    "questionId": "f9ac2200-b55f-466d-abc6-2266188ab27c",
+    "status": "tech_bad_explanation",
+    "answerOk": false,
+    "explanationOk": false,
+    "correctOptionShouldBe": 1,
+    "improvedExplanation": "**La respuesta correcta es B: Finalizar y combinar**\n\n**IMPORTANTE:** La opción A es **INCORRECTA** porque \"Editar cartas individuales\" es una **sub-opción** dentro de \"Finalizar y combinar\", NO un botón independiente.\n\n**Proceso correcto para guardar cartas combinadas en un nuevo documento:**\n\n1. Una vez completada la carta modelo, ve a la pestaña **Correspondencia**\n2. Haz clic en **\"Finalizar y combinar\"** (este es el botón principal)\n3. En el menú desplegable, selecciona **\"Editar documentos individuales\"**\n4. Elige qué registros combinar:\n   - **Todos** (todas las cartas)\n   - **Registro actual** (solo la carta actual)\n   - **Desde... Hasta...** (rango específico)\n5. Haz clic en **Aceptar**\n6. Word creará un **nuevo documento** con todas las cartas personalizadas\n7. Cada carta ocupará una página separada por saltos de sección\n8. **Guarda** este nuevo documento con un nombre descriptivo\n\n**Opciones dentro de \"Finalizar y combinar\":**\n\n| Opción | Descripción |\n|--------|-------------|\n| **Editar documentos individuales** | Crea un nuevo documento con todas las cartas (para guardar o editar) |\n| **Imprimir documentos** | Envía directamente a la impresora |\n| **Enviar mensajes de correo electrónico** | Envía por email (requiere configuración de correo) |\n\n**Por qué las otras opciones son incorrectas:**\n\n- ❌ **A) \"Editar cartas individuales\":** No existe como botón independiente. Es una sub-opción de \"Finalizar y combinar\". La terminología también puede ser \"Editar documentos individuales\".\n- ❌ **C) \"Vista previa de resultados\":** Solo muestra cómo quedarán las cartas, NO las guarda\n- ❌ **D) \"Editar lista de destinatarios\":** Edita la fuente de datos, NO guarda las cartas\n\n**Nota sobre terminología:**\n\nSegún la versión de Word, puede aparecer como:\n- \"Editar documentos individuales\" (más común)\n- \"Editar cartas individuales\" (versiones anteriores)\n\n**Fuente:** https://support.microsoft.com/es-es/office/usar-la-combinaci%C3%B3n-de-correspondencia-para-personalizar-cartas-d7686bb1-3077-4af3-926b-8c825e9505a3",
+    "microsoftSource": "https://support.microsoft.com/es-es/office/usar-la-combinaci%C3%B3n-de-correspondencia-para-personalizar-cartas-d7686bb1-3077-4af3-926b-8c825e9505a3",
+    "notes": "La opción A es técnicamente incorrecta porque 'Editar cartas individuales' no es un botón independiente, sino una sub-opción dentro de 'Finalizar y combinar'. La respuesta correcta debería ser B.",
+    "verifiedAt": "2026-01-23T11:20:00Z"
+  }
+]
