@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const FROM_EMAIL = process.env.FROM_EMAIL || 'info@vence.es'
 
 export async function POST(request) {
@@ -68,7 +68,7 @@ export async function POST(request) {
         )
     }
 
-    const emailResult = await resend.emails.send({
+    const emailResult = await getResend().emails.send({
       from: FROM_EMAIL,
       to: adminEmail,
       subject: emailContent.subject,

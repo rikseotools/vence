@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import { createFraudAlert, hasActiveAlert } from '@/lib/api/fraud'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
 export async function GET(request) {
@@ -257,7 +257,7 @@ async function sendFraudAlertEmail(alerts) {
   `
 
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: process.env.FROM_EMAIL || 'info@vence.es',
       to: ADMIN_EMAIL,
       subject: `🚨 ${alerts.length} alertas de fraude detectadas`,

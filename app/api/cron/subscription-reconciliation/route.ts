@@ -6,7 +6,7 @@ import { NextResponse, NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
 const getServiceSupabase = () => {
@@ -225,7 +225,7 @@ async function sendReconciliationReport(inconsistencies: Inconsistency[]): Promi
   `
 
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: process.env.FROM_EMAIL || 'info@vence.es',
       to: ADMIN_EMAIL,
       subject: `🔧 Reconciliación: ${inconsistencies.length} inconsistencia(s) detectada(s)`,

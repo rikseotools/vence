@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
 export async function GET(request) {
@@ -147,7 +147,7 @@ export async function GET(request) {
     `
 
     // Enviar email
-    await resend.emails.send({
+    await getResend().emails.send({
       from: process.env.FROM_EMAIL || 'info@vence.es',
       to: ADMIN_EMAIL,
       subject: `📊 ${totalUsers} nuevos usuarios hoy - ${madridTime.toLocaleDateString('es-ES')}`,

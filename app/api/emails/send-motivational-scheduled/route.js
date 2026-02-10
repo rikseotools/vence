@@ -132,7 +132,7 @@ async function checkEmailLimits(supabase, userId) {
   return { blocked: false }
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 
 // Cliente Supabase con permisos de servicio
 const getSupabase = () => createClient(
@@ -637,7 +637,7 @@ async function sendMotivationalEmail(userData, analysis, supabase) {
     `
 
     // Enviar email con Resend
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: 'Vence <noticias@vence.es>',
       to: [email],
       subject: analysis.subject,

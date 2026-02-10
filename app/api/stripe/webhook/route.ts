@@ -38,7 +38,7 @@ function getPlanTypeFromSubscription(subscription: StripeSubscription): string {
   return 'premium_semester'
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 const ADMIN_EMAIL = 'manueltrader@gmail.com'
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
@@ -191,7 +191,7 @@ async function sendWebhookErrorEmail(error: Error): Promise<void> {
     </html>
   `
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
     subject: `🚨 ERROR WEBHOOK STRIPE - ${new Date().toLocaleString('es-ES')}`,
@@ -868,7 +868,7 @@ async function sendAdminPurchaseEmail(data: PurchaseEmailData): Promise<void> {
     </html>
   `
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
     subject: `💰 ¡Nueva Compra Premium! - ${data.userEmail} - ${data.amount}${currencySymbol}`,
@@ -913,7 +913,7 @@ async function sendAdminPaymentIssueEmail(data: PaymentIssueEmailData): Promise<
     </html>
   `
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
     subject: `⚠️ ${statusLabel} - ${data.userEmail}`,
@@ -1041,7 +1041,7 @@ async function sendAdminCancellationEmail(data: CancellationEmailData): Promise<
     </html>
   `
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: process.env.FROM_EMAIL || 'info@vence.es',
     to: ADMIN_EMAIL,
     subject: `👋 Cancelación - ${data.userEmail}${data.downgradedNow ? '' : ` (premium hasta ${periodEndFormatted})`}`,

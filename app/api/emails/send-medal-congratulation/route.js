@@ -4,7 +4,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const getResend = () => new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request) {
   try {
@@ -65,7 +65,7 @@ export async function POST(request) {
     const emailContent = generateMedalEmailContent(medal, userName)
 
     // Enviar email con Resend
-    const { data: emailResult, error: emailError } = await resend.emails.send({
+    const { data: emailResult, error: emailError } = await getResend().emails.send({
       from: 'Vence <noreply@ilovetest.com>',
       to: userEmail,
       subject: emailContent.subject,
