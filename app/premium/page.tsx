@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/premium/page.tsx - PÁGINA DE PAGO PREMIUM
 'use client'
 import { useState, useEffect, useRef, Suspense } from 'react'
@@ -44,7 +44,7 @@ function PremiumPageContent() {
   useEffect(() => {
     if (user && supabase && !hasTrackedPageView.current && !authLoading) {
       const referrer = document.referrer || null
-      const fromSource = searchParams.get('from') || null
+      const fromSource = searchParams.get('from')
       trackPremiumPageView(supabase, user.id, referrer, fromSource)
       hasTrackedPageView.current = true
     }

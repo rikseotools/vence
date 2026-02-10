@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import VideoCoursePage from './VideoCoursePage'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -14,7 +14,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
 
-  const { data: course } = await supabase
+  const { data: course } = await getSupabase()
     .from('video_courses')
     .select('title, description')
     .eq('slug', slug)
@@ -35,7 +35,7 @@ export default async function Page({ params }: Props) {
   const { slug } = await params
 
   // Get course with lessons
-  const { data: course, error } = await supabase
+  const { data: course, error } = await getSupabase()
     .from('video_courses')
     .select(`
       id,
@@ -66,7 +66,7 @@ export default async function Page({ params }: Props) {
   }
 
   // Get lessons
-  const { data: lessons } = await supabase
+  const { data: lessons } = await getSupabase()
     .from('video_lessons')
     .select(`
       id,

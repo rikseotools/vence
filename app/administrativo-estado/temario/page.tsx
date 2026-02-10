@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/administrativo-estado/temario/page.tsx - Server Component para SEO
 import { Suspense } from 'react'
 import Link from 'next/link'
@@ -179,7 +179,7 @@ export default function TemarioPage() {
                 {bloque.temas.map(tema => (
                   <li key={tema.id}>
                     <Link href={`/administrativo-estado/temario/tema-${tema.id}`}>
-                      Tema {tema.displayNum || tema.id}: {tema.titulo} - {tema.descripcion}
+                      Tema {'displayNum' in tema ? tema.displayNum : tema.id}: {tema.titulo} - {tema.descripcion}
                     </Link>
                   </li>
                 ))}

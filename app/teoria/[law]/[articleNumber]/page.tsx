@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/teoria/[law]/[articleNumber]/page.tsx - OPTIMIZADO con Drizzle + Cache
 import {
   getArticleContent,
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   // Obtener info de ley (cacheado)
   const shortName = mapLawSlugToShortName(lawSlug)
-  const lawInfo = getLawInfo(shortName)
+  const lawInfo = shortName ? getLawInfo(shortName) : null
 
   // Intentar obtener título del artículo (cacheado)
   let articleTitle = `Artículo ${articleNumber}`

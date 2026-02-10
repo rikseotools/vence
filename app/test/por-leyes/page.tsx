@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/test/por-leyes/page.tsx - Test multi-ley con selección de leyes y artículos favoritos
 'use client'
 

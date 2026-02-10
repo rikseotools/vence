@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 'use client';
 
 /**
@@ -126,6 +126,7 @@ export default function ConvocatoriasLista({ convocatorias }: Props) {
       const timer = setTimeout(() => setShowToast(false), 2000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [showToast]);
 
   const handleBoeClick = () => {

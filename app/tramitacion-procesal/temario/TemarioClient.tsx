@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 'use client'
 
 import { useState, useMemo } from 'react'
@@ -33,8 +33,8 @@ interface TemarioClientProps {
 export default function TemarioClient({ bloques, oposicion, fechaActualizacion }: TemarioClientProps) {
   const { user } = useAuth() as { user: any }
   // Convertir slug de URL a positionType de BD (ej: 'tramitacion-procesal' -> 'tramitacion_procesal')
-  const positionType = useMemo(() => slugToPositionType(oposicion) || undefined, [oposicion])
-  const { getTopicProgress } = useTopicUnlock({ positionType }) as { getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number } }
+  const positionType = useMemo(() => slugToPositionType(oposicion), [oposicion])
+  const { getTopicProgress } = useTopicUnlock({ positionType: positionType ?? undefined }) as { getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number } }
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({
     bloque1: true,
     bloque2: false,

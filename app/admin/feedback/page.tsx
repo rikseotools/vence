@@ -1,4 +1,5 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
+// @ts-nocheck - TODO: Migrar tipos gradualmente (248 errores legacy)
 // app/admin/feedback/page.tsx - Panel de administración de soporte
 'use client'
 import { useState, useEffect, useRef, useCallback, ReactNode } from 'react'
@@ -141,7 +142,7 @@ export default function AdminFeedbackPage() {
 
   // Efecto para cerrar modal de imagen con ESC
   useEffect(() => {
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && expandedImage) {
         setExpandedImage(null)
       }
@@ -160,7 +161,7 @@ export default function AdminFeedbackPage() {
   }, [expandedImage])
 
   // Función para cargar otras conversaciones del mismo usuario
-  const loadUserOtherConversations = async (userId, currentConversationId) => {
+  const loadUserOtherConversations = async (userId: string | null, currentConversationId: string) => {
     if (!userId) {
       console.log('⚠️ No hay user_id, no se pueden cargar otras conversaciones')
       setUserOtherConversations([])
@@ -192,7 +193,7 @@ export default function AdminFeedbackPage() {
   }
 
   // Función auxiliar para abrir chat y marcar como visto
-  const openChatConversation = async (conversation) => {
+  const openChatConversation = async (conversation: FeedbackConversationResponse) => {
     console.log('💬 Abriendo chat para conversación:', conversation.id)
 
     setSelectedConversation(conversation)
@@ -281,6 +282,7 @@ export default function AdminFeedbackPage() {
         feedbackSubscription.unsubscribe()
       }
     }
+    return undefined
   }, [user, supabase])
 
   // Scroll automático al final cuando cambian los mensajes
@@ -325,7 +327,7 @@ export default function AdminFeedbackPage() {
         // Si la conversación está en waiting_admin, marcar como vista (quitar pendiente)
         if (conversation.status === 'waiting_admin') {
           const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
           )
 
@@ -349,10 +351,10 @@ export default function AdminFeedbackPage() {
 
           // Actualizar también el contador de pendientes del usuario seleccionado
           if (selectedUser) {
-            setSelectedUser(prev => ({
+            setSelectedUser(prev => prev ? ({
               ...prev,
               pendingConversations: Math.max(0, (prev.pendingConversations || 1) - 1)
-            }))
+            }) : null)
           }
 
           console.log('✅ Conversación marcada como vista (waiting_user)')
@@ -381,13 +383,13 @@ export default function AdminFeedbackPage() {
 
   // Función para enviar mensaje inline
   const sendInlineMessage = async () => {
-    if (!inlineNewMessage.trim() || !selectedFeedback || sendingInlineMessage) return
+    if (!inlineNewMessage.trim() || !selectedFeedback || sendingInlineMessage || !user) return
 
     setSendingInlineMessage(true)
     try {
       // Usar service role para bypass RLS
       const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
       )
 
@@ -541,7 +543,7 @@ export default function AdminFeedbackPage() {
 
     try {
       const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
       )
 
@@ -567,13 +569,13 @@ export default function AdminFeedbackPage() {
 
   // Crear nueva conversación iniciada por admin
   const createAdminConversation = async () => {
-    if (!newConvUser || !newConvMessage.trim()) return
+    if (!newConvUser || !newConvMessage.trim() || !user) return
 
     setNewConvCreating(true)
 
     try {
       const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
       )
 
@@ -776,7 +778,7 @@ export default function AdminFeedbackPage() {
 
       // Cargar perfiles en lotes CON SERVICE ROLE (bypassa RLS automáticamente)
       const supabaseServiceRole = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
       )
       
@@ -1068,7 +1070,7 @@ export default function AdminFeedbackPage() {
     try {
       // Usar service role para bypass RLS
       const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
       )
 
@@ -1580,7 +1582,7 @@ export default function AdminFeedbackPage() {
 
       // Usar cliente con service role para garantizar permisos
       const supabaseServiceRole = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
       )
 
@@ -1706,7 +1708,7 @@ export default function AdminFeedbackPage() {
       
       // Usar cliente con service role para garantizar permisos
       const supabaseServiceRole = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
       )
       
@@ -2162,7 +2164,7 @@ export default function AdminFeedbackPage() {
                                 if (!confirm('¿Cerrar esta conversación? El usuario podrá reabrirla si responde.')) return
                                 try {
                                   const supabaseAdmin = createClient(
-                                    process.env.NEXT_PUBLIC_SUPABASE_URL,
+                                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
                                     process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
                                   )
                                   // Cerrar conversación si existe
@@ -2228,7 +2230,9 @@ export default function AdminFeedbackPage() {
                               {selectedFeedback.message}
                             </p>
                             <div className="text-xs text-gray-400 mt-1 text-right">
-                              {new Date(selectedFeedback.created_at).toLocaleTimeString('es-ES', {
+                              {new Date(selectedFeedback.created_at).toLocaleString('es-ES', {
+                                day: 'numeric',
+                                month: 'short',
                                 hour: '2-digit',
                                 minute: '2-digit',
                                 timeZone: 'Europe/Madrid'
@@ -2248,7 +2252,9 @@ export default function AdminFeedbackPage() {
                           }`}>
                             <p className="text-sm whitespace-pre-wrap">{linkifyText(msg.message, msg.is_admin)}</p>
                             <div className={`text-xs mt-1 text-right ${msg.is_admin ? 'text-blue-200' : 'text-gray-400'}`}>
-                              {new Date(msg.created_at).toLocaleTimeString('es-ES', {
+                              {new Date(msg.created_at).toLocaleString('es-ES', {
+                                day: 'numeric',
+                                month: 'short',
                                 hour: '2-digit',
                                 minute: '2-digit',
                                 timeZone: 'Europe/Madrid'
@@ -2607,7 +2613,7 @@ export default function AdminFeedbackPage() {
                         if (!confirm('¿Cerrar esta conversación? El usuario podrá reabrirla si responde.')) return
                         try {
                           const supabaseAdmin = createClient(
-                            process.env.NEXT_PUBLIC_SUPABASE_URL,
+                            process.env.NEXT_PUBLIC_SUPABASE_URL!,
                             process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
                           )
                           // Cerrar conversación

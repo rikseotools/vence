@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
@@ -341,7 +341,7 @@ export default function NewslettersPage() {
 
     try {
       // Buscar los IDs de usuarios por email
-      const { data: failedUsers } = await supabase
+      const { data: failedUsers } = await getSupabase()
         .from('user_profiles')
         .select('id, email, full_name')
         .in('email', failedEmails)

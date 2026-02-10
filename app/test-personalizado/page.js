@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import TestPageWrapper from '@/components/TestPageWrapper'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
@@ -30,7 +30,7 @@ function TestPersonalizadoContent() {
         console.log('🔍 Cargando configuración content_scope para:', seccionSlug)
         
         // 1. Obtener información de la sección
-        const { data: section, error: sectionError } = await supabase
+        const { data: section, error: sectionError } = await getSupabase()
           .from('content_sections')
           .select(`
             id,
@@ -51,7 +51,7 @@ function TestPersonalizadoContent() {
         }
 
         // 2. Obtener content_scope para esta sección
-        const { data: contentScopes, error: scopeError } = await supabase
+        const { data: contentScopes, error: scopeError } = await getSupabase()
           .from('content_scope')
           .select('law_id, article_numbers')
           .eq('section_id', section.id)
@@ -65,7 +65,7 @@ function TestPersonalizadoContent() {
         
         for (const scope of contentScopes) {
           for (const articleNumber of scope.article_numbers) {
-            const { data: article } = await supabase
+            const { data: article } = await getSupabase()
               .from('articles')
               .select('id')
               .eq('law_id', scope.law_id)

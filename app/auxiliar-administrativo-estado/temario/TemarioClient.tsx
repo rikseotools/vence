@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 'use client'
 
 import { useState, useMemo } from 'react'
@@ -40,8 +40,8 @@ interface WeakArticle {
 export default function TemarioClient({ bloques, oposicion, fechaActualizacion }: TemarioClientProps) {
   const { user } = useAuth() as { user: any }
   // Convertir slug de URL a positionType de BD (ej: 'auxiliar-administrativo-estado' -> 'auxiliar_administrativo')
-  const positionType = useMemo(() => slugToPositionType(oposicion) || undefined, [oposicion])
-  const { getTopicProgress, getWeakArticles } = useTopicUnlock({ positionType }) as {
+  const positionType = useMemo(() => slugToPositionType(oposicion), [oposicion])
+  const { getTopicProgress, getWeakArticles } = useTopicUnlock({ positionType: positionType ?? undefined }) as {
     getTopicProgress: (id: number) => { accuracy: number; questionsAnswered: number }
     getWeakArticles: (id: number) => WeakArticle[]
   }

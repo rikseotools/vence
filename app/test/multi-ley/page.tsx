@@ -1,4 +1,4 @@
-// @ts-nocheck - TODO: Migrate to strict TypeScript
+
 // app/test/multi-ley/page.tsx - Página de test con múltiples leyes seleccionadas
 // Usa la API /api/questions/filtered para obtener preguntas de varias leyes
 'use client'
@@ -92,8 +92,8 @@ function transformApiResponse(apiQuestions: FilteredQuestionResponse[]): Questio
     options: q.options,
     explanation: q.explanation,
     primary_article_id: q.primary_article_id,
-    is_official_exam: q.metadata.is_official_exam,
-    exam_source: q.metadata.exam_source,
+    is_official_exam: q.metadata.is_official_exam ?? undefined,
+    exam_source: q.metadata.exam_source ?? undefined,
     difficulty: q.metadata.difficulty,
     article: {
       id: q.article.id,
