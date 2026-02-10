@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseAdmin = createClient(
+const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxYnBzdHhvd3ZnaXBxc3BxcmdvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MDg3NjcwMywiZXhwIjoyMDY2NDUyNzAzfQ.4yUKsfS-enlY6iGICFkKi-HPqNUyTkHczUqc5kgQB3w'
 )
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar que la pregunta existe
-    const { data: question, error: questionError } = await supabaseAdmin
+    const { data: question, error: questionError } = await getSupabaseAdmin()
       .from('psychometric_questions')
       .select('id')
       .eq('id', questionId)
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar que el usuario no haya impugnado ya esta pregunta
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await getSupabaseAdmin()
       .from('psychometric_question_disputes')
       .select('id')
       .eq('question_id', questionId)
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insertar la impugnación
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await getSupabaseAdmin()
       .from('psychometric_question_disputes')
       .insert({
         question_id: questionId,

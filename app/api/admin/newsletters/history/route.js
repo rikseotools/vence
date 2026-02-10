@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-const supabaseAdmin = createClient(
+const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -26,7 +26,7 @@ export async function GET(request) {
     console.log('📊 Obteniendo historial de newsletters...')
 
     // Obtener todos los eventos de newsletters
-    const { data: events, error } = await supabaseAdmin
+    const { data: events, error } = await getSupabaseAdmin()
       .from('email_events')
       .select('*')
       .eq('email_type', 'newsletter')
@@ -100,7 +100,7 @@ export async function GET(request) {
 
     // Obtener información de actividad de todos los usuarios únicos
     const allUserIds = [...new Set(events.map(e => e.user_id))]
-    const { data: userActivity, error: activityError } = await supabaseAdmin
+    const { data: userActivity, error: activityError } = await getSupabaseAdmin()
       .from('admin_users_with_roles')
       .select('user_id, last_test_date')
       .in('user_id', allUserIds)
@@ -203,7 +203,7 @@ async function getCampaignUsers(templateId, date, eventType) {
     const startDate = new Date(`${date}T00:00:00Z`)
     const endDate = new Date(`${date}T23:59:59Z`)
 
-    const { data: events, error } = await supabaseAdmin
+    const { data: events, error } = await getSupabaseAdmin()
       .from('email_events')
       .select('user_id, email_address, created_at')
       .eq('email_type', 'newsletter')
@@ -221,7 +221,7 @@ async function getCampaignUsers(templateId, date, eventType) {
     // Obtener información adicional de los usuarios
     const userIds = [...new Set(events.map(e => e.user_id))]
 
-    const { data: userStats, error: profileError } = await supabaseAdmin
+    const { data: userStats, error: profileError } = await getSupabaseAdmin()
       .from('admin_users_with_roles')
       .select('user_id, email, full_name, avg_score_30d, user_created_at, last_test_date')
       .in('user_id', userIds)

@@ -6,7 +6,7 @@ import { tests, testQuestions, psychometricUserQuestionHistory, userQuestionHist
 import { eq, and, sql } from 'drizzle-orm'
 
 // Client with service role - bypasses RLS for server operations
-const supabaseAdmin = createClient(
+const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error: authError } = await getSupabaseAdmin().auth.getUser(token)
 
     if (authError || !user) {
       console.error('❌ [API/v2/official-exams/complete] Auth error:', authError?.message)

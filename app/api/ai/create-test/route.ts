@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
 
     if (authError || !user) {
       console.log('🎯 [API/create-test] Auth error:', authError?.message)
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Query simplificada - la relación con articles es opcional (left join)
-      const result = await supabase
+      const result = await getSupabase()
         .from('questions')
         .select(`
           id,
@@ -284,7 +284,7 @@ async function getFailedQuestions(userId: string, options: CreateTestRequest) {
     console.log('🎯 [getFailedQuestions] Cutoff date:', cutoffDate, '| Period:', periodLabel)
 
     // Paso 1: Obtener TODOS los IDs de tests del usuario
-    const { data: tests, error: testsError } = await supabase
+    const { data: tests, error: testsError } = await getSupabase()
       .from('tests')
       .select('id')
       .eq('user_id', userId)
@@ -307,7 +307,7 @@ async function getFailedQuestions(userId: string, options: CreateTestRequest) {
     console.log('🎯 [getFailedQuestions] Found', testIds.length, 'total tests for user')
 
     // Paso 2: Obtener respuestas falladas filtrando por created_at de test_questions
-    const { data: answers, error: answersError } = await supabase
+    const { data: answers, error: answersError } = await getSupabase()
       .from('test_questions')
       .select('question_id, is_correct, created_at')
       .in('test_id', testIds)
@@ -390,7 +390,7 @@ async function getLawQuestions(options: CreateTestRequest) {
 
   // Si tenemos slug, buscar el ID de la ley
   if (!lawIdToUse && lawSlug) {
-    const { data: law } = await supabase
+    const { data: law } = await getSupabase()
       .from('laws')
       .select('id')
       .eq('slug', lawSlug)
@@ -409,7 +409,7 @@ async function getLawQuestions(options: CreateTestRequest) {
   }
 
   // Obtener preguntas de la ley
-  const { data: lawQuestions, error } = await supabase
+  const { data: lawQuestions, error } = await getSupabase()
     .from('questions')
     .select('id')
     .eq('law_id', lawIdToUse)
@@ -449,7 +449,7 @@ async function getEssentialArticlesQuestions(options: CreateTestRequest) {
   let lawIdToUse = lawId
 
   if (!lawIdToUse && lawSlug) {
-    const { data: law } = await supabase
+    const { data: law } = await getSupabase()
       .from('laws')
       .select('id')
       .eq('slug', lawSlug)
@@ -463,7 +463,7 @@ async function getEssentialArticlesQuestions(options: CreateTestRequest) {
   // Obtener artículos esenciales
   // NOTA: La columna is_essential no existe actualmente en articles
   // Esta función está preparada para cuando se añada esa característica
-  let articlesQuery = supabase
+  let articlesQuery = getSupabase()
     .from('articles')
     .select('id')
     // .eq('is_essential', true) // Descomentar cuando exista la columna
@@ -485,7 +485,7 @@ async function getEssentialArticlesQuestions(options: CreateTestRequest) {
   const articleIds = articlesData.map(a => a.id)
 
   // Obtener preguntas de esos artículos
-  const { data: essentialQuestions } = await supabase
+  const { data: essentialQuestions } = await getSupabase()
     .from('questions')
     .select('id')
     .in('primary_article_id', articleIds)
@@ -527,7 +527,7 @@ async function getArticleQuestions(options: CreateTestRequest) {
   let lawId: string | null = null
 
   if (lawShortName) {
-    const { data: law } = await supabase
+    const { data: law } = await getSupabase()
       .from('laws')
       .select('id, short_name')
       .eq('short_name', lawShortName)
@@ -539,7 +539,7 @@ async function getArticleQuestions(options: CreateTestRequest) {
   }
 
   if (!lawId && lawSlug) {
-    const { data: law } = await supabase
+    const { data: law } = await getSupabase()
       .from('laws')
       .select('id, short_name')
       .eq('slug', lawSlug)
@@ -558,7 +558,7 @@ async function getArticleQuestions(options: CreateTestRequest) {
   }
 
   // Buscar el artículo
-  const { data: article } = await supabase
+  const { data: article } = await getSupabase()
     .from('articles')
     .select('id, article_number, title')
     .eq('law_id', lawId)
@@ -575,7 +575,7 @@ async function getArticleQuestions(options: CreateTestRequest) {
   console.log('🎯 [getArticleQuestions] Found article:', article.id, article.article_number)
 
   // Obtener preguntas de este artículo
-  const { data: articleQuestions, error } = await supabase
+  const { data: articleQuestions, error } = await getSupabase()
     .from('questions')
     .select('id')
     .eq('primary_article_id', article.id)

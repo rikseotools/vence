@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -24,35 +24,35 @@ export async function GET(request) {
     // Base query dependiendo del tipo de audiencia
     switch (audienceType) {
       case 'all':
-        query = supabase
+        query = getSupabase()
           .from('user_profiles')
           .select('id, email, full_name, created_at')
           .not('email', 'is', null)
         break
 
       case 'active':
-        query = supabase
+        query = getSupabase()
           .from('admin_users_with_roles')
           .select('user_id, email, full_name, created_at')
           .eq('is_active_student', true)
         break
 
       case 'inactive':
-        query = supabase
+        query = getSupabase()
           .from('admin_users_with_roles')
           .select('user_id, email, full_name, created_at')
           .eq('is_active_student', false)
         break
 
       case 'premium':
-        query = supabase
+        query = getSupabase()
           .from('admin_users_with_roles')
           .select('user_id, email, full_name, created_at')
           .eq('subscription_status', 'active')
         break
 
       case 'free':
-        query = supabase
+        query = getSupabase()
           .from('admin_users_with_roles')
           .select('user_id, email, full_name, created_at')
           .neq('subscription_status', 'active')

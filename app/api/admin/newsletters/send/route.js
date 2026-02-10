@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   {
@@ -52,7 +52,7 @@ export async function POST(request) {
       // Envío a usuarios específicos
       console.log(`👥 Enviando a ${selectedUserIds.length} usuarios específicos`)
       
-      const { data } = await supabase
+      const { data } = await getSupabase()
         .from('user_profiles')
         .select('id, email, full_name')
         .in('id', selectedUserIds)
@@ -63,7 +63,7 @@ export async function POST(request) {
       // Envío por audiencia
       switch (audienceType) {
       case 'all':
-        const { data: allUsers } = await supabase
+        const { data: allUsers } = await getSupabase()
           .from('user_profiles')
           .select('id, email, full_name')
           .not('email', 'is', null)
@@ -71,7 +71,7 @@ export async function POST(request) {
         break
 
       case 'active':
-        const { data: activeUsers } = await supabase
+        const { data: activeUsers } = await getSupabase()
           .from('admin_users_with_roles')
           .select('user_id, email, full_name')
           .eq('is_active_student', true)
@@ -79,7 +79,7 @@ export async function POST(request) {
         break
 
       case 'inactive':
-        const { data: inactiveUsers } = await supabase
+        const { data: inactiveUsers } = await getSupabase()
           .from('admin_users_with_roles')
           .select('user_id, email, full_name')
           .eq('is_active_student', false)
@@ -87,7 +87,7 @@ export async function POST(request) {
         break
 
       case 'premium':
-        const { data: premiumUsers } = await supabase
+        const { data: premiumUsers } = await getSupabase()
           .from('admin_users_with_roles')
           .select('user_id, email, full_name')
           .eq('subscription_status', 'active')
@@ -95,7 +95,7 @@ export async function POST(request) {
         break
 
       case 'free':
-        const { data: freeUsers } = await supabase
+        const { data: freeUsers } = await getSupabase()
           .from('admin_users_with_roles')  
           .select('user_id, email, full_name')
           .neq('subscription_status', 'active')
@@ -222,7 +222,7 @@ export async function POST(request) {
             if (!testMode) {
               try {
                 console.log(`📊 Guardando evento para ${user.email}...`)
-                const { data: eventData, error: eventError } = await supabase.from('email_events').insert({
+                const { data: eventData, error: eventError } = await getSupabase().from('email_events').insert({
                   user_id: user.id,
                   event_type: 'sent',
                   email_type: 'newsletter', // Siempre usar 'newsletter' para este tipo de envío

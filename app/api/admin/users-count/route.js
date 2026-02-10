@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Cliente con service role para bypass completo de RLS
-const supabaseAdmin = createClient(
+const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY // Service role key del servidor
 )
@@ -12,7 +12,7 @@ export async function GET(request) {
     console.log('🔍 API: Obteniendo todos los usuarios...')
     
     // Obtener todos los usuarios
-    const { data: allUsers, error: usersError } = await supabaseAdmin
+    const { data: allUsers, error: usersError } = await getSupabaseAdmin()
       .from('user_profiles')
       .select('id')
     
@@ -22,7 +22,7 @@ export async function GET(request) {
     }
     
     // Obtener todas las preferencias de email
-    const { data: emailPrefs, error: prefsError } = await supabaseAdmin
+    const { data: emailPrefs, error: prefsError } = await getSupabaseAdmin()
       .from('email_preferences')
       .select('user_id, unsubscribed_all')
     

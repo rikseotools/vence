@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -22,7 +22,7 @@ export async function GET(request) {
       const slugToSearch = oposicionId.replace(/_/g, '-')
       console.log('🔍 [Suggestions API] Converting slug:', oposicionId, '→', slugToSearch)
 
-      const { data: oposicion, error: oposError } = await supabase
+      const { data: oposicion, error: oposError } = await getSupabase()
         .from('oposiciones')
         .select('id')
         .eq('slug', slugToSearch)
@@ -37,7 +37,7 @@ export async function GET(request) {
     }
 
     // Obtener sugerencias con conteo de clicks
-    let query = supabase
+    let query = getSupabase()
       .from('ai_chat_suggestions')
       .select(`
         id,
@@ -118,7 +118,7 @@ export async function POST(request) {
     // Si tenemos suggestionKey pero no suggestionId, buscar el ID
     let finalSuggestionId = suggestionId
     if (!suggestionId && suggestionKey) {
-      const { data: suggestion } = await supabase
+      const { data: suggestion } = await getSupabase()
         .from('ai_chat_suggestions')
         .select('id')
         .eq('suggestion_key', suggestionKey)
@@ -134,7 +134,7 @@ export async function POST(request) {
     }
 
     // Registrar click
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('ai_chat_suggestion_clicks')
       .insert({
         suggestion_id: finalSuggestionId,

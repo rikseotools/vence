@@ -16,7 +16,7 @@ import {
 } from '@/lib/chat/domains/verification'
 
 // Cliente Supabase para logging (la tabla ai_chat_logs no está en Drizzle schema)
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -95,7 +95,7 @@ async function getUserName(userId: string): Promise<string | undefined> {
   if (!userId || userId === 'anonymous') return undefined
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('user_profiles')
       .select('nickname, full_name')
       .eq('id', userId)
@@ -126,7 +126,7 @@ async function getUserDailyMessageCount(userId: string): Promise<number> {
     today.setUTCHours(0, 0, 0, 0)
 
     // Contar mensajes del día excluyendo las explicaciones de preguntas
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('ai_chat_logs')
       .select('suggestion_used')
       .eq('user_id', userId)
@@ -206,7 +206,7 @@ async function logChatInteraction(data: {
       insertData.reanalysis_response = data.reanalysisResponse || null
     }
 
-    const { data: result, error } = await supabase
+    const { data: result, error } = await getSupabase()
       .from('ai_chat_logs')
       .insert(insertData)
       .select('id')

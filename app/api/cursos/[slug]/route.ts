@@ -4,7 +4,7 @@ import { getCourseBySlug, safeParseGetCourseBySlug } from '@/lib/api/video-cours
 
 export const dynamic = 'force-dynamic'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -37,7 +37,7 @@ export async function GET(
 
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1]
-      const { data: { user } } = await supabase.auth.getUser(token)
+      const { data: { user } } = await getSupabase().auth.getUser(token)
       userId = user?.id || null
     }
 

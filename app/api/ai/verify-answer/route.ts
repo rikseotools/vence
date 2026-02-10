@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -21,7 +21,7 @@ async function searchRelevantArticles(openai: OpenAI, searchText: string, lawNam
     const embedding = embeddingResponse.data[0].embedding
 
     // Buscar artículos similares
-    const { data: articles, error } = await supabase.rpc('match_articles_by_embedding', {
+    const { data: articles, error } = await getSupabase().rpc('match_articles_by_embedding', {
       query_embedding: embedding,
       match_threshold: 0.5,
       match_count: 10
@@ -55,7 +55,7 @@ async function searchRelevantArticles(openai: OpenAI, searchText: string, lawNam
 async function searchArticlesByKeywords(searchText: string, lawName?: string | null) {
   const keywords = searchText.split(/\s+/).filter(w => w.length > 3).slice(0, 5)
 
-  let query = supabase
+  let query = getSupabase()
     .from('articles')
     .select('id, article_number, content, law_name, law_short_name')
     .limit(10)
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener API key de OpenAI
-    const { data: apiConfig } = await supabase
+    const { data: apiConfig } = await getSupabase()
       .from('ai_api_config')
       .select('api_key_encrypted')
       .eq('provider', 'openai')
@@ -208,7 +208,7 @@ RAZONAMIENTO: [Explica brevemente por qué esa es la respuesta correcta]`
 
       // Opcional: guardar en tabla de revisión
       try {
-        await supabase.from('question_verifications').insert({
+        await getSupabase().from('question_verifications').insert({
           question_id: questionId,
           db_answer: dbAnswerLetter,
           ai_answer: aiAnswer,

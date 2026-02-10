@@ -8,7 +8,7 @@ import {
 } from '@/lib/api/official-exams'
 
 // Cliente Supabase solo para auth
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    const { data: { user }, error: authError } = await getSupabase().auth.getUser(token)
 
     if (authError || !user) {
       console.log('🎯 [API/v2/official-exams/failed-questions] Auth error:', authError?.message)

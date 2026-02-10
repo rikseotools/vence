@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 // Create admin client with service_role key
-const supabaseAdmin = createClient(
+const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
@@ -18,7 +18,7 @@ export async function GET(request) {
     console.log('🔍 Time range:', timeRange, 'days, from:', daysAgo)
     
     // Get all email events with service_role (bypasses RLS)
-    const { data: allEmailEvents, error: emailError } = await supabaseAdmin
+    const { data: allEmailEvents, error: emailError } = await getSupabaseAdmin()
       .from('email_events')
       .select('*')
       .gte('created_at', daysAgo)
@@ -32,7 +32,7 @@ export async function GET(request) {
     console.log(`✅ Admin API: Retrieved ${allEmailEvents?.length || 0} email events`)
 
     // Get subscription count
-    const { data: subscriptionCount, error: rpcError } = await supabaseAdmin
+    const { data: subscriptionCount, error: rpcError } = await getSupabaseAdmin()
       .rpc('get_subscription_count')
 
     if (rpcError) {
@@ -64,7 +64,7 @@ export async function POST(request) {
     }
 
     // Check if user is admin using service_role
-    const { data: isAdmin, error } = await supabaseAdmin
+    const { data: isAdmin, error } = await getSupabaseAdmin()
       .rpc('is_user_admin', { check_user_id: userId })
 
     if (error) {

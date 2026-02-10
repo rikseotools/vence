@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { safeParseSaveOfficialExamResults } from '@/lib/api/official-exams'
 
 // Cliente con service role - bypasa RLS para operaciones de servidor
-const supabaseAdmin = createClient(
+const getSupabaseAdmin = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1]
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error: authError } = await getSupabaseAdmin().auth.getUser(token)
 
     if (authError || !user) {
       console.error('❌ [API/v2/official-exams/save-results] Auth error:', authError?.message)
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     // 3a. Insert test session
     // Nota: test_type usa 'exam' porque el CHECK constraint solo permite 'practice'|'exam'
     // El flag isOfficialExam en detailed_analytics indica que es un examen oficial
-    const { data: testSession, error: testError } = await supabaseAdmin
+    const { data: testSession, error: testError } = await getSupabaseAdmin()
       .from('tests')
       .insert({
         user_id: user.id,
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    const { error: questionsError } = await supabaseAdmin
+    const { error: questionsError } = await getSupabaseAdmin()
       .from('test_questions')
       .insert(testQuestionsData)
 
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
 
       // Crear feedback automático con todos los datos para poder reconstruir el test
       try {
-        await supabaseAdmin.from('user_feedback').insert({
+        await getSupabaseAdmin().from('user_feedback').insert({
           user_id: user.id,
           type: 'system_error_ghost_test',
           message: JSON.stringify({
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
     if (legislativeResults.length > 0) {
       for (const result of legislativeResults) {
         // Check if history exists
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await getSupabaseAdmin()
           .from('user_question_history')
           .select('id, total_attempts, correct_attempts')
           .eq('user_id', user.id)
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
           const newCorrect = result.isCorrect ? existing.correct_attempts + 1 : existing.correct_attempts
           const successRate = newTotal > 0 ? (newCorrect / newTotal).toFixed(2) : '0.00'
 
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('user_question_history')
             .update({
               total_attempts: newTotal,
@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
             .eq('id', existing.id)
         } else {
           // Insert new
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('user_question_history')
             .insert({
               user_id: user.id,
@@ -233,7 +233,7 @@ export async function POST(request: NextRequest) {
     if (psychometricResults.length > 0) {
       for (const result of psychometricResults) {
         // Check if history exists
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await getSupabaseAdmin()
           .from('psychometric_user_question_history')
           .select('id, attempts, correct_attempts')
           .eq('user_id', user.id)
@@ -242,7 +242,7 @@ export async function POST(request: NextRequest) {
 
         if (existing) {
           // Update existing
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('psychometric_user_question_history')
             .update({
               attempts: existing.attempts + 1,
@@ -252,7 +252,7 @@ export async function POST(request: NextRequest) {
             .eq('id', existing.id)
         } else {
           // Insert new
-          await supabaseAdmin
+          await getSupabaseAdmin()
             .from('psychometric_user_question_history')
             .insert({
               user_id: user.id,

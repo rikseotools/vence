@@ -9,7 +9,7 @@ import {
   type EligibleUser
 } from '@/lib/api/newsletters'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   {
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       // Envío a usuarios específicos - obtener de DB
       console.log(`👥 [Newsletter/Send] Enviando a ${selectedUserIds.length} usuarios específicos`)
 
-      const { data } = await supabase
+      const { data } = await getSupabase()
         .from('user_profiles')
         .select('id, email, full_name, target_oposicion')
         .in('id', selectedUserIds)
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
             // Registrar en analytics si no es modo test
             if (!testMode) {
               try {
-                await supabase.from('email_events').insert({
+                await getSupabase().from('email_events').insert({
                   user_id: user.id,
                   event_type: 'sent',
                   email_type: 'newsletter',

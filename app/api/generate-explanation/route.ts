@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import OpenAI from 'openai'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar que la pregunta existe y no tiene explicación
-    const { data: question, error: fetchError } = await supabase
+    const { data: question, error: fetchError } = await getSupabase()
       .from('questions')
       .select('id, explanation')
       .eq('id', questionId)
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Obtener API key de OpenAI
-    const { data: apiConfig } = await supabase
+    const { data: apiConfig } = await getSupabase()
       .from('ai_api_config')
       .select('api_key_encrypted')
       .eq('provider', 'openai')
@@ -103,7 +103,7 @@ INSTRUCCIONES:
     }
 
     // Guardar la explicación en la base de datos
-    const { error: updateError } = await supabase
+    const { error: updateError } = await getSupabase()
       .from('questions')
       .update({
         explanation,

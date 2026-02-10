@@ -7,7 +7,7 @@ import {
   oposicionDisplayNames
 } from '@/lib/api/newsletters'
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
