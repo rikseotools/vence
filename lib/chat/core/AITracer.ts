@@ -104,72 +104,37 @@ function generateId(): string {
   return `trace_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
 }
 
-// Límites de truncamiento para evitar timeouts en BD
-const MAX_STRING_LENGTH = 500
-const MAX_RESPONSE_LENGTH = 800
-const MAX_ARRAY_ITEMS = 10
-const TRUNCATE_KEYS = ['response', 'content', 'fullResponse', 'userMessage', 'questionText', 'systemPrompt', 'userPrompt']
-const LONG_RESPONSE_KEYS = ['response', 'content', 'fullResponse'] // Campos con límite mayor
-
 /**
- * Trunca un string si excede el límite
- */
-function truncateString(str: string, maxLength: number): string {
-  if (str.length <= maxLength) return str
-  return str.substring(0, maxLength) + `... [truncated, ${str.length - maxLength} more chars]`
-}
-
-/**
- * Sanitiza datos para almacenamiento CON truncamiento
- * - Trunca strings largos para evitar timeouts de INSERT
- * - Redacta campos sensibles de seguridad
+ * Sanitiza datos para almacenamiento SIN truncamiento
+ * Solo redacta campos sensibles de seguridad
+ *
+ * NOTA: Los datos se guardan completos para análisis.
+ * El INSERT puede ser lento, por eso usamos after() en el route handler.
  */
 function sanitizeForStorage(data: unknown, depth = 0): unknown {
   if (data === null || data === undefined) return data
 
   // Evitar recursión infinita
-  if (depth > 10) return '[MAX_DEPTH]'
+  if (depth > 20) return '[MAX_DEPTH]'
 
-  // Strings: truncar si son muy largos
+  // Strings: guardar completos
   if (typeof data === 'string') {
-    return truncateString(data, MAX_STRING_LENGTH)
+    return data
   }
 
-  // Arrays: limitar cantidad y sanitizar cada elemento
+  // Arrays: guardar completos
   if (Array.isArray(data)) {
-    const limited = data.slice(0, MAX_ARRAY_ITEMS)
-    const sanitized = limited.map(item => sanitizeForStorage(item, depth + 1))
-    if (data.length > MAX_ARRAY_ITEMS) {
-      return [...sanitized, `... [${data.length - MAX_ARRAY_ITEMS} more items]`]
-    }
-    return sanitized
+    return data.map(item => sanitizeForStorage(item, depth + 1))
   }
 
   if (typeof data === 'object') {
     const result: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(data)) {
       const keyLower = key.toLowerCase()
-      // Redactar campos de seguridad críticos
+      // Solo redactar campos de seguridad críticos
       if (['password', 'token', 'secret', 'apikey', 'api_key', 'authorization'].includes(keyLower)) {
         result[key] = '[REDACTED]'
-      }
-      // Campos que son respuestas/contenido largo: truncar con límite mayor
-      else if (LONG_RESPONSE_KEYS.includes(key) && typeof value === 'string') {
-        result[key] = truncateString(value, MAX_RESPONSE_LENGTH)
-      }
-      // Otros campos de texto conocidos: truncar con límite normal
-      else if (TRUNCATE_KEYS.includes(key) && typeof value === 'string') {
-        result[key] = truncateString(value, MAX_STRING_LENGTH)
-      }
-      // Campos especiales: guardar solo resumen
-      else if (key === 'questionOptions' && Array.isArray(value)) {
-        result[key] = value.map((opt, i) =>
-          typeof opt === 'string' && opt.length > 100
-            ? `[${String.fromCharCode(65 + i)}] ${opt.substring(0, 100)}...`
-            : opt
-        )
-      }
-      else {
+      } else {
         result[key] = sanitizeForStorage(value, depth + 1)
       }
     }
@@ -315,6 +280,8 @@ export class AITracer implements AITracerInterface {
 
   /**
    * Guarda todos los spans en la base de datos
+   * NOTA: Esta operación puede ser lenta con JSON grandes.
+   * Se recomienda usar getFlushCallback() con after() en route handlers.
    */
   async flush(): Promise<void> {
     if (!this.enabled || !this.logId || this.spans.length === 0) {
@@ -351,6 +318,14 @@ export class AITracer implements AITracerInterface {
       // No fallar si no podemos guardar los traces
       logger.error('Failed to flush traces', error, { domain: 'tracer' })
     }
+  }
+
+  /**
+   * Retorna una función de flush para usar con after() de Next.js
+   * Esto permite ejecutar el INSERT después de enviar la respuesta
+   */
+  getFlushCallback(): () => Promise<void> {
+    return () => this.flush()
   }
 
   /**

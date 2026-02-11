@@ -41,8 +41,16 @@ export class ChatOrchestrator {
 
   /**
    * Procesa un mensaje y devuelve una respuesta
+   * @param context - Contexto del chat
+   * @param logId - ID del log para vincular traces
+   * @param options - Opciones adicionales
+   * @param options.onFlush - Callback para manejar el flush de traces (usar con after() de Next.js)
    */
-  async process(context: ChatContext, logId?: string): Promise<ChatResponse> {
+  async process(
+    context: ChatContext,
+    logId?: string,
+    options?: { onFlush?: (flushFn: () => Promise<void>) => void }
+  ): Promise<ChatResponse> {
     const startTime = Date.now()
     const tracer = createTracer()
 
@@ -133,9 +141,13 @@ export class ChatOrchestrator {
             processingTime: Date.now() - startTime,
           }
 
-          // Flush traces
+          // Flush traces - usar callback si existe, sino flush directo
           if (logId) {
-            await tracer.flush()
+            if (options?.onFlush) {
+              options.onFlush(tracer.getFlushCallback())
+            } else {
+              await tracer.flush()
+            }
           }
 
           return response
@@ -154,9 +166,13 @@ export class ChatOrchestrator {
       logger.info('No domain matched, using fallback', { domain: 'orchestrator' })
       const response = await this.fallbackResponse(context, startTime, tracer)
 
-      // Flush traces
+      // Flush traces - usar callback si existe, sino flush directo
       if (logId) {
-        await tracer.flush()
+        if (options?.onFlush) {
+          options.onFlush(tracer.getFlushCallback())
+        } else {
+          await tracer.flush()
+        }
       }
 
       return response
@@ -169,9 +185,13 @@ export class ChatOrchestrator {
         userId: context.userId,
       }).end()
 
-      // Flush traces incluso en error
+      // Flush traces incluso en error - usar callback si existe
       if (logId) {
-        await tracer.flush()
+        if (options?.onFlush) {
+          options.onFlush(tracer.getFlushCallback())
+        } else {
+          await tracer.flush()
+        }
       }
 
       logger.error('Error processing chat', chatError, { domain: 'orchestrator' })
@@ -181,8 +201,16 @@ export class ChatOrchestrator {
 
   /**
    * Procesa un mensaje y devuelve un stream
+   * @param context - Contexto del chat
+   * @param logId - ID del log para vincular traces
+   * @param options - Opciones adicionales
+   * @param options.onFlush - Callback para manejar el flush de traces (usar con after() de Next.js)
    */
-  async processStream(context: ChatContext, logId?: string): Promise<ReadableStream> {
+  async processStream(
+    context: ChatContext,
+    logId?: string,
+    options?: { onFlush?: (flushFn: () => Promise<void>) => void }
+  ): Promise<ReadableStream> {
     const startTime = Date.now()
     const tracer = createTracer()
 
@@ -272,9 +300,13 @@ export class ChatOrchestrator {
             processingTime: Date.now() - startTime,
           }
 
-          // Flush traces
+          // Flush traces - usar callback si existe, sino flush directo
           if (logId) {
-            await tracer.flush()
+            if (options?.onFlush) {
+              options.onFlush(tracer.getFlushCallback())
+            } else {
+              await tracer.flush()
+            }
           }
 
           // Convertir respuesta a stream (formato legacy)
@@ -294,9 +326,13 @@ export class ChatOrchestrator {
       logger.info('No domain matched, using fallback stream', { domain: 'orchestrator' })
       const stream = await this.fallbackStream(context, startTime, tracer)
 
-      // Flush traces
+      // Flush traces - usar callback si existe, sino flush directo
       if (logId) {
-        await tracer.flush()
+        if (options?.onFlush) {
+          options.onFlush(tracer.getFlushCallback())
+        } else {
+          await tracer.flush()
+        }
       }
 
       return stream
@@ -308,9 +344,13 @@ export class ChatOrchestrator {
         message: context.currentMessage,
       }).end()
 
-      // Flush traces
+      // Flush traces - usar callback si existe, sino flush directo
       if (logId) {
-        await tracer.flush()
+        if (options?.onFlush) {
+          options.onFlush(tracer.getFlushCallback())
+        } else {
+          await tracer.flush()
+        }
       }
 
       const encoder = new StreamEncoder()

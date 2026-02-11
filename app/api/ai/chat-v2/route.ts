@@ -2,6 +2,7 @@
 // Nueva arquitectura de chat con TypeScript, Drizzle y Zod
 
 import { NextRequest, NextResponse } from 'next/server'
+import { after } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import {
@@ -337,7 +338,10 @@ export async function POST(request: NextRequest) {
 
     if (data.stream) {
       // Respuesta streaming - pasar logId para traces
-      const originalStream = await orchestrator.processStream(context, logId)
+      // Usar after() para ejecutar el flush de traces en background (no bloquea la respuesta)
+      const originalStream = await orchestrator.processStream(context, logId, {
+        onFlush: (flushFn) => after(flushFn)
+      })
 
       // Crear un stream que capture la respuesta completa para logging
       let fullResponse = ''
@@ -492,7 +496,10 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // Respuesta normal (sin streaming) - pasar logId para traces
-      const response = await orchestrator.process(context, logId)
+      // Usar after() para ejecutar el flush de traces en background (no bloquea la respuesta)
+      const response = await orchestrator.process(context, logId, {
+        onFlush: (flushFn) => after(flushFn)
+      })
 
       // Log - usar el logId pre-generado para vincular con los traces
       await logChatInteraction({
