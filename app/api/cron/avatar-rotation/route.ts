@@ -15,6 +15,9 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+
+// Aumentar timeout a 60s (Pro) o 300s (Pro con config)
+export const maxDuration = 60
 import {
   getUsersWithAutomaticAvatar,
   calculateBulkUserProfiles,
