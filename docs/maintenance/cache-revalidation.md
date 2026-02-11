@@ -256,9 +256,9 @@ Además de la caché de datos, las páginas de temario se **pre-generan en build
 
 | Ruta | Temas | Archivo |
 |------|-------|---------|
-| `/auxiliar-administrativo-estado/temario/tema-*` | 1-28 | `app/auxiliar.../temario/[slug]/page.tsx` |
+| `/auxiliar-administrativo-estado/temario/tema-*` | 1-16, 101-112 (28 total) | `app/auxiliar.../temario/[slug]/page.tsx` |
 | `/tramitacion-procesal/temario/tema-*` | 1-37 | `app/tramitacion.../temario/[slug]/page.tsx` |
-| `/administrativo-estado/temario/tema-*` | 1-45 | `app/administrativo.../temario/[slug]/page.tsx` |
+| `/administrativo-estado/temario/tema-*` | 1-11, 201-204, 301-307, 401-409, 501-506, 601-608 (45 total) | `app/administrativo.../temario/[slug]/page.tsx` |
 
 ### Cómo funciona
 
@@ -268,9 +268,10 @@ export const revalidate = false  // Nunca revalidar automáticamente
 
 export async function generateStaticParams() {
   // Pre-genera todas las páginas en build
-  return Array.from({ length: 28 }, (_, i) => ({
-    slug: `tema-${i + 1}`
-  }))
+  // Ejemplo Auxiliar: Bloque I (1-16) + Bloque II (101-112)
+  const bloqueI = Array.from({ length: 16 }, (_, i) => ({ slug: `tema-${i + 1}` }))
+  const bloqueII = Array.from({ length: 12 }, (_, i) => ({ slug: `tema-${101 + i}` }))
+  return [...bloqueI, ...bloqueII]
 }
 ```
 
@@ -288,8 +289,14 @@ RUNTIME:
 
 Si se añaden más temas a una oposición:
 1. Actualizar `totalTopics` en `lib/api/temario/schemas.ts`
-2. Actualizar el array en `generateStaticParams` del page.tsx correspondiente
-3. Hacer deploy (el build generará los nuevos temas)
+2. Actualizar `generateStaticParams` en el page.tsx correspondiente con los nuevos números de bloque
+3. Actualizar `scripts/warm-temario-cache.sh` con los nuevos números
+4. Hacer deploy (el build generará los nuevos temas)
+
+**Nota sobre numeración por bloques:**
+- Auxiliar: Bloque I (1-16), Bloque II (101-112)
+- Tramitación: Secuencial (1-37)
+- Administrativo: 6 bloques (1-11, 201-204, 301-307, 401-409, 501-506, 601-608)
 
 ---
 

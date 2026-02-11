@@ -11,10 +11,10 @@ export const revalidate = false
 
 // Pre-generar todos los temas en build time
 export async function generateStaticParams() {
-  // Auxiliar Administrativo tiene 28 temas
-  return Array.from({ length: 28 }, (_, i) => ({
-    slug: `tema-${i + 1}`
-  }))
+  // Auxiliar Administrativo: Bloque I (1-16) + Bloque II (101-112)
+  const bloqueI = Array.from({ length: 16 }, (_, i) => ({ slug: `tema-${i + 1}` }))
+  const bloqueII = Array.from({ length: 12 }, (_, i) => ({ slug: `tema-${101 + i}` }))
+  return [...bloqueI, ...bloqueII]
 }
 
 interface PageProps {

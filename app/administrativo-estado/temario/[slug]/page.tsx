@@ -11,10 +11,14 @@ export const revalidate = false
 
 // Pre-generar todos los temas en build time
 export async function generateStaticParams() {
-  // Administrativo del Estado tiene 45 temas
-  return Array.from({ length: 45 }, (_, i) => ({
-    slug: `tema-${i + 1}`
-  }))
+  // Administrativo del Estado: 6 bloques con numeración específica
+  const bloqueI = Array.from({ length: 11 }, (_, i) => ({ slug: `tema-${i + 1}` }))       // 1-11
+  const bloqueII = Array.from({ length: 4 }, (_, i) => ({ slug: `tema-${201 + i}` }))     // 201-204
+  const bloqueIII = Array.from({ length: 7 }, (_, i) => ({ slug: `tema-${301 + i}` }))    // 301-307
+  const bloqueIV = Array.from({ length: 9 }, (_, i) => ({ slug: `tema-${401 + i}` }))     // 401-409
+  const bloqueV = Array.from({ length: 6 }, (_, i) => ({ slug: `tema-${501 + i}` }))      // 501-506
+  const bloqueVI = Array.from({ length: 8 }, (_, i) => ({ slug: `tema-${601 + i}` }))     // 601-608
+  return [...bloqueI, ...bloqueII, ...bloqueIII, ...bloqueIV, ...bloqueV, ...bloqueVI]
 }
 
 interface PageProps {

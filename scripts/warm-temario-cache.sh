@@ -26,10 +26,13 @@ warm_url() {
 export -f warm_url
 export BASE_URL
 
-# Auxiliar Administrativo Estado (28 temas)
+# Auxiliar Administrativo Estado (28 temas: Bloque I 1-16, Bloque II 101-112)
 echo ""
 echo "📚 Auxiliar Administrativo Estado (28 temas)..."
-for i in $(seq 1 28); do
+for i in $(seq 1 16); do
+    echo "$BASE_URL/auxiliar-administrativo-estado/temario/tema-$i"
+done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
+for i in $(seq 101 112); do
     echo "$BASE_URL/auxiliar-administrativo-estado/temario/tema-$i"
 done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
 
@@ -44,10 +47,31 @@ done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
 
 sleep $DELAY
 
-# Administrativo Estado (45 temas)
+# Administrativo Estado (45 temas en 6 bloques)
 echo ""
 echo "📚 Administrativo Estado (45 temas)..."
-for i in $(seq 1 45); do
+# Bloque I: 1-11
+for i in $(seq 1 11); do
+    echo "$BASE_URL/administrativo-estado/temario/tema-$i"
+done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
+# Bloque II: 201-204
+for i in $(seq 201 204); do
+    echo "$BASE_URL/administrativo-estado/temario/tema-$i"
+done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
+# Bloque III: 301-307
+for i in $(seq 301 307); do
+    echo "$BASE_URL/administrativo-estado/temario/tema-$i"
+done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
+# Bloque IV: 401-409
+for i in $(seq 401 409); do
+    echo "$BASE_URL/administrativo-estado/temario/tema-$i"
+done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
+# Bloque V: 501-506
+for i in $(seq 501 506); do
+    echo "$BASE_URL/administrativo-estado/temario/tema-$i"
+done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
+# Bloque VI: 601-608
+for i in $(seq 601 608); do
     echo "$BASE_URL/administrativo-estado/temario/tema-$i"
 done | xargs -P $CONCURRENT -I {} bash -c 'warm_url "$@"' _ {}
 
