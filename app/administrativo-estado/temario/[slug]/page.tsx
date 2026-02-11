@@ -1,5 +1,6 @@
 // app/administrativo-estado/temario/[slug]/page.tsx
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
@@ -76,7 +77,9 @@ export default async function TemarioTemaPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <InteractiveBreadcrumbs />
+      <Suspense fallback={<div className="h-12 bg-gray-50 border-b border-gray-200" />}>
+        <InteractiveBreadcrumbs />
+      </Suspense>
       <TopicContentView content={content} oposicion="administrativo-estado" />
     </div>
   )
