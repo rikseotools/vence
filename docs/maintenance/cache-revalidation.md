@@ -293,6 +293,32 @@ Si se añaden más temas a una oposición:
 
 ---
 
+## Cache Warming (Opcional)
+
+Si después de un deploy quieres asegurar que todas las páginas están cacheadas (sin depender del build de Vercel), puedes ejecutar el script de cache warming:
+
+```bash
+# Desde la raíz del proyecto
+./scripts/warm-temario-cache.sh
+
+# O especificando URL base
+./scripts/warm-temario-cache.sh https://www.vence.es
+```
+
+**Qué hace:**
+- Visita las 110 páginas de temario (28 + 37 + 45)
+- Usa 5 peticiones concurrentes
+- Muestra ✅ o ❌ para cada URL
+
+**Cuándo usarlo:**
+- Después de un deploy si sospechas que el build no generó todas las páginas
+- Si ves errores de timeout en Vercel logs para páginas de temario
+- Para verificar que todas las páginas responden correctamente
+
+**Nota:** Normalmente NO es necesario. El deploy de Vercel debería generar todas las páginas gracias a `generateStaticParams`. Usar solo si hay problemas.
+
+---
+
 ## Historial de cambios
 
 | Fecha | Cambio |
