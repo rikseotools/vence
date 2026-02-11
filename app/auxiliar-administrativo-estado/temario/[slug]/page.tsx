@@ -4,7 +4,17 @@ import { getTopicContent } from '@/lib/api/temario/queries'
 import TopicContentView from './TopicContentView'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 
-export const dynamic = 'force-dynamic'
+// Contenido estático - cachear para siempre (el temario casi nunca cambia)
+// Para forzar actualización: revalidateTag('temario')
+export const revalidate = false
+
+// Pre-generar todos los temas en build time
+export async function generateStaticParams() {
+  // Auxiliar Administrativo tiene 28 temas
+  return Array.from({ length: 28 }, (_, i) => ({
+    slug: `tema-${i + 1}`
+  }))
+}
 
 interface PageProps {
   params: Promise<{

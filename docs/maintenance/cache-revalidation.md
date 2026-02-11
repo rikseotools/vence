@@ -248,10 +248,57 @@ Si vuelven a aparecer errores de `CONNECT_TIMEOUT` o `statement timeout` en Verc
 
 ---
 
+## Pre-generación de páginas (Build Time)
+
+Además de la caché de datos, las páginas de temario se **pre-generan en build time** usando `generateStaticParams`. Esto significa que **nunca** hay queries a la BD cuando un usuario visita un tema.
+
+### Páginas pre-generadas
+
+| Ruta | Temas | Archivo |
+|------|-------|---------|
+| `/auxiliar-administrativo-estado/temario/tema-*` | 1-28 | `app/auxiliar.../temario/[slug]/page.tsx` |
+| `/tramitacion-procesal/temario/tema-*` | 1-37 | `app/tramitacion.../temario/[slug]/page.tsx` |
+| `/administrativo-estado/temario/tema-*` | 1-45 | `app/administrativo.../temario/[slug]/page.tsx` |
+
+### Cómo funciona
+
+```typescript
+// En cada page.tsx de temario
+export const revalidate = false  // Nunca revalidar automáticamente
+
+export async function generateStaticParams() {
+  // Pre-genera todas las páginas en build
+  return Array.from({ length: 28 }, (_, i) => ({
+    slug: `tema-${i + 1}`
+  }))
+}
+```
+
+### Flujo
+
+```
+BUILD TIME:
+  next build → genera HTML de tema-1, tema-2, ... tema-28
+
+RUNTIME:
+  Usuario visita /tema-5 → Sirve HTML pre-generado (0 queries)
+```
+
+### Añadir temas nuevos
+
+Si se añaden más temas a una oposición:
+1. Actualizar `totalTopics` en `lib/api/temario/schemas.ts`
+2. Actualizar el array en `generateStaticParams` del page.tsx correspondiente
+3. Hacer deploy (el build generará los nuevos temas)
+
+---
+
 ## Historial de cambios
 
 | Fecha | Cambio |
 |-------|--------|
+| 2026-02-11 | Añadido `generateStaticParams` a páginas de temario para pre-generar en build |
+| 2026-02-11 | Páginas de temario cambiadas de `force-dynamic` a `revalidate: false` |
 | 2026-02-06 | Todas las cachés de temario y teoría cambiadas a `revalidate: false` |
 | 2026-02-06 | `getLawsWithQuestionCounts` mantenida en 30 días (datos dinámicos) |
 | 2026-02-06 | Creada documentación completa de cachés |
