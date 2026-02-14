@@ -79,11 +79,35 @@ questions (is_official_exam=true)
                                          (oposición específica)
 ```
 
-## Sincronización Manual
+## Sincronización
 
-**NO hay sincronización automática.** Después de importar preguntas oficiales, hay que actualizar `hot_articles` manualmente.
+**NO hay sincronización automática.** Después de importar preguntas oficiales, hay que ejecutar el script de sincronización.
 
-### Paso 1: Identificar artículos de preguntas oficiales
+### Script de Sincronización (Recomendado)
+
+```bash
+# Ver qué se insertaría (sin cambios)
+DRY_RUN=1 node scripts/sync-hot-articles.cjs
+
+# Ejecutar sincronización
+node scripts/sync-hot-articles.cjs
+```
+
+El script automáticamente:
+1. Detecta artículos con preguntas oficiales que no están en `hot_articles`
+2. Determina la oposición desde `exam_source`
+3. Calcula `priority_level` y `hotness_score`
+4. Inserta las nuevas entradas
+
+**Ejecutar después de importar preguntas oficiales.**
+
+---
+
+### Sincronización Manual (Alternativa)
+
+Si prefieres hacerlo manualmente:
+
+#### Paso 1: Identificar artículos de preguntas oficiales
 
 ```sql
 -- Ver artículos con preguntas oficiales que NO están en hot_articles
