@@ -880,16 +880,24 @@ function generateShortNameFromSlug(slug: string): string | null {
  * 3. Patrones inteligentes (generación automática)
  */
 export function mapLawSlugToShortName(lawSlug: string): string | null {
+  // 🔧 Decodificar URL-encoded slugs (ej: correo-electr%C3%B3nico → correo-electrónico)
+  let decodedSlug = lawSlug
+  try {
+    decodedSlug = decodeURIComponent(lawSlug)
+  } catch {
+    // Si falla la decodificación, usar el original
+  }
+
   // 1. Primero intentar cache de BD (fuente de verdad)
   if (dbSlugToShortName) {
-    const dbResult = dbSlugToShortName.get(lawSlug)
+    const dbResult = dbSlugToShortName.get(decodedSlug) || dbSlugToShortName.get(lawSlug)
     if (dbResult) {
       return dbResult
     }
   }
 
   // 2. Fallback a diccionario estático
-  const result = SLUG_TO_SHORT_NAME[lawSlug]
+  const result = SLUG_TO_SHORT_NAME[decodedSlug] || SLUG_TO_SHORT_NAME[lawSlug]
   if (result) {
     return result
   }
