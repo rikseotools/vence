@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { BookOpenIcon, DocumentTextIcon, ScaleIcon } from '@heroicons/react/24/outline'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 
-// Cache de 10 minutos para evitar queries repetidas
+// Cache permanente - revalidar manualmente con revalidateTag('teoria')
+// Ver docs/maintenance/cache-revalidation.md
 const getCachedLaws = unstable_cache(
   async () => {
     console.log('🚀 Cargando leyes (sin cache)...')
@@ -13,7 +14,7 @@ const getCachedLaws = unstable_cache(
   },
   ['teoria-laws-list'],
   {
-    revalidate: 600, // 10 minutos
+    revalidate: false, // Permanente - evita thundering herd
     tags: ['teoria'],
   }
 )

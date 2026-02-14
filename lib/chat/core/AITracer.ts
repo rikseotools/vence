@@ -301,7 +301,9 @@ export class AITracer implements AITracerInterface {
       errorMessage: span.error || null,
       errorStack: span.errorStack || null,
       sequenceNumber: span.sequenceNumber,
-      parentTraceId: span.parentId || null,
+      // parentTraceId debe ser UUID, pero span.parentId es string interno
+      // Usamos null - el sequenceNumber ya provee el orden
+      parentTraceId: null,
     }))
 
     try {
