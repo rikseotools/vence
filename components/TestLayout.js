@@ -131,12 +131,13 @@ function formatExamSource(examSource, userOposicionSlug) {
   return examSource
 }
 
-// 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar artículo
+// 🚫 LISTA DE CONTENIDO NO LEGAL (informática) - No mostrar artículo ni hot articles
 const NON_LEGAL_CONTENT = [
   'Informática Básica',
   'Portal de Internet',
   'La Red Internet',
   'Windows 10',
+  'Windows 11',
   'Explorador de Windows',
   'Hojas de cálculo. Excel',
   'Base de datos: Access',
@@ -1282,11 +1283,10 @@ export default function TestLayout({
           setIsExplicitlyCompleted(true)
         }
 
-        // Hot article check
-        if (user && currentQ.primary_article_id) {
+        // Hot article check - solo para contenido legal (no informática)
+        const questionLawName = currentQ.law_short_name || currentQ.article?.law_short_name || currentQ.law
+        if (user && currentQ.primary_article_id && isLegalArticle(questionLawName)) {
           await checkHotArticle(currentQ.primary_article_id, user.id, currentQ.is_official_exam || currentQ.metadata?.is_official_exam)
-
-
         }
         
       } catch (error) {
