@@ -152,7 +152,6 @@ export default function DynamicTest({ titulo, dificultad }) {
     if (showResult) return
 
     setSelectedAnswer(answerIndex)
-    setShowResult(true)
 
     const currentQ = testData.questions[currentQuestion]
 
@@ -167,7 +166,10 @@ export default function DynamicTest({ titulo, dificultad }) {
     const apiCorrectAnswer = validationResult.correctAnswer // 🔒 Respuesta verificada por API
 
     // 🔒 Guardar respuesta correcta verificada para el UI
+    // IMPORTANTE: Setear verifiedCorrectAnswer ANTES de showResult
+    // para evitar parpadeo de emoticono incorrecto
     setVerifiedCorrectAnswer(apiCorrectAnswer)
+    setShowResult(true)
 
     if (isCorrect) {
       setScore(score + 1)

@@ -965,9 +965,6 @@ export default function TestLayout({
     
     setTimeout(async () => {
       try {
-        setShowResult(true)
-        scrollToResult()
-
         const timeSpent = Math.round((Date.now() - questionStartTime) / 1000)
         const responseTimeMs = Date.now() - questionStartTime
 
@@ -984,7 +981,11 @@ export default function TestLayout({
         const newScore = isCorrect ? score + 1 : score
 
         // 🔒 Guardar respuesta correcta verificada para el UI
+        // IMPORTANTE: Setear verifiedCorrectAnswer ANTES de showResult
+        // para evitar parpadeo de emoticono incorrecto
         setVerifiedCorrectAnswer(apiCorrectAnswer)
+        setShowResult(true)
+        scrollToResult()
 
         // 🤖 Registrar comportamiento para detección de scrapers
         // (Los scrapers no "responden" - solo copian contenido rápidamente)
