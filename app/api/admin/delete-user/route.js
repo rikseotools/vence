@@ -29,9 +29,14 @@ export async function DELETE(request) {
     // Orden de eliminación para respetar foreign keys
     const tablesToClean = [
       { table: 'pwa_events', column: 'user_id' },
+      { table: 'pwa_sessions', column: 'user_id' },
       { table: 'notification_events', column: 'user_id' },
       { table: 'email_events', column: 'user_id' },
+      { table: 'email_preferences', column: 'user_id' },
       { table: 'user_notification_metrics', column: 'user_id' },
+      { table: 'user_question_history', column: 'user_id' },
+      { table: 'user_streaks', column: 'user_id' },
+      { table: 'ai_chat_logs', column: 'user_id' },
       { table: 'detailed_answers', column: 'user_id' },
       { table: 'test_questions', column: 'user_id', skipIfNotExists: true },
       { table: 'tests', column: 'user_id' },
@@ -41,6 +46,7 @@ export async function DELETE(request) {
       { table: 'conversion_events', column: 'user_id' },
       { table: 'user_feedback', column: 'user_id' },
       { table: 'question_disputes', column: 'user_id' },
+      { table: 'deleted_users_log', column: 'original_user_id' },
       { table: 'user_roles', column: 'user_id' },
       { table: 'user_profiles', column: 'id' },
     ]

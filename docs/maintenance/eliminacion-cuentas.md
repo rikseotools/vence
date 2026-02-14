@@ -5,9 +5,9 @@ Este documento describe el proceso para eliminar cuentas de usuario cuando lo so
 ## Resumen del Proceso
 
 1. **Investigar al usuario** - Entender por qué se va
-2. **Registrar en `deleted_users_log`** - Para estadísticas y GDPR
-3. **Cerrar feedbacks relacionados** - Limpiar tickets
-4. **Eliminar via API** - Borrar todos los datos
+2. **Cerrar feedbacks relacionados** - Limpiar tickets
+3. **Eliminar via API** - Borrar todos los datos (incluye `deleted_users_log` para evitar FK)
+4. **Registrar en `deleted_users_log`** - Re-insertar después de eliminar auth.users
 
 ## 1. Investigar al Usuario (IMPORTANTE)
 
@@ -142,21 +142,29 @@ console.log(result.success ? '✅ Eliminado' : '❌ Error:', result.error);
 La API `/api/admin/delete-user` elimina datos de:
 
 1. `pwa_events`
-2. `notification_events`
-3. `email_events`
-4. `user_notification_metrics`
-5. `detailed_answers`
-6. `test_questions`
-7. `tests`
-8. `test_sessions`
-9. `user_sessions`
-10. `user_subscriptions`
-11. `conversion_events`
-12. `user_feedback`
-13. `question_disputes`
-14. `user_roles`
-15. `user_profiles`
-16. `auth.users`
+2. `pwa_sessions`
+3. `notification_events`
+4. `email_events`
+5. `email_preferences`
+6. `user_notification_metrics`
+7. `user_question_history`
+8. `user_streaks`
+9. `ai_chat_logs`
+10. `detailed_answers`
+11. `test_questions`
+12. `tests`
+13. `test_sessions`
+14. `user_sessions`
+15. `user_subscriptions`
+16. `conversion_events`
+17. `user_feedback`
+18. `question_disputes`
+19. `deleted_users_log`
+20. `user_roles`
+21. `user_profiles`
+22. `auth.users`
+
+> **IMPORTANTE:** `deleted_users_log` se elimina ANTES de `auth.users` para evitar FK constraint. El log debe registrarse DESPUÉS de la eliminación si se quiere preservar (re-insertar sin FK).
 
 ## 5. Verificación
 
