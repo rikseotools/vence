@@ -177,12 +177,16 @@ async function logChatInteraction(data: {
   reanalysisResponse?: string | null
 }): Promise<string | null> {
   try {
+    // Asegurar que los campos JSONB sean arrays válidos (evita PGRST102)
+    const sourcesArray = Array.isArray(data.sources) ? data.sources : []
+    const detectedLawsArray = Array.isArray(data.detectedLaws) ? data.detectedLaws : []
+
     const insertData: Record<string, unknown> = {
       user_id: data.userId || null,
-      message: data.message,
+      message: data.message || '',
       response_preview: data.response?.substring(0, 500) || null,
       full_response: data.response || null,
-      sources_used: data.sources || [],
+      sources_used: sourcesArray,
       question_context_id: data.questionContextId || null,
       question_context_law: data.questionContextLaw || null,
       suggestion_used: data.suggestionUsed || null,
@@ -191,7 +195,7 @@ async function logChatInteraction(data: {
       had_error: data.hadError || false,
       error_message: data.errorMessage || null,
       user_oposicion: data.userOposicion || null,
-      detected_laws: data.detectedLaws || [],
+      detected_laws: detectedLawsArray,
     }
 
     // Añadir ID pre-generado si existe

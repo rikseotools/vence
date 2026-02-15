@@ -105,20 +105,25 @@ function generateId(): string {
 }
 
 /**
- * Sanitiza datos para almacenamiento SIN truncamiento
- * Solo redacta campos sensibles de seguridad
+ * Sanitiza datos para almacenamiento CON truncamiento de strings largos
+ * Redacta campos sensibles y limita tamaño para evitar errores de BD
  *
- * NOTA: Los datos se guardan completos para análisis.
- * El INSERT puede ser lento, por eso usamos after() en el route handler.
+ * NOTA: Truncamos strings > 2000 chars para evitar errores PGRST102
+ * y queries demasiado grandes en ai_chat_traces.
  */
+const MAX_STRING_LENGTH = 2000
+
 function sanitizeForStorage(data: unknown, depth = 0): unknown {
   if (data === null || data === undefined) return data
 
   // Evitar recursión infinita
   if (depth > 20) return '[MAX_DEPTH]'
 
-  // Strings: guardar completos
+  // Strings: truncar si son muy largos
   if (typeof data === 'string') {
+    if (data.length > MAX_STRING_LENGTH) {
+      return data.substring(0, MAX_STRING_LENGTH) + '... [TRUNCATED]'
+    }
     return data
   }
 
