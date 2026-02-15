@@ -2,7 +2,7 @@
 // Refactorizado para usar Drizzle ORM en lugar de Supabase JS client
 import { getDb } from '@/db/client'
 import { tests, testQuestions, userStreaks, userAvatarSettings } from '@/db/schema'
-import { eq, and, gte, lt, sql } from 'drizzle-orm'
+import { eq, and, gte, lt, inArray, sql } from 'drizzle-orm'
 import { getAllAvatarProfiles, getAvatarProfileById } from './queries'
 import type {
   CalculateProfileRequest,
@@ -459,7 +459,7 @@ export async function calculateBulkUserProfiles(userIds: string[]): Promise<Bulk
         currentStreak: userStreaks.currentStreak
       })
       .from(userStreaks)
-      .where(sql`${userStreaks.userId} = ANY(${userIds})`)
+      .where(inArray(userStreaks.userId, userIds))
 
     const streaksMap = new Map(streaksData.map(s => [s.userId, s.currentStreak ?? 0]))
 
@@ -479,7 +479,7 @@ export async function calculateBulkUserProfiles(userIds: string[]): Promise<Bulk
       .from(testQuestions)
       .innerJoin(tests, eq(testQuestions.testId, tests.id))
       .where(and(
-        sql`${tests.userId} = ANY(${userIds})`,
+        inArray(tests.userId, userIds),
         gte(testQuestions.createdAt, oneWeekAgo.toISOString())
       ))
       .groupBy(tests.userId)
@@ -494,7 +494,7 @@ export async function calculateBulkUserProfiles(userIds: string[]): Promise<Bulk
       .from(testQuestions)
       .innerJoin(tests, eq(testQuestions.testId, tests.id))
       .where(and(
-        sql`${tests.userId} = ANY(${userIds})`,
+        inArray(tests.userId, userIds),
         gte(testQuestions.createdAt, twoWeeksAgo.toISOString()),
         lt(testQuestions.createdAt, oneWeekAgo.toISOString())
       ))
