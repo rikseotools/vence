@@ -464,6 +464,16 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'correo-electr-nico': 'Correo electrónico',
   'ebep-andalucia': 'EBEP-Andalucía',
   'ebep-andaluc-a': 'EBEP-Andalucía',
+
+  // Leyes añadidas desde BD (2026-02-15)
+  'access': 'Base de datos: Access',
+  'ley-funci-n-p-blica-andaluc-a-ley-5-2023': 'Ley Función Pública Andalucía (Ley 5/2023)',
+  'rd-796-2005': 'RD 796/2005',
+  'carta-derechos-ciudadanos-justicia': 'Carta Derechos Ciudadanos Justicia',
+  'reglamento-ingreso-justicia-rd-1451-2005': 'Reglamento Ingreso Justicia (RD 1451/2005)',
+  'reglamento-servicios-postales-rd-1829-1999': 'Reglamento Servicios Postales (RD 1829/1999)',
+  'reglamento-secretarios-judiciales-rd-1608-2005': 'Reglamento Secretarios Judiciales (RD 1608/2005)',
+
   'inform-tica-b-sica': 'Informática Básica',
   'hojas-de-c-lculo-excel': 'Hojas de cálculo. Excel',
   'ley-tr-fico': 'Ley Tráfico',
