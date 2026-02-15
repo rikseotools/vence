@@ -29,8 +29,8 @@ export const getFilteredQuestionsRequestSchema = z.object({
   // 🆕 Múltiples temas (para test aleatorio multi-tema)
   multipleTopics: z.array(z.number().int().min(1)).default([]),
 
-  // Cantidad de preguntas
-  numQuestions: z.number().int().min(1).max(100).default(25),
+  // Cantidad de preguntas (máx 200 para tests largos de múltiples leyes)
+  numQuestions: z.number().int().min(1).max(200).default(25),
 
   // Filtros de leyes (array de short_names)
   selectedLaws: z.array(z.string()).default([]),

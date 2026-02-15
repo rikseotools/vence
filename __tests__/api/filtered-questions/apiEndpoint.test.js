@@ -187,10 +187,10 @@ describe('API Request Validation', () => {
 
   test('numQuestions debe estar en rango válido', () => {
     const minQuestions = 1
-    const maxQuestions = 100
+    const maxQuestions = 200  // Aumentado para tests largos de múltiples leyes
 
     expect(minQuestions).toBeGreaterThanOrEqual(1)
-    expect(maxQuestions).toBeLessThanOrEqual(100)
+    expect(maxQuestions).toBeLessThanOrEqual(200)
   })
 })
 
