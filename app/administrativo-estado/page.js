@@ -5,24 +5,25 @@ import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
 export const metadata = {
-  title: 'Administrativo del Estado 2026 | Temario Oficial BOE y Convocatoria',
-  description: 'Oposiciones Administrativo del Estado 2026: 2.512 plazas turno libre, temario oficial 45 temas BOE 22/12/2025. Inscripción hasta 22 enero 2026.',
+  title: 'Administrativo del Estado 2026 | Tests y Temario Gratis Online',
+  description: 'Prepara la oposición de Administrativo del Estado con tests gratuitos y temarios actualizados. 45 temas oficiales BOE 2025, 2.512 plazas convocatoria publicada.',
   keywords: [
     'administrativo del estado',
     'oposiciones administrativo estado',
-    'temario administrativo del estado',
-    'programa administrativo estado',
+    'test administrativo del estado',
+    'temario administrativo del estado gratis',
     'oposiciones 2026',
     'convocatoria administrativo estado 2026',
     '45 temas administrativo',
-    'requisitos administrativo estado',
+    'preparar administrativo estado gratis',
+    'examenes administrativo estado',
     'plazas administrativo estado 2026'
   ].join(', '),
-  authors: [{ name: 'Vence' }],
+  authors: [{ name: 'Vence - Preparación Oposiciones' }],
   metadataBase: new URL(SITE_URL),
   openGraph: {
-    title: 'Administrativo del Estado 2026 | Convocatoria Publicada - 2.512 Plazas',
-    description: 'Oposiciones Administrativo del Estado: temario oficial 45 temas BOE 22/12/2025. Inscripción hasta 22 enero 2026. Examen mayo 2026.',
+    title: 'Administrativo del Estado 2026 | Preparación Completa Gratuita',
+    description: 'Tests gratuitos y temario oficial BOE 22/12/2025 para la oposición de Administrativo del Estado. ¡Convocatoria publicada! 2.512 plazas.',
     url: `${SITE_URL}/administrativo-estado`,
     siteName: 'Vence',
     locale: 'es_ES',
@@ -31,10 +32,14 @@ export const metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Administrativo del Estado 2026 | Convocatoria Publicada',
-    description: '2.512 plazas turno libre. Temario 45 temas BOE 22/12/2025. Inscripción hasta 22 enero 2026.'
+    description: '2.512 plazas turno libre. Temario 45 temas BOE 22/12/2025. Tests gratuitos online.'
   },
   alternates: {
     canonical: `${SITE_URL}/administrativo-estado`,
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 }
 
@@ -184,20 +189,40 @@ export default function AdministrativoEstado() {
     }
   ]
 
+  // Schema JSON-LD - FAQPage para mejor SEO
   const schemaData = {
     "@context": "https://schema.org",
-    "@type": "Course",
-    "name": "Oposiciones Administrativo del Estado 2026",
-    "description": "Preparación para las oposiciones de Administrativo del Estado con temario oficial BOE 22/12/2025, tests y simulacros. 2.512 plazas turno libre.",
-    "provider": {
-      "@type": "Organization",
-      "name": "Vence",
-      "url": SITE_URL
-    },
-    "courseCode": "ADM-ESTADO-2026",
-    "educationalLevel": "Bachillerato",
-    "teaches": "45 temas oficiales del programa de Administrativo del Estado según BOE 22/12/2025"
+    "@type": "FAQPage",
+    "mainEntity": faqs.map(faq => ({
+      "@type": "Question",
+      "name": faq.pregunta,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.respuesta
+      }
+    }))
   }
+
+  const serviciosPrincipales = [
+    {
+      icon: "📚",
+      titulo: "Temarios Completos",
+      descripcion: "45 temas del programa oficial según BOE 22/12/2025. 6 bloques temáticos completos.",
+      enlace: "/administrativo-estado/temario",
+      cta: "📚 Ver Temarios",
+      stats: "45 temas • 6 bloques • BOE 2025",
+      color: "bg-blue-600 hover:bg-blue-700"
+    },
+    {
+      icon: "🎯",
+      titulo: "Tests y Exámenes",
+      descripcion: "Tests específicos de cada tema con preguntas actualizadas al temario 2025.",
+      enlace: "/administrativo-estado/test",
+      cta: "🎯 Empezar Tests",
+      stats: "Todos los temas • Tests ilimitados",
+      color: "bg-green-600 hover:bg-green-700"
+    }
+  ]
 
   return (
     <>
@@ -262,6 +287,41 @@ export default function AdministrativoEstado() {
               ))}
             </div>
           </div>
+
+          {/* Material de Preparación - PRIMERO */}
+          <section className="mb-10">
+            <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">
+              🎯 Material de Preparación
+            </h2>
+
+            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              {serviciosPrincipales.map((servicio, index) => (
+                <div key={index} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all transform hover:-translate-y-1 border">
+                  <div className="p-6">
+                    <div className="flex items-center mb-4">
+                      <span className="text-3xl mr-3">{servicio.icon}</span>
+                      <h3 className="text-xl font-bold text-gray-800">{servicio.titulo}</h3>
+                    </div>
+
+                    <p className="text-gray-600 mb-4 leading-relaxed">
+                      {servicio.descripcion}
+                    </p>
+
+                    <div className="bg-gray-50 rounded-lg px-3 py-2 mb-6">
+                      <span className="text-sm text-gray-700 font-medium">{servicio.stats}</span>
+                    </div>
+
+                    <Link
+                      href={servicio.enlace}
+                      className={`w-full block text-center text-white px-6 py-3 rounded-lg font-bold ${servicio.color} transition-colors`}
+                    >
+                      {servicio.cta}
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
 
           {/* Información del Temario */}
           <section className="mb-12">
@@ -346,19 +406,97 @@ export default function AdministrativoEstado() {
             </div>
           </section>
 
+          {/* Descripción SEO de la Oposición */}
+          <section className="mb-12">
+            <div className="bg-white rounded-lg shadow-md p-8">
+              <h2 className="text-3xl font-bold text-gray-800 mb-6">
+                ¿Qué es la Oposición de Administrativo del Estado?
+              </h2>
+
+              <div className="prose max-w-none text-gray-700">
+                <p className="text-lg mb-4">
+                  La <strong>oposición de Administrativo del Estado</strong> es uno de los procesos selectivos más demandados del <strong>Grupo C1</strong> en la Administración General del Estado. Es el nivel superior al de Auxiliar Administrativo y ofrece mayores responsabilidades y retribución.
+                </p>
+
+                <h3 className="text-xl font-semibold mt-6 mb-3">Funciones del Administrativo del Estado</h3>
+                <p className="mb-4">
+                  Los administrativos del Estado realizan tareas de <strong>gestión administrativa de nivel medio-alto</strong> en ministerios y organismos públicos. Sus principales funciones incluyen:
+                </p>
+                <ul className="list-disc pl-6 mb-6 space-y-2">
+                  <li>Gestión y tramitación de expedientes complejos</li>
+                  <li>Elaboración de informes y propuestas administrativas</li>
+                  <li>Gestión presupuestaria y contratación pública</li>
+                  <li>Coordinación de equipos de auxiliares administrativos</li>
+                  <li>Atención especializada al ciudadano</li>
+                </ul>
+
+                <h3 className="text-xl font-semibold mt-6 mb-3">Requisitos y Proceso Selectivo</h3>
+                <p className="mb-4">
+                  Para acceder a esta oposición necesitas cumplir los <strong>requisitos básicos</strong>: nacionalidad española o de la UE, tener 16 años y no exceder la edad de jubilación, poseer el título de <strong>Bachillerato o Técnico (FP Grado Medio)</strong>, y no estar inhabilitado para funciones públicas.
+                </p>
+                <p className="mb-6">
+                  El proceso selectivo consiste en un <strong>examen único tipo test</strong> con preguntas teóricas sobre los 45 temas del programa oficial y supuestos prácticos.
+                </p>
+
+                <h3 className="text-xl font-semibold mt-6 mb-3">Ventajas de ser Administrativo del Estado</h3>
+                <div className="grid md:grid-cols-2 gap-6 mt-4">
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-800 mb-2">💼 Estabilidad Laboral</h4>
+                    <p className="text-sm text-green-700">Trabajo fijo con todas las garantías del empleo público</p>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-800 mb-2">💰 Mayor Retribución</h4>
+                    <p className="text-sm text-blue-700">Sueldo superior al C2, entre 24.000-30.000€ anuales</p>
+                  </div>
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-purple-800 mb-2">📈 Desarrollo Profesional</h4>
+                    <p className="text-sm text-purple-700">Promoción interna a Grupo B y formación continua</p>
+                  </div>
+                  <div className="bg-orange-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-orange-800 mb-2">🌍 Movilidad Geográfica</h4>
+                    <p className="text-sm text-orange-700">Destinos en toda España según preferencias</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {/* FAQs */}
           <section className="mb-12">
-            <h2 className="text-2xl font-bold text-center mb-8">Preguntas Frecuentes</h2>
-            <div className="max-w-3xl mx-auto space-y-4">
+            <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">
+              Preguntas Frecuentes sobre Administrativo del Estado
+            </h2>
+            <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
               {faqs.map((faq, index) => (
-                <div key={index} className="bg-white rounded-lg p-6 shadow-md">
-                  <h3 className="text-lg font-bold mb-3 text-gray-800">{faq.pregunta}</h3>
-                  <p className="text-gray-600">{faq.respuesta}</p>
+                <div key={index} className="border border-gray-200 rounded-lg mb-4 p-4">
+                  <h3 className="font-semibold text-gray-800 mb-2">{faq.pregunta}</h3>
+                  <p className="text-gray-600 leading-relaxed">{faq.respuesta}</p>
                 </div>
               ))}
             </div>
           </section>
 
+          {/* CTA Final */}
+          <section className="bg-blue-600 rounded-lg shadow-lg p-6 text-white text-center mb-8">
+            <h2 className="text-2xl font-bold mb-3">¿Listo para aprobar tu oposición?</h2>
+            <p className="text-blue-100 mb-6 max-w-xl mx-auto">
+              Únete a miles de opositores que se preparan con nuestro material gratuito.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center max-w-sm mx-auto">
+              <Link
+                href="/administrativo-estado/test"
+                className="bg-white text-blue-600 px-6 py-2 rounded font-bold hover:bg-gray-100 transition-colors w-full sm:w-auto text-sm"
+              >
+                🎯 Empezar Tests
+              </Link>
+              <Link
+                href="/administrativo-estado/temario"
+                className="bg-yellow-500 text-blue-900 px-6 py-2 rounded font-bold hover:bg-yellow-400 transition-colors w-full sm:w-auto text-sm"
+              >
+                📚 Ver Temarios
+              </Link>
+            </div>
+          </section>
 
         </div>
       </div>
