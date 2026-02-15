@@ -50,7 +50,7 @@ const BLOQUES = [
       { id: 304, displayNum: 4, titulo: 'Los Contratos del Sector Público', descripcion: 'Tipos de contratos. Procedimientos de adjudicación. Ejecución y modificación.' },
       { id: 305, displayNum: 5, titulo: 'Procedimientos y Formas de la Actividad Administrativa', descripcion: 'La actividad de policía, de fomento y de servicio público.' },
       { id: 306, displayNum: 6, titulo: 'La Responsabilidad Patrimonial', descripcion: 'Régimen jurídico. Procedimiento de responsabilidad patrimonial.' },
-      { id: 307, displayNum: 7, titulo: 'Políticas de Igualdad', descripcion: 'Igualdad de género. Violencia de género. Discapacidad.' }
+      { id: 307, displayNum: 7, titulo: 'Políticas de Igualdad', descripcion: 'Igualdad de género. Violencia de género. Discapacidad. Políticas LGTBI (novedad BOE 2025).' }
     ]
   },
   {
@@ -91,7 +91,7 @@ const BLOQUES = [
     count: 8,
     temas: [
       { id: 601, displayNum: 1, titulo: 'Informática Básica', descripcion: 'Hardware y software. Sistemas operativos. Almacenamiento de datos.', disponible: false },
-      { id: 602, displayNum: 2, titulo: 'Sistema Operativo Windows', descripcion: 'Fundamentos. Configuración del sistema.', disponible: false },
+      { id: 602, displayNum: 2, titulo: 'Sistema Operativo Windows', descripcion: 'Fundamentos. Configuración del sistema. Copilot de Windows (novedad BOE 2025).', disponible: false },
       { id: 603, displayNum: 3, titulo: 'El Explorador de Windows', descripcion: 'Gestión de carpetas y archivos. Búsquedas.', disponible: false },
       { id: 604, displayNum: 4, titulo: 'Procesadores de Texto: Word 365', descripcion: 'Edición y formato de documentos. Tablas. Combinación de correspondencia.', disponible: false },
       { id: 605, displayNum: 5, titulo: 'Hojas de Cálculo: Excel 365', descripcion: 'Fórmulas y funciones. Gráficos. Tablas dinámicas.', disponible: false },
