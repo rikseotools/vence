@@ -4,8 +4,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/db/client'
-import { feedbackConversations, feedbackMessages } from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { feedbackConversations, feedbackMessages, userFeedback } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod/v3'
 
 // ============================================
@@ -106,6 +106,33 @@ async function sendUserMessage(params: SendMessageRequest): Promise<SendMessageR
         lastMessageAt: new Date().toISOString()
       })
       .where(eq(feedbackConversations.id, params.conversationId))
+
+    // Reabrir feedback si estaba resuelto/descartado
+    const convData = await db
+      .select({ feedbackId: feedbackConversations.feedbackId })
+      .from(feedbackConversations)
+      .where(eq(feedbackConversations.id, params.conversationId))
+      .limit(1)
+
+    if (convData[0]?.feedbackId) {
+      const fbData = await db
+        .select({ status: userFeedback.status })
+        .from(userFeedback)
+        .where(eq(userFeedback.id, convData[0].feedbackId))
+        .limit(1)
+
+      if (fbData[0]?.status === 'resolved' || fbData[0]?.status === 'dismissed') {
+        await db
+          .update(userFeedback)
+          .set({
+            status: 'pending',
+            resolvedAt: null
+          })
+          .where(eq(userFeedback.id, convData[0].feedbackId))
+
+        console.log('🔄 [API/feedback/message] Feedback reabierto:', convData[0].feedbackId)
+      }
+    }
 
     console.log('✅ [API/feedback/message] Mensaje enviado:', {
       messageId: newMessage.id,
