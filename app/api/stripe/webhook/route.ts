@@ -5,7 +5,7 @@ import { stripe } from '@/lib/stripe'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import type Stripe from 'stripe'
-import { shouldDowngradeNow, formatPeriodEnd } from '@/lib/stripe-webhook-handlers'
+import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type StripeSubscription = any
@@ -19,23 +19,18 @@ async function getSubscription(subscriptionId: string): Promise<StripeSubscripti
   return await stripe().subscriptions.retrieve(subscriptionId)
 }
 
-// Helper to determine plan type from subscription interval
-function getPlanTypeFromSubscription(subscription: StripeSubscription): string {
-  const priceData = subscription.items?.data?.[0]?.price?.recurring
-  const interval = priceData?.interval
-  const intervalCount = priceData?.interval_count || 1
+// Mapear status de Stripe a valores permitidos en user_subscriptions_status_check
+// Stripe puede enviar: active, past_due, unpaid, canceled, incomplete, incomplete_expired, trialing, paused
+// Nuestro constraint permite: trialing, active, canceled, past_due, unpaid
+const VALID_STATUSES = new Set(['trialing', 'active', 'canceled', 'past_due', 'unpaid'])
 
-  if (interval === 'month') {
-    if (intervalCount === 1) return 'premium_monthly'
-    if (intervalCount === 3) return 'premium_quarterly'
-    if (intervalCount === 6) return 'premium_semester'
-  }
-  if (interval === 'year') return 'premium_yearly'
-
-  // Fallback based on interval count
-  if (intervalCount <= 1) return 'premium_monthly'
-  if (intervalCount <= 3) return 'premium_quarterly'
-  return 'premium_semester'
+function normalizeStripeStatus(status: string): string {
+  if (VALID_STATUSES.has(status)) return status
+  // Mapear statuses no soportados
+  if (status === 'incomplete' || status === 'incomplete_expired') return 'unpaid'
+  if (status === 'paused') return 'active'
+  console.warn(`⚠️ Stripe status desconocido: "${status}", mapeando a "active"`)
+  return 'active'
 }
 
 const getResend = () => new Resend(process.env.RESEND_API_KEY)
@@ -265,7 +260,7 @@ async function handleCheckoutSessionCompleted(
       if (session.subscription) {
         try {
           const subscription = await getSubscription(session.subscription as string)
-          planType = getPlanTypeFromSubscription(subscription)
+          planType = determinePlanType(subscription)
 
           const { error: subError } = await supabase
             .from('user_subscriptions')
@@ -273,7 +268,7 @@ async function handleCheckoutSessionCompleted(
               user_id: userId,
               stripe_customer_id: session.customer as string,
               stripe_subscription_id: subscription.id,
-              status: subscription.status,
+              status: normalizeStripeStatus(subscription.status),
               plan_type: planType,
               current_period_start: subscription.current_period_start
                 ? new Date(subscription.current_period_start * 1000).toISOString()
@@ -437,7 +432,7 @@ async function handleCheckoutSessionCompleted(
         if (session.subscription) {
           try {
             const subscription = await getSubscription(session.subscription as string)
-            const planType = getPlanTypeFromSubscription(subscription)
+            const planType = determinePlanType(subscription)
 
             await supabase
               .from('user_subscriptions')
@@ -445,7 +440,7 @@ async function handleCheckoutSessionCompleted(
                 user_id: existingUser.id,
                 stripe_customer_id: session.customer as string,
                 stripe_subscription_id: subscription.id,
-                status: subscription.status,
+                status: normalizeStripeStatus(subscription.status),
                 plan_type: planType,
                 current_period_start: subscription.current_period_start
                   ? new Date(subscription.current_period_start * 1000).toISOString()
@@ -522,7 +517,7 @@ async function handleSubscriptionCreated(
     return
   }
 
-  const planType = getPlanTypeFromSubscription(subscription)
+  const planType = determinePlanType(subscription)
 
   try {
     const { error } = await supabase
@@ -531,7 +526,7 @@ async function handleSubscriptionCreated(
         user_id: userId,
         stripe_customer_id: subscription.customer as string,
         stripe_subscription_id: subscription.id,
-        status: subscription.status,
+        status: normalizeStripeStatus(subscription.status),
         plan_type: planType,
         trial_start: subscription.trial_start
           ? new Date(subscription.trial_start * 1000).toISOString()
@@ -566,7 +561,7 @@ async function handleSubscriptionUpdated(
 ): Promise<void> {
   try {
     const updateData: Record<string, unknown> = {
-      status: subscription.status,
+      status: normalizeStripeStatus(subscription.status),
       cancel_at_period_end: subscription.cancel_at_period_end
     }
 

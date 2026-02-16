@@ -1128,7 +1128,7 @@ export const userSubscriptions = pgTable("user_subscriptions", {
 	unique("user_subscriptions_user_id_unique").on(table.userId),
 	pgPolicy("Users can view own subscriptions", { as: "permissive", for: "select", to: ["public"], using: sql`(user_id = auth.uid())` }),
 	pgPolicy("Service role can manage subscriptions", { as: "permissive", for: "all", to: ["public"] }),
-	check("user_subscriptions_plan_type_check", sql`plan_type = ANY (ARRAY['trial'::text, 'premium_semester'::text, 'premium_annual'::text, 'premium_monthly'::text])`),
+	check("user_subscriptions_plan_type_check", sql`plan_type = ANY (ARRAY['trial'::text, 'premium_monthly'::text, 'premium_quarterly'::text, 'premium_semester'::text, 'premium_annual'::text])`),
 	check("user_subscriptions_status_check", sql`status = ANY (ARRAY['trialing'::text, 'active'::text, 'canceled'::text, 'past_due'::text, 'unpaid'::text])`),
 ]);
 

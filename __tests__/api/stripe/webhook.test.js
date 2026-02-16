@@ -15,6 +15,7 @@
 
 import {
   determinePlanType,
+  VALID_PLAN_TYPES,
   extractUserId,
   validateSubscriptionData,
   validateCheckoutSession,
@@ -31,48 +32,53 @@ describe('Stripe Webhook Handlers', () => {
   // determinePlanType
   // ============================================
   describe('determinePlanType', () => {
-    it('devuelve premium_monthly para suscripciones mensuales', () => {
+    it('devuelve premium_monthly para interval month, count 1', () => {
       const subscription = {
-        items: {
-          data: [{
-            price: {
-              recurring: { interval: 'month' }
-            }
-          }]
-        }
+        items: { data: [{ price: { recurring: { interval: 'month', interval_count: 1 } } }] }
       }
       expect(determinePlanType(subscription)).toBe('premium_monthly')
     })
 
-    it('devuelve premium_semester para suscripciones semestrales (6 month interval_count)', () => {
-      // Stripe usa month con interval_count: 6 para semestral
+    it('devuelve premium_monthly para interval month sin count (default 1)', () => {
       const subscription = {
-        items: {
-          data: [{
-            price: {
-              recurring: { interval: 'month', interval_count: 6 }
-            }
-          }]
-        }
+        items: { data: [{ price: { recurring: { interval: 'month' } } }] }
       }
-      // interval === 'month' -> premium_monthly (interval_count no se usa en la lógica)
       expect(determinePlanType(subscription)).toBe('premium_monthly')
     })
 
-    it('devuelve premium_semester si no hay datos de recurring', () => {
+    it('devuelve premium_quarterly para interval month, count 3', () => {
       const subscription = {
-        items: { data: [{ price: {} }] }
+        items: { data: [{ price: { recurring: { interval: 'month', interval_count: 3 } } }] }
+      }
+      expect(determinePlanType(subscription)).toBe('premium_quarterly')
+    })
+
+    it('devuelve premium_semester para interval month, count 6', () => {
+      const subscription = {
+        items: { data: [{ price: { recurring: { interval: 'month', interval_count: 6 } } }] }
       }
       expect(determinePlanType(subscription)).toBe('premium_semester')
     })
 
-    it('devuelve premium_semester si subscription es null', () => {
-      expect(determinePlanType(null)).toBe('premium_semester')
+    it('devuelve premium_annual para interval year', () => {
+      const subscription = {
+        items: { data: [{ price: { recurring: { interval: 'year', interval_count: 1 } } }] }
+      }
+      expect(determinePlanType(subscription)).toBe('premium_annual')
     })
 
-    it('devuelve premium_semester si items está vacío', () => {
+    it('devuelve premium_monthly si no hay datos de recurring (fallback, intervalCount=1)', () => {
+      const subscription = { items: { data: [{ price: {} }] } }
+      expect(determinePlanType(subscription)).toBe('premium_monthly')
+    })
+
+    it('devuelve premium_monthly si subscription es null (fallback, intervalCount=1)', () => {
+      expect(determinePlanType(null)).toBe('premium_monthly')
+    })
+
+    it('devuelve premium_monthly si items está vacío (fallback, intervalCount=1)', () => {
       const subscription = { items: { data: [] } }
-      expect(determinePlanType(subscription)).toBe('premium_semester')
+      expect(determinePlanType(subscription)).toBe('premium_monthly')
     })
   })
 
@@ -604,33 +610,48 @@ describe('Stripe Webhook - Flujos de Pago', () => {
 // ============================================
 describe('Stripe Webhook - Validación de Datos', () => {
   describe('plan_type constraint', () => {
-    it('solo permite valores válidos: trial, premium_semester, premium_monthly', () => {
-      const validTypes = ['trial', 'premium_semester', 'premium_monthly']
+    // Este test habría pillado el bug: premium_quarterly no estaba en el constraint
+    const ALL_STRIPE_COMBOS = [
+      { interval: 'month', interval_count: 1 },
+      { interval: 'month', interval_count: 3 },
+      { interval: 'month', interval_count: 6 },
+      { interval: 'year', interval_count: 1 },
+      { interval: 'week', interval_count: 1 },  // edge case
+    ]
 
-      // Mensual
-      const monthly = determinePlanType({
-        items: { data: [{ price: { recurring: { interval: 'month' } } }] }
-      })
-      expect(validTypes).toContain(monthly)
-      expect(monthly).toBe('premium_monthly')
+    it.each(ALL_STRIPE_COMBOS)(
+      'interval=$interval count=$interval_count devuelve un plan_type válido del constraint de BD',
+      (combo) => {
+        const subscription = {
+          items: { data: [{ price: { recurring: combo } }] }
+        }
+        const result = determinePlanType(subscription)
+        expect(VALID_PLAN_TYPES).toContain(result)
+      }
+    )
 
-      // Semestral (default para interval desconocido)
-      const semester = determinePlanType({
-        items: { data: [{ price: { recurring: { interval: 'week' } } }] }
-      })
-      expect(validTypes).toContain(semester)
-      expect(semester).toBe('premium_semester')
-
-      // Default
-      const defaultType = determinePlanType(null)
-      expect(validTypes).toContain(defaultType)
+    it('determinePlanType(null) devuelve un plan_type válido', () => {
+      expect(VALID_PLAN_TYPES).toContain(determinePlanType(null))
     })
 
-    it('premium_monthly se produce para interval month', () => {
+    it('determinePlanType con items vacíos devuelve un plan_type válido', () => {
+      expect(VALID_PLAN_TYPES).toContain(determinePlanType({ items: { data: [] } }))
+    })
+
+    it('los 3 planes vendidos (monthly, quarterly, semester) son alcanzables', () => {
       const monthly = determinePlanType({
-        items: { data: [{ price: { recurring: { interval: 'month' } } }] }
+        items: { data: [{ price: { recurring: { interval: 'month', interval_count: 1 } } }] }
       })
+      const quarterly = determinePlanType({
+        items: { data: [{ price: { recurring: { interval: 'month', interval_count: 3 } } }] }
+      })
+      const semester = determinePlanType({
+        items: { data: [{ price: { recurring: { interval: 'month', interval_count: 6 } } }] }
+      })
+
       expect(monthly).toBe('premium_monthly')
+      expect(quarterly).toBe('premium_quarterly')
+      expect(semester).toBe('premium_semester')
     })
   })
 
@@ -678,7 +699,7 @@ describe('Stripe Webhook - Edge Cases', () => {
   describe('Datos incompletos', () => {
     it('maneja subscription sin items', () => {
       const result = determinePlanType({ items: { data: [] } })
-      expect(result).toBe('premium_semester')
+      expect(result).toBe('premium_monthly')
     })
 
     it('maneja session sin metadata', () => {

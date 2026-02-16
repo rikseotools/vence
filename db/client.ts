@@ -52,5 +52,40 @@ export function getDb() {
   return globalForDb.db
 }
 
+// ============================================
+// Cliente dedicado para trace inserts (background)
+// Sin statement_timeout para evitar fallos en after()
+// ============================================
+
+const globalForTraceDb = globalThis as unknown as {
+  traceDb: ReturnType<typeof drizzle<typeof schema>> | undefined
+}
+
+function createTraceDbClient() {
+  const connectionString = process.env.DATABASE_URL
+  if (!connectionString) return null
+
+  // Sin statement_timeout - los traces se insertan en after() con tiempo limitado
+  // No queremos que el timeout de Postgres compita con el de Vercel
+  const conn = postgres(connectionString, {
+    max: 1,
+    idle_timeout: 10,
+    connect_timeout: 5,
+    prepare: false,
+  })
+
+  return drizzle(conn, { schema })
+}
+
+export function getTraceDb() {
+  if (!globalForTraceDb.traceDb) {
+    globalForTraceDb.traceDb = createTraceDbClient() as any
+  }
+  if (!globalForTraceDb.traceDb) {
+    throw new Error('DATABASE_URL environment variable is not set')
+  }
+  return globalForTraceDb.traceDb
+}
+
 // Re-exportar tipos útiles
 export type DbClient = typeof db

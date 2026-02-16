@@ -1,7 +1,7 @@
 // lib/api/ai-traces/queries.ts
 // Queries Drizzle para AI Chat Traces
 
-import { getDb } from '@/db/client'
+import { getDb, getTraceDb } from '@/db/client'
 import { aiChatTraces, aiChatLogs } from '@/db/schema'
 import { eq, and, desc, asc, sql, isNull, isNotNull, lte, gte, inArray } from 'drizzle-orm'
 import type { CreateTraceInput, TraceFilters, TraceTreeNode } from './schemas'
@@ -28,29 +28,36 @@ export interface SaveTraceInput {
 
 /**
  * Guarda múltiples traces en la BD
+ * Inserta uno a uno con cliente dedicado (sin statement_timeout)
+ * para evitar fallos en el contexto after() de Vercel
  */
 export async function saveTraces(traces: SaveTraceInput[]): Promise<void> {
   if (traces.length === 0) return
 
-  const db = getDb()
+  const db = getTraceDb()
 
-  await db.insert(aiChatTraces).values(
-    traces.map(trace => ({
-      logId: trace.logId,
-      traceType: trace.traceType,
-      startedAt: trace.startedAt,
-      endedAt: trace.endedAt,
-      durationMs: trace.durationMs,
-      inputData: trace.inputData,
-      outputData: trace.outputData,
-      metadata: trace.metadata,
-      success: trace.success,
-      errorMessage: trace.errorMessage,
-      errorStack: trace.errorStack,
-      sequenceNumber: trace.sequenceNumber,
-      parentTraceId: trace.parentTraceId,
-    }))
-  )
+  for (const trace of traces) {
+    try {
+      await db.insert(aiChatTraces).values({
+        logId: trace.logId,
+        traceType: trace.traceType,
+        startedAt: trace.startedAt,
+        endedAt: trace.endedAt,
+        durationMs: trace.durationMs,
+        inputData: trace.inputData,
+        outputData: trace.outputData,
+        metadata: trace.metadata,
+        success: trace.success,
+        errorMessage: trace.errorMessage,
+        errorStack: trace.errorStack,
+        sequenceNumber: trace.sequenceNumber,
+        parentTraceId: trace.parentTraceId,
+      })
+    } catch (error) {
+      // Log pero no fallar - que los demás traces se sigan guardando
+      console.error(`[ai-traces] Error inserting trace seq=${trace.sequenceNumber}:`, error)
+    }
+  }
 }
 
 /**

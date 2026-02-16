@@ -64,15 +64,22 @@ export async function POST(request) {
 
     if (existingAlert) {
       // Ya existe una alerta similar, actualizar detalles
-      const { error: updateError } = await getSupabase()
+      const { data: currentAlert } = await getSupabase()
         .from('fraud_alerts')
-        .update({
-          details: getSupabase().sql`details || ${JSON.stringify({
-            lastDetection: timestamp,
-            lastScore: score,
-            lastUrl: url
-          })}::jsonb`
-        })
+        .select('details')
+        .eq('id', existingAlert.id)
+        .single()
+
+      const updatedDetails = {
+        ...(currentAlert?.details || {}),
+        lastDetection: timestamp,
+        lastScore: score,
+        lastUrl: url
+      }
+
+      await getSupabase()
+        .from('fraud_alerts')
+        .update({ details: updatedDetails })
         .eq('id', existingAlert.id)
 
       return NextResponse.json({

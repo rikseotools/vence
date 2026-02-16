@@ -77,15 +77,33 @@ export interface AdminEmailData {
   userId: string | undefined
 }
 
-export type PlanType = 'premium_monthly' | 'premium_semester'
+export type PlanType = 'premium_monthly' | 'premium_quarterly' | 'premium_semester' | 'premium_annual'
 export type SubscriptionStatus = 'active' | 'trialing' | 'canceled' | 'past_due' | 'unpaid' | 'incomplete'
 
+// Valores permitidos por el constraint user_subscriptions_plan_type_check
+export const VALID_PLAN_TYPES = ['trial', 'premium_monthly', 'premium_quarterly', 'premium_semester', 'premium_annual'] as const
+
 /**
- * Determina el plan_type basado en el intervalo de facturación
+ * Determina el plan_type basado en el intervalo de facturación.
+ * IMPORTANTE: Esta es la ÚNICA función que mapea intervalos de Stripe a plan_type.
+ * Los valores devueltos DEBEN coincidir con el constraint de BD.
  */
 export function determinePlanType(subscription: Subscription | null | undefined): PlanType {
-  const interval = subscription?.items?.data?.[0]?.price?.recurring?.interval
-  return interval === 'month' ? 'premium_monthly' : 'premium_semester'
+  const recurring = subscription?.items?.data?.[0]?.price?.recurring
+  const interval = recurring?.interval
+  const intervalCount = recurring?.interval_count || 1
+
+  if (interval === 'month') {
+    if (intervalCount <= 1) return 'premium_monthly'
+    if (intervalCount === 3) return 'premium_quarterly'
+    if (intervalCount === 6) return 'premium_semester'
+  }
+  if (interval === 'year') return 'premium_annual'
+
+  // Fallback
+  if (intervalCount <= 1) return 'premium_monthly'
+  if (intervalCount <= 3) return 'premium_quarterly'
+  return 'premium_semester'
 }
 
 /**
