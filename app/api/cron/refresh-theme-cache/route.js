@@ -27,11 +27,11 @@ export async function GET(request) {
     console.log('🔄 Iniciando refresh de caché de rendimiento por tema...')
     const startTime = Date.now()
 
-    // 1. Obtener usuarios activos (últimos 90 días con tests completados)
+    // 1. Obtener usuarios que completaron tests HOY (no necesitamos refrescar los demás)
     const { data: activeUsers, error: usersError } = await supabase
       .from('tests')
       .select('user_id')
-      .gte('created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
+      .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       .eq('is_completed', true)
 
     if (usersError) {
@@ -46,27 +46,32 @@ export async function GET(request) {
     const uniqueUserIds = [...new Set(activeUsers?.map(t => t.user_id) || [])]
     console.log(`📊 Procesando ${uniqueUserIds.length} usuarios activos...`)
 
-    // 2. Procesar cada usuario individualmente (evita timeout del loop SQL)
+    // 2. Procesar en batches paralelos de 5
+    const BATCH_SIZE = 5
     let usersProcessed = 0
     let totalTopics = 0
     const errors = []
 
-    for (const userId of uniqueUserIds) {
-      try {
-        const { data: topicsCount, error: refreshError } = await supabase.rpc(
-          'refresh_user_theme_performance_cache',
-          { p_user_id: userId }
-        )
+    for (let i = 0; i < uniqueUserIds.length; i += BATCH_SIZE) {
+      const batch = uniqueUserIds.slice(i, i + BATCH_SIZE)
 
-        if (refreshError) {
-          errors.push({ userId: userId.slice(0, 8), error: refreshError.message })
-          console.warn(`⚠️ Error procesando usuario ${userId.slice(0, 8)}:`, refreshError.message)
-        } else {
+      const results = await Promise.allSettled(
+        batch.map(userId =>
+          supabase.rpc('refresh_user_theme_performance_cache', { p_user_id: userId })
+            .then(({ data: topicsCount, error: refreshError }) => {
+              if (refreshError) throw new Error(refreshError.message)
+              return { userId, topicsCount: topicsCount || 0 }
+            })
+        )
+      )
+
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
           usersProcessed++
-          totalTopics += topicsCount || 0
+          totalTopics += result.value.topicsCount
+        } else {
+          errors.push({ error: result.reason.message })
         }
-      } catch (err) {
-        errors.push({ userId: userId.slice(0, 8), error: err.message })
       }
     }
 
