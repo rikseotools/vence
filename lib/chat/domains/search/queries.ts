@@ -455,6 +455,27 @@ export async function findLawByName(
     }
   }
 
+  // 4. Para refs tipo "LO 2/1979", "RD 366/2007", etc., buscar solo por "número/año" en name
+  const numYearMatch = name.match(/\d+\/\d{4}/)
+  if (numYearMatch) {
+    const { data: numYearResult } = await getSupabase()
+      .from('laws')
+      .select('id, short_name, name')
+      .ilike('name', `%${numYearMatch[0]}%`)
+      .eq('is_derogated', false)
+      .limit(1)
+      .single()
+
+    if (numYearResult) {
+      logger.debug(`🔎 findLawByName: num/year match for "${name}" → ${numYearResult.short_name}`, { domain: 'search' })
+      return {
+        id: numYearResult.id,
+        shortName: numYearResult.short_name,
+        name: numYearResult.name,
+      }
+    }
+  }
+
   logger.warn(`🔎 findLawByName: no law found for "${name}"`, { domain: 'search' })
   return null
 }

@@ -194,7 +194,7 @@ export default function LeyesDeOposicionesPage() {
       detalles: 'Define el ámbito de la jurisdicción contencioso-administrativa, órganos jurisdiccionales, procedimientos (ordinario, abreviado, especiales), medidas cautelares, sentencias y ejecución de las mismas.',
       oposiciones: ['Auxiliar Administrativo', 'Administrativo', 'Auxilio Judicial', 'Tramitación Procesal'],
       frecuencia: 'Media',
-      slug: 'jurisdiccion-contencioso-administrativa'
+      slug: 'ley-29-1998'
     },
     {
       id: 'igualdad-trans',
