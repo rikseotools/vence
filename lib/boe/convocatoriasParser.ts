@@ -4,7 +4,7 @@
  */
 
 // Importar función de conversión de texto español a número
-import { spanishTextToNumber } from '../boe-extractor.js';
+import { spanishTextToNumber } from '../boe-extractor';
 
 // ============================================
 // TIPOS
