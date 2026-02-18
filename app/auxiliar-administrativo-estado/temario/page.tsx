@@ -46,7 +46,7 @@ const BLOQUES = [
       { id: 107, displayNum: 7, titulo: 'El Explorador de Windows 11', descripcion: 'Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas del sistema.', disponible: false },
       { id: 108, displayNum: 8, titulo: 'Procesadores de texto: Word', descripcion: 'Principales funciones y utilidades. Creación y estructuración del documento. Gestión, grabación e impresión.' },
       { id: 109, displayNum: 9, titulo: 'Hojas de cálculo: Excel', descripcion: 'Principales funciones y utilidades. Libros, hojas y celdas. Configuración. Fórmulas y funciones. Gráficos.' },
-      { id: 110, displayNum: 10, titulo: 'Bases de datos: Access', descripcion: 'Principales funciones y utilidades. Tablas, consultas, formularios e informes. Relaciones.', disponible: false },
+      { id: 110, displayNum: 10, titulo: 'Bases de datos: Access', descripcion: 'Principales funciones y utilidades. Tablas, consultas, formularios e informes. Relaciones.' },
       { id: 111, displayNum: 11, titulo: 'Correo electrónico', descripcion: 'Conceptos elementales y funcionamiento. Microsoft 365: Outlook. Libreta de direcciones. Enviar y recibir mensajes.', disponible: false },
       { id: 112, displayNum: 12, titulo: 'La Red Internet', descripcion: 'Conceptos elementales. Navegación, favoritos e historial. Buscadores. Seguridad y protección.', disponible: false }
     ]
