@@ -32,6 +32,13 @@ const topicVideoCourses: Record<number, {
     totalDurationMinutes: 423,
     description: '79 lecciones en video: fórmulas, tablas dinámicas, gráficos, macros y más.',
   },
+  110: {
+    slug: 'access-365',
+    title: 'Curso de Access 365',
+    totalLessons: 5,
+    totalDurationMinutes: 339,
+    description: '60 lecciones en video: tablas, consultas, formularios, informes, macros y seguridad.',
+  },
 }
 
 interface TopicContentViewProps {
