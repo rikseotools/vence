@@ -6,6 +6,7 @@ import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
 import ArticleModal from '@/components/ArticleModal'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
+import { generateLawSlug } from '@/lib/lawMappingUtils'
 
 const supabase = getSupabaseClient()
 
@@ -294,7 +295,7 @@ export default function TemaPage({ params }) {
 
   // Función: Abrir modal de artículo
   function openArticleModal(articleNumber, lawName) {
-    const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
+    const lawSlug = lawName ? generateLawSlug(lawName) : 'ley-desconocida'
     setSelectedArticle({ number: articleNumber, lawSlug })
     setModalOpen(true)
   }

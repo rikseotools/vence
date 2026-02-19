@@ -7,10 +7,10 @@ import { join } from 'path'
 
 describe('Pre-commit Critical Validations', () => {
   describe('Law Slug Generation - Prevención Bug 404', () => {
-    test('CRÍTICO: openArticleModal debe convertir "/" a "-" en law slugs', () => {
+    test('CRÍTICO: openArticleModal debe usar generateLawSlug para generar slugs correctos', () => {
       // Leer el archivo de la página tema
       const temaPagePath = join(process.cwd(), 'app', 'auxiliar-administrativo-estado', 'test', 'tema', '[numero]', 'page.js')
-      
+
       let temaPageContent
       try {
         temaPageContent = readFileSync(temaPagePath, 'utf8')
@@ -18,45 +18,38 @@ describe('Pre-commit Critical Validations', () => {
         throw new Error(`❌ No se puede leer ${temaPagePath}. Este archivo es crítico para el funcionamiento.`)
       }
 
+      // Debe importar generateLawSlug
+      const hasImport = temaPageContent.includes('generateLawSlug')
+      if (!hasImport) {
+        throw new Error('❌ COMMIT RECHAZADO: falta import de generateLawSlug de lawMappingUtils')
+      }
+
       // Buscar la función openArticleModal
       const openArticleModalRegex = /function openArticleModal\s*\([^)]*\)\s*{([^}]+)}/
       const match = temaPageContent.match(openArticleModalRegex)
-      
+
       if (!match) {
         throw new Error('❌ No se encontró la función openArticleModal en el archivo tema page.js')
       }
 
       const functionBody = match[1]
-      
-      // VALIDACIÓN CRÍTICA: Debe convertir "/" a "-"
-      const hasSlashReplacement = functionBody.includes('.replace(/\\//g, \'-\')')
-      
-      if (!hasSlashReplacement) {
-        throw new Error(`
-❌ COMMIT RECHAZADO: openArticleModal no convierte "/" a "-" 
 
-🚨 PROBLEMA CRÍTICO DETECTADO:
-La función openArticleModal no incluye .replace(/\\/g, '-') 
+      // VALIDACIÓN CRÍTICA: Debe usar generateLawSlug (maneja acentos, puntos, barras correctamente)
+      const usesGenerateLawSlug = functionBody.includes('generateLawSlug')
+
+      if (!usesGenerateLawSlug) {
+        throw new Error(`
+❌ COMMIT RECHAZADO: openArticleModal no usa generateLawSlug
 
 🔍 CÓDIGO ACTUAL:
 ${functionBody.trim()}
 
-✅ CÓDIGO REQUERIDO DEBE INCLUIR:
-const lawSlug = lawName?.toLowerCase().replace(/\\s+/g, '-').replace(/\\//g, '-') || 'ley-desconocida'
+✅ CÓDIGO REQUERIDO:
+const lawSlug = lawName ? generateLawSlug(lawName) : 'ley-desconocida'
 
-🐛 SIN ESTA CORRECCIÓN:
-- Leyes como "Ley 50/1997" → "ley-50/1997" (❌ 404 Error)
-- URLs de API como /api/teoria/ley-50/1997/15 fallan
-
-⚡ PARA ARREGLAR:
-Añadir .replace(/\\//g, '-') a la generación del lawSlug
+generateLawSlug maneja correctamente acentos, puntos, barras y busca
+primero en el diccionario de mappings de lawMappingUtils.
         `)
-      }
-
-      // Validación adicional: debe haber reemplazo de espacios Y barras
-      const hasSpaceReplacement = functionBody.includes('.replace(/\\s+/g, \'-\')')
-      if (!hasSpaceReplacement) {
-        throw new Error('❌ COMMIT RECHAZADO: openArticleModal no convierte espacios a "-"')
       }
     })
 
