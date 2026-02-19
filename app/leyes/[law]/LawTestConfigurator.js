@@ -135,12 +135,9 @@ export default function LawTestConfigurator({ lawShortName, lawDisplayName }) {
               ...(config.onlyFailedQuestions && { only_failed: 'true' }),
               ...(config.failedQuestionIds && { failed_ids: config.failedQuestionIds.join(',') }),
               ...(config.failedQuestionsOrder && { failed_order: config.failedQuestionsOrder }),
-              // 🆕 FILTRO DE SECCIONES/TÍTULOS
-              ...(config.selectedSectionFilter && { 
-                section_filter: JSON.stringify({
-                  title: config.selectedSectionFilter.title,
-                  articleRange: config.selectedSectionFilter.articleRange
-                })
+              // 🆕 FILTRO DE SECCIONES/TÍTULOS (MULTI-SELECT)
+              ...(config.selectedSectionFilters && config.selectedSectionFilters.length > 0 && {
+                section_filters: JSON.stringify(config.selectedSectionFilters)
               }),
               // 🆕 FILTRO DE ARTÍCULOS ESPECÍFICOS
               ...(config.selectedArticlesByLaw && config.selectedArticlesByLaw[lawShortName] && config.selectedArticlesByLaw[lawShortName].length > 0 && {

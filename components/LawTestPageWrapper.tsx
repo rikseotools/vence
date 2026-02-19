@@ -290,6 +290,19 @@ export default function LawTestPageWrapper({
         }
       }
 
+      // 📚 Parsear filtros de sección desde searchParams
+      const sectionFiltersParam = searchParams?.get('section_filters')
+      let selectedSectionFilters: Array<{ title: string; articleRange?: { start: number; end: number }; sectionNumber?: string; sectionType?: string }> = []
+
+      if (sectionFiltersParam) {
+        try {
+          selectedSectionFilters = JSON.parse(sectionFiltersParam)
+          console.log('📚 [LAW WRAPPER v2] Filtros de sección:', selectedSectionFilters)
+        } catch (e) {
+          console.warn('⚠️ [LAW WRAPPER v2] Error parseando section_filters:', e)
+        }
+      }
+
       // 🚀 Construir request para API v2
       const apiRequest = {
         topicNumber: 0, // Sin filtro de tema (modo ley-only)
@@ -297,6 +310,7 @@ export default function LawTestPageWrapper({
         numQuestions: testConfig.numQuestions || 25,
         selectedLaws: [lawShortName],
         selectedArticlesByLaw,
+        selectedSectionFilters,
         onlyOfficialQuestions: testConfig.onlyOfficial || false,
       }
 
