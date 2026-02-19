@@ -244,10 +244,23 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
 
   // Alias
   'transparencia': 'Ley 19/2013',
+  'transparencia-buen-gobierno': 'Ley 19/2013',
   'procedimiento-administrativo': 'Ley 39/2015',
   'regimen-juridico': 'Ley 40/2015',
   'regimen-local': 'Ley 7/1985',
   'LSP': 'LSP',
+
+  // Alias desde /leyes-de-oposiciones
+  'ley-poder-judicial': 'LO 6/1985',
+  'ley-fuerzas-cuerpos-seguridad': 'LOFCS',
+  'ley-enjuiciamiento-criminal': 'LECrim',
+  'proteccion-seguridad-ciudadana': 'LO 4/2015',
+  'trafico-seguridad-vial': 'Ley Tráfico',
+  'ley-organica-1-2004': 'LO 1/2004',
+  'ley-organica-3-2007': 'LO 3/2007',
+  'ley-organica-3-2018': 'LO 3/2018',
+  'igualdad-trans-lgtbi': 'Ley 4/2023',
+  'proteccion-civil': 'LSNPC',
 
   // C1 Administrativo Estado - Leyes Orgánicas
   'lo-3-1980': 'LO 3/1980',
