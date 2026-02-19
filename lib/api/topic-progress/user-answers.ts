@@ -17,6 +17,8 @@ export interface UserAnswer {
   lawId: string
   articleNumber: string
   difficulty: string | null
+  confidenceLevel: string | null
+  lawName: string | null
 }
 
 // ============================================
@@ -67,6 +69,8 @@ export async function getUserAnswersWithArticles(
     law_id: string
     article_number: string
     difficulty: string | null
+    confidence_level: string | null
+    law_name: string | null
   }>(sql`
     SELECT
       tq.id as answer_id,
@@ -76,7 +80,9 @@ export async function getUserAnswersWithArticles(
       tq.time_spent_seconds,
       a.law_id,
       a.article_number,
-      tq.difficulty
+      tq.difficulty,
+      tq.confidence_level,
+      tq.law_name
     FROM test_questions tq
     INNER JOIN tests t ON tq.test_id = t.id
     INNER JOIN questions q ON tq.question_id = q.id
@@ -96,6 +102,8 @@ export async function getUserAnswersWithArticles(
     lawId: row.law_id,
     articleNumber: row.article_number,
     difficulty: row.difficulty,
+    confidenceLevel: row.confidence_level ?? null,
+    lawName: row.law_name ?? null,
   }))
 
   userAnswersCache.set(cacheKey, { answers, timestamp: Date.now() })

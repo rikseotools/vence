@@ -99,6 +99,8 @@ export const userProgressSchema = z.object({
     timeSpentSeconds: z.number().nullable(),
     articleNumber: z.string(),
     difficulty: z.string().nullable(),
+    confidenceLevel: z.string().nullable(),
+    lawName: z.string().nullable(),
   })).optional(),
 })
 

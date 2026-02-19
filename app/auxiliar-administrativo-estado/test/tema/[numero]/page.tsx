@@ -1,6 +1,6 @@
 // app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx - REFACTORIZADO CON API LAYER + LAZY LOADING
 'use client'
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 import { getSupabaseClient } from '../../../../../lib/supabase'
@@ -58,7 +58,7 @@ interface UserRecentStats {
 
 // Tipos para ArticulosEstudioPrioritario
 interface ArticulosEstudioPrioritarioProps {
-  userId: string
+  userAnswers: any[]
   tema: number
   totalRespuestas: number
   openArticleModal: (articleNumber: string, lawName: string) => void
@@ -801,7 +801,7 @@ export default function TemaPage({ params }: PageProps) {
                     </h4>
 
                     <ArticulosEstudioPrioritario
-                      userId={currentUser.id}
+                      userAnswers={userAnswers}
                       tema={tema}
                       totalRespuestas={userStats.totalAnswers}
                       openArticleModal={openArticleModal}
@@ -899,123 +899,94 @@ export default function TemaPage({ params }: PageProps) {
 }
 
 // COMPONENTE: Artículos de Estudio Prioritario
-function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticleModal }: ArticulosEstudioPrioritarioProps) {
-  const [articulosFallados, setArticulosFallados] = useState<ArticuloProblematico[]>([])
-  const [loading, setLoading] = useState(true)
-  const [recomendaciones, setRecomendaciones] = useState<Recomendacion[]>([])
+function ArticulosEstudioPrioritario({ userAnswers, tema, totalRespuestas, openArticleModal }: ArticulosEstudioPrioritarioProps) {
+  const { articulosFallados, recomendaciones } = useMemo(() => {
+    const totalRespuestasReales = userAnswers.length
 
-  useEffect(() => {
-    async function cargarArticulosFallados() {
-      if (!userId) return
-
-      try {
-        setLoading(true)
-
-        const { data: articleStats, error } = await supabase
-          .from('test_questions')
-          .select(`
-            article_id,
-            article_number,
-            law_name,
-            is_correct,
-            time_spent_seconds,
-            confidence_level,
-            created_at,
-            tests!inner(user_id)
-          `)
-          .eq('tests.user_id', userId)
-          .eq('tema_number', tema)
-
-        if (!error && articleStats && articleStats.length > 0) {
-          const totalRespuestasReales = articleStats.length
-
-          const articulosAgrupados = articleStats.reduce((acc: Record<string, ArticuloAgrupado>, respuesta: any) => {
-            const key = respuesta.article_number || 'sin-articulo'
-
-            if (!acc[key]) {
-              acc[key] = {
-                article_number: respuesta.article_number,
-                law_name: respuesta.law_name,
-                total_respuestas: 0,
-                correctas: 0,
-                incorrectas: 0,
-                tiempo_promedio: 0,
-                confianza_baja: 0,
-                ultima_respuesta: respuesta.created_at,
-                fallos_consecutivos: 0,
-                ultima_correcta: null
-              }
-            }
-
-            acc[key].total_respuestas++
-            if (respuesta.is_correct) {
-              acc[key].correctas++
-              acc[key].ultima_correcta = respuesta.created_at
-              acc[key].fallos_consecutivos = 0
-            } else {
-              acc[key].incorrectas++
-              acc[key].fallos_consecutivos++
-            }
-
-            acc[key].tiempo_promedio += respuesta.time_spent_seconds || 0
-            if (respuesta.confidence_level === 'unsure' || respuesta.confidence_level === 'guessing') {
-              acc[key].confianza_baja++
-            }
-
-            return acc
-          }, {})
-
-          const articulosProblematicos = (Object.values(articulosAgrupados) as ArticuloAgrupado[])
-            .map(articulo => {
-              const precision = (articulo.correctas / articulo.total_respuestas) * 100
-              const tiempo_promedio = articulo.tiempo_promedio / articulo.total_respuestas
-              const porcentaje_confianza_baja = (articulo.confianza_baja / articulo.total_respuestas) * 100
-              const tasa_fallos = (articulo.incorrectas / articulo.total_respuestas) * 100
-
-              return {
-                ...articulo,
-                precision: precision.toFixed(1),
-                tiempo_promedio: Math.round(tiempo_promedio),
-                porcentaje_confianza_baja: porcentaje_confianza_baja.toFixed(1),
-                tasa_fallos: tasa_fallos.toFixed(1),
-                score_problema: (100 - precision) + porcentaje_confianza_baja + (articulo.fallos_consecutivos * 10)
-              }
-            })
-            .filter(articulo => {
-              if (totalRespuestasReales < 10) {
-                return articulo.incorrectas >= 1
-              } else {
-                return (
-                  articulo.total_respuestas >= 2 &&
-                  (
-                    parseFloat(articulo.precision) < 75 ||
-                    parseFloat(articulo.porcentaje_confianza_baja) > 25 ||
-                    articulo.incorrectas >= 2
-                  )
-                )
-              }
-            })
-            .sort((a, b) => b.score_problema - a.score_problema)
-            .slice(0, 12)
-
-          setArticulosFallados(articulosProblematicos)
-          generarRecomendacionesInteligentes(articulosProblematicos, totalRespuestasReales, tema)
-        } else {
-          generarRecomendacionesInteligentes([], 0, tema)
-        }
-
-      } catch (error) {
-        console.error('Error cargando artículos fallados:', error)
-        generarRecomendacionesInteligentes([], 0, tema)
-      } finally {
-        setLoading(false)
+    if (totalRespuestasReales === 0) {
+      return {
+        articulosFallados: [] as ArticuloProblematico[],
+        recomendaciones: generarRecomendacionesInteligentes([], 0, tema),
       }
     }
 
-    cargarArticulosFallados()
-  }, [userId, tema, totalRespuestas])
+    // Agrupar por artículo
+    const articulosAgrupados = userAnswers.reduce((acc: Record<string, ArticuloAgrupado>, respuesta: any) => {
+      const key = respuesta.articleNumber || 'sin-articulo'
 
-  function generarRecomendacionesInteligentes(articulosFallados: ArticuloProblematico[], totalRespuestasReales: number, temaNumero: number) {
+      if (!acc[key]) {
+        acc[key] = {
+          article_number: respuesta.articleNumber,
+          law_name: respuesta.lawName,
+          total_respuestas: 0,
+          correctas: 0,
+          incorrectas: 0,
+          tiempo_promedio: 0,
+          confianza_baja: 0,
+          ultima_respuesta: respuesta.createdAt,
+          fallos_consecutivos: 0,
+          ultima_correcta: null
+        }
+      }
+
+      acc[key].total_respuestas++
+      if (respuesta.isCorrect) {
+        acc[key].correctas++
+        acc[key].ultima_correcta = respuesta.createdAt
+        acc[key].fallos_consecutivos = 0
+      } else {
+        acc[key].incorrectas++
+        acc[key].fallos_consecutivos++
+      }
+
+      acc[key].tiempo_promedio += respuesta.timeSpentSeconds || 0
+      if (respuesta.confidenceLevel === 'unsure' || respuesta.confidenceLevel === 'guessing') {
+        acc[key].confianza_baja++
+      }
+
+      return acc
+    }, {})
+
+    const articulosProblematicos = (Object.values(articulosAgrupados) as ArticuloAgrupado[])
+      .map(articulo => {
+        const precision = (articulo.correctas / articulo.total_respuestas) * 100
+        const tiempo_promedio = articulo.tiempo_promedio / articulo.total_respuestas
+        const porcentaje_confianza_baja = (articulo.confianza_baja / articulo.total_respuestas) * 100
+        const tasa_fallos = (articulo.incorrectas / articulo.total_respuestas) * 100
+
+        return {
+          ...articulo,
+          precision: precision.toFixed(1),
+          tiempo_promedio: Math.round(tiempo_promedio),
+          porcentaje_confianza_baja: porcentaje_confianza_baja.toFixed(1),
+          tasa_fallos: tasa_fallos.toFixed(1),
+          score_problema: (100 - precision) + porcentaje_confianza_baja + (articulo.fallos_consecutivos * 10)
+        }
+      })
+      .filter(articulo => {
+        if (totalRespuestasReales < 10) {
+          return articulo.incorrectas >= 1
+        } else {
+          return (
+            articulo.total_respuestas >= 2 &&
+            (
+              parseFloat(articulo.precision) < 75 ||
+              parseFloat(articulo.porcentaje_confianza_baja) > 25 ||
+              articulo.incorrectas >= 2
+            )
+          )
+        }
+      })
+      .sort((a, b) => b.score_problema - a.score_problema)
+      .slice(0, 12)
+
+    return {
+      articulosFallados: articulosProblematicos,
+      recomendaciones: generarRecomendacionesInteligentes(articulosProblematicos, totalRespuestasReales, tema),
+    }
+  }, [userAnswers, tema])
+
+  function generarRecomendacionesInteligentes(articulosFalladosParam: ArticuloProblematico[], totalRespuestasReales: number, temaNumero: number): Recomendacion[] {
     const recomendacionesGeneradas: Recomendacion[] = []
 
     if (totalRespuestasReales === 0) {
@@ -1029,8 +1000,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         iconoGrande: '🎯',
         colorScheme: 'blue'
       })
-      setRecomendaciones(recomendacionesGeneradas)
-      return
+      return recomendacionesGeneradas
     }
 
     if (totalRespuestasReales < 10) {
@@ -1045,20 +1015,19 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         colorScheme: 'yellow'
       })
 
-      if (articulosFallados.length > 0) {
+      if (articulosFalladosParam.length > 0) {
         recomendacionesGeneradas.push({
           tipo: 'observacion_preliminar',
           prioridad: 'info',
           titulo: 'PRIMERAS OBSERVACIONES',
-          descripcion: `Hemos detectado ${articulosFallados.length} artículo${articulosFallados.length > 1 ? 's' : ''} con fallos iniciales en el Tema ${temaNumero}.`,
-          articulos: articulosFallados.slice(0, 3),
+          descripcion: `Hemos detectado ${articulosFalladosParam.length} artículo${articulosFalladosParam.length > 1 ? 's' : ''} con fallos iniciales en el Tema ${temaNumero}.`,
+          articulos: articulosFalladosParam.slice(0, 3),
           accion: 'Estos artículos podrían necesitar atención, pero necesitamos más datos para confirmarlo',
           colorScheme: 'blue'
         })
       }
 
-      setRecomendaciones(recomendacionesGeneradas)
-      return
+      return recomendacionesGeneradas
     }
 
     if (totalRespuestasReales < 25) {
@@ -1067,14 +1036,14 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         prioridad: 'info',
         titulo: 'ANÁLISIS PRELIMINAR',
         descripcion: `Con ${totalRespuestasReales} respuestas en el Tema ${temaNumero} podemos dar recomendaciones básicas. Para análisis completo necesitas 25+ respuestas.`,
-        articulos: articulosFallados.slice(0, 3),
+        articulos: articulosFalladosParam.slice(0, 3),
         accion: 'Continúa practicando para obtener análisis más detallado y confiable',
         iconoGrande: '📊',
         colorScheme: 'yellow'
       })
 
-      if (articulosFallados.length > 0) {
-        const articulosMasFallados = articulosFallados.slice(0, 3)
+      if (articulosFalladosParam.length > 0) {
+        const articulosMasFallados = articulosFalladosParam.slice(0, 3)
         recomendacionesGeneradas.push({
           tipo: 'fallos_detectados',
           prioridad: 'media',
@@ -1096,17 +1065,16 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         })
       }
 
-      setRecomendaciones(recomendacionesGeneradas)
-      return
+      return recomendacionesGeneradas
     }
 
-    if (articulosFallados.length > 0) {
+    if (articulosFalladosParam.length > 0) {
       recomendacionesGeneradas.push({
         tipo: 'fallos_importantes',
         prioridad: 'alta',
         titulo: `REVISAR CONCEPTOS DEL TEMA ${temaNumero}`,
-        descripcion: `${articulosFallados.length} artículo${articulosFallados.length > 1 ? 's' : ''} que necesita${articulosFallados.length > 1 ? 'n' : ''} más práctica`,
-        articulos: articulosFallados.slice(0, 6),
+        descripcion: `${articulosFalladosParam.length} artículo${articulosFalladosParam.length > 1 ? 's' : ''} que necesita${articulosFalladosParam.length > 1 ? 'n' : ''} más práctica`,
+        articulos: articulosFalladosParam.slice(0, 6),
         accion: `Repasar los conceptos fundamentales del Tema ${temaNumero}`,
         colorScheme: 'red'
       })
@@ -1123,16 +1091,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
       })
     }
 
-    setRecomendaciones(recomendacionesGeneradas)
-  }
-
-  if (loading) {
-    return (
-      <div className="text-center py-4">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-        <p className="text-gray-600 text-sm">Analizando tu rendimiento en el Tema {tema}...</p>
-      </div>
-    )
+    return recomendacionesGeneradas
   }
 
   return (

@@ -410,6 +410,8 @@ async function getUserProgressForTopicV2(
         timeSpentSeconds: a.timeSpentSeconds,
         articleNumber: a.articleNumber,
         difficulty: a.difficulty,
+        confidenceLevel: a.confidenceLevel,
+        lawName: a.lawName,
       })),
     }
   } catch (error) {
