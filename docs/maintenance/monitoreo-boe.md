@@ -60,6 +60,7 @@ require('dotenv').config({ path: '.env.local' });
 (async () => {
   const lawId = 'UUID_DE_LA_LEY';
 
+  // Añadir &includeDisposiciones=true para incluir disposiciones en la verificación
   const response = await fetch(`http://localhost:3000/api/verify-articles?lawId=${lawId}`);
   const data = await response.json();
 
@@ -101,6 +102,7 @@ require('dotenv').config({ path: '.env.local' });
   const response = await fetch('http://localhost:3000/api/verify-articles/sync-all', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    // Añadir includeDisposiciones: true para sincronizar también disposiciones
     body: JSON.stringify({ lawId })
   });
 
@@ -258,6 +260,92 @@ SCRIPT
 5. "marca [LEY] como revisada"
    → Claude actualiza change_status a 'reviewed'
 ```
+
+## Sincronización de Disposiciones
+
+Además de artículos, el extractor BOE puede capturar **disposiciones** (adicionales, transitorias, derogatorias y finales). Por defecto NO se extraen para mantener backward compatibility.
+
+### Cuándo incluir disposiciones
+
+Incluir disposiciones cuando una ley tiene preguntas que referencian disposiciones concretas (ej: DF 1ª de la LOPDGDD sobre el carácter orgánico de la ley).
+
+### Formato en BD
+
+Las disposiciones se almacenan en la tabla `articles` con `article_number` en formato `DA_[tipo]_[ordinal]`:
+
+| Ejemplo BOE | `article_number` en BD |
+|-------------|----------------------|
+| Disposición adicional primera | `DA_adicional_primera` |
+| Disposición transitoria segunda | `DA_transitoria_segunda` |
+| Disposición derogatoria única | `DA_derogatoria_única` |
+| Disposición final primera | `DA_final_primera` |
+| Disposición adicional vigésima tercera | `DA_adicional_vigésima_tercera` |
+
+### Sincronizar con disposiciones
+
+```bash
+# Via API (añadir includeDisposiciones: true)
+curl -X POST http://localhost:3000/api/verify-articles/sync-all \
+  -H 'Content-Type: application/json' \
+  -d '{"lawId": "UUID_DE_LA_LEY", "includeDisposiciones": true}'
+
+# Via verificación
+curl "http://localhost:3000/api/verify-articles?lawId=UUID&includeDisposiciones=true"
+```
+
+### Actualizar topic_scope
+
+**IMPORTANTE:** Después de sincronizar disposiciones, si hay preguntas vinculadas a ellas, hay que añadir el `article_number` correspondiente al array `article_numbers` del `topic_scope`:
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+(async () => {
+  const topicId = 'UUID_DEL_TOPIC';
+  const lawId = 'UUID_DE_LA_LEY';
+
+  const { data: scope } = await supabase.from('topic_scope')
+    .select('id, article_numbers')
+    .eq('topic_id', topicId)
+    .eq('law_id', lawId)
+    .single();
+
+  const updated = [...(scope.article_numbers || []), 'DA_final_primera'];
+
+  const { error } = await supabase.from('topic_scope')
+    .update({ article_numbers: updated })
+    .eq('id', scope.id);
+
+  console.log(error ? '❌ ' + error.message : '✅ topic_scope actualizado');
+})();
+SCRIPT
+```
+
+### Leyes con disposiciones sincronizadas
+
+| Ley | Disposiciones | Fecha |
+|-----|--------------|-------|
+| LOPDGDD (LO 3/2018) | 46 (23 adic + 6 trans + 1 derog + 16 finales) | 2026-02-14 |
+
+## Leyes Excluidas del Monitoreo BOE
+
+### Leyes de la UE (scope: 'eu')
+
+Las leyes con `scope: 'eu'` se excluyen automáticamente del cron de verificación BOE porque usan URLs de **EUR-Lex** (`eur-lex.europa.eu`), cuyo HTML no contiene los patrones de fecha del BOE ("Última actualización publicada el DD/MM/YYYY").
+
+Leyes EU excluidas:
+- **RI Consejo** - Reglamento Interno del Consejo
+- **RI Comisión** - Reglamento Interno de la Comisión
+- **RP TJUE** - Reglamento de Procedimiento del TJUE
+
+Si en el futuro se quiere monitorear leyes EU, habría que añadir un extractor de fechas específico para EUR-Lex.
 
 ## Cambios Típicos por Época del Año
 
