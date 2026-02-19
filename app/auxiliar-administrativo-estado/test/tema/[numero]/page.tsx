@@ -7,6 +7,7 @@ import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
 import ArticleModal from '@/components/ArticleModal'
 import { generateLawSlug } from '@/lib/lawMappingUtils'
+import { safeParseGetTopicDataResponse, type GetTopicDataResponse } from '@/lib/api/topic-data/schemas'
 
 const supabase = getSupabaseClient()
 
@@ -19,9 +20,9 @@ interface TopicData {
   id: string
   topic_number: number
   title: string
-  description: string
-  difficulty: string
-  estimated_hours: number
+  description: string | null
+  difficulty: string | null
+  estimated_hours: number | null
 }
 
 interface UserStats {
@@ -146,7 +147,7 @@ export default function TemaPage({ params }: PageProps) {
   }
 
   // FUNCIÓN CONSOLIDADA: Cargar todos los datos del tema desde API
-  const loadTopicData = useCallback(async (tema: number, userId: string | null) => {
+  const loadTopicData = useCallback(async (tema: number, userId: string | null): Promise<GetTopicDataResponse | null> => {
     try {
       const queryParams = new URLSearchParams({
         oposicion: 'auxiliar-administrativo-estado',
@@ -154,14 +155,20 @@ export default function TemaPage({ params }: PageProps) {
       })
 
       const response = await fetch(`/api/topics/${tema}?${queryParams}`)
-      const data = await response.json()
+      const raw = await response.json()
 
-      if (!data.success) {
-        console.error('Error cargando datos del tema:', data.error)
+      const parsed = safeParseGetTopicDataResponse(raw)
+      if (!parsed.success) {
+        console.error('❌ [Zod] Respuesta API inválida:', parsed.error.issues)
         return null
       }
 
-      return data
+      if (!parsed.data.success) {
+        console.error('Error cargando datos del tema:', parsed.data.error)
+        return null
+      }
+
+      return parsed.data
     } catch (error) {
       console.error('Error en loadTopicData:', error)
       return null
@@ -181,7 +188,7 @@ export default function TemaPage({ params }: PageProps) {
       if (data?.success) {
         setDifficultyStats(data.difficultyStats || {})
         setOfficialQuestionsCount(data.officialQuestionsCount || 0)
-        setArticlesCountByLaw(data.articlesByLaw?.map((a: any) => ({
+        setArticlesCountByLaw(data.articlesByLaw?.map((a) => ({
           law_short_name: a.lawShortName,
           law_name: a.lawName,
           articles_with_questions: a.articlesWithQuestions
@@ -200,16 +207,17 @@ export default function TemaPage({ params }: PageProps) {
           })
 
           // Cargar userRecentStats desde userProgress
-          if (data.userProgress.recentStats) {
+          const recentStats = data.userProgress.recentStats
+          if (recentStats) {
             setUserRecentStats({
-              last7Days: data.userProgress.recentStats.last7Days,
-              last15Days: data.userProgress.recentStats.last15Days,
-              last30Days: data.userProgress.recentStats.last30Days,
-              recentlyAnswered: data.userProgress.recentStats.last15Days,
+              last7Days: recentStats.last7Days,
+              last15Days: recentStats.last15Days,
+              last30Days: recentStats.last30Days,
+              recentlyAnswered: recentStats.last15Days,
               getExcludedCount: (days: number) => {
-                if (days <= 7) return data.userProgress.recentStats.last7Days
-                if (days <= 15) return data.userProgress.recentStats.last15Days
-                return data.userProgress.recentStats.last30Days
+                if (days <= 7) return recentStats.last7Days
+                if (days <= 15) return recentStats.last15Days
+                return recentStats.last30Days
               }
             })
           }
@@ -283,6 +291,11 @@ export default function TemaPage({ params }: PageProps) {
         }
 
         // Actualizar datos del tema inmediatamente
+        if (!basicData.topic) {
+          setTemaNotFound(true)
+          setLoading(false)
+          return
+        }
         setTopicData({
           id: basicData.topic.id,
           topic_number: basicData.topic.topicNumber,
@@ -296,7 +309,7 @@ export default function TemaPage({ params }: PageProps) {
         setOfficialQuestionsCount(basicData.officialQuestionsCount || 0)
 
         // Transformar articlesByLaw al formato esperado por el componente
-        setArticlesCountByLaw(basicData.articlesByLaw?.map((a: any) => ({
+        setArticlesCountByLaw(basicData.articlesByLaw?.map((a) => ({
           law_short_name: a.lawShortName,
           law_name: a.lawName,
           articles_with_questions: a.articlesWithQuestions
@@ -329,16 +342,17 @@ export default function TemaPage({ params }: PageProps) {
             })
 
             // Configurar userRecentStats
-            if (userData.userProgress.recentStats) {
+            const recentStats = userData.userProgress.recentStats
+            if (recentStats) {
               setUserRecentStats({
-                last7Days: userData.userProgress.recentStats.last7Days,
-                last15Days: userData.userProgress.recentStats.last15Days,
-                last30Days: userData.userProgress.recentStats.last30Days,
-                recentlyAnswered: userData.userProgress.recentStats.last15Days,
+                last7Days: recentStats.last7Days,
+                last15Days: recentStats.last15Days,
+                last30Days: recentStats.last30Days,
+                recentlyAnswered: recentStats.last15Days,
                 getExcludedCount: (days: number) => {
-                  if (days <= 7) return userData.userProgress.recentStats.last7Days
-                  if (days <= 15) return userData.userProgress.recentStats.last15Days
-                  return userData.userProgress.recentStats.last30Days
+                  if (days <= 7) return recentStats.last7Days
+                  if (days <= 15) return recentStats.last15Days
+                  return recentStats.last30Days
                 }
               })
             }
