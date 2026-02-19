@@ -1,44 +1,135 @@
-// app/auxiliar-administrativo-estado/test/tema/[numero]/page.js - REFACTORIZADO CON API LAYER + LAZY LOADING
+// app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx - REFACTORIZADO CON API LAYER + LAZY LOADING
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
+import type { User } from '@supabase/supabase-js'
 import { getSupabaseClient } from '../../../../../lib/supabase'
 import TestConfigurator from '@/components/TestConfigurator'
 import ArticleModal from '@/components/ArticleModal'
-import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
 import { generateLawSlug } from '@/lib/lawMappingUtils'
 
 const supabase = getSupabaseClient()
 
-export default function TemaPage({ params }) {
+// Tipos para el componente principal
+interface PageProps {
+  params: Promise<{ numero: string }>
+}
+
+interface TopicData {
+  id: string
+  topic_number: number
+  title: string
+  description: string
+  difficulty: string
+  estimated_hours: number
+}
+
+interface UserStats {
+  totalAnswers: number
+  overallAccuracy: number
+  performanceByDifficulty: Record<string, any>
+  isRealData: boolean
+  dataSource?: string
+  periodAnalyzed?: string
+  lastUpdated?: string
+  uniqueQuestionsAnswered: number
+  totalQuestionsAvailable: number
+  neverSeen: number
+}
+
+interface SelectedArticle {
+  number: string | null
+  lawSlug: string | null
+}
+
+interface ArticlesCountByLawItem {
+  law_short_name: string
+  law_name: string
+  articles_with_questions: number
+}
+
+interface UserRecentStats {
+  last7Days: number
+  last15Days: number
+  last30Days: number
+  recentlyAnswered: number
+  getExcludedCount: (days: number) => number
+}
+
+// Tipos para ArticulosEstudioPrioritario
+interface ArticulosEstudioPrioritarioProps {
+  userId: string
+  tema: number
+  totalRespuestas: number
+  openArticleModal: (articleNumber: string, lawName: string) => void
+}
+
+interface ArticuloAgrupado {
+  article_number: string | null
+  law_name: string | null
+  total_respuestas: number
+  correctas: number
+  incorrectas: number
+  tiempo_promedio: number
+  confianza_baja: number
+  ultima_respuesta: string
+  fallos_consecutivos: number
+  ultima_correcta: string | null
+}
+
+interface ArticuloProblematico extends ArticuloAgrupado {
+  precision: string
+  porcentaje_confianza_baja: string
+  tasa_fallos: string
+  score_problema: number
+}
+
+interface Recomendacion {
+  tipo: string
+  prioridad: string
+  titulo: string
+  descripcion: string
+  articulos: ArticuloProblematico[]
+  accion: string
+  iconoGrande?: string
+  colorScheme: string
+}
+
+// Tipos para RecomendacionCard
+interface RecomendacionCardProps {
+  recomendacion: Recomendacion
+  openArticleModal: (articleNumber: string, lawName: string) => void
+}
+
+export default function TemaPage({ params }: PageProps) {
   // Estados principales
-  const [resolvedParams, setResolvedParams] = useState(null)
-  const [temaNumber, setTemaNumber] = useState(null)
-  const [topicData, setTopicData] = useState(null)
-  const [currentUser, setCurrentUser] = useState(null)
+  const [resolvedParams, setResolvedParams] = useState<{ numero: string } | null>(null)
+  const [temaNumber, setTemaNumber] = useState<number | null>(null)
+  const [topicData, setTopicData] = useState<TopicData | null>(null)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [temaNotFound, setTemaNotFound] = useState(false)
   const [showOposicionDropdown, setShowOposicionDropdown] = useState(false)
-  const dropdownRef = useRef(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Estados para estadísticas (del API)
-  const [difficultyStats, setDifficultyStats] = useState({})
-  const [userStats, setUserStats] = useState(null)
+  const [difficultyStats, setDifficultyStats] = useState<Record<string, number>>({})
+  const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [userStatsLoading, setUserStatsLoading] = useState(false) // Lazy loading del progreso
   const [officialQuestionsCount, setOfficialQuestionsCount] = useState(0)
-  const [articlesCountByLaw, setArticlesCountByLaw] = useState([])
+  const [articlesCountByLaw, setArticlesCountByLaw] = useState<ArticlesCountByLawItem[]>([])
 
   // Estados para configurador avanzado
   const [testLoading, setTestLoading] = useState(false)
-  const [userRecentStats, setUserRecentStats] = useState(null)
-  const [userAnswers, setUserAnswers] = useState([])
+  const [userRecentStats, setUserRecentStats] = useState<UserRecentStats | null>(null)
+  const [userAnswers, setUserAnswers] = useState<any[]>([])
 
   // Estados para modal de artículo
   const [modalOpen, setModalOpen] = useState(false)
-  const [selectedArticle, setSelectedArticle] = useState({ number: null, lawSlug: null })
+  const [selectedArticle, setSelectedArticle] = useState<SelectedArticle>({ number: null, lawSlug: null })
 
   // Estado para modo práctica/examen
-  const [testMode, setTestMode] = useState('practica')
+  const [testMode, setTestMode] = useState<'practica' | 'examen'>('practica')
 
   // Cargar preferencia de modo desde localStorage
   useEffect(() => {
@@ -49,13 +140,13 @@ export default function TemaPage({ params }) {
   }, [])
 
   // Función helper para cambiar modo y guardar preferencia
-  const handleTestModeChange = (newMode) => {
+  const handleTestModeChange = (newMode: 'practica' | 'examen') => {
     setTestMode(newMode)
     localStorage.setItem('preferredTestMode', newMode)
   }
 
   // FUNCIÓN CONSOLIDADA: Cargar todos los datos del tema desde API
-  const loadTopicData = useCallback(async (tema, userId) => {
+  const loadTopicData = useCallback(async (tema: number, userId: string | null) => {
     try {
       const queryParams = new URLSearchParams({
         oposicion: 'auxiliar-administrativo-estado',
@@ -90,7 +181,7 @@ export default function TemaPage({ params }) {
       if (data?.success) {
         setDifficultyStats(data.difficultyStats || {})
         setOfficialQuestionsCount(data.officialQuestionsCount || 0)
-        setArticlesCountByLaw(data.articlesByLaw?.map(a => ({
+        setArticlesCountByLaw(data.articlesByLaw?.map((a: any) => ({
           law_short_name: a.lawShortName,
           law_name: a.lawName,
           articles_with_questions: a.articlesWithQuestions
@@ -115,7 +206,7 @@ export default function TemaPage({ params }) {
               last15Days: data.userProgress.recentStats.last15Days,
               last30Days: data.userProgress.recentStats.last30Days,
               recentlyAnswered: data.userProgress.recentStats.last15Days,
-              getExcludedCount: (days) => {
+              getExcludedCount: (days: number) => {
                 if (days <= 7) return data.userProgress.recentStats.last7Days
                 if (days <= 15) return data.userProgress.recentStats.last15Days
                 return data.userProgress.recentStats.last30Days
@@ -139,8 +230,8 @@ export default function TemaPage({ params }) {
 
   // Efecto para cerrar dropdown al hacer click fuera
   useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowOposicionDropdown(false)
       }
     }
@@ -180,7 +271,7 @@ export default function TemaPage({ params }) {
     async function fetchAllData() {
       try {
         // FASE 1: Cargar datos básicos del tema SIN userId (muy rápido, cacheado)
-        const basicData = await loadTopicData(temaNumber, null)
+        const basicData = await loadTopicData(temaNumber!, null)
 
         if (!basicData?.success) {
           setTemaNotFound(true)
@@ -202,7 +293,7 @@ export default function TemaPage({ params }) {
         setOfficialQuestionsCount(basicData.officialQuestionsCount || 0)
 
         // Transformar articlesByLaw al formato esperado por el componente
-        setArticlesCountByLaw(basicData.articlesByLaw?.map(a => ({
+        setArticlesCountByLaw(basicData.articlesByLaw?.map((a: any) => ({
           law_short_name: a.lawShortName,
           law_name: a.lawName,
           articles_with_questions: a.articlesWithQuestions
@@ -218,7 +309,7 @@ export default function TemaPage({ params }) {
         if (user) {
           setUserStatsLoading(true)
 
-          const userData = await loadTopicData(temaNumber, user.id)
+          const userData = await loadTopicData(temaNumber!, user.id)
 
           if (userData?.success && userData.userProgress) {
             setUserStats({
@@ -241,7 +332,7 @@ export default function TemaPage({ params }) {
                 last15Days: userData.userProgress.recentStats.last15Days,
                 last30Days: userData.userProgress.recentStats.last30Days,
                 recentlyAnswered: userData.userProgress.recentStats.last15Days,
-                getExcludedCount: (days) => {
+                getExcludedCount: (days: number) => {
                   if (days <= 7) return userData.userProgress.recentStats.last7Days
                   if (days <= 15) return userData.userProgress.recentStats.last15Days
                   return userData.userProgress.recentStats.last30Days
@@ -250,7 +341,7 @@ export default function TemaPage({ params }) {
             }
 
             // Cargar userAnswers para métricas detalladas
-            await loadUserAnswersForMetrics(user.id, temaNumber)
+            await loadUserAnswersForMetrics(user.id, temaNumber!)
           }
 
           setUserStatsLoading(false)
@@ -267,7 +358,7 @@ export default function TemaPage({ params }) {
   }, [temaNumber, temaNotFound, loadTopicData])
 
   // Cargar respuestas del usuario para métricas detalladas (racha, velocidad, etc.)
-  async function loadUserAnswersForMetrics(userId, tema) {
+  async function loadUserAnswersForMetrics(userId: string, tema: number) {
     try {
       const { data: answers, error } = await supabase
         .from('test_questions')
@@ -294,7 +385,7 @@ export default function TemaPage({ params }) {
   }
 
   // Función: Abrir modal de artículo
-  function openArticleModal(articleNumber, lawName) {
+  function openArticleModal(articleNumber: string, lawName: string) {
     const lawSlug = lawName ? generateLawSlug(lawName) : 'ley-desconocida'
     setSelectedArticle({ number: articleNumber, lawSlug })
     setModalOpen(true)
@@ -307,7 +398,7 @@ export default function TemaPage({ params }) {
   }
 
   // Función: Manejar configuración del test personalizado
-  async function handleStartCustomTest(config) {
+  async function handleStartCustomTest(config: any) {
     setTestLoading(true)
 
     try {
@@ -346,7 +437,7 @@ export default function TemaPage({ params }) {
       }
 
       const testPath = testMode === 'examen' ? 'test-examen' : 'test-personalizado'
-      const testUrl = `/auxiliar-administrativo-estado/test/tema/${temaNumber}/${testPath}?${params.toString()}`
+      const testUrl = `/auxiliar-administrativo-estado/test/tema/${temaNumber!}/${testPath}?${params.toString()}`
 
       window.location.href = testUrl
 
@@ -370,6 +461,9 @@ export default function TemaPage({ params }) {
       </div>
     )
   }
+
+  // Past this point, temaNumber is guaranteed non-null
+  const tema = temaNumber!
 
   // TEMA NO ENCONTRADO
   if (temaNotFound) {
@@ -420,7 +514,7 @@ export default function TemaPage({ params }) {
               </button>
               <span className="mx-2 text-blue-600">›</span>
               <span className="font-semibold">
-                {temaNumber >= 101 ? 'Bloque II' : 'Bloque I'}
+                {tema >= 101 ? 'Bloque II' : 'Bloque I'}
               </span>
             </div>
 
@@ -465,7 +559,7 @@ export default function TemaPage({ params }) {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
             {topicData?.title?.startsWith('Tema ') ?
               topicData.title :
-              `Tema ${temaNumber >= 101 ? temaNumber - 100 : temaNumber}: ${topicData?.title}`
+              `Tema ${tema >= 101 ? tema - 100 : tema}: ${topicData?.title}`
             }
           </h1>
 
@@ -583,14 +677,14 @@ export default function TemaPage({ params }) {
         {/* CONFIGURADOR AVANZADO */}
         <section className="mb-8">
           <TestConfigurator
-            tema={temaNumber}
-            temaDisplayName={topicData ? `${temaNumber >= 101 ? `Bloque II - Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}: ${topicData.title}` : null}
-            totalQuestions={difficultyStats}
+            tema={tema}
+            temaDisplayName={topicData ? `${tema >= 101 ? `Bloque II - Tema ${tema - 100}` : `Tema ${tema}`}: ${topicData.title}` : null}
+            totalQuestions={difficultyStats as any}
             onStartTest={handleStartCustomTest}
-            userStats={userRecentStats}
+            userStats={userRecentStats as any}
             loading={testLoading}
             currentUser={currentUser}
-            lawsData={articlesCountByLaw}
+            lawsData={articlesCountByLaw as any}
             officialQuestionsCount={officialQuestionsCount}
             testMode={testMode}
           />
@@ -600,7 +694,7 @@ export default function TemaPage({ params }) {
         {userStatsLoading && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              Tu Progreso en el {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}
+              Tu Progreso en el {tema >= 101 ? `Bloque II. Tema ${tema - 100}` : `Tema ${tema}`}
             </h2>
             <div className="bg-white rounded-lg shadow-sm p-6">
               <div className="flex items-center justify-center gap-3 py-8 text-gray-500">
@@ -618,14 +712,14 @@ export default function TemaPage({ params }) {
         {!userStatsLoading && currentUser && userStats && (
           <section className="mb-8">
             <h2 className="text-xl font-bold text-gray-800 mb-4 text-center">
-              Tu Progreso en el {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}
+              Tu Progreso en el {tema >= 101 ? `Bloque II. Tema ${tema - 100}` : `Tema ${tema}`}
             </h2>
 
             <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
               {userStats.totalAnswers === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-6xl mb-4">🎯</div>
-                  <h3 className="font-bold text-gray-800 text-xl mb-2">¡Empieza tu primer test del {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}!</h3>
+                  <h3 className="font-bold text-gray-800 text-xl mb-2">¡Empieza tu primer test del {tema >= 101 ? `Bloque II. Tema ${tema - 100}` : `Tema ${tema}`}!</h3>
                   <p className="text-gray-600">
                     Completa preguntas para ver tus estadísticas personales y análisis de rendimiento.
                   </p>
@@ -636,7 +730,7 @@ export default function TemaPage({ params }) {
                     <h3 className="font-bold text-gray-800 text-lg">Rendimiento Personal</h3>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-blue-600">{userStats.overallAccuracy.toFixed(1)}%</div>
-                      <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en {temaNumber >= 101 ? `Bloque II. Tema ${temaNumber - 100}` : `Tema ${temaNumber}`}</div>
+                      <div className="text-sm text-gray-500">{userStats.totalAnswers} respuestas en {tema >= 101 ? `Bloque II. Tema ${tema - 100}` : `Tema ${tema}`}</div>
                       {userStats.isRealData && (
                         <div className="text-xs text-green-600 font-medium">Datos reales</div>
                       )}
@@ -689,13 +783,13 @@ export default function TemaPage({ params }) {
                         {(() => {
                           const dates = [...new Set(userAnswers?.map(a =>
                             new Date(a.created_at).toDateString()
-                          ) || [])].sort((a, b) => new Date(b) - new Date(a))
+                          ) || [])].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
 
                           let streak = 0
                           let currentDate = new Date()
 
-                          for (let date of dates) {
-                            const diffDays = Math.floor((currentDate - new Date(date)) / (1000 * 60 * 60 * 24))
+                          for (const date of dates) {
+                            const diffDays = Math.floor((currentDate.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
                             if (diffDays === streak) {
                               streak++
                               currentDate = new Date(date)
@@ -727,12 +821,12 @@ export default function TemaPage({ params }) {
                   <div className="border-t border-gray-200 pt-6">
                     <h4 className="font-bold text-gray-800 mb-4 flex items-center">
                       <span className="mr-2">🎯</span>
-                      Análisis Inteligente de Estudio - Tema {temaNumber}
+                      Análisis Inteligente de Estudio - Tema {tema}
                     </h4>
 
                     <ArticulosEstudioPrioritario
                       userId={currentUser.id}
-                      tema={temaNumber}
+                      tema={tema}
                       totalRespuestas={userStats.totalAnswers}
                       openArticleModal={openArticleModal}
                     />
@@ -750,7 +844,7 @@ export default function TemaPage({ params }) {
               <div className="text-4xl mb-3">📊</div>
               <h3 className="font-bold text-blue-800 mb-2">¡Empieza a practicar!</h3>
               <p className="text-blue-700 text-sm">
-                Completa algunos tests para ver tus estadísticas personales del Tema {temaNumber}.
+                Completa algunos tests para ver tus estadísticas personales del Tema {tema}.
               </p>
             </div>
           </section>
@@ -829,10 +923,10 @@ export default function TemaPage({ params }) {
 }
 
 // COMPONENTE: Artículos de Estudio Prioritario
-function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticleModal }) {
-  const [articulosFallados, setArticulosFallados] = useState([])
+function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticleModal }: ArticulosEstudioPrioritarioProps) {
+  const [articulosFallados, setArticulosFallados] = useState<ArticuloProblematico[]>([])
   const [loading, setLoading] = useState(true)
-  const [recomendaciones, setRecomendaciones] = useState([])
+  const [recomendaciones, setRecomendaciones] = useState<Recomendacion[]>([])
 
   useEffect(() => {
     async function cargarArticulosFallados() {
@@ -859,7 +953,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
         if (!error && articleStats && articleStats.length > 0) {
           const totalRespuestasReales = articleStats.length
 
-          const articulosAgrupados = articleStats.reduce((acc, respuesta) => {
+          const articulosAgrupados = articleStats.reduce((acc: Record<string, ArticuloAgrupado>, respuesta: any) => {
             const key = respuesta.article_number || 'sin-articulo'
 
             if (!acc[key]) {
@@ -895,7 +989,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
             return acc
           }, {})
 
-          const articulosProblematicos = Object.values(articulosAgrupados)
+          const articulosProblematicos = (Object.values(articulosAgrupados) as ArticuloAgrupado[])
             .map(articulo => {
               const precision = (articulo.correctas / articulo.total_respuestas) * 100
               const tiempo_promedio = articulo.tiempo_promedio / articulo.total_respuestas
@@ -918,8 +1012,8 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
                 return (
                   articulo.total_respuestas >= 2 &&
                   (
-                    articulo.precision < 75 ||
-                    articulo.porcentaje_confianza_baja > 25 ||
+                    parseFloat(articulo.precision) < 75 ||
+                    parseFloat(articulo.porcentaje_confianza_baja) > 25 ||
                     articulo.incorrectas >= 2
                   )
                 )
@@ -945,8 +1039,8 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
     cargarArticulosFallados()
   }, [userId, tema, totalRespuestas])
 
-  function generarRecomendacionesInteligentes(articulosFallados, totalRespuestasReales, temaNumero) {
-    const recomendacionesGeneradas = []
+  function generarRecomendacionesInteligentes(articulosFallados: ArticuloProblematico[], totalRespuestasReales: number, temaNumero: number) {
+    const recomendacionesGeneradas: Recomendacion[] = []
 
     if (totalRespuestasReales === 0) {
       recomendacionesGeneradas.push({
@@ -1126,7 +1220,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
 
                 <div className="mt-3 flex gap-2 flex-wrap">
                   <button
-                    onClick={() => openArticleModal(articulo.article_number, articulo.law_name)}
+                    onClick={() => openArticleModal(articulo.article_number || '', articulo.law_name || '')}
                     className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-md font-medium transition-colors flex items-center"
                   >
                     Ver artículo {articulo.article_number} de {articulo.law_name}
@@ -1150,7 +1244,7 @@ function ArticulosEstudioPrioritario({ userId, tema, totalRespuestas, openArticl
 }
 
 // COMPONENTE: Card de Recomendación
-function RecomendacionCard({ recomendacion, openArticleModal }) {
+function RecomendacionCard({ recomendacion, openArticleModal }: RecomendacionCardProps) {
   const estilosColor = {
     blue: {
       bg: 'bg-blue-50',
@@ -1184,7 +1278,7 @@ function RecomendacionCard({ recomendacion, openArticleModal }) {
     }
   }
 
-  const colores = estilosColor[recomendacion.colorScheme] || estilosColor.blue
+  const colores = estilosColor[recomendacion.colorScheme as keyof typeof estilosColor] || estilosColor.blue
 
   return (
     <div className={`p-4 rounded-lg border ${colores.bg} ${colores.border}`}>

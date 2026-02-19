@@ -9,7 +9,7 @@ describe('Pre-commit Critical Validations', () => {
   describe('Law Slug Generation - Prevención Bug 404', () => {
     test('CRÍTICO: openArticleModal debe usar generateLawSlug para generar slugs correctos', () => {
       // Leer el archivo de la página tema
-      const temaPagePath = join(process.cwd(), 'app', 'auxiliar-administrativo-estado', 'test', 'tema', '[numero]', 'page.js')
+      const temaPagePath = join(process.cwd(), 'app', 'auxiliar-administrativo-estado', 'test', 'tema', '[numero]', 'page.tsx')
 
       let temaPageContent
       try {
@@ -29,7 +29,7 @@ describe('Pre-commit Critical Validations', () => {
       const match = temaPageContent.match(openArticleModalRegex)
 
       if (!match) {
-        throw new Error('❌ No se encontró la función openArticleModal en el archivo tema page.js')
+        throw new Error('❌ No se encontró la función openArticleModal en el archivo tema page.tsx')
       }
 
       const functionBody = match[1]
@@ -86,7 +86,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
   describe('Validación de archivos críticos', () => {
     test('CRÍTICO: Archivos esenciales deben existir y ser legibles', () => {
       const criticalFiles = [
-        'app/auxiliar-administrativo-estado/test/tema/[numero]/page.js',
+        'app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx',
         'components/ArticleModal.js',
         'lib/lawMappingUtils.ts',
         'lib/teoriaFetchers.js'
@@ -108,7 +108,7 @@ Este sistema es crítico para debuggear problemas de carga de artículos.
   describe('Validación de expresiones regulares peligrosas', () => {
     test('CRÍTICO: No debe haber código que genere slugs con "/"', () => {
       const filesToCheck = [
-        'app/auxiliar-administrativo-estado/test/tema/[numero]/page.js',
+        'app/auxiliar-administrativo-estado/test/tema/[numero]/page.tsx',
         'components/ArticleModal.js',
         'lib/lawMappingUtils.js'
       ]
