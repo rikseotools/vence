@@ -403,6 +403,14 @@ async function getUserProgressForTopicV2(
       neverSeen: Math.max(0, totalQuestionsAvailable - progress.uniqueQuestionsAnswered),
       performanceByDifficulty: progress.performanceByDifficulty,
       recentStats: progress.recentStats,
+      detailedAnswers: filteredAnswers.map(a => ({
+        questionId: a.questionId,
+        isCorrect: a.isCorrect,
+        createdAt: a.createdAt.toISOString(),
+        timeSpentSeconds: a.timeSpentSeconds,
+        articleNumber: a.articleNumber,
+        difficulty: a.difficulty,
+      })),
     }
   } catch (error) {
     console.error('Error obteniendo progreso del usuario (V2):', error)

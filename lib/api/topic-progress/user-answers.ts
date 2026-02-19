@@ -13,6 +13,7 @@ export interface UserAnswer {
   questionId: string
   isCorrect: boolean
   createdAt: Date
+  timeSpentSeconds: number | null
   lawId: string
   articleNumber: string
   difficulty: string | null
@@ -62,6 +63,7 @@ export async function getUserAnswersWithArticles(
     question_id: string
     is_correct: boolean
     created_at: string
+    time_spent_seconds: number | null
     law_id: string
     article_number: string
     difficulty: string | null
@@ -71,6 +73,7 @@ export async function getUserAnswersWithArticles(
       tq.question_id,
       tq.is_correct,
       tq.created_at::text,
+      tq.time_spent_seconds,
       a.law_id,
       a.article_number,
       tq.difficulty
@@ -89,6 +92,7 @@ export async function getUserAnswersWithArticles(
     questionId: row.question_id,
     isCorrect: row.is_correct,
     createdAt: new Date(row.created_at),
+    timeSpentSeconds: row.time_spent_seconds ?? null,
     lawId: row.law_id,
     articleNumber: row.article_number,
     difficulty: row.difficulty,

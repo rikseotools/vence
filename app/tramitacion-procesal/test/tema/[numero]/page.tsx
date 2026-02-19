@@ -137,6 +137,9 @@ export default function TemaTramitacionPage({ params }: PageProps) {
               }
             })
           }
+
+          // Actualizar detailedAnswers para métricas
+          setUserAnswers(data.userProgress.detailedAnswers || [])
         }
       }
     }
@@ -243,7 +246,8 @@ export default function TemaTramitacionPage({ params }: PageProps) {
               })
             }
 
-            await loadUserAnswersForMetrics(user.id, temaNumber!)
+            // Usar detailedAnswers del API para métricas
+            setUserAnswers(userData.userProgress.detailedAnswers || [])
           }
 
           setUserStatsLoading(false)
@@ -258,32 +262,6 @@ export default function TemaTramitacionPage({ params }: PageProps) {
 
     fetchAllData()
   }, [temaNumber, temaNotFound, loadTopicData])
-
-  async function loadUserAnswersForMetrics(userId: string, tema: number) {
-    try {
-      const { data: answers, error } = await supabase
-        .from('test_questions')
-        .select(`
-          question_id,
-          is_correct,
-          difficulty,
-          created_at,
-          time_spent_seconds,
-          article_number,
-          tests!inner(user_id),
-          questions!inner(is_active)
-        `)
-        .eq('tests.user_id', userId)
-        .eq('tema_number', tema)
-        .eq('questions.is_active', true)
-
-      if (!error) {
-        setUserAnswers(answers || [])
-      }
-    } catch (error) {
-      console.error('Error cargando respuestas del usuario:', error)
-    }
-  }
 
   async function handleStartCustomTest(config: any) {
     setTestLoading(true)

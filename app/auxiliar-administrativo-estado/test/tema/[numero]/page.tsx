@@ -213,6 +213,9 @@ export default function TemaPage({ params }: PageProps) {
               }
             })
           }
+
+          // Actualizar detailedAnswers para métricas
+          setUserAnswers(data.userProgress.detailedAnswers || [])
         }
       }
     }
@@ -340,8 +343,8 @@ export default function TemaPage({ params }: PageProps) {
               })
             }
 
-            // Cargar userAnswers para métricas detalladas
-            await loadUserAnswersForMetrics(user.id, temaNumber!)
+            // Usar detailedAnswers del API para métricas
+            setUserAnswers(userData.userProgress.detailedAnswers || [])
           }
 
           setUserStatsLoading(false)
@@ -356,33 +359,6 @@ export default function TemaPage({ params }: PageProps) {
 
     fetchAllData()
   }, [temaNumber, temaNotFound, loadTopicData])
-
-  // Cargar respuestas del usuario para métricas detalladas (racha, velocidad, etc.)
-  async function loadUserAnswersForMetrics(userId: string, tema: number) {
-    try {
-      const { data: answers, error } = await supabase
-        .from('test_questions')
-        .select(`
-          question_id,
-          is_correct,
-          difficulty,
-          created_at,
-          time_spent_seconds,
-          article_number,
-          tests!inner(user_id),
-          questions!inner(is_active)
-        `)
-        .eq('tests.user_id', userId)
-        .eq('tema_number', tema)
-        .eq('questions.is_active', true)
-
-      if (!error) {
-        setUserAnswers(answers || [])
-      }
-    } catch (error) {
-      console.error('Error cargando respuestas del usuario:', error)
-    }
-  }
 
   // Función: Abrir modal de artículo
   function openArticleModal(articleNumber: string, lawName: string) {
@@ -746,10 +722,10 @@ export default function TemaPage({ params }: PageProps) {
                       <div className="text-xl font-bold text-blue-600 mb-1">
                         {(() => {
                           const recent7Days = userAnswers?.filter(a =>
-                            new Date(a.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                            new Date(a.createdAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
                           ) || []
                           const recentAccuracy = recent7Days.length > 0
-                            ? (recent7Days.filter(a => a.is_correct).length / recent7Days.length * 100).toFixed(0)
+                            ? (recent7Days.filter(a => a.isCorrect).length / recent7Days.length * 100).toFixed(0)
                             : 'N/A'
                           return `${recentAccuracy}%`
                         })()}
@@ -757,7 +733,7 @@ export default function TemaPage({ params }: PageProps) {
                       <div className="text-xs text-blue-600">
                         {(() => {
                           const recent7Days = userAnswers?.filter(a =>
-                            new Date(a.created_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                            new Date(a.createdAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
                           ) || []
                           return `${recent7Days.length} respuestas`
                         })()}
@@ -769,7 +745,7 @@ export default function TemaPage({ params }: PageProps) {
                       <div className="font-bold text-green-800 mb-2 text-sm">Velocidad</div>
                       <div className="text-xl font-bold text-green-600 mb-1">
                         {(() => {
-                          const avgTime = userAnswers?.reduce((sum, a) => sum + (a.time_spent_seconds || 0), 0) / (userAnswers?.length || 1)
+                          const avgTime = userAnswers?.reduce((sum, a) => sum + (a.timeSpentSeconds || 0), 0) / (userAnswers?.length || 1)
                           return avgTime > 0 ? `${Math.round(avgTime)}s` : 'N/A'
                         })()}
                       </div>
@@ -782,7 +758,7 @@ export default function TemaPage({ params }: PageProps) {
                       <div className="text-xl font-bold text-purple-600 mb-1">
                         {(() => {
                           const dates = [...new Set(userAnswers?.map(a =>
-                            new Date(a.created_at).toDateString()
+                            new Date(a.createdAt).toDateString()
                           ) || [])].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
 
                           let streak = 0
@@ -809,7 +785,7 @@ export default function TemaPage({ params }: PageProps) {
                       <div className="font-bold text-orange-800 mb-2 text-sm">Cobertura</div>
                       <div className="text-xl font-bold text-orange-600 mb-1">
                         {(() => {
-                          const uniqueArticles = new Set(userAnswers?.map(a => a.article_number).filter(Boolean) || [])
+                          const uniqueArticles = new Set(userAnswers?.map(a => a.articleNumber).filter(Boolean) || [])
                           return uniqueArticles.size
                         })()}
                       </div>

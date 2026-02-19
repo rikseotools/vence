@@ -91,6 +91,15 @@ export const userProgressSchema = z.object({
     last15Days: z.number().int().nonnegative(),
     last30Days: z.number().int().nonnegative(),
   }).optional(),
+  // Respuestas detalladas para métricas del cliente
+  detailedAnswers: z.array(z.object({
+    questionId: z.string(),
+    isCorrect: z.boolean(),
+    createdAt: z.string(),
+    timeSpentSeconds: z.number().nullable(),
+    articleNumber: z.string(),
+    difficulty: z.string().nullable(),
+  })).optional(),
 })
 
 export type UserProgress = z.infer<typeof userProgressSchema>
