@@ -238,8 +238,11 @@ async function getQuestionsForTopic(
   for (const mapping of scopeMappings) {
     if (!mapping.lawId) continue
 
-    // Si articleNumbers es null, obtener TODAS las preguntas de la ley (leyes virtuales)
-    // Si articleNumbers tiene valores, filtrar solo esos artículos
+    // articleNumbers NULL = ley virtual (incluir TODAS las preguntas de la ley)
+    // articleNumbers [] (vacío) = sin artículos específicos → SKIP (no incluir nada)
+    // articleNumbers con valores = filtrar solo esos artículos
+    if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
+
     const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
 
     const questionsForLaw = await db

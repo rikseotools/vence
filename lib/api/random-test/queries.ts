@@ -90,6 +90,8 @@ async function getQuestionCountForTopic(
 
   for (const mapping of scopeMappings) {
     if (!mapping.lawId) continue
+    // articleNumbers [] (vacío) = sin artículos → skip
+    if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
 
     const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
 
@@ -295,6 +297,7 @@ export async function generateRandomTest(
 
     for (const mapping of scopeMappings) {
       if (!mapping.lawId) continue
+      if (mapping.articleNumbers !== null && mapping.articleNumbers.length === 0) continue
 
       const hasSpecificArticles = mapping.articleNumbers && mapping.articleNumbers.length > 0
 
