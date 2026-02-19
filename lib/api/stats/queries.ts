@@ -18,6 +18,52 @@ import type {
 const statsCache = new Map<string, { data: GetUserStatsResponse; timestamp: number }>()
 const CACHE_TTL = 30 * 1000 // 30 segundos - reducido para mejor UX
 
+/**
+ * Write-through cache: guarda el resultado calculado en tiempo real
+ * en la tabla user_theme_performance_cache para evitar recalcular.
+ * Se ejecuta en background (fire-and-forget) para no bloquear la respuesta.
+ */
+function writeThemePerformanceToCache(
+  db: ReturnType<typeof getDb>,
+  userId: string,
+  data: ThemePerformance[]
+): void {
+  if (!data || data.length === 0) return
+
+  const values = data.map(d =>
+    `(${[
+      `'${userId}'::uuid`,
+      d.temaNumber,
+      `'${(d.title || '').replace(/'/g, "''")}'`,
+      d.totalQuestions,
+      d.correctAnswers,
+      d.accuracy,
+      d.averageTime,
+      d.lastPracticed ? `'${d.lastPracticed}'::timestamptz` : 'NULL',
+      'NOW()',
+    ].join(', ')})`
+  ).join(',\n')
+
+  db.execute(sql.raw(`
+    INSERT INTO user_theme_performance_cache
+      (user_id, topic_number, topic_title, total_questions, correct_answers,
+       accuracy, average_time, last_practiced, calculated_at)
+    VALUES ${values}
+    ON CONFLICT (user_id, topic_number) DO UPDATE SET
+      topic_title = EXCLUDED.topic_title,
+      total_questions = EXCLUDED.total_questions,
+      correct_answers = EXCLUDED.correct_answers,
+      accuracy = EXCLUDED.accuracy,
+      average_time = EXCLUDED.average_time,
+      last_practiced = EXCLUDED.last_practiced,
+      calculated_at = EXCLUDED.calculated_at
+  `)).then(() => {
+    console.log(`💾 Write-through cache: ${data.length} temas guardados para usuario ${userId.slice(0, 8)}...`)
+  }).catch((err) => {
+    console.warn('⚠️ Error en write-through cache:', err)
+  })
+}
+
 // ============================================
 // FUNCIÓN PRINCIPAL - Obtener todas las estadísticas
 // ============================================
@@ -85,6 +131,8 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
             averageTime: Math.round(Number(row.average_time) || 0),
             lastPracticed: row.last_practiced,
           }))
+          // Write-through: guardar en caché para próximas peticiones
+          writeThemePerformanceToCache(db, userId, scopeBasedThemePerformance)
         }
       }
     } catch (error) {
@@ -412,7 +460,7 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
     )
 
     if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
-      return (scopeResult as any[]).map(row => ({
+      const result = (scopeResult as any[]).map(row => ({
         temaNumber: row.topic_number,
         title: row.topic_title || null,
         totalQuestions: Number(row.total_questions) || 0,
@@ -421,6 +469,9 @@ async function getThemePerformance(db: ReturnType<typeof getDb>, userId: string)
         averageTime: Math.round(Number(row.average_time) || 0),
         lastPracticed: row.last_practiced,
       }))
+      // Write-through: guardar en caché para próximas peticiones
+      writeThemePerformanceToCache(db, userId, result)
+      return result
     }
   } catch (error) {
     console.warn('⚠️ Error cargando theme performance, usando fallback básico:', error)
