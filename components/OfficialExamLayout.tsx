@@ -7,6 +7,7 @@ import { useQuestionContext } from '../contexts/QuestionContext'
 import { useDailyQuestionLimit } from '../hooks/useDailyQuestionLimit'
 import DailyLimitBanner from './DailyLimitBanner'
 import UpgradeLimitModal from './UpgradeLimitModal'
+import { generateLawSlug } from '@/lib/lawMappingUtils'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -762,7 +763,7 @@ export default function OfficialExamLayout({
     question: OfficialExamQuestion | null = null,
     questionIndex: number | null = null
   ): void {
-    const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
+    const lawSlug = (question as any)?.articles?.laws?.slug || (lawName ? generateLawSlug(lawName) : 'ley-desconocida')
     setSelectedArticle({ number: articleNumber || null, lawSlug })
     setSelectedQuestionForModal(question)
     setSelectedQuestionIndex(questionIndex)

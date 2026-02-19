@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { usePathname } from 'next/navigation'
 import MarkdownExplanation from './MarkdownExplanation'
+import { generateLawSlug } from '@/lib/lawMappingUtils'
 
 // Type for useAuth context (AuthContext is JS, so we type it manually)
 interface AuthContextValue {
@@ -897,7 +898,7 @@ export default function ExamLayout({
     question: ExamQuestion | null = null,
     questionIndex: number | null = null
   ): void {
-    const lawSlug = lawName?.toLowerCase().replace(/\s+/g, '-').replace(/\//g, '-') || 'ley-desconocida'
+    const lawSlug = (question as any)?.articles?.laws?.slug || (lawName ? generateLawSlug(lawName) : 'ley-desconocida')
     setSelectedArticle({ number: articleNumber || null, lawSlug })
     setSelectedQuestionForModal(question)
     setSelectedQuestionIndex(questionIndex)

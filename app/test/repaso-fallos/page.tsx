@@ -17,6 +17,7 @@ interface CreateTestResponse {
     difficulty: string | null
     law_name: string
     law_slug: string | null
+    law_actual_slug: string | null
     article_number: string | null
     article_title: string | null
     article?: {
@@ -50,6 +51,7 @@ function transformQuestions(apiQuestions: CreateTestResponse['questions']): Test
     article_title: q.article_title,
     law_name: q.law_name,
     law_slug: q.law_slug,
+    law_actual_slug: q.law_actual_slug,
     // Pasar artículo completo con full_text para ArticleDropdown
     article: q.article ? {
       number: q.article.number || q.article_number,

@@ -152,6 +152,7 @@ export const testLayoutQuestionSchema = z.object({
   article_title: z.string().nullable().optional(),
   law_name: z.string().nullable().optional(),
   law_slug: z.string().nullable().optional(),
+  law_actual_slug: z.string().nullable().optional(),
   is_official_exam: z.boolean().optional(),
   exam_source: z.string().nullable().optional(),
   exam_date: z.string().nullable().optional(),

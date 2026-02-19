@@ -310,7 +310,8 @@ export async function getFailedQuestionsForUser(
         articleTitle: articles.title,
         // Ley
         lawName: laws.name,
-        lawSlug: laws.shortName,
+        lawShortName: laws.shortName,
+        lawActualSlug: laws.slug,
       })
       .from(questions)
       .leftJoin(articles, eq(questions.primaryArticleId, articles.id))
@@ -341,7 +342,8 @@ export async function getFailedQuestionsForUser(
       article_number: q.articleNumber,
       article_title: q.articleTitle,
       law_name: q.lawName || 'Desconocida',
-      law_slug: q.lawSlug,
+      law_slug: q.lawShortName,
+      law_actual_slug: q.lawActualSlug,
       is_official_exam: q.isOfficialExam || false,
       exam_source: q.examSource,
       exam_date: q.examDate,
