@@ -1,7 +1,7 @@
 // lib/api/boe-changes/queries.ts - Queries y funciones para monitoreo BOE
 import { getDb } from '@/db/client'
 import { laws } from '@/db/schema'
-import { isNotNull, eq } from 'drizzle-orm'
+import { isNotNull, eq, and, ne } from 'drizzle-orm'
 import {
   SIZE_TOLERANCE_BYTES,
   type LawForCheck,
@@ -31,7 +31,10 @@ export async function getLawsForBoeCheck(): Promise<LawForCheck[]> {
       boeContentLength: laws.boeContentLength
     })
     .from(laws)
-    .where(isNotNull(laws.boeUrl))
+    .where(and(
+      isNotNull(laws.boeUrl),
+      ne(laws.scope, 'eu')
+    ))
 
   // Filtrar y mapear a LawForCheck
   return result
