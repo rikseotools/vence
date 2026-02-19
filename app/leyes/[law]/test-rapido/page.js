@@ -2,29 +2,14 @@
 import { Suspense } from 'react'
 import Head from 'next/head'
 import LawTestPageWrapper from '@/components/LawTestPageWrapper'
-import { mapLawSlugToShortName, getLawInfo } from '@/lib/lawMappingUtils'
+import { mapLawSlugToShortName, getLawInfo, getAllLawSlugs } from '@/lib/lawMappingUtils'
 
 // ❌ NO METADATA - Esta página NO se debe indexar
 // Solo la página principal /leyes/[law]/ debe aparecer en buscadores
 
-// 🎯 GENERAR RUTAS ESTÁTICAS (para precompilación)
+// 🎯 GENERAR RUTAS ESTÁTICAS (auto-generado desde lawMappingUtils)
 export async function generateStaticParams() {
-  return [
-    { law: 'ley-19-2013' },
-    { law: 'ley-40-2015' }, // Solo canonical, no alias
-    { law: 'ley-39-2015' },
-    { law: 'constitucion-espanola' }, // Solo canonical, no alias
-    { law: 'codigo-civil' },
-    { law: 'codigo-penal' },
-    { law: 'ley-7-1985' },
-    { law: 'estatuto-trabajadores' },
-    { law: 'tue' },
-    { law: 'tfue' },
-    { law: 'gobierno-abierto' },
-    { law: 'agenda-2030' },
-    { law: 'lo-6-1985' }, // Solo canonical, no alias
-    { law: 'ley-50-1981' }
-  ]
+  return getAllLawSlugs().map(slug => ({ law: slug }))
 }
 
 export default async function TestRapidoLeyPage({ params, searchParams }) {

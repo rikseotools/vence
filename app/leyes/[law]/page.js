@@ -1,7 +1,7 @@
 // app/leyes/[law]/page.js - PÁGINA PRINCIPAL DE CADA LEY CON META CANONICAL
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug } from '@/lib/lawMappingUtils'
+import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug, getAllLawSlugs } from '@/lib/lawMappingUtils'
 import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
@@ -92,46 +92,9 @@ export async function generateMetadata({ params }) {
   }
 }
 
-// 🎯 GENERAR RUTAS ESTÁTICAS
+// 🎯 GENERAR RUTAS ESTÁTICAS (auto-generado desde lawMappingUtils)
 export async function generateStaticParams() {
-  return [
-    { law: 'ley-19-2013' },
-    { law: 'lrjsp' },
-    { law: 'lpac' },
-    { law: 'ce' },
-    { law: 'constitucion-espanola' },
-    { law: 'codigo-civil' },
-    { law: 'codigo-penal' },
-    { law: 'ley-7-1985' },
-    { law: 'estatuto-trabajadores' },
-    { law: 'tue' },
-    { law: 'tfue' },
-    { law: 'gobierno-abierto' },
-    { law: 'agenda-2030' },
-
-    // 🏛️ TEMA 4 - PODER JUDICIAL - TODAS LAS VARIANTES
-    { law: 'lo-6-1985' },           // ← URL canonical
-    { law: 'lopj' },                // ← Alias 1
-    { law: 'poder-judicial' },      // ← Alias 2
-    { law: 'ley-organica-poder-judicial' }, // ← Alias 3
-    { law: 'ley-50-1981' },         // ← Ministerio Fiscal canonical
-    { law: 'ministerio-fiscal' },   // ← Alias MF 1
-    { law: 'estatuto-ministerio-fiscal' }, // ← Alias MF 2
-    { law: 'eomf' },                // ← Alias MF 3
-
-    // 🏛️ TRAMITACIÓN PROCESAL - REGLAMENTOS PARLAMENTARIOS
-    { law: 'reglamento-del-congreso' },
-    { law: 'reglamento-del-senado' },
-
-    // 🏛️ OTRAS LEYES IMPORTANTES
-    { law: 'ley-50-1997' },         // Ley del Gobierno
-    { law: 'ley-47-2003' },         // Ley General Presupuestaria
-    { law: 'lotc' },                // Tribunal Constitucional
-    { law: 'lo-3-2007' },           // Igualdad
-    { law: 'lo-3-2018' },           // Protección de Datos
-    { law: 'rdl-5-2015' },          // TREBEP
-    { law: 'trebep' }               // Alias TREBEP
-  ]
+  return getAllLawSlugs().map(slug => ({ law: slug }))
 }
 
 // 🔧 COMPONENTE PARA CARGAR ESTADÍSTICAS

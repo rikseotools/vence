@@ -221,6 +221,13 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   // Protocolos y reglamentos europeos
   'protocolo-1': 'Protocolo nº 1',
   'protocolo-2': 'Protocolo nº 2',
+  'estatuto-tjue': 'Estatuto TJUE',
+  'protocolo-sedes-ue': 'Protocolo Sedes UE',
+
+  // Reglamentos internos instituciones UE
+  'ri-consejo': 'RI Consejo',
+  'ri-comision': 'RI Comisión',
+  'rp-tjue': 'RP TJUE',
   'reglamento-ce-1049-2001': 'Reglamento (CE) nº 1049/2001',
   'reglamento-ue-2018-1046': 'Reglamento (UE, Euratom) 2018/1046',
 
@@ -734,6 +741,13 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
 
   // Protocolos
   'Protocolo nº 6': 'protocolo-6',
+  'Estatuto TJUE': 'estatuto-tjue',
+  'Protocolo Sedes UE': 'protocolo-sedes-ue',
+
+  // Reglamentos internos instituciones UE
+  'RI Consejo': 'ri-consejo',
+  'RI Comisión': 'ri-comision',
+  'RP TJUE': 'rp-tjue',
 
   // Órdenes ministeriales (otras)
   'Orden 01/02/1996': 'orden-01-02-1996',
@@ -818,6 +832,15 @@ const LAW_INFO: LawInfoMapping = {
   'V Plan Gobierno Abierto 2025-2029': { name: 'V Plan de Gobierno Abierto 2025-2029', description: 'Quinto Plan de Acción de Gobierno Abierto de España' },
   'Resolución SEFP 7 mayo 2024 (Intervalos niveles)': { name: 'Resolución SEFP 7 mayo 2024', description: 'Intervalos de niveles de puestos de trabajo' },
   'Res. 20/01/2014 DGP': { name: 'Resolución 20/01/2014 DGP', description: 'Indemnizaciones por razón del servicio' },
+
+  // Protocolos UE
+  'Estatuto TJUE': { name: 'Estatuto del Tribunal de Justicia de la Unión Europea', description: 'Protocolo nº 3 anexo al TUE y TFUE' },
+  'Protocolo Sedes UE': { name: 'Protocolo sobre la fijación de las sedes', description: 'Protocolo nº 6 anexo al TUE y TFUE' },
+
+  // Reglamentos internos UE
+  'RI Consejo': { name: 'Reglamento Interno del Consejo', description: 'Funcionamiento y procedimientos del Consejo de la UE' },
+  'RI Comisión': { name: 'Reglamento Interno de la Comisión', description: 'Funcionamiento y reuniones de la Comisión Europea' },
+  'RP TJUE': { name: 'Reglamento de Procedimiento del Tribunal de Justicia', description: 'Procedimientos judiciales del TJUE' },
 }
 
 // ============================================
@@ -1036,4 +1059,12 @@ export function isValidLawSlug(lawSlug: string): boolean {
 export function isCanonicalUrl(lawSlug: string, shortName: string): boolean {
   const canonicalSlug = getCanonicalSlug(shortName)
   return lawSlug === canonicalSlug
+}
+
+/**
+ * Devuelve todos los slugs registrados en SLUG_TO_SHORT_NAME.
+ * Útil para generateStaticParams en páginas de leyes.
+ */
+export function getAllLawSlugs(): string[] {
+  return Object.keys(SLUG_TO_SHORT_NAME)
 }
