@@ -99,6 +99,7 @@ export async function generateStaticParams() {
     { law: 'lrjsp' },
     { law: 'lpac' },
     { law: 'ce' },
+    { law: 'constitucion-espanola' },
     { law: 'codigo-civil' },
     { law: 'codigo-penal' },
     { law: 'ley-7-1985' },
