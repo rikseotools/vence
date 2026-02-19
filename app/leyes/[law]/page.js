@@ -1,7 +1,7 @@
 // app/leyes/[law]/page.js - PÁGINA PRINCIPAL DE CADA LEY CON META CANONICAL
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug, getAllLawSlugs } from '@/lib/lawMappingUtils'
+import { mapLawSlugToShortName, getLawInfo, getCanonicalSlug, getAllLawSlugsWithDB } from '@/lib/lawMappingUtils'
 import { getLawStats } from '@/lib/lawFetchers'
 import { notFound } from 'next/navigation'
 import LawArticlesClient from '../../teoria/[law]/LawArticlesClient'
@@ -94,7 +94,8 @@ export async function generateMetadata({ params }) {
 
 // 🎯 GENERAR RUTAS ESTÁTICAS (auto-generado desde lawMappingUtils)
 export async function generateStaticParams() {
-  return getAllLawSlugs().map(slug => ({ law: slug }))
+  const slugs = await getAllLawSlugsWithDB()
+  return slugs.map(slug => ({ law: slug }))
 }
 
 // 🔧 COMPONENTE PARA CARGAR ESTADÍSTICAS

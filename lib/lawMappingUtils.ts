@@ -103,6 +103,8 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'lrjsp': 'Ley 40/2015',
   'ley-39-2015': 'Ley 39/2015',
   'lpac': 'Ley 39/2015',
+  'lajg': 'LAJG',
+  'ley-1-1996-asistencia-juridica-gratuita': 'LAJG',
   'ley-50-1997': 'Ley 50/1997',
   'ley-7-1985': 'Ley 7/1985',
   'ley-2-2014': 'Ley 2/2014',
@@ -162,6 +164,7 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'iv-plan-gobierno-abierto': 'IV Plan de Gobierno Abierto',
   'iii-plan-gobierno-abierto': 'III Plan Gobierno Abierto',
   'i-plan-gobierno-abierto': 'I Plan Gobierno Abierto',
+  'plan-transparencia-judicial': 'Plan Transparencia Judicial',
   'v-plan-gobierno-abierto': 'V Plan Gobierno Abierto 2025-2029',
   'v-plan-gobierno-abierto-2025-2029': 'V Plan Gobierno Abierto 2025-2029',
   'ley-4-2023': 'Ley 4/2023',
@@ -480,6 +483,8 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'reglamento-ingreso-justicia-rd-1451-2005': 'Reglamento Ingreso Justicia (RD 1451/2005)',
   'reglamento-servicios-postales-rd-1829-1999': 'Reglamento Servicios Postales (RD 1829/1999)',
   'reglamento-secretarios-judiciales-rd-1608-2005': 'Reglamento Secretarios Judiciales (RD 1608/2005)',
+  'reglamento-3-1995': 'Reglamento 3/1995',
+  'reglamento-3-1995-jueces-paz': 'Reglamento 3/1995',
 
   'inform-tica-b-sica': 'Informática Básica',
   'hojas-de-c-lculo-excel': 'Hojas de cálculo. Excel',
@@ -517,6 +522,8 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'resoluci-n-sefp-7-mayo-2024-intervalos-niveles': 'Resolución SEFP 7 mayo 2024 (Intervalos niveles)',  // Encoding roto
   'res-20-01-2014-dgp': 'Res. 20/01/2014 DGP',
   'resolucion-20-01-2014-dgp': 'Res. 20/01/2014 DGP',
+  'resolucion-7-05-2014-interinos-age': 'Resolución 7/05/2014 (Interinos AGE)',
+  'resoluci-n-7-05-2014-interinos-age': 'Resolución 7/05/2014 (Interinos AGE)',  // Encoding roto
 
   // Leyes faltantes
   'ley-10-2014': 'Ley 10/2014',
@@ -653,6 +660,7 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'I Plan Gobierno Abierto': 'i-plan-gobierno-abierto',
   'IV Plan de Gobierno Abierto': 'iv-plan-gobierno-abierto',
   'III Plan de Gobierno Abierto': 'iii-plan-gobierno-abierto',
+  'Plan Transparencia Judicial': 'plan-transparencia-judicial',
   'Ley 47/2003': 'ley-47-2003',
   'Reglamento UE 2016/679': 'reglamento-ue-2016-679',
 
@@ -733,6 +741,7 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   'Estrategia 2022-2030': 'estrategia-2022-2030',
 
   // Reglamentos parlamentarios
+  'Reglamento 3/1995': 'reglamento-3-1995-jueces-paz',
   'Reglamento del Congreso': 'reglamento-del-congreso',
   'Reglamento del Senado': 'reglamento-del-senado',
   'Reglamento Consejo UE': 'reglamento-consejo-ue',
@@ -756,6 +765,8 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   // Resoluciones
   'Resolución SEFP 7 mayo 2024 (Intervalos niveles)': 'resolucion-sefp-7-mayo-2024-intervalos-niveles',
   'Res. 20/01/2014 DGP': 'res-20-01-2014-dgp',
+  'Resolución 7/05/2014 (Interinos AGE)': 'resolucion-7-05-2014-interinos-age',
+  'LAJG': 'lajg',
 
   // Leyes faltantes
   'Ley 10/2014': 'ley-10-2014',
@@ -1067,4 +1078,35 @@ export function isCanonicalUrl(lawSlug: string, shortName: string): boolean {
  */
 export function getAllLawSlugs(): string[] {
   return Object.keys(SLUG_TO_SHORT_NAME)
+}
+
+/**
+ * Devuelve todos los slugs del diccionario estático + los de la tabla `laws` en BD.
+ * Uso exclusivo en generateStaticParams (build time).
+ * Si la BD no está disponible, devuelve solo los estáticos (fallback seguro).
+ */
+export async function getAllLawSlugsWithDB(): Promise<string[]> {
+  const staticSlugs = getAllLawSlugs()
+
+  try {
+    const { getSupabaseClient } = await import('./supabase')
+    const supabase = getSupabaseClient()
+    const { data, error } = await supabase
+      .from('laws')
+      .select('slug')
+      .eq('is_active', true)
+      .not('slug', 'is', null)
+
+    if (error || !data) {
+      console.warn('⚠️ [generateStaticParams] No se pudo consultar BD, usando solo slugs estáticos')
+      return staticSlugs
+    }
+
+    const dbSlugs = data.map((row: { slug: string }) => row.slug).filter(Boolean)
+    const merged = new Set([...staticSlugs, ...dbSlugs])
+    return Array.from(merged)
+  } catch {
+    console.warn('⚠️ [generateStaticParams] Error consultando BD, usando solo slugs estáticos')
+    return staticSlugs
+  }
 }

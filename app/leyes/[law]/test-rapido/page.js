@@ -2,14 +2,15 @@
 import { Suspense } from 'react'
 import Head from 'next/head'
 import LawTestPageWrapper from '@/components/LawTestPageWrapper'
-import { mapLawSlugToShortName, getLawInfo, getAllLawSlugs } from '@/lib/lawMappingUtils'
+import { mapLawSlugToShortName, getLawInfo, getAllLawSlugsWithDB } from '@/lib/lawMappingUtils'
 
 // ❌ NO METADATA - Esta página NO se debe indexar
 // Solo la página principal /leyes/[law]/ debe aparecer en buscadores
 
 // 🎯 GENERAR RUTAS ESTÁTICAS (auto-generado desde lawMappingUtils)
 export async function generateStaticParams() {
-  return getAllLawSlugs().map(slug => ({ law: slug }))
+  const slugs = await getAllLawSlugsWithDB()
+  return slugs.map(slug => ({ law: slug }))
 }
 
 export default async function TestRapidoLeyPage({ params, searchParams }) {
