@@ -24,7 +24,7 @@ function createDbClient() {
     : `${connectionString}?options=-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000`
 
   const conn = postgres(urlWithTimeout, {
-    max: 1,
+    max: 3,
     idle_timeout: 20,
     connect_timeout: 10,
     prepare: false, // 🔧 Requerido para Supabase Transaction Pooler (puerto 6543)

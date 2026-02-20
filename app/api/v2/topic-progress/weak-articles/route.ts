@@ -8,6 +8,8 @@ import {
   type GetWeakArticlesRequest,
 } from '@/lib/api/topic-progress'
 
+export const maxDuration = 60
+
 // Cliente Supabase solo para auth
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

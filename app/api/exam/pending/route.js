@@ -2,6 +2,8 @@
 import { NextResponse } from 'next/server'
 import { getPendingExams } from '@/lib/api/exam'
 
+export const maxDuration = 60
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)

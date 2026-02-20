@@ -7,6 +7,8 @@ import {
   trackBatchInteractions
 } from '@/lib/api/interactions'
 
+export const maxDuration = 60
+
 // ============================================
 // POST: Registrar interacción(es)
 // ============================================
