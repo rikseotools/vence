@@ -102,7 +102,11 @@ export default function AnalyticsPage() {
       
       if (test.is_completed) {
         user.completed++
-        user.totalScore += test.score || 0
+        // score puede ser porcentaje (0-100) o conteo de correctas
+        const s = Number(test.score) || 0
+        const t = Number(test.total_questions) || 1
+        const accuracy = s > t ? Math.min(100, s) : Math.round((s / t) * 100)
+        user.totalScore += accuracy
       } else {
         user.abandoned++
       }
@@ -111,7 +115,7 @@ export default function AnalyticsPage() {
     // Convertir a array y calcular métricas
     const usersArray = Object.values(userStats).map(user => {
       const completionRate = user.totalTests > 0 ? Math.round((user.completed / user.totalTests) * 100) : 0
-      const avgAccuracy = user.completed > 0 ? Math.round((user.totalScore / (user.completed * 25)) * 100) : 0 // Asumiendo 25 preguntas promedio
+      const avgAccuracy = user.completed > 0 ? Math.round(user.totalScore / user.completed) : 0
       
       return {
         ...user,

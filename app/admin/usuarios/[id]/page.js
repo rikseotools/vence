@@ -674,12 +674,23 @@ export default function UserDetailPage() {
                 <div className="text-right">
                   {test.is_completed ? (
                     <>
-                      <div className="font-semibold text-green-600">
-                        {test.score || 0}/{test.total_questions}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {Math.round((test.score || 0) / test.total_questions * 100)}%
-                      </div>
+                      {(() => {
+                        const s = Number(test.score) || 0
+                        const t = Number(test.total_questions) || 1
+                        const isPercentage = s > t
+                        const correct = isPercentage ? Math.round(s * t / 100) : s
+                        const pct = isPercentage ? Math.min(100, s) : Math.round((s / t) * 100)
+                        return (
+                          <>
+                            <div className="font-semibold text-green-600">
+                              {correct}/{t}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {pct}%
+                            </div>
+                          </>
+                        )
+                      })()}
                     </>
                   ) : (
                     <div className="text-red-600 font-semibold">Abandonado</div>

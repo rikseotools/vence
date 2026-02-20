@@ -90,10 +90,19 @@ export default function UsuariosManagementPage() {
       const totalTests = userTests.length
       const completionRate = totalTests > 0 ? Math.round((completedTests.length / totalTests) * 100) : 0
       
-      // Calcular accuracy promedio
-      const totalScore = completedTests.reduce((sum, test) => sum + (test.score || 0), 0)
-      const totalQuestions = completedTests.reduce((sum, test) => sum + (test.total_questions || 0), 0)
-      const avgAccuracy = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0
+      // Calcular accuracy promedio (score puede ser porcentaje o conteo)
+      let totalAccuracy = 0
+      let validTests = 0
+      completedTests.forEach(test => {
+        const s = Number(test.score) || 0
+        const t = Number(test.total_questions) || 0
+        if (t > 0 && s >= 0) {
+          const accuracy = s > t ? Math.min(100, s) : Math.round((s / t) * 100)
+          totalAccuracy += accuracy
+          validTests++
+        }
+      })
+      const avgAccuracy = validTests > 0 ? Math.round(totalAccuracy / validTests) : 0
 
       // Última actividad
       const userSessions = sessions.filter(session => session.user_id === user.user_id)

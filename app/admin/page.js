@@ -1362,13 +1362,30 @@ export default function AdminDashboard() {
                       {activity.user_profiles?.full_name?.split(' ')[0] || activity.user_profiles?.email?.split('@')[0] || 'Usuario anónimo'}
                     </div>
                     <div className="text-xs sm:text-sm text-gray-500">
-                      {activity.score}/{activity.total_questions} preguntas
+                      {(() => {
+                        const s = Number(activity.score)
+                        const t = Number(activity.total_questions)
+                        if (t <= 0) return '0/0 preguntas'
+                        // Si score > total_questions, score es porcentaje (no conteo)
+                        if (s > t) {
+                          const correct = Math.round(s * t / 100)
+                          return `${correct}/${t} preguntas`
+                        }
+                        return `${s}/${t} preguntas`
+                      })()}
                     </div>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0 ml-2">
                   <div className="text-sm sm:text-lg font-semibold text-green-600">
-                    {Math.round((activity.score / activity.total_questions) * 100)}%
+                    {(() => {
+                      const s = Number(activity.score)
+                      const t = Number(activity.total_questions)
+                      if (t <= 0) return '0%'
+                      // Si score > total_questions, score ya ES el porcentaje
+                      if (s > t) return `${Math.min(100, s)}%`
+                      return `${Math.round((s / t) * 100)}%`
+                    })()}
                   </div>
                   <div className="text-xs text-gray-500">
                     {formatTimeAgo(activity.completed_at || activity.started_at || activity.created_at)}
