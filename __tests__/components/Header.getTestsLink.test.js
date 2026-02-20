@@ -1,6 +1,7 @@
 // __tests__/components/Header.getTestsLink.test.js
 // Tests para la función getTestsLink del Header
 // Detecta bugs como el de hookUserOposicion siendo string en vez de objeto
+const { getOposicion } = require('../../lib/config/oposiciones')
 
 // Reimplementamos la función para testear (debe coincidir con app/Header.js)
 const getTestsLink = (hookUserOposicion) => {
@@ -14,29 +15,10 @@ const getTestsLink = (hookUserOposicion) => {
     }
   }
   const oposicionId = oposicionData?.id || oposicionData?.slug
+  if (!oposicionId) return '/'
 
-  // Administrativo del Estado (C1)
-  if (oposicionId === 'administrativo-estado' || oposicionId === 'administrativo_estado') {
-    return '/administrativo-estado/test'
-  }
-
-  // Auxiliar Administrativo del Estado (C2)
-  if (oposicionId === 'auxiliar-administrativo-estado' || oposicionId === 'auxiliar_administrativo_estado') {
-    return '/auxiliar-administrativo-estado/test'
-  }
-
-  // Tramitación Procesal
-  if (oposicionId === 'tramitacion-procesal' || oposicionId === 'tramitacion_procesal') {
-    return '/tramitacion-procesal/test'
-  }
-
-  // Auxilio Judicial
-  if (oposicionId === 'auxilio-judicial' || oposicionId === 'auxilio_judicial') {
-    return '/auxilio-judicial/test'
-  }
-
-  // Si es otra oposición o no hay oposición definida, ir a home
-  return '/'
+  const oposicion = getOposicion(oposicionId)
+  return oposicion ? `/${oposicion.slug}/test` : '/'
 }
 
 describe('Header - getTestsLink', () => {

@@ -15,6 +15,7 @@ import { LogoHorizontal, LogoIcon } from '@/components/Logo'
 import { useOposicion } from '../contexts/OposicionContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useUserOposicion } from '../components/useUserOposicion'
+import { getOposicion } from '@/lib/config/oposiciones'
 // import { calculateUserStreak } from '@/utils/streakCalculator' // 🚫 YA NO NECESARIO
 import { useAdminNotifications } from '@/hooks/useAdminNotifications'
 import { useInteractionTracker } from '@/hooks/useInteractionTracker'
@@ -345,29 +346,10 @@ export default function HeaderES() {
       }
     }
     const oposicionId = oposicionData?.id || oposicionData?.slug
+    if (!oposicionId) return '/'
 
-    // Administrativo del Estado (C1)
-    if (oposicionId === 'administrativo-estado' || oposicionId === 'administrativo_estado') {
-      return '/administrativo-estado/test'
-    }
-
-    // Auxiliar Administrativo del Estado (C2)
-    if (oposicionId === 'auxiliar-administrativo-estado' || oposicionId === 'auxiliar_administrativo_estado') {
-      return '/auxiliar-administrativo-estado/test'
-    }
-
-    // Tramitación Procesal
-    if (oposicionId === 'tramitacion-procesal' || oposicionId === 'tramitacion_procesal') {
-      return '/tramitacion-procesal/test'
-    }
-
-    // Auxilio Judicial
-    if (oposicionId === 'auxilio-judicial' || oposicionId === 'auxilio_judicial') {
-      return '/auxilio-judicial/test'
-    }
-
-    // Si es otra oposición o no hay oposición definida, ir a home
-    return '/'
+    const oposicion = getOposicion(oposicionId)
+    return oposicion ? `/${oposicion.slug}/test` : '/'
   }
 
   // Obtener color dinámico

@@ -6,52 +6,21 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { getSupabaseClient } from '../lib/supabase'
 import { useAuth } from './AuthContext' // ← USAR AuthContext
+import { OPOSICIONES } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
 
-// 📋 Configuración de menús por oposición (sin cambios)
-const OPOSICION_MENUS = {
-  auxiliar_administrativo_estado: {
-    name: 'Auxiliar Administrativo',
-    shortName: 'Auxiliar Admin.',
-    badge: 'C2',
-    color: 'emerald',
-    icon: '🏛️',
-    navLinks: [
-      { href: '/es', label: 'Inicio', icon: '🏠' },
-      { href: '/auxiliar-administrativo-estado', label: 'Mi Oposición', icon: '🏛️', featured: true },
-      { href: '/auxiliar-administrativo-estado/temario', label: 'Temario', icon: '📚' },
-      { href: '/auxiliar-administrativo-estado/test', label: 'Tests', icon: '🎯' },
-      { href: '/auxiliar-administrativo-estado/simulacros', label: 'Simulacros', icon: '🏆' }
-    ]
-  },
-  administrativo_estado: {
-    name: 'Administrativo Estado',
-    shortName: 'Admin. Estado',
-    badge: 'C1',
-    color: 'blue',
-    icon: '🏢',
-    navLinks: [
-      { href: '/es', label: 'Inicio', icon: '🏠' },
-      { href: '/administrativo-estado', label: 'Mi Oposición', icon: '🏢', featured: true },
-      { href: '/administrativo-estado/temario', label: 'Temario', icon: '📚' },
-      { href: '/administrativo-estado/test', label: 'Tests', icon: '🎯' }
-    ]
-  },
-  gestion_procesal: {
-    name: 'Gestión Procesal',
-    shortName: 'Gestión Proc.',
-    badge: 'C1',
-    color: 'purple',
-    icon: '⚖️',
-    navLinks: [
-      { href: '/es', label: 'Inicio', icon: '🏠' },
-      { href: '/gestion-procesal', label: 'Mi Oposición', icon: '⚖️', featured: true },
-      { href: '/gestion-procesal/temario', label: 'Temario', icon: '📚' },
-      { href: '/gestion-procesal/test', label: 'Tests', icon: '🎯' }
-    ]
-  }
-}
+// 📋 Configuración de menús por oposición - generado desde config central
+const OPOSICION_MENUS = Object.fromEntries(
+  OPOSICIONES.map(o => [o.id, {
+    name: o.name,
+    shortName: o.shortName,
+    badge: o.badge,
+    color: o.color,
+    icon: o.emoji,
+    navLinks: o.navLinks,
+  }])
+)
 
 // 📋 Menú genérico para usuarios sin oposición
 const DEFAULT_MENU = {

@@ -1,33 +1,23 @@
 // lib/api/tema-resolver/schemas.ts - Schemas Zod para resolución de tema
 import { z } from 'zod'
+import { OPOSICIONES, ID_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
-// Tipos de oposición válidos
-export const OposicionIdSchema = z.enum([
-  'auxiliar_administrativo_estado',
-  'administrativo_estado',
-  'tramitacion_procesal',
-  'auxilio_judicial',
-])
+// Tipos de oposición válidos (derivados de config central)
+export const OposicionIdSchema = z.enum(
+  OPOSICIONES.map(o => o.id) as [string, ...string[]]
+)
 
 export type OposicionId = z.infer<typeof OposicionIdSchema>
 
 // Tipos de position_type en la BD (tabla topics)
-export const PositionTypeSchema = z.enum([
-  'auxiliar_administrativo',
-  'administrativo',
-  'tramitacion_procesal',
-  'auxilio_judicial',
-])
+export const PositionTypeSchema = z.enum(
+  OPOSICIONES.map(o => o.positionType) as [string, ...string[]]
+)
 
 export type PositionType = z.infer<typeof PositionTypeSchema>
 
-// Mapa de conversión oposicion_id -> position_type
-export const OPOSICION_TO_POSITION_TYPE: Record<OposicionId, PositionType> = {
-  'auxiliar_administrativo_estado': 'auxiliar_administrativo',
-  'administrativo_estado': 'administrativo',
-  'tramitacion_procesal': 'tramitacion_procesal',
-  'auxilio_judicial': 'auxilio_judicial',
-}
+// Mapa de conversión oposicion_id -> position_type (derivado de config central)
+export const OPOSICION_TO_POSITION_TYPE: Record<string, string> = ID_TO_POSITION_TYPE
 
 // Schema para request de resolución de tema por artículo
 export const ResolveTemaByArticleRequestSchema = z.object({

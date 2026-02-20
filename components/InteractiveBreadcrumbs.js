@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import { getSupabaseClient } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { OPOSICIONES, getBlockForTopic } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
 
@@ -58,13 +59,15 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   }
 
   // Opciones disponibles para cambiar de oposición/sección
-  // oposicionId corresponde a las claves en OPOSICION_MENUS del contexto
+  // Generado dinámicamente desde config central
   const currentSection = getCurrentSection()
   const oppositionOptions = [
-    { key: 'auxiliar-administrativo-estado', label: '👤 Auxiliar Administrativo Estado', path: `/auxiliar-administrativo-estado${currentSection}`, oposicionId: 'auxiliar_administrativo_estado' },
-    { key: 'administrativo', label: '👨‍💼 Administrativo del Estado', path: `/administrativo-estado${currentSection}`, oposicionId: 'administrativo_estado' },
-    { key: 'tramitacion-procesal', label: '⚖️ Tramitación Procesal', path: `/tramitacion-procesal${currentSection}`, oposicionId: 'tramitacion_procesal' },
-    { key: 'auxilio-judicial', label: '⚖️ Auxilio Judicial', path: `/auxilio-judicial${currentSection}`, oposicionId: 'auxilio_judicial' },
+    ...OPOSICIONES.map(o => ({
+      key: o.slug,
+      label: `${o.emoji} ${o.name}`,
+      path: `/${o.slug}${currentSection}`,
+      oposicionId: o.id,
+    })),
     { key: 'leyes', label: '📚 Leyes', path: '/leyes', oposicionId: null },
     { key: 'por-leyes', label: '📖 Test Por Leyes', path: '/test/por-leyes', oposicionId: null },
     { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos', oposicionId: null },
@@ -188,14 +191,10 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     return null
   }
 
-  // Nombres legibles para las oposiciones
-  const OPOSICION_NAMES = {
-    'auxiliar_administrativo_estado': 'Auxiliar Administrativo',
-    'administrativo_estado': 'Administrativo del Estado',
-    'tramitacion_procesal': 'Tramitación Procesal',
-    'auxilio_judicial': 'Auxilio Judicial',
-    'gestion_procesal': 'Gestión Procesal'
-  }
+  // Nombres legibles para las oposiciones - generado desde config central
+  const OPOSICION_NAMES = Object.fromEntries(
+    OPOSICIONES.map(o => [o.id, o.name])
+  )
 
   // Función para cambiar de oposición (va a la página principal de la nueva oposición)
   const changeOpposition = async (option) => {
@@ -258,14 +257,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       finalPath = newSectionPath
     } else {
       // Determinar la ruta base según la oposición actual
-      let basePath = ''
-      if (isAuxiliarAdmin) {
-        basePath = '/auxiliar-administrativo-estado'
-      } else if (isAdministrativo) {
-        basePath = '/administrativo'  
-      } else if (isLeyes) {
-        basePath = '/leyes'
-      }
+      const currentOpo = OPOSICIONES.find(o => pathname.includes(`/${o.slug}`))
+      let basePath = currentOpo ? `/${currentOpo.slug}` : (isLeyes ? '/leyes' : '')
       finalPath = basePath + newSectionPath
     }
     
@@ -489,89 +482,22 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
             if (temaMatch) {
               const temaNum = parseInt(temaMatch[1])
 
-              // Determinar el bloque según el número de tema y oposición
-              let bloque = ''
-              let bloqueId = ''
-              let displayNum = temaNum
-              let basePath = ''
-
-              if (isAdministrativo) {
-                basePath = '/administrativo-estado/test'
-                // Administrativo del Estado
-                if (temaNum >= 1 && temaNum <= 11) {
-                  bloque = 'Bloque I'
-                  bloqueId = 'bloque-i'
-                } else if (temaNum >= 201 && temaNum <= 204) {
-                  bloque = 'Bloque II'
-                  bloqueId = 'bloque-ii'
-                  displayNum = temaNum - 200
-                } else if (temaNum >= 301 && temaNum <= 307) {
-                  bloque = 'Bloque III'
-                  bloqueId = 'bloque-iii'
-                  displayNum = temaNum - 300
-                } else if (temaNum >= 401 && temaNum <= 409) {
-                  bloque = 'Bloque IV'
-                  bloqueId = 'bloque-iv'
-                  displayNum = temaNum - 400
-                } else if (temaNum >= 501 && temaNum <= 506) {
-                  bloque = 'Bloque V'
-                  bloqueId = 'bloque-v'
-                  displayNum = temaNum - 500
-                } else if (temaNum >= 601 && temaNum <= 608) {
-                  bloque = 'Bloque VI'
-                  bloqueId = 'bloque-vi'
-                  displayNum = temaNum - 600
-                }
-              } else if (isAuxiliarAdmin) {
-                basePath = '/auxiliar-administrativo-estado/test'
-                // Auxiliar Administrativo
-                if (temaNum >= 1 && temaNum <= 16) {
-                  bloque = 'Bloque I'
-                  bloqueId = 'bloque-i'
-                } else if (temaNum >= 101 && temaNum <= 112) {
-                  bloque = 'Bloque II'
-                  bloqueId = 'bloque-ii'
-                  displayNum = temaNum - 100
-                }
-              } else if (isTramitacionProcesal) {
-                basePath = '/tramitacion-procesal/test'
-                // Tramitación Procesal - 37 temas en 3 bloques
-                if (temaNum >= 1 && temaNum <= 15) {
-                  bloque = 'Bloque I'
-                  bloqueId = 'bloque-i'
-                } else if (temaNum >= 16 && temaNum <= 31) {
-                  bloque = 'Bloque II'
-                  bloqueId = 'bloque-ii'
-                } else if (temaNum >= 32 && temaNum <= 37) {
-                  bloque = 'Bloque III'
-                  bloqueId = 'bloque-iii'
-                }
-              } else if (isAuxilioJudicial) {
-                basePath = '/auxilio-judicial/test'
-                // Auxilio Judicial - 26 temas en 3 bloques
-                if (temaNum >= 1 && temaNum <= 5) {
-                  bloque = 'Bloque I'
-                  bloqueId = 'bloque-i'
-                } else if (temaNum >= 6 && temaNum <= 15) {
-                  bloque = 'Bloque II'
-                  bloqueId = 'bloque-ii'
-                } else if (temaNum >= 16 && temaNum <= 26) {
-                  bloque = 'Bloque III'
-                  bloqueId = 'bloque-iii'
-                }
-              }
+              // Detectar oposición actual desde el pathname y buscar bloque en config central
+              const currentOpo = OPOSICIONES.find(o => pathname.includes(`/${o.slug}`))
+              const blockInfo = currentOpo ? getBlockForTopic(currentOpo.slug, temaNum) : null
+              const basePath = currentOpo ? `/${currentOpo.slug}/test` : ''
 
               return (
                 <>
-                  {bloque && (
+                  {blockInfo && (
                     <>
                       <span className="text-gray-400 mx-2">/</span>
                       <li>
                         <Link
-                          href={`${basePath}#${bloqueId}`}
+                          href={`${basePath}#${blockInfo.blockId}`}
                           className="text-blue-600 hover:text-blue-800 transition-colors"
                         >
-                          📦 {bloque}
+                          📦 {blockInfo.blockTitle}
                         </Link>
                       </li>
                     </>
@@ -579,7 +505,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                   <span className="text-gray-400 mx-2">/</span>
                   <li>
                     <span className="text-gray-700 font-semibold">
-                      📋 Tema {displayNum}
+                      📋 Tema {blockInfo ? blockInfo.displayNum : temaNum}
                     </span>
                   </li>
                 </>
