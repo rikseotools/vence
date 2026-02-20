@@ -25,6 +25,16 @@ const getTestsLink = (hookUserOposicion) => {
     return '/auxiliar-administrativo-estado/test'
   }
 
+  // Tramitación Procesal
+  if (oposicionId === 'tramitacion-procesal' || oposicionId === 'tramitacion_procesal') {
+    return '/tramitacion-procesal/test'
+  }
+
+  // Auxilio Judicial
+  if (oposicionId === 'auxilio-judicial' || oposicionId === 'auxilio_judicial') {
+    return '/auxilio-judicial/test'
+  }
+
   // Si es otra oposición o no hay oposición definida, ir a home
   return '/'
 }
@@ -147,6 +157,54 @@ describe('Header - getTestsLink', () => {
       const result = getTestsLink(hookUserOposicion)
 
       expect(result).toBe('/')
+    })
+
+    test('Tramitación Procesal con id (underscores)', () => {
+      const hookUserOposicion = { id: 'tramitacion_procesal', name: 'Tramitación Procesal' }
+
+      const result = getTestsLink(hookUserOposicion)
+
+      expect(result).toBe('/tramitacion-procesal/test')
+    })
+
+    test('Tramitación Procesal con id (guiones)', () => {
+      const hookUserOposicion = { id: 'tramitacion-procesal', name: 'Tramitación Procesal' }
+
+      const result = getTestsLink(hookUserOposicion)
+
+      expect(result).toBe('/tramitacion-procesal/test')
+    })
+
+    test('Tramitación Procesal como string JSON', () => {
+      const hookUserOposicion = '{"id":"tramitacion_procesal","name":"Tramitación Procesal"}'
+
+      const result = getTestsLink(hookUserOposicion)
+
+      expect(result).toBe('/tramitacion-procesal/test')
+    })
+
+    test('Auxilio Judicial con id (underscores)', () => {
+      const hookUserOposicion = { id: 'auxilio_judicial', name: 'Auxilio Judicial' }
+
+      const result = getTestsLink(hookUserOposicion)
+
+      expect(result).toBe('/auxilio-judicial/test')
+    })
+
+    test('Auxilio Judicial con id (guiones)', () => {
+      const hookUserOposicion = { id: 'auxilio-judicial', name: 'Auxilio Judicial' }
+
+      const result = getTestsLink(hookUserOposicion)
+
+      expect(result).toBe('/auxilio-judicial/test')
+    })
+
+    test('Auxilio Judicial como string JSON', () => {
+      const hookUserOposicion = '{"id":"auxilio_judicial","name":"Auxilio Judicial"}'
+
+      const result = getTestsLink(hookUserOposicion)
+
+      expect(result).toBe('/auxilio-judicial/test')
     })
 
     test('Oposición desconocida debe retornar home', () => {

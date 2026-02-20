@@ -356,6 +356,16 @@ export default function HeaderES() {
       return '/auxiliar-administrativo-estado/test'
     }
 
+    // Tramitación Procesal
+    if (oposicionId === 'tramitacion-procesal' || oposicionId === 'tramitacion_procesal') {
+      return '/tramitacion-procesal/test'
+    }
+
+    // Auxilio Judicial
+    if (oposicionId === 'auxilio-judicial' || oposicionId === 'auxilio_judicial') {
+      return '/auxilio-judicial/test'
+    }
+
     // Si es otra oposición o no hay oposición definida, ir a home
     return '/'
   }
