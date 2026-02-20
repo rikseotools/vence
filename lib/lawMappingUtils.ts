@@ -117,14 +117,17 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'constitucion-espanola': 'CE',
   'constitución-española': 'CE',
   'constitución-espanola': 'CE',
+  'constituci-n-espa-ola': 'CE',  // Encoding roto (backward compat)
   'tue': 'TUE',
   'tfue': 'TFUE',
 
   // Códigos
   'codigo-civil': 'Código Civil',
   'código-civil': 'Código Civil',
+  'c-digo-civil': 'Código Civil',  // Encoding roto (backward compat)
   'codigo-penal': 'Código Penal',
   'código-penal': 'Código Penal',
+  'c-digo-penal': 'Código Penal',  // Encoding roto (backward compat)
 
   // Laborales
   'estatuto-trabajadores': 'Estatuto de los Trabajadores',
@@ -230,6 +233,7 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   // Reglamentos internos instituciones UE
   'ri-consejo': 'RI Consejo',
   'ri-comision': 'RI Comisión',
+  'ri-comisi-n': 'RI Comisión',  // Encoding roto (backward compat)
   'rp-tjue': 'RP TJUE',
   'reglamento-ce-1049-2001': 'Reglamento (CE) nº 1049/2001',
   'reglamento-ue-2018-1046': 'Reglamento (UE, Euratom) 2018/1046',
