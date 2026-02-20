@@ -16,18 +16,17 @@ import type {
 
 // Cache simple en memoria (5 minutos)
 const statsCache = new Map<string, { data: GetUserStatsResponse; timestamp: number }>()
-const CACHE_TTL = 30 * 1000 // 30 segundos - reducido para mejor UX
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
 
 /**
  * Write-through cache: guarda el resultado calculado en tiempo real
  * en la tabla user_theme_performance_cache para evitar recalcular.
- * Se ejecuta en background (fire-and-forget) para no bloquear la respuesta.
  */
-function writeThemePerformanceToCache(
+async function writeThemePerformanceToCache(
   db: ReturnType<typeof getDb>,
   userId: string,
   data: ThemePerformance[]
-): void {
+): Promise<void> {
   if (!data || data.length === 0) return
 
   const values = data.map(d =>
@@ -44,24 +43,25 @@ function writeThemePerformanceToCache(
     ].join(', ')})`
   ).join(',\n')
 
-  db.execute(sql.raw(`
-    INSERT INTO user_theme_performance_cache
-      (user_id, topic_number, topic_title, total_questions, correct_answers,
-       accuracy, average_time, last_practiced, calculated_at)
-    VALUES ${values}
-    ON CONFLICT (user_id, topic_number) DO UPDATE SET
-      topic_title = EXCLUDED.topic_title,
-      total_questions = EXCLUDED.total_questions,
-      correct_answers = EXCLUDED.correct_answers,
-      accuracy = EXCLUDED.accuracy,
-      average_time = EXCLUDED.average_time,
-      last_practiced = EXCLUDED.last_practiced,
-      calculated_at = EXCLUDED.calculated_at
-  `)).then(() => {
+  try {
+    await db.execute(sql.raw(`
+      INSERT INTO user_theme_performance_cache
+        (user_id, topic_number, topic_title, total_questions, correct_answers,
+         accuracy, average_time, last_practiced, calculated_at)
+      VALUES ${values}
+      ON CONFLICT (user_id, topic_number) DO UPDATE SET
+        topic_title = EXCLUDED.topic_title,
+        total_questions = EXCLUDED.total_questions,
+        correct_answers = EXCLUDED.correct_answers,
+        accuracy = EXCLUDED.accuracy,
+        average_time = EXCLUDED.average_time,
+        last_practiced = EXCLUDED.last_practiced,
+        calculated_at = EXCLUDED.calculated_at
+    `))
     console.log(`💾 Write-through cache: ${data.length} temas guardados para usuario ${userId.slice(0, 8)}...`)
-  }).catch((err) => {
+  } catch (err) {
     console.warn('⚠️ Error en write-through cache:', err)
-  })
+  }
 }
 
 // ============================================
@@ -79,12 +79,13 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
     const db = getDb()
     const now = new Date()
 
-    // 🚀 OPTIMIZADO: Usar función SQL que hace todo en una query
-    const result = await db.execute(
-      sql`SELECT get_user_stats_optimized(${userId}::uuid) as stats`
-    )
+    // 🚀 Ejecutar función SQL principal y getUserOposicion en paralelo
+    const [sqlResult, userOposicion] = await Promise.all([
+      db.execute(sql`SELECT get_user_stats_optimized(${userId}::uuid) as stats`),
+      getUserOposicion(db, userId),
+    ])
 
-    const statsJson = (result as any)[0]?.stats
+    const statsJson = (sqlResult as any)[0]?.stats
 
     if (!statsJson) {
       // Fallback a queries individuales si la función no existe
@@ -92,37 +93,31 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
       return await getUserStatsFallback(userId)
     }
 
-    // 🚀 OPTIMIZADO: Leer de caché en lugar de función lenta
-    let scopeBasedThemePerformance: ThemePerformance[] | null = null
-    try {
-      // Intentar leer de la tabla caché (actualizada diariamente a las 00:00)
-      const cacheResult = await db.execute(
-        sql`SELECT topic_number, topic_title, total_questions, correct_answers,
-            accuracy, average_time, last_practiced, calculated_at
-            FROM user_theme_performance_cache
-            WHERE user_id = ${userId}::uuid
-            ORDER BY topic_number`
-      )
+    // 🚀 Usar themePerformance de la función SQL como base.
+    // Solo consultar alternativas si la función no devolvió datos de temas.
+    let themePerformance: ThemePerformance[] = (statsJson.themePerformance || []).map((t: any) => ({
+      temaNumber: t.temaNumber,
+      totalQuestions: t.totalQuestions || 0,
+      correctAnswers: t.correctAnswers || 0,
+      accuracy: t.accuracy || 0,
+      averageTime: t.averageTime || 0,
+      lastPracticed: t.lastPracticed,
+    }))
 
-      if (cacheResult && Array.isArray(cacheResult) && cacheResult.length > 0) {
-        scopeBasedThemePerformance = (cacheResult as any[]).map(row => ({
-          temaNumber: row.topic_number,
-          title: row.topic_title || null,
-          totalQuestions: Number(row.total_questions) || 0,
-          correctAnswers: Number(row.correct_answers) || 0,
-          accuracy: Number(row.accuracy) || 0,
-          averageTime: Math.round(Number(row.average_time) || 0),
-          lastPracticed: row.last_practiced,
-        }))
-        console.log(`📊 Theme performance cargado desde caché (${scopeBasedThemePerformance.length} temas)`)
-      } else {
-        // Si no hay caché, intentar calcular en tiempo real (lento pero funcional)
-        console.warn('⚠️ Caché vacío, calculando en tiempo real...')
-        const scopeResult = await db.execute(
-          sql`SELECT * FROM get_theme_performance_by_scope(${userId}::uuid)`
+    // Solo buscar scope-based si la función SQL no devolvió temas
+    if (themePerformance.length === 0) {
+      try {
+        // Intentar leer de la tabla caché
+        const cacheResult = await db.execute(
+          sql`SELECT topic_number, topic_title, total_questions, correct_answers,
+              accuracy, average_time, last_practiced
+              FROM user_theme_performance_cache
+              WHERE user_id = ${userId}::uuid
+              ORDER BY topic_number`
         )
-        if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
-          scopeBasedThemePerformance = (scopeResult as any[]).map(row => ({
+
+        if (cacheResult && Array.isArray(cacheResult) && cacheResult.length > 0) {
+          themePerformance = (cacheResult as any[]).map(row => ({
             temaNumber: row.topic_number,
             title: row.topic_title || null,
             totalQuestions: Number(row.total_questions) || 0,
@@ -131,18 +126,51 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
             averageTime: Math.round(Number(row.average_time) || 0),
             lastPracticed: row.last_practiced,
           }))
-          // Write-through: guardar en caché para próximas peticiones
-          writeThemePerformanceToCache(db, userId, scopeBasedThemePerformance)
+          console.log(`📊 Theme performance desde caché BD (${themePerformance.length} temas)`)
+        } else {
+          // Último recurso: calcular en tiempo real
+          console.warn('⚠️ Caché vacío, calculando theme performance en tiempo real...')
+          const scopeResult = await db.execute(
+            sql`SELECT * FROM get_theme_performance_by_scope(${userId}::uuid)`
+          )
+          if (scopeResult && Array.isArray(scopeResult) && scopeResult.length > 0) {
+            themePerformance = (scopeResult as any[]).map(row => ({
+              temaNumber: row.topic_number,
+              title: row.topic_title || null,
+              totalQuestions: Number(row.total_questions) || 0,
+              correctAnswers: Number(row.correct_answers) || 0,
+              accuracy: Number(row.accuracy) || 0,
+              averageTime: Math.round(Number(row.average_time) || 0),
+              lastPracticed: row.last_practiced,
+            }))
+            await writeThemePerformanceToCache(db, userId, themePerformance)
+          }
         }
+      } catch (error) {
+        console.warn('⚠️ Error cargando theme performance:', error)
       }
-    } catch (error) {
-      console.warn('⚠️ Error cargando theme performance:', error)
     }
 
-    // 🔧 SIEMPRE usar getArticleStats para tener temaNumber (la función SQL no lo devuelve)
-    const articleStats = await getArticleStats(db, userId)
-    const weakArticles = articleStats.filter(a => a.accuracy < 60).slice(0, 20)
-    const strongArticles = articleStats.filter(a => a.accuracy >= 80).slice(0, 20)
+    // 🚀 Usar weakArticles/strongArticles de la función SQL directamente
+    // (evita una query separada de getArticleStats que duplicaba el trabajo)
+    const weakArticles: ArticlePerformance[] = (statsJson.weakArticles || []).map((a: any) => ({
+      articleId: a.articleId || null,
+      articleNumber: a.articleNumber || null,
+      lawName: a.lawName || null,
+      temaNumber: a.temaNumber || null,
+      totalQuestions: a.totalQuestions || 0,
+      correctAnswers: a.correctAnswers || 0,
+      accuracy: a.accuracy || 0,
+    }))
+    const strongArticles: ArticlePerformance[] = (statsJson.strongArticles || []).map((a: any) => ({
+      articleId: a.articleId || null,
+      articleNumber: a.articleNumber || null,
+      lawName: a.lawName || null,
+      temaNumber: a.temaNumber || null,
+      totalQuestions: a.totalQuestions || 0,
+      correctAnswers: a.correctAnswers || 0,
+      accuracy: a.accuracy || 0,
+    }))
 
     // Parsear y formatear la respuesta
     const response: GetUserStatsResponse = {
@@ -177,15 +205,7 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
           completedAt: t.completedAt || '',
           timeSeconds: t.timeSeconds || 0,
         })),
-        // Usar scope-based si está disponible, si no usar el de la función original
-        themePerformance: scopeBasedThemePerformance || (statsJson.themePerformance || []).map((t: any) => ({
-          temaNumber: t.temaNumber,
-          totalQuestions: t.totalQuestions || 0,
-          correctAnswers: t.correctAnswers || 0,
-          accuracy: t.accuracy || 0,
-          averageTime: t.averageTime || 0,
-          lastPracticed: t.lastPracticed,
-        })),
+        themePerformance,
         difficultyBreakdown: (statsJson.difficultyBreakdown || []).map((d: any) => ({
           difficulty: d.difficulty,
           totalQuestions: d.totalQuestions || 0,
@@ -203,9 +223,9 @@ export async function getUserStats(userId: string): Promise<GetUserStatsResponse
           worstHours: getWorstHours(statsJson.timePatterns?.hourlyDistribution || []),
           averageSessionMinutes: statsJson.timePatterns?.averageSessionMinutes || 0,
         },
-        weakArticles, // Usando getArticleStats con temaNumber
-        strongArticles, // Usando getArticleStats con temaNumber
-        userOposicion: await getUserOposicion(db, userId) ?? undefined,
+        weakArticles,
+        strongArticles,
+        userOposicion: userOposicion ?? undefined,
       },
       generatedAt: now.toISOString(),
     }
