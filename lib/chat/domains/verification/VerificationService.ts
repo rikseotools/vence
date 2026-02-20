@@ -304,7 +304,8 @@ export async function verifyAnswer(
     input.explanation,
     linkedArticle, // Artículo vinculado en BD
     articleFromExplanation, // Artículo detectado en explicación
-    articleFromQuestion // Artículo citado en la pregunta
+    articleFromQuestion, // Artículo citado en la pregunta
+    context.messages // Historial de conversación para follow-ups
   )
 
   // 4. Detectar si hay error
@@ -393,7 +394,8 @@ async function generateVerificationResponse(
   ourExplanation?: string,
   linkedArticle?: LinkedArticle | null,
   articleFromExplanation?: ArticleFromExplanation,
-  articleFromQuestion?: ArticleFromExplanation
+  articleFromQuestion?: ArticleFromExplanation,
+  conversationHistory?: Array<{ role: string; content: string }>
 ): Promise<string> {
   const openai = await getOpenAI()
   const model = isPremium ? CHAT_MODEL_PREMIUM : CHAT_MODEL
@@ -604,12 +606,38 @@ ${articlesContext}
 ${analysisInstructions}`
 
   try {
+    // Construir mensajes para OpenAI
+    const openaiMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }, // Contexto completo de verificación (artículos, pregunta, etc.)
+    ]
+
+    // Si hay historial de conversación previo, añadir para que el AI pueda
+    // responder follow-ups en contexto (ej: "y la renuncia por qué no es?")
+    // conversationHistory: [user1, assistant1, user2, assistant2, ..., userN (actual)]
+    if (conversationHistory && conversationHistory.length > 1) {
+      // Saltar el primer user message (ya cubierto por userMessage con contexto completo)
+      // y el último user message (lo añadimos como follow-up directo)
+      const previousExchanges = conversationHistory.slice(1, -1)
+      for (const msg of previousExchanges) {
+        if (msg.role === 'assistant' || msg.role === 'user') {
+          openaiMessages.push({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+          })
+        }
+      }
+
+      // Añadir el mensaje actual del usuario como follow-up directo
+      const currentMsg = conversationHistory[conversationHistory.length - 1]
+      if (currentMsg && currentMsg.role === 'user') {
+        openaiMessages.push({ role: 'user', content: currentMsg.content })
+      }
+    }
+
     const completion = await openai.chat.completions.create({
       model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage },
-      ],
+      messages: openaiMessages,
       temperature: 0.3,
       max_tokens: 1500,
     })
