@@ -1272,7 +1272,7 @@ export default function ExamLayout({
                       className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
                     >
                       <span>✨</span>
-                      <span>No lo tengo claro</span>
+                      <span>Explicación con chat IA</span>
                     </button>
                   </div>
                 )}

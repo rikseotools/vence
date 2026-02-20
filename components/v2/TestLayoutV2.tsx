@@ -694,7 +694,7 @@ export default function TestLayoutV2({
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-xs font-medium"
                       >
                         <span>✨</span>
-                        <span>No lo tengo claro</span>
+                        <span>Explicación con chat IA</span>
                       </button>
                     </div>
 
@@ -729,7 +729,7 @@ export default function TestLayoutV2({
                       className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
                     >
                       <span>✨</span>
-                      <span>Explícamelo mejor, no lo tengo claro</span>
+                      <span>Explicación con chat IA</span>
                     </button>
                   </div>
                 )}
