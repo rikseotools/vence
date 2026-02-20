@@ -483,10 +483,11 @@ export function AuthProvider({ children, initialUser = null }) {
     // Escuchar eventos de sincronización
     window.addEventListener('supabaseAuthSync', handleAuthSync)
 
-    // Escuchar evento de perfil actualizado (desde página de perfil)
+    // Escuchar evento de perfil actualizado (desde página de perfil o post-pago)
     const handleProfileUpdated = () => {
-      console.log('🔄 Perfil actualizado, recargando...')
+      console.log('🔄 Perfil actualizado, forzando recarga...')
       if (user?.id) {
+        setUserProfile(null)
         loadUserProfile(user.id)
       }
     }
@@ -627,16 +628,14 @@ export function AuthProvider({ children, initialUser = null }) {
       const { data: { user }, error } = await supabase.auth.getUser()
       if (error) throw error
       setUser(user)
-      
+
       if (user) {
-        if (!userProfile || userProfile.id !== user.id) {
-          console.log('🔄 Refrescando perfil en background...')
-          loadUserProfile(user.id).catch(err => {
-            console.warn('⚠️ Error refrescando perfil (no crítico):', err)
-          })
-        } else {
-          console.log('✅ Perfil ya cargado, reutilizando')
-        }
+        // Forzar recarga del perfil (limpiar cache para que loadUserProfile no lo salte)
+        console.log('🔄 Forzando recarga de perfil...')
+        setUserProfile(null)
+        loadUserProfile(user.id).catch(err => {
+          console.warn('⚠️ Error refrescando perfil (no crítico):', err)
+        })
       } else {
         setUserProfile(null)
       }
