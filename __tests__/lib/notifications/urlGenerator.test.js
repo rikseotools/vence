@@ -20,7 +20,7 @@ describe('generateLawSlug', () => {
   })
 
   it('genera slugs correctos para leyes no especiales', () => {
-    expect(generateLawSlug('Ley Orgánica 3/2007')).toBe('ley-org-nica-3-2007')
+    expect(generateLawSlug('Ley Orgánica 3/2007')).toBe('ley-organica-3-2007')
     expect(generateLawSlug('Real Decreto 5/2015')).toBe('real-decreto-5-2015')
   })
 })

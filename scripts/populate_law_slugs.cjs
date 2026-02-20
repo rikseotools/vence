@@ -278,8 +278,10 @@ function generateLawSlug(shortName) {
     return SHORT_NAME_TO_SLUG[shortName];
   }
 
-  // Generación automática
+  // Generación automática (con transliteración de acentos)
   return shortName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '-')

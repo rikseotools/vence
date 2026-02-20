@@ -490,12 +490,15 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
 
   // Leyes añadidas desde BD (2026-02-15)
   'access': 'Base de datos: Access',
-  'ley-funci-n-p-blica-andaluc-a-ley-5-2023': 'Ley Función Pública Andalucía (Ley 5/2023)',
+  'ley-funcion-publica-andalucia-ley-5-2023': 'Ley Función Pública Andalucía (Ley 5/2023)',
+  'ley-funci-n-p-blica-andaluc-a-ley-5-2023': 'Ley Función Pública Andalucía (Ley 5/2023)',  // Encoding roto (backward compat)
   'rd-796-2005': 'RD 796/2005',
   'carta-derechos-ciudadanos-justicia': 'Carta Derechos Ciudadanos Justicia',
   'reglamento-ingreso-justicia-rd-1451-2005': 'Reglamento Ingreso Justicia (RD 1451/2005)',
   'reglamento-servicios-postales-rd-1829-1999': 'Reglamento Servicios Postales (RD 1829/1999)',
   'reglamento-secretarios-judiciales-rd-1608-2005': 'Reglamento Secretarios Judiciales (RD 1608/2005)',
+  'instruccion-2-2003-cgpj': 'Instrucción 2/2003 CGPJ',
+  'instrucci-n-2-2003-cgpj': 'Instrucción 2/2003 CGPJ',  // Encoding roto (backward compat)
   'reglamento-3-1995': 'Reglamento 3/1995',
   'reglamento-3-1995-jueces-paz': 'Reglamento 3/1995',
 
@@ -752,6 +755,12 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
   // Estrategias y Agendas
   'EDS 2030': 'eds-2030',
   'Estrategia 2022-2030': 'estrategia-2022-2030',
+
+  // Instrucciones CGPJ
+  'Instrucción 2/2003 CGPJ': 'instruccion-2-2003-cgpj',
+
+  // Leyes autonómicas
+  'Ley Función Pública Andalucía (Ley 5/2023)': 'ley-funcion-publica-andalucia-ley-5-2023',
 
   // Reglamentos parlamentarios
   'Reglamento 3/1995': 'reglamento-3-1995-jueces-paz',
@@ -1035,8 +1044,10 @@ export function generateLawSlug(shortName: string): string {
     return SHORT_NAME_TO_SLUG[shortName]
   }
 
-  // 3. Generación automática
+  // 3. Generación automática (con transliteración de acentos)
   return shortName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '-')

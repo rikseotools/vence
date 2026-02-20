@@ -99,6 +99,8 @@ export async function getSlugByShortName(shortName: string): Promise<string | nu
 export function generateSlugFromShortName(shortName: string): string {
   if (!shortName) return 'unknown'
   return shortName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '-')
