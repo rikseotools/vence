@@ -91,7 +91,9 @@ export async function getTestReview(
         articleNumber: a.articleNumber,
         lawName: a.lawName,
         explanation: (context.explanation as string) || null,
-        article: (context.article_full as string) || null,
+        article: typeof context.article_full === 'string'
+          ? context.article_full
+          : (context.article_full as Record<string, unknown>)?.full_text as string || null,
         isPsychometric: !!a.psychometricQuestionId,
         // Datos de la respuesta del usuario
         userAnswer: a.userAnswer || null, // 'A', 'B', 'C', 'D' o null
