@@ -201,8 +201,11 @@ export default function TopicReviewTab() {
 
       if (data.success) {
         setPositions(data.positions || [])
-        // Seleccionar primera oposición por defecto
-        if (data.positions?.length > 0) {
+        // Restaurar oposición guardada o usar la primera por defecto
+        const savedPosition = localStorage.getItem('topic_review_position')
+        if (savedPosition && data.positions?.includes(savedPosition)) {
+          setSelectedPosition(savedPosition)
+        } else if (data.positions?.length > 0) {
           setSelectedPosition(data.positions[0])
         }
       } else {
@@ -772,7 +775,10 @@ export default function TopicReviewTab() {
           {/* Selector de oposición */}
           <select
             value={selectedPosition}
-            onChange={(e) => setSelectedPosition(e.target.value)}
+            onChange={(e) => {
+              setSelectedPosition(e.target.value)
+              localStorage.setItem('topic_review_position', e.target.value)
+            }}
             className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
           >
             {positions.map(pos => (
