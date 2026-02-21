@@ -1300,9 +1300,21 @@ export default function ExamLayout({
           <div className="mt-8 mb-8">
             <button
               onClick={handleSubmitExam}
-              className="w-full py-4 rounded-lg font-bold text-white text-lg shadow-lg bg-green-600 hover:bg-green-700"
+              disabled={isSaving}
+              className={`w-full py-4 rounded-lg font-bold text-white text-lg shadow-lg transition-all ${
+                isSaving
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
             >
-              ✅ Corregir Examen ({answeredCount}/{totalQuestions} respondidas)
+              {isSaving ? (
+                <span className="flex items-center justify-center gap-3">
+                  <span className="animate-spin inline-block h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
+                  Corrigiendo examen...
+                </span>
+              ) : (
+                <>Corregir Examen ({answeredCount}/{totalQuestions} respondidas)</>
+              )}
             </button>
           </div>
         )}
