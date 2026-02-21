@@ -115,7 +115,7 @@ TCP.onStreamRead -> Readable.push -> Socket.emit -> Socket.ej (db_client_ts)
 **Configuración actual en `db/client.ts`:**
 ```typescript
 const conn = postgres(urlWithTimeout, {
-  max: 1,              // Una conexión máxima
+  max: 3,              // Tres conexiones máximas (aumentado de 1 para evitar cascada de 504s)
   idle_timeout: 20,    // Cerrar idle después de 20 seg
   connect_timeout: 10, // Timeout de conexión 10 seg
   prepare: false,      // Requerido para Supabase pooler

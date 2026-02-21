@@ -405,11 +405,78 @@ require('dotenv').config({ path: '.env.local' });
 SCRIPT
 ```
 
-### Caso especial: Leyes sin texto consolidado
+## Leyes sin Texto Consolidado en BOE
 
-Algunas leyes (resoluciones, reglamentos UE, etc.) no tienen URL de BOE o no tienen texto consolidado. Si se verifican, pueden quedar con `is_ok: false` y activar el badge.
+### Tipos de documentos afectados
 
-**Solución:** Marcar como `no_consolidated_text: true`:
+No todos los documentos normativos tienen texto consolidado en el BOE. Los casos más comunes son:
+
+| Tipo | Ejemplo | ¿Por qué no tiene consolidado? |
+|------|---------|-------------------------------|
+| **Proposiciones no de Ley** | Carta de Derechos de los Ciudadanos ante la Justicia (2002) | No es una ley formal, es una resolución del Congreso |
+| **Reglamentos del CGPJ** | Reglamento 3/1995 de Jueces de Paz | Están dentro de documentos más grandes, no individuales |
+| **Planes y Estrategias** | Plan de Transparencia Judicial | Son documentos administrativos, no legislativos |
+| **Órdenes Ministeriales antiguas** | Algunas órdenes anteriores a 2000 | El BOE no las tiene digitalizadas con texto consolidado |
+
+### Cómo identificarlas
+
+1. **Sin URL de BOE** - Campo `boe_url` vacío
+2. **URL doc.php** - Documento original sin texto consolidado (vs `act.php`)
+3. **Sync falla con 0 artículos** - `syncArticlesFromBoe` devuelve 0 artículos
+
+### Proceso de verificación manual
+
+Para leyes sin texto consolidado, hay que:
+
+1. **Buscar fuente oficial alternativa**
+2. **Insertar/actualizar artículos manualmente**
+3. **Marcar la ley con `manual_verification: true`**
+
+#### Fuentes alternativas por tipo
+
+| Tipo de documento | Fuentes recomendadas |
+|-------------------|---------------------|
+| Carta de Derechos Ciudadanos | [CGPJ](https://www.poderjudicial.es/cgpj/es/Servicios/Atencion-Ciudadana/Modelos-normalizados/Carta-de-Derechos-de-los-Ciudadanos) |
+| Reglamentos CGPJ | [CGPJ - Normativa](https://www.poderjudicial.es/cgpj/es/Poder-Judicial/Consejo-General-del-Poder-Judicial/Normativa/) |
+| Planes judiciales | [Ministerio de Justicia](https://www.mjusticia.gob.es/) |
+| Normas UE | [EUR-Lex](https://eur-lex.europa.eu/) |
+
+#### Ejemplo: Actualizar artículos desde fuente oficial
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+(async () => {
+  const LAW_ID = '5041bb0f-0c75-4693-89bb-729861f59a04'; // Carta Derechos
+
+  // Actualizar un artículo incompleto
+  const { error } = await supabase
+    .from('articles')
+    .update({
+      content: `El ciudadano tiene derecho a obtener del Abogado y Procurador información precisa y detallada sobre el estado del procedimiento y de las resoluciones que se dicten.
+
+El profesional deberá entregar a su cliente copia de todos los escritos que presente y de todas las resoluciones judiciales relevantes que le sean notificadas.
+
+El ciudadano podrá consultar con su Abogado las consecuencias de toda actuación ante un órgano jurisdiccional.`,
+      updated_at: new Date().toISOString()
+    })
+    .eq('law_id', LAW_ID)
+    .eq('article_number', '38');
+
+  if (error) console.error('Error:', error);
+  else console.log('✅ Artículo actualizado');
+})();
+SCRIPT
+```
+
+### Marcar ley como verificada manualmente
 
 ```bash
 node << 'SCRIPT'
@@ -427,17 +494,146 @@ const supabase = createClient(
   const { error } = await supabase
     .from('laws')
     .update({
+      last_checked: new Date().toISOString(),
+      verification_status: 'actualizada',
       last_verification_summary: {
         is_ok: true,
-        message: 'Sin texto consolidado en BOE (solo documento original)',
         no_consolidated_text: true,
-        verified_at: new Date().toISOString()
+        manual_verification: true,
+        source: 'Nombre de la fuente oficial',
+        source_url: 'https://url-de-la-fuente-oficial',
+        verified_at: new Date().toISOString(),
+        message: 'Verificada manualmente desde fuente oficial',
+        articles_updated: ['38', '0'] // Artículos que se actualizaron
       }
     })
     .eq('id', lawId);
 
   if (error) console.log('❌ Error:', error.message);
-  else console.log('✅ Ley marcada como sin texto consolidado');
+  else console.log('✅ Ley marcada como verificada manualmente');
+})();
+SCRIPT
+```
+
+### Leyes sin texto consolidado conocidas
+
+| Ley | ID | Fuente alternativa | Estado |
+|-----|----|--------------------|--------|
+| Carta de Derechos de los Ciudadanos ante la Justicia | `5041bb0f-0c75-4693-89bb-729861f59a04` | [CGPJ](https://www.poderjudicial.es/cgpj/es/Servicios/Atencion-Ciudadana/Modelos-normalizados/Carta-de-Derechos-de-los-Ciudadanos) | ✅ Verificada |
+| Plan de Transparencia Judicial | `eb1fa377-56e8-442a-9502-7a7372ab3caa` | Ministerio de Justicia | ✅ Verificada |
+| Instrucción 2/2003 CGPJ | `d89b1e76-e3e1-4411-970a-708fdd741c00` | CGPJ | ✅ Excluida (`boe_url = NULL`, solo existe `doc.php`) |
+| Reglamento 3/1995 Jueces de Paz | *(ver BD)* | CGPJ | ✅ Excluida (`boe_url = NULL`, BOE muestra solo TEXTO ORIGINAL) |
+
+### Leyes con URL de BOE corregida
+
+| Ley | URL anterior (incorrecta) | URL corregida | Fecha |
+|-----|--------------------------|---------------|-------|
+| Reglamento 1/2005 CGPJ | `doc.php?id=BOE-A-2005-15939` | `act.php?id=BOE-A-2005-15939` | 2026-02-21 |
+
+### Advertencia en el scraper de preguntas
+
+Cuando se importan preguntas de temas que referencian leyes sin texto consolidado:
+
+1. **Verificar que la ley existe** en la BD con artículos
+2. **Si faltan artículos**, insertarlos manualmente ANTES de importar
+3. **Marcar la ley** con `no_consolidated_text: true` para evitar alertas
+
+Ver también: [Manual de importación de temas](./importar-tema-tramitacion-procesal.md) - Fase 0
+
+## ⚠️ PROHIBIDO: Artículos Truncados o Parciales
+
+### Regla Absoluta
+
+**NUNCA insertar artículos con contenido truncado o parcial.** Los artículos en la BD deben contener el texto COMPLETO del artículo oficial.
+
+### Por qué es crítico
+
+1. **AI Chat** - El chatbot usa el contenido de artículos para responder preguntas. Si está truncado, dará respuestas incompletas o incorrectas.
+2. **Verificación de preguntas** - Las preguntas se validan contra el contenido del artículo. Un artículo parcial puede invalidar preguntas correctas.
+3. **Credibilidad** - Los usuarios confían en que el contenido es oficial y completo.
+
+### Qué NO hacer
+
+```javascript
+// ❌ PROHIBIDO: Extraer solo partes de las explicaciones de preguntas
+const content = question.explanation.match(/Artículo \d+[^]+/)[0];
+
+// ❌ PROHIBIDO: Copiar solo algunos apartados
+const content = `1. El ciudadano tiene derecho...
+// (resto truncado)`;
+
+// ❌ PROHIBIDO: Resumir o parafrasear
+const content = `Este artículo habla sobre los derechos del ciudadano...`;
+```
+
+### Qué SÍ hacer
+
+1. **Obtener texto completo de fuente oficial**:
+   - BOE (texto consolidado o documento original)
+   - EUR-Lex (para normativa UE)
+   - CGPJ (para reglamentos e instrucciones del CGPJ)
+   - Webs oficiales de organismos
+
+2. **Verificar que el contenido es completo**:
+   - Todos los apartados (1, 2, 3...)
+   - Todas las letras (a, b, c...)
+   - Párrafos introductorios y finales
+
+3. **Si no se puede obtener completo**:
+   - NO insertar el artículo
+   - Documentar en `last_verification_summary` qué falta
+   - Buscar fuente alternativa
+
+### Ejemplo correcto: Insertar artículo completo
+
+```javascript
+// ✅ CORRECTO: Texto completo desde fuente oficial
+const { error } = await supabase.from('articles').insert({
+  law_id: LAW_ID,
+  article_number: '3',
+  title: 'Definiciones',
+  content: `A efectos del presente Reglamento, se entenderá por:
+
+1) «identificación electrónica», el proceso de utilizar los datos de identificación de una persona en formato electrónico que representen de manera única a una persona física o jurídica, o a una persona física que represente a una persona jurídica;
+
+2) «medios de identificación electrónica», una unidad material y/o inmaterial que contenga los datos de identificación de una persona y que se utilice para la autenticación en servicios en línea;
+
+3) «datos de identificación de una persona», un conjunto de datos que permite establecer la identidad de una persona física o jurídica, o de una persona física que represente a una persona jurídica;
+
+// ... TODOS los 41 puntos del artículo 3 del eIDAS
+`,
+  is_active: true
+});
+```
+
+### Verificar artículos existentes
+
+Si sospechas que hay artículos truncados:
+
+```bash
+node << 'SCRIPT'
+require('dotenv').config({ path: '.env.local' });
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+(async () => {
+  const lawId = 'UUID_DE_LA_LEY';
+
+  const { data: articles } = await supabase
+    .from('articles')
+    .select('article_number, title, content')
+    .eq('law_id', lawId);
+
+  console.log('=== VERIFICACIÓN DE ARTÍCULOS ===');
+  articles?.forEach(a => {
+    const len = a.content?.length || 0;
+    const warning = len < 200 ? ' ⚠️ MUY CORTO' : len < 500 ? ' ⚠️ POSIBLE TRUNCADO' : '';
+    console.log(`Art ${a.article_number}: ${len} chars${warning}`);
+  });
 })();
 SCRIPT
 ```
