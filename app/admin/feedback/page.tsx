@@ -763,16 +763,15 @@ export default function AdminFeedbackPage() {
     try {
       // Obtener todos los user_ids únicos que no sean null
       const userIds = [...new Set(feedbacks.filter(f => f.user_id).map(f => f.user_id))]
-      
-      console.log(`🔍 Cargando perfiles para ${userIds.length} usuarios únicos`)
-      console.log('📋 User IDs específicos:', userIds)
-      
-      // Debug específico para Ismael
-      const hasIsmaelId = userIds.includes('7f40b5c7-c52f-4c1f-9d30-db7a49c57f43')
-      console.log('🎯 ¿Incluye ID de Ismael?', hasIsmaelId)
+      // Obtener emails de feedbacks SIN user_id (usuarios no logueados al enviar feedback)
+      const orphanEmails = [...new Set(feedbacks.filter(f => !f.user_id && f.email).map(f => f.email))]
 
-      if (userIds.length === 0) {
-        console.log('ℹ️ No hay user_ids para cargar perfiles')
+      console.log(`🔍 Cargando perfiles para ${userIds.length} usuarios únicos + ${orphanEmails.length} por email`)
+      console.log('📋 User IDs específicos:', userIds)
+      if (orphanEmails.length > 0) console.log('📧 Emails huérfanos:', orphanEmails)
+
+      if (userIds.length === 0 && orphanEmails.length === 0) {
+        console.log('ℹ️ No hay user_ids ni emails para cargar perfiles')
         return feedbacks
       }
 
@@ -902,15 +901,43 @@ export default function AdminFeedbackPage() {
         })
       }
 
+      // Buscar perfiles por email para feedbacks sin user_id
+      const emailProfilesMap = new Map()
+      if (orphanEmails.length > 0) {
+        const { data: emailProfiles } = await supabaseServiceRole
+          .from('user_profiles')
+          .select('id, full_name, email, plan_type, registration_date, created_at, target_oposicion, is_active_student, ciudad')
+          .in('email', orphanEmails)
+
+        if (emailProfiles) {
+          emailProfiles.forEach(profile => {
+            const lastSession = sessionsMap.get(profile.id)
+            const profileWithDevice = {
+              ...profile,
+              browserName: lastSession?.browser_name,
+              operatingSystem: lastSession?.operating_system,
+              deviceModel: lastSession?.device_model,
+              cancellationType: userCancellationType.get(profile.id) || null
+            }
+            emailProfilesMap.set(profile.email, profileWithDevice)
+            console.log(`📧 Perfil encontrado por email: ${profile.full_name || profile.email} (${profile.plan_type})`)
+          })
+        }
+      }
+
       // Debug: Log de usuarios que no tienen perfil
       const missingProfiles = userIds.filter(id => !profilesMap.has(id))
       if (missingProfiles.length > 0) {
         console.warn(`⚠️ Usuarios sin perfil: ${missingProfiles.length}`, missingProfiles)
       }
 
-      // Agregar los perfiles a los feedbacks
+      // Agregar los perfiles a los feedbacks (por user_id O por email)
       return feedbacks.map(feedback => {
-        const profile = feedback.user_id ? profilesMap.get(feedback.user_id) || null : null
+        let profile = feedback.user_id ? profilesMap.get(feedback.user_id) || null : null
+        // Fallback: buscar por email si no hay user_id
+        if (!profile && feedback.email) {
+          profile = emailProfilesMap.get(feedback.email) || null
+        }
         return {
           ...feedback,
           user_profiles: profile
