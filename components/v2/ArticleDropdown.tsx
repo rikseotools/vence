@@ -114,7 +114,7 @@ function formatTextContent(content: string | undefined | null, question: string 
   const keywords = extractKeywords(question, correctAnswer, options)
   keywords.forEach(keyword => {
     if (keyword.length > 4 && !formattedContent.includes('<mark') && !formattedContent.includes('style="background-color: #fef3c7')) {
-      const regex = new RegExp(`\\b(${keyword})\\b`, 'gi')
+      const regex = new RegExp(`\\b(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'gi')
       formattedContent = formattedContent.replace(regex, (match) => {
         return `<span style="background-color: #e0f2fe; padding: 1px 2px; border-radius: 2px; color: #0277bd;">${match}</span>`
       })
