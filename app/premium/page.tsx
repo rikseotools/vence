@@ -141,6 +141,15 @@ function PremiumPageContent() {
 
       console.log('✅ Checkout session creada, redirigiendo a Stripe...')
 
+      // Refrescar sesión antes de salir del dominio para que el token
+      // tenga vida útil completa al volver de Stripe
+      try {
+        await supabase.auth.refreshSession()
+        console.log('🔄 Sesión refrescada antes de redirect a Stripe')
+      } catch (e) {
+        console.warn('⚠️ No se pudo refrescar sesión (no crítico):', e)
+      }
+
       // Redirigir usando la URL directa de Stripe (más confiable)
       if (data.checkoutUrl) {
         console.log('🔗 Usando URL directa de Stripe checkout')
@@ -234,6 +243,13 @@ function PremiumPageContent() {
 
       const data = await response.json()
       if (!response.ok) throw new Error(data.error)
+
+      // Refrescar sesión antes de salir del dominio
+      try {
+        await supabase.auth.refreshSession()
+      } catch (e) {
+        console.warn('⚠️ No se pudo refrescar sesión (no crítico):', e)
+      }
 
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl
