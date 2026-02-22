@@ -38,20 +38,20 @@ export function useAdminNotifications() {
   }, [notifications.feedback, notifications.impugnaciones, notifications.loading])
 
   useEffect(() => {
-    if (supabase) {
-      loadPendingCounts()
+    if (!supabase) return
 
-      // Recargar menos frecuentemente para evitar problemas de conexión
-      const hasAnyPending = notifications.feedback > 0 || notifications.impugnaciones > 0
-      const intervalTime = hasAnyPending ? 30000 : 60000 // 30s si hay pendientes, 60s si no
+    loadPendingCounts()
 
-      const interval = setInterval(loadPendingCounts, intervalTime)
+    // Polling fijo cada 30s - NO depender de notifications para evitar
+    // ciclo de re-renders (loadPendingCounts actualiza notifications,
+    // que re-dispararía este effect, causando stack overflow en iOS WebKit)
+    const interval = setInterval(loadPendingCounts, 30000)
 
-      return () => {
-        clearInterval(interval)
-      }
+    return () => {
+      clearInterval(interval)
     }
-  }, [supabase, notifications.feedback, notifications.impugnaciones])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase])
 
   const loadPendingCounts = async () => {
     if (!supabase) {
