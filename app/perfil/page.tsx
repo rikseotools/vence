@@ -365,6 +365,23 @@ function PerfilPageContent() {
     }
   }, [searchParams])
 
+  // 🗑️ VERIFICAR SI YA HAY SOLICITUD DE ELIMINACIÓN PENDIENTE
+  useEffect(() => {
+    async function checkPendingDeletion() {
+      if (!user) return
+      const { count } = await supabase
+        .from('user_feedback')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('type', 'account_deletion')
+        .eq('status', 'pending')
+      if (count && count > 0) {
+        setDeletionRequested(true)
+      }
+    }
+    checkPendingDeletion()
+  }, [user])
+
   // 🆕 CARGAR EMAIL PREFERENCES - VIA API TIPADA
   useEffect(() => {
     async function loadEmailPreferences() {
@@ -1049,6 +1066,21 @@ function PerfilPageContent() {
     try {
       setDeletingAccount(true)
       setDeleteError('')
+
+      // Verificar si ya existe una solicitud pendiente (evita duplicados)
+      const { count } = await supabase
+        .from('user_feedback')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('type', 'account_deletion')
+        .eq('status', 'pending')
+
+      if (count && count > 0) {
+        setDeletionRequested(true)
+        setShowDeleteAccountModal(false)
+        setDeleteConfirmText('')
+        return
+      }
 
       // Crear feedback automático con la solicitud
       const { error } = await supabase

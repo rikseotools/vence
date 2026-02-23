@@ -671,12 +671,15 @@ async function handleSubscriptionDeleted(
       ? new Date(subscription.current_period_end * 1000).toISOString()
       : null
 
+    const updateData: Record<string, unknown> = { status: 'canceled' }
+    // Solo actualizar current_period_end si Stripe lo envía, para no perder el dato histórico
+    if (periodEnd) {
+      updateData.current_period_end = periodEnd
+    }
+
     await supabase
       .from('user_subscriptions')
-      .update({
-        status: 'canceled',
-        current_period_end: periodEnd
-      })
+      .update(updateData)
       .eq('stripe_subscription_id', subscription.id)
 
     console.log(`✅ Subscription ${subscription.id} canceled in user_subscriptions`)
