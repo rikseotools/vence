@@ -824,6 +824,13 @@ export function useIntelligentNotifications(): UseIntelligentNotificationsReturn
     }
   }, [user, userProfile, authLoading, supabase])
 
+  // Refrescar notificaciones cuando otra parte de la app marca algunas como leídas
+  useEffect(() => {
+    const handler = () => loadAllNotifications()
+    window.addEventListener('notifications-updated', handler)
+    return () => window.removeEventListener('notifications-updated', handler)
+  }, [user, supabase])
+
   // Función auxiliar para filtrar notificaciones leídas (OPCIÓN B: desaparecen)
   const filterUnreadNotifications = (notifications: Notification[]) => {
     try {

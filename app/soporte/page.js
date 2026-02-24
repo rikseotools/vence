@@ -248,8 +248,23 @@ function SoporteContent() {
       setInitialConversationId(conversationId)
       setShowFeedbackModal(true)
       setActiveTab('conversations')
+
+      // Marcar como leídas las notificaciones de campana de esta conversación
+      if (user && supabase) {
+        supabase
+          .from('notification_logs')
+          .update({ opened_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .is('opened_at', null)
+          .contains('context_data', { conversation_id: conversationId })
+          .then(({ error }) => {
+            if (!error) {
+              window.dispatchEvent(new Event('notifications-updated'))
+            }
+          })
+      }
     }
-  }, [searchParams])
+  }, [searchParams, user, supabase])
 
   // Auto-abrir tab de impugnaciones y resaltar disputa específica
   useEffect(() => {

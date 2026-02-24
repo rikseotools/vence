@@ -15,11 +15,11 @@ Claude ejecutará:
 supabase
   .from('question_disputes')
   .select('id, question_id, user_id, dispute_type, description, status, created_at')
-  .eq('status', 'pending')
+  .in('status', ['pending', 'appealed'])
   .order('created_at', { ascending: false });
 ```
 
-**Resultado:** Lista de impugnaciones con ID, tipo y descripción.
+**Resultado:** Lista de impugnaciones pendientes y con alegación (ambas requieren atención).
 
 ## 2. Analizar una Impugnación a Fondo
 
@@ -210,7 +210,7 @@ supabase
     explanation_ok: true,
     confidence: 'alta',
     ai_provider: 'claude_code',
-    ai_model: 'claude-opus-4-5',
+    ai_model: 'claude-opus-4-6',
     verified_at: new Date().toISOString(),
     explanation: 'Verificación corregida...',
     article_quote: 'Cita del artículo...'
@@ -240,7 +240,11 @@ Hola [Nombre],
 [Explicación de la corrección aplicada]
 
 Gracias por el reporte. Mucho ánimo con la oposición!
+
+Equipo de Vence
 ```
+
+**Notas:** Siempre firmar con "Equipo de Vence" al final.
 
 Una vez aprobado:
 
@@ -254,6 +258,8 @@ supabase
   })
   .eq('id', disputeId);
 ```
+
+> **El email se envía automáticamente.** Al hacer el UPDATE, un trigger PostgreSQL (`send_dispute_email_notification`) detecta el cambio de status y envía el email al usuario via `/api/send-dispute-email`. No hace falta llamar a ninguna API adicional. Ver sección 15 para más detalles.
 
 ## 7. Tablas Involucradas
 
@@ -280,18 +286,18 @@ supabase
 **Para ver TODAS las impugnaciones pendientes:**
 
 ```javascript
-// 1. Impugnaciones legislativas pendientes
+// 1. Impugnaciones legislativas pendientes (incluye alegaciones)
 const { data: legDisputes } = await supabase
   .from('question_disputes')
   .select('id, question_id, user_id, dispute_type, description, status, created_at')
-  .eq('status', 'pending')
+  .in('status', ['pending', 'appealed'])
   .order('created_at', { ascending: true });
 
 // 2. Impugnaciones psicotécnicas pendientes
 const { data: psyDisputes } = await supabase
   .from('psychometric_question_disputes')
   .select('id, question_id, user_id, dispute_type, description, status, created_at')
-  .eq('status', 'pending')
+  .in('status', ['pending', 'appealed'])
   .order('created_at', { ascending: true });
 
 console.log('Legislativas:', legDisputes?.length || 0);
@@ -364,7 +370,7 @@ await supabase
 | `user_id` | UUID del usuario |
 | `dispute_type` | Tipo: `otro`, `no_literal`, `respuesta_incorrecta`, etc. |
 | `description` | Descripción del usuario |
-| `status` | `pending` / `resolved` / `rejected` |
+| `status` | `pending` / `resolved` / `rejected` / `appealed` |
 | `admin_response` | Respuesta al usuario |
 | `resolved_at` | Fecha de resolución |
 
@@ -604,6 +610,8 @@ await supabase
   });
 ```
 
+> **Email y campana se envían automáticamente.** Al insertar un mensaje con `is_admin: true`, un trigger PostgreSQL (`send_feedback_notification`) crea la notificación de campana y envía email al usuario via `/api/send-support-email`. No hace falta llamar a ninguna API adicional. Ver sección 15 para más detalles.
+
 ### 14.4 Cerrar un Feedback
 
 **⚠️ IMPORTANTE:** NO cerrar la conversación manualmente. El sistema la cierra automáticamente si el usuario no responde en unos días.
@@ -780,3 +788,123 @@ const { data: adminMsg } = await supabase
 const adminId = adminMsg.sender_id;
 // Resultado: "2fc60bc8-1f9a-42c8-9c60-845c00af4a1f" (Manuel)
 ```
+
+---
+
+## 15. Sistema de Notificaciones Automáticas (Triggers PostgreSQL)
+
+Las notificaciones al usuario (email y campana) se envían **automáticamente** mediante triggers de PostgreSQL que usan la extensión `http` para llamar a las APIs de la app. Esto garantiza que las notificaciones se envíen independientemente de cómo se haga la operación (panel admin, Claude Code, o consulta SQL directa).
+
+### 15.1 Trigger de Impugnaciones
+
+**Trigger:** `trigger_send_dispute_email` en tabla `question_disputes`
+**Función:** `send_dispute_email_notification()`
+**Evento:** `AFTER UPDATE`
+
+**Comportamiento:**
+- Se activa cuando el `status` cambia a `resolved` o `rejected`
+- Envía los datos de la disputa directamente en el payload (no re-lee de BD)
+- Llama a `/api/send-dispute-email` via `http_post()`
+- El endpoint envía email al usuario con la respuesta del admin
+
+**Payload enviado:**
+```json
+{
+  "disputeId": "uuid",
+  "status": "resolved",
+  "adminResponse": "Hola...",
+  "resolvedAt": "2026-02-24T...",
+  "userId": "uuid",
+  "questionId": "uuid"
+}
+```
+
+**Endpoint:** `/api/send-dispute-email` acepta 3 formatos:
+1. **Trigger PG** (este): `{ disputeId, status, adminResponse, userId, questionId }`
+2. **Supabase Webhook**: `{ record: { id, user_id, ... } }`
+3. **Admin panel**: `{ disputeId }` (solo ID, datos se leen de BD)
+
+### 15.2 Trigger de Feedbacks
+
+**Trigger:** `trigger_send_feedback_notification` en tabla `feedback_messages`
+**Función:** `send_feedback_notification()`
+**Evento:** `AFTER INSERT`
+
+**Comportamiento:**
+- Se activa cuando se inserta un mensaje con `is_admin = true`
+- Busca el `user_id` desde `feedback_conversations`
+- Crea notificación de **campana** en `notification_logs`
+- Envía **email** via `/api/send-support-email`
+- El email se omite si el usuario está navegando activamente (lógica en el endpoint)
+
+**Acciones del trigger:**
+1. **Campana:** Inserta en `notification_logs` con preview del mensaje
+2. **Email:** Llama a `/api/send-support-email` con `{ userId, adminMessage, conversationId }`
+
+### 15.3 Arquitectura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Acción (Panel Admin / Claude Code / SQL directo)            │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ PostgreSQL Trigger (AFTER UPDATE/INSERT)                     │
+│  - Disputa: status → resolved/rejected                       │
+│  - Feedback: is_admin = true                                 │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ http_post()
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ API Endpoint (Vercel)                                        │
+│  - /api/send-dispute-email                                   │
+│  - /api/send-support-email                                   │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ sendEmailV2()
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ Resend (email) + notification_logs (campana)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 15.4 Dependencia: Extensión `http`
+
+Los triggers usan la extensión PostgreSQL `http` para hacer llamadas HTTP. Esta extensión debe estar habilitada en Supabase:
+
+```sql
+-- Verificar que la extensión está habilitada
+SELECT * FROM pg_extension WHERE extname = 'http';
+```
+
+### 15.5 Verificar que los Triggers Existen
+
+```sql
+-- Listar triggers en question_disputes
+SELECT trigger_name, event_manipulation, action_timing
+FROM information_schema.triggers
+WHERE event_object_table = 'question_disputes';
+
+-- Listar triggers en feedback_messages
+SELECT trigger_name, event_manipulation, action_timing
+FROM information_schema.triggers
+WHERE event_object_table = 'feedback_messages';
+```
+
+### 15.6 URL Base de los Triggers
+
+Los triggers usan `current_setting('app.base_url', true)` con fallback a `https://www.vence.es`. Si se necesita cambiar la URL (ej: staging):
+
+```sql
+-- Cambiar URL base (solo para la sesión actual)
+SET app.base_url = 'https://staging.vence.es';
+```
+
+### 15.7 Debugging de Triggers
+
+Si un email no se envía, verificar:
+
+1. **¿El trigger existe?** → Consulta de sección 15.5
+2. **¿La extensión `http` funciona?** → `SELECT status FROM http_get('https://httpbin.org/get');`
+3. **¿El endpoint está desplegado?** → `curl https://www.vence.es/api/send-dispute-email` (debe devolver 400, no 404)
+4. **¿Hay errores en los logs?** → Los triggers usan `RAISE WARNING` para errores, visible en logs de PostgreSQL
