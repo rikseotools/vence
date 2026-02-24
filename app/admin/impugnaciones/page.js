@@ -140,26 +140,8 @@ export default function ImpugnacionesPage() {
 
       console.log('✅ Impugnación cerrada exitosamente')
 
-      // Enviar email de notificación al usuario
-      try {
-        const emailEndpoint = isPsychometric
-          ? '/api/send-dispute-email/psychometric'
-          : '/api/send-dispute-email'
-
-        const emailResponse = await fetch(emailEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ disputeId })
-        })
-
-        if (emailResponse.ok) {
-          console.log('📧 Email de notificación enviado')
-        } else {
-          console.warn('⚠️ No se pudo enviar email de notificación')
-        }
-      } catch (emailError) {
-        console.warn('⚠️ Error enviando email:', emailError)
-      }
+      // Email se envía automáticamente por trigger PostgreSQL
+      // (send_dispute_email_notification) al hacer UPDATE de question_disputes
 
       // Recargar la lista
       await loadImpugnaciones()

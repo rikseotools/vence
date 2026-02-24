@@ -455,57 +455,8 @@ export default function AdminFeedbackPage() {
           .eq('id', selectedFeedback.id)
       }
 
-      // Enviar email de notificación al usuario
-      if (selectedFeedback.user_id) {
-        try {
-          const emailResponse = await fetch('/api/send-support-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: selectedFeedback.user_id,
-              adminMessage: inlineNewMessage.trim(),
-              conversationId: conversation.id
-            })
-          })
-          const emailResult = await emailResponse.json()
-          if (emailResult.sent) {
-            console.log('📧 Email de soporte enviado')
-          } else {
-            console.log('📧 Email no enviado:', emailResult.reason)
-          }
-        } catch (emailError) {
-          console.error('⚠️ Error enviando email:', emailError)
-        }
-
-        // Crear notificación para la campana del usuario
-        try {
-          const messagePreview = inlineNewMessage.trim().length > 100
-            ? inlineNewMessage.trim().substring(0, 100) + '...'
-            : inlineNewMessage.trim()
-
-          const { error: notifError } = await supabaseAdmin
-            .from('notification_logs')
-            .insert({
-              user_id: selectedFeedback.user_id,
-              message_sent: `El equipo de Vence: "${messagePreview}"`,
-              delivery_status: 'sent',
-              context_data: {
-                type: 'feedback_response',
-                title: 'Nueva respuesta de Vence',
-                conversation_id: conversation.id,
-                feedback_id: selectedFeedback.id
-              }
-            })
-
-          if (notifError) {
-            console.error('❌ Error creando notificación:', notifError)
-          } else {
-            console.log('🔔 Notificación creada para campana')
-          }
-        } catch (notifError) {
-          console.error('⚠️ Error creando notificación:', notifError)
-        }
-      }
+      // Email + campana se envían automáticamente por trigger PostgreSQL
+      // (send_feedback_notification) al insertar feedback_messages con is_admin=true
 
       // Añadir mensaje a la lista
       setInlineChatMessages(prev => [...prev, newMsg])
