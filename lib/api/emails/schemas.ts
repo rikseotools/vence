@@ -149,9 +149,27 @@ export type EmailPreferences = z.infer<typeof emailPreferencesSchema>
 // DISPUTE EMAIL REQUEST
 // ============================================
 
-export const sendDisputeEmailRequestSchema = z.object({
-  disputeId: z.string().uuid(),
-})
+// Formato 1: Admin panel envía { disputeId }
+// Formato 2: Supabase Database Webhook envía { record: { id, user_id, ... } }
+export const sendDisputeEmailRequestSchema = z.union([
+  z.object({
+    disputeId: z.string().uuid(),
+  }),
+  z.object({
+    type: z.string(),
+    table: z.string(),
+    schema: z.string(),
+    record: z.object({
+      id: z.string().uuid(),
+      user_id: z.string().uuid(),
+      question_id: z.string().uuid(),
+      status: z.string(),
+      admin_response: z.string().nullable(),
+      resolved_at: z.string().nullable(),
+    }).passthrough(),
+    old_record: z.record(z.unknown()).optional(),
+  }),
+])
 
 export type SendDisputeEmailRequest = z.infer<typeof sendDisputeEmailRequestSchema>
 
