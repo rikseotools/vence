@@ -1,5 +1,23 @@
 // Templates de emails con unsubscribe
-export const emailTemplates = {
+
+interface ArticleData {
+  law_name: string
+  article_number: string
+  accuracy_percentage: number
+  total_attempts: number
+  recommendation: string
+}
+
+interface MejoraData {
+  titulo?: string
+  descripcion?: string
+  beneficios?: string[]
+  problema_anterior?: string
+  solucion?: string
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const emailTemplates: Record<string, { subject: (...args: any[]) => string; html: (...args: any[]) => string }> = {
   reactivacion: {
     subject: (userName, daysInactive) => `¡${userName}! Te echamos de menos - ${daysInactive} días sin estudiar`,
     html: (userName, daysInactive, testUrl, unsubscribeUrl) => `
@@ -235,7 +253,7 @@ export const emailTemplates = {
   resumen_semanal: {
     subject: (userName, articlesCount) => `📊 ${userName}, tu resumen semanal: ${articlesCount} artículos por mejorar`,
     html: (userName, daysInactive, testUrl, unsubscribeUrl, articlesData = []) => {
-      const articlesHtml = articlesData.map(article => `
+      const articlesHtml = articlesData.map((article: ArticleData) => `
         <tr style="border-bottom: 1px solid #e5e7eb;">
           <td style="padding: 12px 8px; text-align: left;">
             <strong style="color: #1f2937;">${article.law_name} - Art. ${article.article_number}</strong>
@@ -437,7 +455,7 @@ export const emailTemplates = {
     html: (userName, daysInactive, testUrl, unsubscribeUrl, mejoraDatos = {}) => {
       const { titulo, descripcion, beneficios = [], problema_anterior, solucion } = mejoraDatos
       
-      const beneficiosHtml = beneficios.map(beneficio => `
+      const beneficiosHtml = beneficios.map((beneficio: string) => `
         <li style="margin: 8px 0; color: #059669; font-size: 15px;">
           <strong>${beneficio}</strong>
         </li>
@@ -702,7 +720,7 @@ export const emailTemplates = {
 
   impugnacion_respuesta: {
     subject: (status) => {
-      const statusTitles = {
+      const statusTitles: Record<string, string> = {
         'resolved': '✅ Tu impugnación ha sido respondida',
         'rejected': '❌ Tu impugnación ha sido respondida',
         'reviewing': '🔍 Tu impugnación está siendo revisada'
@@ -871,8 +889,8 @@ export const emailTemplates = {
 }
 
 // Función actualizada con el nuevo tipo
-export function getEmailTypeName(type) {
-  const names = {
+export function getEmailTypeName(type: string): string {
+  const names: Record<string, string> = {
     'bienvenida_inmediato': 'Bienvenida Inmediata',
     'reactivacion': 'Reactivación',
     'urgente': 'Urgente',

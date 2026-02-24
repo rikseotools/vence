@@ -1,33 +1,28 @@
-// app/api/unsubscribe/validate/route.js
-import { NextResponse } from 'next/server'
+// app/api/unsubscribe/validate/route.ts
+import { NextResponse, type NextRequest } from 'next/server'
 import { validateUnsubscribeToken } from '@/lib/emails/emailService.server'
 
-// 🆕 AGREGADO: Maneja POST requests desde la página de unsubscribe
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { token } = body
-    
+    const { token } = body as { token?: string }
+
     if (!token) {
       return NextResponse.json({
         success: false,
         error: 'Token requerido'
       }, { status: 400 })
     }
-    
-    console.log('🔍 API: Validando token de unsubscribe via POST...', token.substring(0, 8) + '...')
-    
+
     const tokenInfo = await validateUnsubscribeToken(token)
-    
+
     if (!tokenInfo) {
       return NextResponse.json({
         success: false,
         error: 'Token inválido, expirado o ya usado'
       }, { status: 400 })
     }
-    
-    console.log('✅ API: Token válido para usuario:', tokenInfo.email)
-    
+
     return NextResponse.json({
       success: true,
       email: tokenInfo.email,
@@ -37,10 +32,8 @@ export async function POST(request) {
         emailType: tokenInfo.emailType
       }
     })
-    
   } catch (error) {
     console.error('❌ Error validando token via POST:', error)
-    
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor'
@@ -48,30 +41,27 @@ export async function POST(request) {
   }
 }
 
-// 🔄 MANTENIDO: Funcionalidad original GET (sin cambios)
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const token = searchParams.get('token')
-    
+
     if (!token) {
       return NextResponse.json({
         success: false,
         error: 'Token requerido'
       }, { status: 400 })
     }
-    
-    console.log('🔍 API: Validando token de unsubscribe via GET...', token.substring(0, 8) + '...')
-    
+
     const tokenInfo = await validateUnsubscribeToken(token)
-    
+
     if (!tokenInfo) {
       return NextResponse.json({
         success: false,
         error: 'Token inválido, expirado o ya usado'
       }, { status: 400 })
     }
-    
+
     return NextResponse.json({
       success: true,
       user: {
@@ -80,10 +70,8 @@ export async function GET(request) {
         emailType: tokenInfo.emailType
       }
     })
-    
   } catch (error) {
     console.error('❌ Error validando token via GET:', error)
-    
     return NextResponse.json({
       success: false,
       error: 'Error interno del servidor'

@@ -4,7 +4,7 @@ import { userSubscriptions, userProfiles, emailLogs } from '@/db/schema'
 import { eq, and, gte, lte, sql } from 'drizzle-orm'
 import { Resend } from 'resend'
 import { emailTemplates } from '@/lib/emails/templates'
-import { generateUnsubscribeToken } from '@/lib/emails/emailService.server'
+import { generateUnsubscribeToken, getUnsubscribeUrl } from '@/lib/api/emails'
 import type {
   GetSubscriptionsForReminderResponse,
   UserWithSubscription,
@@ -202,10 +202,13 @@ export async function sendRenewalReminder(
     const gestionarUrl = `${BASE_URL}/perfil?tab=suscripcion&utm_source=email&utm_campaign=renewal_reminder`
 
     // Generar token de unsubscribe
-    const unsubscribeToken = await generateUnsubscribeToken(userId, email, EMAIL_TYPE)
-    const unsubscribeUrl = unsubscribeToken
-      ? `${BASE_URL}/unsubscribe?token=${unsubscribeToken}&email=${encodeURIComponent(email)}`
-      : `${BASE_URL}/perfil?tab=emails`
+    let unsubscribeUrl = `${BASE_URL}/perfil?tab=emails`
+    try {
+      const unsubscribeToken = await generateUnsubscribeToken(userId, email, EMAIL_TYPE)
+      unsubscribeUrl = getUnsubscribeUrl(unsubscribeToken)
+    } catch {
+      // Fallback to profile page
+    }
 
     // Formatear fecha
     const formattedDate = new Date(renewalDate).toLocaleDateString('es-ES', {
