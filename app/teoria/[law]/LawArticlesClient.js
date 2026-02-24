@@ -416,19 +416,21 @@ export default function LawArticlesClient({ params, searchParams }) {
     )
   }
 
-  // Filtrar artículos por sección seleccionada
-  const filteredArticles = selectedSectionFilter 
+  // Filtrar artículos por secciones seleccionadas (array de secciones)
+  const filteredArticles = selectedSectionFilter && selectedSectionFilter.length > 0
     ? articles.filter(article => {
-        if (!selectedSectionFilter.articleRange) return false
         const articleNum = parseInt(article.article_number)
-        return articleNum >= selectedSectionFilter.articleRange.start && 
-               articleNum <= selectedSectionFilter.articleRange.end
+        return selectedSectionFilter.some(section => {
+          if (!section.articleRange) return false
+          return articleNum >= section.articleRange.start &&
+                 articleNum <= section.articleRange.end
+        })
       })
     : articles
 
-  // Handler para selección de sección
-  const handleSectionSelect = (section) => {
-    setSelectedSectionFilter(section)
+  // Handler para selección de secciones (recibe array del modal)
+  const handleSectionSelect = (sections) => {
+    setSelectedSectionFilter(sections && sections.length > 0 ? sections : null)
   }
 
   // Handler para limpiar filtro de sección
@@ -471,23 +473,25 @@ export default function LawArticlesClient({ params, searchParams }) {
               <span>Filtrar por Títulos</span>
             </button>
           
-          {selectedSectionFilter && (
-            <div className="flex items-center space-x-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-              <span className="text-blue-700 font-medium">
-                {selectedSectionFilter.title}
+          {selectedSectionFilter && selectedSectionFilter.length > 0 && (
+            <div className="flex items-center space-x-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg px-3 py-2">
+              <span className="text-blue-700 dark:text-blue-300 font-medium">
+                {selectedSectionFilter.length === 1
+                  ? selectedSectionFilter[0].title
+                  : `${selectedSectionFilter.length} títulos`}
               </span>
               <button
                 onClick={clearSectionFilter}
-                className="text-blue-600 hover:text-blue-800 ml-2"
+                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 ml-2"
                 title="Limpiar filtro"
               >
                 ✕
               </button>
             </div>
           )}
-          
-          {selectedSectionFilter && (
-            <div className="text-sm text-gray-600">
+
+          {selectedSectionFilter && selectedSectionFilter.length > 0 && (
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               Mostrando {filteredArticles.length} de {articles.length} artículos
             </div>
           )}
@@ -713,6 +717,7 @@ export default function LawArticlesClient({ params, searchParams }) {
         onClose={() => setIsSectionModalOpen(false)}
         lawSlug={lawSlug}
         onSectionSelect={handleSectionSelect}
+        selectedSections={selectedSectionFilter || []}
       />
     </div>
   )
