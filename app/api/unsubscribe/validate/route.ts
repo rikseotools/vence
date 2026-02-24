@@ -1,6 +1,12 @@
 // app/api/unsubscribe/validate/route.ts
 import { NextResponse, type NextRequest } from 'next/server'
 import { validateUnsubscribeToken } from '@/lib/emails/emailService.server'
+import { EMAIL_TYPE_TO_CATEGORY } from '@/lib/api/emails/schemas'
+import type { EmailType } from '@/lib/api/emails/schemas'
+
+function getCategory(emailType: string): string {
+  return EMAIL_TYPE_TO_CATEGORY[emailType as EmailType] ?? 'marketing'
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +35,8 @@ export async function POST(request: NextRequest) {
       user: {
         email: tokenInfo.email,
         name: tokenInfo.userProfile?.full_name || 'Usuario',
-        emailType: tokenInfo.emailType
+        emailType: tokenInfo.emailType,
+        category: getCategory(tokenInfo.emailType),
       }
     })
   } catch (error) {
@@ -67,7 +74,8 @@ export async function GET(request: NextRequest) {
       user: {
         email: tokenInfo.email,
         name: tokenInfo.userProfile?.full_name || 'Usuario',
-        emailType: tokenInfo.emailType
+        emailType: tokenInfo.emailType,
+        category: getCategory(tokenInfo.emailType),
       }
     })
   } catch (error) {

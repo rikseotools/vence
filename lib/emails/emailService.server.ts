@@ -189,7 +189,8 @@ const VALID_EMAIL_PREF_KEYS = [
 export async function processUnsubscribeByToken(
   token: string,
   specificTypes: string[] | null = null,
-  unsubscribeAll = false
+  unsubscribeAll = false,
+  categories: string[] | null = null
 ): Promise<UnsubscribeResult> {
   try {
     const tokenInfo = await validateUnsubscribeToken(token)
@@ -204,11 +205,29 @@ export async function processUnsubscribeByToken(
     const updateData: Record<string, boolean | string> = {}
 
     if (unsubscribeAll) {
+      // Nuclear: disable everything
       for (const key of VALID_EMAIL_PREF_KEYS) {
         updateData[key] = false
       }
       updateData.unsubscribed_all = true
+      updateData.email_newsletter_disabled = true
+      updateData.email_soporte_disabled = true
       updateData.unsubscribed_at = new Date().toISOString()
+    } else if (categories && categories.length > 0) {
+      // Category-based unsubscribe
+      if (categories.includes('marketing')) {
+        for (const key of VALID_EMAIL_PREF_KEYS) {
+          updateData[key] = false
+        }
+        updateData.unsubscribed_all = true
+        updateData.unsubscribed_at = new Date().toISOString()
+      }
+      if (categories.includes('newsletter')) {
+        updateData.email_newsletter_disabled = true
+      }
+      if (categories.includes('soporte')) {
+        updateData.email_soporte_disabled = true
+      }
     } else if (specificTypes) {
       for (const type of specificTypes) {
         const key = `email_${type}`

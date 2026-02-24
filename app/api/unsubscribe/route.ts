@@ -5,10 +5,11 @@ import { processUnsubscribeByToken } from '@/lib/emails/emailService.server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { token, unsubscribeAll = false, specificTypes = null } = body as {
+    const { token, unsubscribeAll = false, specificTypes = null, categories = null } = body as {
       token?: string
       unsubscribeAll?: boolean
       specificTypes?: string[] | null
+      categories?: string[] | null
     }
 
     if (!token) {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const result = await processUnsubscribeByToken(token, specificTypes, unsubscribeAll)
+    const result = await processUnsubscribeByToken(token, specificTypes, unsubscribeAll, categories)
 
     if (!result.success) {
       return NextResponse.json(result, { status: 400 })
