@@ -1474,14 +1474,6 @@ function PerfilPageContent() {
                 'Hazte Premium para acceder a todas las funcionalidades sin límites.'
               )}
             </p>
-            {/* TEMPORAL: Botón para probar el modal de cancelación */}
-            <button
-              onClick={() => setShowCancellationFlow(true)}
-              className="mb-4 border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 py-3 px-6 rounded-lg font-medium hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all"
-            >
-              🧪 PROBAR Modal de Cancelación
-            </button>
-
             {subscriptionData?.planType !== 'premium' && subscriptionData?.planType !== 'legacy_free' && (
               <a
                 href="/premium"
