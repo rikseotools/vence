@@ -188,9 +188,9 @@ function PremiumPageContent() {
 
   const getPlanDisplayText = (plan: PlanType): string => {
     switch (plan) {
-      case 'semester': return '59€ / 6 meses'
-      case 'quarterly': return '35€ / 3 meses'
-      case 'monthly': return '20€ / mes'
+      case 'semester': return '59€ cada 6 meses'
+      case 'quarterly': return '35€ cada 3 meses'
+      case 'monthly': return '20€ cada mes'
     }
   }
 
@@ -469,6 +469,9 @@ function PremiumPageContent() {
                         Plan seleccionado: <span className="text-amber-600 font-bold">
                           {getPlanDisplayText(selectedPlan)}
                         </span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Renovable automaticamente a su vencimiento. Cancelable en cualquier momento.
                       </p>
                     </div>
 
