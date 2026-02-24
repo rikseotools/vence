@@ -502,8 +502,9 @@ function PremiumPageContent() {
             )}
 
             {/* Terms */}
-            <div className="text-xs text-gray-500 text-center mt-6">
-              Pago seguro con Stripe. Al continuar aceptas nuestros términos de servicio.
+            <div className="text-xs text-gray-500 text-center mt-6 space-y-1">
+              <p>Pago seguro con Stripe. Al continuar aceptas nuestros términos de servicio.</p>
+              <p>Se renueva automaticamente al vencer. Puedes cancelar en cualquier momento desde tu perfil.</p>
             </div>
           </div>
         </div>
