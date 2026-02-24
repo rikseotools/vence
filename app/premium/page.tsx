@@ -346,7 +346,7 @@ function PremiumPageContent() {
             >
               <div className="text-center">
                 <span className="bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold mb-4 inline-block">
-                  RECOMENDADO
+                  MAS POPULAR
                 </span>
                 <h3 className="text-lg font-bold text-gray-800 mb-2">Plan Semestral</h3>
                 <div className="text-4xl font-bold text-gray-900 mb-1">59€</div>
