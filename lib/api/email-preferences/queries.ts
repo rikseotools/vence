@@ -30,6 +30,8 @@ export async function getEmailPreferences(
         emailBienvenidaInmediato: emailPreferences.emailBienvenidaInmediato,
         emailResumenSemanal: emailPreferences.emailResumenSemanal,
         unsubscribedAll: emailPreferences.unsubscribedAll,
+        emailSoporteDisabled: emailPreferences.emailSoporteDisabled,
+        emailNewsletterDisabled: emailPreferences.emailNewsletterDisabled,
         unsubscribedAt: emailPreferences.unsubscribedAt,
         createdAt: emailPreferences.createdAt,
         updatedAt: emailPreferences.updatedAt
@@ -51,6 +53,8 @@ export async function getEmailPreferences(
           emailBienvenidaInmediato: true,
           emailResumenSemanal: true,
           unsubscribedAll: false,
+          emailSoporteDisabled: false,
+          emailNewsletterDisabled: false,
           unsubscribedAt: null,
           createdAt: null,
           updatedAt: null
@@ -126,6 +130,8 @@ export async function upsertEmailPreferences(
         emailBienvenidaInmediato: emailPreferences.emailBienvenidaInmediato,
         emailResumenSemanal: emailPreferences.emailResumenSemanal,
         unsubscribedAll: emailPreferences.unsubscribedAll,
+        emailSoporteDisabled: emailPreferences.emailSoporteDisabled,
+        emailNewsletterDisabled: emailPreferences.emailNewsletterDisabled,
         unsubscribedAt: emailPreferences.unsubscribedAt,
         createdAt: emailPreferences.createdAt,
         updatedAt: emailPreferences.updatedAt

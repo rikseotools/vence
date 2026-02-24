@@ -47,10 +47,14 @@ interface EmailPreferences {
   receive_emails: boolean
   support_emails: boolean
   newsletter_emails: boolean
-  unsubscribed_all?: boolean
-  email_reactivacion?: boolean
-  email_urgente?: boolean
-  email_bienvenida_motivacional?: boolean
+  unsubscribed_all: boolean
+  email_reactivacion: boolean
+  email_urgente: boolean
+  email_bienvenida_motivacional: boolean
+  email_bienvenida_inmediato: boolean
+  email_resumen_semanal: boolean
+  email_soporte_disabled: boolean
+  email_newsletter_disabled: boolean
 }
 
 interface PushNotificationSettings {
@@ -172,7 +176,15 @@ function PerfilPageContent() {
   const [emailPreferences, setEmailPreferences] = useState<EmailPreferences>({
     receive_emails: true,
     support_emails: true,
-    newsletter_emails: true
+    newsletter_emails: true,
+    unsubscribed_all: false,
+    email_reactivacion: true,
+    email_urgente: true,
+    email_bienvenida_motivacional: true,
+    email_bienvenida_inmediato: true,
+    email_resumen_semanal: true,
+    email_soporte_disabled: false,
+    email_newsletter_disabled: false,
   })
   const [emailPrefLoading, setEmailPrefLoading] = useState<boolean>(true)
   const [emailPrefSaving, setEmailPrefSaving] = useState<boolean>(false)
@@ -398,20 +410,40 @@ function PerfilPageContent() {
           setEmailPreferences({
             receive_emails: true,
             support_emails: true,
-            newsletter_emails: true
+            newsletter_emails: true,
+            unsubscribed_all: false,
+            email_reactivacion: true,
+            email_urgente: true,
+            email_bienvenida_motivacional: true,
+            email_bienvenida_inmediato: true,
+            email_resumen_semanal: true,
+            email_soporte_disabled: false,
+            email_newsletter_disabled: false,
           })
         } else {
-          // Mapear las preferencias de la API a nuestro formato simple
           const prefs = result.data
           setEmailPreferences({
             receive_emails: !prefs.unsubscribedAll,
-            support_emails: true, // Por ahora siempre true (columna no existe aún)
-            newsletter_emails: true // Por ahora siempre true (columna no existe aún)
+            support_emails: !prefs.emailSoporteDisabled,
+            newsletter_emails: !prefs.emailNewsletterDisabled,
+            unsubscribed_all: prefs.unsubscribedAll ?? false,
+            email_reactivacion: prefs.emailReactivacion ?? true,
+            email_urgente: prefs.emailUrgente ?? true,
+            email_bienvenida_motivacional: prefs.emailBienvenidaMotivacional ?? true,
+            email_bienvenida_inmediato: prefs.emailBienvenidaInmediato ?? true,
+            email_resumen_semanal: prefs.emailResumenSemanal ?? true,
+            email_soporte_disabled: prefs.emailSoporteDisabled ?? false,
+            email_newsletter_disabled: prefs.emailNewsletterDisabled ?? false,
           })
         }
       } catch (error) {
         console.error('Error general cargando email preferences:', error)
-        setEmailPreferences({ receive_emails: true, support_emails: true, newsletter_emails: true })
+        setEmailPreferences({
+          receive_emails: true, support_emails: true, newsletter_emails: true,
+          unsubscribed_all: false, email_reactivacion: true, email_urgente: true,
+          email_bienvenida_motivacional: true, email_bienvenida_inmediato: true,
+          email_resumen_semanal: true, email_soporte_disabled: false, email_newsletter_disabled: false,
+        })
       } finally {
         setEmailPrefLoading(false)
       }
@@ -775,21 +807,20 @@ function PerfilPageContent() {
     try {
       setEmailPrefSaving(true)
 
-      // Convertir nuestra opción simple al formato de API
-      const receiveEmails = newPreferences.receive_emails
-
       const response = await fetch('/api/profile/email-preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
           data: {
-            unsubscribedAll: !receiveEmails,
-            emailReactivacion: receiveEmails,
-            emailUrgente: receiveEmails,
-            emailBienvenidaMotivacional: receiveEmails,
-            emailBienvenidaInmediato: receiveEmails,
-            emailResumenSemanal: receiveEmails
+            unsubscribedAll: newPreferences.unsubscribed_all,
+            emailReactivacion: newPreferences.email_reactivacion,
+            emailUrgente: newPreferences.email_urgente,
+            emailBienvenidaMotivacional: newPreferences.email_bienvenida_motivacional,
+            emailBienvenidaInmediato: newPreferences.email_bienvenida_inmediato,
+            emailResumenSemanal: newPreferences.email_resumen_semanal,
+            emailSoporteDisabled: newPreferences.email_soporte_disabled,
+            emailNewsletterDisabled: newPreferences.email_newsletter_disabled,
           }
         })
       })
@@ -816,70 +847,20 @@ function PerfilPageContent() {
   // 🆕 MANEJAR CAMBIOS EN EMAIL PREFERENCES - CON LÓGICA AUTOMÁTICA
   // Si se desactiva "Emails de Vence", desactivar todas las sub-opciones
   // Sobrecarga: puede recibir (value) para toggle principal o (field, value) para campos individuales
-  const handleEmailPrefChange = (fieldOrValue: string | boolean, value?: boolean) => {
-    // Si es llamado con dos argumentos, es un cambio de campo individual
-    if (typeof fieldOrValue === 'string' && value !== undefined) {
-      const newPreferences = {
-        ...emailPreferences,
-        [fieldOrValue]: value
-      }
-      saveEmailPreferences(newPreferences)
-      return
+  const handleEmailPrefChange = (field: string, value: boolean) => {
+    const newPreferences = { ...emailPreferences, [field]: value }
+
+    // Sincronizar campos legacy con los reales
+    if (field === 'unsubscribed_all') {
+      newPreferences.receive_emails = !value
+    }
+    if (field === 'email_soporte_disabled') {
+      newPreferences.support_emails = !value
+    }
+    if (field === 'email_newsletter_disabled') {
+      newPreferences.newsletter_emails = !value
     }
 
-    // Si es llamado con un argumento booleano, es el toggle principal
-    const toggleValue = fieldOrValue as boolean
-    if (!toggleValue) {
-      // Desactivar todo
-      const newPreferences = {
-        receive_emails: false,
-        support_emails: false,
-        newsletter_emails: false
-      }
-      saveEmailPreferences(newPreferences)
-    } else {
-      // Activar emails de Vence y mantener las sub-opciones como estaban
-      // (o activarlas si todas estaban desactivadas)
-      const anySubOptionActive = emailPreferences.support_emails || emailPreferences.newsletter_emails
-      const newPreferences = {
-        receive_emails: true,
-        support_emails: anySubOptionActive ? emailPreferences.support_emails : true,
-        newsletter_emails: anySubOptionActive ? emailPreferences.newsletter_emails : true
-      }
-      saveEmailPreferences(newPreferences)
-    }
-  }
-
-  // 🆕 MANEJAR CAMBIOS EN SOPORTE
-  // Si se activa y "Emails de Vence" está desactivado, activarlo automáticamente
-  // Si se desactiva y es la última opción activa, desactivar "Emails de Vence"
-  const handleSupportEmailChange = (value: boolean) => {
-    const newNewsletterEmails = emailPreferences.newsletter_emails
-
-    // Si activamos soporte y Vence está desactivado, activar Vence
-    const newReceiveEmails = value ? true : (newNewsletterEmails ? emailPreferences.receive_emails : false)
-
-    const newPreferences = {
-      receive_emails: newReceiveEmails,
-      support_emails: value,
-      newsletter_emails: newNewsletterEmails
-    }
-    saveEmailPreferences(newPreferences)
-  }
-
-  // 🆕 MANEJAR CAMBIOS EN NEWSLETTER
-  // Misma lógica que soporte
-  const handleNewsletterEmailChange = (value: boolean) => {
-    const newSupportEmails = emailPreferences.support_emails
-
-    // Si activamos newsletter y Vence está desactivado, activar Vence
-    const newReceiveEmails = value ? true : (newSupportEmails ? emailPreferences.receive_emails : false)
-
-    const newPreferences = {
-      receive_emails: newReceiveEmails,
-      support_emails: newSupportEmails,
-      newsletter_emails: value
-    }
     saveEmailPreferences(newPreferences)
   }
 
@@ -1616,113 +1597,71 @@ function PerfilPageContent() {
           </div>
 
           {/* Opción única simplificada */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 dark:border-gray-600 rounded-lg dark:bg-gray-700 p-4 mb-4">
+          {/* Emails de Vence (marketing) */}
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4 mb-4">
             <div className="flex items-center justify-between">
               <div>
-                <h5 className="font-medium text-gray-800">
-                  Emails de Vence
-                </h5>
+                <h5 className="font-medium text-gray-800 dark:text-white">Emails de Vence</h5>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {emailPreferences.receive_emails ? (
-                    <>Recibes todos los tipos: bienvenida, reactivación, urgentes, resumenes semanales y noticias</>
-                  ) : (
-                    <>No recibes ningún email de Vence (todos los tipos desactivados)</>
-                  )}
+                  Reactivacion, bienvenida, motivacion, resumen semanal
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={emailPreferences.receive_emails}
-                  onChange={(e) => handleEmailPrefChange(e.target.checked)}
+                  checked={!emailPreferences.unsubscribed_all}
+                  onChange={(e) => handleEmailPrefChange('unsubscribed_all', !e.target.checked)}
                   disabled={emailPrefSaving}
                   className="sr-only peer"
                 />
-                <div className="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:bg-green-500 transition-colors">
-                  <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
-                    {emailPreferences.receive_emails ? (
-                      <span className="text-xs text-green-600">✓</span>
-                    ) : (
-                      <span className="text-xs text-gray-400">✕</span>
-                    )}
-                  </div>
-                </div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
               </label>
             </div>
           </div>
 
-          {/* Opción específica para emails de soporte */}
+          {/* Emails de Soporte */}
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4 mb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h5 className="font-medium text-gray-800 dark:text-white">Soporte</h5>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Respuestas a impugnaciones, soporte y renovacion
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!emailPreferences.email_soporte_disabled}
+                  onChange={(e) => handleEmailPrefChange('email_soporte_disabled', !e.target.checked)}
+                  disabled={emailPrefSaving}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* Newsletter */}
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h5 className="font-medium text-gray-800 dark:text-white">
-                  💬 Emails de Soporte
-                </h5>
+                <h5 className="font-medium text-gray-800 dark:text-white">Newsletter</h5>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {emailPreferences.support_emails ? (
-                    <>Recibes emails cuando el equipo responde a tus consultas e impugnaciones</>
-                  ) : (
-                    <>No recibes emails de respuestas del equipo de soporte</>
-                  )}
+                  Boletines, alertas BOE, novedades de tu oposicion
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={emailPreferences.support_emails}
-                  onChange={(e) => handleSupportEmailChange(e.target.checked)}
+                  checked={!emailPreferences.email_newsletter_disabled}
+                  onChange={(e) => handleEmailPrefChange('email_newsletter_disabled', !e.target.checked)}
                   disabled={emailPrefSaving}
                   className="sr-only peer"
                 />
-                <div className="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:bg-blue-500 transition-colors">
-                  <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
-                    {emailPreferences.support_emails ? (
-                      <span className="text-xs text-blue-600">✓</span>
-                    ) : (
-                      <span className="text-xs text-gray-400">✕</span>
-                    )}
-                  </div>
-                </div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
               </label>
             </div>
           </div>
-
-          {/* Opción específica para emails de newsletter */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h5 className="font-medium text-gray-800 dark:text-white">
-                  📰 Newsletter de tu Oposición
-                </h5>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {emailPreferences.newsletter_emails ? (
-                    <>Recibes información relevante y novedades sobre tu oposición</>
-                  ) : (
-                    <>No recibes emails con novedades de tu oposición</>
-                  )}
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={emailPreferences.newsletter_emails}
-                  onChange={(e) => handleNewsletterEmailChange(e.target.checked)}
-                  disabled={emailPrefSaving}
-                  className="sr-only peer"
-                />
-                <div className="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:bg-purple-500 transition-colors">
-                  <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
-                    {emailPreferences.newsletter_emails ? (
-                      <span className="text-xs text-purple-600">✓</span>
-                    ) : (
-                      <span className="text-xs text-gray-400">✕</span>
-                    )}
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
 
           {/* Estado de guardado de emails */}
           {emailPrefSaving && (
@@ -1737,7 +1676,6 @@ function PerfilPageContent() {
     )
   }
 
-  // 🆕 COMPONENTE EMAIL PREFERENCES (LEGACY - MANTENER POR COMPATIBILIDAD)
   const EmailPreferencesTab = () => {
     if (emailPrefLoading) {
       return (
@@ -1748,121 +1686,110 @@ function PerfilPageContent() {
       )
     }
 
+    const toggleClass = "w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+
     return (
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-            📧 Configuración de Emails
+            Configuracion de Emails
           </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Gestiona qué emails quieres recibir de iLoveTest. Puedes desactivar todos o configurar cada tipo por separado.
+            Gestiona que emails quieres recibir de Vence. Puedes desactivar categorias enteras o tipos individuales.
           </p>
         </div>
 
-        {/* Desactivar todos los emails */}
-        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-800">🚫 Desactivar todos los emails</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-300">No recibirás ningún email automático de iLoveTest</p>
+        {/* === CATEGORIA: EMAILS DE VENCE (marketing) === */}
+        <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+          <div className="bg-gray-50 dark:bg-gray-700 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-800 dark:text-white">Emails de Vence</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Reactivacion, bienvenida, motivacion, resumen semanal</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!emailPreferences.unsubscribed_all}
+                  onChange={(e) => handleEmailPrefChange('unsubscribed_all', !e.target.checked)}
+                  disabled={emailPrefSaving}
+                  className="sr-only peer"
+                />
+                <div className={`${toggleClass} peer-checked:bg-blue-500`}></div>
+              </label>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={emailPreferences.unsubscribed_all}
-                onChange={(e) => handleEmailPrefChange('unsubscribed_all', e.target.checked)}
-                disabled={emailPrefSaving}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-            </label>
+          </div>
+
+          {!emailPreferences.unsubscribed_all && (
+            <div className="p-4 space-y-3">
+              {[
+                { key: 'email_reactivacion', label: 'Reactivacion', desc: 'Recordatorio cuando llevas 7-13 dias sin estudiar' },
+                { key: 'email_urgente', label: 'Urgentes', desc: 'Recordatorio fuerte cuando llevas 14+ dias sin estudiar' },
+                { key: 'email_bienvenida_motivacional', label: 'Motivacion', desc: 'Ayuda para dar el primer paso tras registrarte' },
+                { key: 'email_bienvenida_inmediato', label: 'Bienvenida', desc: 'Email de bienvenida al registrarte' },
+                { key: 'email_resumen_semanal', label: 'Resumen semanal', desc: 'Resumen de tu progreso y articulos a repasar' },
+              ].map(({ key, label, desc }) => (
+                <div key={key} className="flex items-center justify-between pl-4">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</h5>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{desc}</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={(emailPreferences as unknown as Record<string, boolean>)[key] ?? true}
+                      onChange={(e) => handleEmailPrefChange(key, e.target.checked)}
+                      disabled={emailPrefSaving}
+                      className="sr-only peer"
+                    />
+                    <div className={`${toggleClass} peer-checked:bg-blue-500 peer-disabled:opacity-50`}></div>
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* === CATEGORIA: NEWSLETTER === */}
+        <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+          <div className="bg-gray-50 dark:bg-gray-700 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-800 dark:text-white">Newsletter y novedades</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Boletines, alertas BOE, novedades de tu oposicion</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!emailPreferences.email_newsletter_disabled}
+                  onChange={(e) => handleEmailPrefChange('email_newsletter_disabled', !e.target.checked)}
+                  disabled={emailPrefSaving}
+                  className="sr-only peer"
+                />
+                <div className={`${toggleClass} peer-checked:bg-purple-500`}></div>
+              </label>
+            </div>
           </div>
         </div>
 
-        {/* Configuración individual */}
-        <div className="space-y-4">
-          <h4 className="font-medium text-gray-800">📋 Configuración por tipo de email</h4>
-          
-          {/* Email de reactivación */}
-          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700">
-            <div className="flex-1">
-              <div className="flex items-center space-x-2">
-                <span className="text-blue-500">🔄</span>
-                <h5 className="font-medium text-gray-800">Emails de Reactivación</h5>
+        {/* === CATEGORIA: SOPORTE === */}
+        <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+          <div className="bg-gray-50 dark:bg-gray-700 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-800 dark:text-white">Soporte y transaccional</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Respuestas a impugnaciones, soporte, recordatorio renovacion</p>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                Te recordamos volver cuando llevas 7-13 días sin estudiar
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={emailPreferences.email_reactivacion && !emailPreferences.unsubscribed_all}
-                onChange={(e) => handleEmailPrefChange('email_reactivacion', e.target.checked)}
-                disabled={emailPrefSaving || emailPreferences.unsubscribed_all}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500 peer-disabled:opacity-50"></div>
-            </label>
-          </div>
-
-          {/* Email urgente */}
-          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700">
-            <div className="flex-1">
-              <div className="flex items-center space-x-2">
-                <span className="text-red-500">🚨</span>
-                <h5 className="font-medium text-gray-800">Emails Urgentes</h5>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                Recordatorio más fuerte cuando llevas 14+ días sin estudiar
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={emailPreferences.email_urgente && !emailPreferences.unsubscribed_all}
-                onChange={(e) => handleEmailPrefChange('email_urgente', e.target.checked)}
-                disabled={emailPrefSaving || emailPreferences.unsubscribed_all}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500 peer-disabled:opacity-50"></div>
-            </label>
-          </div>
-
-          {/* Email de bienvenida motivacional */}
-          <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg dark:bg-gray-700">
-            <div className="flex-1">
-              <div className="flex items-center space-x-2">
-                <span className="text-green-500">🚀</span>
-                <h5 className="font-medium text-gray-800">Emails de Motivación</h5>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                Te ayudamos a dar el primer paso si te registraste pero no has empezado
-              </p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={emailPreferences.email_bienvenida_motivacional && !emailPreferences.unsubscribed_all}
-                onChange={(e) => handleEmailPrefChange('email_bienvenida_motivacional', e.target.checked)}
-                disabled={emailPrefSaving || emailPreferences.unsubscribed_all}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500 peer-disabled:opacity-50"></div>
-            </label>
-          </div>
-        </div>
-
-        {/* Información adicional */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start space-x-2">
-            <span className="text-blue-500 mt-0.5">💡</span>
-            <div>
-              <h5 className="font-medium text-blue-800">¿Por qué estos emails?</h5>
-              <p className="text-sm text-blue-700 mt-1">
-                Los emails automáticos te ayudan a mantener la constancia en tu preparación. 
-                Están diseñados para motivarte y recordarte volver cuando más lo necesitas.
-              </p>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!emailPreferences.email_soporte_disabled}
+                  onChange={(e) => handleEmailPrefChange('email_soporte_disabled', !e.target.checked)}
+                  disabled={emailPrefSaving}
+                  className="sr-only peer"
+                />
+                <div className={`${toggleClass} peer-checked:bg-orange-500`}></div>
+              </label>
             </div>
           </div>
         </div>

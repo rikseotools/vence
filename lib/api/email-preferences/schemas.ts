@@ -25,6 +25,8 @@ export const emailPreferencesDataSchema = z.object({
   emailBienvenidaInmediato: z.boolean(),
   emailResumenSemanal: z.boolean(),
   unsubscribedAll: z.boolean(),
+  emailSoporteDisabled: z.boolean().optional(),
+  emailNewsletterDisabled: z.boolean().optional(),
   unsubscribedAt: z.string().nullable().optional(),
   createdAt: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional()
@@ -52,7 +54,9 @@ export const upsertEmailPreferencesRequestSchema = z.object({
     emailBienvenidaMotivacional: z.boolean().optional(),
     emailBienvenidaInmediato: z.boolean().optional(),
     emailResumenSemanal: z.boolean().optional(),
-    unsubscribedAll: z.boolean().optional()
+    unsubscribedAll: z.boolean().optional(),
+    emailSoporteDisabled: z.boolean().optional(),
+    emailNewsletterDisabled: z.boolean().optional()
   }).refine(data => Object.keys(data).length > 0, {
     message: 'Al menos una preferencia debe ser proporcionada'
   })
