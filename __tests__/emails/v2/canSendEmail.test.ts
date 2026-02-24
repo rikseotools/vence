@@ -179,14 +179,55 @@ describe('canSendEmail (v2)', () => {
   })
 
   // =============================================
-  // ADMIN
+  // SOPORTE: recordatorio_renovacion (transactional)
+  // =============================================
+  describe('recordatorio_renovacion (soporte/transactional)', () => {
+    test('canSend with defaults', async () => {
+      mockPrefs({})
+      const result = await canSendEmail('u1', 'recordatorio_renovacion')
+      expect(result.canSend).toBe(true)
+    })
+
+    test('canSend even with unsubscribed_all (transactional)', async () => {
+      mockPrefs({ unsubscribed_all: true })
+      const result = await canSendEmail('u1', 'recordatorio_renovacion')
+      expect(result.canSend).toBe(true)
+    })
+
+    test('blocked by email_soporte_disabled', async () => {
+      mockPrefs({ email_soporte_disabled: true })
+      const result = await canSendEmail('u1', 'recordatorio_renovacion')
+      expect(result.canSend).toBe(false)
+      expect(result.reason).toBe('soporte_disabled')
+    })
+  })
+
+  // =============================================
+  // MARKETING: lanzamiento_premium, mejoras_producto, modal_articulos_mejora
+  // =============================================
+  describe('Reclassified marketing types', () => {
+    const marketingTypes: EmailType[] = ['lanzamiento_premium', 'mejoras_producto', 'modal_articulos_mejora']
+
+    test.each(marketingTypes)('%s: canSend with defaults', async (type) => {
+      mockPrefs({})
+      const result = await canSendEmail('u1', type)
+      expect(result.canSend).toBe(true)
+    })
+
+    test.each(marketingTypes)('%s: blocked by unsubscribed_all', async (type) => {
+      mockPrefs({ unsubscribed_all: true })
+      const result = await canSendEmail('u1', type)
+      expect(result.canSend).toBe(false)
+      expect(result.reason).toBe('unsubscribed_all')
+    })
+  })
+
+  // =============================================
+  // ADMIN (only admin_notification)
   // =============================================
   describe('Admin category', () => {
-    const adminTypes: EmailType[] = ['recordatorio_renovacion', 'lanzamiento_premium']
-
-    test.each(adminTypes)('%s: always canSend (no preference check)', async (type) => {
-      // Don't even need to mock preferences - admin skips the check
-      const result = await canSendEmail('u1', type)
+    test('admin_notification: always canSend (no preference check)', async () => {
+      const result = await canSendEmail('u1', 'admin_notification')
       expect(result.canSend).toBe(true)
     })
   })

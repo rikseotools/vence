@@ -746,24 +746,38 @@ export async function sendWeeklyReportEmail(
       to: user.email,
       subject,
       html,
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeUrl}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     })
 
     if (emailResponse.error) {
       throw new Error(`Resend error: ${emailResponse.error.message || emailResponse.error}`)
     }
 
-    // Log to email_logs
-    const { error: logError } = await supabase
-      .from('email_logs')
-      .insert({
+    // Log to email_logs + email_events
+    const [logResult, eventResult] = await Promise.all([
+      supabase.from('email_logs').insert({
         user_id: userId,
         email_type: 'resumen_semanal',
         subject,
         status: 'sent',
-      })
+      }),
+      supabase.from('email_events').insert({
+        user_id: userId,
+        email_type: 'resumen_semanal',
+        event_type: 'sent',
+        email_address: user.email,
+        subject,
+      }),
+    ])
 
-    if (logError) {
-      console.error('⚠️ Error registrando email log:', logError)
+    if (logResult.error) {
+      console.error('⚠️ Error registrando email log:', logResult.error)
+    }
+    if (eventResult.error) {
+      console.error('⚠️ Error registrando email event:', eventResult.error)
     }
 
     return {

@@ -75,11 +75,13 @@ export const EMAIL_TYPE_TO_CATEGORY: Record<EmailType, EmailCategory> = {
   resumen_semanal: 'marketing',
   topic_unlock: 'marketing',
   medal_congratulation: 'marketing',
+  // Marketing (sin toggle individual, bloqueados por unsubscribed_all)
+  modal_articulos_mejora: 'marketing',
+  mejoras_producto: 'marketing',
+  lanzamiento_premium: 'marketing',
+  // Transaccional (aviso de cobro, no bloqueado por unsubscribed_all)
+  recordatorio_renovacion: 'soporte',
   // Admin/internal
-  modal_articulos_mejora: 'admin',
-  mejoras_producto: 'admin',
-  lanzamiento_premium: 'admin',
-  recordatorio_renovacion: 'admin',
   admin_notification: 'admin',
 }
 

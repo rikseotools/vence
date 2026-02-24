@@ -305,6 +305,18 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
   } else if (emailType === 'impugnacion_respuesta') {
     subject = template.subject(customData.status)
     html = template.html(userName, customData.status, customData.adminResponse, customData.questionText, customData.disputeUrl, unsubscribeUrl)
+  } else if (emailType === 'recordatorio_renovacion') {
+    const diasRestantes = (customData.daysUntilRenewal as number) || 7
+    subject = template.subject(userName, diasRestantes)
+    html = template.html(userName, diasRestantes, customData.fechaRenovacion, customData.planAmount, customData.gestionarUrl, unsubscribeUrl)
+  } else if (emailType === 'resumen_semanal') {
+    const articlesData = (customData.articlesData as unknown[]) || []
+    subject = template.subject(userName, articlesData.length)
+    html = template.html(userName, 0, testUrl, unsubscribeUrl, articlesData)
+  } else if (emailType === 'mejoras_producto') {
+    const mejoraDatos = (customData.mejoraDatos as Record<string, unknown>) || {}
+    subject = template.subject(userName, mejoraDatos.titulo)
+    html = template.html(userName, daysInactive, testUrl, unsubscribeUrl, mejoraDatos)
   } else {
     subject = template.subject(userName, daysInactive)
     html = template.html(userName, daysInactive, testUrl, unsubscribeUrl)
