@@ -1830,7 +1830,7 @@ export default function ConversionesPage() {
                     <div>
                       <strong>MRR por nueva sub:</strong> {predictionData.mrr.explanation?.mrrPerNewSub || `${predictionData.mrr.mrrPerNewSub?.toFixed(2)}€`}
                       <span className="text-gray-400 ml-1">
-                        ({predictionData.mrr.byPlan?.pctSemester || 0}% semestrales, {predictionData.mrr.byPlan?.pctMonthly || 0}% mensuales)
+                        ({predictionData.mrr.byPlan?.pctSemester || 0}% semestrales, {predictionData.mrr.byPlan?.pctQuarterly || 0}% trimestrales, {predictionData.mrr.byPlan?.pctMonthly || 0}% mensuales)
                       </span>
                     </div>
                     <div>

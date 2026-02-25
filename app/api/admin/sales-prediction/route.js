@@ -2,12 +2,32 @@
 // API para predicciones de ventas con intervalos de confianza
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import https from 'https'
 
 const getServiceSupabase = () => {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
   )
+}
+
+// Helper para llamar a la API de Stripe directamente
+function stripeGet(path) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'api.stripe.com',
+      path: path,
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + process.env.STRIPE_SECRET_KEY }
+    }
+    const req = https.request(options, (res) => {
+      let data = ''
+      res.on('data', chunk => data += chunk)
+      res.on('end', () => resolve(JSON.parse(data)))
+    })
+    req.on('error', reject)
+    req.end()
+  })
 }
 
 // Wilson score interval para proporciones con muestras pequenas
@@ -430,36 +450,97 @@ export async function GET() {
       : null
 
     // 8. MRR y previsión de renovaciones
-    const { data: subscriptions, error: subsError } = await supabase
+    // HYBRID: Stripe API (preciso) + subs manuales de Supabase
+
+    // A. Obtener suscripciones activas de Stripe via API
+    let stripeSubs = []
+    let hasMore = true
+    let startingAfter = null
+    while (hasMore) {
+      let path = '/v1/subscriptions?limit=100&status=active'
+      if (startingAfter) path += '&starting_after=' + startingAfter
+      const result = await stripeGet(path)
+      stripeSubs = stripeSubs.concat(result.data)
+      hasMore = result.has_more
+      if (result.data.length > 0) startingAfter = result.data[result.data.length - 1].id
+    }
+
+    // B. Obtener subs manuales de Supabase (sin stripe_subscription_id)
+    const { data: manualSubsData } = await supabase
       .from('user_subscriptions')
       .select('*')
       .eq('status', 'active')
+      .is('stripe_subscription_id', null)
 
-    if (subsError) throw subsError
-
-    // Precios por plan (solo mensual y semestral)
+    // C. Precios por plan
     const PRICES = {
-      premium_semester: 59,   // 6 meses
-      premium_monthly: 20     // mensual
+      premium_monthly: 20,
+      premium_quarterly: 35,
+      premium_semester: 59
     }
 
-    // Calcular MRR (ingresos recurrentes mensualizados)
-    let mrr = 0
-    const activeSubscriptions = subscriptions || []
+    // Tasas MRR mensualizadas
+    const MRR_RATES = {
+      premium_monthly: 20,        // 20€/mes
+      premium_quarterly: 35 / 3,  // 11.67€/mes
+      premium_semester: 59 / 6    // 9.83€/mes
+    }
 
-    activeSubscriptions.forEach(sub => {
-      if (sub.plan_type === 'premium_monthly') {
-        mrr += PRICES.premium_monthly       // 20€/mes
+    // D. Unificar en array con formato consistente
+    const activeSubscriptions = []
+    for (const sub of stripeSubs) {
+      const amount = sub.items.data[0]?.price?.unit_amount / 100
+      const interval = sub.items.data[0]?.price?.recurring?.interval
+      const intervalCount = sub.items.data[0]?.price?.recurring?.interval_count
+
+      let planType
+      if (interval === 'month' && intervalCount === 1) {
+        planType = 'premium_monthly'
+      } else if (interval === 'month' && intervalCount === 3) {
+        planType = 'premium_quarterly'
       } else {
-        // Semestral o fallback por duración del periodo
-        const start = new Date(sub.current_period_start)
-        const end = new Date(sub.current_period_end)
-        const days = (end - start) / (1000 * 60 * 60 * 24)
-        if (days <= 35) {
-          mrr += PRICES.premium_monthly     // ~1 mes = mensual
-        } else {
-          mrr += PRICES.premium_semester / 6 // 6 meses = semestral (9.83€/mes)
-        }
+        planType = 'premium_semester'
+      }
+
+      activeSubscriptions.push({
+        plan_type: planType,
+        cancel_at_period_end: sub.cancel_at_period_end,
+        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        user_id: sub.metadata?.supabase_user_id || sub.metadata?.user_id || null,
+        source: 'stripe'
+      })
+    }
+
+    for (const sub of (manualSubsData || [])) {
+      const start = new Date(sub.current_period_start)
+      const end = new Date(sub.current_period_end)
+      const days = (end - start) / (1000 * 60 * 60 * 24)
+
+      let planType
+      if (days <= 35) {
+        planType = 'premium_monthly'
+      } else if (days <= 100) {
+        planType = 'premium_quarterly'
+      } else {
+        planType = 'premium_semester'
+      }
+
+      activeSubscriptions.push({
+        plan_type: planType,
+        cancel_at_period_end: sub.cancel_at_period_end,
+        current_period_start: sub.current_period_start,
+        current_period_end: sub.current_period_end,
+        user_id: sub.user_id,
+        source: 'manual'
+      })
+    }
+
+    // E. Calcular MRR (excluyendo cancel_at_period_end, como Stripe)
+    let mrr = 0
+    activeSubscriptions.forEach(sub => {
+      if (!sub.cancel_at_period_end) {
+        mrr += MRR_RATES[sub.plan_type] || MRR_RATES.premium_semester
       }
     })
 
@@ -545,30 +626,27 @@ export async function GET() {
     const expectedSalesPerDay = expectedSalesPerMonth / 30
 
     // MRR por nueva suscripción (ponderado por distribución real de planes)
-    // Semestral: 59€/6 = 9.83€/mes, Mensual: 20€/mes
-    const MRR_SEMESTER = 59 / 6  // 9.83€
-    const MRR_MONTHLY = 20       // 20€
-
     const semesterCount = activeSubscriptions.filter(s => s.plan_type === 'premium_semester').length
+    const quarterlyCount = activeSubscriptions.filter(s => s.plan_type === 'premium_quarterly').length
     const monthlyCount = activeSubscriptions.filter(s => s.plan_type === 'premium_monthly').length
-    const totalSubs = semesterCount + monthlyCount
+    const totalSubs = semesterCount + quarterlyCount + monthlyCount
 
     // Calcular MRR promedio basado en distribución actual de planes
     let mrrPerNewSub
     if (totalSubs > 0) {
       const pctSemester = semesterCount / totalSubs
+      const pctQuarterly = quarterlyCount / totalSubs
       const pctMonthly = monthlyCount / totalSubs
-      mrrPerNewSub = (pctSemester * MRR_SEMESTER) + (pctMonthly * MRR_MONTHLY)
+      mrrPerNewSub = (pctSemester * MRR_RATES.premium_semester) + (pctQuarterly * MRR_RATES.premium_quarterly) + (pctMonthly * MRR_RATES.premium_monthly)
     } else {
-      // Sin datos, asumir 50/50
-      mrrPerNewSub = (MRR_SEMESTER + MRR_MONTHLY) / 2  // 14.92€
+      mrrPerNewSub = (MRR_RATES.premium_semester + MRR_RATES.premium_quarterly + MRR_RATES.premium_monthly) / 3
     }
 
     // Calcular churn rate basado en TODAS las cancelaciones (con o sin refund)
     const totalRefundAmount = (refunds || []).reduce((sum, r) => sum + (r.refund_amount_cents || 0), 0) / 100
     const totalCancellations = cancelledUserIds.size  // Todas las cancelaciones
     const totalRefundsCount = refundedUserIds.size    // Solo las que tuvieron refund
-    const cancelingSubscriptions = (subscriptions || []).filter(s => s.cancel_at_period_end)
+    const cancelingSubscriptions = activeSubscriptions.filter(s => s.cancel_at_period_end)
 
     // Churn mensual: cancelaciones totales / pagadores únicos brutos
     // Si no hay datos suficientes, usar 5% mensual (típico B2C SaaS)
@@ -777,13 +855,15 @@ export async function GET() {
         },
         byPlan: {
           semester: semesterCount,
+          quarterly: quarterlyCount,
           monthly: monthlyCount,
-          pctSemester: totalSubs > 0 ? Math.round((semesterCount / totalSubs) * 100) : 50,
-          pctMonthly: totalSubs > 0 ? Math.round((monthlyCount / totalSubs) * 100) : 50
+          pctSemester: totalSubs > 0 ? Math.round((semesterCount / totalSubs) * 100) : 0,
+          pctQuarterly: totalSubs > 0 ? Math.round((quarterlyCount / totalSubs) * 100) : 0,
+          pctMonthly: totalSubs > 0 ? Math.round((monthlyCount / totalSubs) * 100) : 0
         },
         // Explicación de las fórmulas
         explanation: {
-          mrrCurrent: `Suma del MRR de ${activeSubscriptions.length} suscripciones activas`,
+          mrrCurrent: `${activeSubscriptions.filter(s => !s.cancel_at_period_end).length} subs activas (${stripeSubs.length} Stripe + ${(manualSubsData || []).length} manuales, excl. ${cancelingSubscriptions.length} cancelando)`,
           churnApplied: uniquePayingUsersGross > 5 && (totalCancellations / uniquePayingUsersGross) < 0.05
             ? `Churn real ${Math.round((totalCancellations / uniquePayingUsersGross) * 100)}% → aplicado mínimo 5%`
             : `Churn real ${Math.round((totalCancellations / uniquePayingUsersGross) * 100)}% aplicado a proyecciones`,
