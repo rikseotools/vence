@@ -460,24 +460,102 @@ export async function getFilteredQuestions(
     // 🆕 MODO SIN TEMA: Si no hay tema pero sí hay leyes seleccionadas, filtrar directamente por ley
     const isLawOnlyMode = topicsToQuery.length === 0 && selectedLaws && selectedLaws.length > 0
 
-    // 🆕 MODO GLOBAL: Si no hay tema ni ley, obtener todos los temas del positionType (test rápido general)
+    // 🆕 MODO GLOBAL: Si no hay tema ni ley, query directa sin filtros de tema (test rápido general)
     const isGlobalMode = topicsToQuery.length === 0 && !isLawOnlyMode
 
     if (isGlobalMode) {
-      console.log(`🎯 Modo global: Buscando preguntas de todos los temas de ${positionType}`)
-      const allTopics = await db
-        .select({ topicNumber: topics.topicNumber })
-        .from(topics)
-        .where(eq(topics.positionType, positionType))
+      console.log(`🎯 Modo global: Buscando ${numQuestions} preguntas aleatorias de ${positionType}`)
 
-      if (!allTopics || allTopics.length === 0) {
+      // Query directa: preguntas activas aleatorias, sin filtrar por tema
+      const globalQuestions = await db
+        .select({
+          id: questions.id,
+          questionText: questions.questionText,
+          optionA: questions.optionA,
+          optionB: questions.optionB,
+          optionC: questions.optionC,
+          optionD: questions.optionD,
+          explanation: questions.explanation,
+          difficulty: questions.difficulty,
+          questionType: questions.questionType,
+          tags: questions.tags,
+          isActive: questions.isActive,
+          createdAt: questions.createdAt,
+          updatedAt: questions.updatedAt,
+          primaryArticleId: questions.primaryArticleId,
+          isOfficialExam: questions.isOfficialExam,
+          examSource: questions.examSource,
+          examDate: questions.examDate,
+          examEntity: questions.examEntity,
+          examPosition: questions.examPosition,
+          officialDifficultyLevel: questions.officialDifficultyLevel,
+          articleId: articles.id,
+          articleNumber: articles.articleNumber,
+          articleTitle: articles.title,
+          articleContent: articles.content,
+          lawId: laws.id,
+          lawName: laws.name,
+          lawShortName: laws.shortName,
+        })
+        .from(questions)
+        .innerJoin(articles, eq(questions.primaryArticleId, articles.id))
+        .innerJoin(laws, eq(articles.lawId, laws.id))
+        .where(eq(questions.isActive, true))
+        .orderBy(sql`RANDOM()`)
+        .limit(numQuestions)
+
+      if (!globalQuestions || globalQuestions.length === 0) {
         return {
           success: false,
-          error: `No se encontraron temas para ${positionType}`,
+          error: `No se encontraron preguntas para ${positionType}`,
         }
       }
 
-      topicsToQuery.push(...allTopics.map(t => t.topicNumber))
+      console.log(`✅ Modo global: ${globalQuestions.length} preguntas encontradas`)
+
+      // Transformar al formato esperado
+      const transformedQuestions = globalQuestions.map(q => ({
+        id: q.id,
+        question: q.questionText,
+        options: [q.optionA, q.optionB, q.optionC, q.optionD] as [string, string, string, string],
+        explanation: q.explanation || '',
+        primary_article_id: q.primaryArticleId,
+        tema: null,
+        article: {
+          id: q.articleId,
+          number: q.articleNumber,
+          title: q.articleTitle,
+          full_text: q.articleContent,
+          law_name: q.lawName,
+          law_short_name: q.lawShortName,
+          display_number: `Art. ${q.articleNumber}`,
+        },
+        metadata: {
+          id: q.id,
+          difficulty: q.difficulty || 'medium',
+          question_type: q.questionType || 'test',
+          tags: q.tags,
+          is_active: q.isActive ?? true,
+          created_at: q.createdAt,
+          updated_at: q.updatedAt,
+          is_official_exam: q.isOfficialExam,
+          exam_source: q.examSource,
+          exam_date: q.examDate,
+          exam_entity: q.examEntity,
+          official_difficulty_level: q.officialDifficultyLevel,
+        },
+      }))
+
+      return {
+        success: true,
+        questions: transformedQuestions,
+        totalAvailable: globalQuestions.length,
+        filtersApplied: {
+          laws: 0,
+          articles: 0,
+          sections: 0,
+        },
+      }
     }
 
     let filteredMappings: Array<{

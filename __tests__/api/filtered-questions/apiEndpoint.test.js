@@ -630,7 +630,9 @@ describe('API Law-Only Mode (sin tema)', () => {
     expect(request.selectedArticlesByLaw['CE']).toEqual([14, 15, 16])
   })
 
-  test('Request sin topicNumber NI selectedLaws debe fallar', () => {
+  test('Request sin topicNumber NI selectedLaws activa modo global (test rápido)', () => {
+    // FIX 2026-02-25: Antes esto fallaba, ahora activa "modo global"
+    // que busca preguntas de todos los temas del positionType
     const request = {
       topicNumber: 0,
       positionType: 'auxiliar_administrativo',
@@ -643,10 +645,9 @@ describe('API Law-Only Mode (sin tema)', () => {
     }
 
     const isLawOnlyMode = request.topicNumber === 0 && request.selectedLaws.length > 0
-    const hasValidTopic = request.topicNumber > 0
-    const isValidRequest = hasValidTopic || isLawOnlyMode
+    const isGlobalMode = request.topicNumber === 0 && !isLawOnlyMode && request.selectedLaws.length === 0
 
-    expect(isValidRequest).toBe(false) // Debe fallar
+    expect(isGlobalMode).toBe(true) // Modo global activado
   })
 
   test('Notificación de artículos problemáticos genera request válido', () => {
@@ -704,7 +705,8 @@ describe('API Law-Only Mode (sin tema)', () => {
 // TESTS: Validación de parámetros críticos
 // ============================================
 describe('API Critical Parameter Validation', () => {
-  test('multipleTopics vacío + topicNumber 0 + selectedLaws vacío = ERROR', () => {
+  test('multipleTopics vacío + topicNumber 0 + selectedLaws vacío = MODO GLOBAL', () => {
+    // FIX 2026-02-25: Antes era error, ahora activa modo global (test rápido)
     const request = {
       topicNumber: 0,
       multipleTopics: [],
@@ -717,9 +719,9 @@ describe('API Critical Parameter Validation', () => {
       : request.topicNumber > 0 ? [request.topicNumber] : []
 
     const isLawOnlyMode = topicsToQuery.length === 0 && request.selectedLaws.length > 0
-    const isValidRequest = topicsToQuery.length > 0 || isLawOnlyMode
+    const isGlobalMode = topicsToQuery.length === 0 && !isLawOnlyMode
 
-    expect(isValidRequest).toBe(false)
+    expect(isGlobalMode).toBe(true) // Modo global, no error
   })
 
   test('multipleTopics con valores válidos = OK', () => {
