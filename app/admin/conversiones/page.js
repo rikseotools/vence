@@ -1441,7 +1441,73 @@ export default function ConversionesPage() {
                       </div>
                     </div>
 
-                    {/* Método "Por histórico" eliminado - tenía error ±109% */}
+                    {/* Método 3: Por Stripe con ventana móvil y tendencia (PRINCIPAL) */}
+                    {predictionData.projectionMethods.byHistoric && (() => {
+                      const h = predictionData.projectionMethods.byHistoric
+                      const trendIcon = h.trend?.direction === 'accelerating' ? '📈' : h.trend?.direction === 'decelerating' ? '📉' : '➡️'
+                      const trendColor = h.trend?.direction === 'accelerating' ? 'text-green-600' : h.trend?.direction === 'decelerating' ? 'text-red-500' : 'text-gray-500'
+                      return (
+                    <div className="border-2 border-emerald-300 dark:border-emerald-700 rounded-lg p-4 bg-emerald-50 dark:bg-emerald-900/20 md:col-span-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">💳</span>
+                          <span className="font-bold text-emerald-700 dark:text-emerald-300">{h.name}</span>
+                          <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-full font-medium">PRINCIPAL</span>
+                        </div>
+                        <span className="text-xs bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">
+                          Peso: {h.weight}%
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-6 flex-wrap">
+                        <div>
+                          <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                            {h.salesPerMonth}
+                            <span className="text-lg font-normal text-gray-500 dark:text-gray-400"> nuevas/mes</span>
+                          </div>
+                          <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                            {h.revenuePerMonth.toFixed(0)}€/mes
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                          <div>
+                            <span className="text-emerald-600 font-medium">+{h.inputs.newLast30Days}</span> nuevas,{' '}
+                            <span className="text-red-500 font-medium">-{h.inputs.canceledLast30Days}</span> canceladas,{' '}
+                            <span className="text-orange-500 font-medium">{h.inputs.cancelPending}</span> pendientes
+                            <span className="ml-1 text-xs text-gray-400">(30d)</span>
+                          </div>
+                          <div>
+                            {trendIcon} <span className={`font-medium ${trendColor}`}>{h.trend?.label || 'Estable'}</span>
+                            <span className="ml-1 text-xs text-gray-400">
+                              (ventana {h.inputs.windowDays}d, {h.inputs.weeksAnalyzed} semanas)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Mini gráfico semanal */}
+                      {h.weeklyBuckets && h.weeklyBuckets.length > 1 && (
+                        <div className="mt-3 flex items-end gap-1 h-10">
+                          {h.weeklyBuckets.map((w, i) => {
+                            const max = Math.max(...h.weeklyBuckets.map(b => b.new), 1)
+                            const height = Math.max(4, (w.new / max) * 40)
+                            return (
+                              <div key={i} className="flex flex-col items-center gap-0.5" title={`Sem ${i + 1}: +${w.new} nuevas, -${w.canceled} canceladas`}>
+                                <div
+                                  className="bg-emerald-400 dark:bg-emerald-500 rounded-sm min-w-[16px]"
+                                  style={{ height: `${height}px` }}
+                                />
+                                <span className="text-[9px] text-gray-400">{w.new}</span>
+                              </div>
+                            )
+                          })}
+                          <span className="text-[10px] text-gray-400 ml-1 self-end">subs/semana</span>
+                        </div>
+                      )}
+                      <div className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        ✓ {h.bestFor}
+                      </div>
+                    </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Proyección combinada */}
@@ -1449,10 +1515,10 @@ export default function ConversionesPage() {
                     <div className="flex items-center justify-between flex-wrap gap-4">
                       <div>
                         <div className="text-sm opacity-90 mb-1">
-                          📊 Proyección {predictionData.projectionMethods.combined.isWeighted ? 'Ponderada' : 'Combinada'} ({predictionData.projectionMethods.combined.methodsUsed} métodos)
-                          {predictionData.projectionMethods.combined.isWeighted && (
-                            <span className="ml-2 bg-white/20 px-2 py-0.5 rounded text-xs">Auto-optimizado</span>
-                          )}
+                          📊 Proyección Combinada ({predictionData.projectionMethods.combined.methodsUsed} métodos)
+                          <span className="ml-2 bg-white/20 px-2 py-0.5 rounded text-xs">
+                            {predictionData.projectionMethods.combined.description}
+                          </span>
                         </div>
                         <div className="text-3xl font-bold">
                           {predictionData.projectionMethods.combined.salesPerMonth.toFixed(1)} ventas/mes

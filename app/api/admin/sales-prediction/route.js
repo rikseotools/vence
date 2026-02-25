@@ -67,7 +67,6 @@ async function saveDailyPredictions(supabase, predictions) {
   try {
     const today = new Date().toISOString().slice(0, 10)
 
-    // Preparar datos para insertar (by_historic eliminado por impreciso)
     const records = [
       {
         prediction_date: today,
@@ -82,6 +81,13 @@ async function saveDailyPredictions(supabase, predictions) {
         predicted_sales_per_month: predictions.byActiveUsers.salesPerMonth,
         predicted_revenue_per_month: predictions.byActiveUsers.revenuePerMonth,
         prediction_inputs: predictions.byActiveUsers.inputs
+      },
+      {
+        prediction_date: today,
+        method_name: 'by_historic',
+        predicted_sales_per_month: predictions.byHistoric.salesPerMonth,
+        predicted_revenue_per_month: predictions.byHistoric.revenuePerMonth,
+        prediction_inputs: predictions.byHistoric.inputs
       },
       {
         prediction_date: today,
@@ -452,18 +458,20 @@ export async function GET() {
     // 8. MRR y previsión de renovaciones
     // HYBRID: Stripe API (preciso) + subs manuales de Supabase
 
-    // A. Obtener suscripciones activas de Stripe via API
-    let stripeSubs = []
+    // A. Obtener TODAS las suscripciones de Stripe (activas + canceladas)
+    let allStripeSubs = []
     let hasMore = true
     let startingAfter = null
     while (hasMore) {
-      let path = '/v1/subscriptions?limit=100&status=active'
+      let path = '/v1/subscriptions?limit=100&status=all'
       if (startingAfter) path += '&starting_after=' + startingAfter
       const result = await stripeGet(path)
-      stripeSubs = stripeSubs.concat(result.data)
+      allStripeSubs = allStripeSubs.concat(result.data)
       hasMore = result.has_more
       if (result.data.length > 0) startingAfter = result.data[result.data.length - 1].id
     }
+    const stripeSubs = allStripeSubs.filter(s => s.status === 'active')
+    const stripeCanceledSubs = allStripeSubs.filter(s => s.status === 'canceled')
 
     // B. Obtener subs manuales de Supabase (sin stripe_subscription_id)
     const { data: manualSubsData } = await supabase
@@ -487,11 +495,14 @@ export async function GET() {
     }
 
     // D. Unificar en array con formato consistente
+    // NOTA: En Stripe API reciente, current_period_start/end están en items.data[0], NO en el nivel raíz
     const activeSubscriptions = []
     for (const sub of stripeSubs) {
-      const amount = sub.items.data[0]?.price?.unit_amount / 100
-      const interval = sub.items.data[0]?.price?.recurring?.interval
-      const intervalCount = sub.items.data[0]?.price?.recurring?.interval_count
+      const item = sub.items.data[0]
+      const interval = item?.price?.recurring?.interval
+      const intervalCount = item?.price?.recurring?.interval_count
+      const periodStart = item?.current_period_start || sub.current_period_start
+      const periodEnd = item?.current_period_end || sub.current_period_end
 
       let planType
       if (interval === 'month' && intervalCount === 1) {
@@ -505,10 +516,11 @@ export async function GET() {
       activeSubscriptions.push({
         plan_type: planType,
         cancel_at_period_end: sub.cancel_at_period_end,
-        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+        current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         user_id: sub.metadata?.supabase_user_id || sub.metadata?.user_id || null,
-        source: 'stripe'
+        source: 'stripe',
+        created: sub.created
       })
     }
 
@@ -555,9 +567,9 @@ export async function GET() {
       const renewingUsers = []
 
       activeSubscriptions.forEach(sub => {
-        if (!sub.cancel_at_period_end) {
+        if (!sub.cancel_at_period_end && sub.current_period_end) {
           const renewDate = new Date(sub.current_period_end)
-          if (renewDate >= monthStart && renewDate <= monthEnd) {
+          if (!isNaN(renewDate.getTime()) && renewDate >= monthStart && renewDate <= monthEnd) {
             renewalsInMonth++
             const price = PRICES[sub.plan_type] || PRICES.premium_semester
             revenueInMonth += price
@@ -580,49 +592,118 @@ export async function GET() {
     }
 
     // ========================================
-    // 3 MÉTODOS DE PROYECCIÓN DE VENTAS
+    // ANTIGÜEDAD DEL NEGOCIO (necesaria para tendencia y churn)
+    // ========================================
+    const allCreatedDates = allStripeSubs.map(s => s.created).filter(Boolean)
+    const oldestStripeSub = allCreatedDates.length > 0 ? Math.min(...allCreatedDates) : Date.now() / 1000
+    const businessAgeDays = (Date.now() / 1000 - oldestStripeSub) / (24 * 3600)
+    const businessAgeMonths = Math.max(1, businessAgeDays / 30)
+
+    // ========================================
+    // PROYECCIÓN DE VENTAS (Stripe como fuente principal)
     // ========================================
 
-    // Obtener precisión histórica para calcular pesos
+    // Obtener precisión histórica (para tracking, no para pesos)
     const accuracyData = await getPredictionAccuracy(supabase)
-    const methodWeights = calculateMethodWeights(accuracyData)
 
-    // MÉTODO 1: Por registros (largo plazo)
-    // Fórmula: Registros/día × Tasa conversión global
+    // MÉTODO 1: Por registros (referencia)
     const method1_salesPerDay = dailyRegistrationRate * conversionRate
     const method1_salesPerMonth = method1_salesPerDay * 30
 
-    // MÉTODO 2: Por usuarios activos (corto plazo)
-    // Fórmula: Usuarios FREE activos × Tasa conversión semanal
-    const method2_salesPerMonth = weeklyActiveFree.length * weeklyConversionRate * 4 // 4 semanas
+    // MÉTODO 2: Por usuarios activos (referencia)
+    const method2_salesPerMonth = weeklyActiveFree.length * weeklyConversionRate * 4
 
-    // MÉTODO 3: Por histórico - ELIMINADO (error ±109%, muy impreciso)
-    // Se mantiene solo para tracking histórico pero no se usa en proyecciones
+    // MÉTODO 3: Por Stripe con ventana móvil y tendencia (PRINCIPAL)
+    const nowTs = Date.now() / 1000
+    const cancelPendingCount = stripeSubs.filter(s => s.cancel_at_period_end).length
 
-    // Proyección combinada de 2 métodos (registros + activos)
-    // El método "por histórico" fue eliminado por tener error promedio de ±109%
+    // Ventana: todo el histórico disponible (hasta 90 días)
+    const windowDays = Math.min(90, businessAgeDays)
+    const windowStartTs = nowTs - windowDays * 24 * 3600
+    const subsInWindow = allStripeSubs.filter(s => s.created >= windowStartTs)
+    const canceledInWindow = stripeCanceledSubs.filter(s => s.canceled_at && s.canceled_at >= windowStartTs)
+
+    // Agrupar nuevas subs por semana
+    const weekSecs = 7 * 24 * 3600
+    const numWeeks = Math.max(1, Math.ceil(windowDays / 7))
+    const weeklyBuckets = []
+
+    for (let i = 0; i < numWeeks; i++) {
+      const wStart = windowStartTs + i * weekSecs
+      const wEnd = wStart + weekSecs
+      const newInWeek = subsInWindow.filter(s => s.created >= wStart && s.created < wEnd).length
+      const canceledInWeek = canceledInWindow.filter(s => s.canceled_at >= wStart && s.canceled_at < wEnd).length
+      weeklyBuckets.push({ weekIndex: i, newSubs: newInWeek, canceled: canceledInWeek })
+    }
+
+    // Regresión lineal: y = intercept + slope * x (x = semana, y = nuevas subs)
+    const nW = weeklyBuckets.length
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0
+    for (const b of weeklyBuckets) {
+      sumX += b.weekIndex
+      sumY += b.newSubs
+      sumXY += b.weekIndex * b.newSubs
+      sumX2 += b.weekIndex * b.weekIndex
+    }
+    const meanX = sumX / nW
+    const meanY = sumY / nW
+    const slope = nW > 1 && (sumX2 - nW * meanX * meanX) !== 0
+      ? (sumXY - nW * meanX * meanY) / (sumX2 - nW * meanX * meanX)
+      : 0
+
+    // Tendencia: comparar pendiente con la media
+    let trend = 'stable'
+    let trendLabel = 'Estable'
+    if (nW >= 3 && meanY > 0) {
+      const slopePct = (slope / meanY) * 100
+      if (slopePct > 20) { trend = 'accelerating'; trendLabel = 'Acelerando' }
+      else if (slopePct < -20) { trend = 'decelerating'; trendLabel = 'Desacelerando' }
+    }
+
+    // Proyección: promedio global + ajuste por tendencia reciente
+    // Con poco historial, damos más peso al promedio global (menos ruido)
+    // Conforme tengamos más semanas, más peso a lo reciente
+    const avgPerWeek = meanY
+    const recentWeeks = weeklyBuckets.slice(-2)
+    const recentAvgPerWeek = recentWeeks.reduce((s, w) => s + w.newSubs, 0) / recentWeeks.length
+    const recencyWeight = Math.min(0.6, nW / 12) // 0 → 0.6 progresivo
+    const projectedPerWeek = avgPerWeek * (1 - recencyWeight) + recentAvgPerWeek * recencyWeight
+    const method3_salesPerMonth = Math.round(projectedPerWeek * (30 / 7) * 100) / 100
+
+    // Datos últimos 30 días (para mostrar)
+    const thirtyDaysAgoTs = nowTs - 30 * 24 * 3600
+    const newSubsLast30Days = allStripeSubs.filter(s => s.created >= thirtyDaysAgoTs).length
+    const canceledLast30Days = stripeCanceledSubs.filter(s => s.canceled_at && s.canceled_at >= thirtyDaysAgoTs).length
+
+    // Proyección combinada: Stripe dominante (70%), M1/M2 como corrección menor (15% cada uno)
+    const WEIGHTS = { stripe: 0.70, registrations: 0.15, active: 0.15 }
     let combinedSalesPerMonth = 0
     let totalWeight = 0
 
+    if (method3_salesPerMonth > 0) {
+      combinedSalesPerMonth += method3_salesPerMonth * WEIGHTS.stripe
+      totalWeight += WEIGHTS.stripe
+    }
     if (method1_salesPerMonth > 0 && isFinite(method1_salesPerMonth)) {
-      combinedSalesPerMonth += method1_salesPerMonth * methodWeights.by_registrations
-      totalWeight += methodWeights.by_registrations
+      combinedSalesPerMonth += method1_salesPerMonth * WEIGHTS.registrations
+      totalWeight += WEIGHTS.registrations
     }
     if (method2_salesPerMonth > 0 && isFinite(method2_salesPerMonth)) {
-      combinedSalesPerMonth += method2_salesPerMonth * methodWeights.by_active_users
-      totalWeight += methodWeights.by_active_users
+      combinedSalesPerMonth += method2_salesPerMonth * WEIGHTS.active
+      totalWeight += WEIGHTS.active
     }
-    // by_historic eliminado del cálculo combinado
+    if (totalWeight > 0) combinedSalesPerMonth /= totalWeight
 
-    // Normalizar si no todos los métodos tienen datos
-    if (totalWeight > 0 && totalWeight < 1) {
-      combinedSalesPerMonth = combinedSalesPerMonth / totalWeight
+    const methodWeights = {
+      by_registrations: Math.round(WEIGHTS.registrations * 100),
+      by_active_users: Math.round(WEIGHTS.active * 100),
+      by_historic: Math.round(WEIGHTS.stripe * 100)
     }
 
-    const validMethods = [method1_salesPerMonth, method2_salesPerMonth].filter(m => m > 0 && isFinite(m))
+    const validMethods = [method1_salesPerMonth, method2_salesPerMonth, method3_salesPerMonth].filter(m => m > 0 && isFinite(m))
 
-    // Usar proyección combinada ponderada para todas las estimaciones
-    const expectedSalesPerMonth = combinedSalesPerMonth > 0 ? combinedSalesPerMonth : method1_salesPerMonth
+    // Proyección principal basada en datos reales
+    const expectedSalesPerMonth = combinedSalesPerMonth > 0 ? combinedSalesPerMonth : method3_salesPerMonth
     const expectedSalesPerDay = expectedSalesPerMonth / 30
 
     // MRR por nueva suscripción (ponderado por distribución real de planes)
@@ -648,10 +729,16 @@ export async function GET() {
     const totalRefundsCount = refundedUserIds.size    // Solo las que tuvieron refund
     const cancelingSubscriptions = activeSubscriptions.filter(s => s.cancel_at_period_end)
 
-    // Churn mensual: cancelaciones totales / pagadores únicos brutos
-    // Si no hay datos suficientes, usar 5% mensual (típico B2C SaaS)
-    const churnMonthly = uniquePayingUsersGross > 5
-      ? Math.max(0.05, totalCancellations / uniquePayingUsersGross) // Mínimo 5%
+    // Churn mensual basado en datos REALES de Stripe (no cancellation_feedback)
+    const stripeChurnedCount = stripeCanceledSubs.length // Subs realmente canceladas en Stripe
+    const stripeCancelPendingCount = cancelingSubscriptions.length // cancel_at_period_end
+    const totalStripeEver = allStripeSubs.length
+
+    // Churn mensual = canceladas_por_mes / base_activa_actual
+    // Solo contamos las realmente canceladas en Stripe, no las de cancellation_feedback
+    const canceledPerMonth = stripeChurnedCount / businessAgeMonths
+    const churnMonthly = stripeSubs.length > 5
+      ? Math.max(0.03, Math.min(0.15, canceledPerMonth / stripeSubs.length))
       : 0.05 // Default 5% si pocos datos
 
     // Proyección de MRR CON CHURN
@@ -780,7 +867,7 @@ export async function GET() {
             dailyRegistrations: Math.round(dailyRegistrationRate * 10) / 10,
             conversionRate: Math.round(conversionRate * 10000) / 100 // %
           },
-          weight: Math.round(methodWeights.by_registrations * 100),  // Peso en %
+          weight: methodWeights.by_registrations,  // Peso en %
           bestFor: 'Proyección a largo plazo'
         },
         // Método 2: Por usuarios activos (corto plazo)
@@ -793,18 +880,41 @@ export async function GET() {
             activeFreeUsers: weeklyActiveFree.length,
             weeklyConversionRate: Math.round(weeklyConversionRate * 10000) / 100 // %
           },
-          weight: Math.round(methodWeights.by_active_users * 100),  // Peso en %
+          weight: methodWeights.by_active_users,  // Peso en %
           bestFor: 'Proyección a corto plazo (próximas semanas)'
         },
-        // Método "Por histórico" eliminado - tenía error promedio de ±109%
-        // Promedio PONDERADO de los 2 métodos
+        // Método 3: Por Stripe con ventana móvil y tendencia (PRINCIPAL)
+        byHistoric: {
+          name: 'Por Stripe (real)',
+          description: `Ventana ${Math.round(windowDays)} días con tendencia`,
+          salesPerMonth: method3_salesPerMonth,
+          revenuePerMonth: Math.round(method3_salesPerMonth * avgTicket * 100) / 100,
+          inputs: {
+            newLast30Days: newSubsLast30Days,
+            canceledLast30Days: canceledLast30Days,
+            cancelPending: cancelPendingCount,
+            windowDays: Math.round(windowDays),
+            weeksAnalyzed: nW,
+            avgPerWeek: Math.round(avgPerWeek * 10) / 10,
+            recentAvgPerWeek: Math.round(recentAvgPerWeek * 10) / 10,
+          },
+          trend: {
+            direction: trend,
+            label: trendLabel,
+            slopePerWeek: Math.round(slope * 100) / 100,  // cambio semanal en subs
+          },
+          weeklyBuckets: weeklyBuckets.map(b => ({ new: b.newSubs, canceled: b.canceled })),
+          weight: methodWeights.by_historic,
+          bestFor: 'Dato real de crecimiento (fuente principal)'
+        },
+        // Proyección combinada: Stripe 70% + M1 15% + M2 15%
         combined: {
           name: 'Combinado',
-          description: 'Promedio ponderado de registros + activos',
+          description: 'Stripe 70% + registros 15% + activos 15%',
           salesPerMonth: Math.round(combinedSalesPerMonth * 100) / 100,
           revenuePerMonth: Math.round(combinedSalesPerMonth * avgTicket * 100) / 100,
           methodsUsed: validMethods.length,
-          isWeighted: accuracyData?.hasData || false  // true si usa pesos basados en precisión
+          weights: methodWeights
         }
       },
 
@@ -843,15 +953,17 @@ export async function GET() {
         newSubsPerMonth: Math.round(expectedSalesPerMonth * 100) / 100,
         // Churn y refunds
         churn: {
-          monthlyRate: Math.round(churnMonthly * 1000) / 10, // % mensual aplicado
-          calculatedRate: uniquePayingUsersGross > 0
-            ? Math.round((totalCancellations / uniquePayingUsersGross) * 1000) / 10 // % real calculado
+          monthlyRate: Math.round(churnMonthly * 1000) / 10, // % mensual aplicado (normalizado)
+          calculatedRate: Math.round(churnMonthly * 1000) / 10, // % mensual real
+          lifetimeRate: uniquePayingUsersGross > 0
+            ? Math.round((totalCancellations / uniquePayingUsersGross) * 1000) / 10
             : 0,
-          payingUsers: uniquePayingUsersGross, // usuarios pagadores brutos (base para churn)
-          totalCancellations: totalCancellations, // todas las cancelaciones
-          totalRefunds: totalRefundsCount, // solo las que tuvieron refund
-          refundAmount: Math.round(totalRefundAmount * 100) / 100, // € devueltos
-          isMinimum: uniquePayingUsersGross > 5 && (totalCancellations / uniquePayingUsersGross) < 0.05 // si se aplicó mínimo 5%
+          businessAgeMonths: Math.round(businessAgeMonths * 10) / 10,
+          payingUsers: uniquePayingUsersGross,
+          totalCancellations: totalCancellations,
+          totalRefunds: totalRefundsCount,
+          refundAmount: Math.round(totalRefundAmount * 100) / 100,
+          isMinimum: churnMonthly <= 0.03
         },
         byPlan: {
           semester: semesterCount,
@@ -864,9 +976,7 @@ export async function GET() {
         // Explicación de las fórmulas
         explanation: {
           mrrCurrent: `${activeSubscriptions.filter(s => !s.cancel_at_period_end).length} subs activas (${stripeSubs.length} Stripe + ${(manualSubsData || []).length} manuales, excl. ${cancelingSubscriptions.length} cancelando)`,
-          churnApplied: uniquePayingUsersGross > 5 && (totalCancellations / uniquePayingUsersGross) < 0.05
-            ? `Churn real ${Math.round((totalCancellations / uniquePayingUsersGross) * 100)}% → aplicado mínimo 5%`
-            : `Churn real ${Math.round((totalCancellations / uniquePayingUsersGross) * 100)}% aplicado a proyecciones`,
+          churnApplied: `Churn mensual ${Math.round(churnMonthly * 100)}% (${stripeChurnedCount} canceladas Stripe + ${stripeCancelPendingCount} pendientes en ${businessAgeMonths.toFixed(1)} meses)`,
           projection6m: `MRR × (1-churn)^6 + nuevas subs ajustadas por churn`,
           cancellationsNote: `${totalCancellations} cancelaciones de ${uniquePayingUsersGross} pagadores (${totalRefundsCount} con refund: ${Math.round(totalRefundAmount)}€)`
         }
@@ -885,22 +995,17 @@ export async function GET() {
         next12Months: Math.round(billing12Months * 100) / 100
       },
 
-      // Precisión histórica de predicciones (ya obtenida para calcular pesos)
+      // Precisión histórica de predicciones
       predictionAccuracy: accuracyData ? {
         ...accuracyData,
-        verificationDays: VERIFICATION_DAYS,  // Cada cuántos días se verifica
-        methodWeights: {
-          by_registrations: Math.round(methodWeights.by_registrations * 100),
-          by_active_users: Math.round(methodWeights.by_active_users * 100)
-          // by_historic eliminado (error ±109%)
-        }
+        verificationDays: VERIFICATION_DAYS,
+        methodWeights
       } : null
     }
 
     const response = NextResponse.json(responseData)
 
     // Guardar predicciones del día para tracking (en background, no bloquea respuesta)
-    // byHistoric eliminado del tracking (error ±109%)
     const predictionsToTrack = {
       byRegistrations: {
         salesPerMonth: Math.round(method1_salesPerMonth * 100) / 100,
@@ -916,6 +1021,15 @@ export async function GET() {
         inputs: {
           activeFreeUsers: weeklyActiveFree.length,
           weeklyConversionRate: Math.round(weeklyConversionRate * 10000) / 100
+        }
+      },
+      byHistoric: {
+        salesPerMonth: method3_salesPerMonth,
+        revenuePerMonth: Math.round(method3_salesPerMonth * avgTicket * 100) / 100,
+        inputs: {
+          newLast30Days: newSubsLast30Days,
+          canceledLast30Days: canceledLast30Days,
+          trend: trend
         }
       },
       combined: {
