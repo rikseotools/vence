@@ -1569,10 +1569,10 @@ function PerfilPageContent() {
                       disabled={pushSaving}
                       className="sr-only peer"
                     />
-                    <div className="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:bg-green-500 peer-disabled:opacity-50 transition-colors">
+                    <div className="relative w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:bg-blue-500 peer-disabled:opacity-50 transition-colors">
                       <div className="absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-6 w-6 transition-transform peer-checked:translate-x-7 flex items-center justify-center">
                         {pushNotifications.enabled ? (
-                          <span className="text-xs text-green-600">✓</span>
+                          <span className="text-xs text-blue-600">✓</span>
                         ) : (
                           <span className="text-xs text-gray-400">✕</span>
                         )}
@@ -1587,7 +1587,7 @@ function PerfilPageContent() {
         </div>
 
         {/* NOTIFICACIONES POR EMAIL */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
           <div className="flex items-center space-x-3 mb-4">
             <span className="text-2xl">📧</span>
             <div>
@@ -1614,7 +1614,7 @@ function PerfilPageContent() {
                   disabled={emailPrefSaving}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
               </label>
             </div>
           </div>
@@ -1658,7 +1658,7 @@ function PerfilPageContent() {
                   disabled={emailPrefSaving}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
               </label>
             </div>
           </div>
@@ -1666,8 +1666,8 @@ function PerfilPageContent() {
           {/* Estado de guardado de emails */}
           {emailPrefSaving && (
             <div className="flex items-center justify-center py-4">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600"></div>
-              <span className="ml-2 text-green-600">Guardando preferencias de email...</span>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <span className="ml-2 text-blue-600">Guardando preferencias de email...</span>
             </div>
           )}
         </div>
@@ -1700,97 +1700,62 @@ function PerfilPageContent() {
         </div>
 
         {/* === CATEGORIA: EMAILS DE VENCE (marketing) === */}
-        <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
-          <div className="bg-gray-50 dark:bg-gray-700 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-gray-800 dark:text-white">Emails de Vence</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Reactivacion, bienvenida, motivacion, resumen semanal</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!emailPreferences.unsubscribed_all}
-                  onChange={(e) => handleEmailPrefChange('unsubscribed_all', !e.target.checked)}
-                  disabled={emailPrefSaving}
-                  className="sr-only peer"
-                />
-                <div className={`${toggleClass} peer-checked:bg-blue-500`}></div>
-              </label>
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold text-gray-800 dark:text-white">Emails de Vence</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Bienvenida, reactivacion, recordatorios y resumen semanal</p>
             </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!emailPreferences.unsubscribed_all}
+                onChange={(e) => handleEmailPrefChange('unsubscribed_all', !e.target.checked)}
+                disabled={emailPrefSaving}
+                className="sr-only peer"
+              />
+              <div className={`${toggleClass} peer-checked:bg-blue-500`}></div>
+            </label>
           </div>
-
-          {!emailPreferences.unsubscribed_all && (
-            <div className="p-4 space-y-3">
-              {[
-                { key: 'email_reactivacion', label: 'Reactivacion', desc: 'Recordatorio cuando llevas 7-13 dias sin estudiar' },
-                { key: 'email_urgente', label: 'Urgentes', desc: 'Recordatorio fuerte cuando llevas 14+ dias sin estudiar' },
-                { key: 'email_bienvenida_motivacional', label: 'Motivacion', desc: 'Ayuda para dar el primer paso tras registrarte' },
-                { key: 'email_bienvenida_inmediato', label: 'Bienvenida', desc: 'Email de bienvenida al registrarte' },
-                { key: 'email_resumen_semanal', label: 'Resumen semanal', desc: 'Resumen de tu progreso y articulos a repasar' },
-              ].map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between pl-4">
-                  <div>
-                    <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</h5>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{desc}</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={(emailPreferences as unknown as Record<string, boolean>)[key] ?? true}
-                      onChange={(e) => handleEmailPrefChange(key, e.target.checked)}
-                      disabled={emailPrefSaving}
-                      className="sr-only peer"
-                    />
-                    <div className={`${toggleClass} peer-checked:bg-blue-500 peer-disabled:opacity-50`}></div>
-                  </label>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* === CATEGORIA: NEWSLETTER === */}
-        <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
-          <div className="bg-gray-50 dark:bg-gray-700 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-gray-800 dark:text-white">Newsletter y novedades</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Boletines, alertas BOE, novedades de tu oposicion</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!emailPreferences.email_newsletter_disabled}
-                  onChange={(e) => handleEmailPrefChange('email_newsletter_disabled', !e.target.checked)}
-                  disabled={emailPrefSaving}
-                  className="sr-only peer"
-                />
-                <div className={`${toggleClass} peer-checked:bg-purple-500`}></div>
-              </label>
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold text-gray-800 dark:text-white">Newsletter y novedades</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Boletines, alertas BOE, novedades de tu oposicion</p>
             </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!emailPreferences.email_newsletter_disabled}
+                onChange={(e) => handleEmailPrefChange('email_newsletter_disabled', !e.target.checked)}
+                disabled={emailPrefSaving}
+                className="sr-only peer"
+              />
+              <div className={`${toggleClass} peer-checked:bg-blue-500`}></div>
+            </label>
           </div>
         </div>
 
         {/* === CATEGORIA: SOPORTE === */}
-        <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
-          <div className="bg-gray-50 dark:bg-gray-700 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-gray-800 dark:text-white">Soporte y transaccional</h4>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Respuestas a impugnaciones, soporte, recordatorio renovacion</p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={!emailPreferences.email_soporte_disabled}
-                  onChange={(e) => handleEmailPrefChange('email_soporte_disabled', !e.target.checked)}
-                  disabled={emailPrefSaving}
-                  className="sr-only peer"
-                />
-                <div className={`${toggleClass} peer-checked:bg-orange-500`}></div>
-              </label>
+        <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold text-gray-800 dark:text-white">Soporte y transaccional</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Respuestas a impugnaciones, soporte, recordatorio renovacion</p>
             </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!emailPreferences.email_soporte_disabled}
+                onChange={(e) => handleEmailPrefChange('email_soporte_disabled', !e.target.checked)}
+                disabled={emailPrefSaving}
+                className="sr-only peer"
+              />
+              <div className={`${toggleClass} peer-checked:bg-blue-500`}></div>
+            </label>
           </div>
         </div>
 
@@ -1911,7 +1876,7 @@ function PerfilPageContent() {
                       disabled={avatarModeLoading || avatarModeSaving}
                       className={`relative w-11 h-6 rounded-full transition-colors duration-300 ${
                         avatarMode === 'automatic'
-                          ? 'bg-purple-500'
+                          ? 'bg-blue-500'
                           : 'bg-gray-300 dark:bg-gray-600'
                       } ${(avatarModeLoading || avatarModeSaving) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     >

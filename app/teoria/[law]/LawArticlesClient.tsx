@@ -1,7 +1,7 @@
-// app/teoria/[law]/LawArticlesClient.js - COMPONENTE CLIENTE CON TODA LA LÓGICA
+// app/teoria/[law]/LawArticlesClient.tsx - COMPONENTE CLIENTE CON TODA LA LÓGICA
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, MouseEvent } from 'react'
 import { fetchLawArticles, fetchMultipleArticlesOfficialExamData, fetchLawSections } from '@/lib/teoriaFetchers'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
@@ -11,21 +11,63 @@ import {
   ArrowLeftIcon
 } from '@heroicons/react/24/outline'
 
+// Type for useAuth context (AuthContext is JS, so we type it manually)
+interface AuthContextValue {
+  user: { id: string; email?: string } | null
+  supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
+}
+
+interface LawArticle {
+  id: string
+  article_number: string
+  title: string
+  content?: string
+}
+
+interface LawData {
+  law: {
+    short_name: string
+    name: string
+    slug: string
+    description?: string | null
+    video_url?: string | null
+  }
+  articles: LawArticle[]
+  notFound?: boolean
+  message?: string
+}
+
+interface Section {
+  title: string
+  articleRange?: { start: number; end: number }
+}
+
+interface OfficialExamInfo {
+  hasOfficialExams: boolean
+  totalOfficialQuestions: number
+  latestExamDate?: string
+}
+
+interface LawArticlesClientProps {
+  params: Promise<{ law: string }>
+  searchParams: Promise<Record<string, string | undefined>>
+}
+
 // Función para detectar si una ley es virtual (sin artículos legales reales)
-function isVirtualLaw(law) {
+function isVirtualLaw(law: { description?: string | null }) {
   return law?.description?.toLowerCase().includes('ficticia') ||
          law?.description?.toLowerCase().includes('virtual')
 }
 
 // Función para extraer ID de video de YouTube
-function getYouTubeEmbedUrl(url) {
+function getYouTubeEmbedUrl(url: string | null | undefined) {
   if (!url) return null
   const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)
   return match ? `https://www.youtube.com/embed/${match[1]}` : null
 }
 
 // Mapeo temporal de videos para leyes virtuales (hasta que se añada video_url a la BD)
-const VIRTUAL_LAW_VIDEOS = {
+const VIRTUAL_LAW_VIDEOS: Record<string, string> = {
   'Windows 11': 'https://www.youtube.com/watch?v=RuYQ8EqwV4U',
   'Procesadores de texto': 'https://www.youtube.com/watch?v=zneo5Ys7z-E',
   'Informática Básica': 'https://www.youtube.com/watch?v=PvMTv5GncMM',
@@ -34,21 +76,21 @@ const VIRTUAL_LAW_VIDEOS = {
   'Base de datos: Access': 'https://www.youtube.com/watch?v=X39ZNkBnepM',
 }
 
-export default function LawArticlesClient({ params, searchParams }) {
-  const { user, supabase } = useAuth()
-  const [lawData, setLawData] = useState(null)
-  const [error, setError] = useState(null)
-  const [problematicArticles, setProblematicArticles] = useState([])
+export default function LawArticlesClient({ params, searchParams }: LawArticlesClientProps) {
+  const { user, supabase } = useAuth() as AuthContextValue
+  const [lawData, setLawData] = useState<LawData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [problematicArticles, setProblematicArticles] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [lawSlug, setLawSlug] = useState(null)
-  const [notificationId, setNotificationId] = useState(null)
-  const [selectedArticle, setSelectedArticle] = useState(null)
+  const [lawSlug, setLawSlug] = useState<string | null>(null)
+  const [notificationId, setNotificationId] = useState<string | null>(null)
+  const [selectedArticle, setSelectedArticle] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [officialExamData, setOfficialExamData] = useState({})
-  const [userOposicion, setUserOposicion] = useState(null)
+  const [officialExamData, setOfficialExamData] = useState<Record<string, OfficialExamInfo>>({})
+  const [userOposicion, setUserOposicion] = useState<string | null>(null)
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false)
-  const [selectedSectionFilter, setSelectedSectionFilter] = useState(null)
-  const [availableSections, setAvailableSections] = useState([])
+  const [selectedSectionFilter, setSelectedSectionFilter] = useState<Section[] | null>(null)
+  const [availableSections, setAvailableSections] = useState<Section[]>([])
   const [sectionsLoaded, setSectionsLoaded] = useState(false)
   const [showAllArticles, setShowAllArticles] = useState(false)
 
@@ -62,7 +104,7 @@ export default function LawArticlesClient({ params, searchParams }) {
       const resolvedParams = await params
       const resolvedSearchParams = await searchParams
       setLawSlug(resolvedParams.law)
-      setNotificationId(resolvedSearchParams?.notification_id)
+      setNotificationId(resolvedSearchParams?.notification_id ?? null)
     }
     resolveParams()
   }, [params, searchParams])
@@ -80,7 +122,7 @@ export default function LawArticlesClient({ params, searchParams }) {
           .single()
         
         if (!error && profile?.target_oposicion) {
-          setUserOposicion(profile.target_oposicion)
+          setUserOposicion(profile.target_oposicion as string)
         }
       } catch (err) {
         console.error('Error cargando oposición del usuario:', err)
@@ -108,22 +150,22 @@ export default function LawArticlesClient({ params, searchParams }) {
           return
         }
 
-        setLawData(data)
-        
+        setLawData(data as LawData)
+
         // Cargar secciones de la ley para determinar si mostrar filtro
         try {
           const sectionsData = await fetchLawSections(lawSlug)
           setAvailableSections(sectionsData.sections || [])
           console.log('📚 Secciones cargadas para', lawSlug, ':', sectionsData.sections?.length || 0)
-        } catch (sectionsError) {
-          console.warn('⚠️ No se pudieron cargar secciones para', lawSlug, ':', sectionsError.message)
+        } catch (sectionsError: unknown) {
+          console.warn('⚠️ No se pudieron cargar secciones para', lawSlug, ':', (sectionsError as Error).message)
           setAvailableSections([])
         }
         setSectionsLoaded(true)
         
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('❌ Error cargando artículos:', err)
-        setError(err.message)
+        setError((err as Error).message)
       } finally {
         setLoading(false)
       }
@@ -147,7 +189,7 @@ export default function LawArticlesClient({ params, searchParams }) {
         const articlesParam = urlParams.get('articles')
         console.log('📄 URL articlesParam:', articlesParam)
         
-        let problematicArticleNumbers = []
+        let problematicArticleNumbers: string[] = []
         
         if (articlesParam) {
           // Si vienen artículos en la URL (desde generateActionUrl)
@@ -230,12 +272,16 @@ export default function LawArticlesClient({ params, searchParams }) {
       
       try {
         console.log('🏛️ Cargando datos de examen oficial para artículos problemáticos:', problematicArticles)
-        const examData = await fetchMultipleArticlesOfficialExamData(
+        const examData = await (fetchMultipleArticlesOfficialExamData as (
+          articleNumbers: string[],
+          lawShortName: string,
+          userOposicion?: string | null,
+        ) => Promise<Record<string, OfficialExamInfo>>)(
           problematicArticles,
           lawData.law.short_name,
           userOposicion
         )
-        setOfficialExamData(examData)
+        setOfficialExamData(examData as Record<string, OfficialExamInfo>)
         console.log('✅ Datos de examen oficial cargados:', examData)
       } catch (error) {
         console.error('❌ Error cargando datos de examen oficial:', error)
@@ -246,7 +292,7 @@ export default function LawArticlesClient({ params, searchParams }) {
   }, [problematicArticles, lawData?.law?.short_name, userOposicion])
 
   // Función para abrir modal del artículo
-  const handleArticleClick = (e, articleNumber) => {
+  const handleArticleClick = (e: MouseEvent, articleNumber: string) => {
     e.preventDefault()
     console.log('🖱️ Click en artículo:', articleNumber)
     console.log('📋 lawSlug para modal:', lawSlug)
@@ -429,7 +475,7 @@ export default function LawArticlesClient({ params, searchParams }) {
     : articles
 
   // Handler para selección de secciones (recibe array del modal)
-  const handleSectionSelect = (sections) => {
+  const handleSectionSelect = (sections: Section[]) => {
     setSelectedSectionFilter(sections && sections.length > 0 ? sections : null)
   }
 
@@ -553,7 +599,7 @@ export default function LawArticlesClient({ params, searchParams }) {
                             <div className="mt-1 text-xs text-blue-600">
                               {officialExamData[article.article_number].totalOfficialQuestions} pregunta{officialExamData[article.article_number].totalOfficialQuestions !== 1 ? 's' : ''} oficial{officialExamData[article.article_number].totalOfficialQuestions !== 1 ? 'es' : ''}
                               {officialExamData[article.article_number].latestExamDate && (
-                                <span> • Último: {new Date(officialExamData[article.article_number].latestExamDate).getFullYear()}</span>
+                                <span> • Último: {new Date(officialExamData[article.article_number].latestExamDate!).getFullYear()}</span>
                               )}
                             </div>
                           )}
@@ -717,7 +763,8 @@ export default function LawArticlesClient({ params, searchParams }) {
         onClose={() => setIsSectionModalOpen(false)}
         lawSlug={lawSlug}
         onSectionSelect={handleSectionSelect}
-        selectedSections={selectedSectionFilter || []}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        selectedSections={(selectedSectionFilter || []) as any}
       />
     </div>
   )

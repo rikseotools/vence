@@ -453,18 +453,31 @@ export async function getFilteredQuestions(
     }
 
     // 1️⃣ Determinar qué temas consultar
-    const topicsToQuery = multipleTopics && multipleTopics.length > 0
+    let topicsToQuery = multipleTopics && multipleTopics.length > 0
       ? multipleTopics
       : topicNumber > 0 ? [topicNumber] : []
 
     // 🆕 MODO SIN TEMA: Si no hay tema pero sí hay leyes seleccionadas, filtrar directamente por ley
     const isLawOnlyMode = topicsToQuery.length === 0 && selectedLaws && selectedLaws.length > 0
 
-    if (topicsToQuery.length === 0 && !isLawOnlyMode) {
-      return {
-        success: false,
-        error: 'Debe especificar al menos un tema (topicNumber o multipleTopics) o una ley (selectedLaws)',
+    // 🆕 MODO GLOBAL: Si no hay tema ni ley, obtener todos los temas del positionType (test rápido general)
+    const isGlobalMode = topicsToQuery.length === 0 && !isLawOnlyMode
+
+    if (isGlobalMode) {
+      console.log(`🎯 Modo global: Buscando preguntas de todos los temas de ${positionType}`)
+      const allTopics = await db
+        .select({ topicNumber: topics.topicNumber })
+        .from(topics)
+        .where(eq(topics.positionType, positionType))
+
+      if (!allTopics || allTopics.length === 0) {
+        return {
+          success: false,
+          error: `No se encontraron temas para ${positionType}`,
+        }
       }
+
+      topicsToQuery.push(...allTopics.map(t => t.topicNumber))
     }
 
     let filteredMappings: Array<{
