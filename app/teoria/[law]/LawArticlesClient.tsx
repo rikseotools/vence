@@ -477,6 +477,10 @@ export default function LawArticlesClient({ params, searchParams }: LawArticlesC
   // Handler para selección de secciones (recibe array del modal)
   const handleSectionSelect = (sections: Section[]) => {
     setSelectedSectionFilter(sections && sections.length > 0 ? sections : null)
+    // Mostrar todos los artículos filtrados (no solo los primeros 5)
+    if (sections && sections.length > 0) {
+      setShowAllArticles(true)
+    }
   }
 
   // Handler para limpiar filtro de sección
