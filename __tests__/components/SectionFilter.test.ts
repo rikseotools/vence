@@ -33,8 +33,18 @@ function filterArticlesBySections(articles, selectedSectionFilter) {
   })
 }
 
-function handleSectionSelect(sections) {
-  return sections && sections.length > 0 ? sections : null
+/**
+ * Simula el handler completo de handleSectionSelect en LawArticlesClient.tsx
+ * Devuelve { selectedSectionFilter, showAllArticles } para testear ambos estados
+ */
+function handleSectionSelect(sections, currentShowAllArticles = false) {
+  const selectedSectionFilter = sections && sections.length > 0 ? sections : null
+  let showAllArticles = currentShowAllArticles
+  // FIX 2026-02-26: Al filtrar por sección, mostrar todos los artículos filtrados
+  if (sections && sections.length > 0) {
+    showAllArticles = true
+  }
+  return { selectedSectionFilter, showAllArticles }
 }
 
 function getBadgeText(selectedSectionFilter) {
@@ -334,25 +344,95 @@ describe('filterArticlesBySections - Filtrado de artículos', () => {
 })
 
 describe('handleSectionSelect - Handler del modal', () => {
-  test('array con secciones devuelve el array', () => {
+  test('array con secciones devuelve el array y activa showAllArticles', () => {
     const sections = [mockSections.preliminar, mockSections.titulo2]
-    expect(handleSectionSelect(sections)).toEqual(sections)
+    const result = handleSectionSelect(sections)
+    expect(result.selectedSectionFilter).toEqual(sections)
+    expect(result.showAllArticles).toBe(true)
   })
 
-  test('array de un elemento devuelve el array', () => {
-    expect(handleSectionSelect([mockSections.preliminar])).toEqual([mockSections.preliminar])
+  test('array de un elemento devuelve el array y activa showAllArticles', () => {
+    const result = handleSectionSelect([mockSections.preliminar])
+    expect(result.selectedSectionFilter).toEqual([mockSections.preliminar])
+    expect(result.showAllArticles).toBe(true)
   })
 
-  test('array vacío devuelve null', () => {
-    expect(handleSectionSelect([])).toBeNull()
+  test('array vacío devuelve null y no activa showAllArticles', () => {
+    const result = handleSectionSelect([])
+    expect(result.selectedSectionFilter).toBeNull()
+    expect(result.showAllArticles).toBe(false)
   })
 
-  test('null devuelve null', () => {
-    expect(handleSectionSelect(null)).toBeNull()
+  test('null devuelve null y no activa showAllArticles', () => {
+    const result = handleSectionSelect(null)
+    expect(result.selectedSectionFilter).toBeNull()
+    expect(result.showAllArticles).toBe(false)
   })
 
-  test('undefined devuelve null', () => {
-    expect(handleSectionSelect(undefined)).toBeNull()
+  test('undefined devuelve null y no activa showAllArticles', () => {
+    const result = handleSectionSelect(undefined)
+    expect(result.selectedSectionFilter).toBeNull()
+    expect(result.showAllArticles).toBe(false)
+  })
+
+  test('showAllArticles se activa incluso si antes estaba false', () => {
+    const result = handleSectionSelect([mockSections.preliminar], false)
+    expect(result.showAllArticles).toBe(true)
+  })
+
+  test('showAllArticles se mantiene true si ya estaba true y se filtra', () => {
+    const result = handleSectionSelect([mockSections.preliminar], true)
+    expect(result.showAllArticles).toBe(true)
+  })
+
+  test('limpiar filtro (vacío) no resetea showAllArticles si ya estaba true', () => {
+    // Al limpiar el filtro pasando [], showAllArticles no cambia (se mantiene como estaba)
+    const result = handleSectionSelect([], true)
+    // showAllArticles se mantiene como currentShowAllArticles (true)
+    expect(result.showAllArticles).toBe(true)
+  })
+})
+
+describe('Regresión: bug filtro + showAllArticles (FIX 2026-02-26)', () => {
+  const INITIAL_ARTICLES_COUNT = 5
+
+  test('sin filtro y showAllArticles=false, solo muestra primeros 5 artículos', () => {
+    const filteredArticles = filterArticlesBySections(mockArticles, null)
+    const visibleArticles = filteredArticles.slice(0, INITIAL_ARTICLES_COUNT)
+    expect(visibleArticles).toHaveLength(5)
+    expect(filteredArticles.length).toBeGreaterThan(5)
+  })
+
+  test('BUG ORIGINAL: filtrar por Título IV sin showAllArticles=true cortaba a 5', () => {
+    const filteredArticles = filterArticlesBySections(mockArticles, [mockSections.titulo4])
+    // Título IV tiene artículos 53, 54, 77 = 3 artículos (menos de 5, así que se verían todos)
+    // Pero con Título V + VI tendríamos más
+    const multiFilter = filterArticlesBySections(mockArticles, [
+      mockSections.titulo4,
+      mockSections.titulo5,
+      mockSections.titulo6
+    ])
+    expect(multiFilter).toHaveLength(7) // 53, 54, 77, 100, 112, 128, 133
+
+    // Sin el fix: solo se verían 5 de los 7
+    const withoutFix = multiFilter.slice(0, INITIAL_ARTICLES_COUNT)
+    expect(withoutFix).toHaveLength(5) // Se perdían 128 y 133
+
+    // Con el fix: handleSectionSelect activa showAllArticles
+    const { showAllArticles } = handleSectionSelect([
+      mockSections.titulo4,
+      mockSections.titulo5,
+      mockSections.titulo6
+    ])
+    expect(showAllArticles).toBe(true)
+    // Ahora se muestran todos
+    const withFix = showAllArticles ? multiFilter : multiFilter.slice(0, INITIAL_ARTICLES_COUNT)
+    expect(withFix).toHaveLength(7) // Todos visibles
+  })
+
+  test('FIX: al seleccionar cualquier título, showAllArticles se activa', () => {
+    const { showAllArticles } = handleSectionSelect([mockSections.preliminar])
+    expect(showAllArticles).toBe(true)
   })
 })
 
