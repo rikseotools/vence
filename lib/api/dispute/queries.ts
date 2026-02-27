@@ -2,7 +2,46 @@
 import { getDb } from '@/db/client'
 import { questionDisputes, questions } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
-import type { CreateDisputeResponse, DisputeData } from './schemas'
+import type { CreateDisputeResponse, DisputeData, GetExistingDisputeResponse } from './schemas'
+
+// ============================================
+// OBTENER IMPUGNACIÓN EXISTENTE
+// ============================================
+
+export async function getExistingDispute(
+  questionId: string,
+  userId: string
+): Promise<GetExistingDisputeResponse> {
+  try {
+    const db = getDb()
+
+    const [dispute] = await db
+      .select({
+        id: questionDisputes.id,
+        disputeType: questionDisputes.disputeType,
+        status: questionDisputes.status,
+        createdAt: questionDisputes.createdAt,
+        adminResponse: questionDisputes.adminResponse,
+      })
+      .from(questionDisputes)
+      .where(
+        and(
+          eq(questionDisputes.questionId, questionId),
+          eq(questionDisputes.userId, userId)
+        )
+      )
+      .limit(1)
+
+    return { success: true, data: dispute ?? null }
+  } catch (error: unknown) {
+    console.error('❌ [Dispute] Error obteniendo impugnación existente:', error)
+    return {
+      success: false,
+      data: null,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
 
 // ============================================
 // CREAR IMPUGNACIÓN

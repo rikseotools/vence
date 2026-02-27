@@ -54,6 +54,24 @@ export const createDisputeResponseSchema = z.object({
 export type CreateDisputeResponse = z.infer<typeof createDisputeResponseSchema>
 
 // ============================================
+// RESPONSE: GET EXISTING DISPUTE
+// ============================================
+
+export type ExistingDisputeData = {
+  id: string
+  disputeType: string
+  status: string | null
+  createdAt: string | null
+  adminResponse: string | null
+}
+
+export type GetExistingDisputeResponse = {
+  success: boolean
+  data: ExistingDisputeData | null
+  error?: string
+}
+
+// ============================================
 // VALIDADORES
 // ============================================
 

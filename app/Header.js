@@ -987,10 +987,9 @@ export default function HeaderES() {
       </div>
 
       {/* Modal de QuestionDispute */}
-      <QuestionDispute 
-        questionId={null} // No tenemos questionId específico desde header
+      <QuestionDispute
+        questionId={null}
         user={user}
-        supabase={supabase}
         isOpen={showQuestionDispute}
         onClose={() => setShowQuestionDispute(false)}
       />

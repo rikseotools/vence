@@ -2086,7 +2086,6 @@ export default function TestLayout({
                     <QuestionDispute
                       questionId={currentQuestionUuid || questions[currentQuestion]?.id}
                       user={user}
-                      supabase={supabase}
                     />
 
                     {/* Notificación de artículo hot */}

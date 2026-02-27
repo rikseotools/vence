@@ -15,7 +15,7 @@ interface AuthContextValue {
   supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
 }
 import ArticleModal from './ArticleModal'
-import QuestionDispute from './QuestionDisputeFixed'
+import QuestionDispute from './QuestionDispute'
 import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
 
 // Componentes psicotecnicos para renderizar content_data
@@ -1415,7 +1415,6 @@ export default function OfficialExamLayout({
                       <QuestionDispute
                         questionId={question.id}
                         user={user}
-                        supabase={supabase}
                       />
                     )}
                   </div>

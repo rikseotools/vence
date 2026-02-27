@@ -738,7 +738,6 @@ export default function TestLayoutV2({
                 <QuestionDispute
                   questionId={currentQ?.id || ''}
                   user={user}
-                  supabase={supabase}
                 />
 
                 {/* Botón siguiente (azul) y compartir */}

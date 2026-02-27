@@ -28,7 +28,7 @@ interface AuthContextValue {
   supabase: ReturnType<typeof import('@supabase/supabase-js').createClient>
 }
 import ArticleModal from './ArticleModal'
-import QuestionDispute from './QuestionDisputeFixed'
+import QuestionDispute from './QuestionDispute'
 import MotivationalMessage from './MotivationalMessage'
 import SharePrompt from './SharePrompt'
 import ShareQuestion from './ShareQuestion'
@@ -1264,7 +1264,7 @@ export default function ExamLayout({
 
                 {showFeedback && (
                   <div className="flex flex-wrap gap-2 items-center mt-4">
-                    <QuestionDispute questionId={question.id} user={user} supabase={supabase} />
+                    <QuestionDispute questionId={question.id} user={user} />
                     {/* Compartir pregunta - oculto temporalmente */}
                     <div className="hidden">
                       <button

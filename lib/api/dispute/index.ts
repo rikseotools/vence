@@ -14,7 +14,9 @@ export {
   type CreateDisputeRequest,
   type DisputeData,
   type CreateDisputeResponse,
+  type ExistingDisputeData,
+  type GetExistingDisputeResponse,
 } from './schemas'
 
 // Queries
-export { createDispute } from './queries'
+export { createDispute, getExistingDispute } from './queries'

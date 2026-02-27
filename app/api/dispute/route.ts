@@ -4,7 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 import {
   safeParseCreateDisputeRequest,
   createDispute,
+  getExistingDispute,
   type CreateDisputeResponse,
+  type GetExistingDisputeResponse,
 } from '@/lib/api/dispute'
 
 const getSupabase = () =>
@@ -78,9 +80,60 @@ export async function POST(
   }
 }
 
-export async function GET() {
-  return NextResponse.json(
-    { success: false, error: 'Método no permitido. Usa POST.' },
-    { status: 405 }
-  )
+export async function GET(
+  request: NextRequest
+): Promise<NextResponse<GetExistingDisputeResponse>> {
+  try {
+    // 1. Auth via Bearer token
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+
+    const token = authHeader.split(' ')[1]
+    const {
+      data: { user },
+      error: authError,
+    } = await getSupabase().auth.getUser(token)
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Token inválido' },
+        { status: 401 }
+      )
+    }
+
+    // 2. Parse questionId from query params
+    const { searchParams } = new URL(request.url)
+    const questionId = searchParams.get('questionId')
+
+    if (!questionId) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'questionId es requerido' },
+        { status: 400 }
+      )
+    }
+
+    // Basic UUID validation
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(questionId)) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'questionId debe ser un UUID válido' },
+        { status: 400 }
+      )
+    }
+
+    // 3. Query existing dispute
+    const result = await getExistingDispute(questionId, user.id)
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('❌ [API/dispute] GET Error:', error)
+    return NextResponse.json(
+      { success: false, data: null, error: 'Error interno del servidor' },
+      { status: 500 }
+    )
+  }
 }
