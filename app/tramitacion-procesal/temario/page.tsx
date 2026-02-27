@@ -62,8 +62,8 @@ const BLOQUES = [
       { id: 32, titulo: 'Informática básica', descripcion: 'Hardware y software. Almacenamiento de datos. Sistemas operativos. Seguridad informática.', disponible: false },
       { id: 33, titulo: 'Introducción al sistema operativo Windows', descripcion: 'Entorno Windows. Ventanas, iconos, menús. El escritorio. Menú inicio.', disponible: false },
       { id: 34, titulo: 'El explorador de Windows', descripcion: 'Gestión de carpetas y archivos. Búsquedas. Este equipo y Acceso rápido.', disponible: false },
-      { id: 35, titulo: 'Procesadores de texto: Word 365', descripcion: 'Funciones y utilidades. Creación de documentos. Grabación e impresión.', disponible: false },
-      { id: 36, titulo: 'Correo electrónico: Outlook 365', descripcion: 'Enviar, recibir, responder mensajes. Reglas de mensaje. Libreta de direcciones.', disponible: false },
+      { id: 35, titulo: 'Procesadores de texto: Word 365', descripcion: 'Funciones y utilidades. Creación de documentos. Grabación e impresión.' },
+      { id: 36, titulo: 'Correo electrónico: Outlook 365', descripcion: 'Enviar, recibir, responder mensajes. Reglas de mensaje. Libreta de direcciones.' },
       { id: 37, titulo: 'La Red Internet', descripcion: 'Origen y evolución. Protocolos y servicios. Navegadores web.', disponible: false }
     ]
   }

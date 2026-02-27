@@ -93,10 +93,10 @@ const BLOQUES = [
       { id: 601, displayNum: 1, titulo: 'Informática Básica', descripcion: 'Hardware y software. Sistemas operativos. Almacenamiento de datos.', disponible: false },
       { id: 602, displayNum: 2, titulo: 'Sistema Operativo Windows', descripcion: 'Fundamentos. Configuración del sistema. Copilot de Windows (novedad BOE 2025).', disponible: false },
       { id: 603, displayNum: 3, titulo: 'El Explorador de Windows', descripcion: 'Gestión de carpetas y archivos. Búsquedas.', disponible: false },
-      { id: 604, displayNum: 4, titulo: 'Procesadores de Texto: Word 365', descripcion: 'Edición y formato de documentos. Tablas. Combinación de correspondencia.', disponible: false },
-      { id: 605, displayNum: 5, titulo: 'Hojas de Cálculo: Excel 365', descripcion: 'Fórmulas y funciones. Gráficos. Tablas dinámicas.', disponible: false },
-      { id: 606, displayNum: 6, titulo: 'Bases de Datos: Access 365', descripcion: 'Tablas, consultas, formularios e informes. Relaciones.', disponible: false },
-      { id: 607, displayNum: 7, titulo: 'Correo Electrónico: Outlook 365', descripcion: 'Envío y recepción. Calendario. Contactos.', disponible: false },
+      { id: 604, displayNum: 4, titulo: 'Procesadores de Texto: Word 365', descripcion: 'Edición y formato de documentos. Tablas. Combinación de correspondencia.' },
+      { id: 605, displayNum: 5, titulo: 'Hojas de Cálculo: Excel 365', descripcion: 'Fórmulas y funciones. Gráficos. Tablas dinámicas.' },
+      { id: 606, displayNum: 6, titulo: 'Bases de Datos: Access 365', descripcion: 'Tablas, consultas, formularios e informes. Relaciones.' },
+      { id: 607, displayNum: 7, titulo: 'Correo Electrónico: Outlook 365', descripcion: 'Envío y recepción. Calendario. Contactos.' },
       { id: 608, displayNum: 8, titulo: 'La Red Internet', descripcion: 'Navegación. Buscadores. Seguridad en la red.', disponible: false }
     ]
   }

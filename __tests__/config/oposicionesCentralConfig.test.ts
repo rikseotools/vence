@@ -18,6 +18,7 @@ const KNOWN_SLUGS = [
   'tramitacion-procesal',
   'auxilio-judicial',
   'auxiliar-administrativo-carm',
+  'auxiliar-administrativo-cyl',
 ]
 
 const KNOWN_POSITION_TYPES = [
@@ -26,21 +27,22 @@ const KNOWN_POSITION_TYPES = [
   'tramitacion_procesal',
   'auxilio_judicial',
   'auxiliar_administrativo_carm',
+  'auxiliar_administrativo_cyl',
 ]
 
 describe('Config central de oposiciones', () => {
-  test('ALL_OPOSICION_SLUGS contiene las 5 oposiciones conocidas', () => {
+  test('ALL_OPOSICION_SLUGS contiene las 6 oposiciones conocidas', () => {
     for (const slug of KNOWN_SLUGS) {
       expect(ALL_OPOSICION_SLUGS).toContain(slug)
     }
-    expect(ALL_OPOSICION_SLUGS.length).toBe(5)
+    expect(ALL_OPOSICION_SLUGS.length).toBe(6)
   })
 
-  test('ALL_POSITION_TYPES contiene los 5 positionTypes conocidos', () => {
+  test('ALL_POSITION_TYPES contiene los 6 positionTypes conocidos', () => {
     for (const pt of KNOWN_POSITION_TYPES) {
       expect(ALL_POSITION_TYPES).toContain(pt)
     }
-    expect(ALL_POSITION_TYPES.length).toBe(5)
+    expect(ALL_POSITION_TYPES.length).toBe(6)
   })
 
   test('SLUG_TO_POSITION_TYPE mapea correctamente cada slug', () => {
@@ -49,6 +51,7 @@ describe('Config central de oposiciones', () => {
     expect(SLUG_TO_POSITION_TYPE['tramitacion-procesal']).toBe('tramitacion_procesal')
     expect(SLUG_TO_POSITION_TYPE['auxilio-judicial']).toBe('auxilio_judicial')
     expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-carm']).toBe('auxiliar_administrativo_carm')
+    expect(SLUG_TO_POSITION_TYPE['auxiliar-administrativo-cyl']).toBe('auxiliar_administrativo_cyl')
   })
 
   test('OPOSICION_SLUGS_ENUM funciona con z.enum()', () => {

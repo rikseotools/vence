@@ -39,6 +39,13 @@ const topicVideoCourses: Record<number, {
     totalDurationMinutes: 339,
     description: '60 lecciones en video: tablas, consultas, formularios, informes, macros y seguridad.',
   },
+  111: {
+    slug: 'outlook-365',
+    title: 'Curso de Outlook 365',
+    totalLessons: 3,
+    totalDurationMinutes: 196,
+    description: '45 lecciones en video: gestión de correo, calendario, contactos, configuración y Outlook Online.',
+  },
 }
 
 interface TopicContentViewProps {
