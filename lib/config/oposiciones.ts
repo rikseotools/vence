@@ -428,8 +428,14 @@ export const ALL_OPOSICION_IDS = OPOSICIONES.map(o => o.id)
 /** Todos los slugs de oposición (para URLs) */
 export const ALL_OPOSICION_SLUGS = OPOSICIONES.map(o => o.slug)
 
+/** Tupla de slugs compatible con z.enum() */
+export const OPOSICION_SLUGS_ENUM = ALL_OPOSICION_SLUGS as [string, ...string[]]
+
 /** Todos los positionType (para BD topics.position_type) */
 export const ALL_POSITION_TYPES = OPOSICIONES.map(o => o.positionType)
+
+/** Tupla de positionTypes compatible con z.enum() */
+export const POSITION_TYPES_ENUM = ALL_POSITION_TYPES as [string, ...string[]]
 
 /** Mapa slug → positionType */
 export const SLUG_TO_POSITION_TYPE: Record<string, string> = Object.fromEntries(

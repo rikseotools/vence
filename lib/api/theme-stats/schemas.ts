@@ -1,36 +1,26 @@
 // lib/api/theme-stats/schemas.ts - Schemas de validación para estadísticas por tema
 // V2: Stats derivadas dinámicamente desde article_id + topic_scope por oposición
 import { z } from 'zod'
+import {
+  ALL_OPOSICION_SLUGS,
+  OPOSICION_SLUGS_ENUM,
+  SLUG_TO_POSITION_TYPE,
+} from '@/lib/config/oposiciones'
 
 // ============================================
-// CONSTANTES DE OPOSICIÓN
+// CONSTANTES DE OPOSICIÓN (re-export desde config central)
 // ============================================
 
-// Oposiciones válidas (slug de URL)
-export const VALID_OPOSICIONES = [
-  'auxiliar-administrativo-estado',
-  'administrativo-estado',
-  'tramitacion-procesal',
-  'auxilio-judicial',
-  'auxiliar-administrativo-carm',
-] as const
+export { ALL_OPOSICION_SLUGS as VALID_OPOSICIONES } from '@/lib/config/oposiciones'
+export { SLUG_TO_POSITION_TYPE as OPOSICION_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
-export type OposicionSlug = typeof VALID_OPOSICIONES[number]
-
-// Mapeo de oposición (slug URL) a position_type (DB)
-export const OPOSICION_TO_POSITION_TYPE: Record<OposicionSlug, string> = {
-  'auxiliar-administrativo-estado': 'auxiliar_administrativo',
-  'administrativo-estado': 'administrativo',
-  'tramitacion-procesal': 'tramitacion_procesal',
-  'auxilio-judicial': 'auxilio_judicial',
-  'auxiliar-administrativo-carm': 'auxiliar_administrativo_carm',
-}
+export type OposicionSlug = typeof ALL_OPOSICION_SLUGS[number]
 
 // ============================================
 // REQUEST SCHEMAS
 // ============================================
 
-export const oposicionSlugSchema = z.enum(VALID_OPOSICIONES)
+export const oposicionSlugSchema = z.enum(OPOSICION_SLUGS_ENUM)
 
 export const getThemeStatsRequestSchema = z.object({
   userId: z.string().uuid('ID de usuario inválido'),

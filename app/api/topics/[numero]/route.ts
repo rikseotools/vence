@@ -6,6 +6,7 @@ import {
   isValidTopicNumber,
   type OposicionKey
 } from '@/lib/api/topic-data'
+import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ export async function GET(
     }
 
     // Validar oposición
-    if (!oposicion || !['auxiliar-administrativo-estado', 'administrativo-estado', 'tramitacion-procesal', 'auxilio-judicial', 'auxiliar-administrativo-carm'].includes(oposicion)) {
+    if (!oposicion || !ALL_OPOSICION_SLUGS.includes(oposicion)) {
       return NextResponse.json(
         { success: false, error: 'Oposición no válida' },
         { status: 400 }
@@ -65,7 +66,7 @@ export async function GET(
     // Obtener datos del tema
     const result = await getTopicFullData(
       parseResult.data.topicNumber,
-      parseResult.data.oposicion,
+      parseResult.data.oposicion as OposicionKey,
       parseResult.data.userId
     )
 

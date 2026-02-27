@@ -10,8 +10,8 @@ import type {
   ArticlesByLaw,
   UserProgress,
   OposicionKey,
-  OPOSICION_TO_POSITION_TYPE
 } from './schemas'
+import { SLUG_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
 // Importar módulo compartido
 import {
@@ -24,14 +24,7 @@ import {
 const topicCache = new Map<string, { data: GetTopicDataResponse; timestamp: number }>()
 const CACHE_TTL = 30 * 1000 // 30 segundos - reducido para mejor UX
 
-// Mapa de posición
-const POSITION_TYPE_MAP: Record<OposicionKey, string> = {
-  'auxiliar-administrativo-estado': 'auxiliar_administrativo',
-  'administrativo-estado': 'administrativo',
-  'tramitacion-procesal': 'tramitacion_procesal',
-  'auxilio-judicial': 'auxilio_judicial',
-  'auxiliar-administrativo-carm': 'auxiliar_administrativo_carm',
-}
+// Mapa de posición (desde config central)
 
 // =================================================================
 // 🏛️ MAPEO: positionType → valores válidos de exam_position
@@ -91,7 +84,7 @@ export async function getTopicFullData(
     }
 
     const db = getDb()
-    const positionType = POSITION_TYPE_MAP[oposicion]
+    const positionType = SLUG_TO_POSITION_TYPE[oposicion]
 
     // 1️⃣ OBTENER DATOS DEL TEMA
     const topicResult = await db

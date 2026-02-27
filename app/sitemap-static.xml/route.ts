@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { generateLawSlug } from '@/lib/lawMappingUtils';
+import { OPOSICIONES } from '@/lib/config/oposiciones';
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
 
@@ -29,26 +30,12 @@ export async function GET() {
     { loc: '/nuestras-oposiciones', priority: 0.9, changefreq: 'weekly' },
     // Temarios
     { loc: '/temarios', priority: 0.9, changefreq: 'weekly' },
-    // Auxiliar Administrativo del Estado
-    { loc: '/auxiliar-administrativo-estado', priority: 0.9, changefreq: 'weekly' },
-    { loc: '/auxiliar-administrativo-estado/test', priority: 0.8, changefreq: 'weekly' },
-    { loc: '/auxiliar-administrativo-estado/temario', priority: 0.7, changefreq: 'monthly' },
-    // Administrativo del Estado
-    { loc: '/administrativo-estado', priority: 0.9, changefreq: 'weekly' },
-    { loc: '/administrativo-estado/test', priority: 0.8, changefreq: 'weekly' },
-    { loc: '/administrativo-estado/temario', priority: 0.7, changefreq: 'monthly' },
-    // Tramitación Procesal
-    { loc: '/tramitacion-procesal', priority: 0.9, changefreq: 'weekly' },
-    { loc: '/tramitacion-procesal/test', priority: 0.8, changefreq: 'weekly' },
-    { loc: '/tramitacion-procesal/temario', priority: 0.7, changefreq: 'monthly' },
-    // Auxilio Judicial
-    { loc: '/auxilio-judicial', priority: 0.9, changefreq: 'weekly' },
-    { loc: '/auxilio-judicial/test', priority: 0.8, changefreq: 'weekly' },
-    { loc: '/auxilio-judicial/temario', priority: 0.7, changefreq: 'monthly' },
-    // Auxiliar Administrativo CARM
-    { loc: '/auxiliar-administrativo-carm', priority: 0.9, changefreq: 'weekly' },
-    { loc: '/auxiliar-administrativo-carm/test', priority: 0.8, changefreq: 'weekly' },
-    { loc: '/auxiliar-administrativo-carm/temario', priority: 0.7, changefreq: 'monthly' },
+    // Oposiciones (generado desde config central)
+    ...OPOSICIONES.flatMap(o => [
+      { loc: `/${o.slug}`, priority: 0.9, changefreq: 'weekly' as const },
+      { loc: `/${o.slug}/test`, priority: 0.8, changefreq: 'weekly' as const },
+      { loc: `/${o.slug}/temario`, priority: 0.7, changefreq: 'monthly' as const },
+    ]),
     // Leyes
     { loc: '/leyes', priority: 0.9, changefreq: 'daily' },
     { loc: '/leyes-de-oposiciones', priority: 0.8, changefreq: 'weekly' },
@@ -70,152 +57,20 @@ export async function GET() {
   });
 
   // ============================================
-  // TEMAS - AUXILIAR ADMINISTRATIVO DEL ESTADO
+  // TEMAS - Generados desde config central
   // ============================================
-  // Bloque I: Organización Pública (temas 1-16)
-  for (let i = 1; i <= 16; i++) {
-    urls.push(`
+  for (const oposicion of OPOSICIONES) {
+    for (const block of oposicion.blocks) {
+      for (const theme of block.themes) {
+        urls.push(`
   <url>
-    <loc>${SITE_URL}/auxiliar-administrativo-estado/temario/tema-${i}</loc>
+    <loc>${SITE_URL}/${oposicion.slug}/temario/tema-${theme.id}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>`);
-  }
-  // Bloque II: Actividad Administrativa (temas 101-104)
-  for (let i = 101; i <= 104; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/auxiliar-administrativo-estado/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-
-  // ============================================
-  // TEMAS - ADMINISTRATIVO DEL ESTADO
-  // ============================================
-  // Bloque I: Organización del Estado (temas 1-11)
-  for (let i = 1; i <= 11; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/administrativo-estado/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-  // Bloque II: Organización de Oficinas Públicas (temas 201-204)
-  for (let i = 201; i <= 204; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/administrativo-estado/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-  // Bloque III: Derecho Administrativo General (temas 301-307)
-  for (let i = 301; i <= 307; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/administrativo-estado/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-  // Bloque IV: Gestión de Personal (temas 401-409)
-  for (let i = 401; i <= 409; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/administrativo-estado/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-  // Bloque V: Gestión Financiera (temas 501-506)
-  for (let i = 501; i <= 506; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/administrativo-estado/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-
-  // ============================================
-  // TEMAS - TRAMITACIÓN PROCESAL
-  // ============================================
-  // Bloque I (temas 1-15)
-  for (let i = 1; i <= 15; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/tramitacion-procesal/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-  // Bloque II (temas 101-111)
-  for (let i = 101; i <= 111; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/tramitacion-procesal/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-  // Bloque III (temas 201-211)
-  for (let i = 201; i <= 211; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/tramitacion-procesal/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-
-  // ============================================
-  // TEMAS - AUXILIO JUDICIAL
-  // ============================================
-  // Bloque I (temas 1-14)
-  for (let i = 1; i <= 14; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/auxilio-judicial/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-  // Bloque II (temas 101-112)
-  for (let i = 101; i <= 112; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/auxilio-judicial/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
-  }
-
-  // ============================================
-  // TEMAS - AUXILIAR ADMINISTRATIVO CARM
-  // ============================================
-  for (let i = 1; i <= 16; i++) {
-    urls.push(`
-  <url>
-    <loc>${SITE_URL}/auxiliar-administrativo-carm/temario/tema-${i}</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`);
+      }
+    }
   }
 
   // ============================================

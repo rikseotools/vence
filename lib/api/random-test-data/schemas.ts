@@ -1,5 +1,8 @@
 // lib/api/random-test-data/schemas.ts - Schemas de validación para datos de test aleatorio
 import { z } from 'zod'
+import {
+  SLUG_TO_POSITION_TYPE,
+} from '@/lib/config/oposiciones'
 
 // ============================================
 // REQUEST SCHEMAS
@@ -170,13 +173,10 @@ export function safeParseGetRandomTestDataResponse(data: unknown) {
 // HELPER TYPES
 // ============================================
 
-// Mapa de posición a position_type en BD
-export const OPOSICION_TO_POSITION_TYPE = {
-  'auxiliar-administrativo-estado': 'auxiliar_administrativo',
-  'administrativo-estado': 'administrativo',
-} as const
+// Mapa de posición a position_type en BD (re-export desde config central)
+export { SLUG_TO_POSITION_TYPE as OPOSICION_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
-export type OposicionKey = keyof typeof OPOSICION_TO_POSITION_TYPE
+export type OposicionKey = keyof typeof VALID_THEME_IDS
 
 // Rangos válidos de temas por oposición para test aleatorio
 // Estos son los IDs internos usados en la página de test aleatorio

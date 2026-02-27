@@ -1,9 +1,9 @@
 // components/test/TestHubPage.tsx - Server Component SSR para SEO
 import { createClient } from '@supabase/supabase-js'
-import { OPOSICION_TO_POSITION_TYPE } from '@/lib/api/topic-data/schemas'
+import { SLUG_TO_POSITION_TYPE, getOposicionBySlug } from '@/lib/config/oposiciones'
 import TestHubClient from './TestHubClient'
 
-type OposicionSlug = keyof typeof OPOSICION_TO_POSITION_TYPE
+type OposicionSlug = string
 
 interface Topic {
   id: string
@@ -51,15 +51,6 @@ const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = {
   ],
 }
 
-// Nombres cortos para el header
-const OPOSICION_NAMES: Record<OposicionSlug, { short: string; badge: string; icon: string }> = {
-  'tramitacion-procesal': { short: 'Tramitación Procesal', badge: 'C1', icon: '⚖️' },
-  'auxiliar-administrativo-estado': { short: 'Auxiliar Administrativo', badge: 'C2', icon: '👤' },
-  'administrativo-estado': { short: 'Administrativo del Estado', badge: 'C1', icon: '👨‍💼' },
-  'auxilio-judicial': { short: 'Auxilio Judicial', badge: 'C2', icon: '⚖️' },
-  'auxiliar-administrativo-carm': { short: 'Aux. Admin. CARM', badge: 'C2', icon: '🏛️' },
-}
-
 interface Props {
   oposicion: OposicionSlug
 }
@@ -69,7 +60,7 @@ export default async function TestHubPage({ oposicion }: Props) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
-  const positionType = OPOSICION_TO_POSITION_TYPE[oposicion]
+  const positionType = SLUG_TO_POSITION_TYPE[oposicion]
 
   // Obtener topics de la BD (cacheado por Next.js)
   const { data: topics, error } = await supabase
@@ -117,7 +108,10 @@ export default async function TestHubPage({ oposicion }: Props) {
     ),
   }))
 
-  const oposicionInfo = OPOSICION_NAMES[oposicion]
+  const oposicionConfig = getOposicionBySlug(oposicion)
+  const oposicionInfo = oposicionConfig
+    ? { short: oposicionConfig.shortName, badge: oposicionConfig.badge, icon: oposicionConfig.emoji }
+    : { short: oposicion, badge: '', icon: '' }
   const basePath = `/${oposicion}/test/tema`
 
   return (

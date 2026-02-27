@@ -1,5 +1,9 @@
 // lib/api/topic-data/schemas.ts - Schemas de validación para datos de tema
 import { z } from 'zod'
+import {
+  OPOSICION_SLUGS_ENUM,
+  SLUG_TO_POSITION_TYPE,
+} from '@/lib/config/oposiciones'
 
 // ============================================
 // REQUEST SCHEMAS
@@ -7,7 +11,7 @@ import { z } from 'zod'
 
 export const getTopicDataRequestSchema = z.object({
   topicNumber: z.number().int().positive('Número de tema debe ser positivo'),
-  oposicion: z.enum(['auxiliar-administrativo-estado', 'administrativo-estado', 'tramitacion-procesal', 'auxilio-judicial', 'auxiliar-administrativo-carm']),
+  oposicion: z.enum(OPOSICION_SLUGS_ENUM),
   userId: z.string().uuid().nullable().optional(),
 })
 
@@ -155,16 +159,8 @@ export function safeParseGetTopicDataResponse(data: unknown) {
 // HELPER TYPES
 // ============================================
 
-// Mapa de posición a position_type en BD
-export const OPOSICION_TO_POSITION_TYPE = {
-  'auxiliar-administrativo-estado': 'auxiliar_administrativo',
-  'administrativo-estado': 'administrativo',
-  'tramitacion-procesal': 'tramitacion_procesal',
-  'auxilio-judicial': 'auxilio_judicial',
-  'auxiliar-administrativo-carm': 'auxiliar_administrativo_carm',
-} as const
-
-export type OposicionKey = keyof typeof OPOSICION_TO_POSITION_TYPE
+// Mapa de posición a position_type en BD (re-export desde config central)
+export { SLUG_TO_POSITION_TYPE as OPOSICION_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
 // Rangos válidos de temas por oposición
 export const VALID_TOPIC_RANGES = {
@@ -195,6 +191,8 @@ export const VALID_TOPIC_RANGES = {
     bloque2: { min: 10, max: 16 },  // Gestión y Administración Pública
   },
 } as const
+
+export type OposicionKey = keyof typeof VALID_TOPIC_RANGES
 
 // Función para validar si un tema es válido para una oposición
 export function isValidTopicNumber(topicNumber: number, oposicion: OposicionKey): boolean {

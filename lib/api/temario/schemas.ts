@@ -1,5 +1,6 @@
 // lib/api/temario/schemas.ts - Schemas Zod para Temario Dinámico
 import { z } from 'zod'
+import { OPOSICIONES as ALL_OPOSICIONES } from '@/lib/config/oposiciones'
 
 // ============================================
 // SCHEMAS BASE
@@ -130,37 +131,14 @@ export type TopicContentResponse = z.infer<typeof TopicContentResponseSchema>
 // CONSTANTES
 // ============================================
 
-export const OPOSICIONES = {
-  'auxiliar-administrativo-estado': {
-    id: 'auxiliar_administrativo',
-    name: 'Auxiliar Administrativo del Estado',
-    totalTopics: 28,
-    positionType: 'auxiliar_administrativo',
-  },
-  'administrativo-estado': {
-    id: 'administrativo',
-    name: 'Administrativo del Estado (C1)',
-    totalTopics: 45,
-    positionType: 'administrativo',
-  },
-  'tramitacion-procesal': {
-    id: 'tramitacion_procesal',
-    name: 'Tramitación Procesal y Administrativa',
-    totalTopics: 37,
-    positionType: 'tramitacion_procesal',
-  },
-  'auxilio-judicial': {
-    id: 'auxilio_judicial',
-    name: 'Auxilio Judicial',
-    totalTopics: 26,
-    positionType: 'auxilio_judicial',
-  },
-  'auxiliar-administrativo-carm': {
-    id: 'auxiliar_administrativo_carm',
-    name: 'Auxiliar Administrativo CARM (Murcia)',
-    totalTopics: 16,
-    positionType: 'auxiliar_administrativo_carm',
-  },
-} as const
+// Derivado de config central - mantiene misma estructura para compatibilidad
+export const OPOSICIONES = Object.fromEntries(
+  ALL_OPOSICIONES.map(o => [o.slug, {
+    id: o.positionType,
+    name: o.name,
+    totalTopics: o.totalTopics,
+    positionType: o.positionType,
+  }])
+) as Record<string, { id: string; name: string; totalTopics: number; positionType: string }>
 
 export type OposicionSlug = keyof typeof OPOSICIONES
