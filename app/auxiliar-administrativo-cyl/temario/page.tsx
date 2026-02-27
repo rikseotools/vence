@@ -12,23 +12,23 @@ const BLOQUES = [
     icon: '⚖️',
     count: 19,
     temas: [
-      { id: 1, titulo: 'La Constitución Española', descripcion: 'La Constitución Española de 1978. Estructura y contenido. Derechos y deberes fundamentales.', disponible: false },
-      { id: 2, titulo: 'La Administración General del Estado', descripcion: 'Organización de la Administración General del Estado. Órganos centrales y periféricos.', disponible: false },
+      { id: 1, titulo: 'La Constitución Española', descripcion: 'La Constitución Española de 1978. Estructura y contenido. Derechos y deberes fundamentales.', disponible: true },
+      { id: 2, titulo: 'La Administración General del Estado', descripcion: 'Organización de la Administración General del Estado. Órganos centrales y periféricos.', disponible: true },
       { id: 3, titulo: 'La Administración local y organización territorial de CyL', descripcion: 'La Administración local. Organización territorial de Castilla y León.', disponible: false },
-      { id: 4, titulo: 'La Unión Europea', descripcion: 'La Unión Europea. Instituciones y órganos. Derecho comunitario.', disponible: false },
+      { id: 4, titulo: 'La Unión Europea', descripcion: 'La Unión Europea. Instituciones y órganos. Derecho comunitario.', disponible: true },
       { id: 5, titulo: 'El Estatuto de Autonomía de Castilla y León', descripcion: 'El Estatuto de Autonomía de Castilla y León. Estructura y contenido. Competencias.', disponible: false },
       { id: 6, titulo: 'Las Cortes de Castilla y León', descripcion: 'Las Cortes de Castilla y León. Composición, organización y funciones.', disponible: false },
       { id: 7, titulo: 'Instituciones propias de CyL', descripcion: 'Instituciones propias de la Comunidad de Castilla y León.', disponible: false },
       { id: 8, titulo: 'El Gobierno de CyL', descripcion: 'El Gobierno de Castilla y León. El Presidente de la Junta. Los Consejeros.', disponible: false },
       { id: 9, titulo: 'La Administración de CyL', descripcion: 'La Administración de la Comunidad de Castilla y León. Organización y estructura.', disponible: false },
       { id: 10, titulo: 'El sector público de CyL', descripcion: 'El sector público de la Comunidad de Castilla y León. Organismos y entidades.', disponible: false },
-      { id: 11, titulo: 'Las fuentes del derecho administrativo', descripcion: 'Las fuentes del derecho administrativo. La ley. El reglamento. Otras fuentes.', disponible: false },
-      { id: 12, titulo: 'El acto administrativo', descripcion: 'El acto administrativo. Concepto, clases y elementos. Eficacia. Nulidad y anulabilidad.', disponible: false },
-      { id: 13, titulo: 'El procedimiento administrativo común', descripcion: 'El procedimiento administrativo común. Fases del procedimiento. Ley 39/2015.', disponible: false },
-      { id: 14, titulo: 'Órganos de las Administraciones Públicas', descripcion: 'Órganos de las Administraciones Públicas. Competencia. Abstención y recusación.', disponible: false },
-      { id: 15, titulo: 'El Estatuto Básico del Empleado Público', descripcion: 'TREBEP. Clases de personal al servicio de las Administraciones Públicas. Derechos y deberes.', disponible: false },
+      { id: 11, titulo: 'Las fuentes del derecho administrativo', descripcion: 'Las fuentes del derecho administrativo. La ley. El reglamento. Otras fuentes.', disponible: true },
+      { id: 12, titulo: 'El acto administrativo', descripcion: 'El acto administrativo. Concepto, clases y elementos. Eficacia. Nulidad y anulabilidad.', disponible: true },
+      { id: 13, titulo: 'El procedimiento administrativo común', descripcion: 'El procedimiento administrativo común. Fases del procedimiento. Ley 39/2015.', disponible: true },
+      { id: 14, titulo: 'Órganos de las Administraciones Públicas', descripcion: 'Órganos de las Administraciones Públicas. Competencia. Abstención y recusación.', disponible: true },
+      { id: 15, titulo: 'El Estatuto Básico del Empleado Público', descripcion: 'TREBEP. Clases de personal al servicio de las Administraciones Públicas. Derechos y deberes.', disponible: true },
       { id: 16, titulo: 'La Función Pública de Castilla y León', descripcion: 'La Función Pública de la Administración de Castilla y León. Cuerpos y escalas.', disponible: false },
-      { id: 17, titulo: 'Sindicación, huelga e incompatibilidades', descripcion: 'Libertad sindical y derecho de huelga. Régimen de incompatibilidades del personal.', disponible: false },
+      { id: 17, titulo: 'Sindicación, huelga e incompatibilidades', descripcion: 'Libertad sindical y derecho de huelga. Régimen de incompatibilidades del personal.', disponible: true },
       { id: 18, titulo: 'El presupuesto de CyL', descripcion: 'El presupuesto de la Comunidad de Castilla y León. Estructura y elaboración.', disponible: false },
       { id: 19, titulo: 'Políticas de igualdad y no discriminación en CyL', descripcion: 'Políticas de igualdad de género. Prevención de violencia de género. No discriminación.', disponible: false }
     ]
@@ -39,15 +39,15 @@ const BLOQUES = [
     icon: '📋',
     count: 9,
     temas: [
-      { id: 20, titulo: 'Derechos de las personas y atención al público', descripcion: 'Derechos de las personas en sus relaciones con las Administraciones. Atención al público.', disponible: false },
+      { id: 20, titulo: 'Derechos de las personas y atención al público', descripcion: 'Derechos de las personas en sus relaciones con las Administraciones. Atención al público.', disponible: true },
       { id: 21, titulo: 'Oficinas de asistencia en materia de registros', descripcion: 'Oficinas de asistencia en materia de registros. Presentación de documentos.', disponible: false },
       { id: 22, titulo: 'Administración electrónica', descripcion: 'Administración electrónica. Sede electrónica. Identificación y firma electrónica.', disponible: false },
       { id: 23, titulo: 'Transparencia y protección de datos', descripcion: 'Transparencia, acceso a la información pública y buen gobierno. Protección de datos personales.', disponible: false },
-      { id: 24, titulo: 'El documento y archivo administrativo', descripcion: 'El documento administrativo. Concepto y clases. El archivo administrativo.', disponible: false },
-      { id: 25, titulo: 'Informática básica y Windows 11', descripcion: 'Conceptos informáticos básicos. Sistema operativo Windows 11.', disponible: false },
-      { id: 26, titulo: 'Word y Excel para Microsoft 365', descripcion: 'Procesador de textos Word. Hoja de cálculo Excel. Entorno Microsoft 365.', disponible: false },
-      { id: 27, titulo: 'Correo electrónico e Internet', descripcion: 'Correo electrónico. Outlook. Navegación por Internet. Búsqueda de información.', disponible: false },
-      { id: 28, titulo: 'Seguridad y salud en el puesto de trabajo', descripcion: 'Prevención de riesgos laborales. Seguridad y salud en el puesto de trabajo.', disponible: false }
+      { id: 24, titulo: 'El documento y archivo administrativo', descripcion: 'El documento administrativo. Concepto y clases. El archivo administrativo.', disponible: true },
+      { id: 25, titulo: 'Informática básica y Windows 11', descripcion: 'Conceptos informáticos básicos. Sistema operativo Windows 11.', disponible: true },
+      { id: 26, titulo: 'Word y Excel para Microsoft 365', descripcion: 'Procesador de textos Word. Hoja de cálculo Excel. Entorno Microsoft 365.', disponible: true },
+      { id: 27, titulo: 'Correo electrónico e Internet', descripcion: 'Correo electrónico. Outlook. Navegación por Internet. Búsqueda de información.', disponible: true },
+      { id: 28, titulo: 'Seguridad y salud en el puesto de trabajo', descripcion: 'Prevención de riesgos laborales. Seguridad y salud en el puesto de trabajo.', disponible: true }
     ]
   }
 ]
