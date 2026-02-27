@@ -2241,9 +2241,19 @@ export default function TestLayout({
                             </div>
                           )}
 
-                          {/* Botones simplificados - solo 2 opciones */}
+                          {/* Botón de repetir test (misma configuración, preguntas nuevas) */}
+                          <div className="mb-4">
+                            <button
+                              onClick={() => window.location.reload()}
+                              className="px-8 py-3 rounded-lg font-semibold text-white transition-all bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl text-base"
+                            >
+                              Repetir test
+                            </button>
+                          </div>
+
+                          {/* Botones de navegación */}
                           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-  
+
                             {/* ✅ LÓGICA CONDICIONAL PARA TESTS DE LEY vs TESTS DE TEMA */}
                             {(config?.isLawTest || tema === 0) ? (
                               // 🏛️ NAVEGACIÓN PARA TESTS DE LEY
