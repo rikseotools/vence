@@ -148,7 +148,23 @@ const OFFICIAL_OPOSICIONES = [
     icon: '🚒'
   },
 
+  // === JUSTICIA (AUXILIAR) ===
+  {
+    id: 'auxilio_judicial',
+    nombre: 'Auxilio Judicial',
+    categoria: 'C2',
+    administracion: 'Justicia',
+    icon: '⚖️'
+  },
+
   // === COMUNIDADES AUTÓNOMAS ===
+  {
+    id: 'auxiliar_administrativo_carm',
+    nombre: 'Auxiliar Administrativo CARM (Murcia)',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
   {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',

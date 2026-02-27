@@ -253,7 +253,8 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
       'tramitacion_procesal': 'Tramitación Procesal',
       'auxilio_judicial': 'Auxilio Judicial',
       'gestion_procesal': 'Gestión Procesal',
-      'auxiliar_ayuntamiento': 'Auxiliar de Ayuntamiento'
+      'auxiliar_ayuntamiento': 'Auxiliar de Ayuntamiento',
+      'auxiliar_administrativo_carm': 'Auxiliar Administrativo CARM (Murcia)'
     }
 
     return oposiciones[normalized] || 'Auxiliar Administrativo del Estado'

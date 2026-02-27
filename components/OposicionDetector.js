@@ -20,16 +20,37 @@ const OPOSICION_DETECTION = {
     slug: 'auxiliar-administrativo-estado'
   },
   'administrativo-estado': {
-    id: 'administrativo_estado', 
+    id: 'administrativo_estado',
     name: 'Administrativo del Estado',
     categoria: 'C1',
     administracion: 'estado',
     slug: 'administrativo-estado'
   },
+  'tramitacion-procesal': {
+    id: 'tramitacion_procesal',
+    name: 'Tramitación Procesal y Administrativa',
+    categoria: 'C1',
+    administracion: 'justicia',
+    slug: 'tramitacion-procesal'
+  },
+  'auxilio-judicial': {
+    id: 'auxilio_judicial',
+    name: 'Auxilio Judicial',
+    categoria: 'C2',
+    administracion: 'justicia',
+    slug: 'auxilio-judicial'
+  },
+  'auxiliar-administrativo-carm': {
+    id: 'auxiliar_administrativo_carm',
+    name: 'Auxiliar Administrativo CARM (Murcia)',
+    categoria: 'C2',
+    administracion: 'autonomica',
+    slug: 'auxiliar-administrativo-carm'
+  },
   'gestion-procesal': {
     id: 'gestion_procesal',
     name: 'Gestión Procesal y Administrativa',
-    categoria: 'C1', 
+    categoria: 'C1',
     administracion: 'justicia',
     slug: 'gestion-procesal'
   }

@@ -131,6 +131,35 @@ export default function OposicionesPage() {
       boeUrl: 'https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-27053'
     },
     {
+      id: 'auxiliar-administrativo-carm',
+      name: 'Auxiliar Administrativo CARM (Murcia)',
+      shortName: 'Aux. Admin. CARM',
+      badge: 'C2',
+      icon: '🏛️',
+      color: 'amber',
+      description: 'Oposición para trabajar en la Comunidad Autónoma de la Región de Murcia como Auxiliar Administrativo. 58 plazas. Temario según BORM 17/10/2016.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 16,
+      tests: 100,
+      difficulty: 'Intermedio',
+      duration: '6-12 meses',
+      salary: '18.000€ - 22.000€',
+      features: [
+        'Temario oficial BORM 2016 (16 temas)',
+        'Tests por temas y bloques',
+        '2 bloques temáticos',
+        'Seguimiento de progreso',
+        'Estadísticas detalladas'
+      ],
+      requirements: [
+        'Título de Graduado en ESO o equivalente',
+        'Nacionalidad española o UE',
+        'Tener 16 años y no exceder edad jubilación'
+      ],
+      href: '/auxiliar-administrativo-carm',
+    },
+    {
       id: 'administrativo-castilla-leon',
       name: 'Administrativo Junta de Castilla y León',
       shortName: 'Administrativo CyL',

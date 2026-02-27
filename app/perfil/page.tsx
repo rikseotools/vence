@@ -342,6 +342,26 @@ function PerfilPageContent() {
         categoria: 'C1',
         administracion: 'Justicia'
       }
+    },
+    {
+      value: 'auxilio_judicial',
+      label: 'Auxilio Judicial',
+      data: {
+        name: 'Auxilio Judicial',
+        slug: 'auxilio-judicial',
+        categoria: 'C2',
+        administracion: 'Justicia'
+      }
+    },
+    {
+      value: 'auxiliar_administrativo_carm',
+      label: 'Auxiliar Administrativo CARM (Murcia)',
+      data: {
+        name: 'Auxiliar Administrativo CARM (Murcia)',
+        slug: 'auxiliar-administrativo-carm',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 
