@@ -50,7 +50,7 @@ export type NavLink = z.infer<typeof NavLinkSchema>
 export type Oposicion = z.infer<typeof OposicionSchema>
 
 // ============================================
-// DATOS: LAS 4 OPOSICIONES
+// DATOS: OPOSICIONES
 // ============================================
 
 export const OPOSICIONES: Oposicion[] = [
@@ -341,6 +341,73 @@ export const OPOSICIONES: Oposicion[] = [
       { href: '/auxiliar-administrativo-carm', label: 'Mi Oposición', icon: '🏛️', featured: true },
       { href: '/auxiliar-administrativo-carm/temario', label: 'Temario', icon: '📚' },
       { href: '/auxiliar-administrativo-carm/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
+  // AUXILIAR ADMINISTRATIVO CASTILLA Y LEÓN (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_cyl',
+    slug: 'auxiliar-administrativo-cyl',
+    positionType: 'auxiliar_administrativo_cyl',
+    name: 'Auxiliar Administrativo de Castilla y León',
+    shortName: 'Aux. CyL',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'rose',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Grupo I: Organización Política y Administrativa',
+        subtitle: 'Constitución, Administración y Derecho Administrativo',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española' },
+          { id: 2, name: 'La Administración General del Estado' },
+          { id: 3, name: 'La Administración local y organización territorial de CyL' },
+          { id: 4, name: 'La Unión Europea' },
+          { id: 5, name: 'El Estatuto de Autonomía de Castilla y León' },
+          { id: 6, name: 'Las Cortes de Castilla y León' },
+          { id: 7, name: 'Instituciones propias de CyL' },
+          { id: 8, name: 'El Gobierno de CyL' },
+          { id: 9, name: 'La Administración de CyL' },
+          { id: 10, name: 'El sector público de CyL' },
+          { id: 11, name: 'Las fuentes del derecho administrativo' },
+          { id: 12, name: 'El acto administrativo' },
+          { id: 13, name: 'El procedimiento administrativo común' },
+          { id: 14, name: 'Órganos de las Administraciones Públicas' },
+          { id: 15, name: 'El Estatuto Básico del Empleado Público' },
+          { id: 16, name: 'La Función Pública de Castilla y León' },
+          { id: 17, name: 'Sindicación, huelga e incompatibilidades' },
+          { id: 18, name: 'El presupuesto de CyL' },
+          { id: 19, name: 'Políticas de igualdad y no discriminación en CyL' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Grupo II: Competencias',
+        subtitle: 'Atención al público, Informática y Administración Electrónica',
+        icon: '📋',
+        themes: [
+          { id: 20, name: 'Derechos de las personas y atención al público' },
+          { id: 21, name: 'Oficinas de asistencia en materia de registros' },
+          { id: 22, name: 'Administración electrónica' },
+          { id: 23, name: 'Transparencia y protección de datos' },
+          { id: 24, name: 'El documento y archivo administrativo' },
+          { id: 25, name: 'Informática básica y Windows 11' },
+          { id: 26, name: 'Word y Excel para Microsoft 365' },
+          { id: 27, name: 'Correo electrónico e Internet' },
+          { id: 28, name: 'Seguridad y salud en el puesto de trabajo' },
+        ],
+      },
+    ],
+    totalTopics: 28,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-cyl', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-cyl/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-cyl/test', label: 'Tests', icon: '🎯' },
     ],
   },
 

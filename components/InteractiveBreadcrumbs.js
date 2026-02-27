@@ -54,7 +54,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     if (pathname.includes('/temario')) return '/temario'
     if (pathname.includes('/simulacros')) return '/simulacros'
     // Si estamos en página principal de oposición (información), mantener vacío
-    if (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal' || pathname === '/auxilio-judicial' || pathname === '/auxiliar-administrativo-carm') return ''
+    if (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal' || pathname === '/auxilio-judicial' || pathname === '/auxiliar-administrativo-carm' || pathname === '/auxiliar-administrativo-cyl') return ''
     return '/test' // Por defecto ir a tests (para otras páginas como /leyes)
   }
 
@@ -105,6 +105,12 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
         { key: 'test', label: '🎯 Tests', path: '/test' },
         { key: 'temario', label: '📚 Temario', path: '/temario' }
       ]
+    } else if (isCyl) {
+      return [
+        { key: 'info', label: 'ℹ️ Información', path: '' },
+        { key: 'test', label: '🎯 Tests', path: '/test' },
+        { key: 'temario', label: '📚 Temario', path: '/temario' }
+      ]
     } else if (isLeyes) {
       return [
         { key: 'test', label: '🎯 Tests', path: '/test' }
@@ -134,6 +140,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const isTramitacionProcesal = pathname.includes('/tramitacion-procesal')
   const isAuxilioJudicial = pathname.includes('/auxilio-judicial')
   const isCarm = pathname.includes('/auxiliar-administrativo-carm')
+  const isCyl = pathname.includes('/auxiliar-administrativo-cyl')
   const isLeyes = pathname.includes('/leyes')
   const isTeoria = pathname.includes('/teoria')
   const isInTests = pathname.includes('/test')
@@ -142,10 +149,10 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const isPorLeyes = pathname === '/test/por-leyes' || pathname === '/test/multi-ley'
 
   // Tests independientes bajo /test/ que no pertenecen a ninguna oposición
-  const isStandaloneTest = pathname.startsWith('/test/') && !isAuxiliarAdmin && !isAdministrativo && !isTramitacionProcesal && !isAuxilioJudicial && !isCarm
+  const isStandaloneTest = pathname.startsWith('/test/') && !isAuxiliarAdmin && !isAdministrativo && !isTramitacionProcesal && !isAuxilioJudicial && !isCarm && !isCyl
 
   // Detectar si estamos en página de información (página principal de oposición)
-  const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal' || pathname === '/auxilio-judicial' || pathname === '/auxiliar-administrativo-carm')
+  const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal' || pathname === '/auxilio-judicial' || pathname === '/auxiliar-administrativo-carm' || pathname === '/auxiliar-administrativo-cyl')
   
   // Detectar si estamos en una ley específica
   const isInSpecificLaw = pathname.startsWith('/leyes/') && pathname !== '/leyes' && !pathname.includes('/test')
@@ -281,7 +288,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       <div className="container mx-auto px-4">
         <ol className="flex items-center space-x-2 text-sm">
           {/* Breadcrumb para Oposición */}
-          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
+          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isCyl || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Texto clickeable para ir a la página principal (solo si no estamos ya ahí) */}
@@ -293,6 +300,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     (isTramitacionProcesal && pathname !== '/tramitacion-procesal') ||
                     (isAuxilioJudicial && pathname !== '/auxilio-judicial') ||
                     (isCarm && pathname !== '/auxiliar-administrativo-carm') ||
+                    (isCyl && pathname !== '/auxiliar-administrativo-cyl') ||
                     (isLeyes && pathname !== '/leyes') ||
                     (isTeoria && pathname !== '/teoria') ||
                     (isPsicotecnicos && pathname !== '/psicotecnicos') ||
@@ -306,6 +314,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     isTramitacionProcesal ? '/tramitacion-procesal' :
                     isAuxilioJudicial ? '/auxilio-judicial' :
                     isCarm ? '/auxiliar-administrativo-carm' :
+                    isCyl ? '/auxiliar-administrativo-cyl' :
                     isLeyes ? '/leyes' :
                     isTeoria ? '/teoria' :
                     isPsicotecnicos ? '/psicotecnicos' :
@@ -319,6 +328,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     isTramitacionProcesal ? '⚖️ Tramitación Procesal' :
                     isAuxilioJudicial ? '⚖️ Auxilio Judicial' :
                     isCarm ? '🏛️ Aux. Admin. CARM' :
+                    isCyl ? '🏛️ Aux. Admin. CyL' :
                     isLeyes ? '📚 Leyes' :
                     isTeoria ? '📖 Teoría' :
                     isPsicotecnicos ? '🧩 Psicotécnicos' :
@@ -406,7 +416,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
           )}
 
           {/* Separador */}
-          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
+          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isCyl || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
             <span className="text-gray-400 mx-2">/</span>
           )}
 
@@ -420,7 +430,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                                    isAdministrativo ? '/administrativo-estado' :
                                    isTramitacionProcesal ? '/tramitacion-procesal' :
                                    isAuxilioJudicial ? '/auxilio-judicial' :
-                                   isCarm ? '/auxiliar-administrativo-carm' : ''
+                                   isCarm ? '/auxiliar-administrativo-carm' :
+                                   isCyl ? '/auxiliar-administrativo-cyl' : ''
                   const isInSpecificPage = pathname.includes('/tema-') || pathname.includes('/test/')
 
                   if (isInSpecificPage && basePath) {

@@ -49,6 +49,10 @@ const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = {
     { id: 'bloque1', name: 'Bloque I: Derecho Constitucional y Administrativo', icon: '⚖️', min: 1, max: 9 },
     { id: 'bloque2', name: 'Bloque II: Gestión y Administración Pública', icon: '📋', min: 10, max: 16 },
   ],
+  'auxiliar-administrativo-cyl': [
+    { id: 'bloque1', name: 'Grupo I: Organización Política y Administrativa', icon: '🏛️', min: 1, max: 19 },
+    { id: 'bloque2', name: 'Grupo II: Competencias', icon: '📋', min: 20, max: 28 },
+  ],
 }
 
 interface Props {

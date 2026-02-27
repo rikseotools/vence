@@ -56,7 +56,8 @@ export async function GET() {
     'auxiliar-administrativo', 'auxiliar-administrativo-estado',
     'administrativo', 'administrativo-estado',
     'gestion-procesal', 'tramitacion-procesal', 'auxilio-judicial',
-    'auxiliar-administrativo-carm'
+    'auxiliar-administrativo-carm',
+    'auxiliar-administrativo-cyl'
   ];
 
   oposicionesList.forEach(oposicion => {

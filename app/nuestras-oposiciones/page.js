@@ -160,6 +160,35 @@ export default function OposicionesPage() {
       href: '/auxiliar-administrativo-carm',
     },
     {
+      id: 'auxiliar-administrativo-cyl',
+      name: 'Auxiliar Administrativo de Castilla y León',
+      shortName: 'Aux. Admin. CyL',
+      badge: 'C2',
+      icon: '🏛️',
+      color: 'rose',
+      description: 'Oposición para trabajar en la Junta de Castilla y León como Auxiliar Administrativo. 362 plazas convocadas en BOCYL 13/01/2026. Temario oficial con 28 temas.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 28,
+      tests: 0,
+      difficulty: 'Intermedio',
+      duration: '6-12 meses',
+      salary: '18.000€ - 22.000€',
+      features: [
+        'Temario oficial BOCYL 2026 (28 temas)',
+        'Tests por temas y bloques',
+        '2 grupos temáticos',
+        'Seguimiento de progreso',
+        'Estadísticas detalladas'
+      ],
+      requirements: [
+        'Título de Graduado en ESO o equivalente',
+        'Nacionalidad española o UE',
+        'Tener 16 años y no exceder edad jubilación'
+      ],
+      href: '/auxiliar-administrativo-cyl',
+    },
+    {
       id: 'administrativo-castilla-leon',
       name: 'Administrativo Junta de Castilla y León',
       shortName: 'Administrativo CyL',

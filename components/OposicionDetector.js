@@ -47,6 +47,13 @@ const OPOSICION_DETECTION = {
     administracion: 'autonomica',
     slug: 'auxiliar-administrativo-carm'
   },
+  'auxiliar-administrativo-cyl': {
+    id: 'auxiliar_administrativo_cyl',
+    name: 'Auxiliar Administrativo de Castilla y León',
+    categoria: 'C2',
+    administracion: 'autonomica',
+    slug: 'auxiliar-administrativo-cyl'
+  },
   'gestion-procesal': {
     id: 'gestion_procesal',
     name: 'Gestión Procesal y Administrativa',

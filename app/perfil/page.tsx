@@ -362,6 +362,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_cyl',
+      label: 'Auxiliar Administrativo de Castilla y León',
+      data: {
+        name: 'Auxiliar Administrativo de Castilla y León',
+        slug: 'auxiliar-administrativo-cyl',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

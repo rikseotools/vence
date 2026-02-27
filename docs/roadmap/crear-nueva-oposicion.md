@@ -461,34 +461,31 @@ const leyesAnadir = [
 
 ## FASE 5: FRONTEND Y APIs
 
-### 5.1 Actualizar Schemas y APIs (CRÍTICO)
+### 5.1 Actualizar Schemas y APIs
 
-**IMPORTANTE:** Sin estos cambios, las páginas darán error 404 o "no disponible".
+> **Centralizado (Feb 2026):** La mayoría de schemas/APIs ahora importan automáticamente de `lib/config/oposiciones.ts`. Solo 2 archivos necesitan actualización manual de rangos de temas.
 
-#### Archivos a modificar:
+#### Archivos AUTOMÁTICOS (no tocar):
+
+Estos se actualizan solos al modificar `lib/config/oposiciones.ts`:
+- `lib/api/theme-stats/schemas.ts` - importa slugs y mapas
+- `lib/api/topic-data/queries.ts` - importa SLUG_TO_POSITION_TYPE
+- `lib/api/temario/schemas.ts` - deriva OPOSICIONES de config
+- `lib/api/filtered-questions/schemas.ts` - importa POSITION_TYPES_ENUM
+- `app/api/topics/[numero]/route.ts` - importa ALL_OPOSICION_SLUGS
+- `app/sitemap-static.xml/route.ts` - genera URLs dinámicamente
+
+#### Archivos a modificar manualmente:
 
 | Archivo | Qué añadir |
 |---------|------------|
-| `lib/api/topic-data/schemas.ts` | Añadir al enum `oposicion`, `OPOSICION_TO_POSITION_TYPE` y `VALID_TOPIC_RANGES` |
-| `lib/api/topic-data/queries.ts` | Añadir al `POSITION_TYPE_MAP` |
-| `app/api/topics/[numero]/route.ts` | Añadir a la validación de oposiciones |
-| `lib/api/temario/schemas.ts` | Añadir a `OPOSICIONES` |
-| `components/InteractiveBreadcrumbs.js` | Añadir detección, opciones y lógica de bloques |
+| `lib/api/topic-data/schemas.ts` | Solo `VALID_TOPIC_RANGES` (rangos de temas por bloque) |
+| `components/test/TestHubPage.tsx` | Solo `BLOQUE_CONFIG` (rangos min/max para agrupar temas) |
+| `components/InteractiveBreadcrumbs.js` | Detección, opciones y lógica de bloques |
 
-#### Ejemplo para `lib/api/topic-data/schemas.ts`:
+#### Ejemplo para `lib/api/topic-data/schemas.ts` (solo VALID_TOPIC_RANGES):
 
 ```typescript
-// 1. Añadir al enum (línea ~10)
-oposicion: z.enum(['auxiliar-administrativo-estado', 'administrativo-estado', 'tramitacion-procesal']),
-
-// 2. Añadir al mapa de posición (línea ~148)
-export const OPOSICION_TO_POSITION_TYPE = {
-  'auxiliar-administrativo-estado': 'auxiliar_administrativo',
-  'administrativo-estado': 'administrativo',
-  'tramitacion-procesal': 'tramitacion_procesal',  // ← AÑADIR
-} as const
-
-// 3. Añadir rangos de temas (línea ~156)
 export const VALID_TOPIC_RANGES = {
   // ... existentes ...
   'tramitacion-procesal': {
@@ -499,19 +496,7 @@ export const VALID_TOPIC_RANGES = {
 } as const
 ```
 
-#### Ejemplo para `lib/api/temario/schemas.ts`:
-
-```typescript
-export const OPOSICIONES = {
-  // ... existentes ...
-  'tramitacion-procesal': {
-    id: 'tramitacion_procesal',
-    name: 'Tramitación Procesal y Administrativa',
-    totalTopics: 37,
-    positionType: 'tramitacion_procesal',
-  },
-} as const
-```
+El z.enum y OPOSICION_TO_POSITION_TYPE ya se importan automáticamente de config central.
 
 #### Ejemplo para `components/InteractiveBreadcrumbs.js`:
 
@@ -520,10 +505,9 @@ Buscar y añadir en estos lugares:
 2. `oppositionOptions` - añadir opción con key, label, path, oposicionId
 3. `const isTramitacionProcesal = pathname.includes(...)` - añadir detección
 4. `isInInfo` - añadir pathname de la oposición
-5. `OPOSICION_NAMES` - añadir nombre legible
-6. `getSectionOptions()` - añadir caso con opciones de sección
-7. En el JSX: añadir `isTramitacionProcesal` a todas las condiciones de renderizado
-8. En la lógica de bloques/temas: añadir rangos de temas por bloque
+5. `getSectionOptions()` - añadir caso con opciones de sección
+6. En el JSX: añadir condición a todas las comprobaciones de renderizado
+7. En la lógica de bloques/temas: añadir rangos de temas por bloque
 
 ### 5.2 Crear Rutas del Frontend (TypeScript)
 
@@ -591,14 +575,7 @@ const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = {
 }
 ```
 
-Y en `OPOSICION_NAMES`:
-
-```typescript
-const OPOSICION_NAMES = {
-  // ... existentes ...
-  '<nuevo-slug>': { short: 'Nombre Corto', badge: 'C1', icon: '👤' },
-}
-```
+> **Nota:** `OPOSICION_NAMES` ya no existe. El nombre/badge/icono se obtiene automáticamente de `getOposicionBySlug()` desde la config central.
 
 **Beneficios del enfoque SSR:**
 - SEO: Los temas aparecen en el HTML inicial (Google los indexa)
@@ -787,11 +764,10 @@ await supabase.from('topic_scope').insert({
 5. **NO olvidar enlazar temas de informática** - Deben tener topic_scope a leyes virtuales compartidas (ver sección "Temas Transversales")
 
 ### Errores de Frontend/APIs (Enero 2026)
-6. **NO olvidar actualizar TODOS los schemas** - Hay 4 archivos diferentes que necesitan la nueva oposición:
-   - `lib/api/topic-data/schemas.ts` (enum, mapa, rangos)
-   - `lib/api/topic-data/queries.ts` (mapa duplicado)
-   - `app/api/topics/[numero]/route.ts` (validación)
-   - `lib/api/temario/schemas.ts` (OPOSICIONES)
+6. **NO olvidar VALID_TOPIC_RANGES y BLOQUE_CONFIG** - Estos 2 archivos aún necesitan actualización manual:
+   - `lib/api/topic-data/schemas.ts` (solo VALID_TOPIC_RANGES)
+   - `components/test/TestHubPage.tsx` (solo BLOQUE_CONFIG)
+   - El resto de schemas/APIs se actualizan automáticamente desde config central
 7. **NO crear páginas en JavaScript (.js)** - Usar siempre TypeScript (.tsx)
 8. **NO olvidar añadir a nuestras-oposiciones** - La oposición no aparecerá en el listado
 9. **NO asumir que las APIs soportan la nueva oposición** - Verificar cada endpoint usado
@@ -810,14 +786,15 @@ await supabase.from('topic_scope').insert({
 ### Base de Datos
 - `db/schema.ts` - Schema Drizzle (topics, topic_scope, questions)
 
-### APIs y Schemas (actualizar para cada nueva oposición)
-- `lib/api/topic-data/schemas.ts` - Enum, mapas y rangos de temas
-- `lib/api/topic-data/queries.ts` - Queries con mapa de position_type
-- `lib/api/temario/schemas.ts` - Constante OPOSICIONES
-- `app/api/topics/[numero]/route.ts` - Validación de oposiciones
+### Config Central (source of truth)
+- `lib/config/oposiciones.ts` - Todas las oposiciones, slugs, positionTypes, bloques, temas
+
+### APIs y Schemas (actualización manual mínima)
+- `lib/api/topic-data/schemas.ts` - Solo `VALID_TOPIC_RANGES` (rangos de temas)
+- Los demás schemas importan automáticamente de config central
 
 ### Componentes Compartidos SSR (actualizar configuración)
-- `components/test/TestHubPage.tsx` - Server Component del hub de tests (añadir `BLOQUE_CONFIG` y `OPOSICION_NAMES`)
+- `components/test/TestHubPage.tsx` - Server Component del hub de tests (añadir solo `BLOQUE_CONFIG`)
 - `components/test/TestHubClient.tsx` - Client Component para interactividad (no requiere cambios)
 
 ### Frontend (crear para cada nueva oposición)

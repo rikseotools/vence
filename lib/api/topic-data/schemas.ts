@@ -190,6 +190,10 @@ export const VALID_TOPIC_RANGES = {
     bloque1: { min: 1, max: 9 },    // Derecho Constitucional y Administrativo
     bloque2: { min: 10, max: 16 },  // Gestión y Administración Pública
   },
+  'auxiliar-administrativo-cyl': {
+    bloque1: { min: 1, max: 19 },   // Grupo I: Organización Política y Administrativa
+    bloque2: { min: 20, max: 28 },  // Grupo II: Competencias
+  },
 } as const
 
 export type OposicionKey = keyof typeof VALID_TOPIC_RANGES
