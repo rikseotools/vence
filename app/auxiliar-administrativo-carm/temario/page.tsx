@@ -13,8 +13,8 @@ const BLOQUES = [
     count: 9,
     temas: [
       { id: 1, titulo: 'La Constitución Española de 1978', descripcion: 'Título Preliminar. Derechos fundamentales y libertades públicas. Garantías y suspensión de derechos.' },
-      { id: 2, titulo: 'Estatuto de Autonomía de la Región de Murcia', descripcion: 'Estructura y contenido del Estatuto de Autonomía. Competencias de la Comunidad Autónoma.' },
-      { id: 3, titulo: 'El Presidente y Consejo de Gobierno de Murcia', descripcion: 'El Presidente de la Comunidad Autónoma. El Consejo de Gobierno: composición y funciones.' },
+      { id: 2, titulo: 'Estatuto de Autonomía de la Región de Murcia', descripcion: 'Estructura y contenido del Estatuto de Autonomía. Competencias de la Comunidad Autónoma.', disponible: false },
+      { id: 3, titulo: 'El Presidente y Consejo de Gobierno de Murcia', descripcion: 'El Presidente de la Comunidad Autónoma. El Consejo de Gobierno: composición y funciones.', disponible: false },
       { id: 4, titulo: 'Régimen Jurídico del Sector Público', descripcion: 'Ley 40/2015. Principios de actuación y funcionamiento. Órganos administrativos.' },
       { id: 5, titulo: 'Disposiciones y actos administrativos', descripcion: 'Ley 39/2015. Requisitos de los actos administrativos. Eficacia. Nulidad y anulabilidad.' },
       { id: 6, titulo: 'El procedimiento administrativo', descripcion: 'Ley 39/2015. Iniciación, ordenación, instrucción y finalización del procedimiento.' },
@@ -29,10 +29,10 @@ const BLOQUES = [
     icon: '📋',
     count: 7,
     temas: [
-      { id: 10, titulo: 'Hacienda de la Región de Murcia', descripcion: 'Ley de Hacienda de la Región de Murcia. Presupuestos. Gastos e ingresos.' },
+      { id: 10, titulo: 'Hacienda de la Región de Murcia', descripcion: 'Ley de Hacienda de la Región de Murcia. Presupuestos. Gastos e ingresos.', disponible: false },
       { id: 11, titulo: 'Administración electrónica', descripcion: 'Sede electrónica. Identificación y firma electrónica. Funcionamiento electrónico del sector público.' },
       { id: 12, titulo: 'Información administrativa y atención al ciudadano', descripcion: 'Servicios de información administrativa. Atención al ciudadano. Quejas y sugerencias.' },
-      { id: 13, titulo: 'Archivos y Patrimonio Documental de Murcia', descripcion: 'Sistema de archivos. Patrimonio documental de la Región de Murcia.' },
+      { id: 13, titulo: 'Archivos y Patrimonio Documental de Murcia', descripcion: 'Sistema de archivos. Patrimonio documental de la Región de Murcia.', disponible: false },
       { id: 14, titulo: 'Los documentos administrativos', descripcion: 'Concepto y clases de documentos. El expediente administrativo. Copias.' },
       { id: 15, titulo: 'Prevención de Riesgos Laborales', descripcion: 'LPRL. Derechos y obligaciones. Servicios de prevención. Delegados de prevención.' },
       { id: 16, titulo: 'Igualdad, Transparencia y Protección de datos', descripcion: 'LO 3/2007 de igualdad. Ley 19/2013 de transparencia. LOPDGDD y RGPD.' }
