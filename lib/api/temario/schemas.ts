@@ -155,6 +155,12 @@ export const OPOSICIONES = {
     totalTopics: 26,
     positionType: 'auxilio_judicial',
   },
+  'auxiliar-administrativo-carm': {
+    id: 'auxiliar_administrativo_carm',
+    name: 'Auxiliar Administrativo CARM (Murcia)',
+    totalTopics: 16,
+    positionType: 'auxiliar_administrativo_carm',
+  },
 } as const
 
 export type OposicionSlug = keyof typeof OPOSICIONES

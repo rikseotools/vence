@@ -290,6 +290,61 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO CARM (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_carm',
+    slug: 'auxiliar-administrativo-carm',
+    positionType: 'auxiliar_administrativo_carm',
+    name: 'Auxiliar Administrativo CARM (Murcia)',
+    shortName: 'Aux. CARM',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'amber',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Derecho Constitucional y Administrativo',
+        subtitle: null,
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Estatuto de Autonomía de la Región de Murcia' },
+          { id: 3, name: 'El Presidente y Consejo de Gobierno de Murcia' },
+          { id: 4, name: 'Régimen Jurídico del Sector Público' },
+          { id: 5, name: 'Disposiciones y actos administrativos' },
+          { id: 6, name: 'El procedimiento administrativo' },
+          { id: 7, name: 'Revisión de actos y responsabilidad patrimonial' },
+          { id: 8, name: 'Estatuto Básico del Empleado Público' },
+          { id: 9, name: 'Contratos del Sector Público' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Gestión y Administración Pública',
+        subtitle: null,
+        icon: '📋',
+        themes: [
+          { id: 10, name: 'Hacienda de la Región de Murcia' },
+          { id: 11, name: 'Administración electrónica' },
+          { id: 12, name: 'Información administrativa y atención al ciudadano' },
+          { id: 13, name: 'Archivos y Patrimonio Documental de Murcia' },
+          { id: 14, name: 'Los documentos administrativos' },
+          { id: 15, name: 'Prevención de Riesgos Laborales' },
+          { id: 16, name: 'Igualdad, Transparencia y Protección de datos' },
+        ],
+      },
+    ],
+    totalTopics: 16,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-carm', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-carm/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-carm/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {

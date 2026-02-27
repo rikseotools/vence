@@ -30,6 +30,7 @@ const POSITION_TYPE_MAP: Record<OposicionKey, string> = {
   'administrativo-estado': 'administrativo',
   'tramitacion-procesal': 'tramitacion_procesal',
   'auxilio-judicial': 'auxilio_judicial',
+  'auxiliar-administrativo-carm': 'auxiliar_administrativo_carm',
 }
 
 // =================================================================

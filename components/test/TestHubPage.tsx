@@ -44,6 +44,10 @@ const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = {
     { id: 'bloque2', name: 'Bloque II: Organización Judicial y Funcionarios', icon: '⚖️', min: 6, max: 15 },
     { id: 'bloque3', name: 'Bloque III: Procedimientos y Actos Procesales', icon: '📜', min: 16, max: 26 },
   ],
+  'auxiliar-administrativo-carm': [
+    { id: 'bloque1', name: 'Bloque I: Derecho Constitucional y Administrativo', icon: '⚖️', min: 1, max: 9 },
+    { id: 'bloque2', name: 'Bloque II: Gestión y Administración Pública', icon: '📋', min: 10, max: 16 },
+  ],
 }
 
 // Nombres cortos para el header
@@ -52,6 +56,7 @@ const OPOSICION_NAMES: Record<OposicionSlug, { short: string; badge: string; ico
   'auxiliar-administrativo-estado': { short: 'Auxiliar Administrativo', badge: 'C2', icon: '👤' },
   'administrativo-estado': { short: 'Administrativo del Estado', badge: 'C1', icon: '👨‍💼' },
   'auxilio-judicial': { short: 'Auxilio Judicial', badge: 'C2', icon: '⚖️' },
+  'auxiliar-administrativo-carm': { short: 'Aux. Admin. CARM', badge: 'C2', icon: '🏛️' },
 }
 
 interface Props {
