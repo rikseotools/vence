@@ -12,6 +12,7 @@ export const VALID_OPOSICIONES = [
   'administrativo-estado',
   'tramitacion-procesal',
   'auxilio-judicial',
+  'auxiliar-administrativo-carm',
 ] as const
 
 export type OposicionSlug = typeof VALID_OPOSICIONES[number]
@@ -22,6 +23,7 @@ export const OPOSICION_TO_POSITION_TYPE: Record<OposicionSlug, string> = {
   'administrativo-estado': 'administrativo',
   'tramitacion-procesal': 'tramitacion_procesal',
   'auxilio-judicial': 'auxilio_judicial',
+  'auxiliar-administrativo-carm': 'auxiliar_administrativo_carm',
 }
 
 // ============================================
