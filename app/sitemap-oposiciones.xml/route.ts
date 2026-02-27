@@ -55,7 +55,8 @@ export async function GET() {
   const oposicionesList = [
     'auxiliar-administrativo', 'auxiliar-administrativo-estado',
     'administrativo', 'administrativo-estado',
-    'gestion-procesal', 'tramitacion-procesal', 'auxilio-judicial'
+    'gestion-procesal', 'tramitacion-procesal', 'auxilio-judicial',
+    'auxiliar-administrativo-carm'
   ];
 
   oposicionesList.forEach(oposicion => {
