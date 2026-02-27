@@ -366,7 +366,7 @@ app/<slug-con-guiones>/
 - `test/tema/[numero]/page.tsx`: validacion de rango de temas, `getBloque()`
 - `test/test-personalizado/page.tsx`: `OPOSICION_BLOCKS_CONFIG['slug-con-guiones']`
 - `test/test-aleatorio-examen/page.tsx`: positionType
-- `temario/page.tsx`: `BLOQUES` estatico con temas
+- `temario/page.tsx`: `BLOQUES` estatico con temas. **Marcar `disponible: false` en temas sin topic_scope**
 - `temario/[slug]/page.tsx`: `generateStaticParams` con N temas
 - `temario/[slug]/TopicContentView.tsx`: `getBlockInfo` con rangos correctos
 
@@ -493,6 +493,9 @@ Falta en `lib/api/theme-stats/schemas.ts` (VALID_OPOSICIONES).
 
 ### Tests fallan con "Expected length: N"
 Actualizar `__tests__/api/theme-stats/themeStats.test.js`.
+
+### Temas sin contenido aparecen clickeables en el temario
+En `app/<slug>/temario/page.tsx`, los temas sin topic_scope deben marcarse con `disponible: false` en el array `BLOQUES`. Si no, el usuario entra y ve "Contenido no disponible". El componente `TemarioClient.tsx` ya soporta este flag y muestra "En elaboracion" automaticamente.
 
 ### Oposicion no aparece en Google
 Falta en los sitemaps (`app/sitemap-static.xml/route.ts` y/o `app/sitemap-oposiciones.xml/route.ts`).
