@@ -258,7 +258,6 @@ export default function HomePage() {
               href="/auxiliar-administrativo-carm/temario"
               className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-lg text-center transition-colors relative"
             >
-              <span className="absolute top-2 right-2 text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full">Nuevo</span>
               <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_carm" size="md" /></span>
               <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. CARM</span>
               <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">16 temas</span>
@@ -267,7 +266,6 @@ export default function HomePage() {
               href="/auxiliar-administrativo-cyl/temario"
               className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg text-center transition-colors relative"
             >
-              <span className="absolute top-2 right-2 text-[10px] bg-rose-500 text-white px-1.5 py-0.5 rounded-full">Nuevo</span>
               <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_cyl" size="md" /></span>
               <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. CyL</span>
               <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">28 temas</span>
@@ -276,7 +274,6 @@ export default function HomePage() {
               href="/auxiliar-administrativo-andalucia/temario"
               className="block py-4 px-4 bg-slate-100 dark:bg-slate-700 hover:bg-teal-100 dark:hover:bg-teal-900/30 rounded-lg text-center transition-colors relative"
             >
-              <span className="absolute top-2 right-2 text-[10px] bg-teal-500 text-white px-1.5 py-0.5 rounded-full">Nuevo</span>
               <span className="block mb-2"><CcaaFlag oposicionId="auxiliar_administrativo_andalucia" size="md" /></span>
               <span className="block font-medium text-slate-700 dark:text-slate-300">Aux. Admin. Andalucía</span>
               <span className="block text-xs text-slate-500 dark:text-slate-400 mt-1">22 temas</span>
