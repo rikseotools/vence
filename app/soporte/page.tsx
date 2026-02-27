@@ -1456,12 +1456,7 @@ function SoporteContent() {
                 {/* Artículo */}
                 {selectedQuestionModal.question?.article && (
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-gray-800 dark:text-gray-200">Artículo:</h4>
-                      <span className="text-xs bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded-full">
-                        Contiene respuesta
-                      </span>
-                    </div>
+                    <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Artículo:</h4>
                     <div className="bg-purple-50 dark:bg-purple-900/30 p-4 rounded-lg border-l-4 border-purple-400">
                       <p className="text-purple-800 dark:text-purple-200 font-medium mb-3">
                         {selectedQuestionModal.question.article.lawShortName} - Artículo {selectedQuestionModal.question.article.articleNumber}
