@@ -983,14 +983,7 @@ export default function HeaderES() {
 
       {/* 💬 BOTÓN DE FEEDBACK FLOTANTE - Solo desktop */}
       <div className="hidden xl:block">
-        <FeedbackButton 
-          onFeedbackSent={() => {
-            // Refrescar notificaciones admin inmediatamente después de enviar feedback
-            if (isAdmin && adminNotifications?.refresh) {
-              adminNotifications.refresh()
-            }
-          }}
-        />
+        <FeedbackButton />
       </div>
 
       {/* Modal de QuestionDispute */}
