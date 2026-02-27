@@ -41,14 +41,14 @@ const BLOQUES = [
       { id: 102, displayNum: 2, titulo: 'Los servicios de información administrativa', descripcion: 'Información general y particular. Iniciativas, reclamaciones y quejas. Lenguas cooficiales.' },
       { id: 103, displayNum: 3, titulo: 'Concepto de documento, registro y archivo', descripcion: 'Funciones del registro. Tipos de archivos. Sistema de Interconexión de Registros.' },
       { id: 104, displayNum: 4, titulo: 'Administración electrónica', descripcion: 'Servicios al ciudadano. La firma electrónica. Notificación y sede electrónica. Cl@ve.' },
-      { id: 105, displayNum: 5, titulo: 'Informática básica', descripcion: 'Conceptos fundamentales sobre hardware y software. Sistemas operativos. Almacenamiento de datos.', disponible: false },
-      { id: 106, displayNum: 6, titulo: 'Introducción a Windows 11', descripcion: 'Fundamentos. Trabajo en el entorno gráfico. Configuración del sistema.', disponible: false },
-      { id: 107, displayNum: 7, titulo: 'El Explorador de Windows 11', descripcion: 'Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas del sistema.', disponible: false },
+      { id: 105, displayNum: 5, titulo: 'Informática básica', descripcion: 'Conceptos fundamentales sobre hardware y software. Sistemas operativos. Almacenamiento de datos.' },
+      { id: 106, displayNum: 6, titulo: 'Introducción a Windows 11', descripcion: 'Fundamentos. Trabajo en el entorno gráfico. Configuración del sistema.' },
+      { id: 107, displayNum: 7, titulo: 'El Explorador de Windows 11', descripcion: 'Gestión de carpetas y archivos. Operaciones de búsqueda. Herramientas del sistema.' },
       { id: 108, displayNum: 8, titulo: 'Procesadores de texto: Word', descripcion: 'Principales funciones y utilidades. Creación y estructuración del documento. Gestión, grabación e impresión.' },
       { id: 109, displayNum: 9, titulo: 'Hojas de cálculo: Excel', descripcion: 'Principales funciones y utilidades. Libros, hojas y celdas. Configuración. Fórmulas y funciones. Gráficos.' },
       { id: 110, displayNum: 10, titulo: 'Bases de datos: Access', descripcion: 'Principales funciones y utilidades. Tablas, consultas, formularios e informes. Relaciones.' },
-      { id: 111, displayNum: 11, titulo: 'Correo electrónico', descripcion: 'Conceptos elementales y funcionamiento. Microsoft 365: Outlook. Libreta de direcciones. Enviar y recibir mensajes.', disponible: false },
-      { id: 112, displayNum: 12, titulo: 'La Red Internet', descripcion: 'Conceptos elementales. Navegación, favoritos e historial. Buscadores. Seguridad y protección.', disponible: false }
+      { id: 111, displayNum: 11, titulo: 'Correo electrónico', descripcion: 'Conceptos elementales y funcionamiento. Microsoft 365: Outlook. Libreta de direcciones. Enviar y recibir mensajes.' },
+      { id: 112, displayNum: 12, titulo: 'La Red Internet', descripcion: 'Conceptos elementales. Navegación, favoritos e historial. Buscadores. Seguridad y protección.' }
     ]
   }
 ]
