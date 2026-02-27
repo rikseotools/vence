@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import FeedbackModal from '@/components/FeedbackModal'
 import MarkdownExplanation from '@/components/MarkdownExplanation'
+import { formatTextContent } from '@/components/v2/ArticleDropdown'
 import type {
   FeedbackWithConversation,
   ConversationMessage,
@@ -1467,9 +1468,22 @@ function SoporteContent() {
                       </p>
 
                       {selectedQuestionModal.question.article.content ? (
-                        <div className="text-purple-700 dark:text-purple-300 text-sm leading-relaxed whitespace-pre-wrap">
-                          {selectedQuestionModal.question.article.content}
-                        </div>
+                        <div
+                          className="text-purple-700 dark:text-purple-300 text-sm leading-relaxed"
+                          dangerouslySetInnerHTML={{
+                            __html: formatTextContent(
+                              selectedQuestionModal.question.article.content,
+                              selectedQuestionModal.question.questionText,
+                              selectedQuestionModal.question.correctOption ?? undefined,
+                              [
+                                selectedQuestionModal.question.optionA,
+                                selectedQuestionModal.question.optionB,
+                                selectedQuestionModal.question.optionC,
+                                selectedQuestionModal.question.optionD,
+                              ].filter((o): o is string => o !== null)
+                            )
+                          }}
+                        />
                       ) : (
                         <div className="text-purple-600 dark:text-purple-400 text-sm italic">
                           El contenido del artículo no está disponible.

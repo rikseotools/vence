@@ -24,7 +24,7 @@ interface ArticleDropdownProps {
 }
 
 // Función para extraer palabras clave de la pregunta y respuesta correcta
-function extractKeywords(question: string | undefined, correctAnswer: number | undefined, options: string[] | undefined): string[] {
+export function extractKeywords(question: string | undefined, correctAnswer: number | undefined, options: string[] | undefined): string[] {
   const keywords = new Set<string>()
 
   // Extraer palabras clave de la pregunta (filtrar palabras comunes)
@@ -55,7 +55,7 @@ function extractKeywords(question: string | undefined, correctAnswer: number | u
 }
 
 // Función para formatear texto plano a HTML legible con resaltado inteligente
-function formatTextContent(content: string | undefined | null, question: string | undefined, correctAnswer: number | undefined, options: string[] | undefined): string {
+export function formatTextContent(content: string | undefined | null, question: string | undefined, correctAnswer: number | undefined, options: string[] | undefined): string {
   if (!content) return 'Contenido no disponible'
 
   let formattedContent = content
