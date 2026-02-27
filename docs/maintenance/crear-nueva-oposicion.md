@@ -1,6 +1,6 @@
 # Crear una Nueva Oposicion - Guia Completa
 
-Manual para escalar Vence a nuevas oposiciones. Basado en la implementacion real de Auxiliar Administrativo CARM (Murcia), febrero 2026.
+Manual para escalar Vence a nuevas oposiciones. Basado en las implementaciones de CARM (Murcia) y CyL (Castilla y Leon), febrero 2026.
 
 ---
 
@@ -75,7 +75,8 @@ INSERT INTO topic_scope (topic_id, law_id, article_numbers) VALUES
 - Usar los UUIDs COMPLETOS de las leyes (no truncados)
 - `article_numbers: NULL` significa TODOS los articulos de esa ley
 - Los temas sin ley asociada (contenido pendiente) se dejan SIN scope
-- Reutilizar leyes existentes cuando el temario solape con otras oposiciones
+- **Reutilizar topic_scope de otras oposiciones:** Antes de crear scope nuevo, comparar los epigrafes con los temas existentes (aux_estado, administrativo, CARM, etc.). Muchos temas comparten legislacion (CE, Ley 39/2015, TREBEP, LPRL, informatica...). Consultar topic_scope existente y copiar law_id + article_numbers. En CyL se activaron 15 de 28 temas asi.
+- Los temas especificos de la comunidad autonoma (Estatuto, Cortes, Gobierno, Funcion Publica) necesitan scope nuevo con legislacion autonomica
 
 ### 1d. (Opcional) Actualizar perfil de usuario
 
@@ -108,7 +109,7 @@ Anadir nueva entrada al array `OPOSICIONES`:
       subtitle: null,
       icon: '⚖️',
       themes: [
-        { number: 1, title: 'Titulo tema 1' },
+        { id: 1, name: 'Titulo tema 1' },
         // ...
       ]
     },
@@ -118,7 +119,7 @@ Anadir nueva entrada al array `OPOSICIONES`:
       subtitle: null,
       icon: '📋',
       themes: [
-        { number: 10, title: 'Titulo tema 10' },
+        { id: 10, name: 'Titulo tema 10' },
         // ...
       ]
     },
