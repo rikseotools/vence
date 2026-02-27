@@ -823,8 +823,8 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
 
   if (!isOpen) return null
 
-  // Layout de 2 columnas si hay conversaciones
-  const hasConversations = existingConversations.length > 0
+  // Modal siempre en modo creación (1 columna) — el chat se gestiona inline en /soporte
+  const hasConversations = false
 
   return (
     <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-1 sm:p-4">
@@ -899,7 +899,7 @@ export default function FeedbackModal({ isOpen, onClose, questionId = null, auto
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
                       </div>
                     ) : (
-                      existingConversations.map((conv) => {
+                      existingConversations.filter((conv) => conv.status !== 'closed').map((conv) => {
                         const feedback = conv.feedback
                         const isSelected = selectedConversationId === conv.id
                         // Solo mostrar badge si hay respuesta o está cerrada

@@ -90,14 +90,15 @@ export async function getUserFeedbacksWithConversations(
 export async function getConversationMessages(
   conversationId: string,
   userId: string
-): Promise<{ success: boolean; messages: ConversationMessage[]; error?: string }> {
+): Promise<{ success: boolean; messages: ConversationMessage[]; feedbackMessage?: string; feedbackCreatedAt?: string; error?: string }> {
   const db = getDb()
 
-  // Verificar que la conversación pertenece al usuario
+  // Verificar que la conversación pertenece al usuario + obtener feedbackId
   const convRows = await db
     .select({
       id: feedbackConversations.id,
       userId: feedbackConversations.userId,
+      feedbackId: feedbackConversations.feedbackId,
     })
     .from(feedbackConversations)
     .where(eq(feedbackConversations.id, conversationId))
@@ -109,6 +110,26 @@ export async function getConversationMessages(
   }
   if (conv.userId !== userId) {
     return { success: false, messages: [], error: 'No tienes permiso para esta conversación' }
+  }
+
+  // Obtener el mensaje original del feedback (va como primer "mensaje" del chat)
+  let feedbackMessage: string | undefined
+  let feedbackCreatedAt: string | undefined
+  if (conv.feedbackId) {
+    const fbRows = await db
+      .select({
+        message: userFeedback.message,
+        createdAt: userFeedback.createdAt,
+      })
+      .from(userFeedback)
+      .where(eq(userFeedback.id, conv.feedbackId))
+      .limit(1)
+
+    const fb = fbRows[0]
+    if (fb?.message && !fb.message.startsWith('[Conversación iniciada')) {
+      feedbackMessage = fb.message
+      feedbackCreatedAt = fb.createdAt ?? undefined
+    }
   }
 
   // Obtener mensajes con datos del sender
@@ -128,6 +149,8 @@ export async function getConversationMessages(
 
   return {
     success: true,
+    feedbackMessage,
+    feedbackCreatedAt,
     messages: messageRows.map(m => ({
       id: m.id,
       message: m.message,

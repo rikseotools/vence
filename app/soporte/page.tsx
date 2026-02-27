@@ -101,6 +101,20 @@ const QUESTION_SUBTYPES: Record<string, string> = {
 // HELPER: obtener token de auth
 // ============================================
 
+const INLINE_EMOJIS = [
+  '😀', '😂', '😊', '😍', '🤔', '😅', '😢', '😡', '😴', '🤗',
+  '👍', '👎', '👏', '🙏', '💪', '👌', '✌️', '🤞', '🤝', '💯',
+  '❤️', '💙', '💚', '💛', '🧡', '💜', '🖤', '🤍', '❓', '❗',
+  '🎉', '🎊', '🔥', '💰', '📚', '✅', '❌', '⭐', '💡', '🚀'
+]
+
+interface UploadedImage {
+  id: number
+  url: string
+  name: string
+  path: string
+}
+
 async function getAuthToken(supabase: any): Promise<string | null> {
   const { data: { session } } = await supabase.auth.getSession()
   return session?.access_token ?? null
@@ -118,7 +132,6 @@ function SoporteContent() {
   const [disputes, setDisputes] = useState<Dispute[]>([])
   const [loading, setLoading] = useState(true)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
-  const [initialConversationId, setInitialConversationId] = useState<string | null>(null)
   const [disputeFilter, setDisputeFilter] = useState<'all' | 'pending' | 'resolved'>('all')
   const [selectedQuestionModal, setSelectedQuestionModal] = useState<Dispute | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
@@ -126,9 +139,14 @@ function SoporteContent() {
   // Chat inline state
   const [inlineChatConversationId, setInlineChatConversationId] = useState<string | null>(null)
   const [inlineChatMessages, setInlineChatMessages] = useState<ConversationMessage[]>([])
+  const [inlineChatFeedbackMessage, setInlineChatFeedbackMessage] = useState<string | null>(null)
+  const [inlineChatFeedbackCreatedAt, setInlineChatFeedbackCreatedAt] = useState<string | null>(null)
   const [inlineChatLoading, setInlineChatLoading] = useState(false)
   const [inlineChatNewMessage, setInlineChatNewMessage] = useState('')
   const [inlineChatSending, setInlineChatSending] = useState(false)
+  const [showInlineEmojiPicker, setShowInlineEmojiPicker] = useState(false)
+  const [inlineChatImages, setInlineChatImages] = useState<UploadedImage[]>([])
+  const [uploadingInlineImage, setUploadingInlineImage] = useState(false)
   const inlineChatEndRef = useRef<HTMLDivElement>(null)
   const inlineChatTextareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -185,6 +203,8 @@ function SoporteContent() {
 
       if (data.success) {
         setInlineChatMessages(data.messages ?? [])
+        setInlineChatFeedbackMessage(data.feedbackMessage ?? null)
+        setInlineChatFeedbackCreatedAt(data.feedbackCreatedAt ?? null)
       }
     } catch (error) {
       console.error('Error cargando mensajes:', error)
@@ -202,16 +222,90 @@ function SoporteContent() {
   // CHAT INLINE: enviar mensaje (usa POST /api/feedback/message existente)
   // ============================================
 
+  // ============================================
+  // CHAT INLINE: subir y eliminar imágenes
+  // ============================================
+
+  const handleInlineImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Solo se permiten archivos de imagen')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no puede ser mayor a 5MB')
+      return
+    }
+
+    setUploadingInlineImage(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('userPath', 'user-feedback-images')
+
+      const response = await fetch('/api/upload-feedback-image', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error subiendo imagen')
+      }
+
+      setInlineChatImages(prev => [...prev, {
+        id: Date.now(),
+        url: result.url,
+        name: result.fileName,
+        path: result.path
+      }])
+    } catch (error: any) {
+      console.error('Error subiendo imagen:', error)
+      alert(`Error: ${error.message}`)
+    } finally {
+      setUploadingInlineImage(false)
+      event.target.value = ''
+    }
+  }
+
+  const removeInlineImage = async (imageId: number, imagePath: string) => {
+    try {
+      await fetch(`/api/upload-feedback-image?path=${encodeURIComponent(imagePath)}`, {
+        method: 'DELETE'
+      })
+    } catch (error) {
+      console.error('Error eliminando imagen:', error)
+    }
+    setInlineChatImages(prev => prev.filter(img => img.id !== imageId))
+  }
+
+  // ============================================
+  // CHAT INLINE: enviar mensaje (usa POST /api/feedback/message existente)
+  // ============================================
+
   const sendInlineChatMessage = async () => {
-    if (!inlineChatConversationId || !inlineChatNewMessage.trim() || !user) return
+    if (!inlineChatConversationId || (!inlineChatNewMessage.trim() && inlineChatImages.length === 0) || !user) return
     try {
       setInlineChatSending(true)
+
+      // Construir mensaje final con URLs de imágenes adjuntas
+      let finalMessage = inlineChatNewMessage.trim()
+      if (inlineChatImages.length > 0) {
+        const imageUrls = inlineChatImages.map(img => img.url).join('\n')
+        finalMessage = finalMessage ? `${finalMessage}\n${imageUrls}` : imageUrls
+      }
+
       const res = await fetch('/api/feedback/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: inlineChatConversationId,
-          message: inlineChatNewMessage.trim(),
+          message: finalMessage,
           userId: user.id,
         }),
       })
@@ -219,12 +313,12 @@ function SoporteContent() {
 
       if (data.success) {
         setInlineChatNewMessage('')
+        setInlineChatImages([])
         // Recargar mensajes
         await loadInlineChatMessages(inlineChatConversationId)
 
         // Notificar admin
         try {
-          // Buscar feedback_id del feedback asociado
           const feedback = feedbacks.find(f => f.conversation?.id === inlineChatConversationId)
           const { sendAdminChatResponseNotification } = await import('../../lib/notifications/adminEmailNotifications')
           await sendAdminChatResponseNotification({
@@ -232,7 +326,7 @@ function SoporteContent() {
             user_id: user.id,
             user_email: user.email,
             user_name: (user as any).user_metadata?.full_name || 'Usuario',
-            message: inlineChatNewMessage.trim(),
+            message: finalMessage,
             feedback_id: feedback?.id,
             created_at: new Date().toISOString()
           })
@@ -255,27 +349,29 @@ function SoporteContent() {
   // ABRIR CHAT INLINE DESDE URL (conversation_id)
   // ============================================
 
+  // Solo abrir chat desde URL al montar (llegada desde email)
+  const urlConversationHandled = useRef(false)
   useEffect(() => {
+    if (urlConversationHandled.current) return
     const conversationId = searchParams.get('conversation_id')
-    if (conversationId) {
+    if (conversationId && supabase && user) {
+      urlConversationHandled.current = true
       setInlineChatConversationId(conversationId)
       loadInlineChatMessages(conversationId)
       setActiveTab('conversations')
 
       // Marcar notificaciones como leídas
-      if (user && supabase) {
-        supabase
-          .from('notification_logs')
-          .update({ opened_at: new Date().toISOString() })
-          .eq('user_id', user.id)
-          .is('opened_at', null)
-          .contains('context_data', { conversation_id: conversationId })
-          .then(({ error }: { error: any }) => {
-            if (!error) {
-              window.dispatchEvent(new Event('notifications-updated'))
-            }
-          })
-      }
+      supabase
+        .from('notification_logs')
+        .update({ opened_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .is('opened_at', null)
+        .contains('context_data', { conversation_id: conversationId })
+        .then(({ error }: { error: any }) => {
+          if (!error) {
+            window.dispatchEvent(new Event('notifications-updated'))
+          }
+        })
     }
   }, [searchParams, user, supabase, loadInlineChatMessages])
 
@@ -358,7 +454,9 @@ function SoporteContent() {
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        if (expandedImage) {
+        if (showInlineEmojiPicker) {
+          setShowInlineEmojiPicker(false)
+        } else if (expandedImage) {
           setExpandedImage(null)
         } else if (selectedQuestionModal) {
           setSelectedQuestionModal(null)
@@ -367,7 +465,20 @@ function SoporteContent() {
     }
     document.addEventListener('keydown', handleEsc)
     return () => document.removeEventListener('keydown', handleEsc)
-  }, [expandedImage, selectedQuestionModal])
+  }, [expandedImage, selectedQuestionModal, showInlineEmojiPicker])
+
+  // Cerrar emoji picker al hacer click fuera
+  useEffect(() => {
+    if (!showInlineEmojiPicker) return undefined
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.inline-emoji-picker-container')) {
+        setShowInlineEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showInlineEmojiPicker])
 
   // ============================================
   // RENDER HELPERS
@@ -564,50 +675,101 @@ function SoporteContent() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-3"></div>
                   <p className="text-gray-500 dark:text-gray-400 text-sm">Cargando mensajes...</p>
                 </div>
-              ) : inlineChatMessages.length === 0 ? (
+              ) : !inlineChatFeedbackMessage && inlineChatMessages.length === 0 ? (
                 <div className="text-center py-8">
                   <p className="text-gray-500 dark:text-gray-400 text-sm">No hay mensajes aún</p>
                 </div>
               ) : (
-                inlineChatMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.isAdmin ? 'justify-start' : 'justify-end'}`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
-                        msg.isAdmin
-                          ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'
-                          : 'bg-blue-600 text-white rounded-tr-sm'
-                      }`}
-                    >
-                      {msg.isAdmin && (
-                        <div className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
-                          Vence Soporte
+                <>
+                  {/* Mensaje original del feedback (primer mensaje del usuario) */}
+                  {inlineChatFeedbackMessage && (
+                    <div className="flex justify-end">
+                      <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-blue-600 text-white rounded-tr-sm">
+                        <div className="text-xs font-medium text-blue-200 mb-1">
+                          {(user as any).user_metadata?.full_name || user.email?.split('@')[0] || 'Tú'}
                         </div>
-                      )}
-                      <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                        {renderMessageWithImages(msg.message)}
-                      </div>
-                      <div className={`text-[10px] mt-1 ${msg.isAdmin ? 'text-gray-400 dark:text-gray-500' : 'text-blue-200'}`}>
-                        {msg.createdAt && new Date(msg.createdAt).toLocaleString('es-ES', {
-                          day: '2-digit',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          timeZone: 'Europe/Madrid'
-                        })}
+                        <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                          {renderMessageWithImages(inlineChatFeedbackMessage)}
+                        </div>
+                        {inlineChatFeedbackCreatedAt && (
+                          <div className="text-[10px] mt-1 text-blue-200">
+                            {new Date(inlineChatFeedbackCreatedAt).toLocaleString('es-ES', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              timeZone: 'Europe/Madrid'
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))
+                  )}
+
+                  {/* Mensajes de la conversación */}
+                  {inlineChatMessages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.isAdmin ? 'justify-start' : 'justify-end'}`}
+                    >
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                          msg.isAdmin
+                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'
+                            : 'bg-blue-600 text-white rounded-tr-sm'
+                        }`}
+                      >
+                        <div className={`text-xs font-medium mb-1 ${msg.isAdmin ? 'text-blue-600 dark:text-blue-400' : 'text-blue-200'}`}>
+                          {msg.isAdmin
+                            ? 'Vence Soporte'
+                            : (msg.senderName || (user as any).user_metadata?.full_name || user.email?.split('@')[0] || 'Tú')
+                          }
+                        </div>
+                        <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                          {renderMessageWithImages(msg.message)}
+                        </div>
+                        <div className={`text-[10px] mt-1 ${msg.isAdmin ? 'text-gray-400 dark:text-gray-500' : 'text-blue-200'}`}>
+                          {msg.createdAt && new Date(msg.createdAt).toLocaleString('es-ES', {
+                            day: '2-digit',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            timeZone: 'Europe/Madrid'
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
               <div ref={inlineChatEndRef} />
             </div>
 
-            {/* Input de mensaje */}
-            <div className="p-4 border-t dark:border-gray-700">
-              <div className="flex gap-2">
+            {/* Input de mensaje con imágenes y emojis */}
+            <div className="p-3 border-t dark:border-gray-700">
+              {/* Vista previa de imágenes */}
+              {inlineChatImages.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {inlineChatImages.map((image) => (
+                    <div key={image.id} className="relative group">
+                      <img
+                        src={image.url}
+                        alt={image.name}
+                        className="w-16 h-16 object-cover rounded-lg border border-gray-300 dark:border-gray-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeInlineImage(image.id, image.path)}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="relative">
                 <textarea
                   ref={inlineChatTextareaRef}
                   value={inlineChatNewMessage}
@@ -618,23 +780,79 @@ function SoporteContent() {
                       sendInlineChatMessage()
                     }
                   }}
-                  placeholder="Escribe tu mensaje..."
+                  placeholder="Escribe un mensaje..."
                   rows={2}
-                  className="flex-1 resize-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full p-2 pr-28 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={inlineChatSending}
                 />
-                <button
-                  onClick={sendInlineChatMessage}
-                  disabled={inlineChatSending || !inlineChatNewMessage.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-end"
-                >
-                  {inlineChatSending ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  )}
-                </button>
+
+                {/* Botones de acción */}
+                <div className="absolute bottom-2 right-2 flex items-center gap-1">
+                  {/* Subir imagen */}
+                  <label className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer rounded hover:bg-gray-100 dark:hover:bg-gray-600">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleInlineImageUpload}
+                      className="hidden"
+                      disabled={uploadingInlineImage}
+                    />
+                    {uploadingInlineImage ? (
+                      <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </label>
+
+                  {/* Emojis */}
+                  <button
+                    type="button"
+                    onClick={() => setShowInlineEmojiPicker(prev => !prev)}
+                    className="inline-emoji-picker-container p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
+                  >
+                    😊
+                  </button>
+
+                  {/* Enviar */}
+                  <button
+                    type="button"
+                    onClick={sendInlineChatMessage}
+                    disabled={inlineChatSending || (!inlineChatNewMessage.trim() && inlineChatImages.length === 0)}
+                    className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {inlineChatSending ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+
+                {/* Selector de Emojis */}
+                {showInlineEmojiPicker && (
+                  <div className="inline-emoji-picker-container absolute bottom-14 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg p-2 z-50 w-56 max-h-32 overflow-y-auto">
+                    <div className="grid grid-cols-8 gap-1">
+                      {INLINE_EMOJIS.map((emoji, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setInlineChatNewMessage(prev => prev + emoji)
+                            setShowInlineEmojiPicker(false)
+                            inlineChatTextareaRef.current?.focus()
+                          }}
+                          className="p-1 text-sm hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -715,10 +933,7 @@ function SoporteContent() {
           </h3>
           <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
             <button
-              onClick={() => {
-                setInitialConversationId(null)
-                setShowFeedbackModal(true)
-              }}
+              onClick={() => setShowFeedbackModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               Abrir chat soporte
@@ -769,10 +984,7 @@ function SoporteContent() {
                       Cuando envíes un mensaje al equipo aparecerá aquí
                     </p>
                     <button
-                      onClick={() => {
-                        setInitialConversationId(null)
-                        setShowFeedbackModal(true)
-                      }}
+                      onClick={() => setShowFeedbackModal(true)}
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Abrir chat soporte
@@ -782,7 +994,11 @@ function SoporteContent() {
                   feedbacks.map((feedback) => (
                     <div
                       key={feedback.id}
-                      className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      className={`border rounded-lg p-4 transition-shadow ${
+                        feedback.conversation?.status === 'closed'
+                          ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-60'
+                          : 'border-gray-200 dark:border-gray-600 hover:shadow-md'
+                      }`}
                     >
                       {/* Header del feedback */}
                       <div className="flex items-start justify-between mb-3">
@@ -823,32 +1039,18 @@ function SoporteContent() {
                                 : `"${feedback.message.substring(0, 50)}${feedback.message.length > 50 ? '...' : ''}"`}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                feedback.conversation.status === 'waiting_admin'
-                                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
-                                  : feedback.conversation.status === 'waiting_user'
-                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                              }`}>
-                                {feedback.conversation.status === 'waiting_admin' ? 'Esperando respuesta' :
-                                 feedback.conversation.status === 'waiting_user' ? 'Nueva respuesta' :
-                                 feedback.conversation.status}
-                              </span>
                               <button
                                 onClick={() => {
-                                  setInitialConversationId(feedback.conversation!.id)
-                                  setShowFeedbackModal(true)
+                                  setInlineChatConversationId(feedback.conversation!.id)
+                                  loadInlineChatMessages(feedback.conversation!.id)
                                 }}
                                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                                  feedback.conversation.status === 'waiting_user'
-                                    ? 'bg-green-600 text-white hover:bg-green-700'
+                                  feedback.conversation!.status === 'closed'
+                                    ? 'bg-gray-500 text-white hover:bg-gray-600'
                                     : 'bg-blue-600 text-white hover:bg-blue-700'
                                 }`}
                               >
-                                {feedback.conversation.status === 'waiting_user'
-                                  ? 'Ver Respuesta'
-                                  : 'Abrir Chat'
-                                }
+                                {feedback.conversation!.status === 'closed' ? 'Reabrir' : 'Abrir Chat'}
                               </button>
                             </div>
                           </div>
@@ -1258,10 +1460,8 @@ function SoporteContent() {
         isOpen={showFeedbackModal}
         onClose={() => {
           setShowFeedbackModal(false)
-          setInitialConversationId(null)
-          setTimeout(() => loadUserData(), 1000)
+          loadUserData()
         }}
-        initialConversationId={initialConversationId as any}
       />
     </div>
   )
