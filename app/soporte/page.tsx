@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import FeedbackModal from '@/components/FeedbackModal'
+import MarkdownExplanation from '@/components/MarkdownExplanation'
 import type {
   FeedbackWithConversation,
   ConversationMessage,
@@ -1446,9 +1447,7 @@ function SoporteContent() {
                   <div>
                     <h4 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Explicación:</h4>
                     <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg border-l-4 border-blue-400">
-                      <div className="text-blue-800 dark:text-blue-200 leading-relaxed whitespace-pre-wrap text-sm">
-                        {selectedQuestionModal.question.explanation}
-                      </div>
+                      <MarkdownExplanation content={selectedQuestionModal.question.explanation} className="text-blue-800 dark:text-blue-200 text-sm" />
                     </div>
                   </div>
                 )}
