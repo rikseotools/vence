@@ -135,7 +135,7 @@ function SoporteContent() {
   const [loading, setLoading] = useState(true)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [conversationFilter, setConversationFilter] = useState<'active' | 'closed' | 'all'>('active')
-  const [disputeFilter, setDisputeFilter] = useState<'all' | 'pending' | 'resolved'>('all')
+  const [disputeFilter, setDisputeFilter] = useState<'all' | 'pending' | 'resolved'>('pending')
   const [selectedQuestionModal, setSelectedQuestionModal] = useState<Dispute | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
 
