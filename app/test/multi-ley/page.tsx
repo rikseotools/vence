@@ -156,6 +156,17 @@ function MultiLeyTestContent() {
     })
   }
 
+  // Parsear filtros de secciones/títulos (JSON stringificado)
+  const sectionFiltersParam = searchParams?.get('section_filters')
+  let selectedSectionFilters: { title: string; articleRange?: { start: number; end: number }; sectionNumber?: string; sectionType?: string }[] = []
+  if (sectionFiltersParam) {
+    try {
+      selectedSectionFilters = JSON.parse(sectionFiltersParam)
+    } catch {
+      console.error('❌ [MultiLey] Error parsing section_filters')
+    }
+  }
+
   // Cargar preguntas
   useEffect(() => {
     async function loadQuestions() {
@@ -173,6 +184,7 @@ function MultiLeyTestContent() {
         console.log('📚 [MultiLey] Cargando preguntas:', {
           selectedLaws,
           selectedArticlesByLaw,
+          selectedSectionFilters,
           numQuestions,
           difficultyMode
         })
@@ -200,6 +212,7 @@ function MultiLeyTestContent() {
             onlyOfficialQuestions,
             focusEssentialArticles,
             onlyFailedQuestions,
+            selectedSectionFilters,
             userId: user?.id
           })
         })
@@ -233,7 +246,7 @@ function MultiLeyTestContent() {
       loadQuestions()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user?.id, selectedLaws.join(','), JSON.stringify(selectedArticlesByLaw), numQuestions, difficultyMode, excludeRecent, recentDays, onlyOfficialQuestions, focusEssentialArticles, onlyFailedQuestions])
+  }, [authLoading, user?.id, selectedLaws.join(','), JSON.stringify(selectedArticlesByLaw), JSON.stringify(selectedSectionFilters), numQuestions, difficultyMode, excludeRecent, recentDays, onlyOfficialQuestions, focusEssentialArticles, onlyFailedQuestions])
 
   // Estado de carga
   if (loading || authLoading) {
