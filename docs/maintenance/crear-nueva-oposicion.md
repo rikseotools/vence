@@ -10,7 +10,8 @@ Manual para escalar Vence a nuevas oposiciones. Basado en la implementacion real
 2. Config central: `lib/config/oposiciones.ts`
 3. Schemas y validaciones (hay MUCHOS archivos con listas hardcodeadas)
 4. Rutas Next.js: `app/<slug>/`
-5. Verificar build y tests
+5. Home y SEO: `app/page.js`, sitemaps
+6. Verificar build y tests
 
 ---
 
@@ -153,6 +154,9 @@ Este archivo es el "source of truth" para muchos componentes que importan desde 
 | `components/UserProfileModal.js` | `getOposicionName` map |
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |
 | `app/nuestras-oposiciones/page.js` | Array de tarjetas |
+| `app/page.js` | Links en seccion "Test por Oposicion" y tarjeta en "Temarios Completos" |
+| `app/sitemap-static.xml/route.ts` | Paginas principales (landing, test, temario) + temas del temario |
+| `app/sitemap-oposiciones.xml/route.ts` | Array `oposicionesList` |
 
 ### Tests a actualizar:
 
@@ -368,7 +372,70 @@ app/<slug-con-guiones>/
 
 ---
 
-## Paso 5: Verificacion
+## Paso 5: Home y SEO
+
+### 5a. `app/page.js` (Home)
+
+Anadir la oposicion en dos secciones:
+
+**Seccion "Test por Oposicion"** - Anadir link bajo la categoria correspondiente (Administracion General, Comunidades Autonomas, Justicia):
+
+```jsx
+<p className="text-xs text-slate-500 ... uppercase tracking-wide pt-2">Comunidades Autonomas</p>
+<Link href="/slug-con-guiones/test" className="block py-2 px-4 ...">
+  Nombre Corto (C2)
+</Link>
+```
+
+**Seccion "Temarios Completos"** - Anadir tarjeta:
+
+```jsx
+<Link href="/slug-con-guiones/temario" className="block py-4 px-4 ... relative">
+  <span className="absolute top-2 right-2 text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded-full">Nuevo</span>
+  <span className="block text-2xl mb-2">🏛️</span>
+  <span className="block font-medium ...">Nombre Corto</span>
+  <span className="block text-xs ...">N temas</span>
+</Link>
+```
+
+### 5b. `app/sitemap-static.xml/route.ts`
+
+Anadir las 3 paginas principales y los temas del temario:
+
+```typescript
+// En el array staticPages:
+{ loc: '/slug-con-guiones', priority: 0.9, changefreq: 'weekly' },
+{ loc: '/slug-con-guiones/test', priority: 0.8, changefreq: 'weekly' },
+{ loc: '/slug-con-guiones/temario', priority: 0.7, changefreq: 'monthly' },
+
+// Temas del temario (despues de los staticPages):
+for (let i = 1; i <= 16; i++) {
+  urls.push(`
+  <url>
+    <loc>${SITE_URL}/slug-con-guiones/temario/tema-${i}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`);
+}
+```
+
+**Nota:** Si la oposicion usa numeracion por bloques (ej: 1-15, 101-111, 201-211), generar cada rango por separado.
+
+### 5c. `app/sitemap-oposiciones.xml/route.ts`
+
+Anadir al array `oposicionesList`:
+
+```typescript
+const oposicionesList = [
+  ...,
+  'slug-con-guiones'
+];
+```
+
+---
+
+## Paso 6: Verificacion
 
 ### Build
 
@@ -426,6 +493,12 @@ Falta en `lib/api/theme-stats/schemas.ts` (VALID_OPOSICIONES).
 
 ### Tests fallan con "Expected length: N"
 Actualizar `__tests__/api/theme-stats/themeStats.test.js`.
+
+### Oposicion no aparece en Google
+Falta en los sitemaps (`app/sitemap-static.xml/route.ts` y/o `app/sitemap-oposiciones.xml/route.ts`).
+
+### Oposicion no aparece en la home
+Falta en `app/page.js` (seccion "Test por Oposicion" y/o "Temarios Completos").
 
 ---
 
