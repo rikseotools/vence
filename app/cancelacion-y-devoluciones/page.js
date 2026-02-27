@@ -1,12 +1,11 @@
 'use client'
-import { useState } from 'react'
-import FeedbackModal from '@/components/FeedbackModal'
+import { useRouter } from 'next/navigation'
 
 export default function CancelacionDevolucionesPage() {
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const router = useRouter()
 
   const handleOpenChat = () => {
-    setShowFeedbackModal(true)
+    router.push('/soporte')
   }
 
   return (
@@ -341,10 +340,6 @@ export default function CancelacionDevolucionesPage() {
       </div>
     </div>
 
-    <FeedbackModal
-      isOpen={showFeedbackModal}
-      onClose={() => setShowFeedbackModal(false)}
-    />
     </>
   )
 }
