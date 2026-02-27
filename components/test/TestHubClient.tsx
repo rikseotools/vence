@@ -11,6 +11,7 @@ interface Topic {
   topicNumber: number
   title: string
   description: string | null
+  hasContent: boolean
 }
 
 interface Bloque {
@@ -347,6 +348,22 @@ interface ThemeLinkProps {
 function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProps) {
   const hasStats = !!stats
   const href = `${basePath}/${topic.topicNumber}`
+
+  // Tema sin contenido: mostrar como deshabilitado
+  if (!topic.hasContent) {
+    return (
+      <div
+        className="block py-3 px-6 rounded-lg font-semibold bg-gray-100 border border-gray-200 text-gray-400 cursor-not-allowed opacity-70"
+      >
+        <div className="flex items-center justify-between">
+          <span>Tema {topic.topicNumber}: {topic.title}</span>
+          <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm font-medium">
+            En desarrollo
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <Link

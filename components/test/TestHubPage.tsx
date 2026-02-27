@@ -10,6 +10,7 @@ interface Topic {
   topicNumber: number
   title: string
   description: string | null
+  hasContent: boolean
 }
 
 interface BloqueConfig {
@@ -89,12 +90,22 @@ export default async function TestHubPage({ oposicion }: Props) {
     )
   }
 
+  // Consultar qué temas tienen contenido (topic_scope)
+  const topicIds = (topics || []).map(t => t.id)
+  const { data: scopes } = await supabase
+    .from('topic_scope')
+    .select('topic_id')
+    .in('topic_id', topicIds)
+
+  const topicsWithScope = new Set((scopes || []).map(s => s.topic_id))
+
   // Transformar a formato esperado
   const formattedTopics: Topic[] = (topics || []).map(t => ({
     id: t.id,
     topicNumber: t.topic_number,
     title: t.title,
     description: t.description,
+    hasContent: topicsWithScope.has(t.id),
   }))
 
   // Agrupar por bloques
