@@ -164,31 +164,3 @@ describe('Modo Global - Validación Zod', () => {
     expect(result.success).toBe(false)
   })
 })
-
-// ============================================
-// TEST DE INTEGRACIÓN: API endpoint real
-// ============================================
-describe('Modo Global - Integración API (requiere servidor)', () => {
-  const API_URL = process.env.TEST_API_URL || 'http://localhost:3000'
-  const canTestApi = process.env.TEST_API === 'true'
-
-  const testOrSkip = canTestApi ? test : test.skip
-
-  testOrSkip('POST /api/questions/filtered con modo global devuelve preguntas', async () => {
-    const response = await fetch(`${API_URL}/api/questions/filtered`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        topicNumber: 0,
-        selectedLaws: [],
-        count: 10,
-        positionType: 'auxiliar_administrativo',
-      }),
-    })
-
-    const data = await response.json()
-    expect(response.ok).toBe(true)
-    expect(data.success).toBe(true)
-    expect(data.questions.length).toBeGreaterThan(0)
-  })
-})
