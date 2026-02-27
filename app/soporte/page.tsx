@@ -396,6 +396,15 @@ function SoporteContent() {
       if (disputeId && disputes.length > 0) {
         const dispute = disputes.find(d => d.id === disputeId)
 
+        // Cambiar filtro para que la impugnación sea visible
+        if (dispute) {
+          if (dispute.status === 'pending') {
+            setDisputeFilter('pending')
+          } else {
+            setDisputeFilter('resolved')
+          }
+        }
+
         if (dispute && !dispute.isRead) {
           const tableName = dispute.isPsychometric ? 'psychometric_question_disputes' : 'question_disputes'
           supabase
