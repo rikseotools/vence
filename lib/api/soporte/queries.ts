@@ -12,7 +12,7 @@ import {
   psychometricQuestions,
   userProfiles,
 } from '@/db/schema'
-import { eq, desc, ne, and, asc } from 'drizzle-orm'
+import { eq, desc, ne, and, asc, count } from 'drizzle-orm'
 import type {
   FeedbackWithConversation,
   ConversationMessage,
@@ -67,20 +67,57 @@ export async function getUserFeedbacksWithConversations(
     }
   }
 
-  return feedbackRows.map(fb => ({
-    id: fb.id,
-    type: fb.type,
-    message: fb.message,
-    status: fb.status,
-    createdAt: fb.createdAt,
-    conversation: convByFeedbackId.has(fb.id)
-      ? {
-          id: convByFeedbackId.get(fb.id)!.id,
-          status: convByFeedbackId.get(fb.id)!.status,
-          lastMessageAt: convByFeedbackId.get(fb.id)!.lastMessageAt,
-        }
-      : null,
-  }))
+  // Obtener último mensaje y conteo de cada conversación
+  const convIds = conversationRows.map(c => c.id)
+  const lastMessageMap = new Map<string, { message: string; isAdmin: boolean | null; messageCount: number }>()
+
+  if (convIds.length > 0) {
+    for (const convId of convIds) {
+      const [lastMsgRows, countRows] = await Promise.all([
+        db
+          .select({
+            message: feedbackMessages.message,
+            isAdmin: feedbackMessages.isAdmin,
+          })
+          .from(feedbackMessages)
+          .where(eq(feedbackMessages.conversationId, convId))
+          .orderBy(desc(feedbackMessages.createdAt))
+          .limit(1),
+        db
+          .select({ total: count() })
+          .from(feedbackMessages)
+          .where(eq(feedbackMessages.conversationId, convId)),
+      ])
+
+      lastMessageMap.set(convId, {
+        message: lastMsgRows[0]?.message ?? '',
+        isAdmin: lastMsgRows[0]?.isAdmin ?? null,
+        messageCount: countRows[0]?.total ?? 0,
+      })
+    }
+  }
+
+  return feedbackRows.map(fb => {
+    const conv = convByFeedbackId.get(fb.id)
+    const lastMsg = conv ? lastMessageMap.get(conv.id) : undefined
+    return {
+      id: fb.id,
+      type: fb.type,
+      message: fb.message,
+      status: fb.status,
+      createdAt: fb.createdAt,
+      conversation: conv
+        ? {
+            id: conv.id,
+            status: conv.status,
+            lastMessageAt: conv.lastMessageAt,
+            lastMessage: lastMsg?.message ?? null,
+            lastMessageIsAdmin: lastMsg?.isAdmin ?? null,
+            messageCount: lastMsg?.messageCount ?? 0,
+          }
+        : null,
+    }
+  })
 }
 
 // ============================================

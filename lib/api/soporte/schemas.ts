@@ -15,6 +15,9 @@ export const feedbackWithConversationSchema = z.object({
     id: z.string().uuid(),
     status: z.string().nullable(),
     lastMessageAt: z.string().nullable(),
+    lastMessage: z.string().nullable().optional(),
+    lastMessageIsAdmin: z.boolean().nullable().optional(),
+    messageCount: z.number().optional(),
   }).nullable(),
 })
 

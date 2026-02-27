@@ -132,6 +132,7 @@ function SoporteContent() {
   const [disputes, setDisputes] = useState<Dispute[]>([])
   const [loading, setLoading] = useState(true)
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [conversationFilter, setConversationFilter] = useState<'active' | 'closed' | 'all'>('active')
   const [disputeFilter, setDisputeFilter] = useState<'all' | 'pending' | 'resolved'>('all')
   const [selectedQuestionModal, setSelectedQuestionModal] = useState<Dispute | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
@@ -974,6 +975,29 @@ function SoporteContent() {
             {/* Conversations Tab */}
             {activeTab === 'conversations' && (
               <div className="space-y-4">
+                {/* Filtros */}
+                {feedbacks.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {([
+                      { key: 'active' as const, label: 'Activos', count: feedbacks.filter(f => f.conversation?.status !== 'closed').length },
+                      { key: 'closed' as const, label: 'Cerrados', count: feedbacks.filter(f => f.conversation?.status === 'closed').length },
+                      { key: 'all' as const, label: 'Todos', count: feedbacks.length },
+                    ]).map(({ key, label, count }) => (
+                      <button
+                        key={key}
+                        onClick={() => setConversationFilter(key)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                          conversationFilter === key
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        {label} ({count})
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {feedbacks.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-6xl mb-4">💬</div>
@@ -991,10 +1015,24 @@ function SoporteContent() {
                     </button>
                   </div>
                 ) : (
-                  feedbacks.map((feedback) => (
+                  feedbacks.filter(fb => {
+                    if (conversationFilter === 'active') return fb.conversation?.status !== 'closed'
+                    if (conversationFilter === 'closed') return fb.conversation?.status === 'closed'
+                    return true
+                  }).map((feedback) => (
                     <div
                       key={feedback.id}
+                      onClick={() => {
+                        if (feedback.conversation) {
+                          setInlineChatConversationId(feedback.conversation.id)
+                          loadInlineChatMessages(feedback.conversation.id)
+                        }
+                      }}
                       className={`border rounded-lg p-4 transition-shadow ${
+                        feedback.conversation
+                          ? 'cursor-pointer'
+                          : ''
+                      } ${
                         feedback.conversation?.status === 'closed'
                           ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 opacity-60'
                           : 'border-gray-200 dark:border-gray-600 hover:shadow-md'
@@ -1022,38 +1060,57 @@ function SoporteContent() {
                         </div>
                       </div>
 
-                      {/* Mensaje - ocultar si es conversación iniciada por soporte */}
-                      {!feedback.message?.startsWith('[Conversación iniciada') && (
+                      {/* Mensaje solo si NO hay conversación */}
+                      {!feedback.conversation && !feedback.message?.startsWith('[Conversación iniciada') && (
                         <p className="text-gray-800 dark:text-gray-200 mb-3">
                           {feedback.message}
                         </p>
                       )}
 
-                      {/* Chat conversation indicator */}
+                      {/* Preview de conversación: primer mensaje + último */}
                       {feedback.conversation && (
-                        <div className="mb-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700">
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm font-medium text-green-800 dark:text-green-300">
-                              {feedback.message?.startsWith('[Conversación iniciada')
-                                ? 'Conversación con soporte'
-                                : `"${feedback.message.substring(0, 50)}${feedback.message.length > 50 ? '...' : ''}"`}
+                        <div className="mb-3 space-y-2">
+                          {/* Primer mensaje (del usuario) */}
+                          {!feedback.message?.startsWith('[Conversación iniciada') && (
+                            <div className="flex justify-end">
+                              <div className="max-w-[80%] bg-blue-100 dark:bg-blue-900/30 rounded-xl rounded-tr-sm px-3 py-2">
+                                <p className="text-sm text-blue-800 dark:text-blue-200 line-clamp-2">
+                                  {feedback.message}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => {
-                                  setInlineChatConversationId(feedback.conversation!.id)
-                                  loadInlineChatMessages(feedback.conversation!.id)
-                                }}
-                                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                                  feedback.conversation!.status === 'closed'
-                                    ? 'bg-gray-500 text-white hover:bg-gray-600'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                                }`}
-                              >
-                                {feedback.conversation!.status === 'closed' ? 'Reabrir' : 'Abrir Chat'}
-                              </button>
+                          )}
+
+                          {/* Indicador de mensajes intermedios */}
+                          {(feedback.conversation.messageCount ?? 0) > 1 && (
+                            <div className="flex justify-center">
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                ··· {(feedback.conversation.messageCount ?? 0) - (feedback.conversation.lastMessage ? 1 : 0)} mensaje{((feedback.conversation.messageCount ?? 0) - (feedback.conversation.lastMessage ? 1 : 0)) !== 1 ? 's' : ''} más ···
+                              </span>
                             </div>
-                          </div>
+                          )}
+
+                          {/* Último mensaje */}
+                          {feedback.conversation.lastMessage && (
+                            <div className={`flex ${feedback.conversation.lastMessageIsAdmin ? 'justify-start' : 'justify-end'}`}>
+                              <div className={`max-w-[80%] rounded-xl px-3 py-2 ${
+                                feedback.conversation.lastMessageIsAdmin
+                                  ? 'bg-gray-100 dark:bg-gray-700 rounded-tl-sm'
+                                  : 'bg-blue-100 dark:bg-blue-900/30 rounded-tr-sm'
+                              }`}>
+                                {feedback.conversation.lastMessageIsAdmin && (
+                                  <div className="text-[10px] font-medium text-blue-600 dark:text-blue-400 mb-0.5">Vence Soporte</div>
+                                )}
+                                <p className={`text-sm line-clamp-2 ${
+                                  feedback.conversation.lastMessageIsAdmin
+                                    ? 'text-gray-700 dark:text-gray-300'
+                                    : 'text-blue-800 dark:text-blue-200'
+                                }`}>
+                                  {feedback.conversation.lastMessage.replace(/(https?:\/\/[^\s]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s]*)?)/gi, '[imagen]')}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
