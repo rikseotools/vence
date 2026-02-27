@@ -3,10 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import {
   safeParseCreateDisputeRequest,
+  safeParseAppealDisputeRequest,
   createDispute,
   getExistingDispute,
+  handleDisputeAppeal,
   type CreateDisputeResponse,
   type GetExistingDisputeResponse,
+  type AppealDisputeResponse,
 } from '@/lib/api/dispute'
 
 const getSupabase = () =>
@@ -133,6 +136,62 @@ export async function GET(
     console.error('❌ [API/dispute] GET Error:', error)
     return NextResponse.json(
       { success: false, data: null, error: 'Error interno del servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(
+  request: NextRequest
+): Promise<NextResponse<AppealDisputeResponse>> {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+
+    const token = authHeader.split(' ')[1]
+    const {
+      data: { user },
+      error: authError,
+    } = await getSupabase().auth.getUser(token)
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Token inválido' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const validation = safeParseAppealDisputeRequest(body)
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, error: `Datos inválidos: ${validation.error.errors.map((e) => e.message).join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    const result = await handleDisputeAppeal(
+      validation.data.disputeId,
+      user.id,
+      validation.data.action,
+      validation.data.appealText
+    )
+
+    if (!result.success) {
+      return NextResponse.json(result, { status: 400 })
+    }
+
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('❌ [API/dispute] PATCH Error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Error interno del servidor' },
       { status: 500 }
     )
   }

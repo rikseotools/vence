@@ -8,6 +8,7 @@ export {
   disputeDataSchema,
   createDisputeResponseSchema,
   safeParseCreateDisputeRequest,
+  safeParseAppealDisputeRequest,
   validateCreateDisputeRequest,
   type DisputeType,
   type DisputeStatus,
@@ -16,7 +17,9 @@ export {
   type CreateDisputeResponse,
   type ExistingDisputeData,
   type GetExistingDisputeResponse,
+  type AppealDisputeRequest,
+  type AppealDisputeResponse,
 } from './schemas'
 
 // Queries
-export { createDispute, getExistingDispute } from './queries'
+export { createDispute, getExistingDispute, handleDisputeAppeal } from './queries'

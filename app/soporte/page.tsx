@@ -138,6 +138,10 @@ function SoporteContent() {
   const [disputeFilter, setDisputeFilter] = useState<'all' | 'pending' | 'resolved'>('pending')
   const [selectedQuestionModal, setSelectedQuestionModal] = useState<Dispute | null>(null)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [appealingDisputeId, setAppealingDisputeId] = useState<string | null>(null)
+  const [appealText, setAppealText] = useState('')
+  const [appealLoading, setAppealLoading] = useState(false)
+  const [appealSuccess, setAppealSuccess] = useState<string | null>(null)
 
   // Chat inline state
   const [inlineChatConversationId, setInlineChatConversationId] = useState<string | null>(null)
@@ -540,38 +544,69 @@ function SoporteContent() {
   }
 
   const handleDisputeSatisfaction = async (dispute: Dispute, isSatisfied: boolean) => {
+    if (!isSatisfied) {
+      setAppealingDisputeId(dispute.id)
+      setAppealText('')
+      setAppealSuccess(null)
+      return
+    }
+
     try {
-      if (isSatisfied) {
-        await supabase
-          .from('question_disputes')
-          .update({
-            status: 'resolved',
-            appeal_text: 'Usuario de acuerdo con la respuesta del administrador.',
-            appeal_submitted_at: new Date().toISOString()
-          })
-          .eq('id', dispute.id)
+      setAppealLoading(true)
+      const token = await getAuthToken(supabase)
+      if (!token) return
 
-        alert('Gracias por tu feedback. La impugnación se ha marcado como resuelta.')
-      } else {
-        const appealReason = prompt('Por favor, explica por qué no estás de acuerdo con la respuesta y qué consideras que debería corregirse:')
-        if (!appealReason?.trim()) return
+      const res = await fetch('/api/dispute', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ disputeId: dispute.id, action: 'accept' }),
+      })
+      const data = await res.json()
 
-        await supabase
-          .from('question_disputes')
-          .update({
-            status: 'pending',
-            appeal_text: appealReason.trim(),
-            appeal_submitted_at: new Date().toISOString()
-          })
-          .eq('id', dispute.id)
-
-        alert('Tu apelación ha sido registrada. Vence revisará tu caso nuevamente.')
+      if (data.success) {
+        setAppealSuccess('Gracias por tu feedback.')
+        setTimeout(() => setAppealSuccess(null), 3000)
+        await loadUserData()
       }
-
-      await loadUserData()
     } catch (error) {
       console.error('Error procesando satisfacción:', error)
-      alert('Error al procesar tu respuesta. Inténtalo de nuevo.')
+    } finally {
+      setAppealLoading(false)
+    }
+  }
+
+  const handleSubmitAppeal = async (disputeId: string) => {
+    if (!appealText.trim()) return
+
+    try {
+      setAppealLoading(true)
+      const token = await getAuthToken(supabase)
+      if (!token) return
+
+      const res = await fetch('/api/dispute', {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ disputeId, action: 'appeal', appealText: appealText.trim() }),
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        setAppealingDisputeId(null)
+        setAppealText('')
+        setAppealSuccess('Apelación enviada. Revisaremos tu caso nuevamente.')
+        setTimeout(() => setAppealSuccess(null), 4000)
+        await loadUserData()
+      }
+    } catch (error) {
+      console.error('Error enviando apelación:', error)
+    } finally {
+      setAppealLoading(false)
     }
   }
 
@@ -1276,27 +1311,69 @@ function SoporteContent() {
                               )}
                             </div>
 
-                            {/* Botones de satisfacción */}
+                            {/* Botones de satisfacción / Formulario de apelación */}
                             {!dispute.isPsychometric && (dispute.status === 'resolved' || dispute.status === 'rejected') &&
                              dispute.appealText !== 'Usuario de acuerdo con la respuesta del administrador.' && (
                               <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                                  ¿Estás de acuerdo con esta respuesta?
-                                </p>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => handleDisputeSatisfaction(dispute, true)}
-                                    className="inline-flex items-center px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-                                  >
-                                    Sí, gracias
-                                  </button>
-                                  <button
-                                    onClick={() => handleDisputeSatisfaction(dispute, false)}
-                                    className="inline-flex items-center px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
-                                  >
-                                    No, quiero apelar
-                                  </button>
-                                </div>
+                                {appealSuccess && (
+                                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{appealSuccess}</p>
+                                )}
+
+                                {!appealSuccess && appealingDisputeId !== dispute.id && (
+                                  <>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                                      ¿Estás de acuerdo con esta respuesta?
+                                    </p>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleDisputeSatisfaction(dispute, true)}
+                                        disabled={appealLoading}
+                                        className="inline-flex items-center px-3 py-1.5 text-xs bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/60 transition-colors disabled:opacity-50"
+                                      >
+                                        Sí, gracias
+                                      </button>
+                                      <button
+                                        onClick={() => handleDisputeSatisfaction(dispute, false)}
+                                        disabled={appealLoading}
+                                        className="inline-flex items-center px-3 py-1.5 text-xs bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/60 transition-colors disabled:opacity-50"
+                                      >
+                                        No, quiero apelar
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+
+                                {!appealSuccess && appealingDisputeId === dispute.id && (
+                                  <div className="space-y-3">
+                                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                      Explica por qué no estás de acuerdo:
+                                    </p>
+                                    <textarea
+                                      value={appealText}
+                                      onChange={(e) => setAppealText(e.target.value)}
+                                      placeholder="Describe qué consideras incorrecto y qué debería corregirse..."
+                                      className="w-full p-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                                      rows={3}
+                                      autoFocus
+                                    />
+                                    <div className="flex gap-2 justify-end">
+                                      <button
+                                        onClick={() => { setAppealingDisputeId(null); setAppealText('') }}
+                                        disabled={appealLoading}
+                                        className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors disabled:opacity-50"
+                                      >
+                                        Cancelar
+                                      </button>
+                                      <button
+                                        onClick={() => handleSubmitAppeal(dispute.id)}
+                                        disabled={appealLoading || !appealText.trim()}
+                                        className="px-3 py-1.5 text-xs text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        {appealLoading ? 'Enviando...' : 'Enviar apelación'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )}
 

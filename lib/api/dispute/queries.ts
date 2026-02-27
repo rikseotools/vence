@@ -2,7 +2,7 @@
 import { getDb } from '@/db/client'
 import { questionDisputes, questions } from '@/db/schema'
 import { eq, and } from 'drizzle-orm'
-import type { CreateDisputeResponse, DisputeData, GetExistingDisputeResponse } from './schemas'
+import type { CreateDisputeResponse, DisputeData, GetExistingDisputeResponse, AppealDisputeResponse } from './schemas'
 
 // ============================================
 // OBTENER IMPUGNACIÓN EXISTENTE
@@ -132,6 +132,71 @@ export async function createDispute(
       }
     }
 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    }
+  }
+}
+
+// ============================================
+// APELAR / ACEPTAR RESOLUCIÓN
+// ============================================
+
+export async function handleDisputeAppeal(
+  disputeId: string,
+  userId: string,
+  action: 'accept' | 'appeal',
+  appealText?: string
+): Promise<AppealDisputeResponse> {
+  try {
+    const db = getDb()
+
+    // Verificar que la disputa pertenece al usuario
+    const [dispute] = await db
+      .select({ id: questionDisputes.id, status: questionDisputes.status })
+      .from(questionDisputes)
+      .where(
+        and(
+          eq(questionDisputes.id, disputeId),
+          eq(questionDisputes.userId, userId)
+        )
+      )
+      .limit(1)
+
+    if (!dispute) {
+      return { success: false, error: 'Impugnación no encontrada' }
+    }
+
+    if (dispute.status !== 'resolved' && dispute.status !== 'rejected') {
+      return { success: false, error: 'Solo puedes responder a impugnaciones resueltas o rechazadas' }
+    }
+
+    if (action === 'accept') {
+      await db
+        .update(questionDisputes)
+        .set({
+          appealText: 'Usuario de acuerdo con la respuesta del administrador.',
+          appealSubmittedAt: new Date().toISOString(),
+        })
+        .where(eq(questionDisputes.id, disputeId))
+    } else {
+      if (!appealText?.trim()) {
+        return { success: false, error: 'El texto de apelación es requerido' }
+      }
+      await db
+        .update(questionDisputes)
+        .set({
+          status: 'pending',
+          appealText: appealText.trim(),
+          appealSubmittedAt: new Date().toISOString(),
+        })
+        .where(eq(questionDisputes.id, disputeId))
+    }
+
+    return { success: true }
+  } catch (error: unknown) {
+    console.error('❌ [Dispute] Error procesando apelación:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error desconocido',

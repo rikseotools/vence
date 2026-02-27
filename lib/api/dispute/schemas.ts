@@ -72,6 +72,27 @@ export type GetExistingDisputeResponse = {
 }
 
 // ============================================
+// REQUEST: APPEAL DISPUTE
+// ============================================
+
+export const appealDisputeRequestSchema = z.object({
+  disputeId: z.string().uuid('disputeId debe ser un UUID válido'),
+  action: z.enum(['accept', 'appeal']),
+  appealText: z.string().min(1, 'El texto de apelación es requerido').optional(),
+})
+
+export type AppealDisputeRequest = z.infer<typeof appealDisputeRequestSchema>
+
+export type AppealDisputeResponse = {
+  success: boolean
+  error?: string
+}
+
+export function safeParseAppealDisputeRequest(data: unknown) {
+  return appealDisputeRequestSchema.safeParse(data)
+}
+
+// ============================================
 // VALIDADORES
 // ============================================
 
