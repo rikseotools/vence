@@ -1,15 +1,8 @@
-'use client'
-import { useRouter } from 'next/navigation'
+// app/cancelacion-y-devoluciones/page.tsx - Política de cancelación y devoluciones
+import Link from 'next/link'
 
 export default function CancelacionDevolucionesPage() {
-  const router = useRouter()
-
-  const handleOpenChat = () => {
-    router.push('/soporte')
-  }
-
   return (
-    <>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
         {/* Header */}
@@ -123,7 +116,7 @@ export default function CancelacionDevolucionesPage() {
 
             <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border-l-4 border-orange-500">
               <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-300 mb-2">
-                ⚠️ Política de "Una Sola Vez"
+                ⚠️ Política de &quot;Una Sola Vez&quot;
               </h3>
               <p className="text-gray-700 dark:text-gray-300 mb-2">
                 La Garantía de Devolución <strong>solo puede utilizarse una vez por cliente</strong>.
@@ -139,12 +132,12 @@ export default function CancelacionDevolucionesPage() {
                 💬 Cómo solicitar una devolución:
               </h3>
               <p className="text-gray-700 dark:text-gray-300">
-                <button
-                  onClick={handleOpenChat}
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium cursor-pointer bg-transparent border-none p-0"
+                <Link
+                  href="/soporte"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
                 >
                   Abre un chat de soporte
-                </button> y solicítalo. Ya tenemos tus datos en el sistema, así que solo necesitas indicarnos que deseas acogerte a la Garantía de Devolución.
+                </Link> y solicítalo. Ya tenemos tus datos en el sistema, así que solo necesitas indicarnos que deseas acogerte a la Garantía de Devolución.
               </p>
             </div>
 
@@ -236,18 +229,18 @@ export default function CancelacionDevolucionesPage() {
               </h3>
               <ol className="space-y-2 text-gray-700 dark:text-gray-300 list-decimal list-inside">
                 <li>Ve a tu <strong>Perfil</strong> en Vence</li>
-                <li>Haz clic en <strong>"Gestionar suscripción"</strong></li>
-                <li>Selecciona <strong>"Cancelar suscripción"</strong></li>
+                <li>Haz clic en <strong>&quot;Gestionar suscripción&quot;</strong></li>
+                <li>Selecciona <strong>&quot;Cancelar suscripción&quot;</strong></li>
                 <li>Confirma tu cancelación</li>
               </ol>
               <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
                 También puedes{' '}
-                <button
-                  onClick={handleOpenChat}
-                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer bg-transparent border-none p-0"
+                <Link
+                  href="/soporte"
+                  className="text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   abrir un chat de soporte
-                </button>{' '}
+                </Link>{' '}
                 y nosotros lo tramitaremos.
               </p>
             </div>
@@ -284,7 +277,7 @@ export default function CancelacionDevolucionesPage() {
 
             <div>
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                ¿Qué se considera "uso abusivo" del servicio?
+                ¿Qué se considera &quot;uso abusivo&quot; del servicio?
               </h3>
               <p className="text-gray-600 dark:text-gray-300">
                 Uso abusivo sería, por ejemplo, completar cientos de tests en muy pocos días con el único objetivo de extraer
@@ -313,12 +306,12 @@ export default function CancelacionDevolucionesPage() {
           <p className="text-lg mb-6">
             Estamos aquí para ayudarte. Si tienes dudas sobre cancelaciones o devoluciones:
           </p>
-          <button
-            onClick={handleOpenChat}
-            className="inline-block bg-white text-blue-600 font-semibold px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+          <Link
+            href="/soporte"
+            className="inline-block bg-white text-blue-600 font-semibold px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors"
           >
             💬 Ábrenos un chat de soporte
-          </button>
+          </Link>
         </section>
 
         {/* Footer Legal */}
@@ -339,7 +332,5 @@ export default function CancelacionDevolucionesPage() {
         </div>
       </div>
     </div>
-
-    </>
   )
 }
