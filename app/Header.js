@@ -7,7 +7,6 @@ import UserAvatar from '@/components/UserAvatar'
 import NotificationBell from '@/components/NotificationBell'
 import RankingModal from '@/components/RankingModal'
 import FeedbackButton from '@/components/FeedbackButton'
-import FeedbackModal from '@/components/FeedbackModal'
 import QuestionDispute from '@/components/QuestionDispute'
 import { useNewMedalsBadge } from '@/hooks/useNewMedalsBadge'
 import '@/lib/debug/medalDebug' // Cargar funciones de debug
@@ -26,7 +25,6 @@ export default function HeaderES() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminLoading, setAdminLoading] = useState(true)
   const [showRankingModal, setShowRankingModal] = useState(false)
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
   const [showQuestionDispute, setShowQuestionDispute] = useState(false)
   const [userStreak, setUserStreak] = useState(0)
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
@@ -440,20 +438,14 @@ export default function HeaderES() {
                 </Link>
 
                 {/* 💬 ICONO DE SOPORTE */}
-                <button
-                  onClick={() => {
-                    setShowFeedbackModal(true)
-                    // Refrescar notificaciones admin inmediatamente al abrir feedback
-                    if (isAdmin && adminNotifications?.refresh) {
-                      adminNotifications.refresh()
-                    }
-                  }}
+                <Link
+                  href="/soporte"
                   className="flex items-center justify-center p-1.5 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg transition-colors"
                   aria-label="Contactar soporte"
                   title="Contactar soporte"
                 >
                   <span className="text-lg">💬</span>
-                </button>
+                </Link>
 
                 {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE */}
                 {!isPremium && !isLegacy && userProfile?.plan_type !== 'trial' && (
@@ -546,20 +538,14 @@ export default function HeaderES() {
             {/* DERECHA: Notificaciones + Menú hamburguesa + Avatar del usuario */}
             <div className="flex items-center space-x-1 flex-shrink-0">
               {/* 🎧 BOTÓN DE SOPORTE - Solo en desktop */}
-              <button
-                onClick={() => {
-                  setShowFeedbackModal(true)
-                  // Refrescar notificaciones admin inmediatamente al abrir feedback
-                  if (isAdmin && adminNotifications?.refresh) {
-                    adminNotifications.refresh()
-                  }
-                }}
+              <Link
+                href="/soporte"
                 className="hidden xl:flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors text-blue-700 hover:text-blue-800"
                 title="Contactar soporte"
               >
                 <span className="text-sm">💬</span>
                 <span className="text-sm font-medium">Soporte</span>
-              </button>
+              </Link>
 
               {/* 👑 BOTÓN PREMIUM - Solo usuarios FREE en desktop */}
               {user && !isPremium && !isLegacy && userProfile?.plan_type !== 'trial' && (
@@ -1007,21 +993,6 @@ export default function HeaderES() {
         />
       </div>
 
-      {/* 💬 MODAL DE FEEDBACK */}
-      <FeedbackModal 
-        isOpen={showFeedbackModal} 
-        onClose={() => setShowFeedbackModal(false)}
-        onOpenQuestionDispute={() => {
-          setShowQuestionDispute(true)
-        }}
-        onFeedbackSent={() => {
-          // Refrescar notificaciones admin inmediatamente después de enviar feedback
-          if (isAdmin && adminNotifications?.refresh) {
-            adminNotifications.refresh()
-          }
-        }}
-      />
-      
       {/* Modal de QuestionDispute */}
       <QuestionDispute 
         questionId={null} // No tenemos questionId específico desde header
