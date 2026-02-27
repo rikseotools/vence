@@ -1063,10 +1063,12 @@ export default function AdminFeedbackPage() {
 
       if (error) throw error
 
-      // Convertir a objeto indexado por feedback_id
+      // Convertir a objeto indexado por feedback_id (quedarse con la más reciente por feedback)
       const conversationsMap = {}
       data?.forEach(conv => {
-        conversationsMap[conv.feedback_id] = conv
+        if (!conversationsMap[conv.feedback_id]) {
+          conversationsMap[conv.feedback_id] = conv
+        }
       })
       setConversations(conversationsMap)
     } catch (error) {
