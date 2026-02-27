@@ -58,14 +58,6 @@ interface PaymentIssueEmailData {
   currency?: string
 }
 
-interface CancellationEmailData {
-  userEmail: string
-  userName: string
-  subscriptionId: string
-  reason: string
-  periodEnd: string | null
-  downgradedNow: boolean
-}
 
 interface SettlementData {
   paymentIntentId: string | null
@@ -705,28 +697,6 @@ async function handleSubscriptionDeleted(
         console.warn(`⚠️ Evento deleted pero período termina en ${endDate}`)
       }
 
-      try {
-        const { data: profileData } = await supabase
-          .from('user_profiles')
-          .select('email, full_name')
-          .eq('id', subData.user_id)
-          .limit(1)
-
-        const userProfile = profileData?.[0]
-        if (userProfile) {
-          await sendAdminCancellationEmail({
-            userEmail: userProfile.email,
-            userName: userProfile.full_name,
-            subscriptionId: subscription.id,
-            reason: subscription.cancellation_details?.reason || 'No especificado',
-            periodEnd,
-            downgradedNow: shouldDowngrade
-          })
-          console.log('📧 Email de cancelación enviado')
-        }
-      } catch (emailErr) {
-        console.error('Error enviando email:', emailErr)
-      }
     }
   } catch (error) {
     console.error('Error canceling subscription:', error)
@@ -996,53 +966,3 @@ async function recordPaymentSettlement(data: SettlementData): Promise<void> {
   }
 }
 
-async function sendAdminCancellationEmail(data: CancellationEmailData): Promise<void> {
-  const periodEndFormatted = data.periodEnd
-    ? new Date(data.periodEnd).toLocaleDateString('es-ES', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    : 'No disponible'
-
-  const statusNote = data.downgradedNow
-    ? `<div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-        <p style="margin: 0; color: #92400e;">⚡ <strong>Degradado inmediatamente:</strong> El período ya había terminado.</p>
-      </div>`
-    : `<div style="background: #dbeafe; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-        <p style="margin: 0; color: #1e40af;">⏰ <strong>Mantiene premium hasta:</strong> ${periodEndFormatted}</p>
-      </div>`
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head><meta charset="utf-8"><title>Suscripción Cancelada</title></head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f5f5f5;">
-        <div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-          <div style="text-align: center; background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%); margin: -20px -20px 20px -20px; padding: 30px 20px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: #4b5563; margin: 0;">👋 Suscripción Cancelada</h1>
-            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 18px;">Un usuario ha cancelado</p>
-          </div>
-          <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
-            <h3 style="color: #374151; margin: 0 0 15px 0;">👤 Datos del Cliente:</h3>
-            <p style="margin: 8px 0;"><strong>Email:</strong> ${data.userEmail}</p>
-            <p style="margin: 8px 0;"><strong>Nombre:</strong> ${data.userName || 'Sin nombre'}</p>
-            <p style="margin: 8px 0;"><strong>Subscription ID:</strong> ${data.subscriptionId}</p>
-            <p style="margin: 8px 0;"><strong>Motivo:</strong> ${data.reason}</p>
-            <p style="margin: 8px 0;"><strong>Fecha:</strong> ${new Date().toLocaleString('es-ES')}</p>
-          </div>
-          ${statusNote}
-        </div>
-      </body>
-    </html>
-  `
-
-  await getResend().emails.send({
-    from: process.env.FROM_EMAIL || 'info@vence.es',
-    to: ADMIN_EMAIL,
-    subject: `👋 Cancelación - ${data.userEmail}${data.downgradedNow ? '' : ` (premium hasta ${periodEndFormatted})`}`,
-    html
-  })
-}
