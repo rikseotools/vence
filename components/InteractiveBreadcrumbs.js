@@ -2,11 +2,12 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import { getSupabaseClient } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { OPOSICIONES, getBlockForTopic } from '@/lib/config/oposiciones'
+import CcaaFlag, { hasCcaaFlag } from './CcaaFlag'
 
 const supabase = getSupabaseClient()
 
@@ -15,6 +16,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const router = useRouter()
   const searchParams = useSearchParams()
   const [openDropdown, setOpenDropdown] = useState(null)
+  const [dropdownSearch, setDropdownSearch] = useState('')
   const [toast, setToast] = useState(null)
   const { user } = useAuth()
 
@@ -65,14 +67,23 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
     ...OPOSICIONES.map(o => ({
       key: o.slug,
       label: `${o.emoji} ${o.name}`,
+      name: o.name,
+      emoji: o.emoji,
+      hasFlag: hasCcaaFlag(o.id),
       path: `/${o.slug}${currentSection}`,
       oposicionId: o.id,
     })),
-    { key: 'leyes', label: '📚 Leyes', path: '/leyes', oposicionId: null },
-    { key: 'por-leyes', label: '📖 Test Por Leyes', path: '/test/por-leyes', oposicionId: null },
-    { key: 'psicotecnicos', label: '🧩 Psicotécnicos', path: '/psicotecnicos', oposicionId: null },
-    { key: 'teoria', label: '📖 Teoría', path: '/teoria', oposicionId: null }
+    { key: 'leyes', label: '📚 Leyes', name: 'Leyes', emoji: '📚', hasFlag: false, path: '/leyes', oposicionId: null },
+    { key: 'por-leyes', label: '📖 Test Por Leyes', name: 'Test Por Leyes', emoji: '📖', hasFlag: false, path: '/test/por-leyes', oposicionId: null },
+    { key: 'psicotecnicos', label: '🧩 Psicotécnicos', name: 'Psicotécnicos', emoji: '🧩', hasFlag: false, path: '/psicotecnicos', oposicionId: null },
+    { key: 'teoria', label: '📖 Teoría', name: 'Teoría', emoji: '📖', hasFlag: false, path: '/teoria', oposicionId: null }
   ]
+
+  const filteredOptions = useMemo(() => {
+    if (!dropdownSearch.trim()) return oppositionOptions
+    const term = dropdownSearch.toLowerCase()
+    return oppositionOptions.filter(opt => opt.label.toLowerCase().includes(term))
+  }, [dropdownSearch, oppositionOptions])
 
   // Opciones de sección específicas según contexto
   const getSectionOptions = () => {
@@ -111,6 +122,12 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
         { key: 'test', label: '🎯 Tests', path: '/test' },
         { key: 'temario', label: '📚 Temario', path: '/temario' }
       ]
+    } else if (isAndalucia) {
+      return [
+        { key: 'info', label: 'ℹ️ Información', path: '' },
+        { key: 'test', label: '🎯 Tests', path: '/test' },
+        { key: 'temario', label: '📚 Temario', path: '/temario' }
+      ]
     } else if (isLeyes) {
       return [
         { key: 'test', label: '🎯 Tests', path: '/test' }
@@ -141,6 +158,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const isAuxilioJudicial = pathname.includes('/auxilio-judicial')
   const isCarm = pathname.includes('/auxiliar-administrativo-carm')
   const isCyl = pathname.includes('/auxiliar-administrativo-cyl')
+  const isAndalucia = pathname.includes('/auxiliar-administrativo-andalucia')
   const isLeyes = pathname.includes('/leyes')
   const isTeoria = pathname.includes('/teoria')
   const isInTests = pathname.includes('/test')
@@ -149,10 +167,10 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
   const isPorLeyes = pathname === '/test/por-leyes' || pathname === '/test/multi-ley'
 
   // Tests independientes bajo /test/ que no pertenecen a ninguna oposición
-  const isStandaloneTest = pathname.startsWith('/test/') && !isAuxiliarAdmin && !isAdministrativo && !isTramitacionProcesal && !isAuxilioJudicial && !isCarm && !isCyl
+  const isStandaloneTest = pathname.startsWith('/test/') && !isAuxiliarAdmin && !isAdministrativo && !isTramitacionProcesal && !isAuxilioJudicial && !isCarm && !isCyl && !isAndalucia
 
   // Detectar si estamos en página de información (página principal de oposición)
-  const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal' || pathname === '/auxilio-judicial' || pathname === '/auxiliar-administrativo-carm' || pathname === '/auxiliar-administrativo-cyl')
+  const isInInfo = (pathname === '/auxiliar-administrativo-estado' || pathname === '/administrativo-estado' || pathname === '/tramitacion-procesal' || pathname === '/auxilio-judicial' || pathname === '/auxiliar-administrativo-carm' || pathname === '/auxiliar-administrativo-cyl' || pathname === '/auxiliar-administrativo-andalucia')
   
   // Detectar si estamos en una ley específica
   const isInSpecificLaw = pathname.startsWith('/leyes/') && pathname !== '/leyes' && !pathname.includes('/test')
@@ -288,7 +306,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       <div className="container mx-auto px-4">
         <ol className="flex items-center space-x-2 text-sm">
           {/* Breadcrumb para Oposición */}
-          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isCyl || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
+          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isCyl || isAndalucia || isLeyes || isTeoria || isPsicotecnicos || isStandaloneTest) && (
             <li className="flex items-center relative">
               <div className="flex items-center">
                 {/* Texto clickeable para ir a la página principal (solo si no estamos ya ahí) */}
@@ -301,6 +319,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     (isAuxilioJudicial && pathname !== '/auxilio-judicial') ||
                     (isCarm && pathname !== '/auxiliar-administrativo-carm') ||
                     (isCyl && pathname !== '/auxiliar-administrativo-cyl') ||
+                    (isAndalucia && pathname !== '/auxiliar-administrativo-andalucia') ||
                     (isLeyes && pathname !== '/leyes') ||
                     (isTeoria && pathname !== '/teoria') ||
                     (isPsicotecnicos && pathname !== '/psicotecnicos') ||
@@ -315,20 +334,22 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                     isAuxilioJudicial ? '/auxilio-judicial' :
                     isCarm ? '/auxiliar-administrativo-carm' :
                     isCyl ? '/auxiliar-administrativo-cyl' :
+                    isAndalucia ? '/auxiliar-administrativo-andalucia' :
                     isLeyes ? '/leyes' :
                     isTeoria ? '/teoria' :
                     isPsicotecnicos ? '/psicotecnicos' :
                     isPorLeyes ? '/test/por-leyes' :
                     isStandaloneTest ? '/test/por-leyes' : '#'
 
-                  // Determinar texto
-                  const labelText =
+                  // Determinar texto (JSX para CCAA con banderas SVG)
+                  const labelContent =
+                    isCarm ? <><CcaaFlag oposicionId="auxiliar_administrativo_carm" /> Aux. Admin. CARM</> :
+                    isCyl ? <><CcaaFlag oposicionId="auxiliar_administrativo_cyl" /> Aux. Admin. CyL</> :
+                    isAndalucia ? <><CcaaFlag oposicionId="auxiliar_administrativo_andalucia" /> Aux. Admin. Andalucía</> :
                     isAuxiliarAdmin ? '👤 Auxiliar Administrativo Estado' :
                     isAdministrativo ? '👨‍💼 Administrativo del Estado' :
                     isTramitacionProcesal ? '⚖️ Tramitación Procesal' :
                     isAuxilioJudicial ? '⚖️ Auxilio Judicial' :
-                    isCarm ? '🏛️ Aux. Admin. CARM' :
-                    isCyl ? '🏛️ Aux. Admin. CyL' :
                     isLeyes ? '📚 Leyes' :
                     isTeoria ? '📖 Teoría' :
                     isPsicotecnicos ? '🧩 Psicotécnicos' :
@@ -336,40 +357,56 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
 
                   if (showAsLink) {
                     return (
-                      <Link href={linkHref} className="text-blue-600 hover:text-blue-800 transition-colors">
-                        {labelText}
+                      <Link href={linkHref} className="text-blue-600 hover:text-blue-800 transition-colors inline-flex items-center gap-1">
+                        {labelContent}
                       </Link>
                     )
                   }
-                  return <span className="text-gray-700 font-semibold">{labelText}</span>
+                  return <span className="text-gray-700 font-semibold inline-flex items-center gap-1">{labelContent}</span>
                 })()}
                 
                 {/* Flecha para dropdown */}
                 <button
-                  onClick={() => setOpenDropdown(openDropdown === 'opposition' ? null : 'opposition')}
+                  onClick={() => { setDropdownSearch(''); setOpenDropdown(openDropdown === 'opposition' ? null : 'opposition') }}
                   className="ml-1 p-1 text-blue-600 hover:text-blue-800 transition-colors focus:outline-none"
                 >
                   <ChevronDownIcon className="h-4 w-4" />
                 </button>
               </div>
-              
+
               {/* Dropdown de oposiciones */}
               {openDropdown === 'opposition' && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                   <div className="p-2">
                     <div className="text-xs text-gray-500 mb-2 px-2">Cambiar a:</div>
-                    {oppositionOptions.map((option) => (
-                      <button
-                        key={option.key}
-                        onClick={() => changeOpposition(option)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-colors text-sm"
-                      >
-                        {option.label}
-                        {option.oposicionId && (
-                          <span className="text-xs text-gray-400 ml-2">(objetivo)</span>
-                        )}
-                      </button>
-                    ))}
+                    <input
+                      type="text"
+                      value={dropdownSearch}
+                      onChange={(e) => setDropdownSearch(e.target.value)}
+                      placeholder="Buscar oposición..."
+                      autoFocus
+                      className="w-full px-3 py-1.5 mb-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                    <div className="max-h-64 overflow-y-auto">
+                      {filteredOptions.length > 0 ? filteredOptions.map((option) => (
+                        <button
+                          key={option.key}
+                          onClick={() => changeOpposition(option)}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-md transition-colors text-sm flex items-center gap-1.5"
+                        >
+                          {option.hasFlag ? (
+                            <><CcaaFlag oposicionId={option.oposicionId} /> {option.name}</>
+                          ) : (
+                            option.label
+                          )}
+                          {option.oposicionId && (
+                            <span className="text-xs text-gray-400 ml-auto">(objetivo)</span>
+                          )}
+                        </button>
+                      )) : (
+                        <div className="px-3 py-2 text-sm text-gray-400">Sin resultados</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -416,7 +453,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
           )}
 
           {/* Separador */}
-          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isCyl || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
+          {(isAuxiliarAdmin || isAdministrativo || isTramitacionProcesal || isAuxilioJudicial || isCarm || isCyl || isAndalucia || isLeyes || isTeoria || isPsicotecnicos) && (isInTests || isInTemario || isInInfo) && (
             <span className="text-gray-400 mx-2">/</span>
           )}
 
@@ -431,7 +468,8 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
                                    isTramitacionProcesal ? '/tramitacion-procesal' :
                                    isAuxilioJudicial ? '/auxilio-judicial' :
                                    isCarm ? '/auxiliar-administrativo-carm' :
-                                   isCyl ? '/auxiliar-administrativo-cyl' : ''
+                                   isCyl ? '/auxiliar-administrativo-cyl' :
+                                   isAndalucia ? '/auxiliar-administrativo-andalucia' : ''
                   const isInSpecificPage = pathname.includes('/tema-') || pathname.includes('/test/')
 
                   if (isInSpecificPage && basePath) {
@@ -564,7 +602,7 @@ export default function InteractiveBreadcrumbs({ customLabels = {}, className = 
       {openDropdown && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => setOpenDropdown(null)}
+          onClick={() => { setDropdownSearch(''); setOpenDropdown(null) }}
         />
       )}
 

@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import InteractiveBreadcrumbs from '@/components/InteractiveBreadcrumbs'
+import CcaaFlag, { hasCcaaFlag } from '@/components/CcaaFlag'
 
 interface Topic {
   id: string
@@ -27,6 +28,7 @@ interface OposicionInfo {
   short: string
   badge: string
   icon: string
+  oposicionId?: string
 }
 
 interface ThemeStats {
@@ -161,7 +163,11 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
             {/* Header */}
             <div className="mb-8">
               <div className="inline-flex items-center bg-gradient-to-r from-blue-700 to-blue-900 text-white px-6 py-2 rounded-full text-sm font-medium mb-6">
-                <span className="mr-2">{oposicionInfo.icon}</span>
+                {oposicionInfo.oposicionId && hasCcaaFlag(oposicionInfo.oposicionId) ? (
+                  <CcaaFlag oposicionId={oposicionInfo.oposicionId} className="mr-2" />
+                ) : (
+                  <span className="mr-2">{oposicionInfo.icon}</span>
+                )}
                 {oposicionInfo.short} ({oposicionInfo.badge})
               </div>
             </div>

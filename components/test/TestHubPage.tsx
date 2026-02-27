@@ -53,6 +53,10 @@ const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = {
     { id: 'bloque1', name: 'Grupo I: Organización Política y Administrativa', icon: '🏛️', min: 1, max: 19 },
     { id: 'bloque2', name: 'Grupo II: Competencias', icon: '📋', min: 20, max: 28 },
   ],
+  'auxiliar-administrativo-andalucia': [
+    { id: 'bloque1', name: 'Bloque I: Área Jurídico Administrativa General', icon: '⚖️', min: 1, max: 12 },
+    { id: 'bloque2', name: 'Bloque II: Organización y Gestión Administrativa', icon: '📋', min: 13, max: 22 },
+  ],
 }
 
 interface Props {
@@ -114,8 +118,8 @@ export default async function TestHubPage({ oposicion }: Props) {
 
   const oposicionConfig = getOposicionBySlug(oposicion)
   const oposicionInfo = oposicionConfig
-    ? { short: oposicionConfig.shortName, badge: oposicionConfig.badge, icon: oposicionConfig.emoji }
-    : { short: oposicion, badge: '', icon: '' }
+    ? { short: oposicionConfig.shortName, badge: oposicionConfig.badge, icon: oposicionConfig.emoji, oposicionId: oposicionConfig.id }
+    : { short: oposicion, badge: '', icon: '', oposicionId: '' }
   const basePath = `/${oposicion}/test/tema`
 
   return (
