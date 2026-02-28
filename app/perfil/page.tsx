@@ -372,6 +372,26 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_andalucia',
+      label: 'Auxiliar Administrativo Junta de Andalucía',
+      data: {
+        name: 'Auxiliar Administrativo Junta de Andalucía',
+        slug: 'auxiliar-administrativo-andalucia',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
+    },
+    {
+      value: 'auxiliar_administrativo_madrid',
+      label: 'Auxiliar Administrativo Comunidad de Madrid',
+      data: {
+        name: 'Auxiliar Administrativo Comunidad de Madrid',
+        slug: 'auxiliar-administrativo-madrid',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

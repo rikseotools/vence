@@ -57,6 +57,10 @@ const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = {
     { id: 'bloque1', name: 'Bloque I: Área Jurídico Administrativa General', icon: '⚖️', min: 1, max: 12 },
     { id: 'bloque2', name: 'Bloque II: Organización y Gestión Administrativa', icon: '📋', min: 13, max: 22 },
   ],
+  'auxiliar-administrativo-madrid': [
+    { id: 'bloque1', name: 'Bloque I: Organización Política', icon: '🏛️', min: 1, max: 15 },
+    { id: 'bloque2', name: 'Bloque II: Ofimática', icon: '💻', min: 16, max: 21 },
+  ],
 }
 
 interface Props {

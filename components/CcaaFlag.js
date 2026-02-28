@@ -29,6 +29,19 @@ const FLAG_PATHS = {
       <rect x="13.5" y="8.5" width="3" height="4" rx="0.3" fill="#F5C400" opacity="0.8"/>
     </>
   ),
+  // Comunidad de Madrid: fondo rojo carmesí con 7 estrellas blancas (5 puntas)
+  auxiliar_administrativo_madrid: (
+    <>
+      <rect width="20" height="14" fill="#BF0000"/>
+      <circle cx="5" cy="3.5" r="1" fill="#fff"/>
+      <circle cx="10" cy="3.5" r="1" fill="#fff"/>
+      <circle cx="15" cy="3.5" r="1" fill="#fff"/>
+      <circle cx="3.5" cy="7" r="1" fill="#fff"/>
+      <circle cx="8" cy="7" r="1" fill="#fff"/>
+      <circle cx="12" cy="7" r="1" fill="#fff"/>
+      <circle cx="16.5" cy="7" r="1" fill="#fff"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>

@@ -194,6 +194,14 @@ export const VALID_TOPIC_RANGES = {
     bloque1: { min: 1, max: 19 },   // Grupo I: Organización Política y Administrativa
     bloque2: { min: 20, max: 28 },  // Grupo II: Competencias
   },
+  'auxiliar-administrativo-andalucia': {
+    bloque1: { min: 1, max: 12 },   // Bloque I: Área Jurídico Administrativa General
+    bloque2: { min: 13, max: 22 },  // Bloque II: Organización y Gestión Administrativa
+  },
+  'auxiliar-administrativo-madrid': {
+    bloque1: { min: 1, max: 15 },   // Bloque I: Organización Política
+    bloque2: { min: 16, max: 21 },  // Bloque II: Ofimática
+  },
 } as const
 
 export type OposicionKey = keyof typeof VALID_TOPIC_RANGES

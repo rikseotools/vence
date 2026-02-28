@@ -65,8 +65,8 @@ describe('Theme Stats V2 - Oposición Schemas', () => {
   })
 
   describe('VALID_OPOSICIONES constant', () => {
-    test('debe tener exactamente 6 oposiciones', () => {
-      expect(VALID_OPOSICIONES).toHaveLength(6)
+    test('debe tener exactamente 8 oposiciones', () => {
+      expect(VALID_OPOSICIONES).toHaveLength(8)
     })
 
     test('debe incluir todas las oposiciones esperadas', () => {
@@ -101,8 +101,8 @@ describe('Theme Stats V2 - Oposición Schemas', () => {
       expect(OPOSICION_TO_POSITION_TYPE['auxilio-judicial']).toBe('auxilio_judicial')
     })
 
-    test('debe tener exactamente 6 mappings', () => {
-      expect(Object.keys(OPOSICION_TO_POSITION_TYPE)).toHaveLength(6)
+    test('debe tener exactamente 7 mappings', () => {
+      expect(Object.keys(OPOSICION_TO_POSITION_TYPE)).toHaveLength(8)
     })
 
     test('cada oposición válida debe tener un mapping', () => {
@@ -990,14 +990,15 @@ describe('Theme Stats - Tests de Regresión', () => {
 // ============================================
 
 describe('Theme Stats V2 - Tests de Regresión', () => {
-  test('CRÍTICO: VALID_OPOSICIONES debe incluir las 6 oposiciones soportadas', () => {
+  test('CRÍTICO: VALID_OPOSICIONES debe incluir las 7 oposiciones soportadas', () => {
     expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-estado')
     expect(VALID_OPOSICIONES).toContain('administrativo-estado')
     expect(VALID_OPOSICIONES).toContain('tramitacion-procesal')
     expect(VALID_OPOSICIONES).toContain('auxilio-judicial')
     expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-carm')
     expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-cyl')
-    expect(VALID_OPOSICIONES).toHaveLength(6)
+    expect(VALID_OPOSICIONES).toContain('auxiliar-administrativo-andalucia')
+    expect(VALID_OPOSICIONES).toHaveLength(8)
   })
 
   test('CRÍTICO: OPOSICION_TO_POSITION_TYPE mapea slugs URL a position_type DB', () => {

@@ -173,6 +173,20 @@ const OFFICIAL_OPOSICIONES = [
     icon: '🏛️'
   },
   {
+    id: 'auxiliar_administrativo_andalucia',
+    nombre: 'Auxiliar Administrativo Junta de Andalucía',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
+    id: 'auxiliar_administrativo_madrid',
+    nombre: 'Auxiliar Administrativo Comunidad de Madrid',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🏛️'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',

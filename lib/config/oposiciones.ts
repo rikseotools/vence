@@ -412,6 +412,127 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO JUNTA DE ANDALUCÍA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_andalucia',
+    slug: 'auxiliar-administrativo-andalucia',
+    positionType: 'auxiliar_administrativo_andalucia',
+    name: 'Auxiliar Administrativo Junta de Andalucía',
+    shortName: 'Aux. Andalucía',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'teal',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Área Jurídico Administrativa General',
+        subtitle: 'Constitución, Administración y Derecho Administrativo',
+        icon: '⚖️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'Organización territorial del Estado' },
+          { id: 3, name: 'La Comunidad Autónoma de Andalucía' },
+          { id: 4, name: 'Organización Institucional de la Comunidad Autónoma de Andalucía' },
+          { id: 5, name: 'Organización de la Administración de la Junta de Andalucía' },
+          { id: 6, name: 'El Derecho Administrativo' },
+          { id: 7, name: 'El procedimiento administrativo común' },
+          { id: 8, name: 'Normativa sobre Igualdad y de Género' },
+          { id: 9, name: 'La Igualdad de Género en las Políticas Públicas' },
+          { id: 10, name: 'El presupuesto de la Comunidad Autónoma de Andalucía' },
+          { id: 11, name: 'La función pública en la Administración de la Junta de Andalucía' },
+          { id: 12, name: 'El sistema español de Seguridad Social' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Organización y Gestión Administrativa',
+        subtitle: 'Atención al público, Documentos, Informática y Administración Electrónica',
+        icon: '📋',
+        themes: [
+          { id: 13, name: 'La comunicación' },
+          { id: 14, name: 'Las relaciones de la ciudadanía con la Junta de Andalucía' },
+          { id: 15, name: 'Documentos de la Administración de la Junta de Andalucía' },
+          { id: 16, name: 'La gestión de documentos en la Administración de la Junta de Andalucía' },
+          { id: 17, name: 'El archivo' },
+          { id: 18, name: 'La protección de datos' },
+          { id: 19, name: 'La calidad' },
+          { id: 20, name: 'Sistemas Informáticos' },
+          { id: 21, name: 'Sistemas Ofimáticos' },
+          { id: 22, name: 'Redes de Comunicaciones e Internet' },
+        ],
+      },
+    ],
+    totalTopics: 22,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-andalucia', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-andalucia/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-andalucia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
+  // AUXILIAR ADMINISTRATIVO COMUNIDAD DE MADRID (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_madrid',
+    slug: 'auxiliar-administrativo-madrid',
+    positionType: 'auxiliar_administrativo_madrid',
+    name: 'Auxiliar Administrativo Comunidad de Madrid',
+    shortName: 'Aux. Madrid',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'red',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Bloque I: Organización Política',
+        subtitle: 'Constitución, CAM, Administración y Derecho Administrativo',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'El Estatuto de Autonomía de la Comunidad de Madrid' },
+          { id: 3, name: 'La Ley de Gobierno y Administración de la CAM' },
+          { id: 4, name: 'Las fuentes del ordenamiento jurídico' },
+          { id: 5, name: 'El acto administrativo' },
+          { id: 6, name: 'La Ley del Procedimiento Administrativo Común' },
+          { id: 7, name: 'La Jurisdicción Contencioso-Administrativa' },
+          { id: 8, name: 'Transparencia y Protección de Datos' },
+          { id: 9, name: 'Los contratos en el Sector Público' },
+          { id: 10, name: 'El Estatuto Básico del Empleado Público' },
+          { id: 11, name: 'La Seguridad Social' },
+          { id: 12, name: 'Hacienda Pública y Presupuestos de la CAM' },
+          { id: 13, name: 'Igualdad de género y no discriminación' },
+          { id: 14, name: 'Información administrativa y Administración electrónica' },
+          { id: 15, name: 'Los documentos administrativos' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Bloque II: Ofimática',
+        subtitle: 'Windows, Office 365 y herramientas colaborativas',
+        icon: '💻',
+        themes: [
+          { id: 16, name: 'El explorador de Windows' },
+          { id: 17, name: 'Procesadores de texto: Word' },
+          { id: 18, name: 'Hojas de cálculo: Excel' },
+          { id: 19, name: 'Bases de datos: Access y Power BI' },
+          { id: 20, name: 'Correo electrónico: Outlook' },
+          { id: 21, name: 'Trabajo colaborativo: Microsoft 365' },
+        ],
+      },
+    ],
+    totalTopics: 21,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-madrid', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-madrid/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-madrid/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {

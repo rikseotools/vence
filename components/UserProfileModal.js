@@ -255,7 +255,9 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
       'gestion_procesal': 'Gestión Procesal',
       'auxiliar_ayuntamiento': 'Auxiliar de Ayuntamiento',
       'auxiliar_administrativo_carm': 'Auxiliar Administrativo CARM (Murcia)',
-      'auxiliar_administrativo_cyl': 'Auxiliar Administrativo Castilla y León'
+      'auxiliar_administrativo_cyl': 'Auxiliar Administrativo Castilla y León',
+      'auxiliar_administrativo_andalucia': 'Auxiliar Administrativo Junta de Andalucía',
+      'auxiliar_administrativo_madrid': 'Auxiliar Administrativo Comunidad de Madrid'
     }
 
     return oposiciones[normalized] || 'Auxiliar Administrativo del Estado'
