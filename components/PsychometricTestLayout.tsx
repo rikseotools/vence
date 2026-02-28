@@ -874,61 +874,53 @@ export default function PsychometricTestLayout({
       {/* Question Content */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {renderQuestion()}
-      </div>
 
-      {/* Next Button - Separado del contenido de la pregunta */}
-      {showResult && (
-        <div className="bg-gray-50 border-t border-gray-200 py-6">
-          <div className="max-w-4xl mx-auto px-4">
+        {/* Impugnación, navegación y evolución — debajo de la explicación */}
+        {showResult && (
+          <div className="mt-6 space-y-4">
+            {/* Botón de impugnación */}
+            <PsychometricQuestionDispute
+              questionId={questions[currentQuestion]?.id || ''}
+              user={user}
+              supabase={supabase}
+            />
+
+            <button
+              onClick={nextQuestion}
+              className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg flex items-center justify-center gap-2"
+            >
+              {currentQuestion < totalQuestions - 1 ? (
+                <>
+                  Siguiente Pregunta
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </>
+              ) : (
+                <>
+                  Finalizar Test
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </>
+              )}
+            </button>
+
             {/* Evolución en esta pregunta (todos los tipos) */}
             {user && (
-              <div className="mb-4">
-                <PsychometricQuestionEvolution
-                  userId={user.id}
-                  questionId={questions[currentQuestion]?.id}
-                  currentResult={{
-                    isCorrect: verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
-                    timeSpent: 0,
-                    answer: selectedAnswer
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Botón de impugnación */}
-            <div className="mb-4">
-              <PsychometricQuestionDispute
-                questionId={questions[currentQuestion]?.id || ''}
-                user={user}
-                supabase={supabase}
+              <PsychometricQuestionEvolution
+                userId={user.id}
+                questionId={questions[currentQuestion]?.id}
+                currentResult={{
+                  isCorrect: verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
+                  timeSpent: 0,
+                  answer: selectedAnswer
+                }}
               />
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
-              <button
-                onClick={nextQuestion}
-                className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-lg flex items-center justify-center gap-2"
-              >
-                {currentQuestion < totalQuestions - 1 ? (
-                  <>
-                    Siguiente Pregunta 
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                ) : (
-                  <>
-                    Finalizar Test 
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
       
       {/* Espaciado inferior para evitar problemas con footer */}
       <div className="h-16"></div>
