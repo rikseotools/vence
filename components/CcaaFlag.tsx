@@ -1,9 +1,21 @@
-// components/CcaaFlag.js
+// components/CcaaFlag.tsx
 // Banderas SVG de CCAA para usar como iconos inline
 // Reemplaza emojis genéricos 🏛️ con banderas reales reconocibles
 
+import { type ReactNode } from 'react'
+
+type OposicionId = keyof typeof FLAG_PATHS
+
+type FlagSize = 'sm' | 'md' | 'lg'
+
+interface CcaaFlagProps {
+  oposicionId: string
+  size?: FlagSize
+  className?: string
+}
+
 // viewBox siempre 0 0 20 14, el tamaño real se controla con width/height
-const FLAG_PATHS = {
+const FLAG_PATHS: Record<string, ReactNode> = {
   // Región de Murcia: fondo carmesí (rojo Cartagena), 4 castillos dorados arriba-izq, 7 coronas doradas abajo-der
   auxiliar_administrativo_carm: (
     <>
@@ -54,16 +66,16 @@ const FLAG_PATHS = {
 }
 
 // Tamaños predefinidos (width x height, proporción 20:14)
-const SIZES = {
+const SIZES: Record<FlagSize, { width: number; height: number }> = {
   sm: { width: 20, height: 14 },   // breadcrumbs, badges
   md: { width: 30, height: 21 },   // cards, home
   lg: { width: 40, height: 28 },   // headers grandes
 }
 
-export default function CcaaFlag({ oposicionId, size = 'sm', className = '' }) {
+export default function CcaaFlag({ oposicionId, size = 'sm', className = '' }: CcaaFlagProps) {
   const paths = FLAG_PATHS[oposicionId]
   if (!paths) return null
-  const { width, height } = SIZES[size] || SIZES.sm
+  const { width, height } = SIZES[size as FlagSize] || SIZES.sm
   return (
     <span className={className}>
       <svg width={width} height={height} viewBox="0 0 20 14" className="inline-block align-middle rounded-sm" style={{ boxShadow: '0 0 0 0.5px rgba(0,0,0,0.15)' }}>
@@ -73,6 +85,6 @@ export default function CcaaFlag({ oposicionId, size = 'sm', className = '' }) {
   )
 }
 
-export function hasCcaaFlag(oposicionId) {
+export function hasCcaaFlag(oposicionId: string): boolean {
   return !!FLAG_PATHS[oposicionId]
 }

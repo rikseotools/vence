@@ -1,4 +1,4 @@
-// components/OposicionDetector.js - VERSIÓN CORREGIDA CON FIX RLS
+// components/OposicionDetector.tsx - VERSIÓN CORREGIDA CON FIX RLS
 // ========================================
 // 🚨 FIX CRÍTICO: Error 403 Row-Level Security Policy Violation
 // ========================================
@@ -10,8 +10,16 @@ import { getSupabaseClient } from '../lib/supabase' // 🔧 USAR SINGLETON
 
 const supabase = getSupabaseClient()
 
+interface OposicionData {
+  id: string
+  name: string
+  categoria: 'C1' | 'C2'
+  administracion: 'estado' | 'justicia' | 'autonomica'
+  slug: string
+}
+
 // 📋 Mapeo URL → Oposición
-const OPOSICION_DETECTION = {
+const OPOSICION_DETECTION: Record<string, OposicionData> = {
   'auxiliar-administrativo-estado': {
     id: 'auxiliar_administrativo_estado',
     name: 'Auxiliar Administrativo del Estado',
@@ -89,35 +97,35 @@ export default function OposicionDetector() {
         console.log('⚠️ Ya detectando oposición, evitando duplicación')
         return
       }
-      
+
       isDetecting = true
 
       try {
         // 1. Verificar si hay usuario autenticado CON TIMEOUT
         console.log('👤 Verificando usuario autenticado...')
-        
+
         const { data: { user }, error: userError } = await Promise.race([
           supabase.auth.getUser(),
-          new Promise((_, reject) => 
+          new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('Timeout')), 5000)
           )
         ])
-        
+
         if (userError) {
           console.log('👤 Error verificando usuario:', userError.message)
           return
         }
-        
+
         if (!user) {
           console.log('👤 Usuario no autenticado - no se asigna oposición')
           return
         }
-        
+
         console.log('✅ Usuario autenticado:', user.email)
 
         // 2. Verificar si ya tiene oposición asignada
         console.log('🔍 Verificando oposición existente...')
-        
+
         const { data: profile, error: profileError } = await supabase
           .from('user_profiles')
           .select('target_oposicion, target_oposicion_data')
@@ -131,23 +139,23 @@ export default function OposicionDetector() {
 
         // 3. Detectar oposición desde URL
         const detectedOposicion = detectOposicionFromUrl(pathname)
-        
+
         if (!detectedOposicion) {
           console.log('🔍 No se detectó oposición en URL:', pathname)
           return
         }
-        
+
         console.log('🎯 Oposición detectada:', detectedOposicion.name)
 
         // 4. Asignar automáticamente CON RETRY
         const success = await assignOposicionToUserWithRetry(user.id, detectedOposicion)
-        
+
         if (success) {
           console.log('🎯 ¡Oposición asignada automáticamente!', detectedOposicion.name)
-          
+
           // Mostrar notificación
           showAssignmentNotification(detectedOposicion.name)
-          
+
           // Disparar evento para que otros componentes se actualicen
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent('oposicionAssigned', {
@@ -165,14 +173,16 @@ export default function OposicionDetector() {
     }
 
     // Solo ejecutar en páginas de test o temario
-    if (pathname && (pathname.includes('/test/') || pathname.includes('/temario/'))) {
-      // Delay pequeño para evitar conflictos con otros componentes
-      const timeoutId = setTimeout(() => {
-        detectAndAssignOposicion()
-      }, 1000)
-      
-      return () => clearTimeout(timeoutId)
+    if (!pathname || (!pathname.includes('/test/') && !pathname.includes('/temario/'))) {
+      return
     }
+
+    // Delay pequeño para evitar conflictos con otros componentes
+    const timeoutId = setTimeout(() => {
+      detectAndAssignOposicion()
+    }, 1000)
+
+    return () => clearTimeout(timeoutId)
 
   }, [pathname])
 
@@ -181,9 +191,9 @@ export default function OposicionDetector() {
 }
 
 // 🔍 Detectar oposición desde URL
-function detectOposicionFromUrl(pathname) {
+function detectOposicionFromUrl(pathname: string | null): OposicionData | null {
   if (!pathname) return null
-  
+
   for (const [pattern, oposicion] of Object.entries(OPOSICION_DETECTION)) {
     if (pathname.includes(pattern)) {
       return oposicion
@@ -193,39 +203,39 @@ function detectOposicionFromUrl(pathname) {
 }
 
 // 💾 VERSIÓN CORREGIDA: Asignar oposición con manejo de errores RLS
-async function assignOposicionToUserWithRetry(userId, oposicionData, maxRetries = 3) {
+async function assignOposicionToUserWithRetry(userId: string, oposicionData: OposicionData, maxRetries = 3): Promise<boolean> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     console.log(`💾 Intento ${attempt}/${maxRetries} - Asignando oposición...`)
-    
+
     const success = await assignOposicionToUser(userId, oposicionData)
-    
+
     if (success) {
       return true
     }
-    
+
     if (attempt < maxRetries) {
       console.log(`⏳ Reintentando en ${attempt} segundos...`)
       await new Promise(resolve => setTimeout(resolve, attempt * 1000))
     }
   }
-  
+
   console.error('❌ Falló asignación después de todos los intentos')
   return false
 }
 
 // ✅ FUNCIÓN CORREGIDA para evitar error RLS
-async function assignOposicionToUser(userId, oposicionData) {
+async function assignOposicionToUser(userId: string, oposicionData: OposicionData): Promise<boolean> {
   try {
     console.log('💾 Asignando oposición con políticas RLS corregidas...')
-    
+
     // ✅ VERIFICAR USUARIO AUTENTICADO PRIMERO
     const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
+
     if (userError || !user) {
       console.error('❌ Usuario no autenticado para asignación')
       return false
     }
-    
+
     if (user.id !== userId) {
       console.error('❌ ID de usuario no coincide')
       return false
@@ -233,7 +243,7 @@ async function assignOposicionToUser(userId, oposicionData) {
 
     // ✅ MÉTODO 1: UPSERT con verificación previa
     console.log('📝 Intentando UPSERT...')
-    
+
     const profileData = {
       id: userId, // ✅ CRÍTICO: Usar ID del usuario autenticado
       target_oposicion: oposicionData.id,
@@ -253,26 +263,26 @@ async function assignOposicionToUser(userId, oposicionData) {
       console.log('✅ UPSERT exitoso')
       return true
     }
-    
+
     console.warn('⚠️ UPSERT falló:', upsertError.message)
 
     // ✅ MÉTODO 2: INSERT directo como fallback
     console.log('📝 Intentando INSERT directo...')
-    
+
     const { error: insertError } = await supabase
       .from('user_profiles')
       .insert(profileData)
-    
+
     if (!insertError) {
       console.log('✅ INSERT directo exitoso')
       return true
     }
-    
+
     console.warn('⚠️ INSERT directo falló:', insertError.message)
 
     // ✅ MÉTODO 3: UPDATE si el perfil ya existe
     console.log('📝 Intentando UPDATE...')
-    
+
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({
@@ -282,17 +292,17 @@ async function assignOposicionToUser(userId, oposicionData) {
         updated_at: new Date().toISOString()
       })
       .eq('id', userId)
-    
+
     if (!updateError) {
       console.log('✅ UPDATE exitoso')
       return true
     }
-    
+
     console.error('❌ Todos los métodos fallaron')
     console.error('UPSERT error:', upsertError)
     console.error('INSERT error:', insertError)
     console.error('UPDATE error:', updateError)
-    
+
     return false
 
   } catch (error) {
@@ -302,10 +312,10 @@ async function assignOposicionToUser(userId, oposicionData) {
 }
 
 // 🔔 Mostrar notificación de asignación
-function showAssignmentNotification(oposicionName) {
+function showAssignmentNotification(oposicionName: string) {
   // Notificación discreta en consola
   console.log(`🎉 ¡Perfecto! Ahora estudias: ${oposicionName}`)
-  
+
   // ✅ MEJORADO: Notificación visual temporal
   if (typeof window !== 'undefined') {
     // Crear notificación visual temporal
@@ -339,17 +349,19 @@ function showAssignmentNotification(oposicionName) {
         </div>
       </div>
     `
-    
+
     document.body.appendChild(notification)
-    
+
     // Animación de entrada
     setTimeout(() => {
-      notification.firstElementChild.style.transform = 'translateX(0)'
+      const el = notification.firstElementChild as HTMLElement | null
+      if (el) el.style.transform = 'translateX(0)'
     }, 100)
-    
+
     // Auto-remover después de 4 segundos
     setTimeout(() => {
-      notification.firstElementChild.style.transform = 'translateX(100%)'
+      const el = notification.firstElementChild as HTMLElement | null
+      if (el) el.style.transform = 'translateX(100%)'
       setTimeout(() => {
         if (notification.parentNode) {
           notification.parentNode.removeChild(notification)
@@ -357,7 +369,7 @@ function showAssignmentNotification(oposicionName) {
       }, 300)
     }, 4000)
   }
-  
+
   // Guardar en localStorage para mostrar mensaje en header
   if (typeof window !== 'undefined') {
     localStorage.setItem('newOposicionAssigned', JSON.stringify({
