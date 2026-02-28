@@ -266,16 +266,10 @@ export function useNewMedalsBadge() {
     console.log('🔍 === FIN DEBUG AUTOMÁTICO ===')
   }
 
-  // Refrescar periódicamente (cada 30 segundos)
-  useEffect(() => {
-    if (!user || !supabase) return
-
-    const interval = setInterval(() => {
-      checkNewMedals()
-    }, 30000) // 30 segundos
-
-    return () => clearInterval(interval)
-  }, [user?.id, supabase])
+  // Polling eliminado: las medallas se calculan sobre períodos cerrados (ayer,
+  // semana pasada, mes pasado) que no cambian. El check en mount (useEffect
+  // anterior) es suficiente. El RankingModal tiene su propio fetch independiente
+  // con RPC optimizado (get_ranking_for_period) que siempre muestra datos frescos.
 
   return {
     hasNewMedals,
