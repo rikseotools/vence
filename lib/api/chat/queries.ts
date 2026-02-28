@@ -13,12 +13,9 @@ import {
 } from '@/db/schema'
 import { eq, and, inArray, ilike, desc, sql, isNotNull } from 'drizzle-orm'
 
-// Mapeo de oposición del usuario a position_type de topics
-const OPOSICION_TO_POSITION_TYPE: Record<string, string> = {
-  'auxiliar_administrativo_estado': 'auxiliar_administrativo',
-  'administrativo_estado': 'administrativo',
-  'gestion_procesal': 'gestion_procesal'
-}
+// Mapeo de oposición del usuario (id) a position_type de topics (desde config central)
+import { ID_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
+const OPOSICION_TO_POSITION_TYPE = ID_TO_POSITION_TYPE
 
 // ============================================
 // TEMARIO

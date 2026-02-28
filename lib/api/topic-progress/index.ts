@@ -75,21 +75,10 @@ export {
 // CONSTANTES COMPARTIDAS
 // ============================================
 
-export const OPOSICION_TO_POSITION_TYPE: Record<string, string> = {
-  'auxiliar-administrativo-estado': 'auxiliar_administrativo',
-  'administrativo-estado': 'administrativo',
-  'tramitacion-procesal': 'tramitacion_procesal',
-  'auxilio-judicial': 'auxilio_judicial',
-  'gestion-procesal': 'gestion_procesal',
-}
-
-export const POSITION_TYPE_TO_OPOSICION: Record<string, string> = {
-  'auxiliar_administrativo': 'auxiliar-administrativo-estado',
-  'administrativo': 'administrativo-estado',
-  'tramitacion_procesal': 'tramitacion-procesal',
-  'auxilio_judicial': 'auxilio-judicial',
-  'gestion_procesal': 'gestion-procesal',
-}
+// Mapeos slug↔positionType (desde config central)
+import { SLUG_TO_POSITION_TYPE, POSITION_TYPE_TO_SLUG } from '@/lib/config/oposiciones'
+export const OPOSICION_TO_POSITION_TYPE = SLUG_TO_POSITION_TYPE
+export const POSITION_TYPE_TO_OPOSICION = POSITION_TYPE_TO_SLUG
 
 // ============================================
 // FUNCIONES DE ALTO NIVEL

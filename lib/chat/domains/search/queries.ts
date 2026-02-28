@@ -484,13 +484,9 @@ export async function findLawByName(
  * Obtiene los IDs de leyes para una oposición
  */
 export async function getOposicionLawIds(userOposicion: string): Promise<string[]> {
-  const OPOSICION_TO_POSITION_TYPE: Record<string, string> = {
-    auxiliar_administrativo_estado: 'auxiliar_administrativo',
-    administrativo_estado: 'administrativo',
-    gestion_procesal: 'gestion_procesal',
-  }
+  const { ID_TO_POSITION_TYPE } = await import('@/lib/config/oposiciones')
 
-  const positionType = OPOSICION_TO_POSITION_TYPE[userOposicion]
+  const positionType = ID_TO_POSITION_TYPE[userOposicion]
   if (!positionType) return []
 
   // Obtener topics de esta oposición

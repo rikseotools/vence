@@ -654,6 +654,14 @@ export const SLUG_TO_ID: Record<string, string> = Object.fromEntries(
   OPOSICIONES.map(o => [o.slug, o.id])
 )
 
+/** Mapa positionType → slug (inverso de SLUG_TO_POSITION_TYPE) */
+export const POSITION_TYPE_TO_SLUG: Record<string, string> = Object.fromEntries(
+  OPOSICIONES.map(o => [o.positionType, o.slug])
+)
+
+/** Tupla de IDs compatible con z.enum() */
+export const OPOSICION_IDS_ENUM = ALL_OPOSICION_IDS as [string, ...string[]]
+
 // ============================================
 // FUNCIONES HELPER
 // ============================================

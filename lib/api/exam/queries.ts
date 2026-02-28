@@ -4,6 +4,7 @@ import { testQuestions, tests, questions, userProfiles } from '@/db/schema'
 import { eq, and, desc, sql, count, isNull, inArray } from 'drizzle-orm'
 import { resolveTemaByArticle, resolveTemasBatchByQuestionIds } from '@/lib/api/tema-resolver'
 import type { OposicionId } from '@/lib/api/tema-resolver'
+import { ALL_OPOSICION_IDS } from '@/lib/config/oposiciones'
 import type {
   SaveAnswerRequest,
   SaveAnswerResponse,
@@ -32,15 +33,8 @@ async function getUserOposicion(userId: string): Promise<OposicionId> {
 
     const oposicion = result[0]?.targetOposicion
 
-    // Validar que sea una oposición conocida
-    const validOposiciones: OposicionId[] = [
-      'auxiliar_administrativo_estado',
-      'administrativo_estado',
-      'tramitacion_procesal',
-      'auxilio_judicial',
-    ]
-
-    if (oposicion && validOposiciones.includes(oposicion as OposicionId)) {
+    // Validar que sea una oposición conocida (desde config central)
+    if (oposicion && ALL_OPOSICION_IDS.includes(oposicion)) {
       return oposicion as OposicionId
     }
 

@@ -11,52 +11,7 @@ import type {
   SectionFilter,
 } from './schemas'
 
-// ============================================
-// 🏛️ MAPEO: positionType → valores válidos de exam_position
-// ============================================
-// Las preguntas oficiales tienen exam_position con valores inconsistentes.
-// Este mapeo permite filtrar preguntas oficiales por oposición del usuario.
-// Las preguntas sin exam_position NO se muestran (deben categorizarse primero).
-const EXAM_POSITION_MAP: Record<string, string[]> = {
-  'auxiliar_administrativo': [
-    'auxiliar administrativo del estado',
-    'auxiliar administrativo',
-    'auxiliar_administrativo',
-    'auxiliar_administrativo_estado',
-  ],
-  'administrativo': [
-    'administrativo',
-    'administrativo_estado',
-    'cuerpo_general_administrativo',
-    'cuerpo general administrativo de la administración del estado',
-  ],
-  'gestion_administracion_civil': [
-    'cuerpo_gestion_administracion_civil',
-    'cuerpo de gestión de la administración civil del estado',
-  ],
-  'tramitacion_procesal': [
-    'tramitacion_procesal',
-    'tramitación procesal',
-  ],
-  'auxilio_judicial': [
-    'auxilio_judicial',
-    'auxilio judicial',
-  ],
-  'gestion_procesal': [
-    'gestion_procesal',
-    'gestión procesal',
-  ],
-}
-
-/**
- * Obtiene los valores válidos de exam_position para una oposición dada.
- * Si no hay mapeo, devuelve array vacío (no filtrará por exam_position).
- */
-function getValidExamPositions(positionType: string): string[] {
-  // Normalizar: quitar guiones y convertir a minúsculas
-  const normalized = positionType.toLowerCase().replace(/-/g, '_')
-  return EXAM_POSITION_MAP[normalized] || []
-}
+import { getValidExamPositions } from '@/lib/config/exam-positions'
 
 // ============================================
 // HELPER: Obtener IDs de preguntas respondidas recientemente
