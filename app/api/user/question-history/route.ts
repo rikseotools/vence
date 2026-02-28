@@ -1,6 +1,6 @@
-// app/api/user/question-history/route.js
+// app/api/user/question-history/route.ts
 // API para obtener historial de preguntas del usuario (optimizado con Drizzle)
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import {
   getQuestionHistory,
   getRecentQuestions,
@@ -10,7 +10,7 @@ import {
   safeParseGetUserAnalytics
 } from '@/lib/api/questions'
 
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'history'
@@ -106,7 +106,7 @@ export async function GET(request) {
   } catch (error) {
     console.error('❌ Error en /api/user/question-history:', error)
     return NextResponse.json(
-      { success: false, error: error.message || 'Error interno del servidor' },
+      { success: false, error: error instanceof Error ? error.message : 'Error interno del servidor' },
       { status: 500 }
     )
   }

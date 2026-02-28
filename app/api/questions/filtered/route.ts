@@ -1,6 +1,6 @@
-// app/api/questions/filtered/route.js - API para obtener preguntas filtradas
+// app/api/questions/filtered/route.ts - API para obtener preguntas filtradas
 // Usa Drizzle ORM + Zod para validación tipada
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import {
   getFilteredQuestions,
   countFilteredQuestions,
@@ -12,7 +12,7 @@ import {
 // POST /api/questions/filtered
 // Obtener preguntas filtradas para test
 // ============================================
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
@@ -32,8 +32,8 @@ export async function POST(request) {
         {
           success: false,
           error: 'Parámetros inválidos',
-          details: issues.map(e => ({
-            path: e.path?.join('.') || '',
+          details: issues.map((e) => ({
+            path: (e.path ?? []).map(String).join('.'),
             message: e.message || 'Error desconocido',
           })),
         },
@@ -70,7 +70,7 @@ export async function POST(request) {
 // GET /api/questions/filtered/count
 // Contar preguntas disponibles (para UI)
 // ============================================
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
@@ -87,9 +87,9 @@ export async function GET(request) {
     const positionType = searchParams.get('positionType') || 'auxiliar_administrativo'
     const onlyOfficialQuestions = searchParams.get('onlyOfficialQuestions') === 'true'
 
-    let selectedLaws = []
-    let selectedArticlesByLaw = {}
-    let selectedSectionFilters = []
+    let selectedLaws: string[] = []
+    let selectedArticlesByLaw: Record<string, number[]> = {}
+    let selectedSectionFilters: unknown[] = []
 
     try {
       const lawsParam = searchParams.get('selectedLaws')
