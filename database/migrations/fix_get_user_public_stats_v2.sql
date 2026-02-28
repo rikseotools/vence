@@ -158,7 +158,7 @@ BEGIN
     FROM test_questions tq
     JOIN tests t ON t.id = tq.test_id
     WHERE t.user_id = p_user_id
-      AND tq.created_at >= (CURRENT_DATE - INTERVAL '7 days')
+      AND tq.created_at >= (DATE_TRUNC('week', CURRENT_DATE)::DATE AT TIME ZONE 'Europe/Madrid')
   )
   SELECT
     us.user_id,
