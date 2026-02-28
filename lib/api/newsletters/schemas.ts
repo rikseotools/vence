@@ -121,6 +121,80 @@ export const eligibleUserSchema = z.object({
 export type EligibleUser = z.infer<typeof eligibleUserSchema>
 
 // ============================================
+// ESTADÍSTICAS DE PLANTILLAS (template-stats)
+// ============================================
+
+const templateStatSchema = z.object({
+  templateId: z.string(),
+  emailType: z.string().nullable(),
+  lastSubject: z.string().nullable(),
+  totalSent: z.number().int().min(0),
+  totalDelivered: z.number().int().min(0),
+  totalOpened: z.number().int().min(0),
+  totalClicked: z.number().int().min(0),
+  totalBounced: z.number().int().min(0),
+  totalComplained: z.number().int().min(0),
+  totalUnsubscribed: z.number().int().min(0),
+  openRate: z.number().min(0),
+  clickRate: z.number().min(0),
+  bounceRate: z.number().min(0),
+  complaintRate: z.number().min(0),
+  lastSent: z.string().nullable(),
+  uniqueOpeners: z.number().int().min(0),
+  uniqueClickers: z.number().int().min(0)
+})
+
+export type TemplateStat = z.infer<typeof templateStatSchema>
+
+export const templateStatsResponseSchema = z.object({
+  success: z.boolean(),
+  templateStats: z.record(z.string(), templateStatSchema)
+})
+
+export type TemplateStatsResponse = z.infer<typeof templateStatsResponseSchema>
+
+// ============================================
+// USUARIOS PARA NEWSLETTERS (users)
+// ============================================
+
+// Solo tipos generales para el endpoint de users (no oposiciones)
+export const newsletterUsersAudienceTypes = ['all', 'active', 'inactive', 'premium', 'free'] as const
+
+export const newsletterUsersQuerySchema = z.object({
+  audienceType: z.enum(newsletterUsersAudienceTypes).default('all'),
+  search: z.string().default(''),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(200).default(50)
+})
+
+export type NewsletterUsersQuery = z.infer<typeof newsletterUsersQuerySchema>
+
+const newsletterUserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().nullable(),
+  fullName: z.string().nullable(),
+  createdAt: z.string().nullable()
+})
+
+export type NewsletterUser = z.infer<typeof newsletterUserSchema>
+
+export const newsletterUsersResponseSchema = z.object({
+  success: z.boolean(),
+  users: z.array(newsletterUserSchema),
+  pagination: z.object({
+    page: z.number().int(),
+    limit: z.number().int(),
+    total: z.number().int().min(0),
+    totalPages: z.number().int().min(0),
+    hasMore: z.boolean()
+  }),
+  audienceType: z.string(),
+  search: z.string()
+})
+
+export type NewsletterUsersResponse = z.infer<typeof newsletterUsersResponseSchema>
+
+// ============================================
 // VALIDADORES
 // ============================================
 
