@@ -13,6 +13,7 @@ import {
  * Body:
  * - lawId: string (UUID de la ley)
  * - mode: 'sync' | 'replace' (opcional, default: 'sync')
+ * - includeDisposiciones: boolean (opcional, default: false) - Si true, también sincroniza disposiciones adicionales/transitorias/derogatorias/finales
  *
  * Comportamiento:
  * - Añade artículos que faltan en BD
