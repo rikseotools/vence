@@ -1,7 +1,6 @@
 'use client'
 import { type ReactNode } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 import MarkdownExplanation from './MarkdownExplanation'
 
 interface ChartQuestionData {
@@ -353,18 +352,6 @@ export default function ChartQuestion({
 
           </div>
 
-          {/* Estadísticas de evolución de la pregunta */}
-          {user && (
-            <PsychometricQuestionEvolution
-              userId={user.id}
-              questionId={question.id}
-              currentResult={{
-                isCorrect: effectiveCorrectAnswer !== null && selectedAnswer === effectiveCorrectAnswer,
-                timeSpent: 0,
-                answer: selectedAnswer
-              }}
-            />
-          )}
         </div>
       )}
     </div>

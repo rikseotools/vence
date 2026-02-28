@@ -15,28 +15,37 @@ import SequenceLetterQuestion from './SequenceLetterQuestion'
 import SequenceAlphanumericQuestion from './SequenceAlphanumericQuestion'
 import PsychometricRegistrationManager from './PsychometricRegistrationManager'
 import PsychometricQuestionDispute from './v2/PsychometricQuestionDispute'
+import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 import MarkdownExplanation from './MarkdownExplanation'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 
-// 🔒 FUNCIÓN: Validar respuesta psicotécnica via API con fallback local
-// Patrón idéntico a TestLayout.js validateAnswerSecure()
-async function validatePsychometricAnswerSecure(questionId, userAnswer, localCorrectAnswer) {
+// 🔒 API unificada: validar + guardar + actualizar sesión en una sola llamada
+// Si la API falla (timeout, red), fallback local para que el test siga funcionando
+async function validatePsychometricAnswerSecure(questionId, userAnswer, localCorrectAnswer, saveParams = null) {
   if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
     console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
     return {
       isCorrect: userAnswer === localCorrectAnswer,
       correctAnswer: localCorrectAnswer,
       explanation: null,
+      saved: false,
       usedFallback: true
     }
   }
 
   try {
+    // Construir payload: siempre envía questionId + userAnswer
+    // Si hay sesión (usuario logueado), envía también datos de guardado
+    const payload = { questionId, userAnswer }
+    if (saveParams) {
+      Object.assign(payload, saveParams)
+    }
+
     const response = await fetch('/api/answer/psychometric', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionId, userAnswer })
+      body: JSON.stringify(payload)
     })
 
     if (!response.ok) {
@@ -45,6 +54,7 @@ async function validatePsychometricAnswerSecure(questionId, userAnswer, localCor
         isCorrect: userAnswer === localCorrectAnswer,
         correctAnswer: localCorrectAnswer,
         explanation: null,
+        saved: false,
         usedFallback: true
       }
     }
@@ -52,11 +62,13 @@ async function validatePsychometricAnswerSecure(questionId, userAnswer, localCor
     const data = await response.json()
 
     if (data.success) {
-      console.log('✅ [SecureAnswer] Respuesta psicotécnica validada via API')
+      console.log('✅ [SecureAnswer] Respuesta psicotécnica validada y guardada via API')
       return {
         isCorrect: data.isCorrect,
         correctAnswer: data.correctAnswer,
         explanation: data.explanation,
+        saved: data.saved || false,
+        sessionProgress: data.sessionProgress || null,
         usedFallback: false
       }
     }
@@ -67,6 +79,7 @@ async function validatePsychometricAnswerSecure(questionId, userAnswer, localCor
       isCorrect: userAnswer === localCorrectAnswer,
       correctAnswer: localCorrectAnswer,
       explanation: null,
+      saved: false,
       usedFallback: true
     }
 
@@ -76,6 +89,7 @@ async function validatePsychometricAnswerSecure(questionId, userAnswer, localCor
       isCorrect: userAnswer === localCorrectAnswer,
       correctAnswer: localCorrectAnswer,
       explanation: null,
+      saved: false,
       usedFallback: true
     }
   }
@@ -281,12 +295,24 @@ export default function PsychometricTestLayout({
       const questionTime = Date.now() - questionStartTime
       const timeTakenSeconds = Math.floor(questionTime / 1000)
 
-      // 🔒 SEGURIDAD: Validar respuesta via API con fallback local
+      // 🔒 API unificada: validar + guardar + actualizar sesión en UNA llamada
       console.log('🔒 [SecureAnswer] Validando respuesta psicotécnica via API...')
+
+      // Si hay sesión (usuario logueado), enviar datos de guardado junto con la validación
+      const saveParams = (testSession && user) ? {
+        sessionId: testSession.id,
+        userId: user.id,
+        questionOrder: currentQuestion + 1,
+        timeSpentSeconds: timeTakenSeconds,
+        questionSubtype: currentQ.question_subtype || null,
+        totalQuestions,
+      } : null
+
       const validationResult = await validatePsychometricAnswerSecure(
         currentQ.id,
         optionIndex,
-        currentQ.correct_option // fallback local si API falla
+        currentQ.correct_option, // fallback local si API falla
+        saveParams
       )
 
       const isCorrect = validationResult.isCorrect
@@ -297,13 +323,11 @@ export default function PsychometricTestLayout({
       setVerifiedExplanation(explanation || currentQ.explanation)
 
       if (validationResult.usedFallback) {
-        console.warn('⚠️ [SecureAnswer] Psicotécnico: usado fallback local')
+        console.warn('⚠️ [SecureAnswer] Psicotécnico: usado fallback local (sin guardar en DB)')
+      } else if (validationResult.saved) {
+        console.log('✅ [SecureAnswer] Validada + guardada via API:', validationResult.sessionProgress)
       } else {
-        console.log('✅ [SecureAnswer] Respuesta psicotécnica validada via API:', {
-          isCorrect,
-          correctAnswer,
-          userAnswer: optionIndex
-        })
+        console.log('✅ [SecureAnswer] Validada via API (guest mode, sin guardar)')
       }
 
       // Actualizar score
@@ -311,65 +335,16 @@ export default function PsychometricTestLayout({
         setScore(prev => prev + 1)
       }
 
-      // Crear objeto de respuesta detallada (para usuarios logueados y no logueados)
-      // 🔒 SEGURIDAD: Usar correctAnswer de API validada, no de currentQ.correct_option
+      // Crear objeto de respuesta detallada (para estado local)
       const detailedAnswer = {
         questionId: currentQ.id,
         questionText: currentQ.question_text,
         userAnswer: optionIndex,
-        correctAnswer: correctAnswer, // 🔒 De la API, no de la pregunta
+        correctAnswer: correctAnswer,
         isCorrect,
         timeSpent: timeTakenSeconds,
         timestamp: new Date().toISOString(),
         questionOrder: currentQuestion + 1
-      }
-
-      // Guardar respuesta en base de datos (solo para usuarios logueados)
-      if (testSession && user) {
-        const answerData = {
-          test_session_id: testSession.id,
-          user_id: user.id,
-          question_id: currentQ.id,
-          question_order: currentQuestion + 1,
-          user_answer: optionIndex,
-          is_correct: isCorrect,
-          time_spent_seconds: timeTakenSeconds,
-          question_subtype: currentQ.question_subtype || null,
-          created_at: new Date().toISOString()
-        }
-
-        const { error } = await supabase
-          .from('psychometric_test_answers')
-          .insert(answerData)
-
-        if (error) {
-          console.error('❌ Error saving answer:', error)
-        } else {
-          console.log('✅ Answer saved to database')
-          
-          // Actualizar progreso de la sesión después de cada respuesta
-          const newQuestionsAnswered = currentQuestion + 1
-          const currentCorrectCount = answeredQuestions.filter(q => q.isCorrect).length
-          const newCorrectAnswers = isCorrect ? currentCorrectCount + 1 : currentCorrectCount
-          const newAccuracyPercentage = Math.round((newCorrectAnswers / newQuestionsAnswered) * 100)
-          
-          const { error: sessionError } = await supabase
-            .from('psychometric_test_sessions')
-            .update({
-              questions_answered: newQuestionsAnswered,
-              correct_answers: newCorrectAnswers,
-              accuracy_percentage: newAccuracyPercentage
-            })
-            .eq('id', testSession.id)
-          
-          if (sessionError) {
-            console.error('❌ Error updating session progress:', sessionError)
-          } else {
-            console.log(`✅ Session progress updated: ${newCorrectAnswers}/${newQuestionsAnswered} (${newAccuracyPercentage}%)`)
-          }
-        }
-      } else {
-        console.log('📊 Guest mode: answer saved locally')
       }
 
       // Actualizar estado de preguntas respondidas (ambos tipos de usuario)
@@ -815,6 +790,21 @@ export default function PsychometricTestLayout({
       {showResult && (
         <div className="bg-gray-50 border-t border-gray-200 py-6">
           <div className="max-w-4xl mx-auto px-4">
+            {/* Evolución en esta pregunta (todos los tipos) */}
+            {user && (
+              <div className="mb-4">
+                <PsychometricQuestionEvolution
+                  userId={user.id}
+                  questionId={questions[currentQuestion]?.id}
+                  currentResult={{
+                    isCorrect: verifiedCorrectAnswer !== null && selectedAnswer === verifiedCorrectAnswer,
+                    timeSpent: 0,
+                    answer: selectedAnswer
+                  }}
+                />
+              </div>
+            )}
+
             {/* Botón de impugnación */}
             <div className="mb-4">
               <PsychometricQuestionDispute
