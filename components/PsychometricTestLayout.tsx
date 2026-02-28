@@ -99,6 +99,7 @@ const SUBTYPE_NAMES: Record<string, string> = {
   'bar_chart': 'Gráfico de barras',
   'line_chart': 'Gráfico de líneas',
   'data_table': 'Tabla de datos',
+  'data_tables': 'Tabla de datos',
   'mixed_chart': 'Gráfico mixto',
   'error_detection': 'Detección de errores',
   'word_analysis': 'Análisis de palabras',
@@ -110,7 +111,9 @@ const SUBTYPE_NAMES: Record<string, string> = {
   'analogy': 'Analogía',
   'comprehension': 'Comprensión',
   'pattern': 'Patrón',
-  'attention': 'Atención'
+  'attention': 'Atención',
+  'percentage': 'Porcentaje',
+  'probability': 'Probabilidad'
 }
 
 // 🔒 API unificada: validar + guardar + actualizar sesión en una sola llamada
