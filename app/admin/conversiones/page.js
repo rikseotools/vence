@@ -1566,39 +1566,45 @@ export default function ConversionesPage() {
                       </h4>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {predictionData.predictionAccuracy.byMethod
-                          .filter(m => m.method_name !== 'by_historic') // Eliminado por impreciso (±109%)
-                          .map((method) => (
+                          .filter(m => (m.methodName || m.method_name) !== 'by_historic') // Eliminado por impreciso (±109%)
+                          .map((method, idx) => {
+                            const name = method.methodName || method.method_name
+                            const absError = parseFloat(method.avgAbsoluteError ?? method.avg_absolute_error)
+                            const verified = method.verifiedPredictions ?? method.verified_predictions ?? 0
+                            const within20 = method.predictionsWithin20Pct ?? method.predictions_within_20pct
+                            return (
                           <div
-                            key={method.method_name}
+                            key={`${name}-${idx}`}
                             className={`rounded-lg p-3 ${
-                              method.avg_absolute_error <= 20
+                              absError <= 20
                                 ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-                                : method.avg_absolute_error <= 50
+                                : absError <= 50
                                 ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800'
                                 : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
                             }`}
                           >
                             <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                              {method.method_name === 'by_registrations' ? 'Por registros' :
-                               method.method_name === 'by_active_users' ? 'Por activos' : 'Combinado'}
+                              {name === 'by_registrations' ? 'Por registros' :
+                               name === 'by_active_users' ? 'Por activos' :
+                               name === 'combined' ? 'Combinado' : name}
                             </div>
                             <div className={`text-xl font-bold ${
-                              method.avg_absolute_error <= 20 ? 'text-green-600 dark:text-green-400' :
-                              method.avg_absolute_error <= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                              absError <= 20 ? 'text-green-600 dark:text-green-400' :
+                              absError <= 50 ? 'text-yellow-600 dark:text-yellow-400' :
                               'text-red-600 dark:text-red-400'
                             }`}>
-                              {method.avg_absolute_error !== null ? `±${method.avg_absolute_error}%` : '-'}
+                              {!isNaN(absError) ? `±${absError.toFixed(1)}%` : '-'}
                             </div>
                             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {method.verified_predictions} verificadas
+                              {verified} verificadas
                             </div>
-                            {method.predictions_within_20pct !== undefined && method.verified_predictions > 0 && (
+                            {within20 !== undefined && verified > 0 && (
                               <div className="text-xs text-gray-400 mt-0.5">
-                                {Math.round((method.predictions_within_20pct / method.verified_predictions) * 100)}% dentro de ±20%
+                                {Math.round((within20 / verified) * 100)}% dentro de ±20%
                               </div>
                             )}
                           </div>
-                        ))}
+                        )})}
                       </div>
                       <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">
                         Las predicciones se verifican automáticamente cada {predictionData.predictionAccuracy.verificationDays || 7} días comparando con ventas reales.

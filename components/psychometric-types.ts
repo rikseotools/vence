@@ -6,13 +6,13 @@ import { type ReactNode } from 'react'
 export interface PsychometricQuestionData {
   id: string
   question_text: string
-  question_subtype: string
+  question_subtype?: string
   option_a: string
   option_b: string
   option_c: string
   option_d: string
-  correct_option: number
-  explanation: string | null
+  correct_option?: number
+  explanation?: string | null
   options?: { A?: string; B?: string; C?: string; D?: string }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   content_data?: Record<string, any> | null
