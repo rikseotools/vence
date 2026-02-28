@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 import { useQuestionContext } from '../contexts/QuestionContext'
@@ -20,9 +20,107 @@ import MarkdownExplanation from './MarkdownExplanation'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 
+// ============================================
+// TIPOS
+// ============================================
+
+interface PsychometricQuestion {
+  id: string
+  category_id: string
+  question_text: string
+  question_subtype: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
+  correct_option: number
+  explanation: string | null
+  content_data: Record<string, unknown> | null
+  question_type?: string
+  [key: string]: unknown // campos adicionales de Supabase
+}
+
+interface TestConfig {
+  backUrl?: string
+  backText?: string
+}
+
+interface PsychometricTestLayoutProps {
+  categoria: string
+  config?: TestConfig | null
+  questions: PsychometricQuestion[]
+}
+
+interface DetailedAnswer {
+  questionId: string
+  questionText: string
+  userAnswer: number
+  correctAnswer: number | null
+  isCorrect: boolean
+  timeSpent: number
+  timestamp: string
+  questionOrder: number
+}
+
+interface TestSession {
+  id: string
+  [key: string]: unknown
+}
+
+interface SessionProgress {
+  questionsAnswered: number
+  correctAnswers: number
+  accuracyPercentage: number
+}
+
+interface ValidationResult {
+  isCorrect: boolean
+  correctAnswer: number | null
+  explanation: string | null
+  saved: boolean
+  sessionProgress?: SessionProgress | null
+  usedFallback: boolean
+}
+
+interface SaveParams {
+  sessionId: string
+  userId: string
+  questionOrder: number
+  timeSpentSeconds: number
+  questionSubtype: string | null
+  totalQuestions: number
+}
+
+const SUBTYPE_NAMES: Record<string, string> = {
+  'sequence_numeric': 'Serie numérica',
+  'sequence_letter': 'Serie de letras',
+  'sequence_alphanumeric': 'Serie alfanumérica',
+  'pie_chart': 'Gráfico circular',
+  'bar_chart': 'Gráfico de barras',
+  'line_chart': 'Gráfico de líneas',
+  'data_table': 'Tabla de datos',
+  'mixed_chart': 'Gráfico mixto',
+  'error_detection': 'Detección de errores',
+  'word_analysis': 'Análisis de palabras',
+  'text_question': 'Pregunta de texto',
+  'calculation': 'Cálculo',
+  'logic': 'Lógica',
+  'synonym': 'Sinónimos',
+  'antonym': 'Antónimos',
+  'analogy': 'Analogía',
+  'comprehension': 'Comprensión',
+  'pattern': 'Patrón',
+  'attention': 'Atención'
+}
+
 // 🔒 API unificada: validar + guardar + actualizar sesión en una sola llamada
 // Si la API falla (timeout, red), fallback local para que el test siga funcionando
-async function validatePsychometricAnswerSecure(questionId, userAnswer, localCorrectAnswer, saveParams = null) {
+async function validatePsychometricAnswerSecure(
+  questionId: string,
+  userAnswer: number,
+  localCorrectAnswer: number,
+  saveParams: SaveParams | null = null
+): Promise<ValidationResult> {
   if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
     console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
     return {
@@ -37,7 +135,7 @@ async function validatePsychometricAnswerSecure(questionId, userAnswer, localCor
   try {
     // Construir payload: siempre envía questionId + userAnswer
     // Si hay sesión (usuario logueado), envía también datos de guardado
-    const payload = { questionId, userAnswer }
+    const payload: Record<string, unknown> = { questionId, userAnswer }
     if (saveParams) {
       Object.assign(payload, saveParams)
     }
@@ -99,47 +197,47 @@ export default function PsychometricTestLayout({
   categoria,
   config,
   questions
-}) {
-  const { user, supabase } = useAuth()
+}: PsychometricTestLayoutProps) {
+  const { user, supabase } = useAuth() as { user: { id: string; user_metadata?: Record<string, unknown> } | null; supabase: ReturnType<typeof import('@supabase/supabase-js').createClient> }
   const { setQuestionContext, clearQuestionContext } = useQuestionContext()
 
   // 📊 Tracking de interacciones de usuario
   const { trackPsychometricAction } = useInteractionTracker()
 
   // Estados del test básicos
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState(null)
-  const [showResult, setShowResult] = useState(false)
-  const [score, setScore] = useState(0)
-  const [answeredQuestions, setAnsweredQuestions] = useState([])
-  const [startTime, setStartTime] = useState(Date.now())
-  const [testSession, setTestSession] = useState(null)
-  const [isAnswering, setIsAnswering] = useState(false)
-  const [isTestCompleted, setIsTestCompleted] = useState(false)
-  
+  const [currentQuestion, setCurrentQuestion] = useState<number>(0)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+  const [showResult, setShowResult] = useState<boolean>(false)
+  const [score, setScore] = useState<number>(0)
+  const [answeredQuestions, setAnsweredQuestions] = useState<DetailedAnswer[]>([])
+  const [startTime, setStartTime] = useState<number>(Date.now())
+  const [testSession, setTestSession] = useState<TestSession | null>(null)
+  const [isAnswering, setIsAnswering] = useState<boolean>(false)
+  const [isTestCompleted, setIsTestCompleted] = useState<boolean>(false)
+
   // Estados para usuarios no logueados (igual que TestLayout)
-  const [detailedAnswers, setDetailedAnswers] = useState([])
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now())
-  
+  const [detailedAnswers, setDetailedAnswers] = useState<DetailedAnswer[]>([])
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now())
+
   // Estados para dificultad adaptativa
-  const [difficultyInfo, setDifficultyInfo] = useState(null)
-  const [isFirstTime, setIsFirstTime] = useState(true)
+  const [difficultyInfo, setDifficultyInfo] = useState<Record<string, unknown> | null>(null)
+  const [isFirstTime, setIsFirstTime] = useState<boolean>(true)
 
   // 🔒 SEGURIDAD: Estado para respuesta correcta validada por API
   // La respuesta correcta SOLO viene de la API después de responder
-  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState(null)
-  const [verifiedExplanation, setVerifiedExplanation] = useState(null)
+  const [verifiedCorrectAnswer, setVerifiedCorrectAnswer] = useState<number | null>(null)
+  const [verifiedExplanation, setVerifiedExplanation] = useState<string | null>(null)
 
   // Anti-duplicados
-  const answeringTimeouts = useRef(new Map())
-  const answeredQuestionsGlobal = useRef(new Set())
-  const sessionCreated = useRef(false)
+  const answeringTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
+  const answeredQuestionsGlobal = useRef<Set<string>>(new Set())
+  const sessionCreated = useRef<boolean>(false)
 
   const currentQ = questions[currentQuestion]
   const totalQuestions = questions.length
 
   // Función para obtener el conteo de intentos de una pregunta
-  const getAttemptCount = (questionId) => {
+  const getAttemptCount = (_questionId: string): number => {
     // En el sistema actual, cada pregunta se intenta solo una vez por sesión
     // Retornar 0 para indicar primer intento
     return 0
@@ -169,8 +267,8 @@ export default function PsychometricTestLayout({
         .single()
 
       if (data) {
-        setTestSession(data)
-        console.log('✅ Psychometric test session created:', data.id)
+        setTestSession(data as TestSession)
+        console.log('✅ Psychometric test session created:', (data as TestSession).id)
       } else if (error) {
         console.error('❌ Error creating psychometric test session:', error)
       }
@@ -192,7 +290,7 @@ export default function PsychometricTestLayout({
         console.log('🎯 Loading difficulty info for question:', currentQ.id)
         
         // Cargar información de dificultad
-        const diffInfo = await getDifficultyInfo(supabase, currentQ.id, user.id)
+        const diffInfo = await getDifficultyInfo(supabase, currentQ.id, user.id) as Record<string, unknown> | null
         setDifficultyInfo(diffInfo)
         
         // Verificar si es primera vez para este usuario
@@ -212,29 +310,6 @@ export default function PsychometricTestLayout({
   // 💬 Actualizar contexto de pregunta para el chat AI (psicotécnicos)
   useEffect(() => {
     if (currentQ) {
-      // Mapear subtype a nombre legible para la IA
-      const subtypeNames = {
-        'sequence_numeric': 'Serie numérica',
-        'sequence_letter': 'Serie de letras',
-        'sequence_alphanumeric': 'Serie alfanumérica',
-        'pie_chart': 'Gráfico circular',
-        'bar_chart': 'Gráfico de barras',
-        'line_chart': 'Gráfico de líneas',
-        'data_table': 'Tabla de datos',
-        'mixed_chart': 'Gráfico mixto',
-        'error_detection': 'Detección de errores',
-        'word_analysis': 'Análisis de palabras',
-        'text_question': 'Pregunta de texto',
-        'calculation': 'Cálculo',
-        'logic': 'Lógica',
-        'synonym': 'Sinónimos',
-        'antonym': 'Antónimos',
-        'analogy': 'Analogía',
-        'comprehension': 'Comprensión',
-        'pattern': 'Patrón',
-        'attention': 'Atención'
-      }
-
       setQuestionContext({
         id: currentQ.id,
         question_text: currentQ.question_text,
@@ -248,7 +323,7 @@ export default function PsychometricTestLayout({
         // Campos específicos de psicotécnicos
         isPsicotecnico: true,
         questionSubtype: currentQ.question_subtype,
-        questionTypeName: subtypeNames[currentQ.question_subtype] || currentQ.question_subtype,
+        questionTypeName: SUBTYPE_NAMES[currentQ.question_subtype] || currentQ.question_subtype,
         categoria: categoria,
         // Datos del contenido (gráficos, series, etc.)
         contentData: currentQ.content_data || null
@@ -261,7 +336,7 @@ export default function PsychometricTestLayout({
     }
   }, [currentQuestion, currentQ, setQuestionContext, clearQuestionContext, categoria, showResult, verifiedCorrectAnswer])
 
-  const handleAnswer = async (optionIndex, metadata = null) => {
+  const handleAnswer = async (optionIndex: number, _metadata: Record<string, unknown> | null = null) => {
     if (!currentQ || isAnswering || answeredQuestionsGlobal.current.has(currentQ.id)) {
       console.log('🚫 Answer blocked - already answered or processing')
       return
@@ -360,7 +435,7 @@ export default function PsychometricTestLayout({
     }
   }
 
-  const nextQuestion = () => {
+  const nextQuestion = (): void => {
     if (currentQuestion < totalQuestions - 1) {
       // 📊 Tracking de navegación
       trackPsychometricAction('navigation_next', questions[currentQuestion]?.id, {
@@ -386,9 +461,9 @@ export default function PsychometricTestLayout({
     }
   }
 
-  const completeTest = async () => {
+  const completeTest = async (): Promise<void> => {
     // 📊 Tracking de test completado
-    trackPsychometricAction('test_completed', null, {
+    trackPsychometricAction('test_completed', undefined, {
       totalQuestions,
       correctAnswers: score,
       accuracy: Math.round((score / totalQuestions) * 100),
@@ -420,7 +495,7 @@ export default function PsychometricTestLayout({
     setIsTestCompleted(true)
   }
 
-  const renderQuestion = () => {
+  const renderQuestion = (): React.ReactNode => {
     if (!currentQ) return null
 
     // Renderizar según el tipo de pregunta
@@ -580,8 +655,8 @@ export default function PsychometricTestLayout({
 
             <div className="grid gap-4 mb-8">
               {['A', 'B', 'C', 'D'].map((letter, index) => {
-                const optionKey = `option_${letter.toLowerCase()}`
-                const optionText = currentQ[optionKey]
+                const optionKey = `option_${letter.toLowerCase()}` as keyof PsychometricQuestion
+                const optionText = currentQ[optionKey] as string
                 const isSelected = selectedAnswer === index
                 // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API, no currentQ.correct_option
                 const isCorrectOption = showResult && verifiedCorrectAnswer !== null
