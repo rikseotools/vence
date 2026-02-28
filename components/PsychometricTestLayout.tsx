@@ -113,7 +113,13 @@ const SUBTYPE_NAMES: Record<string, string> = {
   'pattern': 'Patrón',
   'attention': 'Atención',
   'percentage': 'Porcentaje',
-  'probability': 'Probabilidad'
+  'probability': 'Probabilidad',
+  'definition': 'Definición',
+  'classification': 'Clasificación',
+  'alphabetical': 'Orden alfabético',
+  'alphabetical_order': 'Orden alfabético',
+  'code_equivalence': 'Equivalencia de códigos',
+  'coding': 'Codificación'
 }
 
 // 🔒 API unificada: validar + guardar + actualizar sesión en una sola llamada
@@ -450,7 +456,6 @@ export default function PsychometricTestLayout({
       setCurrentQuestion(prev => prev + 1)
       setSelectedAnswer(null)
       setShowResult(false)
-      setStartTime(Date.now())
       setQuestionStartTime(Date.now()) // Reset timer para nueva pregunta
       // Limpiar estados de dificultad para la nueva pregunta
       setDifficultyInfo(null)
@@ -650,6 +655,13 @@ export default function PsychometricTestLayout({
       case 'calculation':
       case 'percentage':
       case 'probability':
+      case 'definition':
+      case 'analogy':
+      case 'classification':
+      case 'alphabetical':
+      case 'alphabetical_order':
+      case 'code_equivalence':
+      case 'coding':
         return (
           <div className="bg-white rounded-lg shadow-lg p-8">
             <h3 className="text-xl font-bold text-gray-900 mb-6">

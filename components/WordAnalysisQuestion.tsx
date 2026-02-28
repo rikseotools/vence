@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { type StandaloneQuestionProps } from './psychometric-types'
 
 export default function WordAnalysisQuestion({
   question,
@@ -8,10 +8,9 @@ export default function WordAnalysisQuestion({
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null
-}) {
+}: StandaloneQuestionProps) {
 
   // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API cuando esté disponible
   const effectiveCorrectAnswer = showResult && verifiedCorrectAnswer !== null
@@ -38,7 +37,7 @@ export default function WordAnalysisQuestion({
       <div className="grid gap-4 mb-8">
         {['A', 'B', 'C', 'D'].map((letter, index) => {
           const optionKey = `option_${letter.toLowerCase()}`
-          const optionText = question.options ? question.options[letter] : question[optionKey]
+          const optionText = question.options ? question.options[letter as keyof typeof question.options] : question[optionKey]
           const isSelected = selectedAnswer === index
           // 🔒 SEGURIDAD: Usar effectiveCorrectAnswer de API
           const isCorrectOption = showResult && effectiveCorrectAnswer !== null

@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
+import { type ChartBasedQuestionProps } from './psychometric-types'
 
 export default function ErrorDetectionQuestion({
   question,
@@ -9,18 +10,17 @@ export default function ErrorDetectionQuestion({
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null,
   hideAIChat = false
-}) {
-  const [textComponent, setTextComponent] = useState('')
+}: ChartBasedQuestionProps) {
+  const [textComponent, setTextComponent] = useState<React.ReactNode>(null)
 
   useEffect(() => {
     generateTextComponent()
   }, [question])
 
-  const generateTextComponent = () => {
+  const generateTextComponent = (): void => {
     const contentData = question.content_data
 
     if (!contentData) return
@@ -54,7 +54,7 @@ export default function ErrorDetectionQuestion({
   // Usar explicación personalizada si existe, sino generar automática
   const explanationSections = question.explanation ? null : (
     <div className="space-y-4">
-      {question.content_data?.explanation_sections?.map((section, index) => (
+      {question.content_data?.explanation_sections?.map((section: any, index: number) => (
         <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500">
           <h5 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
             {section.title}
@@ -69,7 +69,7 @@ export default function ErrorDetectionQuestion({
             📝 Análisis de errores:
           </h5>
           <div className="text-gray-700 dark:text-gray-300 text-sm">
-            {question.content_data?.errors_found?.map((error, index) => (
+            {question.content_data?.errors_found?.map((error: any, index: number) => (
               <div key={index} className="mb-2">
                 <span className="font-medium">• {error.incorrect}</span> → 
                 <span className="text-green-600 dark:text-green-400 font-medium"> {error.correct}</span>

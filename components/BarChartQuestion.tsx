@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
+import { type ChartBasedQuestionProps } from './psychometric-types'
 
 export default function BarChartQuestion({
   question,
@@ -9,17 +10,16 @@ export default function BarChartQuestion({
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null,
   hideAIChat = false
-}) {
-  const [chartSvg, setChartSvg] = useState('')
-  const [scale, setScale] = useState(1)
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [lastTouchDistance, setLastTouchDistance] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+}: ChartBasedQuestionProps) {
+  const [chartSvg, setChartSvg] = useState<React.ReactNode>(null)
+  const [scale, setScale] = useState<number>(1)
+  const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [lastTouchDistance, setLastTouchDistance] = useState<number>(0)
+  const [isDragging, setIsDragging] = useState<boolean>(false)
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
   // Dark mode desactivado para psicotécnicos
   const isDarkMode = false
   
@@ -34,14 +34,14 @@ export default function BarChartQuestion({
   // Dark mode desactivado para gráficos psicotécnicos
 
   // Funciones para gestos táctiles en el modal
-  const getTouchDistance = (touch1, touch2) => {
+  const getTouchDistance = (touch1: React.Touch, touch2: React.Touch): number => {
     return Math.sqrt(
       Math.pow(touch2.clientX - touch1.clientX, 2) + 
       Math.pow(touch2.clientY - touch1.clientY, 2)
     )
   }
 
-  const handleTouchStart = (e) => {
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>): void => {
     e.preventDefault()
     if (e.touches.length === 2) {
       // Pinch to zoom
@@ -57,7 +57,7 @@ export default function BarChartQuestion({
     }
   }
 
-  const handleTouchMove = (e) => {
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>): void => {
     e.preventDefault()
     if (e.touches.length === 2 && lastTouchDistance > 0) {
       // Pinch to zoom
@@ -75,17 +75,17 @@ export default function BarChartQuestion({
     }
   }
 
-  const handleTouchEnd = (e) => {
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>): void => {
     e.preventDefault()
     setIsDragging(false)
     setLastTouchDistance(0)
   }
 
-  const generateBarChart = () => {
+  const generateBarChart = (): void => {
     if (!question.content_data?.chart_data) return
 
-    const rawData = question.content_data.chart_data
-    let data = []
+    const rawData = question.content_data.chart_data as any
+    let data: any[] = []
     
     // Detectar estructura y normalizar datos
     if (rawData.quarters && Array.isArray(rawData.quarters)) {
@@ -94,14 +94,14 @@ export default function BarChartQuestion({
       const dataKeys = Object.keys(firstQuarter).filter(key => key !== 'name')
       
       // Crear estructura normalizada dinámicamente
-      data = rawData.quarters.map(quarter => ({
+      data = rawData.quarters.map((quarter: any) => ({
         year: quarter.name,
-        categories: dataKeys.map(key => ({
+        categories: dataKeys.map((key: string) => ({
           name: rawData.legend?.[key] || key, // Usar leyenda o clave directamente
           value: quarter[key] || 0
         }))
       }))
-    } else if (Array.isArray(rawData) || (typeof rawData === 'object' && Object.keys(rawData).every(k => !isNaN(k)))) {
+    } else if (Array.isArray(rawData) || (typeof rawData === 'object' && Object.keys(rawData).every((k: string) => !isNaN(Number(k))))) {
       // Estructura antigua (frutas): array o objeto con índices numéricos
       const dataArray = Array.isArray(rawData) ? rawData : Object.values(rawData)
       data = dataArray
@@ -120,9 +120,9 @@ export default function BarChartQuestion({
 
     // Encontrar valores máximos para escalado
     let maxValue = 0
-    data.forEach(yearData => {
+    data.forEach((yearData: any) => {
       if (yearData.categories && Array.isArray(yearData.categories)) {
-        yearData.categories.forEach(category => {
+        yearData.categories.forEach((category: any) => {
           maxValue = Math.max(maxValue, category.value)
         })
       }
@@ -137,17 +137,17 @@ export default function BarChartQuestion({
     const groupWidth = availableWidth / groupCount
     const barWidth = (groupWidth - (barSpacing * (categoriesPerGroup - 1))) / categoriesPerGroup
 
-    let bars = []
-    let labels = []
-    let legend = []
+    let bars: React.ReactNode[] = []
+    let labels: React.ReactNode[] = []
+    let legend: React.ReactNode[] = []
 
     // Extraer colores directamente de los datos
-    let categoryColors = {}
+    let categoryColors: Record<string, string> = {}
     
     // Construir mapeo de colores desde los datos
-    data.forEach(yearData => {
+    data.forEach((yearData: any) => {
       if (yearData.categories) {
-        yearData.categories.forEach(category => {
+        yearData.categories.forEach((category: any) => {
           if (category.color && category.label) {
             categoryColors[category.label] = category.color
           } else if (category.color && category.name) {
@@ -163,16 +163,16 @@ export default function BarChartQuestion({
       const defaultColors = ['#ff9800', '#2196f3', '#4caf50', '#f44336', '#9c27b0', '#ff5722']
       
       // Obtener todas las categorías únicas de los datos
-      const allCategories = new Set()
-      data.forEach(yearData => {
+      const allCategories = new Set<string>()
+      data.forEach((yearData: any) => {
         if (yearData.categories) {
-          yearData.categories.forEach(cat => allCategories.add(cat.name))
+          yearData.categories.forEach((cat: any) => allCategories.add(cat.name))
         }
       })
       
       // Asignar colores automáticamente
-      const categoriesArray = Array.from(allCategories)
-      categoriesArray.forEach((category, index) => {
+      const categoriesArray = Array.from(allCategories) as string[]
+      categoriesArray.forEach((category: string, index: number) => {
         categoryColors[category] = defaultColors[index % defaultColors.length]
       })
       
@@ -189,10 +189,10 @@ export default function BarChartQuestion({
     }
 
     // Generar barras
-    data.forEach((yearData, yearIndex) => {
+    data.forEach((yearData: any, yearIndex: number) => {
       const groupX = margin.left + (yearIndex * (groupWidth + groupSpacing))
-      
-      yearData.categories.forEach((category, catIndex) => {
+
+      yearData.categories.forEach((category: any, catIndex: number) => {
         const barHeight = (category.value / maxValue) * plotHeight
         const barX = groupX + (catIndex * (barWidth + barSpacing))
         const barY = margin.top + plotHeight - barHeight
@@ -259,20 +259,20 @@ export default function BarChartQuestion({
     })
 
     // Leyenda profesional centrada
-    const usedCategories = new Set()
-    data.forEach(yearData => {
+    const usedCategories = new Set<string>()
+    data.forEach((yearData: any) => {
       if (yearData.categories) {
-        yearData.categories.forEach(cat => usedCategories.add(cat.label || cat.name))
+        yearData.categories.forEach((cat: any) => usedCategories.add(cat.label || cat.name))
       }
     })
-    const legendItems = Array.from(usedCategories)
+    const legendItems = Array.from(usedCategories) as string[]
     
     // Calcular ancho total de la leyenda para centrarla
     const legendItemWidth = 150  // Más espacio entre elementos
     const legendTotalWidth = legendItems.length * legendItemWidth
     const legendStartX = (chartWidth - legendTotalWidth) / 2
     
-    legendItems.forEach((item, index) => {
+    legendItems.forEach((item: string, index: number) => {
       const legendX = legendStartX + (index * legendItemWidth)
       legend.push(
         <g key={`legend-${index}`}>
@@ -301,7 +301,7 @@ export default function BarChartQuestion({
     })
 
     // Eje Y con valores y grid lines
-    let yAxisTicks = []
+    let yAxisTicks: React.ReactNode[] = []
     const tickCount = 5
     for (let i = 0; i <= tickCount; i++) {
       const value = (maxValue / tickCount) * i
@@ -444,7 +444,7 @@ export default function BarChartQuestion({
   // Si hay explanation_sections, usarlas. Si no, dejar que ChartQuestion use verifiedExplanation
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
-      {question.content_data.explanation_sections.map((section, index) => (
+      {question.content_data.explanation_sections.map((section: any, index: number) => (
         <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-blue-500 mb-4">
           <h5 className="font-semibold text-blue-800 mb-2">{section.title}</h5>
           <div className="text-gray-700 text-sm whitespace-pre-line">
@@ -453,7 +453,7 @@ export default function BarChartQuestion({
         </div>
       ))}
     </>
-  ) : null // No usar fallback genérico - dejar que ChartQuestion muestre verifiedExplanation
+  ) : null
 
   return (
     <ChartQuestion

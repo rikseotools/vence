@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
+import { type ChartBasedQuestionProps } from './psychometric-types'
 
 export default function DataTableQuestion({
   question,
@@ -9,12 +10,11 @@ export default function DataTableQuestion({
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null,
   hideAIChat = false
-}) {
-  const [tableComponent, setTableComponent] = useState('')
+}: ChartBasedQuestionProps) {
+  const [tableComponent, setTableComponent] = useState<React.ReactNode>(null)
 
   useEffect(() => {
     generateTableComponent()
@@ -48,7 +48,7 @@ export default function DataTableQuestion({
                 <table className="w-full border-collapse border border-orange-300 dark:border-orange-600">
                   <thead>
                     <tr className="bg-orange-100 dark:bg-orange-800/40">
-                      {tableData.headers.map((header, index) => (
+                      {tableData.headers.map((header: string, index: number) => (
                         <th key={index} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-orange-800 dark:text-orange-300 font-semibold text-sm">
                           {header}
                         </th>
@@ -56,9 +56,9 @@ export default function DataTableQuestion({
                     </tr>
                   </thead>
                   <tbody>
-                    {tableData.rows.map((row, rowIndex) => (
+                    {tableData.rows.map((row: any[], rowIndex: number) => (
                       <tr key={rowIndex} className="hover:bg-orange-25 dark:hover:bg-orange-900/10">
-                        {row.map((cell, cellIndex) => (
+                        {row.map((cell: any, cellIndex: number) => (
                           <td key={cellIndex} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-center text-gray-700 dark:text-gray-300 text-sm">
                             {cell}
                           </td>
@@ -85,7 +85,7 @@ export default function DataTableQuestion({
                   <table className="w-full border-collapse border border-orange-300 dark:border-orange-600">
                     <thead>
                       <tr className="bg-orange-100 dark:bg-orange-800/40">
-                        {tableData.tabla1.headers.map((header, index) => (
+                        {tableData.tabla1.headers.map((header: string, index: number) => (
                           <th key={index} className="border border-orange-300 dark:border-orange-600 px-2 py-2 text-orange-800 dark:text-orange-300 font-semibold text-xs">
                             {header}
                           </th>
@@ -93,9 +93,9 @@ export default function DataTableQuestion({
                       </tr>
                     </thead>
                     <tbody>
-                      {tableData.tabla1.rows.map((row, rowIndex) => (
+                      {tableData.tabla1.rows.map((row: any[], rowIndex: number) => (
                         <tr key={rowIndex} className="hover:bg-orange-25 dark:hover:bg-orange-900/10">
-                          {row.map((cell, cellIndex) => (
+                          {row.map((cell: any, cellIndex: number) => (
                             <td key={cellIndex} className="border border-orange-300 dark:border-orange-600 px-2 py-2 text-center text-gray-700 dark:text-gray-300 text-xs">
                               {cell}
                             </td>
@@ -118,7 +118,7 @@ export default function DataTableQuestion({
                   <table className="w-full border-collapse border border-blue-300 dark:border-blue-600">
                     <thead>
                       <tr className="bg-blue-100 dark:bg-blue-800/40">
-                        {tableData.tabla2.headers.map((header, index) => (
+                        {tableData.tabla2.headers.map((header: string, index: number) => (
                           <th key={index} className="border border-blue-300 dark:border-blue-600 px-3 py-2 text-blue-800 dark:text-blue-300 font-semibold text-sm">
                             {header}
                           </th>
@@ -126,9 +126,9 @@ export default function DataTableQuestion({
                       </tr>
                     </thead>
                     <tbody>
-                      {tableData.tabla2.rows.map((row, rowIndex) => (
+                      {tableData.tabla2.rows.map((row: any[], rowIndex: number) => (
                         <tr key={rowIndex} className="hover:bg-blue-25 dark:hover:bg-blue-900/10">
-                          {row.map((cell, cellIndex) => (
+                          {row.map((cell: any, cellIndex: number) => (
                             <td key={cellIndex} className="border border-blue-300 dark:border-blue-600 px-3 py-2 text-center text-gray-700 dark:text-gray-300 text-sm">
                               {cell}
                             </td>
@@ -156,7 +156,7 @@ export default function DataTableQuestion({
                   <table className="w-full border-collapse border border-orange-300 dark:border-orange-600">
                     <thead>
                       <tr className="bg-orange-100 dark:bg-orange-800/40">
-                        {tableData.main_table.headers.map((header, index) => (
+                        {tableData.main_table.headers.map((header: string, index: number) => (
                           <th key={index} className="border border-orange-300 dark:border-orange-600 px-2 py-2 text-orange-800 dark:text-orange-300 font-semibold text-xs">
                             {header}
                           </th>
@@ -164,9 +164,9 @@ export default function DataTableQuestion({
                       </tr>
                     </thead>
                     <tbody>
-                      {tableData.main_table.rows.map((row, rowIndex) => (
+                      {tableData.main_table.rows.map((row: any[], rowIndex: number) => (
                         <tr key={rowIndex} className="hover:bg-orange-25 dark:hover:bg-orange-900/10">
-                          {row.map((cell, cellIndex) => (
+                          {row.map((cell: any, cellIndex: number) => (
                             <td key={cellIndex} className="border border-orange-300 dark:border-orange-600 px-2 py-2 text-center text-gray-700 dark:text-gray-300 text-xs">
                               {cell}
                             </td>
@@ -189,7 +189,7 @@ export default function DataTableQuestion({
                   <table className="w-full border-collapse border border-blue-300 dark:border-blue-600">
                     <thead>
                       <tr className="bg-blue-100 dark:bg-blue-800/40">
-                        {tableData.characteristics_table.headers.map((header, index) => (
+                        {tableData.characteristics_table.headers.map((header: string, index: number) => (
                           <th key={index} className="border border-blue-300 dark:border-blue-600 px-3 py-2 text-blue-800 dark:text-blue-300 font-semibold text-sm">
                             {header}
                           </th>
@@ -197,9 +197,9 @@ export default function DataTableQuestion({
                       </tr>
                     </thead>
                     <tbody>
-                      {tableData.characteristics_table.rows.map((row, rowIndex) => (
+                      {tableData.characteristics_table.rows.map((row: any[], rowIndex: number) => (
                         <tr key={rowIndex} className="hover:bg-blue-25 dark:hover:bg-blue-900/10">
-                          {row.map((cell, cellIndex) => (
+                          {row.map((cell: any, cellIndex: number) => (
                             <td key={cellIndex} className="border border-blue-300 dark:border-blue-600 px-3 py-2 text-center text-gray-700 dark:text-gray-300 text-sm">
                               {cell}
                             </td>
@@ -215,7 +215,7 @@ export default function DataTableQuestion({
         )}
 
         {/* Formato nuevo: múltiples tablas */}
-        {tables && tables.map((table, tableIndex) => (
+        {tables && tables.map((table: any, tableIndex: number) => (
           <div key={tableIndex} className="mb-6">
             <h3 className="font-bold text-gray-900 dark:text-white mb-3">📋 {table.title}</h3>
             <div className="bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-700 rounded-lg p-4">
@@ -223,7 +223,7 @@ export default function DataTableQuestion({
                 <table className="w-full border-collapse border border-orange-300 dark:border-orange-600">
                   <thead>
                     <tr className="bg-orange-100 dark:bg-orange-800/40">
-                      {table.headers.map((header, index) => (
+                      {table.headers.map((header: string, index: number) => (
                         <th key={index} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-orange-800 dark:text-orange-300 font-semibold text-sm">
                           {header}
                         </th>
@@ -231,9 +231,9 @@ export default function DataTableQuestion({
                     </tr>
                   </thead>
                   <tbody>
-                    {table.rows.map((row, rowIndex) => (
+                    {table.rows.map((row: any[], rowIndex: number) => (
                       <tr key={rowIndex} className="hover:bg-orange-25 dark:hover:bg-orange-900/10">
-                        {row.map((cell, cellIndex) => (
+                        {row.map((cell: any, cellIndex: number) => (
                           <td key={cellIndex} className="border border-orange-300 dark:border-orange-600 px-3 py-2 text-center text-gray-700 dark:text-gray-300 text-sm">
                             {cell}
                           </td>
@@ -279,7 +279,7 @@ export default function DataTableQuestion({
             <h3 className="font-bold text-gray-900 dark:text-white mb-3">📝 Criterios:</h3>
             <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-lg p-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(question.content_data?.criteria || tableData?.criteria)?.map((criterion, index) => (
+                {(question.content_data?.criteria || tableData?.criteria)?.map((criterion: any, index: number) => (
                   <div key={index} className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-blue-300 dark:border-blue-600">
                     <div className="font-bold text-blue-800 dark:text-blue-300 mb-1">
                       {criterion.column}
@@ -303,7 +303,7 @@ export default function DataTableQuestion({
                 <table className="w-full border-collapse border border-green-400 dark:border-green-600">
                   <thead>
                     <tr className="bg-green-100 dark:bg-green-800/40">
-                      {(question.content_data?.classification_table || tableData?.classification_table)?.headers.map((header, index) => (
+                      {(question.content_data?.classification_table || tableData?.classification_table)?.headers.map((header: string, index: number) => (
                         <th key={index} className="border border-green-400 dark:border-green-600 px-4 py-2 text-green-800 dark:text-green-300 font-semibold">
                           {header}
                         </th>
@@ -311,9 +311,9 @@ export default function DataTableQuestion({
                     </tr>
                   </thead>
                   <tbody>
-                    {(question.content_data?.classification_table || tableData?.classification_table)?.rows.map((row, rowIndex) => (
+                    {(question.content_data?.classification_table || tableData?.classification_table)?.rows.map((row: any[], rowIndex: number) => (
                       <tr key={rowIndex} className="hover:bg-green-25 dark:hover:bg-green-900/10">
-                        {row.map((cell, cellIndex) => (
+                        {row.map((cell: any, cellIndex: number) => (
                           <td key={cellIndex} className="border border-green-400 dark:border-green-600 px-4 py-2 text-center text-gray-700 dark:text-gray-300">
                             {cell}
                           </td>
@@ -335,7 +335,7 @@ export default function DataTableQuestion({
   // Si hay explanation_sections, usarlas. Si no, dejar que ChartQuestion use verifiedExplanation
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
-      {question.content_data.explanation_sections.map((section, index) => (
+      {question.content_data.explanation_sections.map((section: any, index: number) => (
         <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500 mb-4">
           <h5 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">{section.title}</h5>
           <div className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line">

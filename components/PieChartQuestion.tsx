@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import React, { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
+import { type ChartBasedQuestionProps } from './psychometric-types'
 
 export default function PieChartQuestion({
   question,
@@ -10,13 +10,11 @@ export default function PieChartQuestion({
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null,
   hideAIChat = false
-}) {
-  const { user } = useAuth()
-  const [chartSvg, setChartSvg] = useState('')
+}: ChartBasedQuestionProps) {
+  const [chartSvg, setChartSvg] = useState<React.ReactNode>(null)
   // Dark mode desactivado para psicotécnicos
   const isDarkMode = false
 
@@ -37,17 +35,17 @@ export default function PieChartQuestion({
     const radius = 80
 
     let cumulativePercentage = 0
-    let paths = []
-    
+    const paths: React.ReactNode[] = []
+
     // Colores para los segmentos del gráfico
     const colors = [
       '#FF9500', // Naranja para POEMAS
-      '#FFB84D', // Naranja claro para CIENCIA FICCIÓN  
+      '#FFB84D', // Naranja claro para CIENCIA FICCIÓN
       '#FF6B35', // Naranja rojizo para POLICIACA
       '#FFC985'  // Naranja muy claro para ROMÁNTICA
     ]
 
-    data.forEach((item, index) => {
+    data.forEach((item: any, index: number) => {
       const percentage = item.percentage
       const startAngle = (cumulativePercentage / 100) * 360
       const endAngle = ((cumulativePercentage + percentage) / 100) * 360
@@ -73,7 +71,7 @@ export default function PieChartQuestion({
       let labelY = center + labelRadius * Math.sin(labelAngle)
       
       // Determinar la posición del texto basada en el cuadrante
-      let textAnchor = "middle"
+      let textAnchor: "start" | "middle" | "end" = "middle"
       let textX = labelX
       let textY = labelY
       
@@ -196,7 +194,7 @@ export default function PieChartQuestion({
   // Si hay explanation_sections, usarlas. Si no, dejar que ChartQuestion use verifiedExplanation
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
-      {question.content_data.explanation_sections.map((section, index) => (
+      {question.content_data.explanation_sections.map((section: any, index: number) => (
         <div key={index} className="bg-white  p-4 rounded-lg border-l-4 border-blue-500 mb-4">
           <h5 className="font-semibold text-blue-800  mb-2">{section.title}</h5>
           <div className="text-gray-700  text-sm whitespace-pre-line">

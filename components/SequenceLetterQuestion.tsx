@@ -1,20 +1,20 @@
 'use client'
 import { useState, useEffect } from 'react'
 import MarkdownExplanation from './MarkdownExplanation'
+import { type StandaloneQuestionProps } from './psychometric-types'
 
-export default function SequenceAlphanumericQuestion({
+export default function SequenceLetterQuestion({
   question,
   onAnswer,
   selectedAnswer,
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null
-}) {
-  const [timeTaken, setTimeTaken] = useState(0)
-  const [startTime, setStartTime] = useState(null)
+}: StandaloneQuestionProps) {
+  const [timeTaken, setTimeTaken] = useState<number>(0)
+  const [startTime, setStartTime] = useState<number | null>(null)
 
   // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API cuando esté disponible
   const effectiveCorrectAnswer = showResult && verifiedCorrectAnswer !== null
@@ -33,7 +33,7 @@ export default function SequenceAlphanumericQuestion({
     }
   }, [showResult, startTime])
 
-  const handleAnswer = (optionIndex) => {
+  const handleAnswer = (optionIndex: number): void => {
     if (isAnswering || showResult) return
 
     const timeSpent = startTime ? Math.round((Date.now() - startTime) / 1000) : 0
@@ -43,16 +43,16 @@ export default function SequenceAlphanumericQuestion({
       timeTaken: timeSpent,
       attemptCount: attemptCount,
       interactionData: {
-        sequence_analyzed: question.content_data?.series_text,
+        sequence_analyzed: question.content_data?.sequence,
         pattern_identified: question.content_data?.pattern_type,
         solution_method: question.content_data?.solution_method || 'manual'
       }
     })
   }
 
-  const renderAlphanumericSeries = () => {
-    // No renderizar recuadro azul para series alfanuméricas
-    // Las series van integradas en el texto de la pregunta
+  const renderSequence = () => {
+    // No renderizar recuadro azul para secuencias de letras
+    // Las secuencias van integradas en el texto de la pregunta
     return null
   }
 
@@ -96,7 +96,7 @@ export default function SequenceAlphanumericQuestion({
               className={buttonClass}
             >
               <span className="font-semibold mr-3">{option.key}.</span>
-              {option.text}
+              <span className="font-mono text-lg">{option.text}</span>
             </button>
           )
         })}
@@ -132,6 +132,8 @@ export default function SequenceAlphanumericQuestion({
 
     // 🔒 SEGURIDAD: Usar effectiveCorrectAnswer de API
     const isCorrect = effectiveCorrectAnswer !== null && selectedAnswer === effectiveCorrectAnswer
+    const sequence = question.content_data?.sequence || []
+    const patternType = question.content_data?.pattern_type || 'unknown'
 
     return (
       <div className="mt-6 p-6 bg-gray-50 rounded-lg">
@@ -151,7 +153,7 @@ export default function SequenceAlphanumericQuestion({
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('openAIChat', {
                   detail: {
-                    message: `Explícame paso a paso cómo resolver esta Serie alfanumérica: "${question.question_text}"\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
+                    message: `Explícame paso a paso cómo resolver esta Serie alfabética: "${question.question_text}"\n\nLas opciones son:\nA) ${question.option_a}\nB) ${question.option_b}\nC) ${question.option_c}\nD) ${question.option_d}`,
                     suggestion: 'explicar_psico'
                   }
                 }))
@@ -168,12 +170,29 @@ export default function SequenceAlphanumericQuestion({
         </div>
 
         <div className="space-y-4">
-          {/* 🔒 SEGURIDAD: Usar verifiedExplanation de API si está disponible */}
-          {(verifiedExplanation || question.explanation) && (
+          {question.content_data?.explanation_sections ? (
+            // Renderizar explanation_sections (sistema moderno)
+            question.content_data.explanation_sections.map((section: any, index: number) => (
+              <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-green-500">
+                <h5 className="font-semibold text-green-800 mb-2">{section.title}</h5>
+                <div className="text-gray-700 text-sm whitespace-pre-line">
+                  {section.content}
+                </div>
+              </div>
+            ))
+          ) : verifiedExplanation ? (
+            // 🔒 SEGURIDAD: Usar verifiedExplanation de API
             <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
-              <h5 className="font-semibold text-green-800 mb-2">📝 Explicación:</h5>
               <MarkdownExplanation
-                content={verifiedExplanation || question.explanation}
+                content={verifiedExplanation}
+                className="text-gray-700 text-sm"
+              />
+            </div>
+          ) : (
+            // Fallback para explanation simple
+            <div className="bg-white p-4 rounded-lg border-l-4 border-green-500">
+              <MarkdownExplanation
+                content={question.explanation || ''}
                 className="text-gray-700 text-sm"
               />
             </div>
@@ -190,8 +209,7 @@ export default function SequenceAlphanumericQuestion({
           {question.question_text}
         </h3>
 
-        {/* Mostrar la serie alfanumérica destacada si existe */}
-        {renderAlphanumericSeries()}
+        {renderSequence()}
         {renderOptions()}
         {renderQuickButtons()}
         {renderExplanation()}

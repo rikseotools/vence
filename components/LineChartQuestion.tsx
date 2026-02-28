@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
+import { type ChartBasedQuestionProps } from './psychometric-types'
 
 export default function LineChartQuestion({
   question,
@@ -9,12 +10,11 @@ export default function LineChartQuestion({
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null,
   hideAIChat = false
-}) {
-  const [chartSvg, setChartSvg] = useState('')
+}: ChartBasedQuestionProps) {
+  const [chartSvg, setChartSvg] = useState<React.ReactNode>(null)
   // Dark mode desactivado para psicotécnicos
   const isDarkMode = false
 
@@ -35,13 +35,13 @@ export default function LineChartQuestion({
     const plotHeight = chartHeight - margin.top - margin.bottom
 
     // Preparar datos para el gráfico
-    const categories = data.categories || ['Centros salud', 'Hospitales', 'Centros especialidades', 'Clínicas privadas']
-    const ageGroups = data.age_groups
-    
+    const categories: string[] = data.categories || ['Centros salud', 'Hospitales', 'Centros especialidades', 'Clínicas privadas']
+    const ageGroups: any[] = data.age_groups
+
     // Encontrar valor máximo para escalado
     let maxValue = 0
-    ageGroups.forEach(group => {
-      group.values.forEach(value => {
+    ageGroups.forEach((group: any) => {
+      group.values.forEach((value: number) => {
         maxValue = Math.max(maxValue, value)
       })
     })
@@ -49,23 +49,23 @@ export default function LineChartQuestion({
     // Configuración del gráfico
     const categorySpacing = plotWidth / (categories.length - 1)
 
-    let elements = []
+    let elements: React.ReactNode[] = []
 
     // Colores dinámicos para cada grupo de edad
     const defaultColors = ['#4CAF50', '#FF9800', '#424242', '#E91E63', '#2196F3', '#9C27B0']
-    const colors = {}
-    ageGroups.forEach((ageGroup, index) => {
+    const colors: Record<string, string> = {}
+    ageGroups.forEach((ageGroup: any, index: number) => {
       colors[ageGroup.label] = defaultColors[index % defaultColors.length]
     })
 
     // Primero dibujar todas las líneas y puntos
-    const allPoints = []
-    const allTextPositions = []
-    
-    ageGroups.forEach((ageGroup, groupIndex) => {
-      let pathData = []
+    const allPoints: { x: number; y: number; value: number; groupIndex: number; categoryIndex: number; color: string }[] = []
+    const allTextPositions: { x: number; y: number }[] = []
 
-      ageGroup.values.forEach((value, categoryIndex) => {
+    ageGroups.forEach((ageGroup: any, groupIndex: number) => {
+      const pathData: string[] = []
+
+      ageGroup.values.forEach((value: number, categoryIndex: number) => {
         const x = margin.left + (categoryIndex * categorySpacing)
         const y = margin.top + plotHeight - ((value / maxValue) * plotHeight)
         
@@ -106,7 +106,7 @@ export default function LineChartQuestion({
     })
 
     // Función para verificar si una posición está libre
-    const isPositionFree = (x, y, minDistance = 20) => {
+    const isPositionFree = (x: number, y: number, minDistance = 20) => {
       // Verificar distancia con otros textos
       for (let pos of allTextPositions) {
         const distance = Math.sqrt(Math.pow(x - pos.x, 2) + Math.pow(y - pos.y, 2))
@@ -123,7 +123,7 @@ export default function LineChartQuestion({
     }
 
     // Función para encontrar la mejor posición para el texto
-    const findBestTextPosition = (pointX, pointY) => {
+    const findBestTextPosition = (pointX: number, pointY: number) => {
       const candidates = [
         { x: pointX, y: pointY - 15 },     // Arriba
         { x: pointX + 15, y: pointY - 8 }, // Derecha arriba
@@ -187,7 +187,7 @@ export default function LineChartQuestion({
     })
 
     // Leyenda
-    ageGroups.forEach((ageGroup, index) => {
+    ageGroups.forEach((ageGroup: any, index: number) => {
       const legendX = 60 + (index * 140)
       elements.push(
         <g key={`legend-${index}`}>
@@ -317,7 +317,7 @@ export default function LineChartQuestion({
   // Si hay explanation_sections, usarlas. Si no, dejar que ChartQuestion use verifiedExplanation
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
-      {question.content_data.explanation_sections.map((section, index) => (
+      {question.content_data.explanation_sections.map((section: any, index: number) => (
         <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-blue-500 mb-4">
           <h5 className="font-semibold text-blue-800 mb-2">{section.title}</h5>
           <div className="text-gray-700 text-sm whitespace-pre-line">

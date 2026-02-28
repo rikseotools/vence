@@ -6,23 +6,14 @@ import MarkdownExplanation from './MarkdownExplanation'
 interface ChartQuestionData {
   id: string
   question_text: string
-  option_a?: string
-  option_b?: string
-  option_c?: string
-  option_d?: string
+  option_a: string
+  option_b: string
+  option_c: string
+  option_d: string
   options?: { A?: string; B?: string; C?: string; D?: string }
-  explanation?: string
-  content_data?: {
-    question_context?: string
-    chart_type?: string
-    original_text?: string
-    table_data?: {
-      title?: string
-      headers?: string[]
-      rows?: string[][]
-    }
-    table_name?: string
-  }
+  explanation?: string | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  content_data?: Record<string, any> | null
   question_subtype?: string
   psychometric_sections?: {
     display_name?: string
@@ -301,7 +292,7 @@ export default function ChartQuestion({
                       if (td.headers && td.rows) {
                         tableText += td.headers.join(' | ') + '\n'
                         tableText += td.headers.map(() => '---').join(' | ') + '\n'
-                        td.rows.forEach(row => {
+                        td.rows.forEach((row: string[]) => {
                           tableText += row.join(' | ') + '\n'
                         })
                       }

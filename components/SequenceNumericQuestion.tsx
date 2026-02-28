@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import MarkdownExplanation from './MarkdownExplanation'
+import { type StandaloneQuestionProps } from './psychometric-types'
 
 export default function SequenceNumericQuestion({
   question,
@@ -9,12 +10,11 @@ export default function SequenceNumericQuestion({
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null
-}) {
-  const [timeTaken, setTimeTaken] = useState(0)
-  const [startTime, setStartTime] = useState(null)
+}: StandaloneQuestionProps) {
+  const [timeTaken, setTimeTaken] = useState<number>(0)
+  const [startTime, setStartTime] = useState<number | null>(null)
 
   // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API cuando esté disponible
   const effectiveCorrectAnswer = showResult && verifiedCorrectAnswer !== null
@@ -33,7 +33,7 @@ export default function SequenceNumericQuestion({
     }
   }, [showResult, startTime])
 
-  const handleAnswer = (optionIndex) => {
+  const handleAnswer = (optionIndex: number): void => {
     if (isAnswering || showResult) return
 
     const timeSpent = startTime ? Math.round((Date.now() - startTime) / 1000) : 0
@@ -172,7 +172,7 @@ export default function SequenceNumericQuestion({
         <div className="space-y-4">
           {question.content_data?.explanation_sections ? (
             // Renderizar explanation_sections (sistema moderno)
-            question.content_data.explanation_sections.map((section, index) => (
+            question.content_data.explanation_sections.map((section: any, index: number) => (
               <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-green-500">
                 <h5 className="font-semibold text-green-800 mb-2">{section.title}</h5>
                 <div className="text-gray-700 text-sm whitespace-pre-line">
@@ -201,7 +201,7 @@ export default function SequenceNumericQuestion({
                   </div>
                 ) : (
                   <MarkdownExplanation
-                    content={question.explanation}
+                    content={question.explanation || ''}
                     className="text-gray-700"
                   />
                 )}

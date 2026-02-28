@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import ChartQuestion from './ChartQuestion'
+import { type ChartBasedQuestionProps } from './psychometric-types'
 
 export default function MixedChartQuestion({
   question,
@@ -9,12 +10,11 @@ export default function MixedChartQuestion({
   showResult,
   isAnswering,
   attemptCount = 0,
-  // 🔒 SEGURIDAD: Props para validación segura via API
   verifiedCorrectAnswer = null,
   verifiedExplanation = null,
   hideAIChat = false
-}) {
-  const [chartSvg, setChartSvg] = useState('')
+}: ChartBasedQuestionProps) {
+  const [chartSvg, setChartSvg] = useState<React.ReactNode>(null)
   // Dark mode desactivado para psicotécnicos
   const isDarkMode = false
   
@@ -28,28 +28,28 @@ export default function MixedChartQuestion({
 
   // Dark mode desactivado para gráficos psicotécnicos
 
-  const generateBarChart = (data, startX, startY, width, height) => {
+  const generateBarChart = (data: any, startX: number, startY: number, width: number, height: number) => {
     const margin = { top: 50, right: 60, bottom: 60, left: 100 }
     const plotWidth = width - margin.left - margin.right
     const plotHeight = height - margin.top - margin.bottom
 
     // Encontrar valor máximo
     let maxValue = 0
-    data.bars.forEach(bar => {
-      bar.categories.forEach(cat => {
+    data.bars.forEach((bar: any) => {
+      bar.categories.forEach((cat: any) => {
         maxValue = Math.max(maxValue, cat.value)
       })
     })
 
     const barGroupWidth = plotWidth / data.bars.length
     const barWidth = barGroupWidth / (data.bars[0].categories.length + 1) // Ancho de cada barra individual
-    let bars = []
-    let labels = []
-    let legendItems = []
+    const bars: React.ReactNode[] = []
+    const labels: React.ReactNode[] = []
+    const legendItems: React.ReactNode[] = []
 
     // Crear leyenda si hay múltiples categorías
     if (data.bars[0].categories.length > 1) {
-      data.bars[0].categories.forEach((category, catIndex) => {
+      data.bars[0].categories.forEach((category: any, catIndex: number) => {
         legendItems.push(
           <g key={`legend-${catIndex}`}>
             <rect
@@ -72,10 +72,10 @@ export default function MixedChartQuestion({
       })
     }
 
-    data.bars.forEach((bar, index) => {
+    data.bars.forEach((bar: any, index: number) => {
       const groupX = startX + margin.left + index * barGroupWidth
 
-      bar.categories.forEach((category, catIndex) => {
+      bar.categories.forEach((category: any, catIndex: number) => {
         const barX = groupX + (catIndex + 0.5) * barWidth
         const barHeight = (category.value / maxValue) * plotHeight
         const barY = startY + margin.top + plotHeight - barHeight
@@ -149,13 +149,13 @@ export default function MixedChartQuestion({
     return { bars: [...bars, ...legendItems], labels }
   }
 
-  const generatePieChart = (data, centerX, centerY, radius, chartIndex = 0) => {
-    const total = data.sectors.reduce((sum, sector) => sum + sector.value, 0)
+  const generatePieChart = (data: any, centerX: number, centerY: number, radius: number, chartIndex = 0) => {
+    const total = data.sectors.reduce((sum: number, sector: any) => sum + sector.value, 0)
     let currentAngle = -Math.PI / 2 // Empezar arriba
-    let sectors = []
-    let labels = []
+    const sectors: React.ReactNode[] = []
+    const labels: React.ReactNode[] = []
 
-    data.sectors.forEach((sector, index) => {
+    data.sectors.forEach((sector: any, index: number) => {
       const angle = (sector.value / total) * 2 * Math.PI
       const endAngle = currentAngle + angle
 
@@ -215,7 +215,7 @@ export default function MixedChartQuestion({
 
     const data = question.content_data.chart_data
 
-    let elements = []
+    const elements: React.ReactNode[] = []
 
     // Título principal
     elements.push(
@@ -256,7 +256,7 @@ export default function MixedChartQuestion({
 
     // Gráficos de sectores (parte inferior)
     if (data.pie_charts) {
-      data.pie_charts.forEach((pieData, index) => {
+      data.pie_charts.forEach((pieData: any, index: number) => {
         const pieX = (index + 1) * (chartWidth / (data.pie_charts.length + 1))
         const pieY = 550
         const pieRadius = 80
@@ -281,7 +281,7 @@ export default function MixedChartQuestion({
         )
 
         // Leyenda del pie chart
-        pieData.sectors.forEach((sector, sIndex) => {
+        pieData.sectors.forEach((sector: any, sIndex: number) => {
           const legendY = pieY + pieRadius + 25 + (sIndex * 18)
           elements.push(
             <g key={`legend-${index}-${sIndex}`}>
@@ -331,7 +331,7 @@ export default function MixedChartQuestion({
   // Si hay explanation_sections, usarlas. Si no, dejar que ChartQuestion use verifiedExplanation
   const explanationSections = question.content_data?.explanation_sections ? (
     <>
-      {question.content_data.explanation_sections.map((section, index) => (
+      {question.content_data.explanation_sections.map((section: any, index: number) => (
         <div key={index} className="bg-white p-4 rounded-lg border-l-4 border-blue-500 mb-4">
           <h5 className="font-semibold text-blue-800 mb-2">{section.title}</h5>
           <div className="text-gray-700 text-sm whitespace-pre-line">
