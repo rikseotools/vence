@@ -185,25 +185,11 @@ export default function AdminLayout({ children }) {
                     <span>AI Traces</span>
                   </a>
                   <a
-                    href="/admin/viralidad"
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
-                  >
-                    <span>🚀</span>
-                    <span>Viralidad</span>
-                  </a>
-                  <a
                     href="/admin/conversiones"
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >
                     <span>💰</span>
                     <span>Conversiones</span>
-                  </a>
-                  <a
-                    href="/admin/marca"
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
-                  >
-                    <span>📢</span>
-                    <span>Marca</span>
                   </a>
                   <a
                     href="/admin/fraudes"
