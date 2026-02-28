@@ -331,6 +331,7 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'ley-29-2011': 'Ley 29/2011',
   'ley-70-1978': 'Ley 70/1978',
   'ley-15-2015': 'Ley 15/2015',
+  'jurisdiccion-contencioso-administrativa': 'Ley 29/1998',
   'jurisdiccion-voluntaria': 'Ley 15/2015',
   'extranjeria': 'LO 4/2000',
   'ley-37-2007': 'Ley 37/2007',
