@@ -5,7 +5,6 @@
 export { default as TestLayoutV2 } from './TestLayoutV2'
 export { default as DynamicTestAi } from './DynamicTestAi'
 export { default as ExamLayoutV2 } from './ExamLayoutV2'
-export { default as PsychometricTestLayoutV2 } from './PsychometricTestLayoutV2'
 
 // Hooks
 export { useTestState } from './hooks/useTestState'
@@ -40,12 +39,6 @@ export type {
   ExamValidationResponse,
   MotivationalMessageData,
 
-  // Psychometric
-  PsychometricTestLayoutV2Props,
-  PsychometricQuestion,
-  PsychometricAnsweredQuestion,
-  PsychometricValidationResult,
-  PsychometricQuestionSubtype,
 } from './types'
 
 // Utilidades y constantes
