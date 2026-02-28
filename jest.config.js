@@ -39,7 +39,8 @@ export default {
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
-    '<rootDir>/scripts/'
+    '<rootDir>/scripts/',
+    'configDbIntegrity', // Requiere BD real, ejecutar con: npx jest configDbIntegrity
   ],
   // Timeout para tests async
   testTimeout: 10000,

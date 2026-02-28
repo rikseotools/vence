@@ -112,3 +112,34 @@ describe('Config central de oposiciones', () => {
     expect(getOposicionBySlug('no-existe')).toBeUndefined()
   })
 })
+
+describe('Validación de estructura interna', () => {
+  for (const oposicion of OPOSICIONES) {
+    describe(oposicion.name, () => {
+      const allThemes = oposicion.blocks.flatMap(b => b.themes)
+
+      test('totalTopics coincide con la suma real de themes en blocks', () => {
+        expect(allThemes.length).toBe(oposicion.totalTopics)
+      })
+
+      test('no hay theme IDs duplicados', () => {
+        const ids = allThemes.map(t => t.id)
+        const uniqueIds = new Set(ids)
+        expect(uniqueIds.size).toBe(ids.length)
+      })
+
+      test('todos los theme IDs son enteros positivos', () => {
+        for (const theme of allThemes) {
+          expect(Number.isInteger(theme.id)).toBe(true)
+          expect(theme.id).toBeGreaterThan(0)
+        }
+      })
+
+      test('cada bloque tiene al menos 1 tema', () => {
+        for (const block of oposicion.blocks) {
+          expect(block.themes.length).toBeGreaterThan(0)
+        }
+      })
+    })
+  }
+})
