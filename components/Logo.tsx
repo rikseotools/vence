@@ -1,8 +1,23 @@
-// components/Logo.js - LOGO DE VENCE
+// components/Logo.tsx - LOGO DE VENCE
 import Link from 'next/link'
 
-export default function Logo({ size = 'medium', showText = true, className = '', onClick }) {
-  const sizes = {
+type LogoSize = 'small' | 'medium' | 'large' | 'xl'
+
+interface SizeConfig {
+  width: number
+  height: number
+  textSize: string
+}
+
+interface LogoProps {
+  size?: LogoSize
+  showText?: boolean
+  className?: string
+  onClick?: () => void
+}
+
+export default function Logo({ size = 'medium', showText = true, className = '', onClick }: LogoProps) {
+  const sizes: Record<LogoSize, SizeConfig> = {
     small: { width: 32, height: 32, textSize: 'text-sm' },
     medium: { width: 40, height: 40, textSize: 'text-lg' },
     large: { width: 48, height: 48, textSize: 'text-xl' },
@@ -38,7 +53,6 @@ export default function Logo({ size = 'medium', showText = true, className = '',
             marginTop: '6px',
             color: '#f9fafb',
             WebkitTextStroke: '0.5px #111827',
-            textStroke: '0.5px #111827',
             textShadow: `
               0 0 0 1px #6b7280,
               0 0 0 2px #374151,
@@ -49,14 +63,13 @@ export default function Logo({ size = 'medium', showText = true, className = '',
           </div>
         </div>
       </div>
-      
+
       {/* Texto opcional del logo completo */}
       {showText && (
         <div className={`font-bold ${currentSize.textSize} text-gray-800 dark:text-gray-100 hover:text-gray-900 dark:hover:text-gray-100 transition-colors`}>
           <span className="tracking-wider" style={{
             color: '#f9fafb',
             WebkitTextStroke: '1px #111827',
-            textStroke: '1px #111827',
             textShadow: `
               0 0 0 3px #6b7280,
               0 0 0 6px #374151,
@@ -78,7 +91,7 @@ export default function Logo({ size = 'medium', showText = true, className = '',
 }
 
 // Variante solo icono (para espacios reducidos)
-export function LogoIcon({ size = 32, className = '' }) {
+export function LogoIcon({ size = 32, className = '' }: { size?: number; className?: string }) {
   return (
     <Link href="/" className={`hover:opacity-80 transition-opacity ${className}`}>
       <div className="relative">
@@ -112,7 +125,7 @@ export function LogoIcon({ size = 32, className = '' }) {
 }
 
 // Variante para footer
-export function LogoFooter({ className = '' }) {
+export function LogoFooter({ className = '' }: { className?: string }) {
   return (
     <div className={`flex items-center space-x-3 ${className}`}>
       <div className={`bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold rounded-lg flex flex-col items-center justify-center shadow-md`}
@@ -141,7 +154,6 @@ export function LogoFooter({ className = '' }) {
       <h3 className="text-2xl tracking-wider" style={{
         color: '#e5e7eb',
         WebkitTextStroke: '1px #374151',
-        textStroke: '1px #374151',
         textShadow: `
           0 0 0 2px #9ca3af,
           0 0 0 4px #6b7280,
@@ -157,7 +169,7 @@ export function LogoFooter({ className = '' }) {
 }
 
 // Variante horizontal para header principal
-export function LogoHorizontal({ className = '' }) {
+export function LogoHorizontal({ className = '' }: { className?: string }) {
   return (
     <Link href="/" className={`flex items-center space-x-3 hover:opacity-80 transition-opacity ${className}`}>
       <div className={`bg-gradient-to-r from-blue-800 to-blue-950 text-white font-bold rounded-lg flex flex-col items-center justify-center shadow-md`}
@@ -181,7 +193,6 @@ export function LogoHorizontal({ className = '' }) {
           marginTop: '3px',
           color: '#f9fafb',
           WebkitTextStroke: '0.3px #111827',
-          textStroke: '0.3px #111827',
           textShadow: `
             0 0 0 0.5px #6b7280,
             0 0 0 1px #374151,
@@ -194,7 +205,6 @@ export function LogoHorizontal({ className = '' }) {
       <div className="text-xl tracking-wider" style={{
         color: '#f9fafb',
         WebkitTextStroke: '1px #111827',
-        textStroke: '1px #111827',
         textShadow: `
           0 0 0 3px #6b7280,
           0 0 0 6px #374151,
@@ -210,7 +220,7 @@ export function LogoHorizontal({ className = '' }) {
 }
 
 // Versión grande para páginas principales
-export function LogoHero({ className = '' }) {
+export function LogoHero({ className = '' }: { className?: string }) {
   return (
     <Link href="/" className={`flex flex-col items-center space-y-4 hover:opacity-80 transition-opacity ${className}`}>
       <div className={`bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold rounded-xl flex flex-col items-center justify-center shadow-lg`}
@@ -239,7 +249,6 @@ export function LogoHero({ className = '' }) {
       <div className="text-3xl text-center tracking-wider" style={{
         color: '#f9fafb',
         WebkitTextStroke: '1px #111827',
-        textStroke: '1px #111827',
         textShadow: `
           0 0 0 3px #6b7280,
           0 0 0 6px #374151,

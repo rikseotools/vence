@@ -1,12 +1,34 @@
-// components/useUserOposicion.js - CORREGIDO PARA USAR EL CAMPO CORRECTO
-// 🎯 Hook para leer la oposición YA ASIGNADA del usuario
+// components/useUserOposicion.tsx - CORREGIDO PARA USAR EL CAMPO CORRECTO
+// Hook para leer la oposición YA ASIGNADA del usuario
 
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
-// 📋 Configuración de menús por oposición - SOPORTA AMBOS FORMATOS
-const OPOSICION_MENUS = {
+interface NavLink {
+  href: string
+  label: string
+  icon: string
+  featured?: boolean
+}
+
+interface OposicionMenuConfig {
+  name: string
+  shortName: string
+  badge: string
+  color: string
+  icon: string
+  navLinks: NavLink[]
+}
+
+interface OposicionData {
+  name: string
+  slug: string
+  [key: string]: unknown
+}
+
+// Configuración de menús por oposición - SOPORTA AMBOS FORMATOS
+const OPOSICION_MENUS: Record<string, OposicionMenuConfig> = {
   'auxiliar-administrativo-estado': {
     name: 'Auxiliar Administrativo',
     shortName: 'Auxiliar Admin.',
@@ -21,7 +43,7 @@ const OPOSICION_MENUS = {
       { href: '/auxiliar-administrativo-estado/simulacros', label: 'Simulacros', icon: '🏆' }
     ]
   },
-  // ✅ AGREGAR SOPORTE PARA FORMATO CON UNDERSCORES (BD)
+  // SOPORTE PARA FORMATO CON UNDERSCORES (BD)
   'auxiliar_administrativo_estado': {
     name: 'Auxiliar Administrativo',
     shortName: 'Auxiliar Admin.',
@@ -90,8 +112,8 @@ const OPOSICION_MENUS = {
   }
 }
 
-// 📋 Menú genérico para usuarios sin oposición
-const DEFAULT_MENU = {
+// Menú genérico para usuarios sin oposición
+const DEFAULT_MENU: OposicionMenuConfig = {
   name: 'Explorar Oposiciones',
   shortName: 'Explorar',
   badge: '🎯',
@@ -107,9 +129,14 @@ const DEFAULT_MENU = {
 }
 
 export function useUserOposicion() {
-  const { user, userProfile, supabase, loading: authLoading } = useAuth()
-  const [userOposicion, setUserOposicion] = useState(null)
-  const [oposicionMenu, setOposicionMenu] = useState(DEFAULT_MENU)
+  const { user, userProfile, supabase, loading: authLoading } = useAuth() as {
+    user: { id: string } | null
+    userProfile: Record<string, unknown> | null
+    supabase: { from: (table: string) => { update: (data: Record<string, unknown>) => { eq: (field: string, value: string) => Promise<{ error: Error | null }> } } }
+    loading: boolean
+  }
+  const [userOposicion, setUserOposicion] = useState<OposicionData | null>(null)
+  const [oposicionMenu, setOposicionMenu] = useState<OposicionMenuConfig>(DEFAULT_MENU)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -148,9 +175,9 @@ export function useUserOposicion() {
           setOposicionMenu(DEFAULT_MENU)
         } else {
           // 3. Usuario con oposición asignada
-          const oposicionId = profile.target_oposicion
+          const oposicionId = profile.target_oposicion as string
           // NOTA: target_oposicion_data es JSONB, Supabase lo devuelve como objeto
-          const oposicionData = profile.target_oposicion_data || null
+          const oposicionData = (profile.target_oposicion_data as OposicionData | null) || null
 
           setUserOposicion(oposicionData)
 
@@ -160,7 +187,7 @@ export function useUserOposicion() {
         }
 
       } catch (error) {
-        console.error('❌ Error general cargando oposición de usuario:', error)
+        console.error('Error general cargando oposición de usuario:', error)
         setUserOposicion(null)
         setOposicionMenu(DEFAULT_MENU)
       } finally {
@@ -171,7 +198,7 @@ export function useUserOposicion() {
     loadUserOposicion()
 
     // Escuchar asignación de nueva oposición
-    const handleOposicionAssigned = (event) => {
+    const handleOposicionAssigned = () => {
       // Nueva oposición asignada - recargar
       loadUserOposicion()
     }
@@ -184,12 +211,12 @@ export function useUserOposicion() {
   }, [user, userProfile, authLoading, supabase])
 
   // Función para cambiar oposición manualmente
-  const changeOposicion = async (newOposicionId) => {
+  const changeOposicion = async (newOposicionId: string): Promise<boolean> => {
     if (!user) return false
 
     try {
       // Preparar datos básicos de la oposición
-      const oposicionData = {
+      const oposicionData: OposicionData = {
         name: OPOSICION_MENUS[newOposicionId]?.name || 'Oposición',
         slug: newOposicionId
       }
@@ -216,7 +243,7 @@ export function useUserOposicion() {
 
       return true
     } catch (error) {
-      console.error('❌ Error cambiando oposición:', error)
+      console.error('Error cambiando oposición:', error)
       return false
     }
   }
@@ -231,24 +258,29 @@ export function useUserOposicion() {
   }
 }
 
+interface NotificationData {
+  timestamp: number
+  [key: string]: unknown
+}
+
 // Helper para detectar si necesita mostrar notificación de bienvenida
 export function useNewOposicionNotification() {
   const [showNotification, setShowNotification] = useState(false)
-  const [notificationData, setNotificationData] = useState(null)
+  const [notificationData, setNotificationData] = useState<NotificationData | null>(null)
 
   useEffect(() => {
     // Verificar si hay una nueva asignación reciente
     const newAssignment = localStorage.getItem('newOposicionAssigned')
-    
+
     if (newAssignment) {
-      const data = JSON.parse(newAssignment)
+      const data: NotificationData = JSON.parse(newAssignment)
       const timeDiff = Date.now() - data.timestamp
-      
+
       // Mostrar solo si es reciente (menos de 5 minutos)
       if (timeDiff < 5 * 60 * 1000) {
         setShowNotification(true)
         setNotificationData(data)
-        
+
         // Limpiar después de mostrar
         setTimeout(() => {
           localStorage.removeItem('newOposicionAssigned')

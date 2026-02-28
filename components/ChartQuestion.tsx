@@ -1,8 +1,57 @@
 'use client'
-import { useState } from 'react'
+import { type ReactNode } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import PsychometricQuestionEvolution from './PsychometricQuestionEvolution'
 import MarkdownExplanation from './MarkdownExplanation'
+
+interface ChartQuestionData {
+  id: string
+  question_text: string
+  option_a?: string
+  option_b?: string
+  option_c?: string
+  option_d?: string
+  options?: { A?: string; B?: string; C?: string; D?: string }
+  explanation?: string
+  content_data?: {
+    question_context?: string
+    chart_type?: string
+    original_text?: string
+    table_data?: {
+      title?: string
+      headers?: string[]
+      rows?: string[][]
+    }
+    table_name?: string
+  }
+  question_subtype?: string
+  psychometric_sections?: {
+    display_name?: string
+    psychometric_categories?: {
+      display_name?: string
+    }
+  }
+}
+
+interface ChartQuestionProps {
+  question: ChartQuestionData
+  onAnswer: (index: number) => void
+  selectedAnswer: number | null
+  showResult: boolean
+  isAnswering: boolean
+  chartComponent?: ReactNode
+  explanationSections?: ReactNode
+  attemptCount?: number
+  verifiedCorrectAnswer?: number | null
+  verifiedExplanation?: string | null
+  hideAIChat?: boolean
+}
+
+interface MotivationalMessage {
+  title: string
+  message: string
+  color: string
+}
 
 export default function ChartQuestion({
   question,
@@ -10,28 +59,27 @@ export default function ChartQuestion({
   selectedAnswer,
   showResult,
   isAnswering,
-  chartComponent, // Componente específico de renderizado (SVG)
-  explanationSections, // Secciones específicas de explicación
-  attemptCount = 0, // Número de intentos previos de esta pregunta
-  // 🔒 SEGURIDAD: Props para validación segura via API
+  chartComponent,
+  explanationSections,
+  attemptCount = 0,
   verifiedCorrectAnswer = null,
   verifiedExplanation = null,
-  hideAIChat = false // Ocultar botón de IA (ej: en exámenes oficiales)
-}) {
-  const { user } = useAuth()
+  hideAIChat = false
+}: ChartQuestionProps) {
+  const { user } = useAuth() as { user: { id: string; user_metadata?: { full_name?: string } } | null }
 
-  // 🔒 SEGURIDAD: Usar verifiedCorrectAnswer de API cuando esté disponible
+  // SEGURIDAD: Usar verifiedCorrectAnswer de API cuando esté disponible
   const effectiveCorrectAnswer = showResult && verifiedCorrectAnswer !== null
     ? verifiedCorrectAnswer
     : null // NO usamos effectiveCorrectAnswer como fallback
 
   // Mensajes motivadores basados en el resultado
-  const getMotivationalMessage = () => {
+  const getMotivationalMessage = (): MotivationalMessage => {
     const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'Opositor'
 
-    // 🔒 SEGURIDAD: Solo mostrar mensaje de acierto si tenemos validación de API
+    // SEGURIDAD: Solo mostrar mensaje de acierto si tenemos validación de API
     if (showResult && effectiveCorrectAnswer !== null && selectedAnswer === effectiveCorrectAnswer) {
-      const congratsMessages = [
+      const congratsMessages: MotivationalMessage[] = [
         {
           title: `¡Bien, ${userName}! 🎉`,
           message: "Has acertado. Los psicotécnicos requieren práctica, vas por buen camino.",
@@ -53,11 +101,11 @@ export default function ChartQuestion({
           color: "green"
         }
       ]
-      
+
       // Usar el mensaje correspondiente al número de acierto
       return congratsMessages[Math.min(attemptCount, congratsMessages.length - 1)]
     }
-    
+
     switch (attemptCount) {
       case 0: // Primer fallo
         return {
@@ -95,11 +143,6 @@ export default function ChartQuestion({
     { value: question.option_d || question.options?.D }
   ]
 
-  // 🔒 SEGURIDAD: Usar effectiveCorrectAnswer de API
-  const correctOptionKey = effectiveCorrectAnswer !== null
-    ? ['A', 'B', 'C', 'D'][effectiveCorrectAnswer]
-    : null
-
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       {/* Contexto adicional (si existe) */}
@@ -127,7 +170,7 @@ export default function ChartQuestion({
       <div className="space-y-3 mb-6">
         {options.map((option, index) => {
           let buttonClass = "w-full p-4 text-left border-2 rounded-lg transition-all duration-200 flex items-center gap-3"
-          
+
           if (showResult) {
             if (index === effectiveCorrectAnswer) {
               // Respuesta correcta
@@ -242,7 +285,7 @@ export default function ChartQuestion({
                   onClick={() => {
                     // Determinar el tipo de pregunta para el mensaje
                     const isErrorDetection = question.content_data?.chart_type === 'error_detection' || question.question_subtype === 'error_detection'
-                    const isDataTable = question.question_subtype === 'data_tables' || question.content_data?.table_data
+                    const isDataTable = question.question_subtype === 'data_tables' || !!question.content_data?.table_data
                     const questionType = isErrorDetection ? 'ortografía' : isDataTable ? 'tablas' : 'gráficos'
 
                     // Para error_detection, incluir la frase original
@@ -282,7 +325,7 @@ export default function ChartQuestion({
                   <span>¿Necesitas ayuda?</span>
                 </button>}
             </div>
-            
+
 
             {/* Secciones específicas de explicación o explicación estándar */}
             <div className="space-y-4">
@@ -299,7 +342,7 @@ export default function ChartQuestion({
                   {(verifiedExplanation || question.explanation) && (
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                       <MarkdownExplanation
-                        content={verifiedExplanation || question.explanation}
+                        content={verifiedExplanation || question.explanation || ''}
                         className="text-blue-700"
                       />
                     </div>
@@ -316,8 +359,8 @@ export default function ChartQuestion({
               userId={user.id}
               questionId={question.id}
               currentResult={{
-                isCorrect: selectedAnswer === effectiveCorrectAnswer - 1,
-                timeSpent: 0, // Se podría calcular si se necesita
+                isCorrect: selectedAnswer === (effectiveCorrectAnswer !== null ? effectiveCorrectAnswer - 1 : null),
+                timeSpent: 0,
                 answer: selectedAnswer
               }}
             />

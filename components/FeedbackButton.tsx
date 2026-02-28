@@ -1,4 +1,4 @@
-// components/FeedbackButton.js - Botón flotante de soporte
+// components/FeedbackButton.tsx - Botón flotante de soporte
 'use client'
 import Link from 'next/link'
 

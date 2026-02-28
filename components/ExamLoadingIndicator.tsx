@@ -1,14 +1,36 @@
 'use client'
 import { useState, useEffect } from 'react'
 
+interface ExamProgress {
+  currentPhase: string
+  currentMapping: number
+  totalMappings: number
+  currentLaw: string
+  questionsFound: number
+  message: string
+}
+
+interface ExamLoadingIndicatorProps {
+  numQuestions?: number
+  numThemes?: number
+  themeNames?: string[]
+  progress?: ExamProgress | null
+}
+
+interface PhaseData {
+  title: string
+  icon: string
+  color: string
+}
+
 export default function ExamLoadingIndicator({
   numQuestions = 25,
   numThemes = 1,
   themeNames = [],
   progress = null
-}) {
+}: ExamLoadingIndicatorProps) {
   const [currentQuestion, setCurrentQuestion] = useState(1)
-  const [currentPhase, setCurrentPhase] = useState('connecting') // connecting, loading, preparing
+  const [currentPhase, setCurrentPhase] = useState<string>('connecting') // connecting, loading, preparing
 
   // Simulación de carga de preguntas
   useEffect(() => {
@@ -39,12 +61,11 @@ export default function ExamLoadingIndicator({
 
   // Usar datos reales si están disponibles
   const actualPhase = progress?.currentPhase || currentPhase
-  const actualMessage = progress?.message || null
   const actualQuestionsFound = progress?.questionsFound || 0
   const actualCurrentMapping = progress?.currentMapping || 0
   const actualTotalMappings = progress?.totalMappings || 0
 
-  const phases = {
+  const phases: Record<string, PhaseData> = {
     connecting: {
       title: 'Conectando con la base de datos',
       icon: '🔌',
