@@ -359,7 +359,7 @@ export default function ChartQuestion({
               userId={user.id}
               questionId={question.id}
               currentResult={{
-                isCorrect: selectedAnswer === (effectiveCorrectAnswer !== null ? effectiveCorrectAnswer - 1 : null),
+                isCorrect: effectiveCorrectAnswer !== null && selectedAnswer === effectiveCorrectAnswer,
                 timeSpent: 0,
                 answer: selectedAnswer
               }}

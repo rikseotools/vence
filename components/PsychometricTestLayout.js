@@ -19,6 +19,68 @@ import MarkdownExplanation from './MarkdownExplanation'
 import { getDifficultyInfo, formatDifficultyDisplay, isFirstAttempt } from '../lib/psychometricDifficulty'
 import { useInteractionTracker } from '../hooks/useInteractionTracker'
 
+// 🔒 FUNCIÓN: Validar respuesta psicotécnica via API con fallback local
+// Patrón idéntico a TestLayout.js validateAnswerSecure()
+async function validatePsychometricAnswerSecure(questionId, userAnswer, localCorrectAnswer) {
+  if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
+    console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      explanation: null,
+      usedFallback: true
+    }
+  }
+
+  try {
+    const response = await fetch('/api/answer/psychometric', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId, userAnswer })
+    })
+
+    if (!response.ok) {
+      console.warn('⚠️ [SecureAnswer] API error, usando fallback local')
+      return {
+        isCorrect: userAnswer === localCorrectAnswer,
+        correctAnswer: localCorrectAnswer,
+        explanation: null,
+        usedFallback: true
+      }
+    }
+
+    const data = await response.json()
+
+    if (data.success) {
+      console.log('✅ [SecureAnswer] Respuesta psicotécnica validada via API')
+      return {
+        isCorrect: data.isCorrect,
+        correctAnswer: data.correctAnswer,
+        explanation: data.explanation,
+        usedFallback: false
+      }
+    }
+
+    // Si la API no encuentra la pregunta, fallback
+    console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API, usando fallback')
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      explanation: null,
+      usedFallback: true
+    }
+
+  } catch (error) {
+    console.error('❌ [SecureAnswer] Error llamando API:', error)
+    return {
+      isCorrect: userAnswer === localCorrectAnswer,
+      correctAnswer: localCorrectAnswer,
+      explanation: null,
+      usedFallback: true
+    }
+  }
+}
+
 export default function PsychometricTestLayout({
   categoria,
   config,
@@ -95,6 +157,8 @@ export default function PsychometricTestLayout({
       if (data) {
         setTestSession(data)
         console.log('✅ Psychometric test session created:', data.id)
+      } else if (error) {
+        console.error('❌ Error creating psychometric test session:', error)
       }
     }
 
@@ -183,7 +247,7 @@ export default function PsychometricTestLayout({
     }
   }, [currentQuestion, currentQ, setQuestionContext, clearQuestionContext, categoria, showResult, verifiedCorrectAnswer])
 
-  const handleAnswer = async (optionIndex) => {
+  const handleAnswer = async (optionIndex, metadata = null) => {
     if (!currentQ || isAnswering || answeredQuestionsGlobal.current.has(currentQ.id)) {
       console.log('🚫 Answer blocked - already answered or processing')
       return
@@ -217,46 +281,29 @@ export default function PsychometricTestLayout({
       const questionTime = Date.now() - questionStartTime
       const timeTakenSeconds = Math.floor(questionTime / 1000)
 
-      // 🔒 SEGURIDAD: Validar respuesta via API (NO usar currentQ.correct_option)
+      // 🔒 SEGURIDAD: Validar respuesta via API con fallback local
       console.log('🔒 [SecureAnswer] Validando respuesta psicotécnica via API...')
-      let isCorrect = false
-      let correctAnswer = null
-      let explanation = null
+      const validationResult = await validatePsychometricAnswerSecure(
+        currentQ.id,
+        optionIndex,
+        currentQ.correct_option // fallback local si API falla
+      )
 
-      try {
-        const response = await fetch('/api/answer/psychometric', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            questionId: currentQ.id,
-            userAnswer: optionIndex
-          })
+      const isCorrect = validationResult.isCorrect
+      const correctAnswer = validationResult.correctAnswer
+      const explanation = validationResult.explanation
+
+      setVerifiedCorrectAnswer(correctAnswer)
+      setVerifiedExplanation(explanation || currentQ.explanation)
+
+      if (validationResult.usedFallback) {
+        console.warn('⚠️ [SecureAnswer] Psicotécnico: usado fallback local')
+      } else {
+        console.log('✅ [SecureAnswer] Respuesta psicotécnica validada via API:', {
+          isCorrect,
+          correctAnswer,
+          userAnswer: optionIndex
         })
-
-        const apiResult = await response.json()
-
-        if (apiResult.success) {
-          isCorrect = apiResult.isCorrect
-          correctAnswer = apiResult.correctAnswer
-          explanation = apiResult.explanation
-          setVerifiedCorrectAnswer(correctAnswer)
-          setVerifiedExplanation(explanation || currentQ.explanation)
-          console.log('✅ [SecureAnswer] Respuesta psicotécnica validada via API:', {
-            isCorrect,
-            correctAnswer,
-            userAnswer: optionIndex
-          })
-        } else {
-          console.error('❌ [SecureAnswer] Error en API:', apiResult.error)
-          // Fallback: NO mostrar resultado si la API falla (seguridad)
-          setVerifiedCorrectAnswer(null)
-          setVerifiedExplanation(null)
-        }
-      } catch (apiError) {
-        console.error('❌ [SecureAnswer] Error llamando API:', apiError)
-        // Fallback: NO mostrar resultado si la API falla (seguridad)
-        setVerifiedCorrectAnswer(null)
-        setVerifiedExplanation(null)
       }
 
       // Actualizar score
