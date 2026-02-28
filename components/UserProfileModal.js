@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { getOposicionById } from '@/lib/config/oposiciones'
 
 export default function UserProfileModal({ isOpen, onClose, userId, userName }) {
   const { supabase } = useAuth()
@@ -238,29 +239,14 @@ export default function UserProfileModal({ isOpen, onClose, userId, userName }) 
   }
 
   const getOposicionName = (oposicion) => {
+    if (!oposicion) return 'Auxiliar Administrativo del Estado'
     // Si es un UUID, devolver valor por defecto
-    if (oposicion?.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+    if (oposicion.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
       return 'Auxiliar Administrativo del Estado'
     }
-
-    // Normalizar el valor (quitar guiones para comparar)
-    const normalized = oposicion?.replace(/-/g, '_')
-
-    const oposiciones = {
-      'auxiliar_administrativo_estado': 'Auxiliar Administrativo del Estado',
-      'administrativo_estado': 'Administrativo del Estado',
-      'gestion_estado': 'Gestión del Estado',
-      'tramitacion_procesal': 'Tramitación Procesal',
-      'auxilio_judicial': 'Auxilio Judicial',
-      'gestion_procesal': 'Gestión Procesal',
-      'auxiliar_ayuntamiento': 'Auxiliar de Ayuntamiento',
-      'auxiliar_administrativo_carm': 'Auxiliar Administrativo CARM (Murcia)',
-      'auxiliar_administrativo_cyl': 'Auxiliar Administrativo Castilla y León',
-      'auxiliar_administrativo_andalucia': 'Auxiliar Administrativo Junta de Andalucía',
-      'auxiliar_administrativo_madrid': 'Auxiliar Administrativo Comunidad de Madrid'
-    }
-
-    return oposiciones[normalized] || 'Auxiliar Administrativo del Estado'
+    // Normalizar: guiones → underscores para buscar por id
+    const normalized = oposicion.replace(/-/g, '_')
+    return getOposicionById(normalized)?.name || 'Auxiliar Administrativo del Estado'
   }
 
   if (!isOpen) return null

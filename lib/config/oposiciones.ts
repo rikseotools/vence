@@ -35,6 +35,7 @@ const OposicionSchema = z.object({
   emoji: z.string(),
   badge: z.string(),
   color: z.string(),
+  administracion: z.enum(['estado', 'justicia', 'autonomica']),
   blocks: z.array(BlockSchema),
   totalTopics: z.number(),
   navLinks: z.array(NavLinkSchema),
@@ -66,6 +67,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '👤',
     badge: 'C2',
     color: 'emerald',
+    administracion: 'estado',
     blocks: [
       {
         id: 'bloque1',
@@ -134,6 +136,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '👨‍💼',
     badge: 'C1',
     color: 'blue',
+    administracion: 'estado',
     blocks: [
       {
         id: 'bloque1',
@@ -217,6 +220,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '⚖️',
     badge: 'C1',
     color: 'purple',
+    administracion: 'justicia',
     blocks: [
       {
         id: 'bloque1',
@@ -301,6 +305,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '🏛️',
     badge: 'C2',
     color: 'amber',
+    administracion: 'autonomica',
     blocks: [
       {
         id: 'bloque1',
@@ -356,6 +361,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '🏛️',
     badge: 'C2',
     color: 'rose',
+    administracion: 'autonomica',
     blocks: [
       {
         id: 'bloque1',
@@ -423,6 +429,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '🏛️',
     badge: 'C2',
     color: 'teal',
+    administracion: 'autonomica',
     blocks: [
       {
         id: 'bloque1',
@@ -484,6 +491,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '🏛️',
     badge: 'C2',
     color: 'red',
+    administracion: 'autonomica',
     blocks: [
       {
         id: 'bloque1',
@@ -544,6 +552,7 @@ export const OPOSICIONES: Oposicion[] = [
     emoji: '⚖️',
     badge: 'C2',
     color: 'purple',
+    administracion: 'justicia',
     blocks: [
       {
         id: 'bloque1',

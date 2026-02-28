@@ -5,6 +5,7 @@
  * Estas son las URLs canónicas para búsquedas de "oposiciones"
  * (mayor volumen de búsquedas que "convocatorias")
  */
+import { ALL_OPOSICION_SLUGS } from '@/lib/config/oposiciones'
 
 const SITE_URL = process.env.NEXT_PUBLIC_URL || 'https://www.vence.es';
 
@@ -52,15 +53,9 @@ export async function GET() {
   // ============================================
   // OPOSICIONES ESPECÍFICAS
   // ============================================
-  const oposicionesList = [
-    'auxiliar-administrativo', 'auxiliar-administrativo-estado',
-    'administrativo', 'administrativo-estado',
-    'gestion-procesal', 'tramitacion-procesal', 'auxilio-judicial',
-    'auxiliar-administrativo-carm',
-    'auxiliar-administrativo-cyl',
-    'auxiliar-administrativo-andalucia',
-    'auxiliar-administrativo-madrid'
-  ];
+  // Slugs de config + variantes SEO (sin sufijo -estado, nombres genéricos)
+  const seoExtraSlugs = ['auxiliar-administrativo', 'administrativo', 'gestion-procesal']
+  const oposicionesList = [...ALL_OPOSICION_SLUGS, ...seoExtraSlugs.filter(s => !ALL_OPOSICION_SLUGS.includes(s))]
 
   oposicionesList.forEach(oposicion => {
     urls.push(`

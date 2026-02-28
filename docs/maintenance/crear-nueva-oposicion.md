@@ -147,6 +147,9 @@ Estos archivos importan de la config central y se actualizan solos al modificar 
 | `lib/api/topic-data/queries.ts` | `SLUG_TO_POSITION_TYPE` (mapa slug→positionType) |
 | `lib/api/temario/schemas.ts` | `OPOSICIONES` (derivado automaticamente) |
 | `lib/api/filtered-questions/schemas.ts` | `POSITION_TYPES_ENUM` (z.enum de positionTypes) |
+| `lib/api/random-test-data/schemas.ts` | `OPOSICION_SLUGS_ENUM` (z.enum), `VALID_THEME_IDS`, `THEME_TO_TOPIC` (generados desde config) |
+| `app/api/random-test-data/route.ts` | Validacion via Zod (importa de schemas) |
+| `app/api/random-test-data/theme-details/route.ts` | Validacion via Zod (importa de schemas) |
 | `app/api/topics/[numero]/route.ts` | `ALL_OPOSICION_SLUGS` (validacion de oposiciones) |
 | `app/sitemap-static.xml/route.ts` | `OPOSICIONES` (paginas y temas generados dinamicamente) |
 
@@ -155,15 +158,11 @@ Estos archivos importan de la config central y se actualizan solos al modificar 
 | Archivo | Que actualizar |
 |---------|---------------|
 | `lib/api/topic-data/schemas.ts` | Solo `VALID_TOPIC_RANGES` (rangos de temas por bloque) |
-| `components/test/TestHubPage.tsx` | Solo `BLOQUE_CONFIG` (rangos min/max para agrupar temas en el hub) |
 | `components/InteractiveBreadcrumbs.js` | Deteccion `is*`, `getCurrentSection`, `getSectionOptions`, `showAsLink`, `linkHref`, `labelText`, `basePath`, condiciones de visibilidad |
-| `components/OposicionDetector.js` | `OPOSICION_DETECTION` map |
 | `components/OnboardingModal.js` | `OFFICIAL_OPOSICIONES` array |
-| `components/UserProfileModal.js` | `getOposicionName` map |
 | `app/perfil/page.tsx` | Array `oposiciones` del selector |
 | `app/nuestras-oposiciones/page.js` | Array de tarjetas |
 | `app/page.js` | Links en seccion "Test por Oposicion" y tarjeta en "Temarios Completos" |
-| `app/sitemap-oposiciones.xml/route.ts` | Array `oposicionesList` |
 
 ### Tests a actualizar:
 
@@ -190,20 +189,6 @@ export const VALID_TOPIC_RANGES = {
 
 **IMPORTANTE:** `OposicionKey` se define como `keyof typeof VALID_TOPIC_RANGES`, asi que al anadir aqui la oposicion automaticamente se acepta en las validaciones.
 
-#### `components/test/TestHubPage.tsx` (solo BLOQUE_CONFIG)
-
-El nombre/badge/icono ahora se obtiene automaticamente de `getOposicionBySlug()`. Solo hay que anadir la configuracion de bloques:
-
-```typescript
-const BLOQUE_CONFIG = {
-  ...,
-  'slug-con-guiones': [
-    { id: 'bloque1', name: 'Bloque I: ...', icon: '⚖️', min: 1, max: 9 },
-    { id: 'bloque2', name: 'Bloque II: ...', icon: '📋', min: 10, max: 16 },
-  ],
-}
-```
-
 #### `components/InteractiveBreadcrumbs.js`
 
 Hay que anadir la nueva oposicion en **9 lugares diferentes** dentro de este archivo:
@@ -218,21 +203,6 @@ Hay que anadir la nueva oposicion en **9 lugares diferentes** dentro de este arc
 8. Condicion del separador
 9. `basePath` en la seccion de Tests/Temario
 
-#### `components/OposicionDetector.js`
-
-```javascript
-const OPOSICION_DETECTION = {
-  ...,
-  'slug-con-guiones': {
-    id: 'slug_con_underscores',
-    name: 'Nombre Completo',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'slug-con-guiones'
-  },
-}
-```
-
 #### `components/OnboardingModal.js`
 
 ```javascript
@@ -246,15 +216,6 @@ const OFFICIAL_OPOSICIONES = [
     icon: '🏛️'
   },
 ]
-```
-
-#### `components/UserProfileModal.js`
-
-```javascript
-const oposiciones = {
-  ...,
-  'slug_con_underscores': 'Nombre Completo'
-}
 ```
 
 #### `app/perfil/page.tsx`
@@ -349,16 +310,9 @@ Anadir la oposicion en dos secciones:
 
 > **No necesita cambios manuales.** Este archivo genera automaticamente las paginas principales (landing, test, temario) y los temas del temario para todas las oposiciones importando desde `lib/config/oposiciones.ts`.
 
-### 5c. `app/sitemap-oposiciones.xml/route.ts`
+### 5c. `app/sitemap-oposiciones.xml/route.ts` (AUTOMATICO)
 
-Anadir al array `oposicionesList`:
-
-```typescript
-const oposicionesList = [
-  ...,
-  'slug-con-guiones'
-];
-```
+> **No necesita cambios manuales.** Este archivo importa `ALL_OPOSICION_SLUGS` de la config central para generar las URLs de oposiciones.
 
 ---
 
@@ -410,10 +364,10 @@ Falta la oposicion en `lib/api/topic-data/schemas.ts` (`VALID_TOPIC_RANGES`). Es
 Falta la oposicion en `components/InteractiveBreadcrumbs.js` (9 lugares a actualizar).
 
 ### Tema no aparece en hub de tests
-Falta en `BLOQUE_CONFIG` de `components/test/TestHubPage.tsx`. Este es el otro archivo que necesita actualizacion manual de rangos.
+`BLOQUE_CONFIG` ahora se genera automaticamente desde config. Verificar que los bloques y temas estan correctos en `lib/config/oposiciones.ts`.
 
-### theme-stats devuelve 400
-Si la oposicion esta en `lib/config/oposiciones.ts`, theme-stats la acepta automaticamente (importa `OPOSICION_SLUGS_ENUM` desde config central).
+### theme-stats o random-test-data devuelve 400
+Si la oposicion esta en `lib/config/oposiciones.ts`, ambas APIs la aceptan automaticamente (importan `OPOSICION_SLUGS_ENUM` desde config central).
 
 ### Tests fallan con "Expected length: N"
 Actualizar `__tests__/api/theme-stats/themeStats.test.js` y `__tests__/config/oposicionesCentralConfig.test.ts`.
@@ -447,16 +401,22 @@ La mayoria de schemas y APIs se centralizaron para importar de `lib/config/oposi
 
 1. **`lib/config/oposiciones.ts`** - Source of truth (array OPOSICIONES)
 2. **BD** - oposicion, topics, topic_scope
-3. **2 archivos manuales** - `VALID_TOPIC_RANGES` y `BLOQUE_CONFIG` (rangos de temas divergen de la config por razones historicas)
+3. **1 archivo manual** - `VALID_TOPIC_RANGES` (rangos de temas por bloque)
 4. **Rutas Next.js** - `app/<slug>/`
-5. **Componentes UI** - InteractiveBreadcrumbs, OposicionDetector, OnboardingModal, UserProfileModal, perfil
-6. **SEO** - Home, nuestras-oposiciones, sitemap-oposiciones
+5. **Componentes UI** - InteractiveBreadcrumbs, OnboardingModal, perfil
+6. **SEO** - Home, nuestras-oposiciones
 
 Los siguientes archivos ya NO necesitan actualizacion manual (importan de config central):
 - `lib/api/theme-stats/schemas.ts`
 - `lib/api/topic-data/queries.ts`
 - `lib/api/temario/schemas.ts`
 - `lib/api/filtered-questions/schemas.ts`
+- `lib/api/random-test-data/schemas.ts` (z.enum, VALID_THEME_IDS, THEME_TO_TOPIC)
+- `app/api/random-test-data/route.ts` (validacion via Zod)
+- `app/api/random-test-data/theme-details/route.ts` (validacion via Zod)
 - `app/api/topics/[numero]/route.ts`
 - `app/sitemap-static.xml/route.ts`
-- `TestHubPage.tsx` (nombres/badges, pero BLOQUE_CONFIG sigue manual)
+- `app/sitemap-oposiciones.xml/route.ts` (importa `ALL_OPOSICION_SLUGS`)
+- `components/test/TestHubPage.tsx` (BLOQUE_CONFIG generado desde config blocks)
+- `components/OposicionDetector.tsx` (OPOSICION_DETECTION generado desde config)
+- `components/UserProfileModal.js` (usa `getOposicionById` de config)

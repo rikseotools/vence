@@ -1,13 +1,14 @@
 /**
- * Tests para OposicionDetector.js
+ * Tests para OposicionDetector.tsx
  *
  * El componente no renderiza nada (return null) y su lógica principal
  * depende de Supabase auth + DB. Testeamos:
- * 1. La estructura del mapa OPOSICION_DETECTION (datos estáticos)
+ * 1. La estructura del mapa OPOSICION_DETECTION (datos derivados de config)
  * 2. La lógica de detección de URL (extraída para testing)
  * 3. Que el componente renderiza null
  */
 import { render } from '@testing-library/react'
+import { OPOSICIONES } from '@/lib/config/oposiciones'
 
 // Mock de next/navigation
 jest.mock('next/navigation', () => ({
@@ -29,79 +30,34 @@ jest.mock('@/lib/supabase', () => ({
 }))
 
 // ============================================================
-// Lógica extraída de OposicionDetector.js para testing puro
+// Generar OPOSICION_DETECTION desde config (igual que el componente)
 // ============================================================
 
-const OPOSICION_DETECTION: Record<string, {
+interface OposicionData {
   id: string
   name: string
   categoria: string
   administracion: string
   slug: string
-}> = {
-  'auxiliar-administrativo-estado': {
-    id: 'auxiliar_administrativo_estado',
-    name: 'Auxiliar Administrativo del Estado',
-    categoria: 'C2',
-    administracion: 'estado',
-    slug: 'auxiliar-administrativo-estado'
-  },
-  'administrativo-estado': {
-    id: 'administrativo_estado',
-    name: 'Administrativo del Estado',
-    categoria: 'C1',
-    administracion: 'estado',
-    slug: 'administrativo-estado'
-  },
-  'tramitacion-procesal': {
-    id: 'tramitacion_procesal',
-    name: 'Tramitación Procesal y Administrativa',
-    categoria: 'C1',
-    administracion: 'justicia',
-    slug: 'tramitacion-procesal'
-  },
-  'auxilio-judicial': {
-    id: 'auxilio_judicial',
-    name: 'Auxilio Judicial',
-    categoria: 'C2',
-    administracion: 'justicia',
-    slug: 'auxilio-judicial'
-  },
-  'auxiliar-administrativo-carm': {
-    id: 'auxiliar_administrativo_carm',
-    name: 'Auxiliar Administrativo CARM (Murcia)',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'auxiliar-administrativo-carm'
-  },
-  'auxiliar-administrativo-cyl': {
-    id: 'auxiliar_administrativo_cyl',
-    name: 'Auxiliar Administrativo de Castilla y León',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'auxiliar-administrativo-cyl'
-  },
-  'auxiliar-administrativo-andalucia': {
-    id: 'auxiliar_administrativo_andalucia',
-    name: 'Auxiliar Administrativo Junta de Andalucía',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'auxiliar-administrativo-andalucia'
-  },
-  'auxiliar-administrativo-madrid': {
-    id: 'auxiliar_administrativo_madrid',
-    name: 'Auxiliar Administrativo Comunidad de Madrid',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'auxiliar-administrativo-madrid'
-  },
+}
+
+const OPOSICION_DETECTION: Record<string, OposicionData> = {
+  ...Object.fromEntries(
+    OPOSICIONES.map(o => [o.slug, {
+      id: o.id,
+      name: o.name,
+      categoria: o.badge,
+      administracion: o.administracion,
+      slug: o.slug,
+    }])
+  ),
   'gestion-procesal': {
     id: 'gestion_procesal',
     name: 'Gestión Procesal y Administrativa',
     categoria: 'C1',
     administracion: 'justicia',
     slug: 'gestion-procesal'
-  }
+  },
 }
 
 function detectOposicionFromUrl(pathname: string | null) {
@@ -120,8 +76,9 @@ function detectOposicionFromUrl(pathname: string | null) {
 
 describe('OposicionDetector', () => {
   describe('OPOSICION_DETECTION - estructura', () => {
-    test('tiene 9 oposiciones configuradas', () => {
-      expect(Object.keys(OPOSICION_DETECTION)).toHaveLength(9)
+    test('tiene las oposiciones de config + extras', () => {
+      // 8 de config + 1 extra (gestion-procesal)
+      expect(Object.keys(OPOSICION_DETECTION).length).toBe(OPOSICIONES.length + 1)
     })
 
     test('cada entrada tiene los campos requeridos', () => {
@@ -135,21 +92,21 @@ describe('OposicionDetector', () => {
       }
     })
 
-    test('todos los IDs usan underscore (no guión)', () => {
+    test('todos los IDs usan underscore (no guion)', () => {
       for (const data of Object.values(OPOSICION_DETECTION)) {
         expect(data.id).not.toContain('-')
         expect(data.id).toMatch(/^[a-z_]+$/)
       }
     })
 
-    test('todos los slugs usan guión (no underscore)', () => {
+    test('todos los slugs usan guion (no underscore)', () => {
       for (const slug of Object.keys(OPOSICION_DETECTION)) {
         expect(slug).not.toContain('_')
         expect(slug).toMatch(/^[a-z0-9-]+$/)
       }
     })
 
-    test('categorías son C1 o C2', () => {
+    test('categorias son C1 o C2', () => {
       for (const data of Object.values(OPOSICION_DETECTION)) {
         expect(['C1', 'C2']).toContain(data.categoria)
       }
@@ -161,7 +118,7 @@ describe('OposicionDetector', () => {
       }
     })
 
-    test('incluye las CCAA: CARM, CyL, Andalucía y Madrid', () => {
+    test('incluye las CCAA: CARM, CyL, Andalucia y Madrid', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
       expect(autonomicas).toHaveLength(4)
@@ -172,25 +129,36 @@ describe('OposicionDetector', () => {
         'auxiliar-administrativo-madrid',
       ])
     })
+
+    test('datos derivados de config coinciden con config central', () => {
+      for (const oposicion of OPOSICIONES) {
+        const detection = OPOSICION_DETECTION[oposicion.slug]
+        expect(detection).toBeDefined()
+        expect(detection.id).toBe(oposicion.id)
+        expect(detection.name).toBe(oposicion.name)
+        expect(detection.categoria).toBe(oposicion.badge)
+        expect(detection.administracion).toBe(oposicion.administracion)
+      }
+    })
   })
 
   describe('detectOposicionFromUrl', () => {
-    test('detecta oposición en URL de test', () => {
+    test('detecta oposicion en URL de test', () => {
       const result = detectOposicionFromUrl('/auxiliar-administrativo-madrid/test/tema/1')
       expect(result?.id).toBe('auxiliar_administrativo_madrid')
     })
 
-    test('detecta oposición en URL de temario', () => {
+    test('detecta oposicion en URL de temario', () => {
       const result = detectOposicionFromUrl('/tramitacion-procesal/temario/tema-5')
       expect(result?.id).toBe('tramitacion_procesal')
     })
 
-    test('detecta oposición base (sin subruta)', () => {
+    test('detecta oposicion base (sin subruta)', () => {
       const result = detectOposicionFromUrl('/auxiliar-administrativo-estado')
       expect(result?.id).toBe('auxiliar_administrativo_estado')
     })
 
-    test('devuelve null para URL sin oposición', () => {
+    test('devuelve null para URL sin oposicion', () => {
       expect(detectOposicionFromUrl('/perfil')).toBeNull()
       expect(detectOposicionFromUrl('/login')).toBeNull()
       expect(detectOposicionFromUrl('/')).toBeNull()
@@ -200,7 +168,7 @@ describe('OposicionDetector', () => {
       expect(detectOposicionFromUrl(null)).toBeNull()
     })
 
-    test('detecta cada oposición correctamente', () => {
+    test('detecta cada oposicion correctamente', () => {
       for (const [slug, expected] of Object.entries(OPOSICION_DETECTION)) {
         const result = detectOposicionFromUrl(`/${slug}/test`)
         expect(result?.id).toBe(expected.id)

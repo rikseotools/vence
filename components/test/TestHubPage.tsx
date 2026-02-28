@@ -1,6 +1,6 @@
 // components/test/TestHubPage.tsx - Server Component SSR para SEO
 import { createClient } from '@supabase/supabase-js'
-import { SLUG_TO_POSITION_TYPE, getOposicionBySlug } from '@/lib/config/oposiciones'
+import { OPOSICIONES, SLUG_TO_POSITION_TYPE, getOposicionBySlug } from '@/lib/config/oposiciones'
 import TestHubClient from './TestHubClient'
 
 type OposicionSlug = string
@@ -21,47 +21,19 @@ interface BloqueConfig {
   max: number
 }
 
-// Configuración de bloques por oposición
-const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = {
-  'tramitacion-procesal': [
-    { id: 'bloque1', name: 'Bloque I: Organización del Estado y Administración de Justicia', icon: '⚖️', min: 1, max: 15 },
-    { id: 'bloque2', name: 'Bloque II: Derecho Procesal', icon: '📜', min: 16, max: 31 },
-    { id: 'bloque3', name: 'Bloque III: Informática', icon: '💻', min: 32, max: 37 },
-  ],
-  'auxiliar-administrativo-estado': [
-    { id: 'bloque1', name: 'Bloque I: Organización Pública', icon: '🏛️', min: 1, max: 14 },
-    { id: 'bloque2', name: 'Bloque II: Actividad Administrativa', icon: '📋', min: 15, max: 28 },
-  ],
-  'administrativo-estado': [
-    { id: 'bloque1', name: 'Bloque I: Organización del Estado', icon: '🏛️', min: 1, max: 14 },
-    { id: 'bloque2', name: 'Bloque II: Administración General del Estado', icon: '📋', min: 101, max: 114 },
-    { id: 'bloque3', name: 'Bloque III: Gestión de Personal', icon: '👥', min: 201, max: 210 },
-    { id: 'bloque4', name: 'Bloque IV: Gestión Financiera', icon: '💰', min: 301, max: 309 },
-    { id: 'bloque5', name: 'Bloque V: Informática Básica', icon: '💻', min: 501, max: 506 },
-    { id: 'bloque6', name: 'Bloque VI: Administración Electrónica', icon: '🌐', min: 601, max: 608 },
-  ],
-  'auxilio-judicial': [
-    { id: 'bloque1', name: 'Bloque I: Derecho Constitucional y Organización del Estado', icon: '🏛️', min: 1, max: 5 },
-    { id: 'bloque2', name: 'Bloque II: Organización Judicial y Funcionarios', icon: '⚖️', min: 6, max: 15 },
-    { id: 'bloque3', name: 'Bloque III: Procedimientos y Actos Procesales', icon: '📜', min: 16, max: 26 },
-  ],
-  'auxiliar-administrativo-carm': [
-    { id: 'bloque1', name: 'Bloque I: Derecho Constitucional y Administrativo', icon: '⚖️', min: 1, max: 9 },
-    { id: 'bloque2', name: 'Bloque II: Gestión y Administración Pública', icon: '📋', min: 10, max: 16 },
-  ],
-  'auxiliar-administrativo-cyl': [
-    { id: 'bloque1', name: 'Grupo I: Organización Política y Administrativa', icon: '🏛️', min: 1, max: 19 },
-    { id: 'bloque2', name: 'Grupo II: Competencias', icon: '📋', min: 20, max: 28 },
-  ],
-  'auxiliar-administrativo-andalucia': [
-    { id: 'bloque1', name: 'Bloque I: Área Jurídico Administrativa General', icon: '⚖️', min: 1, max: 12 },
-    { id: 'bloque2', name: 'Bloque II: Organización y Gestión Administrativa', icon: '📋', min: 13, max: 22 },
-  ],
-  'auxiliar-administrativo-madrid': [
-    { id: 'bloque1', name: 'Bloque I: Organización Política', icon: '🏛️', min: 1, max: 15 },
-    { id: 'bloque2', name: 'Bloque II: Ofimática', icon: '💻', min: 16, max: 21 },
-  ],
-}
+// Configuración de bloques por oposición (generado desde config central)
+const BLOQUE_CONFIG: Record<OposicionSlug, BloqueConfig[]> = Object.fromEntries(
+  OPOSICIONES.map(o => [
+    o.slug,
+    o.blocks.map(block => ({
+      id: block.id,
+      name: block.title,
+      icon: block.icon,
+      min: block.themes[0].id,
+      max: block.themes[block.themes.length - 1].id,
+    })),
+  ])
+)
 
 interface Props {
   oposicion: OposicionSlug

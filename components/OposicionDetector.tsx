@@ -7,82 +7,38 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { getSupabaseClient } from '../lib/supabase' // 🔧 USAR SINGLETON
+import { OPOSICIONES } from '@/lib/config/oposiciones'
 
 const supabase = getSupabaseClient()
 
 interface OposicionData {
   id: string
   name: string
-  categoria: 'C1' | 'C2'
-  administracion: 'estado' | 'justicia' | 'autonomica'
+  categoria: string
+  administracion: string
   slug: string
 }
 
-// 📋 Mapeo URL → Oposición
+// 📋 Mapeo URL → Oposicion (generado desde config central + extras)
 const OPOSICION_DETECTION: Record<string, OposicionData> = {
-  'auxiliar-administrativo-estado': {
-    id: 'auxiliar_administrativo_estado',
-    name: 'Auxiliar Administrativo del Estado',
-    categoria: 'C2',
-    administracion: 'estado',
-    slug: 'auxiliar-administrativo-estado'
-  },
-  'administrativo-estado': {
-    id: 'administrativo_estado',
-    name: 'Administrativo del Estado',
-    categoria: 'C1',
-    administracion: 'estado',
-    slug: 'administrativo-estado'
-  },
-  'tramitacion-procesal': {
-    id: 'tramitacion_procesal',
-    name: 'Tramitación Procesal y Administrativa',
-    categoria: 'C1',
-    administracion: 'justicia',
-    slug: 'tramitacion-procesal'
-  },
-  'auxilio-judicial': {
-    id: 'auxilio_judicial',
-    name: 'Auxilio Judicial',
-    categoria: 'C2',
-    administracion: 'justicia',
-    slug: 'auxilio-judicial'
-  },
-  'auxiliar-administrativo-carm': {
-    id: 'auxiliar_administrativo_carm',
-    name: 'Auxiliar Administrativo CARM (Murcia)',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'auxiliar-administrativo-carm'
-  },
-  'auxiliar-administrativo-cyl': {
-    id: 'auxiliar_administrativo_cyl',
-    name: 'Auxiliar Administrativo de Castilla y León',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'auxiliar-administrativo-cyl'
-  },
-  'auxiliar-administrativo-andalucia': {
-    id: 'auxiliar_administrativo_andalucia',
-    name: 'Auxiliar Administrativo Junta de Andalucía',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'auxiliar-administrativo-andalucia'
-  },
-  'auxiliar-administrativo-madrid': {
-    id: 'auxiliar_administrativo_madrid',
-    name: 'Auxiliar Administrativo Comunidad de Madrid',
-    categoria: 'C2',
-    administracion: 'autonomica',
-    slug: 'auxiliar-administrativo-madrid'
-  },
+  // Generado desde config central
+  ...Object.fromEntries(
+    OPOSICIONES.map(o => [o.slug, {
+      id: o.id,
+      name: o.name,
+      categoria: o.badge,
+      administracion: o.administracion,
+      slug: o.slug,
+    }])
+  ),
+  // Oposiciones futuras (sin contenido completo en config)
   'gestion-procesal': {
     id: 'gestion_procesal',
     name: 'Gestión Procesal y Administrativa',
     categoria: 'C1',
     administracion: 'justicia',
     slug: 'gestion-procesal'
-  }
+  },
 }
 
 export default function OposicionDetector() {
