@@ -29,10 +29,12 @@ import {
   isValidThemeId,
   getTopicNumberFromThemeId,
   getThemeIdFromTopicNumber,
-  ADMINISTRATIVO_THEME_TO_TOPIC,
+  THEME_TO_TOPIC,
   VALID_THEME_IDS,
   OPOSICION_TO_POSITION_TYPE,
 } from '../../../lib/api/random-test-data'
+
+import { OPOSICIONES, ALL_OPOSICION_SLUGS } from '../../../lib/config/oposiciones'
 
 // ============================================
 // REQUEST SCHEMA TESTS
@@ -40,6 +42,16 @@ import {
 
 describe('Random Test Data - Request Schemas', () => {
   describe('getRandomTestDataRequestSchema', () => {
+    it('debe aceptar todas las 8 oposiciones', () => {
+      for (const slug of ALL_OPOSICION_SLUGS) {
+        const result = getRandomTestDataRequestSchema.safeParse({
+          oposicion: slug,
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+        })
+        expect(result.success).toBe(true)
+      }
+    })
+
     it('debe aceptar request válido para administrativo', () => {
       const result = getRandomTestDataRequestSchema.safeParse({
         oposicion: 'administrativo-estado',
@@ -99,6 +111,16 @@ describe('Random Test Data - Request Schemas', () => {
       expect(result.success).toBe(true)
     })
 
+    it('debe aceptar todas las oposiciones', () => {
+      for (const slug of ALL_OPOSICION_SLUGS) {
+        const result = checkAvailableQuestionsRequestSchema.safeParse({
+          oposicion: slug,
+          selectedThemes: [1],
+        })
+        expect(result.success).toBe(true)
+      }
+    })
+
     it('debe aplicar defaults para campos opcionales', () => {
       const result = checkAvailableQuestionsRequestSchema.safeParse({
         oposicion: 'administrativo-estado',
@@ -144,6 +166,17 @@ describe('Random Test Data - Request Schemas', () => {
         userId: '123e4567-e89b-12d3-a456-426614174000',
       })
       expect(result.success).toBe(true)
+    })
+
+    it('debe aceptar todas las oposiciones', () => {
+      for (const slug of ALL_OPOSICION_SLUGS) {
+        const result = getDetailedThemeStatsRequestSchema.safeParse({
+          oposicion: slug,
+          themeId: 1,
+          userId: '123e4567-e89b-12d3-a456-426614174000',
+        })
+        expect(result.success).toBe(true)
+      }
     })
 
     it('debe rechazar themeId negativo', () => {
@@ -528,57 +561,21 @@ describe('Random Test Data - Validator Functions', () => {
 
 describe('Random Test Data - Helper Functions', () => {
   describe('isValidThemeId', () => {
-    it('debe validar themeIds para administrativo (1-45)', () => {
-      expect(isValidThemeId(1, 'administrativo-estado')).toBe(true)
-      expect(isValidThemeId(45, 'administrativo-estado')).toBe(true)
-      expect(isValidThemeId(0, 'administrativo-estado')).toBe(false)
-      expect(isValidThemeId(46, 'administrativo-estado')).toBe(false)
+    it('debe validar themeIds para todas las oposiciones', () => {
+      for (const oposicion of OPOSICIONES) {
+        expect(isValidThemeId(1, oposicion.slug)).toBe(true)
+        expect(isValidThemeId(oposicion.totalTopics, oposicion.slug)).toBe(true)
+        expect(isValidThemeId(0, oposicion.slug)).toBe(false)
+        expect(isValidThemeId(oposicion.totalTopics + 1, oposicion.slug)).toBe(false)
+      }
     })
 
-    it('debe validar themeIds para auxiliar (1-28)', () => {
-      expect(isValidThemeId(1, 'auxiliar-administrativo-estado')).toBe(true)
-      expect(isValidThemeId(16, 'auxiliar-administrativo-estado')).toBe(true)
-      expect(isValidThemeId(28, 'auxiliar-administrativo-estado')).toBe(true)
-      expect(isValidThemeId(0, 'auxiliar-administrativo-estado')).toBe(false)
-      expect(isValidThemeId(29, 'auxiliar-administrativo-estado')).toBe(false)
+    it('debe retornar false para oposición inexistente', () => {
+      expect(isValidThemeId(1, 'inexistente')).toBe(false)
     })
   })
 
-  describe('getTopicNumberFromThemeId - Administrativo', () => {
-    it('debe mapear Bloque I (1-11) correctamente', () => {
-      expect(getTopicNumberFromThemeId(1, 'administrativo-estado')).toBe(1)
-      expect(getTopicNumberFromThemeId(11, 'administrativo-estado')).toBe(11)
-    })
-
-    it('debe mapear Bloque II (12-15) a 201-204', () => {
-      expect(getTopicNumberFromThemeId(12, 'administrativo-estado')).toBe(201)
-      expect(getTopicNumberFromThemeId(13, 'administrativo-estado')).toBe(202)
-      expect(getTopicNumberFromThemeId(14, 'administrativo-estado')).toBe(203)
-      expect(getTopicNumberFromThemeId(15, 'administrativo-estado')).toBe(204)
-    })
-
-    it('debe mapear Bloque III (16-22) a 301-307', () => {
-      expect(getTopicNumberFromThemeId(16, 'administrativo-estado')).toBe(301)
-      expect(getTopicNumberFromThemeId(22, 'administrativo-estado')).toBe(307)
-    })
-
-    it('debe mapear Bloque IV (23-31) a 401-409', () => {
-      expect(getTopicNumberFromThemeId(23, 'administrativo-estado')).toBe(401)
-      expect(getTopicNumberFromThemeId(31, 'administrativo-estado')).toBe(409)
-    })
-
-    it('debe mapear Bloque V (32-37) a 501-506', () => {
-      expect(getTopicNumberFromThemeId(32, 'administrativo-estado')).toBe(501)
-      expect(getTopicNumberFromThemeId(37, 'administrativo-estado')).toBe(506)
-    })
-
-    it('debe mapear Bloque VI (38-45) a 601-608', () => {
-      expect(getTopicNumberFromThemeId(38, 'administrativo-estado')).toBe(601)
-      expect(getTopicNumberFromThemeId(45, 'administrativo-estado')).toBe(608)
-    })
-  })
-
-  describe('getTopicNumberFromThemeId - Auxiliar', () => {
+  describe('getTopicNumberFromThemeId - Auxiliar Administrativo Estado', () => {
     it('debe mapear Bloque I (1-16) correctamente', () => {
       expect(getTopicNumberFromThemeId(1, 'auxiliar-administrativo-estado')).toBe(1)
       expect(getTopicNumberFromThemeId(16, 'auxiliar-administrativo-estado')).toBe(16)
@@ -591,20 +588,39 @@ describe('Random Test Data - Helper Functions', () => {
     })
   })
 
-  describe('getThemeIdFromTopicNumber - Administrativo', () => {
-    it('debe invertir el mapeo de Bloque II', () => {
-      expect(getThemeIdFromTopicNumber(201, 'administrativo-estado')).toBe(12)
-      expect(getThemeIdFromTopicNumber(204, 'administrativo-estado')).toBe(15)
+  describe('getTopicNumberFromThemeId - Administrativo Estado', () => {
+    const slug = 'administrativo-estado'
+
+    it('debe mapear Bloque I correctamente', () => {
+      const adminConfig = OPOSICIONES.find(o => o.slug === slug)
+      const block1Size = adminConfig.blocks[0].themes.length
+      expect(getTopicNumberFromThemeId(1, slug)).toBe(1)
+      expect(getTopicNumberFromThemeId(block1Size, slug)).toBe(block1Size)
     })
 
-    it('debe invertir el mapeo de Bloque III', () => {
-      expect(getThemeIdFromTopicNumber(301, 'administrativo-estado')).toBe(16)
-      expect(getThemeIdFromTopicNumber(307, 'administrativo-estado')).toBe(22)
+    it('debe mapear cada bloque al topic_number correcto', () => {
+      const adminConfig = OPOSICIONES.find(o => o.slug === slug)
+      let seq = 1
+      for (const block of adminConfig.blocks) {
+        for (const theme of block.themes) {
+          expect(getTopicNumberFromThemeId(seq, slug)).toBe(theme.id)
+          seq++
+        }
+      }
     })
+  })
 
-    it('debe invertir el mapeo de Bloque VI', () => {
-      expect(getThemeIdFromTopicNumber(601, 'administrativo-estado')).toBe(38)
-      expect(getThemeIdFromTopicNumber(608, 'administrativo-estado')).toBe(45)
+  describe('getTopicNumberFromThemeId - Todas las oposiciones', () => {
+    it('debe mapear correctamente para cada oposición', () => {
+      for (const oposicion of OPOSICIONES) {
+        let seq = 1
+        for (const block of oposicion.blocks) {
+          for (const theme of block.themes) {
+            expect(getTopicNumberFromThemeId(seq, oposicion.slug)).toBe(theme.id)
+            seq++
+          }
+        }
+      }
     })
   })
 
@@ -615,23 +631,54 @@ describe('Random Test Data - Helper Functions', () => {
     })
   })
 
-  describe('ADMINISTRATIVO_THEME_TO_TOPIC mapping', () => {
-    it('debe tener 45 entradas', () => {
-      expect(Object.keys(ADMINISTRATIVO_THEME_TO_TOPIC).length).toBe(45)
+  describe('getThemeIdFromTopicNumber - Todas las oposiciones', () => {
+    it('debe invertir el mapeo correctamente para cada oposición', () => {
+      for (const oposicion of OPOSICIONES) {
+        let seq = 1
+        for (const block of oposicion.blocks) {
+          for (const theme of block.themes) {
+            expect(getThemeIdFromTopicNumber(theme.id, oposicion.slug)).toBe(seq)
+            seq++
+          }
+        }
+      }
+    })
+  })
+
+  describe('THEME_TO_TOPIC mapping', () => {
+    it('debe tener una entrada por cada oposición', () => {
+      expect(Object.keys(THEME_TO_TOPIC).length).toBe(OPOSICIONES.length)
     })
 
-    it('debe cubrir todos los topic_numbers esperados', () => {
-      const expectedTopicNumbers = [
-        ...Array.from({ length: 11 }, (_, i) => i + 1),      // 1-11
-        ...Array.from({ length: 4 }, (_, i) => 201 + i),     // 201-204
-        ...Array.from({ length: 7 }, (_, i) => 301 + i),     // 301-307
-        ...Array.from({ length: 9 }, (_, i) => 401 + i),     // 401-409
-        ...Array.from({ length: 6 }, (_, i) => 501 + i),     // 501-506
-        ...Array.from({ length: 8 }, (_, i) => 601 + i),     // 601-608
-      ]
-      const mappedTopicNumbers = Object.values(ADMINISTRATIVO_THEME_TO_TOPIC)
+    it('debe tener el número correcto de temas por oposición', () => {
+      for (const oposicion of OPOSICIONES) {
+        const mapping = THEME_TO_TOPIC[oposicion.slug]
+        expect(Object.keys(mapping).length).toBe(oposicion.totalTopics)
+      }
+    })
 
-      expect(mappedTopicNumbers.sort((a, b) => a - b)).toEqual(expectedTopicNumbers.sort((a, b) => a - b))
+    it('debe cubrir todos los topic_numbers de la config para auxiliar', () => {
+      const auxiliarMapping = THEME_TO_TOPIC['auxiliar-administrativo-estado']
+      expect(Object.keys(auxiliarMapping).length).toBe(28)
+      // Bloque I: 1-16
+      for (let i = 1; i <= 16; i++) {
+        expect(auxiliarMapping[i]).toBe(i)
+      }
+      // Bloque II: 17-28 -> 101-112
+      for (let i = 17; i <= 28; i++) {
+        expect(auxiliarMapping[i]).toBe(100 + (i - 16))
+      }
+    })
+
+    it('debe cubrir todos los topic_numbers de la config para administrativo', () => {
+      const adminConfig = OPOSICIONES.find(o => o.slug === 'administrativo-estado')
+      const adminMapping = THEME_TO_TOPIC['administrativo-estado']
+      expect(Object.keys(adminMapping).length).toBe(adminConfig.totalTopics)
+
+      // Verify all theme IDs from config are present as values
+      const allThemeIds = adminConfig.blocks.flatMap(b => b.themes.map(t => t.id))
+      const mappedValues = Object.values(adminMapping).sort((a, b) => a - b)
+      expect(mappedValues).toEqual(allThemeIds.sort((a, b) => a - b))
     })
   })
 })
@@ -642,21 +689,34 @@ describe('Random Test Data - Helper Functions', () => {
 
 describe('Random Test Data - Constants', () => {
   describe('OPOSICION_TO_POSITION_TYPE', () => {
-    it('debe mapear correctamente las oposiciones', () => {
+    it('debe mapear correctamente las oposiciones existentes', () => {
       expect(OPOSICION_TO_POSITION_TYPE['auxiliar-administrativo-estado']).toBe('auxiliar_administrativo')
       expect(OPOSICION_TO_POSITION_TYPE['administrativo-estado']).toBe('administrativo')
+    })
+
+    it('debe mapear todas las 8 oposiciones', () => {
+      for (const oposicion of OPOSICIONES) {
+        expect(OPOSICION_TO_POSITION_TYPE[oposicion.slug]).toBe(oposicion.positionType)
+      }
     })
   })
 
   describe('VALID_THEME_IDS', () => {
+    it('debe tener 8 entradas (una por oposición)', () => {
+      expect(Object.keys(VALID_THEME_IDS).length).toBe(OPOSICIONES.length)
+    })
+
     it('debe tener rangos correctos para auxiliar', () => {
       expect(VALID_THEME_IDS['auxiliar-administrativo-estado'].min).toBe(1)
       expect(VALID_THEME_IDS['auxiliar-administrativo-estado'].max).toBe(28)
     })
 
-    it('debe tener rangos correctos para administrativo', () => {
-      expect(VALID_THEME_IDS['administrativo-estado'].min).toBe(1)
-      expect(VALID_THEME_IDS['administrativo-estado'].max).toBe(45)
+    it('debe tener rangos correctos para cada oposición según config', () => {
+      for (const oposicion of OPOSICIONES) {
+        const range = VALID_THEME_IDS[oposicion.slug]
+        expect(range.min).toBe(1)
+        expect(range.max).toBe(oposicion.totalTopics)
+      }
     })
   })
 })
@@ -666,23 +726,37 @@ describe('Random Test Data - Constants', () => {
 // ============================================
 
 describe('Random Test Data - Regression Tests', () => {
-  it('CRÍTICO: Los 45 temas de administrativo deben estar mapeados', () => {
-    for (let i = 1; i <= 45; i++) {
-      expect(ADMINISTRATIVO_THEME_TO_TOPIC[i]).toBeDefined()
-      expect(typeof ADMINISTRATIVO_THEME_TO_TOPIC[i]).toBe('number')
+  it('CRITICO: Todos los temas de cada oposicion deben estar mapeados', () => {
+    for (const oposicion of OPOSICIONES) {
+      const mapping = THEME_TO_TOPIC[oposicion.slug]
+      for (let i = 1; i <= oposicion.totalTopics; i++) {
+        expect(mapping[i]).toBeDefined()
+        expect(typeof mapping[i]).toBe('number')
+      }
     }
   })
 
-  it('CRÍTICO: El mapeo debe ser bidireccional', () => {
-    // Para administrativo
-    for (let themeId = 1; themeId <= 45; themeId++) {
-      const topicNumber = getTopicNumberFromThemeId(themeId, 'administrativo-estado')
-      const backToThemeId = getThemeIdFromTopicNumber(topicNumber, 'administrativo-estado')
-      expect(backToThemeId).toBe(themeId)
+  it('CRITICO: Los 28 temas de auxiliar deben estar mapeados correctamente', () => {
+    const mapping = THEME_TO_TOPIC['auxiliar-administrativo-estado']
+    expect(Object.keys(mapping).length).toBe(28)
+    for (let i = 1; i <= 28; i++) {
+      expect(mapping[i]).toBeDefined()
+      expect(typeof mapping[i]).toBe('number')
     }
   })
 
-  it('CRÍTICO: La respuesta debe seguir el schema exacto esperado por el frontend', () => {
+  it('CRITICO: El mapeo debe ser bidireccional para todas las oposiciones', () => {
+    for (const oposicion of OPOSICIONES) {
+      const mapping = THEME_TO_TOPIC[oposicion.slug]
+      for (let themeId = 1; themeId <= oposicion.totalTopics; themeId++) {
+        const topicNumber = getTopicNumberFromThemeId(themeId, oposicion.slug)
+        const backToThemeId = getThemeIdFromTopicNumber(topicNumber, oposicion.slug)
+        expect(backToThemeId).toBe(themeId)
+      }
+    }
+  })
+
+  it('CRITICO: La respuesta debe seguir el schema exacto esperado por el frontend', () => {
     // Simular respuesta completa del API
     const mockResponse = {
       success: true,

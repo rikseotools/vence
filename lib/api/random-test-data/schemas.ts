@@ -1,6 +1,8 @@
 // lib/api/random-test-data/schemas.ts - Schemas de validación para datos de test aleatorio
 import { z } from 'zod'
 import {
+  OPOSICIONES,
+  OPOSICION_SLUGS_ENUM,
   SLUG_TO_POSITION_TYPE,
 } from '@/lib/config/oposiciones'
 
@@ -10,7 +12,7 @@ import {
 
 // Request para obtener datos iniciales del test aleatorio
 export const getRandomTestDataRequestSchema = z.object({
-  oposicion: z.enum(['auxiliar-administrativo-estado', 'administrativo-estado']),
+  oposicion: z.enum(OPOSICION_SLUGS_ENUM),
   userId: z.string().uuid().nullable().optional(),
 })
 
@@ -18,7 +20,7 @@ export type GetRandomTestDataRequest = z.infer<typeof getRandomTestDataRequestSc
 
 // Request para verificar disponibilidad de preguntas con filtros
 export const checkAvailableQuestionsRequestSchema = z.object({
-  oposicion: z.enum(['auxiliar-administrativo-estado', 'administrativo-estado']),
+  oposicion: z.enum(OPOSICION_SLUGS_ENUM),
   selectedThemes: z.array(z.number().int().positive()).min(1),
   difficulty: z.enum(['mixed', 'easy', 'medium', 'hard']).default('mixed'),
   onlyOfficialQuestions: z.boolean().default(false),
@@ -29,7 +31,7 @@ export type CheckAvailableQuestionsRequest = z.infer<typeof checkAvailableQuesti
 
 // Request para estadísticas detalladas de un tema
 export const getDetailedThemeStatsRequestSchema = z.object({
-  oposicion: z.enum(['auxiliar-administrativo-estado', 'administrativo-estado']),
+  oposicion: z.enum(OPOSICION_SLUGS_ENUM),
   themeId: z.number().int().positive(),
   userId: z.string().uuid(),
 })
@@ -176,68 +178,48 @@ export function safeParseGetRandomTestDataResponse(data: unknown) {
 // Mapa de posición a position_type en BD (re-export desde config central)
 export { SLUG_TO_POSITION_TYPE as OPOSICION_TO_POSITION_TYPE } from '@/lib/config/oposiciones'
 
-export type OposicionKey = keyof typeof VALID_THEME_IDS
+export type OposicionKey = string
 
 // Rangos válidos de temas por oposición para test aleatorio
-// Estos son los IDs internos usados en la página de test aleatorio
-export const VALID_THEME_IDS = {
-  'auxiliar-administrativo-estado': {
-    // Bloque I: 1-16, Bloque II: 17-28 (mapeados desde 101-112)
-    min: 1,
-    max: 28,
-  },
-  'administrativo-estado': {
-    // 45 temas totales (1-45)
-    min: 1,
-    max: 45,
-  },
-} as const
+// Generados automáticamente desde la config central
+export const VALID_THEME_IDS: Record<string, { min: number; max: number }> = Object.fromEntries(
+  OPOSICIONES.map(o => [o.slug, { min: 1, max: o.totalTopics }])
+)
 
 // Función para validar si un themeId es válido para una oposición
-export function isValidThemeId(themeId: number, oposicion: OposicionKey): boolean {
+export function isValidThemeId(themeId: number, oposicion: string): boolean {
   const range = VALID_THEME_IDS[oposicion]
+  if (!range) return false
   return themeId >= range.min && themeId <= range.max
 }
 
-// Mapeo de themeId interno a topic_number en BD para administrativo
-export const ADMINISTRATIVO_THEME_TO_TOPIC: Record<number, number> = {
-  // Bloque I (1-11)
-  1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 11,
-  // Bloque II (12-15) -> topic_number 201-204
-  12: 201, 13: 202, 14: 203, 15: 204,
-  // Bloque III (16-22) -> topic_number 301-307
-  16: 301, 17: 302, 18: 303, 19: 304, 20: 305, 21: 306, 22: 307,
-  // Bloque IV (23-31) -> topic_number 401-409
-  23: 401, 24: 402, 25: 403, 26: 404, 27: 405, 28: 406, 29: 407, 30: 408, 31: 409,
-  // Bloque V (32-37) -> topic_number 501-506
-  32: 501, 33: 502, 34: 503, 35: 504, 36: 505, 37: 506,
-  // Bloque VI (38-45) -> topic_number 601-608
-  38: 601, 39: 602, 40: 603, 41: 604, 42: 605, 43: 606, 44: 607, 45: 608,
-}
+// Mapeo de themeId secuencial (1..N) a topic_number en BD para TODAS las oposiciones
+// Generado automáticamente desde la config central
+export const THEME_TO_TOPIC: Record<string, Record<number, number>> = Object.fromEntries(
+  OPOSICIONES.map(o => {
+    const mapping: Record<number, number> = {}
+    let seq = 1
+    for (const block of o.blocks) {
+      for (const theme of block.themes) {
+        mapping[seq] = theme.id
+        seq++
+      }
+    }
+    return [o.slug, mapping]
+  })
+)
 
 // Función para convertir themeId interno a topic_number de BD
-export function getTopicNumberFromThemeId(themeId: number, oposicion: OposicionKey): number {
-  if (oposicion === 'administrativo-estado') {
-    return ADMINISTRATIVO_THEME_TO_TOPIC[themeId] || themeId
-  }
-  // Para auxiliar, el themeId es el mismo que topic_number
-  // Excepto Bloque II donde 17-28 mapean a 101-112
-  if (themeId >= 17 && themeId <= 28) {
-    return 100 + (themeId - 16) // 17->101, 18->102, etc.
-  }
-  return themeId
+export function getTopicNumberFromThemeId(themeId: number, oposicion: string): number {
+  return THEME_TO_TOPIC[oposicion]?.[themeId] ?? themeId
 }
 
 // Función inversa: de topic_number a themeId interno
-export function getThemeIdFromTopicNumber(topicNumber: number, oposicion: OposicionKey): number {
-  if (oposicion === 'administrativo-estado') {
-    // Buscar en el mapeo inverso
-    const entry = Object.entries(ADMINISTRATIVO_THEME_TO_TOPIC).find(([, tn]) => tn === topicNumber)
-    return entry ? parseInt(entry[0]) : topicNumber
-  }
-  // Para auxiliar
-  if (topicNumber >= 101 && topicNumber <= 112) {
-    return 16 + (topicNumber - 100) // 101->17, 102->18, etc.
+export function getThemeIdFromTopicNumber(topicNumber: number, oposicion: string): number {
+  const mapping = THEME_TO_TOPIC[oposicion]
+  if (mapping) {
+    const entry = Object.entries(mapping).find(([, tn]) => tn === topicNumber)
+    if (entry) return parseInt(entry[0])
   }
   return topicNumber
 }

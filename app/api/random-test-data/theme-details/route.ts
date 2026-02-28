@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDetailedThemeStats } from '@/lib/api/random-test-data'
 import {
   safeParseGetDetailedThemeStatsRequest,
-  type OposicionKey
 } from '@/lib/api/random-test-data'
 
 export const dynamic = 'force-dynamic'
@@ -11,17 +10,9 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const oposicion = searchParams.get('oposicion') as OposicionKey
+    const oposicion = searchParams.get('oposicion')
     const themeIdStr = searchParams.get('themeId')
     const userId = searchParams.get('userId')
-
-    // Validar parámetros básicos
-    if (!oposicion || !['auxiliar-administrativo-estado', 'administrativo-estado'].includes(oposicion)) {
-      return NextResponse.json(
-        { success: false, error: 'Oposición no válida' },
-        { status: 400 }
-      )
-    }
 
     if (!themeIdStr) {
       return NextResponse.json(

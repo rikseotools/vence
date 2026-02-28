@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getRandomTestData } from '@/lib/api/random-test-data'
 import {
   safeParseGetRandomTestDataRequest,
-  type OposicionKey
 } from '@/lib/api/random-test-data'
 
 export const dynamic = 'force-dynamic'
@@ -11,16 +10,8 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const oposicion = searchParams.get('oposicion') as OposicionKey
+    const oposicion = searchParams.get('oposicion')
     const userId = searchParams.get('userId')
-
-    // Validar oposición
-    if (!oposicion || !['auxiliar-administrativo-estado', 'administrativo-estado'].includes(oposicion)) {
-      return NextResponse.json(
-        { success: false, error: 'Oposición no válida. Debe ser auxiliar-administrativo-estado o administrativo-estado' },
-        { status: 400 }
-      )
-    }
 
     // Validar request completo con Zod
     const parseResult = safeParseGetRandomTestDataRequest({
