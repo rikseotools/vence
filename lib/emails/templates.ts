@@ -831,7 +831,7 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
 
   // 🆕 TEMPLATE PARA RECORDATORIO DE RENOVACIÓN DE SUSCRIPCIÓN
   recordatorio_renovacion: {
-    subject: (userName, diasRestantes) => `Tu suscripción Premium de Vence se renueva en ${diasRestantes} días`,
+    subject: (userName, diasRestantes) => `Tu suscripción Premium de Vence se renueva en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}`,
     html: (userName, diasRestantes, fechaRenovacion, importe, gestionarUrl, unsubscribeUrl) => `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 30px;">

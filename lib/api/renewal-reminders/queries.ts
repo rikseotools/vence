@@ -143,8 +143,9 @@ export async function checkReminderAlreadySent(
       .where(and(
         eq(emailLogs.userId, userId),
         eq(emailLogs.emailType, EMAIL_TYPE),
-        // Buscar recordatorios enviados en los últimos 10 días
-        gte(emailLogs.sentAt, sql`now() - interval '10 days'`)
+        // Buscar recordatorios enviados en los últimos 5 días
+        // (permite que el recordatorio de 7d y 1d no se bloqueen entre sí, separados por 6 días)
+        gte(emailLogs.sentAt, sql`now() - interval '5 days'`)
       ))
       .limit(1)
 

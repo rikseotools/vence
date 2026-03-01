@@ -419,23 +419,6 @@ function OverviewTab({ data }) {
             </div>
           </Link>
           
-          <Link 
-            href="/admin/usuarios" 
-            className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors group"
-          >
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
-              <span className="text-xl">👥</span>
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-900">Gestión de Usuarios</h4>
-              <p className="text-sm text-gray-600">Ver historial de emails por usuario</p>
-            </div>
-            <div className="text-gray-400 group-hover:text-gray-600 ml-auto">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
         </div>
       </div>
       

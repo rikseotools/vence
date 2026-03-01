@@ -22,15 +22,25 @@ export async function GET(request: NextRequest): Promise<NextResponse<RunReminde
       )
     }
 
-    console.log('🔔 Iniciando campaña de recordatorios de renovación...')
+    console.log('🔔 Iniciando campañas de recordatorios de renovación (7d + 1d)...')
 
-    // Por defecto, 7 días antes
-    const result = await runRenewalReminderCampaign({
-      daysBeforeRenewal: 7,
-      dryRun: false,
-    })
+    // Campaña 1: 7 días antes
+    const result7d = await runRenewalReminderCampaign({ daysBeforeRenewal: 7, dryRun: false })
 
-    console.log(`✅ Campaña completada: ${result.sent} enviados, ${result.skipped} omitidos, ${result.failed} fallidos`)
+    // Campaña 2: 1 día antes
+    const result1d = await runRenewalReminderCampaign({ daysBeforeRenewal: 1, dryRun: false })
+
+    // Agregar resultados de ambas campañas
+    const result: RunReminderCampaignResponse = {
+      success: result7d.success && result1d.success,
+      total: (result7d.total || 0) + (result1d.total || 0),
+      sent: (result7d.sent || 0) + (result1d.sent || 0),
+      skipped: (result7d.skipped || 0) + (result1d.skipped || 0),
+      failed: (result7d.failed || 0) + (result1d.failed || 0),
+      results: [...(result7d.results || []), ...(result1d.results || [])],
+    }
+
+    console.log(`✅ Campañas completadas: ${result.sent} enviados, ${result.skipped} omitidos, ${result.failed} fallidos`)
 
     return NextResponse.json(result)
 

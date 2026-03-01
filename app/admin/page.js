@@ -1425,12 +1425,6 @@ export default function AdminDashboard() {
                 Últimos registros y actividad
               </p>
             </div>
-            <a 
-              href="/admin/usuarios" 
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-            >
-              Ver todos →
-            </a>
           </div>
         </div>
 
@@ -1546,20 +1540,7 @@ export default function AdminDashboard() {
           ⚡ Acciones Rápidas
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-          <a 
-            href="/admin/usuarios"
-            className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl sm:text-2xl">👥</span>
-              <div className="min-w-0">
-                <h4 className="font-medium text-blue-900 dark:text-blue-100 text-sm sm:text-base">Usuarios</h4>
-                <p className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">Gestionar roles</p>
-              </div>
-            </div>
-          </a>
-
-          <a 
+          <a
             href="/admin/analytics"
             className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
           >
