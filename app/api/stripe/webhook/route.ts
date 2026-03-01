@@ -6,6 +6,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import type Stripe from 'stripe'
 import { shouldDowngradeNow, formatPeriodEnd, determinePlanType } from '@/lib/stripe-webhook-handlers'
+import { sendEmailV2 } from '@/lib/api/emails'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type StripeSubscription = any
@@ -797,7 +798,19 @@ async function handlePaymentFailed(
             amount: (invoice.amount_due || 0) / 100,
             currency: invoice.currency?.toUpperCase() || 'EUR'
           })
-          console.log('📧 Email de pago fallido enviado')
+          console.log('📧 Email de pago fallido enviado al admin')
+
+          // Email al usuario
+          try {
+            await sendEmailV2({
+              userId,
+              emailType: 'pago_fallido',
+              customData: {}
+            })
+            console.log('📧 Email de pago fallido enviado al usuario')
+          } catch (userEmailErr) {
+            console.error('Error enviando email de pago fallido al usuario:', userEmailErr)
+          }
         }
       }
     } catch (error) {

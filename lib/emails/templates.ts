@@ -830,6 +830,64 @@ export const emailTemplates: Record<string, { subject: (...args: any[]) => strin
   },
 
   // 🆕 TEMPLATE PARA RECORDATORIO DE RENOVACIÓN DE SUSCRIPCIÓN
+  pago_fallido: {
+    subject: () => `Problema con el pago de tu suscripción de Vence`,
+    html: (userName, gestionarUrl, unsubscribeUrl) => `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h1 style="color: #2563eb; margin: 0;">Vence</h1>
+          <p style="color: #6b7280; margin: 5px 0;">Tu sistema de preparación de oposiciones</p>
+        </div>
+
+        <h2 style="color: #374151;">Hola ${userName},</h2>
+
+        <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+          No hemos podido procesar el pago de tu suscripción Premium de Vence.
+          Esto puede deberse a fondos insuficientes, una tarjeta caducada u otro problema con tu método de pago.
+        </p>
+
+        <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 25px 0; border-radius: 6px;">
+          <p style="margin: 0; color: #1e40af; font-size: 16px;">
+            <strong>Se reintentará el cobro automáticamente en los próximos días.</strong>
+            No tienes que hacer nada si el problema es temporal.
+          </p>
+        </div>
+
+        <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+          Para evitar perder tu acceso Premium, te recomendamos verificar o actualizar tu método de pago:
+        </p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${gestionarUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
+            Actualizar método de pago
+          </a>
+        </div>
+
+        <p style="font-size: 16px; line-height: 1.6; color: #374151;">
+          Si tienes cualquier duda, responde a este email y te ayudamos.
+        </p>
+
+        <p style="font-size: 16px; color: #374151;">
+          — Equipo Vence
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+        <div style="color: #6b7280; font-size: 12px; text-align: center;">
+          <p>Este email es un aviso importante sobre tu suscripción Premium.</p>
+          <p>
+            Si no quieres recibir estos avisos, puedes
+            <a href="${unsubscribeUrl}" style="color: #2563eb;">gestionar tus preferencias aquí</a>.
+          </p>
+          <p style="margin-top: 15px;">
+            Vence - Preparación de Oposiciones<br>
+            <a href="mailto:info@vence.es" style="color: #6b7280;">info@vence.es</a>
+          </p>
+        </div>
+      </div>
+    `
+  },
+
   recordatorio_renovacion: {
     subject: (userName, diasRestantes) => `Tu suscripción Premium de Vence se renueva en ${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}`,
     html: (userName, diasRestantes, fechaRenovacion, importe, gestionarUrl, unsubscribeUrl) => `
@@ -902,7 +960,8 @@ export function getEmailTypeName(type: string): string {
     'soporte_respuesta': 'Respuesta de Soporte',
     'impugnacion_respuesta': 'Respuesta de Impugnación',
     'lanzamiento_premium': 'Lanzamiento Premium',
-    'recordatorio_renovacion': 'Recordatorio de Renovación'
+    'recordatorio_renovacion': 'Recordatorio de Renovación',
+    'pago_fallido': 'Pago Fallido'
   }
   return names[type] || type
 }

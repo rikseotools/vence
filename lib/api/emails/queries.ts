@@ -305,6 +305,10 @@ export async function sendEmailV2(params: SendEmailRequest): Promise<SendEmailRe
   } else if (emailType === 'impugnacion_respuesta') {
     subject = template.subject(customData.status)
     html = template.html(userName, customData.status, customData.adminResponse, customData.questionText, customData.disputeUrl, unsubscribeUrl)
+  } else if (emailType === 'pago_fallido') {
+    subject = template.subject()
+    const gestionarUrl = `${baseUrl}/perfil?tab=suscripcion&utm_source=email&utm_campaign=pago_fallido`
+    html = template.html(userName, gestionarUrl, unsubscribeUrl)
   } else if (emailType === 'recordatorio_renovacion') {
     const diasRestantes = (customData.daysUntilRenewal as number) || 7
     subject = template.subject(userName, diasRestantes)

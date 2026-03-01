@@ -13,7 +13,7 @@ import type { AnalyticsResponse, ProblematicQuestion, FrequentlyFailedQuestion, 
 async function getProblematicQuestions(limit = 15): Promise<ProblematicQuestion[]> {
   const db = getDb()
 
-  // Step 1: Get aggregated abandonment stats per question
+  // Step 1: Get aggregated abandonment stats per question (last 180 days)
   const statsRows = await db.execute<{
     question_id: string
     question_text: string
@@ -26,7 +26,10 @@ async function getProblematicQuestions(limit = 15): Promise<ProblematicQuestion[
     unique_tests_count: number
     unique_users_abandoned_count: number
   }>(sql`
-    WITH question_stats AS (
+    WITH resolved AS (
+      SELECT DISTINCT question_id FROM problematic_questions_tracking WHERE status = 'resolved'
+    ),
+    question_stats AS (
       SELECT
         tq.question_id,
         SUBSTRING(tq.question_text FROM 1 FOR 100) AS question_text,
@@ -43,22 +46,17 @@ async function getProblematicQuestions(limit = 15): Promise<ProblematicQuestion[
         COUNT(DISTINCT t.user_id) FILTER (WHERE t.is_completed = false)::int AS unique_users_abandoned_count
       FROM test_questions tq
       JOIN tests t ON t.id = tq.test_id
-      JOIN questions q ON q.id = tq.question_id
-      WHERE q.is_active = true
-        AND tq.question_id IS NOT NULL
+      WHERE tq.question_id IS NOT NULL
+        AND tq.question_id NOT IN (SELECT question_id FROM resolved WHERE question_id IS NOT NULL)
+        AND EXISTS (SELECT 1 FROM questions q WHERE q.id = tq.question_id AND q.is_active = true)
+        AND t.started_at >= NOW() - INTERVAL '180 days'
       GROUP BY tq.question_id, SUBSTRING(tq.question_text FROM 1 FOR 100), tq.law_name, tq.article_number
       HAVING COUNT(*) >= 2
         AND COUNT(*) FILTER (WHERE t.is_completed = false) >= 2
     )
-    SELECT qs.*
-    FROM question_stats qs
-    WHERE qs.abandonment_rate >= 40
-      AND NOT EXISTS (
-        SELECT 1 FROM problematic_questions_tracking pqt
-        WHERE pqt.question_id = qs.question_id
-          AND pqt.status = 'resolved'
-      )
-    ORDER BY qs.unique_users_abandoned_count DESC
+    SELECT * FROM question_stats
+    WHERE abandonment_rate >= 40
+    ORDER BY unique_users_abandoned_count DESC
     LIMIT ${limit}
   `)
 
@@ -116,7 +114,10 @@ async function getFrequentlyFailedQuestions(limit = 15): Promise<FrequentlyFaile
     unique_tests_count: number
     low_confidence_rate: number
   }>(sql`
-    WITH question_stats AS (
+    WITH resolved AS (
+      SELECT DISTINCT question_id FROM problematic_questions_tracking WHERE status = 'resolved'
+    ),
+    question_stats AS (
       SELECT
         tq.question_id,
         SUBSTRING(tq.question_text FROM 1 FOR 100) AS question_text,
@@ -139,22 +140,17 @@ async function getFrequentlyFailedQuestions(limit = 15): Promise<FrequentlyFaile
         )::int AS low_confidence_rate
       FROM test_questions tq
       JOIN tests t ON t.id = tq.test_id
-      JOIN questions q ON q.id = tq.question_id
-      WHERE q.is_active = true
-        AND tq.question_id IS NOT NULL
+      WHERE tq.question_id IS NOT NULL
+        AND tq.question_id NOT IN (SELECT question_id FROM resolved WHERE question_id IS NOT NULL)
+        AND EXISTS (SELECT 1 FROM questions q WHERE q.id = tq.question_id AND q.is_active = true)
+        AND t.started_at >= NOW() - INTERVAL '180 days'
       GROUP BY tq.question_id, SUBSTRING(tq.question_text FROM 1 FOR 100), tq.law_name, tq.article_number
       HAVING COUNT(*) >= 3
         AND COUNT(DISTINCT t.user_id) FILTER (WHERE tq.is_correct = false) >= 2
     )
-    SELECT qs.*
-    FROM question_stats qs
-    WHERE qs.failure_rate >= 60
-      AND NOT EXISTS (
-        SELECT 1 FROM problematic_questions_tracking pqt
-        WHERE pqt.question_id = qs.question_id
-          AND pqt.status = 'resolved'
-      )
-    ORDER BY qs.unique_users_wrong_count DESC
+    SELECT * FROM question_stats
+    WHERE failure_rate >= 60
+    ORDER BY unique_users_wrong_count DESC
     LIMIT ${limit}
   `)
 

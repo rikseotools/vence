@@ -49,6 +49,7 @@ export const EMAIL_TYPES = [
   'mejoras_producto',
   'lanzamiento_premium',
   'recordatorio_renovacion',
+  'pago_fallido',
   'admin_notification',
 ] as const
 
@@ -79,8 +80,9 @@ export const EMAIL_TYPE_TO_CATEGORY: Record<EmailType, EmailCategory> = {
   modal_articulos_mejora: 'marketing',
   mejoras_producto: 'marketing',
   lanzamiento_premium: 'marketing',
-  // Transaccional (aviso de cobro, no bloqueado por unsubscribed_all)
+  // Transaccional (aviso de cobro/pago, no bloqueado por unsubscribed_all)
   recordatorio_renovacion: 'soporte',
+  pago_fallido: 'soporte',
   // Admin/internal
   admin_notification: 'admin',
 }
