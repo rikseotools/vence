@@ -55,13 +55,6 @@ export default function AdminLayout({ children }) {
                     <span>Dashboard</span>
                   </a>
                   <a
-                    href="/admin/analytics" 
-                    className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
-                  >
-                    <span>📈</span>
-                    <span>Analytics</span>
-                  </a>
-                  <a 
                     href="/admin/engagement" 
                     className="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1"
                   >

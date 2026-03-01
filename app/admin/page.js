@@ -1541,19 +1541,6 @@ export default function AdminDashboard() {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <a
-            href="/admin/analytics"
-            className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 sm:p-4 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl sm:text-2xl">📈</span>
-              <div className="min-w-0">
-                <h4 className="font-medium text-green-900 dark:text-green-100 text-sm sm:text-base">Analytics</h4>
-                <p className="text-xs sm:text-sm text-green-600 dark:text-green-400">Métricas detalladas</p>
-              </div>
-            </div>
-          </a>
-
-          <a 
             href="/admin/configuracion"
             className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-3 sm:p-4 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
           >
