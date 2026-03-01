@@ -3,7 +3,9 @@ import { getDb } from '@/db/client'
 import { sql } from 'drizzle-orm'
 import type { EngagementStatsResponse } from './schemas'
 
-const TZ = 'Europe/Madrid'
+// Use sql.raw() so timezone is inlined as a literal, not a bind parameter.
+// This avoids GROUP BY mismatches where Postgres sees $1 vs $2 for the same value.
+const TZ = sql.raw("'Europe/Madrid'")
 
 // ============================================
 // 1. CORE METRICS
@@ -13,42 +15,36 @@ async function getCoreMetrics() {
   const db = getDb()
 
   const result = await db.execute(sql`
-    WITH total AS (
-      SELECT COUNT(*)::int AS total_users FROM user_profiles
-    ),
-    dau_7d AS (
-      SELECT
-        (started_at AT TIME ZONE ${TZ})::date AS day,
-        COUNT(DISTINCT user_id)::int AS dau
-      FROM tests
-      WHERE started_at IS NOT NULL
-        AND started_at >= NOW() - INTERVAL '7 days'
-      GROUP BY (started_at AT TIME ZONE ${TZ})::date
-    ),
-    mau AS (
-      SELECT COUNT(DISTINCT user_id)::int AS mau
-      FROM tests
-      WHERE started_at IS NOT NULL
-        AND started_at >= NOW() - INTERVAL '30 days'
-    )
     SELECT
-      t.total_users,
-      COALESCE(ROUND(AVG(d.dau))::int, 0) AS average_dau,
-      m.mau,
-      CASE WHEN m.mau > 0 THEN ROUND(COALESCE(AVG(d.dau), 0) / m.mau * 100)::int ELSE 0 END AS dau_mau_ratio,
-      CASE WHEN t.total_users > 0 THEN ROUND(m.mau::numeric / t.total_users * 100)::int ELSE 0 END AS registered_active_ratio
-    FROM total t, mau m
-    LEFT JOIN dau_7d d ON TRUE
-    GROUP BY t.total_users, m.mau
+      (SELECT COUNT(*)::int FROM user_profiles) AS total_users,
+      COALESCE((
+        SELECT ROUND(AVG(dau))::int
+        FROM (
+          SELECT COUNT(DISTINCT user_id)::int AS dau
+          FROM tests
+          WHERE started_at IS NOT NULL
+            AND started_at >= NOW() - INTERVAL '7 days'
+          GROUP BY (started_at AT TIME ZONE ${TZ})::date
+        ) daily
+      ), 0) AS average_dau,
+      (
+        SELECT COUNT(DISTINCT user_id)::int
+        FROM tests
+        WHERE started_at IS NOT NULL
+          AND started_at >= NOW() - INTERVAL '30 days'
+      ) AS mau
   `)
 
   const row = result[0] as any
+  const totalUsers = row?.total_users ?? 0
+  const averageDAU = row?.average_dau ?? 0
+  const mau = row?.mau ?? 0
   return {
-    totalUsers: row?.total_users ?? 0,
-    averageDAU: row?.average_dau ?? 0,
-    MAU: row?.mau ?? 0,
-    dauMauRatio: row?.dau_mau_ratio ?? 0,
-    registeredActiveRatio: row?.registered_active_ratio ?? 0,
+    totalUsers,
+    averageDAU,
+    MAU: mau,
+    dauMauRatio: mau > 0 ? Math.round(averageDAU / mau * 100) : 0,
+    registeredActiveRatio: totalUsers > 0 ? Math.round(mau / totalUsers * 100) : 0,
   }
 }
 
@@ -321,19 +317,17 @@ async function getEngagementDepthData() {
     monthly_days AS (
       SELECT
         m.month_start,
-        COALESCE(ROUND(AVG(days_active)::numeric, 1), 0) AS avg_days_active
+        COALESCE(ROUND(AVG(sub.days_active)::numeric, 1), 0) AS avg_days_active
       FROM months m
       LEFT JOIN (
         SELECT
-          (started_at AT TIME ZONE ${TZ})::date AS day,
-          user_id,
           date_trunc('month', (started_at AT TIME ZONE ${TZ})::date)::date AS month_start,
-          COUNT(DISTINCT (started_at AT TIME ZONE ${TZ})::date)::int OVER (
-            PARTITION BY user_id, date_trunc('month', (started_at AT TIME ZONE ${TZ})::date)
-          ) AS days_active
+          user_id,
+          COUNT(DISTINCT (started_at AT TIME ZONE ${TZ})::date)::int AS days_active
         FROM tests
         WHERE started_at IS NOT NULL
           AND started_at >= NOW() - INTERVAL '6 months'
+        GROUP BY date_trunc('month', (started_at AT TIME ZONE ${TZ})::date)::date, user_id
       ) sub ON sub.month_start = m.month_start
       GROUP BY m.month_start
     )
