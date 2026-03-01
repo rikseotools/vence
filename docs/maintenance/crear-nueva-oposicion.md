@@ -115,6 +115,29 @@ VALUES
 - El slug de URL usa guiones (ej: `auxiliar-administrativo-madrid`)
 - `description` debe contener el epigrafe LITERAL del BOE, es la referencia para crear el topic_scope
 
+### 2c. Insertar convocatoria con enlaces oficiales
+
+```sql
+INSERT INTO convocatorias (
+  oposicion_id, año, fecha_examen, tipo_examen,
+  plazas_convocadas, boe_fecha,
+  boletin_oficial_url, pagina_informacion_url,
+  observaciones
+) VALUES (
+  '<uuid-oposicion>',
+  2026,
+  '2026-10-01',        -- fecha estimada del examen
+  'ordinaria',
+  645,
+  '2026-02-18',        -- fecha de publicacion en el boletin
+  'https://www.bocm.es/...',      -- PDF del boletin oficial (BOE, BOCM, BORM, BOJA...)
+  'https://www.comunidad.madrid/...', -- pagina oficial de seguimiento del proceso
+  'Orden 264/2026, de 4 de febrero. BOCM num. 41, 18/02/2026.'
+);
+```
+
+Estos enlaces se muestran automaticamente en la landing via el componente `<ConvocatoriaLinks>`.
+
 ---
 
 ## FASE 3: Topic scope con IA (CRITICO)
@@ -383,7 +406,18 @@ app/<slug-con-guiones>/
       TopicContentView.tsx              -- Copiar y adaptar getBlockInfo
 ```
 
-**En `temario/page.tsx`:** marcar `disponible: false` los temas SIN topic_scope. El componente TemarioClient muestra "En elaboracion" automaticamente.
+**En `temario/page.tsx`:** marcar `disponible: true` los temas que YA tienen topic_scope con preguntas. Los temas SIN scope (ej: leyes autonomicas no importadas) se dejan como `disponible: false` — el componente TemarioClient muestra "En elaboracion" automaticamente.
+
+**En `page.tsx` (landing):** anadir el componente de enlaces oficiales. Lee de BD automaticamente:
+
+```tsx
+import ConvocatoriaLinks from '@/components/ConvocatoriaLinks'
+
+// Dentro del JSX, en la seccion de informacion:
+<ConvocatoriaLinks oposicionSlug="slug-con-guiones" />
+```
+
+El componente muestra los enlaces al boletin oficial y la pagina de seguimiento si existen en la tabla `convocatorias` (campos `boletin_oficial_url` y `pagina_informacion_url`). Si la convocatoria no tiene URLs, no renderiza nada.
 
 ---
 
@@ -421,6 +455,7 @@ npm run test:ci   # Actualizar toHaveLength si procede
 | Breadcrumbs vacios | Falta en InteractiveBreadcrumbs | Anadir en 9 lugares |
 | Tema sin preguntas | Falta topic_scope o ley en BD | Crear scope o importar ley |
 | Tema muestra preguntas irrelevantes | topic_scope demasiado amplio | Restringir article_numbers al epigrafe |
+| Temas con contenido dicen "En elaboracion" | `disponible: false` en temario/page.tsx | Cambiar a `disponible: true` los temas con topic_scope |
 | Temas sin contenido clickeables | Falta `disponible: false` | Marcar en temario/page.tsx |
 | Tests fallan "Expected length: N" | Conteos hardcodeados | Actualizar en test files |
 

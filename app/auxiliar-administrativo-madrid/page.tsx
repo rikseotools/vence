@@ -1,6 +1,7 @@
 // app/auxiliar-administrativo-madrid/page.tsx
 import Link from 'next/link'
 import ClientBreadcrumbsWrapper from '@/components/ClientBreadcrumbsWrapper'
+import ConvocatoriaLinks from '@/components/ConvocatoriaLinks'
 
 const SITE_URL = process.env.SITE_URL || 'https://www.vence.es'
 
@@ -206,6 +207,9 @@ export default function AuxiliarAdministrativoMadrid() {
                   <div className="text-sm text-gray-500">{info.stats}</div>
                 </div>
               ))}
+            </div>
+            <div className="mt-6">
+              <ConvocatoriaLinks oposicionSlug="auxiliar-administrativo-madrid" />
             </div>
           </section>
 

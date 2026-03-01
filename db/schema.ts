@@ -397,6 +397,8 @@ export const convocatorias = pgTable("convocatorias", {
 	boeFecha: date("boe_fecha"),
 	plazasConvocadas: integer("plazas_convocadas"),
 	observaciones: text(),
+	boletinOficialUrl: text("boletin_oficial_url"),
+	paginaInformacionUrl: text("pagina_informacion_url"),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => [
 	index("idx_convocatorias_oposicion_año").using("btree", table.oposicionId.asc().nullsLast().op("int4_ops"), table["año"].asc().nullsLast().op("int4_ops")),

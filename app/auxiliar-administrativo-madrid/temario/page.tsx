@@ -12,21 +12,21 @@ const BLOQUES = [
     icon: '🏛️',
     count: 15,
     temas: [
-      { id: 1, titulo: 'La Constitución Española de 1978', descripcion: 'La Constitución Española de 1978. Estructura y contenido. Derechos y deberes fundamentales.', disponible: false },
+      { id: 1, titulo: 'La Constitución Española de 1978', descripcion: 'La Constitución Española de 1978. Estructura y contenido. Derechos y deberes fundamentales.', disponible: true },
       { id: 2, titulo: 'El Estatuto de Autonomía de la Comunidad de Madrid', descripcion: 'Estatuto de Autonomía de la Comunidad de Madrid. Estructura, competencias y organización.', disponible: false },
       { id: 3, titulo: 'La Ley de Gobierno y Administración de la CAM', descripcion: 'Ley de Gobierno y Administración de la Comunidad de Madrid. Organización y funcionamiento.', disponible: false },
-      { id: 4, titulo: 'Las fuentes del ordenamiento jurídico', descripcion: 'Las fuentes del derecho. La ley. El reglamento. Otras fuentes del ordenamiento jurídico.', disponible: false },
-      { id: 5, titulo: 'El acto administrativo', descripcion: 'El acto administrativo. Concepto, clases y elementos. Eficacia. Nulidad y anulabilidad.', disponible: false },
-      { id: 6, titulo: 'La Ley del Procedimiento Administrativo Común', descripcion: 'El procedimiento administrativo común. Fases del procedimiento. Ley 39/2015.', disponible: false },
-      { id: 7, titulo: 'La Jurisdicción Contencioso-Administrativa', descripcion: 'La jurisdicción contencioso-administrativa. Recurso contencioso-administrativo.', disponible: false },
-      { id: 8, titulo: 'Transparencia y Protección de Datos', descripcion: 'Transparencia, acceso a la información pública. Protección de datos personales.', disponible: false },
-      { id: 9, titulo: 'Los contratos en el Sector Público', descripcion: 'Los contratos del sector público. Tipos. Procedimientos de adjudicación.', disponible: false },
-      { id: 10, titulo: 'El Estatuto Básico del Empleado Público', descripcion: 'TREBEP. Clases de personal. Derechos y deberes de los empleados públicos.', disponible: false },
-      { id: 11, titulo: 'La Seguridad Social', descripcion: 'El sistema español de Seguridad Social. Régimen general. Prestaciones.', disponible: false },
-      { id: 12, titulo: 'Hacienda Pública y Presupuestos de la CAM', descripcion: 'La Hacienda de la Comunidad de Madrid. Presupuestos generales.', disponible: false },
-      { id: 13, titulo: 'Igualdad de género y no discriminación', descripcion: 'Políticas de igualdad de género. Prevención de violencia de género. No discriminación.', disponible: false },
-      { id: 14, titulo: 'Información administrativa y Administración electrónica', descripcion: 'Información y atención al ciudadano. Administración electrónica. Sede electrónica.', disponible: false },
-      { id: 15, titulo: 'Los documentos administrativos', descripcion: 'Los documentos administrativos. Concepto y clases. El archivo administrativo.', disponible: false }
+      { id: 4, titulo: 'Las fuentes del ordenamiento jurídico', descripcion: 'Las fuentes del derecho. La ley. El reglamento. Otras fuentes del ordenamiento jurídico.', disponible: true },
+      { id: 5, titulo: 'El acto administrativo', descripcion: 'El acto administrativo. Concepto, clases y elementos. Eficacia. Nulidad y anulabilidad.', disponible: true },
+      { id: 6, titulo: 'La Ley del Procedimiento Administrativo Común', descripcion: 'El procedimiento administrativo común. Fases del procedimiento. Ley 39/2015.', disponible: true },
+      { id: 7, titulo: 'La Jurisdicción Contencioso-Administrativa', descripcion: 'La jurisdicción contencioso-administrativa. Recurso contencioso-administrativo.', disponible: true },
+      { id: 8, titulo: 'Transparencia y Protección de Datos', descripcion: 'Transparencia, acceso a la información pública. Protección de datos personales.', disponible: true },
+      { id: 9, titulo: 'Los contratos en el Sector Público', descripcion: 'Los contratos del sector público. Tipos. Procedimientos de adjudicación.', disponible: true },
+      { id: 10, titulo: 'El Estatuto Básico del Empleado Público', descripcion: 'TREBEP. Clases de personal. Derechos y deberes de los empleados públicos.', disponible: true },
+      { id: 11, titulo: 'La Seguridad Social', descripcion: 'El sistema español de Seguridad Social. Régimen general. Prestaciones.', disponible: true },
+      { id: 12, titulo: 'Hacienda Pública y Presupuestos de la CAM', descripcion: 'La Hacienda de la Comunidad de Madrid. Presupuestos generales.', disponible: true },
+      { id: 13, titulo: 'Igualdad de género y no discriminación', descripcion: 'Políticas de igualdad de género. Prevención de violencia de género. No discriminación.', disponible: true },
+      { id: 14, titulo: 'Información administrativa y Administración electrónica', descripcion: 'Información y atención al ciudadano. Administración electrónica. Sede electrónica.', disponible: true },
+      { id: 15, titulo: 'Los documentos administrativos', descripcion: 'Los documentos administrativos. Concepto y clases. El archivo administrativo.', disponible: true }
     ]
   },
   {
@@ -35,12 +35,12 @@ const BLOQUES = [
     icon: '💻',
     count: 6,
     temas: [
-      { id: 16, titulo: 'El explorador de Windows', descripcion: 'El explorador de Windows. Gestión de archivos y carpetas. Configuración del sistema.', disponible: false },
-      { id: 17, titulo: 'Procesadores de texto: Word', descripcion: 'Microsoft Word. Edición de documentos. Formato. Tablas. Herramientas avanzadas.', disponible: false },
-      { id: 18, titulo: 'Hojas de cálculo: Excel', descripcion: 'Microsoft Excel. Celdas, fórmulas y funciones. Gráficos. Tablas dinámicas.', disponible: false },
-      { id: 19, titulo: 'Bases de datos: Access y Power BI', descripcion: 'Microsoft Access. Tablas, consultas, formularios e informes. Power BI básico.', disponible: false },
-      { id: 20, titulo: 'Correo electrónico: Outlook', descripcion: 'Microsoft Outlook. Gestión de correo, calendario, contactos y tareas.', disponible: false },
-      { id: 21, titulo: 'Trabajo colaborativo: Microsoft 365', descripcion: 'Microsoft 365. Teams, SharePoint, OneDrive. Trabajo colaborativo en la nube.', disponible: false }
+      { id: 16, titulo: 'El explorador de Windows', descripcion: 'El explorador de Windows. Gestión de archivos y carpetas. Configuración del sistema.', disponible: true },
+      { id: 17, titulo: 'Procesadores de texto: Word', descripcion: 'Microsoft Word. Edición de documentos. Formato. Tablas. Herramientas avanzadas.', disponible: true },
+      { id: 18, titulo: 'Hojas de cálculo: Excel', descripcion: 'Microsoft Excel. Celdas, fórmulas y funciones. Gráficos. Tablas dinámicas.', disponible: true },
+      { id: 19, titulo: 'Bases de datos: Access y Power BI', descripcion: 'Microsoft Access. Tablas, consultas, formularios e informes. Power BI básico.', disponible: true },
+      { id: 20, titulo: 'Correo electrónico: Outlook', descripcion: 'Microsoft Outlook. Gestión de correo, calendario, contactos y tareas.', disponible: true },
+      { id: 21, titulo: 'Trabajo colaborativo: Microsoft 365', descripcion: 'Microsoft 365. Teams, SharePoint, OneDrive. Trabajo colaborativo en la nube.', disponible: true }
     ]
   }
 ]
