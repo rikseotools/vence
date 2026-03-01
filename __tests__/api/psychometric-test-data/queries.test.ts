@@ -58,7 +58,8 @@ jest.mock('drizzle-orm', () => ({
   and: jest.fn((...args: unknown[]) => ({ type: 'and', args })),
   inArray: jest.fn((...args: unknown[]) => ({ type: 'inArray', args })),
   sql: jest.fn((...args: unknown[]) => {
-    const result = { type: 'sql', args, as: jest.fn(() => result) }
+    const result: { type: string; args: unknown[]; as: jest.Mock } = { type: 'sql', args, as: jest.fn() }
+    result.as = jest.fn(() => result)
     return result
   }),
 }))
