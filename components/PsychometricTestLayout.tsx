@@ -33,8 +33,8 @@ interface PsychometricQuestion {
   option_b: string
   option_c: string
   option_d: string
-  correct_option: number
-  explanation: string | null
+  correct_option?: number // Opcional: NO se envía desde el servidor (seguridad anti-scraping)
+  explanation?: string | null
   content_data: Record<string, unknown> | null
   question_type?: string
   [key: string]: unknown // campos adicionales de Supabase
@@ -43,6 +43,9 @@ interface PsychometricQuestion {
 interface TestConfig {
   backUrl?: string
   backText?: string
+  testType?: string
+  categories?: string[]
+  [key: string]: unknown
 }
 
 interface PsychometricTestLayoutProps {
@@ -127,14 +130,14 @@ const SUBTYPE_NAMES: Record<string, string> = {
 async function validatePsychometricAnswerSecure(
   questionId: string,
   userAnswer: number,
-  localCorrectAnswer: number,
+  localCorrectAnswer?: number,
   saveParams: SaveParams | null = null
 ): Promise<ValidationResult> {
   if (!questionId || typeof questionId !== 'string' || questionId.length < 10) {
     console.log('⚠️ [SecureAnswer] Sin questionId válido, usando fallback local')
     return {
-      isCorrect: userAnswer === localCorrectAnswer,
-      correctAnswer: localCorrectAnswer,
+      isCorrect: localCorrectAnswer !== undefined ? userAnswer === localCorrectAnswer : false,
+      correctAnswer: localCorrectAnswer ?? null,
       explanation: null,
       saved: false,
       usedFallback: true
@@ -158,8 +161,8 @@ async function validatePsychometricAnswerSecure(
     if (!response.ok) {
       console.warn('⚠️ [SecureAnswer] API error, usando fallback local')
       return {
-        isCorrect: userAnswer === localCorrectAnswer,
-        correctAnswer: localCorrectAnswer,
+        isCorrect: localCorrectAnswer !== undefined ? userAnswer === localCorrectAnswer : false,
+        correctAnswer: localCorrectAnswer ?? null,
         explanation: null,
         saved: false,
         usedFallback: true
@@ -183,8 +186,8 @@ async function validatePsychometricAnswerSecure(
     // Si la API no encuentra la pregunta, fallback
     console.warn('⚠️ [SecureAnswer] Pregunta no encontrada en API, usando fallback')
     return {
-      isCorrect: userAnswer === localCorrectAnswer,
-      correctAnswer: localCorrectAnswer,
+      isCorrect: localCorrectAnswer !== undefined ? userAnswer === localCorrectAnswer : false,
+      correctAnswer: localCorrectAnswer ?? null,
       explanation: null,
       saved: false,
       usedFallback: true
@@ -193,8 +196,8 @@ async function validatePsychometricAnswerSecure(
   } catch (error) {
     console.error('❌ [SecureAnswer] Error llamando API:', error)
     return {
-      isCorrect: userAnswer === localCorrectAnswer,
-      correctAnswer: localCorrectAnswer,
+      isCorrect: localCorrectAnswer !== undefined ? userAnswer === localCorrectAnswer : false,
+      correctAnswer: localCorrectAnswer ?? null,
       explanation: null,
       saved: false,
       usedFallback: true
@@ -404,7 +407,7 @@ export default function PsychometricTestLayout({
       const explanation = validationResult.explanation
 
       setVerifiedCorrectAnswer(correctAnswer)
-      setVerifiedExplanation(explanation || currentQ.explanation)
+      setVerifiedExplanation(explanation || currentQ.explanation || null)
 
       if (validationResult.usedFallback) {
         console.warn('⚠️ [SecureAnswer] Psicotécnico: usado fallback local (sin guardar en DB)')
