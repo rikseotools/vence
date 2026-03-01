@@ -1606,9 +1606,11 @@ export default function ConversionesPage() {
                           </div>
                         )})}
                       </div>
-                      <div className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-                        Las predicciones se verifican automáticamente cada {predictionData.predictionAccuracy.verificationDays || 7} días comparando con ventas reales.
-                        El método con menor error absoluto (±%) es el más preciso y recibe mayor peso en la proyección combinada.
+                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                        <p className="font-medium text-gray-600 dark:text-gray-300">Como se calcula:</p>
+                        <p>Cada dia se guarda la prediccion mensual de cada metodo. {predictionData.predictionAccuracy.verificationDays || 7} dias despues, se compara con las ventas reales de ese periodo usando <span className="font-mono">sMAPE</span> (error porcentual simetrico, max 200%).</p>
+                        <p>Ej: si se predijeron 3 ventas/mes y en 7 dias hubo 2 ventas reales (= 8.6/mes), el error es <span className="font-mono">|8.6-3| / ((8.6+3)/2) * 100 = 96%</span>.</p>
+                        <p>El metodo con menor error recibe mayor peso en la proyeccion combinada.</p>
                       </div>
                     </div>
                   )}

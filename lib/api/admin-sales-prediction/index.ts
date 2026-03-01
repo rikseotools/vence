@@ -19,5 +19,6 @@ export {
   getUnverifiedPredictions,
   getActualSalesInPeriod,
   updatePredictionVerification,
+  getVerifiedPredictionsWithHighError,
   getPendingSettlements,
 } from './queries'

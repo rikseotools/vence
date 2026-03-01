@@ -10,7 +10,7 @@ import {
   predictionAccuracyByMethod,
   predictionHistory,
 } from '@/db/schema'
-import { eq, gte, lt, and, isNull, sql } from 'drizzle-orm'
+import { eq, gte, gt, lt, and, isNull, isNotNull, sql } from 'drizzle-orm'
 
 // ============================================
 // GET REGISTRATION DATA (all users with dates)
@@ -203,6 +203,24 @@ export async function updatePredictionVerification(
       verifiedAt: new Date().toISOString(),
     })
     .where(eq(predictionTracking.id, predictionId))
+}
+
+// ============================================
+// GET VERIFIED PREDICTIONS WITH HIGH ERROR (> 200% = old MAPE formula)
+// sMAPE max is 200%, so anything > 200% was calculated with the old formula
+// ============================================
+
+export async function getVerifiedPredictionsWithHighError() {
+  const db = getDb()
+  return db
+    .select()
+    .from(predictionTracking)
+    .where(
+      and(
+        isNotNull(predictionTracking.verifiedAt),
+        gt(predictionTracking.absoluteError, '200')
+      )
+    )
 }
 
 // ============================================

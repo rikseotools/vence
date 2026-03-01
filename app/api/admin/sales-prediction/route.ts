@@ -13,6 +13,7 @@ import {
   getUnverifiedPredictions,
   getActualSalesInPeriod,
   updatePredictionVerification,
+  getVerifiedPredictionsWithHighError,
 } from '@/lib/api/admin-sales-prediction'
 
 // Helper para llamar a la API de Stripe directamente
@@ -86,6 +87,19 @@ function trialsForProbability(p: number, targetProb: number) {
 // Verificar predicciones de hace 7 días (comparar con realidad)
 const VERIFICATION_DAYS = 7
 
+// Calcula error usando sMAPE (Symmetric Mean Absolute Percentage Error)
+// - Máximo posible: 200% (cuando uno de los valores es 0)
+// - Evita el problema de % enormes cuando el valor esperado es < 1
+// - Fórmula: |actual - expected| / ((|actual| + |expected|) / 2) * 100
+function calculateSmapeError(actual: number, expected: number): { errorPercent: number; absoluteError: number } {
+  const diff = Math.abs(actual - expected)
+  const avg = (Math.abs(actual) + Math.abs(expected)) / 2
+  const smape = avg > 0 ? (diff / avg) * 100 : 0
+  // errorPercent con signo indica dirección (+ = vendimos más de lo predicho)
+  const signed = avg > 0 ? ((actual - expected) / avg) * 100 : 0
+  return { errorPercent: signed, absoluteError: smape }
+}
+
 async function verifyPastPredictions() {
   try {
     const targetDate = new Date(Date.now() - VERIFICATION_DAYS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
@@ -105,19 +119,43 @@ async function verifyPastPredictions() {
         let errorPercent: number | null = null
         let absoluteError: number | null = null
 
-        if (expectedSalesInPeriod > 0) {
-          errorPercent = ((actualSales - expectedSalesInPeriod) / expectedSalesInPeriod) * 100
-          absoluteError = Math.abs(errorPercent)
+        if (expectedSalesInPeriod > 0 || actualSales > 0) {
+          const result = calculateSmapeError(actualSales, expectedSalesInPeriod)
+          errorPercent = result.errorPercent
+          absoluteError = result.absoluteError
         }
 
         await updatePredictionVerification(pred.id, actualSales, actualRevenue, errorPercent, absoluteError)
       }
     }
 
+    // Recalcular predicciones antiguas que usaban la fórmula MAPE (error > 200% = fórmula vieja)
+    await recalculateOldPredictions()
+
     return { verified: (predictions?.length ?? 0) > 0, date: targetDate, actualSales, actualRevenue, days: VERIFICATION_DAYS }
   } catch (err) {
     console.log('Error en verifyPastPredictions:', (err as Error).message)
     return null
+  }
+}
+
+async function recalculateOldPredictions() {
+  try {
+    const oldPredictions = await getVerifiedPredictionsWithHighError()
+    if (!oldPredictions || oldPredictions.length === 0) return
+
+    for (const pred of oldPredictions) {
+      const expectedSalesInPeriod = parseFloat(pred.predictedSalesPerMonth ?? '0') * (VERIFICATION_DAYS / 30)
+      const actual = pred.actualSales ?? 0
+
+      if (expectedSalesInPeriod > 0 || actual > 0) {
+        const result = calculateSmapeError(actual, expectedSalesInPeriod)
+        await updatePredictionVerification(pred.id, actual, parseFloat(pred.actualRevenue ?? '0'), result.errorPercent, result.absoluteError)
+      }
+    }
+    console.log(`📊 Recalculadas ${oldPredictions.length} predicciones antiguas con sMAPE`)
+  } catch (err) {
+    console.log('Error recalculando predicciones antiguas:', (err as Error).message)
   }
 }
 
