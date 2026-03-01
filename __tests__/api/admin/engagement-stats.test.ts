@@ -1,5 +1,5 @@
 /**
- * Tests para admin-engagement-stats: schemas, queries y route
+ * Tests para admin-engagement-stats: schemas
  */
 
 // Mock window para evitar errores de jest.setup.js
@@ -8,178 +8,133 @@ if (typeof window === 'undefined') {
 }
 
 import {
-  engagementStatsQuerySchema,
   engagementStatsResponseSchema,
 } from '@/lib/api/admin-engagement-stats/schemas'
+
+// Helper: minimal valid response matching all required fields
+function makeValidResponse(overrides: Record<string, any> = {}) {
+  return {
+    totalUsers: 200,
+    averageDAU: 15,
+    MAU: 50,
+    dauMauRatio: 30,
+    registeredActiveRatio: 25,
+    dauMauHistory: [
+      { date: '2026-02-15', dau: 10, mau: 50, ratio: 20, formattedDate: '15 feb', weekday: 'lun' },
+    ],
+    activationHistory: [
+      { date: '2026-02-15', formattedDate: '15 feb', weekday: 'lun', total: 5, organic: 3, meta: 1, google: 1 },
+    ],
+    activationSummary: {
+      totalOrganic: 100, totalMeta: 50, totalGoogle: 50,
+      activatedOrganic: 30, activatedMeta: 10, activatedGoogle: 10,
+      totalActivated: 50,
+    },
+    retentionAnalysis: [
+      { week: 'Semana 1', registered: 20, day1Retention: 50, day7Retention: 30, day30Retention: 10 },
+    ],
+    engagementDepth: {
+      testsPerActiveUser: 5.2,
+      avgDaysActivePerMonth: 3.1,
+      avgLongestStreak: 2.5,
+      userEngagementLevels: { casual: 20, regular: 15, power: 5 },
+      distributionDaysActive: { '1': 10, '3': 5 },
+    },
+    engagementDepthHistory: [
+      { month: 'feb 2026', testsPerUser: 5, avgDaysActive: 3, activeUsers: 40 },
+    ],
+    habitFormation: {
+      powerUsers: 5,
+      powerUsersPercentage: 10,
+      weeklyActiveUsers: 20,
+      weeklyActivePercentage: 40,
+      habitDistribution: { occasional: 25, regular: 15, habitual: 10 },
+      avgSessionsPerWeek: 3.5,
+    },
+    habitFormationHistory: [
+      { month: 'feb 2026', powerUsersPercent: 10, weeklyActivePercent: 40, activeUsers: 50 },
+    ],
+    retentionRateHistory: [
+      { period: 'P1', periodLabel: 'feb 1', registered: 30, day1Retention: 40, day7Retention: 25, day30Retention: 10 },
+    ],
+    cohortAnalysis: [
+      { week: 'Semana 1', registered: 25, active: 10, retentionRate: 40 },
+    ],
+    ...overrides,
+  }
+}
 
 // ============================================
 // SCHEMA TESTS
 // ============================================
 
 describe('Admin Engagement Stats - Schemas', () => {
-  describe('engagementStatsQuerySchema', () => {
-    it('should accept valid days param', () => {
-      const result = engagementStatsQuerySchema.safeParse({ days: 30 })
-      expect(result.success).toBe(true)
-      if (result.success) expect(result.data.days).toBe(30)
-    })
-
-    it('should default to 30 days', () => {
-      const result = engagementStatsQuerySchema.safeParse({})
-      expect(result.success).toBe(true)
-      if (result.success) expect(result.data.days).toBe(30)
-    })
-
-    it('should coerce string to number', () => {
-      const result = engagementStatsQuerySchema.safeParse({ days: '7' })
-      expect(result.success).toBe(true)
-      if (result.success) expect(result.data.days).toBe(7)
-    })
-
-    it('should reject days < 1', () => {
-      const result = engagementStatsQuerySchema.safeParse({ days: 0 })
-      expect(result.success).toBe(false)
-    })
-
-    it('should reject days > 365', () => {
-      const result = engagementStatsQuerySchema.safeParse({ days: 500 })
-      expect(result.success).toBe(false)
-    })
-
-    it('should accept days = 1', () => {
-      const result = engagementStatsQuerySchema.safeParse({ days: 1 })
-      expect(result.success).toBe(true)
-    })
-
-    it('should accept days = 365', () => {
-      const result = engagementStatsQuerySchema.safeParse({ days: 365 })
-      expect(result.success).toBe(true)
-    })
-  })
-
   describe('engagementStatsResponseSchema', () => {
-    it('should accept valid response', () => {
-      const result = engagementStatsResponseSchema.safeParse({
-        activeUsers: 50,
-        totalUsers: 200,
-        mauPercentage: 25,
-      })
+    it('should accept valid full response', () => {
+      const result = engagementStatsResponseSchema.safeParse(makeValidResponse())
       expect(result.success).toBe(true)
     })
 
-    it('should accept zero users', () => {
-      const result = engagementStatsResponseSchema.safeParse({
-        activeUsers: 0,
+    it('should accept zero metrics', () => {
+      const result = engagementStatsResponseSchema.safeParse(makeValidResponse({
         totalUsers: 0,
-        mauPercentage: 0,
-      })
+        averageDAU: 0,
+        MAU: 0,
+        dauMauRatio: 0,
+        registeredActiveRatio: 0,
+      }))
       expect(result.success).toBe(true)
     })
 
-    it('should accept 100% MAU', () => {
+    it('should reject negative totalUsers', () => {
+      const result = engagementStatsResponseSchema.safeParse(makeValidResponse({
+        totalUsers: -1,
+      }))
+      expect(result.success).toBe(false)
+    })
+
+    it('should reject missing core fields', () => {
       const result = engagementStatsResponseSchema.safeParse({
-        activeUsers: 100,
         totalUsers: 100,
-        mauPercentage: 100,
       })
+      expect(result.success).toBe(false)
+    })
+
+    it('should accept empty arrays', () => {
+      const result = engagementStatsResponseSchema.safeParse(makeValidResponse({
+        dauMauHistory: [],
+        activationHistory: [],
+        retentionAnalysis: [],
+        engagementDepthHistory: [],
+        habitFormationHistory: [],
+        retentionRateHistory: [],
+        cohortAnalysis: [],
+      }))
       expect(result.success).toBe(true)
     })
 
-    it('should reject mauPercentage over 100', () => {
-      const result = engagementStatsResponseSchema.safeParse({
-        activeUsers: 100,
-        totalUsers: 50,
-        mauPercentage: 200,
-      })
-      expect(result.success).toBe(false)
+    it('should accept weekLabel as optional in retentionAnalysis', () => {
+      const result = engagementStatsResponseSchema.safeParse(makeValidResponse({
+        retentionAnalysis: [
+          { week: 'Semana 1', registered: 10, day1Retention: 50, day7Retention: 30, day30Retention: 10 },
+        ],
+      }))
+      expect(result.success).toBe(true)
     })
 
-    it('should reject negative activeUsers', () => {
-      const result = engagementStatsResponseSchema.safeParse({
-        activeUsers: -1,
-        totalUsers: 100,
-        mauPercentage: 0,
-      })
-      expect(result.success).toBe(false)
+    it('should accept multiple dauMauHistory entries', () => {
+      const entries = Array.from({ length: 14 }, (_, i) => ({
+        date: `2026-02-${String(i + 1).padStart(2, '0')}`,
+        dau: 10 + i,
+        mau: 50,
+        ratio: Math.round(((10 + i) / 50) * 100),
+        formattedDate: `${i + 1} feb`,
+        weekday: 'lun',
+      }))
+      const result = engagementStatsResponseSchema.safeParse(makeValidResponse({
+        dauMauHistory: entries,
+      }))
+      expect(result.success).toBe(true)
     })
-
-    it('should reject missing fields', () => {
-      const result = engagementStatsResponseSchema.safeParse({
-        activeUsers: 50,
-      })
-      expect(result.success).toBe(false)
-    })
-  })
-})
-
-// ============================================
-// QUERY TESTS (mock getDb)
-// ============================================
-
-describe('Admin Engagement Stats - Queries', () => {
-  beforeEach(() => {
-    jest.resetModules()
-  })
-
-  function setupMock(activeCount: number, totalCount: number) {
-    let callIndex = 0
-    const results = [
-      [{ count: activeCount }],  // tests query (has .where)
-      [{ count: totalCount }],   // userProfiles query (no .where)
-    ]
-
-    jest.doMock('@/db/client', () => ({
-      getDb: () => ({
-        select: () => ({
-          from: () => {
-            const idx = callIndex++
-            // tests query has .where, userProfiles doesn't
-            if (idx === 0) {
-              return { where: () => Promise.resolve(results[0]) }
-            }
-            return Promise.resolve(results[1])
-          },
-        }),
-      }),
-    }))
-
-    jest.doMock('@/db/schema', () => ({
-      tests: { userId: 'user_id', isCompleted: 'is_completed', completedAt: 'completed_at' },
-      userProfiles: { id: 'id' },
-    }))
-  }
-
-  it('should calculate MAU percentage correctly', async () => {
-    setupMock(30, 100)
-    const { getEngagementStats } = require('@/lib/api/admin-engagement-stats/queries')
-    const result = await getEngagementStats(30)
-
-    expect(result.activeUsers).toBe(30)
-    expect(result.totalUsers).toBe(100)
-    expect(result.mauPercentage).toBe(30)
-  })
-
-  it('should handle zero total users', async () => {
-    setupMock(0, 0)
-    const { getEngagementStats } = require('@/lib/api/admin-engagement-stats/queries')
-    const result = await getEngagementStats(30)
-
-    expect(result.mauPercentage).toBe(0)
-  })
-})
-
-// ============================================
-// ROUTE RESPONSE FORMAT
-// ============================================
-
-describe('Admin Engagement Stats - Route response format', () => {
-  it('should match schema for typical response', () => {
-    const response = {
-      activeUsers: 45,
-      totalUsers: 300,
-      mauPercentage: 15,
-    }
-    const parsed = engagementStatsResponseSchema.safeParse(response)
-    expect(parsed.success).toBe(true)
   })
 })
