@@ -725,6 +725,10 @@ export async function getFilteredQuestions(
                 }
                 return eq(questions.isOfficialExam, true)
               })()
+            : sql`true`,
+          // Filtro de dificultad
+          difficultyMode && difficultyMode !== 'random'
+            ? eq(questions.globalDifficultyCategory, difficultyMode)
             : sql`true`
         ))
 
