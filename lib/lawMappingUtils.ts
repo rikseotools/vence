@@ -164,6 +164,7 @@ const SLUG_TO_SHORT_NAME: SlugToShortNameMapping = {
   'orden-hfp-266-2023': 'Orden HFP/266/2023',
   'orden-pre-1576-2002': 'Orden PRE/1576/2002',
   'orden-hap-1949-2014': 'Orden HAP/1949/2014',
+  'iv-convenio-age': 'IV Convenio AGE',
   'iv-plan-gobierno-abierto': 'IV Plan de Gobierno Abierto',
   'iii-plan-gobierno-abierto': 'III Plan Gobierno Abierto',
   'i-plan-gobierno-abierto': 'I Plan Gobierno Abierto',
@@ -679,6 +680,7 @@ const SHORT_NAME_TO_SLUG: ShortNameToSlugMapping = {
 
   // Otras leyes específicas
   'I Plan Gobierno Abierto': 'i-plan-gobierno-abierto',
+  'IV Convenio AGE': 'iv-convenio-age',
   'IV Plan de Gobierno Abierto': 'iv-plan-gobierno-abierto',
   'III Plan de Gobierno Abierto': 'iii-plan-gobierno-abierto',
   'Plan Transparencia Judicial': 'plan-transparencia-judicial',
