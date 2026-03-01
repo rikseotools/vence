@@ -121,7 +121,7 @@ describe('OposicionDetector', () => {
     test('incluye las CCAA: CARM, CyL, Andalucia, Madrid, Canarias, CLM, Extremadura y Valencia', () => {
       const autonomicas = Object.values(OPOSICION_DETECTION)
         .filter(d => d.administracion === 'autonomica')
-      expect(autonomicas).toHaveLength(8)
+      expect(autonomicas).toHaveLength(9)
       expect(autonomicas.map(a => a.slug).sort()).toEqual([
         'auxiliar-administrativo-andalucia',
         'auxiliar-administrativo-canarias',
@@ -129,6 +129,7 @@ describe('OposicionDetector', () => {
         'auxiliar-administrativo-clm',
         'auxiliar-administrativo-cyl',
         'auxiliar-administrativo-extremadura',
+        'auxiliar-administrativo-galicia',
         'auxiliar-administrativo-madrid',
         'auxiliar-administrativo-valencia',
       ])

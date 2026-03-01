@@ -363,6 +363,35 @@ export default function OposicionesPage() {
       href: '/auxiliar-administrativo-valencia',
     },
     {
+      id: 'auxiliar-administrativo-galicia',
+      name: 'Auxiliar Administrativo Xunta de Galicia',
+      shortName: 'Aux. Admin. Galicia',
+      badge: 'C2',
+      icon: '🐚',
+      color: 'sky',
+      description: 'Oposicion para trabajar en la Xunta de Galicia como Auxiliar Administrativo. 83 plazas (OEP 2022+2024). 17 temas en 2 partes. Primer ejercicio previsto septiembre 2026.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 17,
+      tests: 0,
+      difficulty: 'Intermedio',
+      duration: '6-12 meses',
+      salary: '18.000€ - 22.000€',
+      features: [
+        'Temario oficial DOG 2022 (17 temas)',
+        'Tests por temas y bloques',
+        'Parte General + Parte Especifica',
+        'Seguimiento de progreso',
+        'Estadisticas detalladas'
+      ],
+      requirements: [
+        'Titulo de Graduado en ESO o equivalente',
+        'Nacionalidad espanola o UE',
+        'Tener 16 anos y no exceder edad jubilacion'
+      ],
+      href: '/auxiliar-administrativo-galicia',
+    },
+    {
       id: 'administrativo-castilla-leon',
       name: 'Administrativo Junta de Castilla y León',
       shortName: 'Administrativo CyL',

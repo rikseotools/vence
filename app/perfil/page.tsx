@@ -432,6 +432,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_galicia',
+      label: 'Auxiliar Administrativo Xunta de Galicia',
+      data: {
+        name: 'Auxiliar Administrativo Xunta de Galicia',
+        slug: 'auxiliar-administrativo-galicia',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

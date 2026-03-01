@@ -215,6 +215,13 @@ const OFFICIAL_OPOSICIONES = [
     icon: '🍊'
   },
   {
+    id: 'auxiliar_administrativo_galicia',
+    nombre: 'Auxiliar Administrativo Xunta de Galicia',
+    categoria: 'C2',
+    administracion: 'Autonómica',
+    icon: '🐚'
+  },
+  {
     id: 'auxiliar_comunidad_autonoma',
     nombre: 'Auxiliar Administrativo Comunidad Autónoma',
     categoria: 'C2',

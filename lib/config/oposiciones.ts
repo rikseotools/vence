@@ -859,6 +859,63 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO XUNTA DE GALICIA (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_galicia',
+    slug: 'auxiliar-administrativo-galicia',
+    positionType: 'auxiliar_administrativo_galicia',
+    name: 'Auxiliar Administrativo Xunta de Galicia',
+    shortName: 'Aux. Galicia',
+    emoji: '🐚',
+    badge: 'C2',
+    color: 'sky',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Parte General',
+        subtitle: 'CE, Estatuto Galicia, UE, LPAC, LRJSP, Empleo Publico, Igualdad',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'CE: T.Preliminar, T.I (excepto cap 3), T.II, T.III (cap 1), T.IV, T.V, T.VIII' },
+          { id: 2, name: 'Estatuto de Autonomia de Galicia (LO 1/1981)' },
+          { id: 3, name: 'Derecho derivado UE: reglamentos, directivas, decisiones' },
+          { id: 4, name: 'Instituciones UE: Parlamento, Consejo Europeo, Consejo, Comision' },
+          { id: 5, name: 'Ley 31/1995 PRL: capitulo III' },
+          { id: 6, name: 'Ley 16/2010 organizacion Administracion Galicia' },
+          { id: 7, name: 'Ley 39/2015 LPAC: T.Preliminar a T.V' },
+          { id: 8, name: 'Ley 40/2015 LRJSP: caps I-V titulo preliminar' },
+          { id: 9, name: 'DL 1/1999 regimen financiero Galicia' },
+          { id: 10, name: 'Ley 1/2016 transparencia Galicia' },
+          { id: 11, name: 'Ley 2/2015 empleo publico Galicia' },
+          { id: 12, name: 'Ley 7/2023 igualdad Galicia' },
+          { id: 13, name: 'RDL 1/2013 discapacidad' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Parte Especifica',
+        subtitle: 'Gestion documental, Informatica, Ofimatica',
+        icon: '💻',
+        themes: [
+          { id: 14, name: 'Gestion de documentos en la Xunta de Galicia' },
+          { id: 15, name: 'Informatica basica: componentes, redes, almacenamiento' },
+          { id: 16, name: 'Sistemas operativos: administrador de archivos' },
+          { id: 17, name: 'Sistemas ofimaticos: Writer, Calc, Impress, correo' },
+        ],
+      },
+    ],
+    totalTopics: 17,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-galicia', label: 'Mi Oposicion', icon: '🐚', featured: true },
+      { href: '/auxiliar-administrativo-galicia/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-galicia/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {
