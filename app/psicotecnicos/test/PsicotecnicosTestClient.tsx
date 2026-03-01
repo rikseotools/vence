@@ -44,7 +44,7 @@ export default function PsicotecnicosTestClient() {
         const catSelection: Record<string, boolean> = {}
         const secSelection: Record<string, boolean> = {}
         for (const cat of data.categories) {
-          catSelection[cat.key] = true
+          catSelection[cat.key] = cat.questionCount > 0
           for (const sec of cat.sections) {
             secSelection[sec.key] = true
           }
