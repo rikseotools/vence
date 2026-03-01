@@ -71,7 +71,7 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
   const { user, loading } = useAuth() as { user: { id: string } | null; loading: boolean }
   const [userStats, setUserStats] = useState<Record<number, ThemeStats>>({})
   const [statsLoading, setStatsLoading] = useState(false)
-  const [showStatsInfo, setShowStatsInfo] = useState(false)
+
 
   // Estado de bloques expandidos (localStorage)
   const storageKey = `${oposicion}-expanded-blocks`
@@ -232,34 +232,9 @@ export default function TestHubClient({ oposicion, oposicionInfo, bloques, baseP
                   onToggle={toggleBlock}
                   userStats={userStats}
                   getThemeColor={getThemeColor}
-                  onInfoClick={() => setShowStatsInfo(true)}
                 />
               ))}
             </div>
-
-            {/* Modal de información */}
-            {showStatsInfo && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
-                <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">📊 Estadísticas de Rendimiento</h3>
-                  <div className="space-y-3 text-sm text-gray-700">
-                    <p><strong>Porcentaje de aciertos:</strong> (correctas / total) × 100</p>
-                    <p><strong>Respuestas:</strong> Formato (correctas/total)</p>
-                    <p><strong>Último estudio:</strong> Fecha de tu última sesión</p>
-                    <div className="bg-blue-50 p-3 rounded-lg">
-                      <p className="text-blue-800 font-medium">💡 Consejo</p>
-                      <p className="text-blue-700">Practica los temas con menor porcentaje.</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowStatsInfo(false)}
-                    className="mt-4 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Entendido
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -278,7 +253,6 @@ interface BlockSectionProps {
   onToggle: (blockId: string) => void
   userStats: Record<number, ThemeStats>
   getThemeColor: (topicNumber: number) => string
-  onInfoClick: () => void
 }
 
 function BlockSection({
@@ -291,7 +265,6 @@ function BlockSection({
   onToggle,
   userStats,
   getThemeColor,
-  onInfoClick
 }: BlockSectionProps) {
   // Anchor para navegación
   const anchorMap: Record<string, string> = {
@@ -333,7 +306,6 @@ function BlockSection({
               basePath={basePath}
               stats={userStats[topic.topicNumber]}
               color={getThemeColor(topic.topicNumber)}
-              onInfoClick={onInfoClick}
             />
           ))}
         </div>
@@ -348,10 +320,9 @@ interface ThemeLinkProps {
   basePath: string
   stats: ThemeStats | undefined
   color: string
-  onInfoClick: () => void
 }
 
-function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProps) {
+function ThemeLink({ topic, basePath, stats, color }: ThemeLinkProps) {
   const hasStats = !!stats
   const href = `${basePath}/${topic.topicNumber}`
 
@@ -385,22 +356,9 @@ function ThemeLink({ topic, basePath, stats, color, onInfoClick }: ThemeLinkProp
         <div className="flex items-center space-x-3">
           {hasStats ? (
             <>
-              <div className="flex items-center space-x-1">
-                <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
-                  {stats.accuracy}% ({stats.correct}/{stats.total})
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onInfoClick()
-                  }}
-                  className="text-white/70 hover:text-white transition-colors p-1"
-                  title="¿Qué significa este porcentaje?"
-                >
-                  ℹ️
-                </button>
-              </div>
+              <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-bold">
+                {stats.accuracy}% ({stats.correct}/{stats.total})
+              </span>
               <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium">
                 {stats.lastStudyFormatted}
               </span>
