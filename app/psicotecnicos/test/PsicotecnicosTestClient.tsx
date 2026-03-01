@@ -21,9 +21,9 @@ export default function PsicotecnicosTestClient() {
   const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>({})
   // Section selection — keyed by section key
   const [selectedSections, setSelectedSections] = useState<Record<string, boolean>>({})
+  // Expanded categories (accordion)
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({})
 
-  const [showModal, setShowModal] = useState(false)
-  const [modalCategoryKey, setModalCategoryKey] = useState<string | null>(null)
   const [numQuestionsPsico, setNumQuestionsPsico] = useState(25)
 
   // Load categories from API on mount
@@ -92,15 +92,23 @@ export default function PsicotecnicosTestClient() {
     setSelectedCategories(prev => ({ ...prev, [catKey]: !allSelected }))
   }
 
-  // Toggle a single section
-  const toggleSection = (sectionKey: string) => {
-    setSelectedSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }))
+  // Toggle a single section (and sync parent category state)
+  const toggleSection = (sectionKey: string, catKey: string) => {
+    setSelectedSections(prev => {
+      const next = { ...prev, [sectionKey]: !prev[sectionKey] }
+      // Sync parent: category is selected if ANY section is selected
+      const cat = categories.find(c => c.key === catKey)
+      if (cat) {
+        const anySelected = cat.sections.some(s => next[s.key])
+        setSelectedCategories(prevCat => ({ ...prevCat, [catKey]: anySelected }))
+      }
+      return next
+    })
   }
 
-  // Open modal for a category
-  const handleBlockClick = (catKey: string) => {
-    setModalCategoryKey(catKey)
-    setShowModal(true)
+  // Toggle accordion expand/collapse
+  const toggleExpand = (catKey: string) => {
+    setExpandedCategories(prev => ({ ...prev, [catKey]: !prev[catKey] }))
   }
 
   // Selection summary text
@@ -124,9 +132,6 @@ export default function PsicotecnicosTestClient() {
   }
 
   const totalSelectedQuestions = getSelectedCategoriesQuestionCount()
-
-  // Find modal category object
-  const modalCategory = categories.find(c => c.key === modalCategoryKey)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -153,55 +158,133 @@ export default function PsicotecnicosTestClient() {
           </div>
         )}
 
-        {/* Category list */}
+        {/* Category tree */}
         {dataLoaded && (
           <div className="max-w-2xl mx-auto px-4 mb-8">
-            <div className="space-y-3 sm:space-y-4">
+            {/* Select all / Deselect all toggle */}
+            {(() => {
+              const allSelected = categories
+                .filter(cat => cat.questionCount > 0)
+                .every(cat => selectedCategories[cat.key])
+              return (
+                <div className="flex justify-end mb-3">
+                  <button
+                    onClick={() => {
+                      const catSel: Record<string, boolean> = {}
+                      const secSel: Record<string, boolean> = {}
+                      for (const cat of categories) {
+                        catSel[cat.key] = allSelected ? false : cat.questionCount > 0
+                        for (const sec of cat.sections) {
+                          secSel[sec.key] = !allSelected
+                        }
+                      }
+                      setSelectedCategories(catSel)
+                      setSelectedSections(secSel)
+                    }}
+                    className={`text-sm font-medium ${allSelected ? 'text-gray-500 hover:text-gray-700' : 'text-blue-600 hover:text-blue-800'}`}
+                  >
+                    {allSelected ? 'Deseleccionar todo' : 'Seleccionar todo'}
+                  </button>
+                </div>
+              )
+            })()}
+            <div className="space-y-2">
               {categories
                 .filter(cat => cat.questionCount > 0)
-                .map((cat) => (
-                <div
-                  key={cat.key}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer"
-                  onClick={() => toggleCategory(cat.key)}
-                >
-                  <div className="flex items-center mb-2 sm:mb-0">
-                    <div className={`w-5 h-5 border-2 rounded mr-3 sm:mr-4 flex-shrink-0 ${
-                      selectedCategories[cat.key]
-                        ? 'bg-blue-600 border-blue-600'
-                        : 'border-gray-300'
-                    }`}>
-                      {selectedCategories[cat.key] && (
-                        <svg className="w-3 h-3 text-white m-auto mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
+                .map((cat) => {
+                  const visibleSections = cat.sections.filter((s: PsychometricSection) => s.count > 0)
+                  const hasSections = visibleSections.length > 1
+                  const isExpanded = expandedCategories[cat.key] || false
+                  const selectedSectionsCount = visibleSections.filter((s: PsychometricSection) => selectedSections[s.key]).length
+                  const allSectionsSelected = selectedSectionsCount === visibleSections.length
+                  const someSectionsSelected = selectedSectionsCount > 0 && !allSectionsSelected
+
+                  return (
+                    <div key={cat.key} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                      {/* Category row */}
+                      <div className="flex items-center p-3 sm:p-4">
+                        {/* Checkbox */}
+                        <div
+                          className={`w-5 h-5 border-2 rounded mr-3 flex-shrink-0 cursor-pointer flex items-center justify-center ${
+                            selectedCategories[cat.key]
+                              ? someSectionsSelected
+                                ? 'bg-blue-400 border-blue-400'
+                                : 'bg-blue-600 border-blue-600'
+                              : 'border-gray-300'
+                          }`}
+                          onClick={() => toggleCategory(cat.key)}
+                        >
+                          {selectedCategories[cat.key] && (
+                            someSectionsSelected ? (
+                              <div className="w-2.5 h-0.5 bg-white rounded" />
+                            ) : (
+                              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )
+                          )}
+                        </div>
+
+                        {/* Name + info (clickable to expand if has sections) */}
+                        <div
+                          className={`flex-1 flex items-center justify-between min-w-0 ${hasSections ? 'cursor-pointer' : ''}`}
+                          onClick={() => hasSections && toggleExpand(cat.key)}
+                        >
+                          <span className="text-base sm:text-lg font-medium text-gray-900 truncate">
+                            {cat.name}
+                          </span>
+                          <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                            <span className="text-sm text-gray-500">
+                              {hasSections
+                                ? `${selectedSectionsCount}/${visibleSections.length} subcategorías • ${cat.questionCount}`
+                                : `${cat.questionCount}`
+                              }
+                            </span>
+                            {hasSections && (
+                              <svg
+                                className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sections accordion */}
+                      {hasSections && isExpanded && (
+                        <div className="border-t border-gray-100 bg-gray-50/50">
+                          {cat.sections.filter((s: PsychometricSection) => s.count > 0).map((section: PsychometricSection) => (
+                            <label
+                              key={section.key}
+                              className="flex items-center justify-between px-4 py-2.5 pl-12 cursor-pointer hover:bg-gray-100/70 transition-colors"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSections[section.key] || false}
+                                  onChange={() => toggleSection(section.key, cat.key)}
+                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                />
+                                <span className={`text-sm ${section.count === 0 ? 'text-gray-400' : 'text-gray-700'}`}>
+                                  {section.name}
+                                </span>
+                              </div>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                section.count === 0
+                                  ? 'bg-gray-100 text-gray-400'
+                                  : 'bg-blue-50 text-blue-600'
+                              }`}>
+                                {section.count}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    <span className="text-base sm:text-lg font-medium text-gray-900">
-                      {cat.name}
-                    </span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end w-full sm:w-auto gap-2">
-                    <span className="text-sm text-gray-600 order-2 sm:order-1">
-                      {cat.sections.length > 1
-                        ? `${getSelectedSectionsCount(cat)}/${cat.sections.length} subcategorías • ${cat.questionCount} preguntas`
-                        : `${cat.questionCount} pregunta${cat.questionCount !== 1 ? 's' : ''}`
-                      }
-                    </span>
-                    {cat.sections.length > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleBlockClick(cat.key)
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors order-1 sm:order-2 self-start sm:self-auto"
-                      >
-                        Configurar
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  )
+                })}
             </div>
           </div>
         )}
@@ -282,57 +365,6 @@ export default function PsicotecnicosTestClient() {
       </div>
 
       </div>
-
-      {/* Section configuration modal */}
-      {showModal && modalCategory && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {modalCategory.name}
-                </h3>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {modalCategory.sections.map((section: PsychometricSection) => (
-                  <label key={section.key} className="flex items-center justify-between cursor-pointer p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedSections[section.key] || false}
-                        onChange={() => toggleSection(section.key)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-gray-900">
-                        {section.name}
-                      </span>
-                    </div>
-                    <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-                      {section.count} preguntas
-                    </span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="mt-6">
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg font-medium"
-                >
-                  Aceptar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
