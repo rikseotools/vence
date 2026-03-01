@@ -1,5 +1,5 @@
 'use client'
-import { type ReactNode } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import MarkdownExplanation from './MarkdownExplanation'
 
@@ -57,6 +57,18 @@ export default function ChartQuestion({
   hideAIChat = false
 }: ChartQuestionProps) {
   const { user } = useAuth() as { user: { id: string; user_metadata?: { full_name?: string } } | null }
+  const [showZoomModal, setShowZoomModal] = useState(false)
+
+  const closeZoomModal = useCallback(() => setShowZoomModal(false), [])
+
+  useEffect(() => {
+    if (!showZoomModal) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeZoomModal()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showZoomModal, closeZoomModal])
 
   // SEGURIDAD: Usar verifiedCorrectAnswer de API cuando esté disponible
   const effectiveCorrectAnswer = showResult && verifiedCorrectAnswer !== null
@@ -144,8 +156,51 @@ export default function ChartQuestion({
 
       {/* Gráfico - Componente específico (solo si existe) */}
       {chartComponent && (
-        <div className="mb-4 -mx-6 -my-2 sm:-mt-2 -mt-8">
-          {chartComponent}
+        <div className="relative mb-4 -mx-6 -my-2 sm:-mt-2 -mt-8">
+          <div
+            className="sm:cursor-pointer"
+            onClick={() => {
+              if (window.innerWidth >= 640) setShowZoomModal(true)
+            }}
+          >
+            {chartComponent}
+          </div>
+          {/* Botón lupa - solo desktop */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowZoomModal(true) }}
+            className="hidden sm:flex absolute top-2 right-2 items-center justify-center w-9 h-9 rounded-lg bg-white/70 hover:bg-white border border-gray-200 shadow-sm transition-all duration-150 z-10"
+            title="Ampliar gráfico"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9m11.25-5.25v4.5m0-4.5h-4.5m4.5 0L15 9m-11.25 11.25v-4.5m0 4.5h4.5m-4.5 0L9 15m11.25 5.25v-4.5m0 4.5h-4.5m4.5 0L15 15" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Modal de zoom - solo desktop */}
+      {showZoomModal && chartComponent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={closeZoomModal}
+        >
+          <div
+            className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-auto p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={closeZoomModal}
+              className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors z-10"
+              title="Cerrar"
+            >
+              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="pt-2">
+              {chartComponent}
+            </div>
+          </div>
         </div>
       )}
 
