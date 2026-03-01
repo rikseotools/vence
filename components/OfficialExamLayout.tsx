@@ -572,6 +572,9 @@ export default function OfficialExamLayout({
         console.log('🔒 Validando preguntas psicotecnicas en paralelo...')
 
         const psyPromises = psychometricQuestions.map(async (pq) => {
+          // Si no respondió, no llamar a la API
+          if (pq.userAnswer === null) return null
+
           try {
             const psyResponse = await fetch('/api/answer/psychometric', {
               method: 'POST',
