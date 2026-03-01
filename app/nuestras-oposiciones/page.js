@@ -247,6 +247,35 @@ export default function OposicionesPage() {
       href: '/auxiliar-administrativo-madrid',
     },
     {
+      id: 'auxiliar-administrativo-canarias',
+      name: 'Auxiliar Administrativo Gobierno de Canarias',
+      shortName: 'Aux. Admin. Canarias',
+      badge: 'C2',
+      icon: '🏛️',
+      color: 'amber',
+      description: 'Oposición para trabajar en el Gobierno de Canarias como Auxiliar Administrativo. 299 plazas convocadas. OEP 2021 turno libre. 40 temas en 2 bloques.',
+      category: 'Comunidades Autónomas',
+      level: 'Grupo C, Subgrupo C2',
+      temarios: 40,
+      tests: 0,
+      difficulty: 'Intermedio',
+      duration: '6-12 meses',
+      salary: '18.000€ - 22.000€',
+      features: [
+        'Temario oficial BOC 2024 (40 temas)',
+        'Tests por temas y bloques',
+        '2 bloques temáticos',
+        'Seguimiento de progreso',
+        'Estadísticas detalladas'
+      ],
+      requirements: [
+        'Título de Graduado en ESO o equivalente',
+        'Nacionalidad española o UE',
+        'Tener 16 años y no exceder edad jubilación'
+      ],
+      href: '/auxiliar-administrativo-canarias',
+    },
+    {
       id: 'administrativo-castilla-leon',
       name: 'Administrativo Junta de Castilla y León',
       shortName: 'Administrativo CyL',

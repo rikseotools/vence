@@ -54,6 +54,14 @@ const FLAG_PATHS: Record<string, ReactNode> = {
       <circle cx="16.5" cy="7" r="1" fill="#fff"/>
     </>
   ),
+  // Canarias: franjas blanco-azul-amarillo (3 franjas verticales)
+  auxiliar_administrativo_canarias: (
+    <>
+      <rect width="6.67" height="14" fill="#fff"/>
+      <rect x="6.67" width="6.67" height="14" fill="#003DA5"/>
+      <rect x="13.33" width="6.67" height="14" fill="#FECB00"/>
+    </>
+  ),
   // Andalucía: franjas verde-blanco-verde horizontales
   auxiliar_administrativo_andalucia: (
     <>

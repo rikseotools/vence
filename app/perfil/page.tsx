@@ -392,6 +392,16 @@ function PerfilPageContent() {
         categoria: 'C2',
         administracion: 'Autonómica'
       }
+    },
+    {
+      value: 'auxiliar_administrativo_canarias',
+      label: 'Auxiliar Administrativo Gobierno de Canarias',
+      data: {
+        name: 'Auxiliar Administrativo Gobierno de Canarias',
+        slug: 'auxiliar-administrativo-canarias',
+        categoria: 'C2',
+        administracion: 'Autonómica'
+      }
     }
   ]
 

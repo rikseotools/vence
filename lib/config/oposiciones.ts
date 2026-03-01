@@ -586,6 +586,86 @@ export const OPOSICIONES: Oposicion[] = [
   },
 
   // ========================================
+  // AUXILIAR ADMINISTRATIVO GOBIERNO DE CANARIAS (C2)
+  // ========================================
+  {
+    id: 'auxiliar_administrativo_canarias',
+    slug: 'auxiliar-administrativo-canarias',
+    positionType: 'auxiliar_administrativo_canarias',
+    name: 'Auxiliar Administrativo Gobierno de Canarias',
+    shortName: 'Aux. Canarias',
+    emoji: '🏛️',
+    badge: 'C2',
+    color: 'amber',
+    administracion: 'autonomica',
+    blocks: [
+      {
+        id: 'bloque1',
+        title: 'Parte General',
+        subtitle: 'Constitución, Autonomía, UE, Igualdad, Función Pública',
+        icon: '🏛️',
+        themes: [
+          { id: 1, name: 'La Constitución Española de 1978' },
+          { id: 2, name: 'La organización territorial del Estado' },
+          { id: 3, name: 'El Estatuto de Autonomía de Canarias (I)' },
+          { id: 4, name: 'El Estatuto de Autonomía de Canarias (II)' },
+          { id: 5, name: 'Las Instituciones Autonómicas de Canarias' },
+          { id: 6, name: 'El Gobierno de Canarias' },
+          { id: 7, name: 'Las islas y la Comunidad Autónoma de Canarias' },
+          { id: 8, name: 'El Presupuesto de la Comunidad Autónoma de Canarias' },
+          { id: 9, name: 'La organización de la Unión Europea' },
+          { id: 10, name: 'Igualdad efectiva de mujeres y hombres' },
+          { id: 11, name: 'Violencia de género y discapacidad' },
+          { id: 12, name: 'Actividad de las Administraciones Públicas' },
+          { id: 13, name: 'Atención al ciudadano' },
+          { id: 14, name: 'La transparencia de la actividad pública' },
+          { id: 15, name: 'Protección de datos de carácter personal' },
+          { id: 16, name: 'La competencia administrativa' },
+          { id: 17, name: 'El personal al servicio de las Administraciones Públicas' },
+          { id: 18, name: 'La selección del personal funcionario y laboral' },
+          { id: 19, name: 'Las situaciones administrativas' },
+          { id: 20, name: 'Derechos y deberes de los empleados públicos' },
+        ],
+      },
+      {
+        id: 'bloque2',
+        title: 'Parte Práctica',
+        subtitle: 'Administración, Procedimiento, Contratos, Ofimática',
+        icon: '📋',
+        themes: [
+          { id: 21, name: 'La organización general de la Administración Pública de Canarias' },
+          { id: 22, name: 'El acceso electrónico de los ciudadanos a los servicios públicos' },
+          { id: 23, name: 'El acto administrativo' },
+          { id: 24, name: 'Validez e invalidez de los actos' },
+          { id: 25, name: 'Eficacia, notificación y publicación' },
+          { id: 26, name: 'La revisión de oficio' },
+          { id: 27, name: 'El procedimiento administrativo' },
+          { id: 28, name: 'Fases del procedimiento administrativo' },
+          { id: 29, name: 'Los recursos administrativos' },
+          { id: 30, name: 'Los recursos ordinarios' },
+          { id: 31, name: 'Contratación pública (I)' },
+          { id: 32, name: 'Contratación pública (II)' },
+          { id: 33, name: 'Contratación pública (III)' },
+          { id: 34, name: 'Régimen general de ayudas y subvenciones' },
+          { id: 35, name: 'Funcionamiento electrónico del sector público' },
+          { id: 36, name: 'Los documentos administrativos' },
+          { id: 37, name: 'El sistema operativo Windows' },
+          { id: 38, name: 'El explorador de Windows' },
+          { id: 39, name: 'Los documentos administrativos (práctico)' },
+          { id: 40, name: 'Regulación del archivo de la Administración Pública de Canarias' },
+        ],
+      },
+    ],
+    totalTopics: 40,
+    navLinks: [
+      { href: '/es', label: 'Inicio', icon: '🏠' },
+      { href: '/auxiliar-administrativo-canarias', label: 'Mi Oposición', icon: '🏛️', featured: true },
+      { href: '/auxiliar-administrativo-canarias/temario', label: 'Temario', icon: '📚' },
+      { href: '/auxiliar-administrativo-canarias/test', label: 'Tests', icon: '🎯' },
+    ],
+  },
+
+  // ========================================
   // AUXILIO JUDICIAL (C2)
   // ========================================
   {
